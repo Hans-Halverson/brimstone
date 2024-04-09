@@ -82,6 +82,12 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         self.entries.len()
     }
 
+    /// Whether the map is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     #[inline]
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
         ENTRIES_BYTE_OFFSET + InlineArray::<Entry<K, V>>::calculate_size_in_bytes(capacity)

@@ -1,4 +1,5 @@
 use std::{
+    hash,
     ops::{Deref, DerefMut},
     ptr::NonNull,
 };
@@ -71,5 +72,32 @@ impl<T: IsHeapObject> Deref for HeapPtr<T> {
 impl<T: IsHeapObject> DerefMut for HeapPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
+    }
+}
+
+/// A wrapper around HeapPtrs that allows them to be used as keys in a HashMap.
+///
+/// Must ensure that no GC occurs while this is in use.
+pub struct HashKeyPtr<T> {
+    ptr: HeapPtr<T>,
+}
+
+impl<T> HashKeyPtr<T> {
+    pub fn new(ptr: HeapPtr<T>) -> HashKeyPtr<T> {
+        HashKeyPtr { ptr }
+    }
+}
+
+impl<T> PartialEq for HashKeyPtr<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr.ptr_eq(&other.ptr)
+    }
+}
+
+impl<T> Eq for HashKeyPtr<T> {}
+
+impl<T> hash::Hash for HashKeyPtr<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.ptr.as_ptr().hash(state)
     }
 }

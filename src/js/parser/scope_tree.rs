@@ -678,6 +678,8 @@ pub enum ScopeNodeKind {
     FunctionBody,
     Block,
     Switch,
+    /// Body of a class declaration.
+    Class,
     With,
     /// Scope created within an eval. Var bindings of a sloppy direct eval are added to the parent
     /// var scope.
@@ -698,7 +700,7 @@ impl ScopeNodeKind {
             // Sloppy eval will add var bindings to the parent var scope. However we still consider
             // the eval scope to be a hoist target during analysis.
             | ScopeNodeKind::Eval { .. } => true,
-            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::With => false,
+            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Class | ScopeNodeKind::With => false,
         }
     }
 

@@ -3336,7 +3336,7 @@ impl<'a> Parser<'a> {
         };
 
         // Body of the class it in its own scope
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
 
         // Always add class name to the body scope
         if let Some(id) = id.as_ref() {

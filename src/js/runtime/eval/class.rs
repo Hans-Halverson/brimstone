@@ -179,23 +179,7 @@ pub fn class_definition_evaluation(
     }
 
     let outer_private_env = current_execution_context.private_env();
-    let mut class_private_env = PrivateEnvironment::new(cx, outer_private_env);
-
-    // Add private fields to class's private environment
-    for element in &class.body {
-        match element {
-            ast::ClassElement::Method(ast::ClassMethod { key, is_private, .. })
-            | ast::ClassElement::Property(ast::ClassProperty { key, is_private, .. })
-                if *is_private =>
-            {
-                let key_string = id_string_value(cx, key.expr.to_id());
-                if !class_private_env.has_private_name(key_string) {
-                    class_private_env.add_private_name(cx, key_string)
-                }
-            }
-            _ => {}
-        }
-    }
+    let class_private_env = create_private_environment(cx, &class, outer_private_env);
 
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
@@ -479,6 +463,33 @@ pub fn class_definition_evaluation(
     current_execution_context.set_private_env(outer_private_env);
 
     func.into()
+}
+
+/// Create a private environment containing all the private properties of the class.
+pub fn create_private_environment(
+    cx: Context,
+    class: &ast::Class,
+    outer: Option<Handle<PrivateEnvironment>>,
+) -> Handle<PrivateEnvironment> {
+    let mut private_env = PrivateEnvironment::new(cx, outer);
+
+    // Add private fields to class's private environment
+    for element in &class.body {
+        match element {
+            ast::ClassElement::Method(ast::ClassMethod { key, is_private, .. })
+            | ast::ClassElement::Property(ast::ClassProperty { key, is_private, .. })
+                if *is_private =>
+            {
+                let key_string = id_string_value(cx, key.expr.to_id());
+                if !private_env.has_private_name(key_string) {
+                    private_env.add_private_name(cx, key_string)
+                }
+            }
+            _ => {}
+        }
+    }
+
+    private_env
 }
 
 // 15.7.15 BindingClassDeclarationEvaluation

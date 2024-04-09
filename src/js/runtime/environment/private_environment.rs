@@ -51,8 +51,14 @@ impl PrivateEnvironment {
         env.to_handle()
     }
 
+    #[inline]
     pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
         self.outer
+    }
+
+    #[inline]
+    pub fn outer(&self) -> Option<Handle<PrivateEnvironment>> {
+        self.outer.map(|p| p.to_handle())
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier
@@ -76,6 +82,11 @@ impl PrivateEnvironment {
         for name in self.names.keys_gc_unsafe() {
             f(name)
         }
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
     }
 }
 

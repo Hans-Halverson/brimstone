@@ -10,4 +10,4 @@ pub use handle::{Escapable, Handle, HandleContents, HandleScope, ToHandleContent
 pub use heap::{Heap, HeapInfo};
 pub use heap_item::HeapItem;
 pub use heap_object::{HeapObject, HeapVisitor, IsHeapObject};
-pub use pointer::HeapPtr;
+pub use pointer::{HashKeyPtr, HeapPtr};

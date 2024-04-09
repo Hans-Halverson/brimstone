@@ -1,0 +1,127 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 10
+     0: LoadConstant r1, c1
+     3: ToPropertyKey r1, r1
+     6: NewClosure r2, c2
+     9: NewClosure r3, c3
+    12: NewClosure r4, c4
+    15: NewClosure r5, c5
+    18: NewClosure r6, c6
+    21: NewClosure r7, c7
+    24: NewClosure r8, c8
+    27: NewClosure r9, c9
+    30: NewClass r0, c10, c0, r1
+    35: StoreToScope r0, 1, 0
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [Symbol]
+    2: [BytecodeFunction: <anonymous>]
+    3: [BytecodeFunction: privateMember]
+    4: [BytecodeFunction: privateCall]
+    5: [BytecodeFunction: privateOptionalMember]
+    6: [BytecodeFunction: privateOptionalCall]
+    7: [BytecodeFunction: privateAssignment]
+    8: [BytecodeFunction: privateUpdate]
+    9: [BytecodeFunction: privateDestructure]
+    10: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: privateMember] {
+  Parameters: 0, Registers: 1
+    0: LoadConstant r0, c0
+    3: GetProperty r0, <this>, r0
+    7: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateCall] {
+  Parameters: 0, Registers: 1
+     0: LoadConstant r0, c0
+     3: GetProperty r0, <this>, r0
+     7: CallWithReceiver r0, r0, <this>, r0, 0
+    13: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateOptionalMember] {
+  Parameters: 0, Registers: 1
+     0: LoadConstant r0, c0
+     3: GetProperty r0, <this>, r0
+     7: JumpNullish r0, 11 (.L0)
+    10: CallWithReceiver r0, r0, <this>, r0, 0
+    16: Jump 4 (.L1)
+  .L0:
+    18: LoadUndefined r0
+  .L1:
+    20: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateOptionalCall] {
+  Parameters: 0, Registers: 1
+     0: LoadConstant r0, c0
+     3: GetProperty r0, <this>, r0
+     7: JumpNullish r0, 11 (.L0)
+    10: CallWithReceiver r0, r0, <this>, r0, 0
+    16: Jump 4 (.L1)
+  .L0:
+    18: LoadUndefined r0
+  .L1:
+    20: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateAssignment] {
+  Parameters: 1, Registers: 2
+     0: LoadConstant r1, c0
+     3: Mov r0, a0
+     6: SetProperty <this>, r1, r0
+    10: LoadUndefined r0
+    12: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateUpdate] {
+  Parameters: 0, Registers: 3
+     0: LoadConstant r1, c0
+     3: GetProperty r0, <this>, r1
+     7: ToNumeric r0, r0
+    10: Mov r2, r0
+    13: Inc r2
+    15: SetProperty <this>, r1, r2
+    19: LoadUndefined r0
+    21: Ret r0
+  Constant Table:
+    0: [Symbol]
+}
+
+[BytecodeFunction: privateDestructure] {
+  Parameters: 1, Registers: 2
+     0: LoadConstant r1, c0
+     3: GetNamedProperty r0, a0, c1
+     7: SetProperty <this>, r1, r0
+    11: LoadUndefined r0
+    13: Ret r0
+  Constant Table:
+    0: [Symbol]
+    1: [String: x]
+}

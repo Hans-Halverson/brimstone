@@ -23,8 +23,9 @@ use crate::js::{
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
         class_names::{ClassNames, Method},
-        eval::expression::generate_template_object,
-        gc::{Escapable, HandleScope},
+        environment::private_environment::PrivateEnvironment,
+        eval::{class::create_private_environment, expression::generate_template_object},
+        gc::{Escapable, HandleScope, HashKeyPtr},
         global_names::GlobalNames,
         interned_strings::InternedStrings,
         regexp::compiler::compile_regexp,
@@ -117,8 +118,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     }
 
     fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<BytecodeProgram> {
-        // Handle where the result BytecodeFunction is placed
-        let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
+        let mut emit_result = EmitFunctionResult::empty();
 
         let global_names = HandleScope::new(self.cx, |_| {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
@@ -154,19 +154,23 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Implicitly return undefined at end of script function
             generator.gen_return_undefined()?;
 
-            let emit_result = generator.finish();
-            let bytecode_function = emit_result.bytecode_function;
-
-            // Store the generated function into the parent handle scope so the enqueued references
-            // remain valid.
-            bytecode_function_handle.replace(bytecode_function.get_());
-
-            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
+            emit_result = generator.finish();
 
             global_scope_names
         })?;
 
-        Ok(BytecodeProgram { script_function: bytecode_function_handle, global_names })
+        // Escape emit result into current handle scope immediately, before allocation occurs
+        self.escape_emit_function_result(
+            &mut emit_result,
+            /* parent_private_environment */ None,
+        );
+
+        self.enqueue_pending_functions(
+            emit_result.bytecode_function,
+            emit_result.pending_functions,
+        );
+
+        Ok(BytecodeProgram { script_function: emit_result.bytecode_function, global_names })
     }
 
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
@@ -199,8 +203,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         &mut self,
         eval_program: &ast::Program,
     ) -> EmitResult<Handle<BytecodeFunction>> {
-        // Handle where the result BytecodeFunction is placed
-        let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
+        let mut emit_result = EmitFunctionResult::empty();
 
         HandleScope::new(self.cx, |_| {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
@@ -244,18 +247,23 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 .register_allocator
                 .release(statement_completion_dest);
 
-            let emit_result = generator.finish();
-
-            // Store the generated function into the parent handle scope so the enqueued references
-            // remain valid.
-            bytecode_function_handle.replace(emit_result.bytecode_function.get_());
-
-            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
+            emit_result = generator.finish();
 
             Ok(())
         })?;
 
-        Ok(bytecode_function_handle)
+        // Escape emit result into current handle scope immediately, before allocation occurs
+        self.escape_emit_function_result(
+            &mut emit_result,
+            /* parent_private_environment */ None,
+        );
+
+        self.enqueue_pending_functions(
+            emit_result.bytecode_function,
+            emit_result.pending_functions,
+        );
+
+        Ok(emit_result.bytecode_function)
     }
 
     pub fn generate_from_function_constructor_parse_result(
@@ -285,6 +293,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             function,
             &self.scope_tree,
             scope,
+            /* private_environment */ None,
             self.realm,
             None,
             self.source_file,
@@ -310,62 +319,108 @@ impl<'a> BytecodeProgramGenerator<'a> {
         &mut self,
         pending_function: PatchablePendingFunction,
     ) -> EmitResult<()> {
-        let PatchablePendingFunction { func_node, parent_function, constant_index, scope } =
-            pending_function;
+        let PatchablePendingFunction {
+            func_node,
+            parent_function,
+            constant_index,
+            scope,
+            private_environment,
+        } = pending_function;
 
-        // Handle where the result BytecodeFunction is placed
-        let mut bytecode_function_handle = Handle::<BytecodeFunction>::empty(self.cx);
+        let mut emit_result = EmitFunctionResult::empty();
 
         HandleScope::new(self.cx, |_| {
             // Special handling if emitting a default constructor
-            let emit_result =
-                if let PendingFunctionNode::Constructor { node: None, name } = &func_node {
-                    let generator = BytecodeFunctionGenerator::new_for_default_constructor(
-                        self.cx,
-                        &self.scope_tree,
-                        scope,
-                        self.realm,
-                        &name,
-                        self.source_file,
-                    )?;
+            if let PendingFunctionNode::Constructor { node: None, name } = &func_node {
+                let generator = BytecodeFunctionGenerator::new_for_default_constructor(
+                    self.cx,
+                    &self.scope_tree,
+                    scope,
+                    private_environment,
+                    self.realm,
+                    &name,
+                    self.source_file,
+                )?;
 
-                    generator.generate_default_constructor()?
-                } else {
-                    let func_ptr = func_node.ast_ptr();
-                    let func = func_ptr.as_ref();
+                emit_result = generator.generate_default_constructor()?;
+            } else {
+                let func_ptr = func_node.ast_ptr();
+                let func = func_ptr.as_ref();
 
-                    let is_constructor = func_node.is_constructor();
-                    let default_name = func_node.default_name();
+                let is_constructor = func_node.is_constructor();
+                let default_name = func_node.default_name();
 
-                    let generator = BytecodeFunctionGenerator::new_for_function(
-                        self.cx,
-                        func,
-                        &self.scope_tree,
-                        scope,
-                        self.realm,
-                        default_name,
-                        self.source_file,
-                        is_constructor,
-                    )?;
+                let generator = BytecodeFunctionGenerator::new_for_function(
+                    self.cx,
+                    func,
+                    &self.scope_tree,
+                    scope,
+                    private_environment,
+                    self.realm,
+                    default_name,
+                    self.source_file,
+                    is_constructor,
+                )?;
 
-                    generator.generate(func)?
-                };
-
-            // Store the generated function into the parent handle scope so the enqueued references
-            // remain valid.
-            bytecode_function_handle.replace(emit_result.bytecode_function.get_());
-
-            self.enqueue_pending_functions(bytecode_function_handle, emit_result.pending_functions);
-
-            // Patch function into parent function's constant table
-            let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
-            parent_constant_table.set_constant(
-                constant_index as usize,
-                bytecode_function_handle.cast::<Value>().get(),
-            );
+                emit_result = generator.generate(func)?;
+            }
 
             Ok(())
-        })
+        })?;
+
+        // Escape emit result into current handle scope immediately, before allocation occurs
+        self.escape_emit_function_result(
+            &mut emit_result,
+            /* parent_private_environment */ None,
+        );
+
+        self.enqueue_pending_functions(
+            emit_result.bytecode_function,
+            emit_result.pending_functions,
+        );
+
+        // Patch function into parent function's constant table
+        let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
+        parent_constant_table.set_constant(
+            constant_index as usize,
+            emit_result.bytecode_function.cast::<Value>().get(),
+        );
+
+        Ok(())
+    }
+
+    /// Escape an emit result to the parent handle scope, modifying it in place.
+    ///
+    /// Must be called immediately after the a child handle scope has been destroyed, before any
+    /// allocations occur.
+    fn escape_emit_function_result(
+        &mut self,
+        emit_result: &mut EmitFunctionResult,
+        parent_private_environment: Option<Handle<PrivateEnvironment>>,
+    ) {
+        // BytecodeFunction must always be escaped into parent handle scope
+        emit_result.bytecode_function = emit_result.bytecode_function.escape(self.cx);
+
+        // Cache private environments that have already been escaped. The parent private environment
+        // does not need to be escaped.
+        let mut escaped_private_envs = HashMap::new();
+        if let Some(private_env) = parent_private_environment {
+            escaped_private_envs.insert(HashKeyPtr::new(private_env.get_()), private_env);
+        }
+
+        // Escape all private environments
+        for (_, _, _, private_env) in &mut emit_result.pending_functions {
+            if let Some(private_env) = private_env {
+                let private_env_key = HashKeyPtr::new(private_env.get_());
+                if let Some(new_handle) = escaped_private_envs.get(&private_env_key) {
+                    *private_env = *new_handle;
+                } else {
+                    let new_handle = private_env.escape(self.cx);
+                    escaped_private_envs.insert(private_env_key, new_handle.clone());
+                    *private_env = new_handle;
+                }
+            }
+        }
     }
 
     fn enqueue_pending_functions(
@@ -373,13 +428,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
         parent_function: Handle<BytecodeFunction>,
         pending_functions: PendingFunctions,
     ) {
-        for (func_node, constant_index, scope) in pending_functions {
+        for (func_node, constant_index, scope, private_environment) in pending_functions {
             self.pending_functions_queue
                 .push_back(PatchablePendingFunction {
                     func_node,
                     parent_function,
                     constant_index,
                     scope,
+                    private_environment,
                 });
         }
     }
@@ -395,6 +451,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// A chain of VM scopes that the generator is currently inside. The first node is the innermost
     /// scope.
     scope: Rc<ScopeStackNode>,
+
+    /// A chain of private environments that the generator is currently inside. The first node is
+    /// the innermost private environment.
+    private_environment: Option<Handle<PrivateEnvironment>>,
 
     /// The ScopeNames for each scope in this function. Keys are VM scope ids, and values are the
     /// constant index of the ScopeNames in the constant table.
@@ -469,6 +529,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
+        private_environment: Option<Handle<PrivateEnvironment>>,
         realm: Handle<Realm>,
         name: Option<Wtf8String>,
         source_file: Handle<SourceFile>,
@@ -485,6 +546,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             realm,
             scope,
+            private_environment,
             scope_names_cache: HashMap::new(),
             name,
             source_file,
@@ -513,6 +575,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         func: &ast::Function,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
+        private_environment: Option<Handle<PrivateEnvironment>>,
         realm: Handle<Realm>,
         default_name: Option<Wtf8String>,
         source_file: Handle<SourceFile>,
@@ -560,6 +623,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             cx,
             scope_tree,
             scope,
+            private_environment,
             realm,
             name,
             source_file,
@@ -595,6 +659,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             cx,
             scope_tree,
             scope,
+            /* private_environment */ None,
             realm,
             Some(Wtf8String::from_str(name)),
             source_file,
@@ -611,6 +676,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
+        private_environment: Option<Handle<PrivateEnvironment>>,
         realm: Handle<Realm>,
         name: &Wtf8String,
         source_file: Handle<SourceFile>,
@@ -619,6 +685,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             cx,
             scope_tree,
             scope,
+            private_environment,
             realm,
             Some(name.clone()),
             source_file,
@@ -954,8 +1021,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let constant_index = self
             .constant_table_builder
             .add_heap_object(Handle::dangling())?;
-        self.pending_functions_queue
-            .push((function, constant_index, self.scope.clone()));
+        self.pending_functions_queue.push((
+            function,
+            constant_index,
+            self.scope.clone(),
+            self.private_environment,
+        ));
 
         Ok(constant_index)
     }
@@ -2941,23 +3012,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_object: bool,
     ) -> EmitResult<GenRegister> {
-        if expr.is_private {
-            unimplemented!("bytecode for private member expressions");
-        }
-
-        self.gen_get_object_property(object, &expr.property, expr.is_computed, dest, release_object)
-    }
-
-    fn gen_get_object_property(
-        &mut self,
-        object: GenRegister,
-        property: &ast::Expression,
-        is_computed: bool,
-        dest: ExprDest,
-        release_object: bool,
-    ) -> EmitResult<GenRegister> {
-        if is_computed {
-            let key = self.gen_expression(property)?;
+        if expr.is_computed || expr.is_private {
+            let key = if expr.is_computed {
+                self.gen_expression(&expr.property)?
+            } else {
+                self.gen_private_symbol(expr.property.to_id())?
+            };
 
             self.register_allocator.release(key);
             if release_object {
@@ -2970,7 +3030,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Ok(dest)
         } else {
             // Must be a named access
-            let name = property.to_id();
+            let name = expr.property.to_id();
             let name_constant_index = self.add_string_constant(&name.name)?;
 
             if release_object {
@@ -2983,6 +3043,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             Ok(dest)
         }
+    }
+
+    fn gen_private_symbol(&mut self, id: &ast::Identifier) -> EmitResult<GenRegister> {
+        let name = InternedStrings::get_str(self.cx, &id.name);
+        let symbol = self
+            .private_environment
+            .unwrap()
+            .resolve_private_identifier(name);
+
+        let constant_index = self.constant_table_builder.add_symbol(symbol)?;
+
+        let dest = self.register_allocator.allocate()?;
+        self.writer
+            .load_constant_instruction(dest, ConstantIndex::new(constant_index));
+
+        Ok(dest)
     }
 
     /// Generate an optional expression, writing the result to dest.
@@ -3128,10 +3204,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
             ast::Pattern::Member(member) => {
-                if member.is_private {
-                    unimplemented!("bytecode for assigning private members");
-                }
-
                 enum Property {
                     Computed(GenRegister),
                     Named(GenConstantIndex),
@@ -3147,8 +3219,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Emit the property itself, which may be a computed expression or literal name
                 let property = if member.is_computed {
-                    let key = self.gen_expression(&member.property)?;
-                    Property::Computed(key)
+                    Property::Computed(self.gen_expression(&member.property)?)
+                } else if member.is_private {
+                    Property::Computed(self.gen_private_symbol(member.property.to_id())?)
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
@@ -3296,10 +3369,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if let ast::Expression::Member(member) = expr.argument.as_ref() {
-            if member.is_private {
-                unimplemented!("bytecode for updating a private member");
-            }
-
             enum Property {
                 Computed(GenRegister),
                 Named(GenConstantIndex),
@@ -3314,8 +3383,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let object = self.gen_expression(&member.object)?;
 
             // Load the property to the temporary register
-            let property = if member.is_computed {
-                let key = self.gen_expression(&member.property)?;
+            let property = if member.is_computed || member.is_private {
+                let key = if member.is_computed {
+                    self.gen_expression(&member.property)?
+                } else {
+                    self.gen_private_symbol(member.property.to_id())?
+                };
+
                 self.writer.get_property_instruction(temp, object, key);
 
                 Property::Computed(key)
@@ -3751,12 +3825,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<Reference<'b>> {
         let object = self.gen_expression(&member.object)?;
 
-        if member.is_private {
-            unimplemented!("bytecode for private member expressions");
-        }
-
         if member.is_computed {
             let property = self.gen_expression(&member.property)?;
+            Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
+        } else if member.is_private {
+            let property = self.gen_private_symbol(member.property.to_id())?;
             Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
         } else {
             // Must be a named access
@@ -4275,6 +4348,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let constructor_index =
             self.enqueue_function_to_generate(PendingFunctionNode::Constructor { node, name })?;
 
+        // Gather private properties in this class, potentially creating a new private environment
+        let new_private_env = create_private_environment(self.cx, class, self.private_environment);
+        let has_new_private_env = !new_private_env.is_empty();
+        if has_new_private_env {
+            self.private_environment = Some(new_private_env);
+        }
+
         // Start the body's scope
         let body_scope = class.scope.as_ref();
         self.gen_scope_start(body_scope, None)?;
@@ -4348,6 +4428,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // the only binding in the body scope so this has no other effects.
         self.gen_scope_end(body_scope);
 
+        // Exit the private environment, if one was added
+        if has_new_private_env {
+            self.private_environment = self.private_environment.unwrap().outer();
+        }
+
         // Store constructor at the binding's location. Stores at declarations do not need a TDZ
         // check.
         if let Some(id) = class.id.as_ref() {
@@ -4374,10 +4459,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         method: &ast::ClassMethod,
         new_class_arguments: &mut Vec<GenRegister>,
     ) -> EmitResult<Method> {
-        if method.is_private {
-            unimplemented!("bytecode for private class methods")
-        }
-
         enum Name<'a> {
             Named(AnyStr<'a>),
             Computed(GenRegister),
@@ -4386,6 +4467,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Evaluate class element name
         let key = if method.is_computed {
             Name::Computed(self.gen_outer_expression(&method.key)?)
+        } else if method.is_private {
+            Name::Computed(self.gen_private_symbol(method.key.expr.to_id())?)
         } else {
             match &method.key.expr {
                 ast::Expression::Id(id) => Name::Named(AnyStr::from_id(id)),
@@ -4527,7 +4610,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Global and with scopes are handled separately
             ScopeNodeKind::Global | ScopeNodeKind::With => {}
             // Otherwise this is a generic lexical scope
-            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Eval { .. } => {
+            ScopeNodeKind::Block
+            | ScopeNodeKind::Switch
+            | ScopeNodeKind::Class
+            | ScopeNodeKind::Eval { .. } => {
                 if let Some(vm_node_id) = scope.vm_scope_id() {
                     let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
                     self.writer
@@ -6132,7 +6218,12 @@ impl PendingFunctionNode {
 
 /// Collection of functions that still need to be generated, along with their index in the
 /// function's constant table and the scope they should be generated in.
-type PendingFunctions = Vec<(PendingFunctionNode, ConstantTableIndex, Rc<ScopeStackNode>)>;
+type PendingFunctions = Vec<(
+    PendingFunctionNode,
+    ConstantTableIndex,
+    Rc<ScopeStackNode>,
+    Option<Handle<PrivateEnvironment>>,
+)>;
 
 /// A function that still needs to be generated, along with the information needed to patch it's
 /// creation into the parent function.
@@ -6146,11 +6237,22 @@ struct PatchablePendingFunction {
     constant_index: ConstantTableIndex,
     /// The scope that this function should be generated in
     scope: Rc<ScopeStackNode>,
+    /// The private environment that this function should be generated in
+    private_environment: Option<Handle<PrivateEnvironment>>,
 }
 
 pub struct EmitFunctionResult {
     pub bytecode_function: Handle<BytecodeFunction>,
     pending_functions: PendingFunctions,
+}
+
+impl EmitFunctionResult {
+    fn empty() -> Self {
+        EmitFunctionResult {
+            bytecode_function: Handle::dangling(),
+            pending_functions: Vec::new(),
+        }
+    }
 }
 
 /// The destination register for an expression's value.
@@ -6223,7 +6325,7 @@ bitflags! {
 struct ScopeStackNode {
     /// The VM scope id of the scope.
     scope_id: usize,
-    /// THe parent scope, or none if this is the global scope
+    /// The parent scope, or none if this is the global scope
     parent: Option<Rc<ScopeStackNode>>,
 }
 

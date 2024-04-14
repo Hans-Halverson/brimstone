@@ -2228,6 +2228,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::BinaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        // Special handling for private `in` operator
+        if expr.operator == ast::BinaryOperator::InPrivate {
+            return self.gen_private_in_expression(expr, dest);
+        }
+
         let left = self.gen_expression(&expr.left)?;
         let right = self.gen_expression(&expr.right)?;
 
@@ -2271,15 +2276,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .writer
                 .shift_right_logical_instruction(dest, left, right),
             ast::BinaryOperator::In => self.writer.in_instruction(dest, right, left),
-            ast::BinaryOperator::InPrivate => {
-                unimplemented!("bytecode for private `in` expression")
-            }
+            ast::BinaryOperator::InPrivate => unreachable!(),
             ast::BinaryOperator::InstanceOf => {
                 self.writer.instance_of_instruction(dest, left, right)
             }
         }
 
         Ok(dest)
+    }
+
+    fn gen_private_in_expression(
+        &mut self,
+        expr: &ast::BinaryExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let key = self.gen_private_symbol(expr.left.to_id())?;
+        let object = self.gen_expression(&expr.right)?;
+
+        self.register_allocator.release(object);
+        self.register_allocator.release(key);
+        let dest = self.allocate_destination(dest)?;
+
+        self.writer.in_instruction(dest, object, key);
+
+        return Ok(dest);
     }
 
     fn gen_logical_expression(

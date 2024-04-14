@@ -4,7 +4,7 @@ use crate::{
         abstract_operations::{create_method_property, define_property_or_throw},
         bytecode::function::Closure,
         error::type_error_,
-        function::{build_function_name, define_method_property},
+        function::build_function_name,
         get,
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
@@ -48,6 +48,8 @@ pub struct Method {
     pub is_getter: bool,
     /// Whether this is a setter function
     pub is_setter: bool,
+    /// Whether this is a private function
+    pub is_private: bool,
 }
 
 #[repr(C)]
@@ -56,6 +58,7 @@ struct HeapMethod {
     is_static: bool,
     is_getter: bool,
     is_setter: bool,
+    is_private: bool,
 }
 
 impl ClassNames {
@@ -128,6 +131,7 @@ impl Method {
             is_static: self.is_static,
             is_getter: self.is_getter,
             is_setter: self.is_setter,
+            is_private: self.is_private,
         }
     }
 
@@ -138,6 +142,7 @@ impl Method {
             is_static: heap_method.is_static,
             is_getter: heap_method.is_getter,
             is_setter: heap_method.is_setter,
+            is_private: heap_method.is_private,
         }
     }
 }
@@ -234,15 +239,15 @@ pub fn new_class(
         };
 
         // Define the method on the prototype or constructor
-        if method.is_getter {
-            let desc = PropertyDescriptor::get_only(Some(closure.into()), false, true);
-            maybe!(define_property_or_throw(cx, target, name, desc));
+        let desc = if method.is_getter {
+            PropertyDescriptor::get_only(Some(closure.into()), false, true)
         } else if method.is_setter {
-            let desc = PropertyDescriptor::set_only(Some(closure.into()), false, true);
-            maybe!(define_property_or_throw(cx, target, name, desc));
+            PropertyDescriptor::set_only(Some(closure.into()), false, true)
         } else {
-            maybe!(define_method_property(cx, target, name, closure.into(), false));
-        }
+            PropertyDescriptor::data(closure.into(), !method.is_private, false, true)
+        };
+
+        maybe!(define_property_or_throw(cx, target, name, desc));
     }
 
     constructor.into()

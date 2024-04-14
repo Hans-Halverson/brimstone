@@ -4658,6 +4658,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_static: method.is_static,
             is_getter: method.kind == ast::ClassMethodKind::Get,
             is_setter: method.kind == ast::ClassMethodKind::Set,
+            is_private: method.is_private,
         })
     }
 

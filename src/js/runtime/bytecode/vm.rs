@@ -2609,7 +2609,7 @@ impl VM {
         let property_key = maybe!(to_property_key(self.cx, key));
         let object = maybe!(to_object(self.cx, object));
 
-        // Uncommon cases when some flags are set, e.g. for accessors or named evaluation"
+        // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
         if !flags.is_empty() {
             // We only set flags when the value evaluates to a closure
             debug_assert!(

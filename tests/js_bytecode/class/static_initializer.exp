@@ -8,8 +8,8 @@
     18: LoadImmediate r2, 4
     21: Add r1, r1, r2
     25: StoreToScope r0, 1, 0
-    29: NewClosure r1, c3
-    32: NewClass r0, c4, c2, r1
+    29: NewClosure r1, c2
+    32: NewClass r0, c4, c3, r1
     37: LoadImmediate r2, 1
     40: LoadImmediate r3, 2
     43: Add r2, r2, r3
@@ -30,8 +30,8 @@
   Constant Table:
     0: [BytecodeFunction: OnlyStaticInitializer]
     1: [ClassNames]
-    2: [BytecodeFunction: StaticInitializerAfterCreateClass]
-    3: [BytecodeFunction: method1]
+    2: [BytecodeFunction: method1]
+    3: [BytecodeFunction: StaticInitializerAfterCreateClass]
     4: [ClassNames]
     5: [BytecodeFunction: MultipleStaticInitializers]
     6: [ClassNames]
@@ -43,13 +43,13 @@
     2: Ret r0
 }
 
-[BytecodeFunction: StaticInitializerAfterCreateClass] {
+[BytecodeFunction: method1] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
 }
 
-[BytecodeFunction: method1] {
+[BytecodeFunction: StaticInitializerAfterCreateClass] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

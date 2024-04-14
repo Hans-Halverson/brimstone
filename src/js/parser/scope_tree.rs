@@ -503,14 +503,15 @@ impl ScopeTree {
     pub fn finish_vm_scope_node(
         &mut self,
         ast_node_id: ScopeNodeId,
-        arguments_object_length: Option<usize>,
+        num_extra_slots: Option<usize>,
     ) {
         let vm_node_id = self.vm_nodes.len();
         let ast_node = self.get_ast_node_mut(ast_node_id);
         let enclosing_scope = ast_node.enclosing_scope;
 
         let mut bindings = vec![];
-        let has_mapped_arguments_object = arguments_object_length.is_some();
+        let has_mapped_arguments_object =
+            num_extra_slots.is_some() && matches!(ast_node.kind(), ScopeNodeKind::Function { .. });
 
         // The first slot in a global scope always contains the realm
         if ast_node.kind() == ScopeNodeKind::Global {
@@ -523,7 +524,7 @@ impl ScopeTree {
             // overriden by the actual binding name for accessible arguments. Some arguments cannot
             // be accessed by name (since they are shadowed by another binding) and will remain
             // unresolvable.
-            bindings = vec![SHADOWED_SCOPE_SLOT_NAME.to_owned(); arguments_object_length.unwrap()];
+            bindings = vec![SHADOWED_SCOPE_SLOT_NAME.to_owned(); num_extra_slots.unwrap()];
 
             for (name, binding) in ast_node.bindings.iter_mut() {
                 let arg_index = if let BindingKind::FunctionParameter { index, .. } = binding.kind()
@@ -543,6 +544,9 @@ impl ScopeTree {
 
                 bindings[arg_index] = name.clone();
             }
+        } else if num_extra_slots.is_some() && ast_node.kind() == ScopeNodeKind::Class {
+            // Extra slots for a class scope will hold computed field names
+            bindings = vec![CLASS_FIELD_SLOT_NAME.to_owned(); num_extra_slots.unwrap()];
         }
 
         // Collect all bindings that must appear in a VM scope node
@@ -1074,3 +1078,4 @@ impl VMScopeNode {
 pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
 pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
 pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
+const CLASS_FIELD_SLOT_NAME: &str = "%classField";

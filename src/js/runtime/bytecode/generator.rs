@@ -300,7 +300,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             is_constructor,
         )?;
 
-        let emit_result = generator.generate(function)?;
+        let emit_result = generator.generate(function, /* class_fields */ &[])?;
 
         // Generate all pending functions that were discovered while emitting the original function
         self.enqueue_pending_functions(
@@ -331,7 +331,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         HandleScope::new(self.cx, |_| {
             // Special handling if emitting a default constructor
-            if let PendingFunctionNode::Constructor { node: None, name } = &func_node {
+            if let PendingFunctionNode::Constructor { node: None, name, fields } = &func_node {
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
                     &self.scope_tree,
@@ -342,13 +342,18 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.source_file,
                 )?;
 
-                emit_result = generator.generate_default_constructor()?;
+                emit_result = generator.generate_default_constructor(&fields)?;
             } else {
                 let func_ptr = func_node.ast_ptr();
                 let func = func_ptr.as_ref();
 
                 let is_constructor = func_node.is_constructor();
                 let default_name = func_node.default_name();
+
+                let class_fields: &[ClassField] = match &func_node {
+                    PendingFunctionNode::Constructor { fields, .. } => &fields,
+                    _ => &[],
+                };
 
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
@@ -362,7 +367,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     is_constructor,
                 )?;
 
-                emit_result = generator.generate(func)?;
+                emit_result = generator.generate(func, class_fields)?;
             }
 
             Ok(())
@@ -577,7 +582,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: Rc<ScopeStackNode>,
         private_environment: Option<Handle<PrivateEnvironment>>,
         realm: Handle<Realm>,
-        default_name: Option<Wtf8String>,
+        default_name: Option<&Wtf8String>,
         source_file: Handle<SourceFile>,
         is_constructor: bool,
     ) -> EmitResult<Self> {
@@ -617,7 +622,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .id
             .as_ref()
             .map(|id| Wtf8String::from_str(&id.name))
-            .or(default_name);
+            .or_else(|| default_name.map(|name| name.clone()));
 
         Ok(Self::new(
             cx,
@@ -1032,9 +1037,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a function.
-    fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
+    fn generate(
+        mut self,
+        func: &ast::Function,
+        class_fields: &[ClassField],
+    ) -> EmitResult<EmitFunctionResult> {
         if func.is_async() || func.is_generator() {
             unimplemented!("bytecode for async and generator functions")
+        }
+
+        // Emit class fields if this is a constructor, defined onto the `this` value
+        for field in class_fields {
+            self.gen_class_field(field, Register::this())?;
         }
 
         let func_scope = func.scope.as_ref();
@@ -1264,7 +1278,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a default constructor.
-    fn generate_default_constructor(mut self) -> EmitResult<EmitFunctionResult> {
+    fn generate_default_constructor(
+        mut self,
+        class_fields: &[ClassField],
+    ) -> EmitResult<EmitFunctionResult> {
+        // Emit fields if any exist, defined onto the `this` value
+        for field in class_fields {
+            self.gen_class_field(field, Register::this())?;
+        }
+
         // Base default constructor is equivalent to `constructor() {}`, so simply return undefined
         self.gen_return_undefined()?;
         Ok(self.finish())
@@ -4316,6 +4338,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             unimplemented!("bytecode for class inheritance")
         }
 
+        enum StaticElement<'a> {
+            Initializer(&'a ast::ClassMethod),
+            Field(ClassField),
+        }
+
         // Set up destination for the constructor, directly storing in binding location if possible
         let store_flags = StoreFlags::INITIALIZATION;
         let mut constructor_dest = dest;
@@ -4344,10 +4371,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .as_ref()
             .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
 
-        // Create the constructor's static BytecodeFunction
-        let constructor_index =
-            self.enqueue_function_to_generate(PendingFunctionNode::Constructor { node, name })?;
-
         // Gather private properties in this class, potentially creating a new private environment
         let new_private_env = create_private_environment(self.cx, class, self.private_environment);
         let has_new_private_env = !new_private_env.is_empty();
@@ -4359,28 +4382,85 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let body_scope = class.scope.as_ref();
         self.gen_scope_start(body_scope, None)?;
 
+        let body_vm_node = body_scope
+            .vm_scope_id()
+            .map(|id| self.scope_tree.get_vm_node(id));
+
         // Generate all methods, collecting method definitions into a ClassNames object which is
         // used in the NewClass instruction.
         let mut methods = vec![];
-        let mut static_initializers = vec![];
         let mut new_class_arguments = vec![];
+        let mut static_elements = vec![];
+
+        let mut field_scope_index = 0;
+        let mut fields = vec![];
 
         for element in &class.body {
-            if let ast::ClassElement::Method(method) = element {
-                // Constructor is already handled
-                if method.kind == ast::ClassMethodKind::Constructor {
-                    continue;
-                }
+            match element {
+                ast::ClassElement::Method(method) => {
+                    // Constructor is already handled
+                    if method.kind == ast::ClassMethodKind::Constructor {
+                        continue;
+                    }
 
-                // Collect static initializers to be run after the class is created
-                if method.kind == ast::ClassMethodKind::StaticInitializer {
-                    static_initializers.push(method);
-                    continue;
-                }
+                    // Collect static initializers to be run after the class is created
+                    if method.kind == ast::ClassMethodKind::StaticInitializer {
+                        static_elements.push(StaticElement::Initializer(method));
+                        continue;
+                    }
 
-                methods.push(self.gen_class_method(method, &mut new_class_arguments)?);
+                    methods.push(self.gen_class_method(method, &mut new_class_arguments)?);
+                }
+                ast::ClassElement::Property(property) => {
+                    // Determine if field has a statically known string name
+                    let name = match &property.key.expr {
+                        _ if property.is_computed || property.is_private => None,
+                        ast::Expression::Id(id) => Some(Wtf8String::from_str(&id.name)),
+                        ast::Expression::String(string) => Some(string.value.clone()),
+                        ast::Expression::Number(_) | ast::Expression::BigInt(_) => None,
+                        _ => unreachable!("invalid class property key"),
+                    };
+
+                    let field = AstPtr::from_ref(property);
+
+                    let field = if let Some(name) = name {
+                        ClassField::Named { field, name }
+                    } else {
+                        // Evaluate key to a property key
+                        let key_reg = if property.is_private {
+                            self.gen_private_symbol(property.key.expr.to_id())?
+                        } else {
+                            let key_reg = self.gen_outer_expression(&property.key)?;
+                            self.writer.to_property_key_instruction(key_reg, key_reg);
+                            key_reg
+                        };
+
+                        // And store in scope at the next available index
+                        let scope_index = GenUInt::try_from_unsigned(field_scope_index)
+                            .ok_or(EmitError::IntegerTooLarge)?;
+                        field_scope_index += 1;
+
+                        // Stored in class scope, which is guaranteed to be the enclosing scope
+                        self.writer
+                            .store_to_scope_instruction(key_reg, scope_index, UInt::new(0));
+
+                        self.register_allocator.release(key_reg);
+
+                        ClassField::Computed { field, scope_index }
+                    };
+
+                    if property.is_static {
+                        static_elements.push(StaticElement::Field(field));
+                    } else {
+                        fields.push(field);
+                    }
+                }
             }
         }
+
+        // Create the constructor's static BytecodeFunction
+        let pending_constructor = PendingFunctionNode::Constructor { node, name, fields };
+        let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
         // ClassNames object is stored in the constant table
         let class_names = ClassNames::new(self.cx, &methods);
@@ -4404,28 +4484,43 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             first_argument_reg,
         );
 
-        // Initialize the class itself in scope body scope. Class is the only binding in the body
-        // scope.
-        if body_scope.vm_scope_id().is_some() {
-            let class_name = &class.id.as_ref().unwrap().name;
-            let binding = body_scope.get_binding(class_name);
-            self.gen_store_binding(
-                class_name,
-                binding,
-                constructor_reg,
-                StoreFlags::INITIALIZATION,
-            )?;
+        // Initialize the class itself in scope body scope. We can tell if the class is added to its
+        // own body because it will be the last binding in the scope.
+        if let Some(class_id) = class.id.as_ref() {
+            if let Some(vm_node) = body_vm_node {
+                let bindings = vm_node.bindings();
+                if let Some(last_binding) = bindings.last() {
+                    let class_name = &class_id.name;
+                    if last_binding == class_name {
+                        let binding = body_scope.get_binding(class_name);
+                        self.gen_store_binding(
+                            class_name,
+                            binding,
+                            constructor_reg,
+                            StoreFlags::INITIALIZATION,
+                        )?;
+                    }
+                }
+            }
         }
 
-        // Run the static initializers
-        for static_initializer in static_initializers {
-            let statements = &static_initializer.value.body.unwrap_block().body;
-            self.gen_statement_list(statements)?;
+        // Evaluate the static elements, including static fields and iniitalizers
+        for static_element in static_elements {
+            match static_element {
+                StaticElement::Field(field) => {
+                    // Static fields are defined on the constructor itself
+                    self.gen_class_field(&field, constructor_reg)?;
+                }
+                StaticElement::Initializer(static_initializer) => {
+                    let statements = &static_initializer.value.body.unwrap_block().body;
+                    self.gen_statement_list(statements)?;
+                }
+            }
         }
 
         // End the body scope after running static initializers. According to spec this should be
         // before static initializers, but we want to keep the body's class name in scope. This is
-        // the only binding in the body scope so this has no other effects.
+        // the only visible binding in the body scope so this has no other effects.
         self.gen_scope_end(body_scope);
 
         // Exit the private environment, if one was added
@@ -4533,6 +4628,55 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_getter: method.kind == ast::ClassMethodKind::Get,
             is_setter: method.kind == ast::ClassMethodKind::Set,
         })
+    }
+
+    fn gen_class_field(&mut self, field: &ClassField, target: GenRegister) -> EmitResult<()> {
+        let field_node = field.field();
+
+        // Evaluate the initializer, otherwise field is set to undefined
+        let value = if let Some(initializer) = field_node.value.as_deref() {
+            if let ClassField::Named { name, .. } = field {
+                self.gen_named_outer_expression(AnyStr::Wtf8(&name), initializer, ExprDest::Any)?
+            } else {
+                self.gen_outer_expression(initializer)?
+            }
+        } else {
+            let value = self.register_allocator.allocate()?;
+            self.writer.load_undefined_instruction(value);
+            value
+        };
+
+        match field {
+            ClassField::Named { name, .. } => {
+                let name_constant_index = self.add_wtf8_string_constant(&name)?;
+                self.writer
+                    .define_named_property_instruction(target, name_constant_index, value);
+            }
+            ClassField::Computed { scope_index, .. } => {
+                // Load the field name from the current class scope
+                let name = self.register_allocator.allocate()?;
+                self.writer
+                    .load_from_scope_instruction(name, *scope_index, UInt::new(0));
+
+                // Set up flags for DefineProperty instruction
+                let mut flags = DefinePropertyFlags::empty();
+                if field_node.value.is_some()
+                    && Self::expression_needs_name(&field_node.value.as_deref().unwrap().expr)
+                {
+                    flags |= DefinePropertyFlags::NEEDS_NAME;
+                }
+                let flags = UInt::new(flags.bits() as u32);
+
+                self.writer
+                    .define_property_instruction(target, name, value, flags);
+
+                self.register_allocator.release(name);
+            }
+        }
+
+        self.register_allocator.release(value);
+
+        Ok(())
     }
 
     fn gen_expression_statement(
@@ -6178,10 +6322,23 @@ type GenConstantIndex = ConstantIndex<ExtraWide>;
 
 enum PendingFunctionNode {
     Declaration(AstPtr<ast::Function>),
-    Expression { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
-    Arrow { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
-    Method { node: AstPtr<ast::Function>, name: Option<Wtf8String> },
-    Constructor { node: Option<AstPtr<ast::Function>>, name: Wtf8String },
+    Expression {
+        node: AstPtr<ast::Function>,
+        name: Option<Wtf8String>,
+    },
+    Arrow {
+        node: AstPtr<ast::Function>,
+        name: Option<Wtf8String>,
+    },
+    Method {
+        node: AstPtr<ast::Function>,
+        name: Option<Wtf8String>,
+    },
+    Constructor {
+        node: Option<AstPtr<ast::Function>>,
+        name: Wtf8String,
+        fields: Vec<ClassField>,
+    },
 }
 
 impl PendingFunctionNode {
@@ -6205,13 +6362,13 @@ impl PendingFunctionNode {
     }
 
     /// Named given to this unnamed function (an anonymous expression or arrow function)
-    fn default_name(self) -> Option<Wtf8String> {
+    fn default_name(&self) -> Option<&Wtf8String> {
         match self {
             PendingFunctionNode::Declaration(_) => None,
             PendingFunctionNode::Expression { name, .. }
             | PendingFunctionNode::Arrow { name, .. }
-            | PendingFunctionNode::Method { name, .. } => name,
-            PendingFunctionNode::Constructor { name, .. } => Some(name),
+            | PendingFunctionNode::Method { name, .. } => name.as_ref(),
+            PendingFunctionNode::Constructor { name, .. } => Some(&name),
         }
     }
 }
@@ -6463,6 +6620,19 @@ enum ArrayElement<'a> {
     Expression(&'a ast::Expression),
     Spread(&'a ast::SpreadElement),
     Hole,
+}
+
+enum ClassField {
+    Named { name: Wtf8String, field: AstPtr<ast::ClassProperty> },
+    Computed { scope_index: GenUInt, field: AstPtr<ast::ClassProperty> },
+}
+
+impl ClassField {
+    fn field(&self) -> &ast::ClassProperty {
+        match self {
+            ClassField::Named { field, .. } | ClassField::Computed { field, .. } => field.as_ref(),
+        }
+    }
 }
 
 enum CallArgs {

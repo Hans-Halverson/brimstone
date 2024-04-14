@@ -1,0 +1,86 @@
+function named() {
+  class C {
+    named1 = 2;
+    static named2 = 3;
+  }
+}
+
+function computed() {
+  class C {
+    [1 + 2] = 2;
+    #private1 = 3;
+    static [3 + 4] = 4;
+    static #private2 = 5;
+  }
+}
+
+function noInitializer() {
+  class C {
+    named1;
+    [1 + 2];
+    #private1;
+    static named2;
+    static [3 + 4];
+    static #private2;
+  }
+}
+
+function withConstructor() {
+  class C {
+    named = 1;
+    [1 + 2] = 2;
+
+    constructor() {
+      var x = 1;
+      () => x;
+    }
+  }
+}
+
+function withMethods() {
+  class C {
+    namedField = 1;
+    namedMethod() {}
+    [1 + 2] = 2;
+    [3 + 4]() {}
+    #private1 = 3;
+    #private2() {}
+  }
+}
+
+function withCapturedName() {
+  class C {
+    [1 + 2] = 2;
+    #private1 = 3;
+
+    method() {
+      return C;
+    }
+  }
+}
+
+function withStaticInitializers() {
+  class C {
+    static [1 + 2] = 2;
+    static {
+      3;
+    }
+    static #private = 4;
+    static {
+      5;
+    }
+  }
+}
+
+function namedEvaluation() {
+  class C {
+    named1 = () => {};
+    static named2 = () => {};
+
+    [1 + 2] = () => {};
+    static [3 + 4] = () => {};
+
+    #private1 = () => {};
+    static #private2 = () => {};
+  }
+}

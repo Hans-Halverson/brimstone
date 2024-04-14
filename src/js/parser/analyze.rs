@@ -244,6 +244,13 @@ impl<'a> Analyzer<'a> {
         }
     }
 
+    fn exit_scope_with_class_fields(&mut self, num_computed_fields: usize) {
+        if let Some(exited_scope_node) = self.scope_stack.pop() {
+            self.scope_tree
+                .finish_vm_scope_node(exited_scope_node.as_ref().id(), Some(num_computed_fields));
+        }
+    }
+
     fn current_scope_id(&self) -> ScopeNodeId {
         self.scope_stack.last().unwrap().as_ref().id()
     }
@@ -740,6 +747,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Body is in its own scope
         self.enter_scope(class.scope);
 
+        // Determine the number of computed field names in the class, as each will need a scope
+        // slot to be stored between name evaluation and field definition.
+        let mut num_computed_field_names = 0;
+
         for element in &mut class.body {
             match element {
                 ClassElement::Method(method) => {
@@ -753,13 +764,24 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
                     self.visit_class_method(method);
                 }
-                ClassElement::Property(prop) => {
-                    self.visit_class_property(prop);
+                ClassElement::Property(property) => {
+                    let is_computed = property.is_computed
+                        || property.is_private
+                        || matches!(
+                            &property.key.expr,
+                            Expression::Number(_) | Expression::BigInt(_)
+                        );
+
+                    if is_computed {
+                        num_computed_field_names += 1;
+                    }
+
+                    self.visit_class_property(property);
                 }
             }
         }
 
-        self.exit_scope();
+        self.exit_scope_with_class_fields(num_computed_field_names);
 
         class.constructor = constructor;
 

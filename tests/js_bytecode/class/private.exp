@@ -1,37 +1,31 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 10
-     0: LoadConstant r1, c1
+     0: LoadConstant r1, c0
      3: ToPropertyKey r1, r1
-     6: NewClosure r2, c2
-     9: NewClosure r3, c3
-    12: NewClosure r4, c4
-    15: NewClosure r5, c5
-    18: NewClosure r6, c6
-    21: NewClosure r7, c7
-    24: NewClosure r8, c8
-    27: NewClosure r9, c9
-    30: NewClass r0, c10, c0, r1
+     6: NewClosure r2, c1
+     9: NewClosure r3, c2
+    12: NewClosure r4, c3
+    15: NewClosure r5, c4
+    18: NewClosure r6, c5
+    21: NewClosure r7, c6
+    24: NewClosure r8, c7
+    27: NewClosure r9, c8
+    30: NewClass r0, c10, c9, r1
     35: StoreToScope r0, 1, 0
     39: LoadUndefined r0
     41: Ret r0
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [Symbol]
-    2: [BytecodeFunction: <anonymous>]
-    3: [BytecodeFunction: privateMember]
-    4: [BytecodeFunction: privateCall]
-    5: [BytecodeFunction: privateOptionalMember]
-    6: [BytecodeFunction: privateOptionalCall]
-    7: [BytecodeFunction: privateAssignment]
-    8: [BytecodeFunction: privateUpdate]
-    9: [BytecodeFunction: privateDestructure]
+    0: [Symbol]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: privateMember]
+    3: [BytecodeFunction: privateCall]
+    4: [BytecodeFunction: privateOptionalMember]
+    5: [BytecodeFunction: privateOptionalCall]
+    6: [BytecodeFunction: privateAssignment]
+    7: [BytecodeFunction: privateUpdate]
+    8: [BytecodeFunction: privateDestructure]
+    9: [BytecodeFunction: C]
     10: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: <anonymous>] {
@@ -124,4 +118,10 @@
   Constant Table:
     0: [Symbol]
     1: [String: x]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
 }

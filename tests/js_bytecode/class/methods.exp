@@ -1,65 +1,59 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 20
-      0: NewClosure r1, c1
-      3: NewClosure r2, c2
+      0: NewClosure r1, c0
+      3: NewClosure r2, c1
       6: LoadImmediate r3, 1
       9: ToPropertyKey r3, r3
-     12: NewClosure r4, c3
-     15: LoadConstant r5, c4
+     12: NewClosure r4, c2
+     15: LoadConstant r5, c3
      18: ToPropertyKey r5, r5
-     21: NewClosure r6, c5
+     21: NewClosure r6, c4
      24: LoadImmediate r7, 1
      27: LoadImmediate r8, 2
      30: Add r7, r7, r8
      34: ToPropertyKey r7, r7
-     37: NewClosure r8, c6
-     40: NewClosure r9, c7
-     43: NewClosure r10, c8
+     37: NewClosure r8, c5
+     40: NewClosure r9, c6
+     43: NewClosure r10, c7
      46: LoadImmediate r11, 3
      49: LoadImmediate r12, 4
      52: Add r11, r11, r12
      56: ToPropertyKey r11, r11
-     59: NewClosure r12, c9
+     59: NewClosure r12, c8
      62: LoadImmediate r13, 5
      65: LoadImmediate r14, 6
      68: Add r13, r13, r14
      72: ToPropertyKey r13, r13
-     75: NewClosure r14, c10
-     78: NewClosure r15, c11
-     81: NewClosure r16, c12
-     84: NewClosure r17, c13
+     75: NewClosure r14, c9
+     78: NewClosure r15, c10
+     81: NewClosure r16, c11
+     84: NewClosure r17, c12
      87: LoadImmediate r18, 1
      90: LoadImmediate r19, 2
      93: Add r18, r18, r19
      97: ToPropertyKey r18, r18
-    100: NewClosure r19, c14
-    103: NewClass r0, c15, c0, r1
+    100: NewClosure r19, c13
+    103: NewClass r0, c15, c14, r1
     108: StoreToScope r0, 1, 0
     112: LoadUndefined r0
     114: Ret r0
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [BytecodeFunction: named1]
-    2: [BytecodeFunction: named2]
-    3: [BytecodeFunction: <anonymous>]
-    4: [BigInt: 1]
+    0: [BytecodeFunction: named1]
+    1: [BytecodeFunction: named2]
+    2: [BytecodeFunction: <anonymous>]
+    3: [BigInt: 1]
+    4: [BytecodeFunction: <anonymous>]
     5: [BytecodeFunction: <anonymous>]
-    6: [BytecodeFunction: <anonymous>]
-    7: [BytecodeFunction: get getter]
-    8: [BytecodeFunction: set setter]
+    6: [BytecodeFunction: get getter]
+    7: [BytecodeFunction: set setter]
+    8: [BytecodeFunction: <anonymous>]
     9: [BytecodeFunction: <anonymous>]
-    10: [BytecodeFunction: <anonymous>]
-    11: [BytecodeFunction: staticMethod]
-    12: [BytecodeFunction: get getter]
-    13: [BytecodeFunction: set setter]
-    14: [BytecodeFunction: <anonymous>]
+    10: [BytecodeFunction: staticMethod]
+    11: [BytecodeFunction: get getter]
+    12: [BytecodeFunction: set setter]
+    13: [BytecodeFunction: <anonymous>]
+    14: [BytecodeFunction: C]
     15: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: named1] {
@@ -135,6 +129,12 @@
 }
 
 [BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

@@ -61,14 +61,20 @@
 
 [BytecodeFunction: nonEmptyAnonymous] {
   Parameters: 0, Registers: 3
-     0: NewClosure r1, c1
-     3: NewClass r0, c2, c0, r1
+     0: NewClosure r1, c0
+     3: NewClass r0, c2, c1, r1
      8: LoadImmediate r2, 2
     11: Ret r0
   Constant Table:
-    0: [BytecodeFunction: default]
-    1: [BytecodeFunction: method]
+    0: [BytecodeFunction: method]
+    1: [BytecodeFunction: default]
     2: [ClassNames]
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: Ret r0
 }
 
 [BytecodeFunction: default] {
@@ -77,34 +83,28 @@
     2: Ret r0
 }
 
+[BytecodeFunction: nonEmptyNamed] {
+  Parameters: 0, Registers: 3
+     0: NewClosure r1, c0
+     3: NewClass r0, c2, c1, r1
+     8: LoadImmediate r2, 2
+    11: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: method]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 1
     0: LoadImmediate r0, 1
     3: Ret r0
-}
-
-[BytecodeFunction: nonEmptyNamed] {
-  Parameters: 0, Registers: 3
-     0: NewClosure r1, c1
-     3: NewClass r0, c2, c0, r1
-     8: LoadImmediate r2, 2
-    11: Ret r0
-  Constant Table:
-    0: [BytecodeFunction: C]
-    1: [BytecodeFunction: method]
-    2: [ClassNames]
 }
 
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
-}
-
-[BytecodeFunction: method] {
-  Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 1
-    3: Ret r0
 }
 
 [BytecodeFunction: storeToParam] {

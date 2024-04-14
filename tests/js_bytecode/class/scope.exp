@@ -27,20 +27,14 @@
 
 [BytecodeFunction: notCaptured] {
   Parameters: 0, Registers: 2
-     0: NewClosure r1, c1
-     3: NewClass r0, c2, c0, r1
+     0: NewClosure r1, c0
+     3: NewClass r0, c2, c1, r1
      8: LoadUndefined r1
     10: Ret r1
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [BytecodeFunction: method]
+    0: [BytecodeFunction: method]
+    1: [BytecodeFunction: C]
     2: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: method] {
@@ -49,28 +43,28 @@
     2: Ret r0
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: capturedByMethod] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c1
+     0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewClosure r1, c2
-    11: NewClass r0, c3, c0, r1
+     8: NewClosure r1, c1
+    11: NewClass r0, c3, c2, r1
     16: StoreToScope r0, 0, 0
     20: PopScope 
     21: LoadUndefined r1
     23: Ret r1
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [ScopeNames]
-    2: [BytecodeFunction: method]
+    0: [ScopeNames]
+    1: [BytecodeFunction: method]
+    2: [BytecodeFunction: C]
     3: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: method] {
@@ -83,12 +77,18 @@
     0: [String: C]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: capturedByStaticInitializer] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c1
+     0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewClass r0, c2, c0, r0
+     8: NewClass r0, c2, c1, r0
     13: StoreToScope r0, 0, 0
     17: LoadFromScope r1, 0, 0
     21: CheckTdz r1, c3
@@ -96,8 +96,8 @@
     25: LoadUndefined r1
     27: Ret r1
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [ScopeNames]
+    0: [ScopeNames]
+    1: [BytecodeFunction: C]
     2: [ClassNames]
     3: [String: C]
 }
@@ -110,26 +110,20 @@
 
 [BytecodeFunction: classExpressionCaptured] {
   Parameters: 0, Registers: 2
-     0: PushLexicalScope c1
+     0: PushLexicalScope c0
      2: LoadEmpty r1
      4: StoreToScope r1, 0, 0
-     8: NewClosure r1, c2
-    11: NewClass r0, c3, c0, r1
+     8: NewClosure r1, c1
+    11: NewClass r0, c3, c2, r1
     16: StoreToScope r0, 0, 0
     20: PopScope 
     21: LoadUndefined r0
     23: Ret r0
   Constant Table:
-    0: [BytecodeFunction: C]
-    1: [ScopeNames]
-    2: [BytecodeFunction: method]
+    0: [ScopeNames]
+    1: [BytecodeFunction: method]
+    2: [BytecodeFunction: C]
     3: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: method] {
@@ -142,6 +136,12 @@
     0: [String: C]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: capturedByEval] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
@@ -151,11 +151,11 @@
     12: StoreToScope r0, 3, 0
     16: NewMappedArguments r0
     18: StoreToScope r0, 2, 0
-    22: PushLexicalScope c2
+    22: PushLexicalScope c1
     24: LoadEmpty r1
     26: StoreToScope r1, 0, 0
-    30: NewClosure r1, c3
-    33: NewClass r0, c4, c1, r1
+    30: NewClosure r1, c2
+    33: NewClass r0, c4, c3, r1
     38: StoreToScope r0, 0, 0
     42: PopScope 
     43: StoreToScope r0, 1, 0
@@ -163,16 +163,10 @@
     49: Ret r0
   Constant Table:
     0: [ScopeNames]
-    1: [BytecodeFunction: C]
-    2: [ScopeNames]
-    3: [BytecodeFunction: method]
+    1: [ScopeNames]
+    2: [BytecodeFunction: method]
+    3: [BytecodeFunction: C]
     4: [ClassNames]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: method] {
@@ -191,4 +185,10 @@
     0: [ScopeNames]
     1: [String: eval]
     2: [String: ]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
 }

@@ -2525,6 +2525,13 @@ impl VM {
             .to_handle(self.cx)
             .cast::<BytecodeFunction>();
 
+        let super_class = self.read_register_to_handle(instr.super_class());
+        let super_class = if super_class.is_empty() {
+            None
+        } else {
+            Some(super_class)
+        };
+
         let method_arguments = self
             .get_reg_rev_slice(instr.methods(), class_names.num_arguments())
             .iter()
@@ -2533,8 +2540,13 @@ impl VM {
             .collect::<Vec<_>>();
 
         // Allocates
-        let constructor =
-            maybe!(new_class(self.cx, class_names, constructor_function, &method_arguments));
+        let constructor = maybe!(new_class(
+            self.cx,
+            class_names,
+            constructor_function,
+            super_class,
+            &method_arguments
+        ));
 
         self.write_register(dest, constructor.cast::<Value>().get());
 

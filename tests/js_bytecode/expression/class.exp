@@ -30,9 +30,10 @@
 }
 
 [BytecodeFunction: emptyAnonymous] {
-  Parameters: 0, Registers: 1
-    0: NewClass r0, c1, c0, r0
-    5: Ret r0
+  Parameters: 0, Registers: 2
+    0: LoadEmpty r1
+    2: NewClass r0, c1, c0, r1, r0
+    8: Ret r0
   Constant Table:
     0: [BytecodeFunction: default]
     1: [ClassNames]
@@ -45,9 +46,10 @@
 }
 
 [BytecodeFunction: emptyNamed] {
-  Parameters: 0, Registers: 1
-    0: NewClass r0, c1, c0, r0
-    5: Ret r0
+  Parameters: 0, Registers: 2
+    0: LoadEmpty r1
+    2: NewClass r0, c1, c0, r1, r0
+    8: Ret r0
   Constant Table:
     0: [BytecodeFunction: C]
     1: [ClassNames]
@@ -60,11 +62,12 @@
 }
 
 [BytecodeFunction: nonEmptyAnonymous] {
-  Parameters: 0, Registers: 3
-     0: NewClosure r1, c0
-     3: NewClass r0, c2, c1, r1
-     8: LoadImmediate r2, 2
-    11: Ret r0
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: NewClosure r2, c0
+     5: NewClass r0, c2, c1, r1, r2
+    11: LoadImmediate r3, 2
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: method]
     1: [BytecodeFunction: default]
@@ -84,11 +87,12 @@
 }
 
 [BytecodeFunction: nonEmptyNamed] {
-  Parameters: 0, Registers: 3
-     0: NewClosure r1, c0
-     3: NewClass r0, c2, c1, r1
-     8: LoadImmediate r2, 2
-    11: Ret r0
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: NewClosure r2, c0
+     5: NewClass r0, c2, c1, r1, r2
+    11: LoadImmediate r3, 2
+    14: Ret r0
   Constant Table:
     0: [BytecodeFunction: method]
     1: [BytecodeFunction: C]
@@ -109,9 +113,10 @@
 
 [BytecodeFunction: storeToParam] {
   Parameters: 1, Registers: 1
-    0: NewClass a0, c1, c0, a0
-    5: LoadUndefined r0
-    7: Ret r0
+     0: LoadEmpty r0
+     2: NewClass a0, c1, c0, r0, a0
+     8: LoadUndefined r0
+    10: Ret r0
   Constant Table:
     0: [BytecodeFunction: C]
     1: [ClassNames]
@@ -125,10 +130,12 @@
 
 [BytecodeFunction: namedEvaluation] {
   Parameters: 0, Registers: 2
-     0: NewClass r0, c1, c0, r0
-     5: NewClass r0, c3, c2, r0
-    10: LoadUndefined r1
-    12: Ret r1
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: LoadEmpty r1
+    10: NewClass r0, c3, c2, r1, r0
+    16: LoadUndefined r1
+    18: Ret r1
   Constant Table:
     0: [BytecodeFunction: x]
     1: [ClassNames]

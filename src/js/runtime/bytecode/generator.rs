@@ -4354,10 +4354,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        if class.super_class.is_some() {
-            unimplemented!("bytecode for class inheritance")
-        }
-
         enum StaticElement<'a> {
             Initializer(&'a ast::ClassMethod),
             Field(ClassField),
@@ -4374,22 +4370,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
-        let name = if let Some(id) = class.id.as_ref() {
-            // Constructor has name of class
-            Wtf8String::from_str(&id.name)
-        } else if let Some(name) = name {
-            // Handle name passed from named evaluation
-            name
+        // Evaluate super class if it exists, otherwise use empty as sentinel value
+        let super_class = if let Some(super_class) = class.super_class.as_ref() {
+            self.gen_outer_expression(super_class)?
         } else {
-            // Otherwise name is "default" if class has no name
-            Wtf8String::from_str("default")
+            let super_class = self.register_allocator.allocate()?;
+            self.writer.load_empty_instruction(super_class);
+            super_class
         };
-
-        // Constructor node is optional if this is a default constructor
-        let node = class
-            .constructor
-            .as_ref()
-            .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
 
         // Gather private properties in this class, potentially creating a new private environment
         let new_private_env = create_private_environment(self.cx, class, self.private_environment);
@@ -4478,6 +4466,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        // Constructor node is optional if this is a default constructor
+        let node = class
+            .constructor
+            .as_ref()
+            .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
+
+        let name = if let Some(id) = class.id.as_ref() {
+            // Constructor has name of class
+            Wtf8String::from_str(&id.name)
+        } else if let Some(name) = name {
+            // Handle name passed from named evaluation
+            name
+        } else {
+            // Otherwise name is "default" if class has no name
+            Wtf8String::from_str("default")
+        };
+
         // Create the constructor's static BytecodeFunction
         let pending_constructor = PendingFunctionNode::Constructor { node, name, fields };
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
@@ -4501,6 +4506,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             constructor_reg,
             ConstantIndex::new(class_names_index),
             ConstantIndex::new(constructor_index),
+            super_class,
             first_argument_reg,
         );
 
@@ -4559,6 +4565,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         for argument in new_class_arguments.iter().rev() {
             self.register_allocator.release(*argument);
         }
+
+        self.register_allocator.release(super_class);
 
         if is_decl {
             // Declaration result will not be used

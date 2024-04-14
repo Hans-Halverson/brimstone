@@ -763,13 +763,15 @@ define_instructions!(
     ///
     /// - The static class names object is at the given index in the constant table.
     /// - The constructor's BytecodeFunction is at the given index in the constant table.
+    /// - The super class is passed in a register. Empty is passed if there is no super class.
     /// - The class's methods (and computed property keys) are passed in a contiguous sequence of
     ///   registers starting at `methods`. The length of the sequence is in the class names object.
     NewClass (NewClassInstruction, new_class_instruction) {
         [0] dest: Register,
         [1] class_names_index: ConstantIndex,
         [2] constructor_function_index: ConstantIndex,
-        [3] methods: Register,
+        [3] super_class: Register,
+        [4] methods: Register,
     }
 
     /// Get a property from an object, storing the result in dest. The property key may be any

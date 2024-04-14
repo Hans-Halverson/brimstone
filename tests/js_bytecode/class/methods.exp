@@ -1,42 +1,43 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 20
-      0: NewClosure r1, c0
-      3: NewClosure r2, c1
-      6: LoadImmediate r3, 1
-      9: ToPropertyKey r3, r3
-     12: NewClosure r4, c2
-     15: LoadConstant r5, c3
-     18: ToPropertyKey r5, r5
-     21: NewClosure r6, c4
-     24: LoadImmediate r7, 1
-     27: LoadImmediate r8, 2
-     30: Add r7, r7, r8
-     34: ToPropertyKey r7, r7
-     37: NewClosure r8, c5
-     40: NewClosure r9, c6
-     43: NewClosure r10, c7
-     46: LoadImmediate r11, 3
-     49: LoadImmediate r12, 4
-     52: Add r11, r11, r12
-     56: ToPropertyKey r11, r11
-     59: NewClosure r12, c8
-     62: LoadImmediate r13, 5
-     65: LoadImmediate r14, 6
-     68: Add r13, r13, r14
-     72: ToPropertyKey r13, r13
-     75: NewClosure r14, c9
-     78: NewClosure r15, c10
-     81: NewClosure r16, c11
-     84: NewClosure r17, c12
-     87: LoadImmediate r18, 1
-     90: LoadImmediate r19, 2
-     93: Add r18, r18, r19
-     97: ToPropertyKey r18, r18
-    100: NewClosure r19, c13
-    103: NewClass r0, c15, c14, r1
-    108: StoreToScope r0, 1, 0
-    112: LoadUndefined r0
-    114: Ret r0
+  Parameters: 0, Registers: 21
+      0: LoadEmpty r1
+      2: NewClosure r2, c0
+      5: NewClosure r3, c1
+      8: LoadImmediate r4, 1
+     11: ToPropertyKey r4, r4
+     14: NewClosure r5, c2
+     17: LoadConstant r6, c3
+     20: ToPropertyKey r6, r6
+     23: NewClosure r7, c4
+     26: LoadImmediate r8, 1
+     29: LoadImmediate r9, 2
+     32: Add r8, r8, r9
+     36: ToPropertyKey r8, r8
+     39: NewClosure r9, c5
+     42: NewClosure r10, c6
+     45: NewClosure r11, c7
+     48: LoadImmediate r12, 3
+     51: LoadImmediate r13, 4
+     54: Add r12, r12, r13
+     58: ToPropertyKey r12, r12
+     61: NewClosure r13, c8
+     64: LoadImmediate r14, 5
+     67: LoadImmediate r15, 6
+     70: Add r14, r14, r15
+     74: ToPropertyKey r14, r14
+     77: NewClosure r15, c9
+     80: NewClosure r16, c10
+     83: NewClosure r17, c11
+     86: NewClosure r18, c12
+     89: LoadImmediate r19, 1
+     92: LoadImmediate r20, 2
+     95: Add r19, r19, r20
+     99: ToPropertyKey r19, r19
+    102: NewClosure r20, c13
+    105: NewClass r0, c15, c14, r1, r2
+    111: StoreToScope r0, 1, 0
+    115: LoadUndefined r0
+    117: Ret r0
   Constant Table:
     0: [BytecodeFunction: named1]
     1: [BytecodeFunction: named2]

@@ -1,32 +1,35 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 4
-     0: NewClass r0, c1, c0, r0
-     5: LoadImmediate r1, 1
-     8: LoadImmediate r2, 2
-    11: Add r1, r1, r2
-    15: LoadImmediate r1, 3
-    18: LoadImmediate r2, 4
-    21: Add r1, r1, r2
-    25: StoreToScope r0, 1, 0
-    29: NewClosure r1, c2
-    32: NewClass r0, c4, c3, r1
-    37: LoadImmediate r2, 1
-    40: LoadImmediate r3, 2
-    43: Add r2, r2, r3
-    47: StoreToScope r0, 2, 0
-    51: NewClass r0, c6, c5, r0
-    56: LoadImmediate r1, 1
-    59: LoadImmediate r2, 2
-    62: Add r1, r1, r2
-    66: LoadImmediate r1, 3
-    69: LoadImmediate r2, 4
-    72: Add r1, r1, r2
-    76: LoadImmediate r1, 5
-    79: LoadImmediate r2, 6
-    82: Add r1, r1, r2
-    86: StoreToScope r0, 3, 0
-    90: LoadUndefined r0
-    92: Ret r0
+  Parameters: 0, Registers: 5
+      0: LoadEmpty r1
+      2: NewClass r0, c1, c0, r1, r0
+      8: LoadImmediate r2, 1
+     11: LoadImmediate r3, 2
+     14: Add r2, r2, r3
+     18: LoadImmediate r2, 3
+     21: LoadImmediate r3, 4
+     24: Add r2, r2, r3
+     28: StoreToScope r0, 1, 0
+     32: LoadEmpty r1
+     34: NewClosure r2, c2
+     37: NewClass r0, c4, c3, r1, r2
+     43: LoadImmediate r3, 1
+     46: LoadImmediate r4, 2
+     49: Add r3, r3, r4
+     53: StoreToScope r0, 2, 0
+     57: LoadEmpty r1
+     59: NewClass r0, c6, c5, r1, r0
+     65: LoadImmediate r2, 1
+     68: LoadImmediate r3, 2
+     71: Add r2, r2, r3
+     75: LoadImmediate r2, 3
+     78: LoadImmediate r3, 4
+     81: Add r2, r2, r3
+     85: LoadImmediate r2, 5
+     88: LoadImmediate r3, 6
+     91: Add r2, r2, r3
+     95: StoreToScope r0, 3, 0
+     99: LoadUndefined r0
+    101: Ret r0
   Constant Table:
     0: [BytecodeFunction: OnlyStaticInitializer]
     1: [ClassNames]

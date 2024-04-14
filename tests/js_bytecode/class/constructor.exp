@@ -1,11 +1,13 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 1
-     0: NewClass r0, c1, c0, r0
-     5: StoreToScope r0, 1, 0
-     9: NewClass r0, c3, c2, r0
-    14: StoreToScope r0, 2, 0
-    18: LoadUndefined r0
-    20: Ret r0
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: StoreToScope r0, 1, 0
+    12: LoadEmpty r1
+    14: NewClass r0, c3, c2, r1, r0
+    20: StoreToScope r0, 2, 0
+    24: LoadUndefined r0
+    26: Ret r0
   Constant Table:
     0: [BytecodeFunction: ExplicitConstructor]
     1: [ClassNames]

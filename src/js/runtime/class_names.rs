@@ -3,9 +3,14 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_method_property, define_property_or_throw},
         bytecode::function::Closure,
+        error::type_error_,
         function::{build_function_name, define_method_property},
+        get,
+        intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
-        ordinary_object::ordinary_object_create,
+        object_value::ObjectValue,
+        ordinary_object::object_create_with_optional_proto,
+        type_utilities::is_constructor_value,
         PropertyDescriptor, PropertyKey,
     },
     maybe, set_uninit,
@@ -142,13 +147,43 @@ pub fn new_class(
     mut cx: Context,
     class_names: Handle<ClassNames>,
     constructor_function: Handle<BytecodeFunction>,
+    super_class: Option<Handle<Value>>,
     method_arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Closure>> {
+    let (proto_parent, constructor_parent) = if let Some(super_class) = super_class {
+        if super_class.is_null() {
+            let constructor_parent = cx.get_intrinsic(Intrinsic::FunctionPrototype);
+            (None, constructor_parent)
+        } else if !is_constructor_value(cx, super_class) {
+            return type_error_(cx, "super class must be a constructor");
+        } else {
+            let super_class = super_class.as_object();
+            let proto_parent = maybe!(get(cx, super_class, cx.names.prototype()));
+
+            if proto_parent.is_object() {
+                (Some(proto_parent.as_object()), super_class)
+            } else if proto_parent.is_null() {
+                (None, super_class)
+            } else {
+                return type_error_(cx, "super class prototype must be an object or null");
+            }
+        }
+    } else {
+        let proto_parent = cx.get_intrinsic(Intrinsic::ObjectPrototype);
+        let constructor_parent = cx.get_intrinsic(Intrinsic::FunctionPrototype);
+        (Some(proto_parent), constructor_parent)
+    };
+
     // Create the prototype and constructor for the class
-    let prototype = ordinary_object_create(cx);
+    let prototype = object_create_with_optional_proto::<ObjectValue>(
+        cx,
+        ObjectKind::OrdinaryObject,
+        proto_parent,
+    )
+    .to_handle();
 
     let scope = cx.vm().scope().to_handle();
-    let constructor = Closure::new(cx, constructor_function, scope);
+    let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent);
 
     // Define a `constructor` property on the prototype
     create_method_property(cx, prototype.into(), cx.names.constructor(), constructor.into());

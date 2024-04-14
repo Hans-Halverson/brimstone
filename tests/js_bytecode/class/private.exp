@@ -1,18 +1,19 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 10
-     0: LoadConstant r1, c0
-     3: NewClosure r2, c1
-     6: NewClosure r3, c2
-     9: NewClosure r4, c3
-    12: NewClosure r5, c4
-    15: NewClosure r6, c5
-    18: NewClosure r7, c6
-    21: NewClosure r8, c7
-    24: NewClosure r9, c8
-    27: NewClass r0, c10, c9, r1
-    32: StoreToScope r0, 1, 0
-    36: LoadUndefined r0
-    38: Ret r0
+  Parameters: 0, Registers: 11
+     0: LoadEmpty r1
+     2: LoadConstant r2, c0
+     5: NewClosure r3, c1
+     8: NewClosure r4, c2
+    11: NewClosure r5, c3
+    14: NewClosure r6, c4
+    17: NewClosure r7, c5
+    20: NewClosure r8, c6
+    23: NewClosure r9, c7
+    26: NewClosure r10, c8
+    29: NewClass r0, c10, c9, r1, r2
+    35: StoreToScope r0, 1, 0
+    39: LoadUndefined r0
+    41: Ret r0
   Constant Table:
     0: [Symbol: method]
     1: [BytecodeFunction: <anonymous>]

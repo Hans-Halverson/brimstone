@@ -38,12 +38,13 @@
 }
 
 [BytecodeFunction: named] {
-  Parameters: 0, Registers: 2
-     0: NewClass r0, c1, c0, r0
-     5: LoadImmediate r1, 3
-     8: DefineNamedProperty r0, c2, r1
-    12: LoadUndefined r1
-    14: Ret r1
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: LoadImmediate r2, 3
+    11: DefineNamedProperty r0, c2, r2
+    15: LoadUndefined r1
+    17: Ret r1
   Constant Table:
     0: [BytecodeFunction: C]
     1: [ClassNames]
@@ -61,32 +62,33 @@
 }
 
 [BytecodeFunction: computed] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: ToPropertyKey r1, r1
-    15: StoreToScope r1, 0, 0
-    19: LoadConstant r1, c1
-    22: StoreToScope r1, 1, 0
-    26: LoadImmediate r1, 3
-    29: LoadImmediate r2, 4
-    32: Add r1, r1, r2
-    36: ToPropertyKey r1, r1
-    39: StoreToScope r1, 2, 0
-    43: LoadConstant r1, c2
-    46: StoreToScope r1, 3, 0
-    50: NewClass r0, c4, c3, r0
-    55: LoadImmediate r1, 4
-    58: LoadFromScope r2, 2, 0
-    62: DefineProperty r0, r2, r1, 0
-    67: LoadImmediate r1, 5
-    70: LoadFromScope r2, 3, 0
-    74: DefineProperty r0, r2, r1, 0
-    79: PopScope 
-    80: LoadUndefined r1
-    82: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadImmediate r2, 1
+     7: LoadImmediate r3, 2
+    10: Add r2, r2, r3
+    14: ToPropertyKey r2, r2
+    17: StoreToScope r2, 0, 0
+    21: LoadConstant r2, c1
+    24: StoreToScope r2, 1, 0
+    28: LoadImmediate r2, 3
+    31: LoadImmediate r3, 4
+    34: Add r2, r2, r3
+    38: ToPropertyKey r2, r2
+    41: StoreToScope r2, 2, 0
+    45: LoadConstant r2, c2
+    48: StoreToScope r2, 3, 0
+    52: NewClass r0, c4, c3, r1, r0
+    58: LoadImmediate r2, 4
+    61: LoadFromScope r3, 2, 0
+    65: DefineProperty r0, r3, r2, 0
+    70: LoadImmediate r2, 5
+    73: LoadFromScope r3, 3, 0
+    77: DefineProperty r0, r3, r2, 0
+    82: PopScope 
+    83: LoadUndefined r1
+    85: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: private1]
@@ -108,34 +110,35 @@
 }
 
 [BytecodeFunction: noInitializer] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: ToPropertyKey r1, r1
-    15: StoreToScope r1, 0, 0
-    19: LoadConstant r1, c1
-    22: StoreToScope r1, 1, 0
-    26: LoadImmediate r1, 3
-    29: LoadImmediate r2, 4
-    32: Add r1, r1, r2
-    36: ToPropertyKey r1, r1
-    39: StoreToScope r1, 2, 0
-    43: LoadConstant r1, c2
-    46: StoreToScope r1, 3, 0
-    50: NewClass r0, c4, c3, r0
-    55: LoadUndefined r1
-    57: DefineNamedProperty r0, c5, r1
-    61: LoadUndefined r1
-    63: LoadFromScope r2, 2, 0
-    67: DefineProperty r0, r2, r1, 0
-    72: LoadUndefined r1
-    74: LoadFromScope r2, 3, 0
-    78: DefineProperty r0, r2, r1, 0
-    83: PopScope 
-    84: LoadUndefined r1
-    86: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadImmediate r2, 1
+     7: LoadImmediate r3, 2
+    10: Add r2, r2, r3
+    14: ToPropertyKey r2, r2
+    17: StoreToScope r2, 0, 0
+    21: LoadConstant r2, c1
+    24: StoreToScope r2, 1, 0
+    28: LoadImmediate r2, 3
+    31: LoadImmediate r3, 4
+    34: Add r2, r2, r3
+    38: ToPropertyKey r2, r2
+    41: StoreToScope r2, 2, 0
+    45: LoadConstant r2, c2
+    48: StoreToScope r2, 3, 0
+    52: NewClass r0, c4, c3, r1, r0
+    58: LoadUndefined r2
+    60: DefineNamedProperty r0, c5, r2
+    64: LoadUndefined r2
+    66: LoadFromScope r3, 2, 0
+    70: DefineProperty r0, r3, r2, 0
+    75: LoadUndefined r2
+    77: LoadFromScope r3, 3, 0
+    81: DefineProperty r0, r3, r2, 0
+    86: PopScope 
+    87: LoadUndefined r1
+    89: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: private1]
@@ -162,17 +165,18 @@
 }
 
 [BytecodeFunction: withConstructor] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: ToPropertyKey r1, r1
-    15: StoreToScope r1, 0, 0
-    19: NewClass r0, c2, c1, r0
-    24: PopScope 
-    25: LoadUndefined r1
-    27: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadImmediate r2, 1
+     7: LoadImmediate r3, 2
+    10: Add r2, r2, r3
+    14: ToPropertyKey r2, r2
+    17: StoreToScope r2, 0, 0
+    21: NewClass r0, c2, c1, r1, r0
+    27: PopScope 
+    28: LoadUndefined r1
+    30: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: C]
@@ -205,27 +209,28 @@
 }
 
 [BytecodeFunction: withMethods] {
-  Parameters: 0, Registers: 6
-     0: PushLexicalScope c0
-     2: NewClosure r1, c1
-     5: LoadImmediate r2, 1
-     8: LoadImmediate r3, 2
-    11: Add r2, r2, r3
-    15: ToPropertyKey r2, r2
-    18: StoreToScope r2, 0, 0
-    22: LoadImmediate r2, 3
-    25: LoadImmediate r3, 4
-    28: Add r2, r2, r3
-    32: ToPropertyKey r2, r2
-    35: NewClosure r3, c2
-    38: LoadConstant r4, c3
-    41: StoreToScope r4, 1, 0
-    45: LoadConstant r4, c4
-    48: NewClosure r5, c5
-    51: NewClass r0, c7, c6, r1
-    56: PopScope 
-    57: LoadUndefined r1
-    59: Ret r1
+  Parameters: 0, Registers: 7
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: NewClosure r2, c1
+     7: LoadImmediate r3, 1
+    10: LoadImmediate r4, 2
+    13: Add r3, r3, r4
+    17: ToPropertyKey r3, r3
+    20: StoreToScope r3, 0, 0
+    24: LoadImmediate r3, 3
+    27: LoadImmediate r4, 4
+    30: Add r3, r3, r4
+    34: ToPropertyKey r3, r3
+    37: NewClosure r4, c2
+    40: LoadConstant r5, c3
+    43: StoreToScope r5, 1, 0
+    47: LoadConstant r5, c4
+    50: NewClosure r6, c5
+    53: NewClass r0, c7, c6, r1, r2
+    59: PopScope 
+    60: LoadUndefined r1
+    62: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: namedMethod]
@@ -272,23 +277,24 @@
 }
 
 [BytecodeFunction: withCapturedName] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadEmpty r1
-     4: StoreToScope r1, 2, 0
-     8: LoadImmediate r1, 1
-    11: LoadImmediate r2, 2
-    14: Add r1, r1, r2
-    18: ToPropertyKey r1, r1
-    21: StoreToScope r1, 0, 0
-    25: LoadConstant r1, c1
-    28: StoreToScope r1, 1, 0
-    32: NewClosure r1, c2
-    35: NewClass r0, c4, c3, r1
-    40: StoreToScope r0, 2, 0
-    44: PopScope 
-    45: LoadUndefined r1
-    47: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadEmpty r2
+     6: StoreToScope r2, 2, 0
+    10: LoadImmediate r2, 1
+    13: LoadImmediate r3, 2
+    16: Add r2, r2, r3
+    20: ToPropertyKey r2, r2
+    23: StoreToScope r2, 0, 0
+    27: LoadConstant r2, c1
+    30: StoreToScope r2, 1, 0
+    34: NewClosure r2, c2
+    37: NewClass r0, c4, c3, r1, r2
+    43: StoreToScope r0, 2, 0
+    47: PopScope 
+    48: LoadUndefined r1
+    50: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: private1]
@@ -319,27 +325,28 @@
 }
 
 [BytecodeFunction: withStaticInitializers] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: ToPropertyKey r1, r1
-    15: StoreToScope r1, 0, 0
-    19: LoadConstant r1, c1
-    22: StoreToScope r1, 1, 0
-    26: NewClass r0, c3, c2, r0
-    31: LoadImmediate r1, 2
-    34: LoadFromScope r2, 0, 0
-    38: DefineProperty r0, r2, r1, 0
-    43: LoadImmediate r1, 3
-    46: LoadImmediate r1, 4
-    49: LoadFromScope r2, 1, 0
-    53: DefineProperty r0, r2, r1, 0
-    58: LoadImmediate r1, 5
-    61: PopScope 
-    62: LoadUndefined r1
-    64: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadImmediate r2, 1
+     7: LoadImmediate r3, 2
+    10: Add r2, r2, r3
+    14: ToPropertyKey r2, r2
+    17: StoreToScope r2, 0, 0
+    21: LoadConstant r2, c1
+    24: StoreToScope r2, 1, 0
+    28: NewClass r0, c3, c2, r1, r0
+    34: LoadImmediate r2, 2
+    37: LoadFromScope r3, 0, 0
+    41: DefineProperty r0, r3, r2, 0
+    46: LoadImmediate r2, 3
+    49: LoadImmediate r2, 4
+    52: LoadFromScope r3, 1, 0
+    56: DefineProperty r0, r3, r2, 0
+    61: LoadImmediate r2, 5
+    64: PopScope 
+    65: LoadUndefined r1
+    67: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: private]
@@ -354,34 +361,35 @@
 }
 
 [BytecodeFunction: namedEvaluation] {
-  Parameters: 0, Registers: 3
-     0: PushLexicalScope c0
-     2: LoadImmediate r1, 1
-     5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: ToPropertyKey r1, r1
-    15: StoreToScope r1, 0, 0
-    19: LoadImmediate r1, 3
-    22: LoadImmediate r2, 4
-    25: Add r1, r1, r2
-    29: ToPropertyKey r1, r1
-    32: StoreToScope r1, 1, 0
-    36: LoadConstant r1, c1
-    39: StoreToScope r1, 2, 0
-    43: LoadConstant r1, c2
-    46: StoreToScope r1, 3, 0
-    50: NewClass r0, c4, c3, r0
-    55: NewClosure r1, c5
-    58: DefineNamedProperty r0, c6, r1
-    62: NewClosure r1, c7
-    65: LoadFromScope r2, 1, 0
-    69: DefineProperty r0, r2, r1, 1
-    74: NewClosure r1, c8
-    77: LoadFromScope r2, 3, 0
-    81: DefineProperty r0, r2, r1, 1
-    86: PopScope 
-    87: LoadUndefined r1
-    89: Ret r1
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadImmediate r2, 1
+     7: LoadImmediate r3, 2
+    10: Add r2, r2, r3
+    14: ToPropertyKey r2, r2
+    17: StoreToScope r2, 0, 0
+    21: LoadImmediate r2, 3
+    24: LoadImmediate r3, 4
+    27: Add r2, r2, r3
+    31: ToPropertyKey r2, r2
+    34: StoreToScope r2, 1, 0
+    38: LoadConstant r2, c1
+    41: StoreToScope r2, 2, 0
+    45: LoadConstant r2, c2
+    48: StoreToScope r2, 3, 0
+    52: NewClass r0, c4, c3, r1, r0
+    58: NewClosure r2, c5
+    61: DefineNamedProperty r0, c6, r2
+    65: NewClosure r2, c7
+    68: LoadFromScope r3, 1, 0
+    72: DefineProperty r0, r3, r2, 1
+    77: NewClosure r2, c8
+    80: LoadFromScope r3, 3, 0
+    84: DefineProperty r0, r3, r2, 1
+    89: PopScope 
+    90: LoadUndefined r1
+    92: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: private1]

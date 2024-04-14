@@ -45,15 +45,16 @@
 }
 
 [BytecodeFunction: privateIn] {
-  Parameters: 0, Registers: 2
-     0: PushLexicalScope c0
-     2: LoadConstant r1, c1
-     5: StoreToScope r1, 0, 0
-     9: NewClosure r1, c2
-    12: NewClass r0, c4, c3, r1
-    17: PopScope 
-    18: LoadUndefined r1
-    20: Ret r1
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: LoadConstant r2, c1
+     7: StoreToScope r2, 0, 0
+    11: NewClosure r2, c2
+    14: NewClass r0, c4, c3, r1, r2
+    20: PopScope 
+    21: LoadUndefined r1
+    23: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [Symbol: field]

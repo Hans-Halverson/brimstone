@@ -47,7 +47,6 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
     ) -> Handle<Closure> {
-        // TODO: Handle different function prototypes
         let mut object =
             object_create::<Closure>(cx, ObjectKind::Closure, Intrinsic::FunctionPrototype);
 

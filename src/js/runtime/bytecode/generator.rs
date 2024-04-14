@@ -4594,8 +4594,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Name::Computed(name_register) => {
                 // If computed then name will be passed as an argument to the NewClass instruction.
                 // First convert to a property key.
-                self.writer
-                    .to_property_key_instruction(name_register, name_register);
+                if !method.is_private {
+                    self.writer
+                        .to_property_key_instruction(name_register, name_register);
+                }
+
                 new_class_arguments.push(name_register);
 
                 None

@@ -221,12 +221,11 @@
     38: LoadConstant r4, c3
     41: StoreToScope r4, 1, 0
     45: LoadConstant r4, c4
-    48: ToPropertyKey r4, r4
-    51: NewClosure r5, c5
-    54: NewClass r0, c7, c6, r1
-    59: PopScope 
-    60: LoadUndefined r1
-    62: Ret r1
+    48: NewClosure r5, c5
+    51: NewClass r0, c7, c6, r1
+    56: PopScope 
+    57: LoadUndefined r1
+    59: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: namedMethod]

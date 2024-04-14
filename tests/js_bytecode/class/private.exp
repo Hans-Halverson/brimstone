@@ -14,7 +14,7 @@
     36: LoadUndefined r0
     38: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
     1: [BytecodeFunction: <anonymous>]
     2: [BytecodeFunction: privateMember]
     3: [BytecodeFunction: privateCall]
@@ -39,7 +39,7 @@
     3: GetProperty r0, <this>, r0
     7: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateCall] {
@@ -49,7 +49,7 @@
      7: CallWithReceiver r0, r0, <this>, r0, 0
     13: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateOptionalMember] {
@@ -64,7 +64,7 @@
   .L1:
     20: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateOptionalCall] {
@@ -79,7 +79,7 @@
   .L1:
     20: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateAssignment] {
@@ -90,7 +90,7 @@
     10: LoadUndefined r0
     12: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateUpdate] {
@@ -104,7 +104,7 @@
     19: LoadUndefined r0
     21: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
 }
 
 [BytecodeFunction: privateDestructure] {
@@ -115,7 +115,7 @@
     11: LoadUndefined r0
     13: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: method]
     1: [String: x]
 }
 

@@ -133,7 +133,7 @@ impl SymbolConstructor {
             Some(maybe!(to_string(cx, description_arg)))
         };
 
-        SymbolValue::new(cx, description_value).into()
+        SymbolValue::new(cx, description_value, /* is_private */ false).into()
     }
 
     // 20.4.2.2 Symbol.for
@@ -149,7 +149,8 @@ impl SymbolConstructor {
             return symbol_value.to_handle().into();
         }
 
-        let new_symbol = SymbolValue::new(cx, Some(string_key.as_string()));
+        let new_symbol =
+            SymbolValue::new(cx, Some(string_key.as_string()), /* is_private */ false);
         cx.global_symbol_registry_field()
             .maybe_grow_for_insertion(cx)
             .insert_without_growing(string_key.get_(), new_symbol.get_());

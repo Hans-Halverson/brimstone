@@ -56,7 +56,7 @@
     20: Ret r1
   Constant Table:
     0: [ScopeNames]
-    1: [Symbol]
+    1: [Symbol: field]
     2: [BytecodeFunction: method]
     3: [BytecodeFunction: C]
     4: [ClassNames]
@@ -69,7 +69,7 @@
     7: LoadUndefined r0
     9: Ret r0
   Constant Table:
-    0: [Symbol]
+    0: [Symbol: field]
 }
 
 [BytecodeFunction: C] {

@@ -721,11 +721,16 @@ pub fn build_function_name(
 ) -> Handle<StringValue> {
     // Convert name to string value, property formatting symbol name
     let name_string = if name.is_symbol() {
-        if let Some(description) = name.as_symbol().description() {
-            let left_paren = cx.alloc_string("[");
-            let right_paren = cx.alloc_string("]");
+        let symbol = name.as_symbol();
+        if let Some(description) = symbol.description() {
+            if symbol.is_private() {
+                StringValue::concat(cx, cx.alloc_string("#"), description.as_string())
+            } else {
+                let left_paren = cx.alloc_string("[");
+                let right_paren = cx.alloc_string("]");
 
-            StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])
+                StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])
+            }
         } else {
             cx.names.empty_string().as_string()
         }

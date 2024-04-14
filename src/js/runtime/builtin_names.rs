@@ -433,7 +433,7 @@ macro_rules! builtin_symbols {
                 $(
                     self.well_known_symbols.$rust_name = {
                         let description = self.alloc_string($description);
-                        PropertyKey::symbol(SymbolValue::new(*self, Some(description))).get()
+                        PropertyKey::symbol(SymbolValue::new(*self, Some(description), /* is_private */ false)).get()
                     };
                 )*
             }

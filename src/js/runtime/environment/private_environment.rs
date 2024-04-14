@@ -95,12 +95,12 @@ impl Handle<PrivateEnvironment> {
         PrivateEnvironmentNamesField(*self)
     }
 
-    pub fn add_private_name(&mut self, cx: Context, description: Handle<StringValue>) {
-        let symbol_name = SymbolValue::new(cx, None);
-        let flat_description = description.flatten();
+    pub fn add_private_name(&mut self, cx: Context, name: Handle<StringValue>) {
+        let symbol_name = SymbolValue::new(cx, Some(name), /* is_private */ true);
+        let flat_name = name.flatten();
         self.names_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(flat_description.get_(), symbol_name.get_());
+            .insert_without_growing(flat_name.get_(), symbol_name.get_());
     }
 }
 

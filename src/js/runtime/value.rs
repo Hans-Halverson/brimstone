@@ -573,18 +573,25 @@ impl From<HeapPtr<AccessorValue>> for Value {
 pub struct SymbolValue {
     descriptor: HeapPtr<ObjectDescriptor>,
     description: Option<HeapPtr<FlatString>>,
-    // Stable hash code for this symbol, since symbol can be moved by GC
+    /// Stable hash code for this symbol, since symbol can be moved by GC
     hash_code: u32,
+    /// Whether this symbol is for a private name
+    is_private: bool,
 }
 
 impl SymbolValue {
-    pub fn new(cx: Context, description: Option<Handle<StringValue>>) -> Handle<SymbolValue> {
+    pub fn new(
+        cx: Context,
+        description: Option<Handle<StringValue>>,
+        is_private: bool,
+    ) -> Handle<SymbolValue> {
         let description = description.map(|d| d.flatten());
         let mut symbol = cx.alloc_uninit::<SymbolValue>();
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| desc.get_()));
         set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
+        set_uninit!(symbol.is_private, is_private);
 
         symbol.to_handle()
     }
@@ -595,6 +602,10 @@ impl SymbolValue {
 
     pub fn description(&self) -> Option<Handle<FlatString>> {
         self.description.map(|d| d.to_handle())
+    }
+
+    pub fn is_private(&self) -> bool {
+        self.is_private
     }
 }
 

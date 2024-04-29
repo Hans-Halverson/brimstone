@@ -11,7 +11,7 @@ use crate::{
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined_, reference_error_,
-            type_error_,
+            type_error_, type_error_value,
         },
         eval::{
             eval::perform_bytecode_eval,
@@ -43,8 +43,8 @@ use crate::{
         scope_names::ScopeNames,
         to_string,
         type_utilities::{
-            is_loosely_equal, is_strictly_equal, same_object_value, to_boolean, to_number,
-            to_numeric, to_object, to_property_key,
+            is_callable_object, is_constructor_object_value, is_loosely_equal, is_strictly_equal,
+            same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
         value::BigIntValue,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
@@ -60,16 +60,17 @@ use super::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
-        CallWithReceiverInstruction, CheckTdzInstruction, ConstructInstruction,
-        ConstructVarargsInstruction, CopyDataPropertiesInstruction, DecInstruction,
+        CallWithReceiverInstruction, CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
+        CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
+        CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
-        GetNamedPropertyInstruction, GetPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        GetNamedPropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
+        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
+        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
+        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -401,6 +402,12 @@ impl VM {
                                 execute_generic_construct
                             )
                         }
+                        OpCode::DefaultSuperCall => {
+                            dispatch_or_throw!(
+                                DefaultSuperCallInstruction,
+                                execute_default_super_call
+                            )
+                        }
                         OpCode::Ret => execute_ret!(get_instr),
                         OpCode::Add => dispatch_or_throw!(AddInstruction, execute_add),
                         OpCode::Sub => dispatch_or_throw!(SubInstruction, execute_sub),
@@ -617,8 +624,26 @@ impl VM {
                         OpCode::RestParameter => {
                             dispatch!(RestParameterInstruction, execute_rest_parameter)
                         }
+                        OpCode::GetSuperConstructor => {
+                            dispatch_or_throw!(
+                                GetSuperConstructorInstruction,
+                                execute_get_super_constructor
+                            )
+                        }
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
+                        }
+                        OpCode::CheckThisInitialized => {
+                            dispatch_or_throw!(
+                                CheckThisInitializedInstruction,
+                                execute_check_this_initialized
+                            )
+                        }
+                        OpCode::CheckSuperAlreadyCalled => {
+                            dispatch_or_throw!(
+                                CheckSuperAlreadyCalledInstruction,
+                                execute_check_super_already_called
+                            )
                         }
                         OpCode::ErrorConst => {
                             dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
@@ -922,7 +947,7 @@ impl VM {
             CallableObject::Proxy(proxy) => {
                 return proxy.to_handle().call(self.cx, receiver, arguments)
             }
-            CallableObject::None => return type_error_(self.cx, "value is not a function"),
+            CallableObject::Error(error) => return EvalResult::Throw(error),
         };
 
         // Get the receiver to use. May allocate.
@@ -987,18 +1012,19 @@ impl VM {
             CallableObject::Proxy(proxy) => {
                 return proxy.to_handle().construct(self.cx, arguments, new_target);
             }
-            CallableObject::None => return type_error_(self.cx, "value is not a constructor"),
+            CallableObject::Error(error) => return EvalResult::Throw(error),
         };
 
         // Create the receiver to use. Allocates.
-        let receiver = maybe!(self.generate_constructor_receiver(new_target));
+        let is_base = closure_handle.function_ptr().is_base_constructor();
+        let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
 
         // Reuse function handle for receiver
         let closure_ptr = closure_handle.get_();
         let function_ptr = closure_ptr.function_ptr();
 
-        let mut receiver_handle = closure_handle.cast::<ObjectValue>();
-        receiver_handle.replace(receiver.into());
+        let mut receiver_handle = closure_handle.cast::<Value>();
+        receiver_handle.replace(receiver);
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
@@ -1007,7 +1033,7 @@ impl VM {
                 self.call_rust_runtime(
                     closure_ptr,
                     function_id,
-                    receiver_handle.cast(),
+                    receiver_handle,
                     arguments,
                     Some(new_target),
                 )
@@ -1023,7 +1049,7 @@ impl VM {
             // Push a stack frame for the function call, with return address set to return to Rust
             self.push_stack_frame(
                 closure_ptr,
-                receiver.into(),
+                receiver,
                 args_rev_iter,
                 arguments.len(),
                 /* return_to_rust_runtime */ true,
@@ -1042,11 +1068,11 @@ impl VM {
             return_value.to_handle(self.cx)
         };
 
-        // Use the function's return value, otherwise fall back to the reciever
+        // Use the function's return value if it is an object
         if return_value.is_object() {
             return_value.as_object().into()
         } else {
-            receiver_handle.into()
+            self.constructor_non_object_return_value(receiver_handle, is_base)
         }
     }
 
@@ -1074,7 +1100,7 @@ impl VM {
                 unsafe { *return_value_address = return_value.get() };
                 return ().into();
             }
-            CallableObject::None => return type_error_(self.cx, "value is not a function"),
+            CallableObject::Error(error) => return EvalResult::Throw(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
@@ -1171,10 +1197,11 @@ impl VM {
 
                 return ().into();
             }
-            CallableObject::None => return type_error_(self.cx, "value is not a constructor"),
+            CallableObject::Error(error) => return EvalResult::Throw(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
+        let is_base = function_ptr.is_base_constructor();
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
@@ -1182,11 +1209,11 @@ impl VM {
                 let closure_handle = closure_ptr.to_handle();
 
                 // Create the receiver to use. Allocates.
-                let receiver = maybe!(self.generate_constructor_receiver(new_target));
+                let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
 
                 // Reuse function handle for receiver
                 let closure_ptr = closure_handle.get_();
-                let mut receiver_handle = closure_handle.cast::<ObjectValue>();
+                let mut receiver_handle = closure_handle.cast::<Value>();
                 receiver_handle.replace(receiver);
 
                 // Prepare arguments for the runtime call
@@ -1195,16 +1222,16 @@ impl VM {
                 let return_value = maybe!(self.call_rust_runtime(
                     closure_ptr,
                     function_id,
-                    receiver_handle.cast(),
+                    receiver_handle,
                     &arguments,
                     Some(new_target)
                 ));
 
-                // Use the function's return value, otherwise fall back to the receiver
+                // Use the function's return value if it is an object
                 if return_value.is_object() {
                     return_value.as_object().into()
                 } else {
-                    receiver_handle.into()
+                    self.constructor_non_object_return_value(receiver_handle, is_base)
                 }
             }));
 
@@ -1215,10 +1242,10 @@ impl VM {
             let function_handle = function_ptr.to_handle();
 
             // Create the receiver to use. Allocates.
-            let receiver = maybe!(self.generate_constructor_receiver(new_target));
+            let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
 
             let closure_ptr = closure_handle.get_();
-            let mut receiver_handle = closure_handle.cast::<ObjectValue>();
+            let mut receiver_handle = closure_handle.cast::<Value>();
             receiver_handle.replace(receiver);
 
             // Push the address of the return value
@@ -1231,7 +1258,7 @@ impl VM {
                 ArgsSlice::Forward(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
-                        receiver.into(),
+                        receiver,
                         slice.iter().rev(),
                         slice.len(),
                         /* return_to_rust_runtime */ true,
@@ -1241,7 +1268,7 @@ impl VM {
                 ArgsSlice::Reverse(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
-                        receiver.into(),
+                        receiver,
                         slice.iter(),
                         slice.len(),
                         /* return_to_rust_runtime */ true,
@@ -1259,11 +1286,11 @@ impl VM {
                 return EvalResult::Throw(error_value.to_handle(self.cx));
             }
 
-            // Use the function's return value, otherwise fall back to the receiver
+            // Use the function's return value if it is an object
             if return_value.is_object() {
                 return_value.as_object()
             } else {
-                receiver_handle.get_()
+                maybe!(self.constructor_non_object_return_value(receiver_handle, is_base)).get_()
             }
         };
 
@@ -1280,8 +1307,18 @@ impl VM {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
             if kind == ObjectKind::Closure {
-                // All closures all callable
-                return CallableObject::Closure(value.as_pointer().cast::<Closure>());
+                let closure = value.as_pointer().cast::<Closure>();
+
+                // Class constructors cannot be called directly
+                if closure.function_ptr().is_class_constructor() {
+                    return CallableObject::Error(type_error_value(
+                        self.cx,
+                        "cannot call class constructor",
+                    ));
+                }
+
+                // All other closures all callable
+                return CallableObject::Closure(closure);
             } else if kind == ObjectKind::Proxy {
                 // Check if proxy is callable, and if so return the attached closure
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
@@ -1291,7 +1328,7 @@ impl VM {
             }
         }
 
-        CallableObject::None
+        CallableObject::Error(type_error_value(self.cx, "value is not a function"))
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the
@@ -1315,7 +1352,7 @@ impl VM {
             }
         }
 
-        CallableObject::None
+        CallableObject::Error(type_error_value(self.cx, "value is not a constructor"))
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -1545,13 +1582,42 @@ impl VM {
     fn generate_constructor_receiver(
         &mut self,
         new_target: Handle<ObjectValue>,
-    ) -> EvalResult<HeapPtr<ObjectValue>> {
-        object_create_from_constructor::<ObjectValue>(
-            self.cx,
-            new_target,
-            ObjectKind::OrdinaryObject,
-            Intrinsic::ObjectPrototype,
-        )
+        is_base: bool,
+    ) -> EvalResult<Value> {
+        if is_base {
+            let new_object: Value = maybe!(object_create_from_constructor::<ObjectValue>(
+                self.cx,
+                new_target,
+                ObjectKind::OrdinaryObject,
+                Intrinsic::ObjectPrototype,
+            ))
+            .into();
+
+            new_object.into()
+        } else {
+            // Receiver starts out as the empty sentinel value in derived constructors, and only
+            // will be set once super() is called.
+            Value::empty().into()
+        }
+    }
+
+    /// Create the return value for a constructor call that doesn't return an object.
+    #[inline]
+    fn constructor_non_object_return_value(
+        &mut self,
+        receiver: Handle<Value>,
+        is_base: bool,
+    ) -> EvalResult<Handle<ObjectValue>> {
+        if is_base {
+            // Base classes always return the receiver. Receiver is guaranteed to be an object
+            // created earlier in this construct call.
+            receiver.as_object().into()
+        } else {
+            // Derived constructors can either return an object or undefined. The derived
+            // constructor implementation will return `this` if the code syntactically returns
+            // undefined, so if the return value wasn't an object we should error.
+            type_error_(self.cx, "derived constructor must return object or undefined")
+        }
     }
 
     /// Return the coerced receiver that should be passed to a function call. No coercion is
@@ -1681,6 +1747,44 @@ impl VM {
         // Allocates
         let result = maybe!(perform_bytecode_eval(self.cx, arg, is_strict_caller, Some(scope)));
         self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_default_super_call<W: Width>(
+        &mut self,
+        _: &DefaultSuperCallInstruction<W>,
+    ) -> EvalResult<()> {
+        let super_constructor = must!(self
+            .closure()
+            .to_handle()
+            .object()
+            .get_prototype_of(self.cx));
+
+        if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
+            return type_error_(self.cx, "super must be a constructor");
+        }
+        let super_constructor = super_constructor.unwrap();
+
+        // Place all arguments behind handles
+        let args = StackFrame::for_fp(self.fp)
+            .args()
+            .iter()
+            .map(|arg| arg.to_handle(self.cx))
+            .collect::<Vec<_>>();
+
+        // New target is in the first local register
+        let new_target = self
+            .read_register_to_handle(Register::<W>::local(0))
+            .as_object();
+
+        // Call the super constructor
+        let this_value =
+            maybe!(self.construct_from_rust(super_constructor.into(), &args, new_target));
+
+        // Store result of super call to the `this` register, which will be returned at end of call
+        self.write_register(Register::<W>::this(), this_value.get_().into());
 
         ().into()
     }
@@ -2971,6 +3075,31 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_super_constructor<W: Width>(
+        &mut self,
+        instr: &GetSuperConstructorInstruction<W>,
+    ) -> EvalResult<()> {
+        let derived_constructor = self
+            .read_register_to_handle(instr.derived_constructor())
+            .cast::<ObjectValue>();
+        let dest = instr.dest();
+
+        // May allocate
+        let super_constructor = must!(derived_constructor.get_prototype_of(self.cx));
+
+        // Check that super constructor exists and is a constructor
+        if super_constructor.is_none()
+            || !is_constructor_object_value(self.cx, super_constructor.unwrap())
+        {
+            return type_error_(self.cx, "super must be a constructor");
+        }
+
+        self.write_register(dest, super_constructor.unwrap().cast::<Value>().get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_check_tdz<W: Width>(&mut self, instr: &CheckTdzInstruction<W>) -> EvalResult<()> {
         let value = self.read_register(instr.value());
 
@@ -2982,6 +3111,36 @@ impl VM {
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
         reference_error_(self.cx, &format!("can't access `{}` before initialization", name))
+    }
+
+    #[inline]
+    fn execute_check_this_initialized<W: Width>(
+        &mut self,
+        instr: &CheckThisInitializedInstruction<W>,
+    ) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+
+        // Uninitialized `this` represented as an empty value
+        if !value.is_empty() {
+            return ().into();
+        }
+
+        reference_error_(self.cx, "this is not initialized")
+    }
+
+    #[inline]
+    fn execute_check_super_already_called<W: Width>(
+        &mut self,
+        instr: &CheckSuperAlreadyCalledInstruction<W>,
+    ) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+
+        // Uninitialized `this` represented as an empty value
+        if value.is_empty() {
+            return ().into();
+        }
+
+        reference_error_(self.cx, "super constructor called multiple times")
     }
 
     #[inline]
@@ -3239,5 +3398,5 @@ enum ArgsSlice<'a> {
 enum CallableObject {
     Closure(HeapPtr<Closure>),
     Proxy(HeapPtr<ProxyObject>),
-    None,
+    Error(Handle<Value>),
 }

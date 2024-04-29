@@ -12,21 +12,25 @@
     27: StoreGlobal r0, c9
     30: NewClosure r0, c10
     33: StoreGlobal r0, c11
-    36: LoadUndefined r0
-    38: Ret r0
+    36: NewClosure r0, c12
+    39: StoreGlobal r0, c13
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
     0: [BytecodeFunction: singleTryReturn]
     1: [String: singleTryReturn]
-    2: [BytecodeFunction: singleCatchReturn]
-    3: [String: singleCatchReturn]
-    4: [BytecodeFunction: singleFinallyReturn]
-    5: [String: singleFinallyReturn]
-    6: [BytecodeFunction: returnsInTryAndCatch]
-    7: [String: returnsInTryAndCatch]
-    8: [BytecodeFunction: multipleReturns]
-    9: [String: multipleReturns]
-    10: [BytecodeFunction: multipleFinallyScopes]
-    11: [String: multipleFinallyScopes]
+    2: [BytecodeFunction: singleUndefinedReturn]
+    3: [String: singleUndefinedReturn]
+    4: [BytecodeFunction: singleCatchReturn]
+    5: [String: singleCatchReturn]
+    6: [BytecodeFunction: singleFinallyReturn]
+    7: [String: singleFinallyReturn]
+    8: [BytecodeFunction: returnsInTryAndCatch]
+    9: [String: returnsInTryAndCatch]
+    10: [BytecodeFunction: multipleReturns]
+    11: [String: multipleReturns]
+    12: [BytecodeFunction: multipleFinallyScopes]
+    13: [String: multipleFinallyScopes]
 }
 
 [BytecodeFunction: singleTryReturn] {
@@ -60,6 +64,38 @@
     59: Ret r0
   Exception Handlers:
     3-17 -> 22 (r1)
+}
+
+[BytecodeFunction: singleUndefinedReturn] {
+  Parameters: 1, Registers: 3
+     0: Mov r2, <scope>
+     3: JumpToBooleanFalse a0, 10 (.L0)
+     6: LoadImmediate r0, 1
+     9: LoadUndefined r1
+    11: Jump 10 (.L1)
+  .L0:
+    13: LoadImmediate r0, 2
+    16: Jump 5 (.L1)
+    18: LoadImmediate r0, 0
+  .L1:
+    21: Mov <scope>, r2
+    24: LoadImmediate r2, 1
+    27: LoadImmediate r2, 0
+    30: StrictEqual r2, r0, r2
+    34: JumpFalse r2, 5 (.L2)
+    37: Throw r1
+  .L2:
+    39: LoadImmediate r2, 2
+    42: StrictEqual r2, r0, r2
+    46: JumpFalse r2, 5 (.L3)
+    49: Jump 4 (.L4)
+  .L3:
+    51: Ret r1
+  .L4:
+    53: LoadUndefined r0
+    55: Ret r0
+  Exception Handlers:
+    3-13 -> 18 (r1)
 }
 
 [BytecodeFunction: singleCatchReturn] {

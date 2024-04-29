@@ -1,18 +1,64 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 2
-     0: LoadEmpty r1
-     2: NewClass r0, c1, c0, r1, r0
-     8: StoreToScope r0, 1, 0
-    12: LoadEmpty r1
-    14: NewClass r0, c3, c2, r1, r0
-    20: StoreToScope r0, 2, 0
-    24: LoadUndefined r0
-    26: Ret r0
+      0: LoadEmpty r1
+      2: NewClass r0, c1, c0, r1, r0
+      8: StoreToScope r0, 1, 0
+     12: LoadEmpty r1
+     14: NewClass r0, c3, c2, r1, r0
+     20: StoreToScope r0, 2, 0
+     24: LoadEmpty r1
+     26: NewClass r0, c5, c4, r1, r0
+     32: StoreToScope r0, 3, 0
+     36: LoadGlobal r1, c6
+     39: NewClass r0, c8, c7, r1, r0
+     45: StoreToScope r0, 4, 0
+     49: LoadGlobal r1, c6
+     52: NewClass r0, c10, c9, r1, r0
+     58: StoreToScope r0, 5, 0
+     62: LoadGlobal r1, c6
+     65: NewClass r0, c12, c11, r1, r0
+     71: StoreToScope r0, 6, 0
+     75: LoadGlobal r1, c6
+     78: NewClass r0, c14, c13, r1, r0
+     84: StoreToScope r0, 7, 0
+     88: LoadGlobal r1, c6
+     91: NewClass r0, c16, c15, r1, r0
+     97: StoreToScope r0, 8, 0
+    101: LoadGlobal r1, c6
+    104: NewClass r0, c18, c17, r1, r0
+    110: StoreToScope r0, 9, 0
+    114: LoadGlobal r1, c6
+    117: NewClass r0, c20, c19, r1, r0
+    123: StoreToScope r0, 10, 0
+    127: LoadGlobal r1, c6
+    130: NewClass r0, c22, c21, r1, r0
+    136: StoreToScope r0, 11, 0
+    140: LoadUndefined r0
+    142: Ret r0
   Constant Table:
     0: [BytecodeFunction: ExplicitConstructor]
     1: [ClassNames]
     2: [BytecodeFunction: BaseDefaultConstructor]
     3: [ClassNames]
+    4: [BytecodeFunction: ThisInBaseConstructor]
+    5: [ClassNames]
+    6: [String: String]
+    7: [BytecodeFunction: ThisInDerivedConstructor]
+    8: [ClassNames]
+    9: [BytecodeFunction: DerivedConstructorWithReturnValue]
+    10: [ClassNames]
+    11: [BytecodeFunction: DerivedConstructorWithNoArgReturn]
+    12: [ClassNames]
+    13: [BytecodeFunction: CapturedThisInDerivedConstructor]
+    14: [ClassNames]
+    15: [BytecodeFunction: CapturedThisInDerivedConstructorWithReturnValue]
+    16: [ClassNames]
+    17: [BytecodeFunction: CapturedThisInDerivedConstructorWithNoArgReturn]
+    18: [ClassNames]
+    19: [BytecodeFunction: FinallyWithDerivedReturn]
+    20: [ClassNames]
+    21: [BytecodeFunction: FinallyWithDerivedReturnCapturedThis]
+    22: [ClassNames]
 }
 
 [BytecodeFunction: ExplicitConstructor] {
@@ -24,4 +70,242 @@
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: ThisInBaseConstructor] {
+  Parameters: 0, Registers: 1
+     0: GetNamedProperty r0, <this>, c0
+     4: LoadImmediate r0, 1
+     7: SetNamedProperty <this>, c0, r0
+    11: LoadUndefined r0
+    13: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: ThisInDerivedConstructor] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: CheckThisInitialized <this>
+    21: GetNamedProperty r2, <this>, c0
+    25: CheckThisInitialized <this>
+    27: LoadImmediate r2, 1
+    30: SetNamedProperty <this>, c0, r2
+    34: CheckThisInitialized <this>
+    36: Ret <this>
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: DerivedConstructorWithReturnValue] {
+  Parameters: 0, Registers: 4
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: LoadImmediate r2, 1
+    22: Mov r3, r2
+    25: JumpNotUndefined r2, 8 (.L0)
+    28: CheckThisInitialized <this>
+    30: Mov r3, <this>
+  .L0:
+    33: Ret r3
+}
+
+[BytecodeFunction: DerivedConstructorWithNoArgReturn] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: CheckThisInitialized <this>
+    21: Ret <this>
+}
+
+[BytecodeFunction: CapturedThisInDerivedConstructor] {
+  Parameters: 0, Registers: 4
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: Mov r0, <closure>
+    11: GetSuperConstructor r2, r0
+    14: Construct r2, r2, r1, r1, 0
+    20: LoadFromScope r3, 0, 0
+    24: CheckSuperAlreadyCalled r3
+    26: StoreToScope r2, 0, 0
+    30: NewClosure r2, c1
+    33: LoadFromScope r2, 0, 0
+    37: CheckThisInitialized r2
+    39: GetNamedProperty r2, r2, c2
+    43: LoadFromScope r3, 0, 0
+    47: CheckThisInitialized r3
+    49: LoadImmediate r2, 1
+    52: SetNamedProperty r3, c2, r2
+    56: LoadFromScope r2, 0, 0
+    60: CheckThisInitialized r2
+    62: Ret r2
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+    2: [String: x]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckThisInitialized r0
+    6: LoadUndefined r0
+    8: Ret r0
+}
+
+[BytecodeFunction: CapturedThisInDerivedConstructorWithReturnValue] {
+  Parameters: 0, Registers: 4
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: Mov r0, <closure>
+    11: GetSuperConstructor r2, r0
+    14: Construct r2, r2, r1, r1, 0
+    20: LoadFromScope r3, 0, 0
+    24: CheckSuperAlreadyCalled r3
+    26: StoreToScope r2, 0, 0
+    30: NewClosure r2, c1
+    33: LoadImmediate r2, 1
+    36: Mov r3, r2
+    39: JumpNotUndefined r2, 9 (.L0)
+    42: LoadFromScope r3, 0, 0
+    46: CheckThisInitialized r3
+  .L0:
+    48: Ret r3
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckThisInitialized r0
+    6: LoadUndefined r0
+    8: Ret r0
+}
+
+[BytecodeFunction: CapturedThisInDerivedConstructorWithNoArgReturn] {
+  Parameters: 0, Registers: 4
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: Mov r0, <closure>
+    11: GetSuperConstructor r2, r0
+    14: Construct r2, r2, r1, r1, 0
+    20: LoadFromScope r3, 0, 0
+    24: CheckSuperAlreadyCalled r3
+    26: StoreToScope r2, 0, 0
+    30: NewClosure r2, c1
+    33: LoadFromScope r2, 0, 0
+    37: CheckThisInitialized r2
+    39: Ret r2
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckThisInitialized r0
+    6: LoadUndefined r0
+    8: Ret r0
+}
+
+[BytecodeFunction: FinallyWithDerivedReturn] {
+  Parameters: 0, Registers: 6
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: Mov r4, <scope>
+    22: LoadImmediate r5, 1
+    25: LoadImmediate r2, 1
+    28: LoadUndefined r3
+    30: Jump 5 (.L0)
+    32: LoadImmediate r2, 0
+  .L0:
+    35: Mov <scope>, r4
+    38: LoadImmediate r4, 2
+    41: LoadImmediate r4, 0
+    44: StrictEqual r4, r2, r4
+    48: JumpFalse r4, 5 (.L1)
+    51: Throw r3
+  .L1:
+    53: Mov r5, r3
+    56: JumpNotUndefined r3, 8 (.L2)
+    59: CheckThisInitialized <this>
+    61: Mov r5, <this>
+  .L2:
+    64: Ret r5
+    66: CheckThisInitialized <this>
+    68: Ret <this>
+  Exception Handlers:
+    22-32 -> 32 (r3)
+}
+
+[BytecodeFunction: FinallyWithDerivedReturnCapturedThis] {
+  Parameters: 0, Registers: 6
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: Mov r0, <closure>
+    11: GetSuperConstructor r2, r0
+    14: Construct r2, r2, r1, r1, 0
+    20: LoadFromScope r3, 0, 0
+    24: CheckSuperAlreadyCalled r3
+    26: StoreToScope r2, 0, 0
+    30: NewClosure r2, c1
+    33: Mov r4, <scope>
+    36: LoadImmediate r5, 1
+    39: LoadImmediate r2, 1
+    42: LoadUndefined r3
+    44: Jump 5 (.L0)
+    46: LoadImmediate r2, 0
+  .L0:
+    49: Mov <scope>, r4
+    52: LoadImmediate r4, 2
+    55: LoadImmediate r4, 0
+    58: StrictEqual r4, r2, r4
+    62: JumpFalse r4, 5 (.L1)
+    65: Throw r3
+  .L1:
+    67: Mov r5, r3
+    70: JumpNotUndefined r3, 9 (.L2)
+    73: LoadFromScope r5, 0, 0
+    77: CheckThisInitialized r5
+  .L2:
+    79: Ret r5
+    81: LoadFromScope r2, 0, 0
+    85: CheckThisInitialized r2
+    87: Ret r2
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+  Exception Handlers:
+    36-46 -> 46 (r3)
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckThisInitialized r0
+    6: Ret r0
 }

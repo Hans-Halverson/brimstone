@@ -13,7 +13,10 @@ use super::{
     ast_visitor::*,
     loc::Loc,
     parser::{ParseFunctionResult, ParseProgramResult},
-    scope_tree::{AstScopeNode, ScopeNodeId, ScopeTree, NEW_TARGET_BINDING_NAME},
+    scope_tree::{
+        AstScopeNode, ScopeNodeId, ScopeTree, DERIVED_CONSTRUCTOR_BINDING_NAME,
+        NEW_TARGET_BINDING_NAME,
+    },
     source::Source,
     LocalizedParseError, LocalizedParseErrors, ParseError,
 };
@@ -182,6 +185,10 @@ impl<'a> Analyzer<'a> {
             .iter()
             .rev()
             .find(|func| !func.is_arrow_function)
+    }
+
+    fn current_function(&self) -> Option<&FunctionStackEntry> {
+        self.function_stack.last()
     }
 
     // Save state before visiting a function or class. This prevents labels and some context from
@@ -390,6 +397,15 @@ impl<'a> AstVisitor for Analyzer<'a> {
         match self.allow_return_stack.last() {
             Some(true) => {}
             _ => self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction),
+        }
+
+        // If this is a return inside a derived constructor then we must resolve `this`, since it
+        // may be implicitly returned.
+        if matches!(
+            self.current_function(),
+            Some(FunctionStackEntry { is_derived_constructor: true, .. })
+        ) {
+            self.resolve_this_use(stmt.loc, |scope| stmt.this_scope = Some(scope));
         }
 
         default_visit_return_statement(self, stmt);
@@ -616,15 +632,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         match &mut expr.kind {
             // new.target is treated as a binding that is implicitly created on a parent function
             // scope. Store the scope node of the function that contains this new.target expression.
-            MetaPropertyKind::NewTarget { scope } => {
+            MetaPropertyKind::NewTarget { ref mut scope } => {
                 if self.is_in_non_arrow_function() {
-                    let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-                    let (def_scope, _) = self.scope_tree.resolve_use(
-                        current_scope,
-                        NEW_TARGET_BINDING_NAME,
-                        expr.loc,
-                    );
-                    *scope = def_scope;
+                    self.resolve_new_target_use(scope, expr.loc);
                 } else {
                     self.emit_error(expr.loc, ParseError::NewTargetOutsideFunction);
                 }
@@ -644,7 +654,13 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression) {
         match self.enclosing_non_arrow_function() {
-            Some(FunctionStackEntry { is_derived_constructor: true, .. }) => {}
+            Some(FunctionStackEntry { is_derived_constructor: true, .. }) => {
+                // A super call implicitly uses the current derived constructor, new.target, and
+                // this, so resolve them.
+                self.resolve_derived_constructor_use(&mut expr.constructor_scope, expr.loc);
+                self.resolve_new_target_use(&mut expr.new_target_scope, expr.loc);
+                self.resolve_this_use(expr.loc, |scope| expr.this_scope = scope);
+            }
             _ => self.emit_error(expr.loc, ParseError::SuperCallOutsideDerivedConstructor),
         }
 
@@ -668,7 +684,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_this_expression(&mut self, this: &mut ThisExpression) {
-        self.resolve_this_use(this);
+        self.resolve_this_use(this.loc, |scope| this.scope = Some(scope));
     }
 
     fn visit_call_expression(&mut self, expr: &mut CallExpression) {
@@ -937,7 +953,7 @@ impl Analyzer<'_> {
             func.set_is_arguments_object_needed(is_arguments_object_needed);
 
             if func.scope.as_ref().has_binding(NEW_TARGET_BINDING_NAME) {
-                func.set_is_new_target_object_needed(true);
+                func.set_is_new_target_needed(true);
             }
         }
 
@@ -1286,20 +1302,42 @@ impl Analyzer<'_> {
         }
     }
 
-    fn resolve_identifier_use(&mut self, id: &mut Identifier) {
+    fn resolve_use(&mut self, result_scope: &mut TaggedResolvedScope, name: &str, loc: Loc) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        let (def_scope, _) = self.scope_tree.resolve_use(current_scope, &id.name, id.loc);
-        id.scope = def_scope;
+        let (def_scope, _) = self.scope_tree.resolve_use(current_scope, name, loc);
+        *result_scope = def_scope;
     }
 
-    fn resolve_this_use(&mut self, this: &mut ThisExpression) {
-        let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, "this", this.loc);
+    fn resolve_identifier_use(&mut self, id: &mut Identifier) {
+        self.resolve_use(&mut id.scope, &id.name, id.loc);
+    }
 
-        // Only set scope is this is a capture of a `this` binding
-        if is_capture {
-            this.scope = Some(AstPtr::from_ref(def_scope.unwrap_resolved()));
+    fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode>)) {
+        let current_scope = self.scope_stack.last().unwrap().as_ref().id();
+        let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, "this", loc);
+
+        // Only set scope if this is a capture of a `this` binding or if `this` is for a derived
+        // constructor.
+        let is_derived_constructor_this = matches!(
+            self.enclosing_non_arrow_function(),
+            Some(FunctionStackEntry { is_derived_constructor: true, .. })
+        );
+
+        if is_capture || is_derived_constructor_this {
+            set_scope(AstPtr::from_ref(def_scope.unwrap_resolved()));
         }
+    }
+
+    fn resolve_new_target_use(&mut self, result_scope: &mut TaggedResolvedScope, loc: Loc) {
+        self.resolve_use(result_scope, NEW_TARGET_BINDING_NAME, loc);
+    }
+
+    fn resolve_derived_constructor_use(
+        &mut self,
+        result_scope: &mut TaggedResolvedScope,
+        loc: Loc,
+    ) {
+        self.resolve_use(result_scope, DERIVED_CONSTRUCTOR_BINDING_NAME, loc);
     }
 }
 

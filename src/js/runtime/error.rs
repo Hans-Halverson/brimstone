@@ -9,7 +9,7 @@ fn syntax_error_value(cx: Context, message: &str) -> Handle<Value> {
     SyntaxError::new_with_message(cx, message.to_owned()).into()
 }
 
-fn type_error_value(cx: Context, message: &str) -> Handle<Value> {
+pub fn type_error_value(cx: Context, message: &str) -> Handle<Value> {
     TypeError::new_with_message(cx, message.to_owned()).into()
 }
 

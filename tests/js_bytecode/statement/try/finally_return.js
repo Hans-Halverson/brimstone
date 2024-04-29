@@ -8,6 +8,16 @@ function singleTryReturn(p) {
   }
 }
 
+function singleUndefinedReturn(p) {
+  try {
+    if (p) {
+      return;
+    }
+  } finally {
+    1;
+  }
+}
+
 function singleCatchReturn(p) {
   try {
     1;

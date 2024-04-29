@@ -35,14 +35,14 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 49 fe 00   NewClosure r1, c0
+     0: 4a fe 00   NewClosure r1, c0
      3: 0f fe 01   StoreDynamic r1, c1
      6: 04 ff 02   LoadConstant r0, c2
      9: 03 fe 01   LoadImmediate r1, 1
     12: 0f fe 03   StoreDynamic r1, c3
-    15: 57 ff 03   DeleteBinding r0, c3
-    18: 57 ff 01   DeleteBinding r0, c1
-    21: 17 ff      Ret r0
+    15: 58 ff 03   DeleteBinding r0, c3
+    18: 58 ff 01   DeleteBinding r0, c1
+    21: 18 ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -53,19 +53,19 @@
 [BytecodeFunction: f] {
   Parameters: 0, Registers: 1
     0: 05 ff   LoadUndefined r0
-    2: 17 ff   Ret r0
+    2: 18 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 49 fe 00   NewClosure r1, c0
+     0: 4a fe 00   NewClosure r1, c0
      3: 0f fe 01   StoreDynamic r1, c1
      6: 04 ff 02   LoadConstant r0, c2
      9: 03 fe 01   LoadImmediate r1, 1
     12: 0f fe 03   StoreDynamic r1, c3
-    15: 57 ff 03   DeleteBinding r0, c3
-    18: 57 ff 01   DeleteBinding r0, c1
-    21: 17 ff      Ret r0
+    15: 58 ff 03   DeleteBinding r0, c3
+    18: 58 ff 01   DeleteBinding r0, c1
+    21: 18 ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: f]
     1: [String: f]
@@ -76,6 +76,6 @@
 [BytecodeFunction: f] {
   Parameters: 0, Registers: 1
     0: 05 ff   LoadUndefined r0
-    2: 17 ff   Ret r0
+    2: 18 ff   Ret r0
 }
 

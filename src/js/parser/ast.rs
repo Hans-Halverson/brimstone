@@ -409,7 +409,7 @@ impl Function {
         self.flags.contains(FunctionFlags::IS_NEW_TARGET_NEEDED)
     }
 
-    pub fn set_is_new_target_object_needed(&mut self, is_needed: bool) {
+    pub fn set_is_new_target_needed(&mut self, is_needed: bool) {
         self.flags
             .set(FunctionFlags::IS_NEW_TARGET_NEEDED, is_needed);
     }
@@ -724,6 +724,17 @@ pub struct ThrowStatement {
 pub struct ReturnStatement {
     pub loc: Loc,
     pub argument: Option<P<OuterExpression>>,
+
+    /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
+    /// `ThisExpression` node, but only set if this return is in a derived constructor (meaning the
+    /// derived constructor's `this` may be implicitly returned).
+    pub this_scope: Option<AstPtr<AstScopeNode>>,
+}
+
+impl ReturnStatement {
+    pub fn new(loc: Loc, argument: Option<P<OuterExpression>>) -> ReturnStatement {
+        ReturnStatement { loc, argument, this_scope: None }
+    }
 }
 
 pub struct BreakStatement {
@@ -1056,8 +1067,8 @@ pub struct ThisExpression {
     /// Reference to the scope that contains the binding for `this`, which may be a parent scope if
     /// `this` is captured by an arrow function.
     ///
-    /// Starts out uninitialized during parsing and is set during analysis, but only if resolved to
-    /// a captured `this` binding.
+    /// Starts out uninitialized during parsing and is set during analysis. Only set if resolved to
+    /// a captured `this` binding, or if referring to `this` of a derived constructor.
     pub scope: Option<AstPtr<AstScopeNode>>,
 }
 
@@ -1083,6 +1094,31 @@ pub struct SuperCallExpression {
     pub loc: Loc,
     pub super_: Loc,
     pub arguments: Vec<CallArgument>,
+
+    /// Reference to the function scope that contains the binding for the containing derived
+    /// constructor, or tagged as unresolved dynamic if the scope could not be statically determined.
+    pub constructor_scope: TaggedResolvedScope,
+
+    /// Reference to the function scope that contains the binding for this new.target, or tagged
+    /// as unresolved dynamic if the scope could not be statically determined.
+    pub new_target_scope: TaggedResolvedScope,
+
+    /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
+    /// `ThisExpression` node, but is always set since it refers to a derived constructor's `this`.
+    pub this_scope: AstPtr<AstScopeNode>,
+}
+
+impl SuperCallExpression {
+    pub fn new(loc: Loc, super_loc: Loc, arguments: Vec<CallArgument>) -> Self {
+        Self {
+            loc,
+            super_: super_loc,
+            arguments,
+            constructor_scope: TaggedResolvedScope::unresolved_global(),
+            new_target_scope: TaggedResolvedScope::unresolved_global(),
+            this_scope: AstPtr::uninit(),
+        }
+    }
 }
 
 pub struct TemplateLiteral {

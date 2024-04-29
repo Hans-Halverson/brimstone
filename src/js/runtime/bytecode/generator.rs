@@ -16,7 +16,7 @@ use crate::js::{
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            NEW_TARGET_BINDING_NAME,
+            DERIVED_CONSTRUCTOR_BINDING_NAME, NEW_TARGET_BINDING_NAME,
         },
         source::Source,
     },
@@ -152,7 +152,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Scope end not needed since the script function returns
 
             // Implicitly return undefined at end of script function
-            generator.gen_return_undefined()?;
+            generator.gen_return(
+                /* return_arg */ None, /* derived_constructor_scope */ None,
+            )?;
 
             emit_result = generator.finish();
 
@@ -242,7 +244,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
             // Scope end not needed since the eval function returns
 
             // Return the statement completion from eval
-            generator.gen_return(statement_completion_dest)?;
+            generator.gen_return(
+                /* return_arg */ Some(statement_completion_dest),
+                /* derived_constructor_scope */ None,
+            )?;
             generator
                 .register_allocator
                 .release(statement_completion_dest);
@@ -298,6 +303,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
             None,
             self.source_file,
             is_constructor,
+            /* is_class_constructor */ false,
+            /* is_base_constructor */ is_constructor,
         )?;
 
         let emit_result = generator.generate(function, /* class_fields */ &[])?;
@@ -331,7 +338,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         HandleScope::new(self.cx, |_| {
             // Special handling if emitting a default constructor
-            if let PendingFunctionNode::Constructor { node: None, name, fields } = &func_node {
+            if let PendingFunctionNode::Constructor { node: None, name, fields, is_base } =
+                &func_node
+            {
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
                     &self.scope_tree,
@@ -340,6 +349,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.realm,
                     &name,
                     self.source_file,
+                    /* is_base_constructor */ *is_base,
                 )?;
 
                 emit_result = generator.generate_default_constructor(&fields)?;
@@ -348,6 +358,17 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let func = func_ptr.as_ref();
 
                 let is_constructor = func_node.is_constructor();
+                let is_class_constructor;
+                let is_base_constructor;
+
+                if let PendingFunctionNode::Constructor { is_base, .. } = &func_node {
+                    is_class_constructor = true;
+                    is_base_constructor = *is_base;
+                } else {
+                    is_class_constructor = false;
+                    is_base_constructor = is_constructor;
+                }
+
                 let default_name = func_node.default_name();
 
                 let class_fields: &[ClassField] = match &func_node {
@@ -365,6 +386,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     default_name,
                     self.source_file,
                     is_constructor,
+                    is_class_constructor,
+                    is_base_constructor,
                 )?;
 
                 emit_result = generator.generate(func, class_fields)?;
@@ -506,10 +529,16 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Whether this function is in strict mode.
     is_strict: bool,
 
-    /// Whether this function is a constructor
+    /// Whether this function is a constructor.
     is_constructor: bool,
 
-    /// Index of the reigster in which to place the new.target value for this function, if one is
+    /// Whether this function is a class constructor.
+    is_class_constructor: bool,
+
+    /// Whether this function is a base constructor.
+    is_base_constructor: bool,
+
+    /// Index of the register in which to place the new.target value for this function, if one is
     /// needed.
     new_target_index: Option<u32>,
 
@@ -544,6 +573,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         num_local_registers: u32,
         is_strict: bool,
         is_constructor: bool,
+        is_class_constructor: bool,
+        is_base_constructor: bool,
     ) -> Self {
         Self {
             writer: BytecodeWriter::new(),
@@ -565,6 +596,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             function_length,
             is_strict,
             is_constructor,
+            is_class_constructor,
+            is_base_constructor,
             new_target_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
@@ -585,6 +618,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         default_name: Option<&Wtf8String>,
         source_file: Handle<SourceFile>,
         is_constructor: bool,
+        is_class_constructor: bool,
+        is_base_constructor: bool,
     ) -> EmitResult<Self> {
         // Stored number of parameters does not count the rest parameter
         let num_parameters = if let Some(ast::FunctionParam::Rest { .. }) = func.params.last() {
@@ -638,6 +673,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_local_registers as u32,
             func.is_strict_mode(),
             is_constructor,
+            is_class_constructor,
+            is_base_constructor,
         ))
     }
 
@@ -674,6 +711,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             num_local_registers as u32,
             program.is_strict_mode,
             /* is_constructor */ false,
+            /* is_class_constructor */ false,
+            /* is_base_constructor */ false,
         ))
     }
 
@@ -685,8 +724,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         name: &Wtf8String,
         source_file: Handle<SourceFile>,
+        is_base_constructor: bool,
     ) -> EmitResult<Self> {
-        Ok(Self::new(
+        // First local register used for new target in derived constructors
+        let num_local_registers = if is_base_constructor { 0 } else { 1 };
+
+        let mut generator = Self::new(
             cx,
             scope_tree,
             scope,
@@ -697,10 +740,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             0..0,
             /* num_parameters */ 0,
             /* function_length */ 0,
-            /* num_local_registers */ 0,
+            num_local_registers,
             /* is_strict_mode */ true,
             /* is_constructor */ true,
-        ))
+            /* is_class_constructor */ true,
+            is_base_constructor,
+        );
+
+        if !is_base_constructor {
+            generator.new_target_index = Some(0);
+        }
+
+        Ok(generator)
     }
 
     fn enter_has_assign_expr_context(&mut self, has_assign_expr: bool) {
@@ -713,6 +764,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn set_statement_completion_dest(&mut self, dest: GenRegister) {
         self.statement_completion_dest = Some(dest);
+    }
+
+    fn is_derived_constructor(&self) -> bool {
+        self.is_constructor && !self.is_base_constructor
     }
 
     fn new_block(&mut self) -> BlockId {
@@ -1110,6 +1165,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        // In derived constructors `this` starts unintialized, here represented by the empty value
+        if self.is_derived_constructor() {
+            self.writer.load_empty_instruction(Register::this());
+        }
+
         // Store the captured `this` right away if necessary
         if !func.is_arrow() {
             self.gen_store_captured_this(func_scope)?;
@@ -1119,6 +1179,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some((scope_id, index, new_target_register)) = new_target_to_store {
             self.gen_store_scope_binding(scope_id, index, new_target_register)?;
             self.register_allocator.release(new_target_register);
+        }
+
+        // Set the closure itself as the derived constructor if necessary
+        if func_scope.has_binding(DERIVED_CONSTRUCTOR_BINDING_NAME) {
+            self.gen_store_binding(
+                DERIVED_CONSTRUCTOR_BINDING_NAME,
+                func_scope.get_binding(DERIVED_CONSTRUCTOR_BINDING_NAME),
+                Register::closure(),
+                StoreFlags::INITIALIZATION,
+            )?;
         }
 
         // Generate the arguments object if necessary. For mapped arguments object this also places
@@ -1219,17 +1289,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Scope end not needed since the function immediately returns
 
+                let mut derived_constructor_scope = None;
+                if self.is_derived_constructor() {
+                    derived_constructor_scope = Some(func.scope);
+                }
+
                 // If the body continues, meaning there was no return statement (or throw, break,
                 // etc.) then implicitly return undefined.
                 if !body_completion.is_abrupt() {
-                    self.gen_return_undefined()?;
+                    self.gen_return(/* return_arg */ None, derived_constructor_scope)?;
                 }
             }
             ast::FunctionBody::Expression(expr_body) => {
                 let return_value_reg = self.gen_outer_expression(expr_body)?;
 
                 // Scope end not needed since the function immediately returns
-                self.gen_return(return_value_reg)?;
+
+                // Derived constructors cannot have an expression body
+                self.gen_return(
+                    /* return_arg */ Some(return_value_reg),
+                    /* derived_constructor_scope */ None,
+                )?;
                 self.register_allocator.release(return_value_reg);
             }
         }
@@ -1265,6 +1345,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.function_length,
             self.is_strict,
             self.is_constructor,
+            self.is_class_constructor,
+            self.is_base_constructor,
             self.new_target_index,
             name,
             Some(self.source_file),
@@ -1282,13 +1364,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         mut self,
         class_fields: &[ClassField],
     ) -> EmitResult<EmitFunctionResult> {
+        // Call super constructor if necessary
+        if self.is_derived_constructor() {
+            self.writer.default_super_call_instruction();
+        }
+
         // Emit fields if any exist, defined onto the `this` value
         for field in class_fields {
             self.gen_class_field(field, Register::this())?;
         }
 
-        // Base default constructor is equivalent to `constructor() {}`, so simply return undefined
-        self.gen_return_undefined()?;
+        // Return undefined for a base constructor and `this` for a derived constructor. No default
+        // constructor scope is needed since it is only needed if `this` is captured.
+        self.gen_return(/* return_arg */ None, /* default_constructor_scope */ None)?;
+
         Ok(self.finish())
     }
 
@@ -1390,7 +1479,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::SuperMember(_) => {
                 unimplemented!("bytecode for super member expressions")
             }
-            ast::Expression::SuperCall(_) => unimplemented!("bytecode for super call expressions"),
+            ast::Expression::SuperCall(expr) => self.gen_super_call_expression(expr, dest),
             ast::Expression::Template(expr) => self.gen_template_literal_expression(expr, dest),
             ast::Expression::TaggedTemplate(expr) => {
                 self.gen_tagged_template_expression(expr, dest)
@@ -1953,19 +2042,42 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ThisExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        // If scope has been resolved this must be a captured `this`. Load from scope directly to
+        let mut needs_init_check = false;
+
+        // If scope has been resolved this may be a captured `this`. Load from scope directly to
         // the dest.
-        if let Some(scope) = expr.scope.as_ref() {
+        let this_value = if let Some(scope) = expr.scope.as_ref() {
             let binding = scope.as_ref().get_binding("this");
-            match binding.vm_location().unwrap() {
-                VMLocation::Scope { scope_id, index } => {
-                    return self.gen_load_scope_binding(scope_id, index, dest)
-                }
-                _ => unreachable!("resolved `this` scopes must be a capture"),
+
+            if let BindingKind::ImplicitThis { in_derived_constructor: true } = binding.kind() {
+                needs_init_check = true;
             }
+
+            match binding.vm_location() {
+                Some(VMLocation::Scope { scope_id, index }) => {
+                    self.gen_load_scope_binding(scope_id, index, dest)?
+                }
+                _ => {
+                    // A scope may be resolved but `this` is not captured in some cases, e.g. for
+                    // `this` in a derived constructor.
+                    self.gen_mov_reg_to_dest(Register::this(), dest)?
+                }
+            }
+        } else {
+            // Otherwise `this` is for the current function
+            if self.is_derived_constructor() {
+                needs_init_check = true;
+            }
+
+            self.gen_mov_reg_to_dest(Register::this(), dest)?
+        };
+
+        // Check if this was initialized
+        if needs_init_check {
+            self.writer.check_this_initialized_instruction(this_value);
         }
 
-        self.gen_mov_reg_to_dest(Register::this(), dest)
+        Ok(this_value)
     }
 
     fn gen_unary_minus_expression(
@@ -3666,6 +3778,91 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    fn gen_super_call_expression(
+        &mut self,
+        super_call: &ast::SuperCallExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        // Super calls implicitly use the surrounding derived constructor, so load it to register
+        let derived_constructor = self.gen_resolved_or_dynamic_binding(
+            super_call.constructor_scope,
+            DERIVED_CONSTRUCTOR_BINDING_NAME,
+            ExprDest::Any,
+        )?;
+
+        self.register_allocator.release(derived_constructor);
+        let super_constructor = self.register_allocator.allocate()?;
+
+        self.writer
+            .get_super_constructor_instruction(super_constructor, derived_constructor);
+
+        // Super calls implicitly use the new.target, so load it to a register
+        let new_target =
+            self.gen_new_target_expression(super_call.new_target_scope, ExprDest::Any)?;
+
+        // Generate the arguments to the super call
+        let args = self.gen_call_arguments(&super_call.arguments, new_target)?;
+
+        // Release remaining call registers before allocating dest
+        if let CallArgs::Varargs { args, .. } = &args {
+            self.register_allocator.release(*args);
+        }
+        self.register_allocator.release(new_target);
+        self.register_allocator.release(super_constructor);
+
+        // Generate the super call itself
+        let call_result = self.allocate_destination(dest)?;
+
+        match args {
+            CallArgs::Varargs { args, .. } => {
+                self.writer.construct_varargs_instruction(
+                    call_result,
+                    super_constructor,
+                    new_target,
+                    args,
+                );
+            }
+            CallArgs::Normal { argv, argc } => {
+                self.writer.construct_instruction(
+                    call_result,
+                    super_constructor,
+                    new_target,
+                    argv,
+                    argc,
+                );
+            }
+        }
+
+        // Load `this` value to a register if `this` was captured
+        let mut captured_this = None;
+        let this_value = if let Some(VMLocation::Scope { scope_id, index }) = super_call
+            .this_scope
+            .as_ref()
+            .get_binding("this")
+            .vm_location()
+        {
+            captured_this = Some((scope_id, index));
+            self.gen_load_scope_binding(scope_id, index, ExprDest::Any)?
+        } else {
+            Register::this()
+        };
+
+        // Check if super was already called and initialized `this` value, erroring if so
+        self.writer
+            .check_super_already_called_instruction(this_value);
+
+        self.register_allocator.release(this_value);
+
+        // Always store the result of the super call as the value of `this`
+        if let Some((scope_id, index)) = captured_this {
+            self.gen_store_scope_binding(scope_id, index, call_result)?;
+        } else {
+            self.write_mov_instruction(Register::this(), call_result);
+        }
+
+        Ok(call_result)
+    }
+
     fn gen_template_literal_expression(
         &mut self,
         template: &ast::TemplateLiteral,
@@ -3756,23 +3953,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_mov_reg_to_dest(acc, dest)
     }
 
+    fn gen_resolved_or_dynamic_binding(
+        &mut self,
+        scope: TaggedResolvedScope,
+        name: &str,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        match scope.kind() {
+            ResolvedScope::UnresolvedGlobal => {
+                unreachable!("cannot be resolved to UnresolvedGlobal")
+            }
+            ResolvedScope::UnresolvedDynamic => self.gen_load_dynamic_identifier(name, dest),
+            ResolvedScope::Resolved => {
+                let binding = scope.unwrap_resolved().get_binding(name);
+                self.gen_load_binding(name, binding, dest)
+            }
+        }
+    }
+
     fn gen_new_target_expression(
         &mut self,
         scope: TaggedResolvedScope,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        match scope.kind() {
-            ResolvedScope::UnresolvedGlobal => {
-                unreachable!("new.target cannot be resolved to UnresolvedGlobal")
-            }
-            ResolvedScope::UnresolvedDynamic => {
-                self.gen_load_dynamic_identifier(NEW_TARGET_BINDING_NAME, dest)
-            }
-            ResolvedScope::Resolved => {
-                let binding = scope.unwrap_resolved().get_binding(NEW_TARGET_BINDING_NAME);
-                self.gen_load_binding(NEW_TARGET_BINDING_NAME, binding, dest)
-            }
-        }
+        self.gen_resolved_or_dynamic_binding(scope, NEW_TARGET_BINDING_NAME, dest)
     }
 
     fn gen_variable_declaration(
@@ -4484,7 +4688,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         // Create the constructor's static BytecodeFunction
-        let pending_constructor = PendingFunctionNode::Constructor { node, name, fields };
+        let is_base = class.super_class.is_none();
+        let pending_constructor = PendingFunctionNode::Constructor { node, name, fields, is_base };
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
         // ClassNames object is stored in the constant table
@@ -5948,7 +6153,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 discriminant,
                 test_value,
             )?;
-            self.gen_return(result)?;
+            self.gen_return(Some(result), finally_scope.derived_constructor_scope)?;
             i += 1;
         }
 
@@ -6024,29 +6229,92 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<StmtCompletion> {
+        let derived_constructor_scope = stmt.this_scope;
+
         if stmt.argument.is_none() {
-            self.gen_return_undefined()?;
+            self.gen_return(/* return_arg */ None, derived_constructor_scope)?;
             return Ok(StmtCompletion::Abrupt);
         }
 
         let return_arg = self.gen_outer_expression(stmt.argument.as_ref().unwrap())?;
-        self.gen_return(return_arg)?;
+        self.gen_return(Some(return_arg), derived_constructor_scope)?;
         self.register_allocator.release(return_arg);
 
         Ok(StmtCompletion::Abrupt)
     }
 
-    /// Return a value from the current function.
+    /// Return a value from the current function, returning `undefined` if no value is provided.
     ///
     /// May not emit a return instruction directly, e.g. if return is within a finally scope.
-    fn gen_return(&mut self, return_arg: GenRegister) -> EmitResult<()> {
+    fn gen_return(
+        &mut self,
+        return_arg: Option<GenRegister>,
+        derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
+    ) -> EmitResult<()> {
         // If not in a finally scope we can return directly
         if self.finally_scopes.is_empty() {
-            self.writer.ret_instruction(return_arg);
+            // If in a derived constructor we must check if we are returning undefined, in which
+            // case we return the `this` value instead.
+            if self.is_derived_constructor() {
+                // This value may be loaded from a scope if captured
+                let gen_this_value = |this: &mut Self, dest: ExprDest| {
+                    if let Some(scope) = derived_constructor_scope {
+                        if let Some(VMLocation::Scope { scope_id, index }) =
+                            scope.as_ref().get_binding("this").vm_location()
+                        {
+                            return this.gen_load_scope_binding(scope_id, index, dest);
+                        }
+                    }
+
+                    Ok(Register::this())
+                };
+
+                if let Some(return_arg) = return_arg {
+                    let return_value = self.register_allocator.allocate()?;
+                    let return_block = self.new_block();
+
+                    // Set the return arg as the return value
+                    self.write_mov_instruction(return_value, return_arg);
+
+                    // If the return arg is not undefined then return it directly. Otherwise overwrite
+                    // the return value with `this` and return `this` instead.
+                    self.write_jump_not_undefined_instruction(return_arg, return_block)?;
+
+                    let this_value = gen_this_value(self, ExprDest::Fixed(return_value))?;
+                    self.writer.check_this_initialized_instruction(this_value);
+                    self.write_mov_instruction(return_value, this_value);
+
+                    self.start_block(return_block);
+                    self.writer.ret_instruction(return_value);
+                    self.register_allocator.release(return_value);
+
+                    return Ok(());
+                } else {
+                    // If no return argument is provided then derived constructor returns `this`.
+                    // Must first assert that `this` was initialized.
+                    let this_value = gen_this_value(self, ExprDest::Any)?;
+                    self.writer.check_this_initialized_instruction(this_value);
+                    self.writer.ret_instruction(this_value);
+                    self.register_allocator.release(this_value);
+
+                    return Ok(());
+                }
+            }
+
+            if let Some(return_arg) = return_arg {
+                // Return the value directly if one was provided
+                self.writer.ret_instruction(return_arg);
+            } else {
+                // Otherwise load undefined then return it
+                let return_arg = self.register_allocator.allocate()?;
+                self.writer.load_undefined_instruction(return_arg);
+                self.writer.ret_instruction(return_arg);
+                self.register_allocator.release(return_arg);
+            }
         } else {
             // If in a finally scope we must mark the finally as having a return branch
             let finally_scope = self.current_finally_scope().unwrap();
-            let return_branch_id = finally_scope.add_return_branch();
+            let return_branch_id = finally_scope.add_return_branch(derived_constructor_scope);
             let discriminant_register = finally_scope.discriminant_register;
             let result_register = finally_scope.result_register;
             let finally_block = finally_scope.finally_block;
@@ -6054,7 +6322,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Then jump to the finally block with return value in the shared result register,
             // marking that we should follow the return branch after the finally completes.
             self.gen_load_finally_branch_id(return_branch_id, discriminant_register)?;
-            self.write_mov_instruction(result_register, return_arg);
+
+            // Save the return arg in the result register if one was provided, otherwise save
+            // undefined.
+            if let Some(return_arg) = return_arg {
+                self.write_mov_instruction(result_register, return_arg);
+            } else {
+                self.writer.load_undefined_instruction(result_register);
+            }
+
             self.write_jump_instruction(finally_block)?;
         }
 
@@ -6095,15 +6371,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // the stack.
         self.unwind_scope_chain_to_scope(target_scope_id)?;
         self.write_jump_instruction(target_block_id)?;
-
-        Ok(())
-    }
-
-    fn gen_return_undefined(&mut self) -> EmitResult<()> {
-        let return_arg = self.register_allocator.allocate()?;
-        self.writer.load_undefined_instruction(return_arg);
-        self.gen_return(return_arg)?;
-        self.register_allocator.release(return_arg);
 
         Ok(())
     }
@@ -6370,6 +6637,7 @@ enum PendingFunctionNode {
         node: Option<AstPtr<ast::Function>>,
         name: Wtf8String,
         fields: Vec<ClassField>,
+        is_base: bool,
     },
 }
 
@@ -6545,6 +6813,9 @@ struct FinallyScope {
     /// Set if the target block has a return statement, which must first continue to the finally
     /// block before performing the return.
     return_branch: Option<FinallyBranchId>,
+    /// The scope of the derived constructor that this finally scope is within, if any. Only set if
+    /// there is a return branch within a derived constructor.
+    derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
     /// All break and continue statements in the target block, which muts first continue to the
     /// finally block before performing the break or continue.
     jump_target_branches: Vec<JumpTargetBranch>,
@@ -6582,6 +6853,7 @@ impl FinallyScope {
             throw_branch: 0,
             normal_branch: None,
             return_branch: None,
+            derived_constructor_scope: None,
             jump_target_branches: Vec::new(),
             num_branches: 1,
         }
@@ -6613,12 +6885,16 @@ impl FinallyScope {
         }
     }
 
-    fn add_return_branch(&mut self) -> FinallyBranchId {
+    fn add_return_branch(
+        &mut self,
+        derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
+    ) -> FinallyBranchId {
         if let Some(return_branch) = self.return_branch {
             return_branch
         } else {
             let next_branch_id = self.next_branch_id();
             self.return_branch = Some(next_branch_id);
+            self.derived_constructor_scope = derived_constructor_scope;
             next_branch_id
         }
     }

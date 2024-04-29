@@ -117,12 +117,12 @@
      0: 04 ff 00      LoadConstant r0, c0
      3: 03 fe 01      LoadImmediate r1, 1
      6: 03 fd 02      LoadImmediate r2, 2
-     9: 18 ff fe fd   Add r0, r1, r2
+     9: 19 ff fe fd   Add r0, r1, r2
     13: 0d fe 01      LoadDynamic r1, c1
     16: 0d fd 02      LoadDynamic r2, c2
-    19: 18 ff fe fd   Add r0, r1, r2
+    19: 19 ff fe fd   Add r0, r1, r2
     23: 04 ff 03      LoadConstant r0, c3
-    26: 17 ff         Ret r0
+    26: 18 ff         Ret r0
   Constant Table:
     0: [String: expression statement completions]
     1: [String: a]
@@ -137,13 +137,13 @@
      6: 0f fe 01   StoreDynamic r1, c1
      9: 05 ff      LoadUndefined r0
     11: 0d fe 01   LoadDynamic r1, c1
-    14: 41 fe 08   JumpToBooleanFalse r1, 8 (.L0)
+    14: 42 fe 08   JumpToBooleanFalse r1, 8 (.L0)
     17: 03 ff 01   LoadImmediate r0, 1
-    20: 39 05      Jump 5 (.L1)
+    20: 3a 05      Jump 5 (.L1)
   .L0:
     22: 03 ff 02   LoadImmediate r0, 2
   .L1:
-    25: 17 ff      Ret r0
+    25: 18 ff      Ret r0
   Constant Table:
     0: [String: inner completions]
     1: [String: a]
@@ -154,10 +154,10 @@
      0: 04 ff 00   LoadConstant r0, c0
      3: 05 ff      LoadUndefined r0
      5: 08 fe      LoadTrue r1
-     7: 3f fe 06   JumpFalse r1, 6 (.L0)
+     7: 40 fe 06   JumpFalse r1, 6 (.L0)
     10: 03 ff 01   LoadImmediate r0, 1
   .L0:
-    13: 17 ff      Ret r0
+    13: 18 ff      Ret r0
   Constant Table:
     0: [String: if completion]
 }
@@ -167,9 +167,9 @@
     0: 04 ff 00   LoadConstant r0, c0
     3: 05 ff      LoadUndefined r0
     5: 08 fe      LoadTrue r1
-    7: 39 02      Jump 2 (.L0)
+    7: 3a 02      Jump 2 (.L0)
   .L0:
-    9: 17 ff      Ret r0
+    9: 18 ff      Ret r0
   Constant Table:
     0: [String: switch completion]
 }
@@ -180,11 +180,11 @@
      3: 05 ff      LoadUndefined r0
   .L0:
      5: 09 fe      LoadFalse r1
-     7: 3f fe 08   JumpFalse r1, 8 (.L1)
+     7: 40 fe 08   JumpFalse r1, 8 (.L1)
     10: 03 ff 01   LoadImmediate r0, 1
-    13: 39 f8      Jump -8 (.L0)
+    13: 3a f8      Jump -8 (.L0)
   .L1:
-    15: 17 ff      Ret r0
+    15: 18 ff      Ret r0
   Constant Table:
     0: [String: while completion]
 }
@@ -196,23 +196,23 @@
   .L0:
      5: 03 ff 01   LoadImmediate r0, 1
      8: 09 fe      LoadFalse r1
-    10: 3b fe fb   JumpTrue r1, -5 (.L0)
-    13: 17 ff      Ret r0
+    10: 3c fe fb   JumpTrue r1, -5 (.L0)
+    13: 18 ff      Ret r0
   Constant Table:
     0: [String: do-while completion]
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 5b 00         PushLexicalScope c0
-     2: 61 07 00 00   StoreToScope <this>, 0, 0
+     0: 5c 00         PushLexicalScope c0
+     2: 62 07 00 00   StoreToScope <this>, 0, 0
      6: 04 ff 01      LoadConstant r0, c1
      9: 05 ff         LoadUndefined r0
-    11: 4a fe         NewObject r1
-    13: 5d fe 02      PushWithScope r1, c2
+    11: 4b fe         NewObject r1
+    13: 5e fe 02      PushWithScope r1, c2
     16: 03 ff 01      LoadImmediate r0, 1
-    19: 5e            PopScope 
-    20: 17 ff         Ret r0
+    19: 5f            PopScope 
+    20: 18 ff         Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: with completion]
@@ -225,11 +225,11 @@
      3: 05 ff      LoadUndefined r0
   .L0:
      5: 09 fe      LoadFalse r1
-     7: 3f fe 08   JumpFalse r1, 8 (.L1)
+     7: 40 fe 08   JumpFalse r1, 8 (.L1)
     10: 03 ff 01   LoadImmediate r0, 1
-    13: 39 f8      Jump -8 (.L0)
+    13: 3a f8      Jump -8 (.L0)
   .L1:
-    15: 17 ff      Ret r0
+    15: 18 ff      Ret r0
   Constant Table:
     0: [String: for completion]
 }
@@ -238,17 +238,17 @@
   Parameters: 0, Registers: 3
      0: 04 ff 00   LoadConstant r0, c0
      3: 05 ff      LoadUndefined r0
-     5: 4a fe      NewObject r1
-     7: 45 fe 14   JumpNullish r1, 20 (.L1)
-    10: 66 fe fe   NewForInIterator r1, r1
+     5: 4b fe      NewObject r1
+     7: 46 fe 14   JumpNullish r1, 20 (.L1)
+    10: 6a fe fe   NewForInIterator r1, r1
   .L0:
-    13: 67 fd fe   ForInNext r2, r1
-    16: 45 fd 0b   JumpNullish r2, 11 (.L1)
+    13: 6b fd fe   ForInNext r2, r1
+    16: 46 fd 0b   JumpNullish r2, 11 (.L1)
     19: 0f fd 01   StoreDynamic r2, c1
     22: 03 ff 01   LoadImmediate r0, 1
-    25: 39 f4      Jump -12 (.L0)
+    25: 3a f4      Jump -12 (.L0)
   .L1:
-    27: 17 ff      Ret r0
+    27: 18 ff      Ret r0
   Constant Table:
     0: [String: for-in completion]
     1: [String: x]
@@ -258,23 +258,23 @@
   Parameters: 0, Registers: 6
      0: 04 ff 00         LoadConstant r0, c0
      3: 05 ff            LoadUndefined r0
-     5: 4b fc            NewArray r3
-     7: 68 fe fd fc      GetIterator r1, r2, r3
+     5: 4c fc            NewArray r3
+     7: 6c fe fd fc      GetIterator r1, r2, r3
   .L0:
-    11: 69 fc fb fe fd   IteratorNext r3, r4, r1, r2
-    16: 3b fb 1a         JumpTrue r4, 26 (.L2)
+    11: 6d fc fb fe fd   IteratorNext r3, r4, r1, r2
+    16: 3c fb 1a         JumpTrue r4, 26 (.L2)
     19: 0f fc 01         StoreDynamic r3, c1
     22: 02 fa 03         Mov r5, <scope>
     25: 03 ff 01         LoadImmediate r0, 1
-    28: 39 0c            Jump 12 (.L1)
+    28: 3a 0c            Jump 12 (.L1)
     30: 03 fc 00         LoadImmediate r3, 0
     33: 02 03 fa         Mov <scope>, r5
-    36: 6a fe            IteratorClose r1
-    38: 62 fb            Throw r4
+    36: 6e fe            IteratorClose r1
+    38: 63 fb            Throw r4
   .L1:
-    40: 39 e3            Jump -29 (.L0)
+    40: 3a e3            Jump -29 (.L0)
   .L2:
-    42: 17 ff            Ret r0
+    42: 18 ff            Ret r0
   Constant Table:
     0: [String: for-of completion]
     1: [String: x]
@@ -289,11 +289,11 @@
      3: 05 ff      LoadUndefined r0
      5: 02 fe 03   Mov r1, <scope>
      8: 03 ff 01   LoadImmediate r0, 1
-    11: 39 08      Jump 8 (.L0)
+    11: 3a 08      Jump 8 (.L0)
     13: 02 03 fe   Mov <scope>, r1
     16: 03 ff 02   LoadImmediate r0, 2
   .L0:
-    19: 17 ff      Ret r0
+    19: 18 ff      Ret r0
   Constant Table:
     0: [String: try-catch completion]
   Exception Handlers:
@@ -307,7 +307,7 @@
      6: 05 ff         LoadUndefined r0
      8: 03 ff 01      LoadImmediate r0, 1
     11: 03 fe 01      LoadImmediate r1, 1
-    14: 39 05         Jump 5 (.L0)
+    14: 3a 05         Jump 5 (.L0)
     16: 03 fe 00      LoadImmediate r1, 0
   .L0:
     19: 02 03 fc      Mov <scope>, r3
@@ -315,14 +315,14 @@
     25: 05 ff         LoadUndefined r0
     27: 03 ff 02      LoadImmediate r0, 2
     30: 03 fb 00      LoadImmediate r4, 0
-    33: 26 fb fe fb   StrictEqual r4, r1, r4
-    37: 3f fb 05      JumpFalse r4, 5 (.L1)
-    40: 62 fd         Throw r2
+    33: 27 fb fe fb   StrictEqual r4, r1, r4
+    37: 40 fb 05      JumpFalse r4, 5 (.L1)
+    40: 63 fd         Throw r2
   .L1:
     42: 02 ff fc      Mov r0, r3
-    45: 39 02         Jump 2 (.L2)
+    45: 3a 02         Jump 2 (.L2)
   .L2:
-    47: 17 ff         Ret r0
+    47: 18 ff         Ret r0
   Constant Table:
     0: [String: try-finally completion]
   Exception Handlers:
@@ -336,11 +336,11 @@
      6: 05 ff         LoadUndefined r0
      8: 03 ff 01      LoadImmediate r0, 1
     11: 03 fe 01      LoadImmediate r1, 1
-    14: 39 10         Jump 16 (.L0)
+    14: 3a 10         Jump 16 (.L0)
     16: 02 03 fc      Mov <scope>, r3
     19: 03 ff 02      LoadImmediate r0, 2
     22: 03 fe 01      LoadImmediate r1, 1
-    25: 39 05         Jump 5 (.L0)
+    25: 3a 05         Jump 5 (.L0)
     27: 03 fe 00      LoadImmediate r1, 0
   .L0:
     30: 02 03 fc      Mov <scope>, r3
@@ -348,14 +348,14 @@
     36: 05 ff         LoadUndefined r0
     38: 03 ff 03      LoadImmediate r0, 3
     41: 03 fb 00      LoadImmediate r4, 0
-    44: 26 fb fe fb   StrictEqual r4, r1, r4
-    48: 3f fb 05      JumpFalse r4, 5 (.L1)
-    51: 62 fd         Throw r2
+    44: 27 fb fe fb   StrictEqual r4, r1, r4
+    48: 40 fb 05      JumpFalse r4, 5 (.L1)
+    51: 63 fd         Throw r2
   .L1:
     53: 02 ff fc      Mov r0, r3
-    56: 39 02         Jump 2 (.L2)
+    56: 3a 02         Jump 2 (.L2)
   .L2:
-    58: 17 ff         Ret r0
+    58: 18 ff         Ret r0
   Constant Table:
     0: [String: try-catch-finally completion]
   Exception Handlers:

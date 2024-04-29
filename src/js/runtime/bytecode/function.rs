@@ -225,8 +225,13 @@ pub struct BytecodeFunction {
     function_length: u32,
     /// Whether this function is in strict mode.
     is_strict: bool,
-    /// Whether this function is a constructor
+    /// Whether this function is a constructor.
     is_constructor: bool,
+    /// Whether this function is a class constructor.
+    is_class_constructor: bool,
+    /// Whether this function is a base class constructor. If this function is a constructor but
+    /// not a base constructor then it must be a derived constructor.
+    is_base_constructor: bool,
     /// Index of the new.target register, if a new.target is needed.
     new_target_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
@@ -254,6 +259,8 @@ impl BytecodeFunction {
         function_length: u32,
         is_strict: bool,
         is_constructor: bool,
+        is_class_constructor: bool,
+        is_base_constructor: bool,
         new_target_index: Option<u32>,
         name: Option<Handle<StringValue>>,
         source_file: Option<Handle<SourceFile>>,
@@ -271,6 +278,8 @@ impl BytecodeFunction {
         set_uninit!(object.function_length, function_length);
         set_uninit!(object.is_strict, is_strict);
         set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.is_class_constructor, is_class_constructor);
+        set_uninit!(object.is_base_constructor, is_base_constructor);
         set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.source_file, source_file.map(|f| f.get_()));
@@ -302,6 +311,8 @@ impl BytecodeFunction {
         set_uninit!(object.function_length, 0);
         set_uninit!(object.is_strict, true);
         set_uninit!(object.is_constructor, is_constructor);
+        set_uninit!(object.is_class_constructor, false);
+        set_uninit!(object.is_base_constructor, true);
         set_uninit!(object.new_target_index, None);
         set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.source_file, None);
@@ -366,6 +377,16 @@ impl BytecodeFunction {
     #[inline]
     pub fn is_constructor(&self) -> bool {
         self.is_constructor
+    }
+
+    #[inline]
+    pub fn is_class_constructor(&self) -> bool {
+        self.is_class_constructor
+    }
+
+    #[inline]
+    pub fn is_base_constructor(&self) -> bool {
+        self.is_base_constructor
     }
 
     #[inline]

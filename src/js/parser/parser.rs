@@ -12,7 +12,10 @@ use super::lexer_stream::Utf8LexerStream;
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
-use super::scope_tree::{AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree};
+use super::scope_tree::{
+    AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
+    DERIVED_CONSTRUCTOR_BINDING_NAME,
+};
 use super::source::Source;
 use super::token::Token;
 
@@ -716,6 +719,7 @@ impl<'a> Parser<'a> {
         // Function scope node must contain the params and body, but not function name.
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ false, /* is_expression */ !is_decl,
+            /* is_derived_constructor */ false,
         )?;
 
         // Named function expressions bind name within function scope
@@ -761,6 +765,7 @@ impl<'a> Parser<'a> {
         start_pos: Pos,
         is_arrow: bool,
         is_expression: bool,
+        is_derived_constructor: bool,
     ) -> ParseResult<AstPtr<AstScopeNode>> {
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Function {
             id: start_pos,
@@ -771,9 +776,8 @@ impl<'a> Parser<'a> {
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.
         if !is_arrow {
-            self.scope_builder
-                .add_binding("this", BindingKind::ImplicitThis)
-                .unwrap();
+            let kind = BindingKind::ImplicitThis { in_derived_constructor: is_derived_constructor };
+            self.scope_builder.add_binding("this", kind).unwrap();
         }
 
         Ok(scope)
@@ -1403,7 +1407,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(Statement::Return(ReturnStatement { loc, argument }))
+        Ok(Statement::Return(ReturnStatement::new(loc, argument)))
     }
 
     fn parse_break_statement(&mut self) -> ParseResult<Statement> {
@@ -1550,6 +1554,7 @@ impl<'a> Parser<'a> {
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ true, /* is_expression */ false,
+            /* is_derived_constructor */ false,
         )?;
 
         let is_async = self.token == Token::Async;
@@ -2399,11 +2404,7 @@ impl<'a> Parser<'a> {
                 let arguments = self.parse_call_arguments()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperCall(SuperCallExpression {
-                    loc,
-                    super_: super_loc,
-                    arguments,
-                })))
+                Ok(p(Expression::SuperCall(SuperCallExpression::new(loc, super_loc, arguments))))
             }
             _ => self.error_expected_token(self.loc, &self.token, &Token::LeftParen),
         }
@@ -2906,7 +2907,10 @@ impl<'a> Parser<'a> {
                 };
                 properties.push(spread_property);
             } else {
-                let (property, _) = self.parse_property(PropertyContext::Object)?;
+                let (property, _) = self.parse_property(
+                    PropertyContext::Object,
+                    /* in_class_with_super */ false,
+                )?;
                 properties.push(property);
             }
 
@@ -2927,7 +2931,11 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    fn parse_property(&mut self, prop_context: PropertyContext) -> ParseResult<(Property, bool)> {
+    fn parse_property(
+        &mut self,
+        prop_context: PropertyContext,
+        in_class_with_super: bool,
+    ) -> ParseResult<(Property, bool)> {
         let start_pos = self.current_start_pos();
 
         // Handle getters and setters
@@ -2956,6 +2964,7 @@ impl<'a> Parser<'a> {
                         /* is_generator */ false,
                         /* is_computed */ false,
                         /* is_private */ false,
+                        /* is_derived_constructor */ false,
                     );
                 }
 
@@ -2986,6 +2995,7 @@ impl<'a> Parser<'a> {
                     /* is_generator */ false,
                     property_name.is_computed,
                     property_name.is_private,
+                    /* is_derived_constructor */ false,
                 );
             }
             _ => (),
@@ -3009,6 +3019,7 @@ impl<'a> Parser<'a> {
                     /* is_generator */ false,
                     /* is_computed */ false,
                     /* is_private */ false,
+                    /* is_derived_constructor */ false,
                 );
             }
 
@@ -3044,6 +3055,7 @@ impl<'a> Parser<'a> {
                 is_generator,
                 property_name.is_computed,
                 property_name.is_private,
+                /* id_derived_constructor */ false,
             );
         }
 
@@ -3060,6 +3072,7 @@ impl<'a> Parser<'a> {
                 /* is_generator */ true,
                 property_name.is_computed,
                 property_name.is_private,
+                /* is_derived_constructor */ false,
             );
         }
 
@@ -3067,15 +3080,27 @@ impl<'a> Parser<'a> {
         let property_name = self.parse_property_name(prop_context)?;
 
         match self.token {
-            Token::LeftParen => self.parse_method_property(
-                property_name.key,
-                start_pos,
-                PropertyKind::Init,
-                /* is_async */ false,
-                /* is_generator */ false,
-                property_name.is_computed,
-                property_name.is_private,
-            ),
+            Token::LeftParen => {
+                let is_derived_constructor = if in_class_with_super
+                    && !property_name.is_computed
+                    && !property_name.is_private
+                {
+                    Self::is_constructor_key(&property_name.key)
+                } else {
+                    false
+                };
+
+                self.parse_method_property(
+                    property_name.key,
+                    start_pos,
+                    PropertyKind::Init,
+                    /* is_async */ false,
+                    /* is_generator */ false,
+                    property_name.is_computed,
+                    property_name.is_private,
+                    is_derived_constructor,
+                )
+            }
             _ => self.parse_init_property(
                 property_name.key,
                 start_pos,
@@ -3245,6 +3270,7 @@ impl<'a> Parser<'a> {
         is_generator: bool,
         is_computed: bool,
         is_private: bool,
+        is_derived_constructor: bool,
     ) -> ParseResult<(Property, bool)> {
         // Enter async/generator context for parsing the function arguments and body
         let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
@@ -3252,8 +3278,19 @@ impl<'a> Parser<'a> {
 
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
-            start_pos, /* is_arrow */ false, /* is_expression */ false,
+            start_pos,
+            /* is_arrow */ false,
+            /* is_expression */ false,
+            is_derived_constructor,
         )?;
+
+        // Derived constructors add self as a fake binding, since they will need to be looked up
+        // by super calls.
+        if is_derived_constructor {
+            self.scope_builder
+                .add_binding(DERIVED_CONSTRUCTOR_BINDING_NAME, BindingKind::DerivedConstructor)
+                .unwrap();
+        }
 
         let params = self.parse_function_params()?;
         let param_flags = self.analyze_function_params(&params);
@@ -3355,7 +3392,7 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            body.push(self.parse_class_element()?);
+            body.push(self.parse_class_element(/* has_super_class */ super_class.is_some())?);
         }
 
         self.advance()?;
@@ -3384,7 +3421,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_class_element(&mut self) -> ParseResult<ClassElement> {
+    fn parse_class_element(&mut self, has_super_class: bool) -> ParseResult<ClassElement> {
         let start_pos = self.current_start_pos();
 
         // Every class element can start with a `static` modifier
@@ -3399,6 +3436,7 @@ impl<'a> Parser<'a> {
                 // cannot be hoisted out of the static initializer.
                 let scope = self.enter_function_scope(
                     start_pos, /* is_arrow */ false, /* is_expression */ false,
+                    /* is_derived_constructor */ false,
                 )?;
 
                 let params = vec![];
@@ -3442,6 +3480,7 @@ impl<'a> Parser<'a> {
                     /* is_generator */ false,
                     /* is_computed */ false,
                     /* is_private */ false,
+                    /* is_derived_constructor */ false,
                 )?;
                 let loc = self.mark_loc(start_pos);
 
@@ -3473,7 +3512,8 @@ impl<'a> Parser<'a> {
         }
 
         // Parse an object property because syntax is almost identical to class property
-        let (property, is_private) = self.parse_property(PropertyContext::Class)?;
+        let (property, is_private) =
+            self.parse_property(PropertyContext::Class, has_super_class)?;
         let loc = self.mark_loc(start_pos);
 
         // Translate from object property to class property or method
@@ -3508,14 +3548,7 @@ impl<'a> Parser<'a> {
             PropertyKind::Set => ClassMethodKind::Set,
             PropertyKind::Init if is_static => ClassMethodKind::Method,
             PropertyKind::Init => {
-                // Any function name may be a constructor
-                let is_constructor_key = match key.as_ref() {
-                    Expression::Id(id) if id.name == "constructor" => true,
-                    Expression::String(str) if str.value == "constructor" => true,
-                    _ => false,
-                };
-
-                if is_constructor_key && !is_static && !is_computed {
+                if Self::is_constructor_key(&key) && !is_static && !is_computed {
                     ClassMethodKind::Constructor
                 } else {
                     ClassMethodKind::Method
@@ -3535,6 +3568,14 @@ impl<'a> Parser<'a> {
             is_computed,
             is_static,
             is_private,
+        }
+    }
+
+    fn is_constructor_key(key: &Expression) -> bool {
+        match key {
+            Expression::Id(id) => id.name == "constructor",
+            Expression::String(str) => str.value == "constructor",
+            _ => false,
         }
     }
 

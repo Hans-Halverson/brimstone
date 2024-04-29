@@ -36,7 +36,7 @@ impl ScopeTree {
 
         // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding("this", BindingKind::ImplicitThis)
+            .add_binding("this", BindingKind::ImplicitThis { in_derived_constructor: false })
             .unwrap();
 
         scope_tree
@@ -913,12 +913,18 @@ pub enum BindingKind {
         init_pos: Cell<Pos>,
     },
     /// An implicit `this` binding introduced in a function or root scope.
-    ImplicitThis,
+    ImplicitThis {
+        /// Whether this is the `this` value for a derived constructor.
+        in_derived_constructor: bool,
+    },
     /// An implicit `arguments` binding introduced in a function. Note that any var or var function
     /// is treated as an "explicit" `arguments` binding and will require an arguments object.
     ImplicitArguments,
     /// new.target is treated as a binding.
     ImplicitNewTarget,
+    /// The constructor itself is treated as a binding in derived constructors, since super calls
+    /// need to look up the constructor.
+    DerivedConstructor,
 }
 
 impl BindingKind {
@@ -931,9 +937,10 @@ impl BindingKind {
         match self {
             BindingKind::Var
             | BindingKind::FunctionParameter { .. }
-            | BindingKind::ImplicitThis
+            | BindingKind::ImplicitThis { .. }
             | BindingKind::ImplicitArguments
-            | BindingKind::ImplicitNewTarget => false,
+            | BindingKind::ImplicitNewTarget
+            | BindingKind::DerivedConstructor => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
@@ -955,7 +962,7 @@ impl BindingKind {
     }
 
     pub fn is_implicit_this(&self) -> bool {
-        matches!(self, BindingKind::ImplicitThis)
+        matches!(self, BindingKind::ImplicitThis { .. })
     }
 
     pub fn is_implicit_arguments(&self) -> bool {
@@ -1078,4 +1085,5 @@ impl VMScopeNode {
 pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
 pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
 pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
+pub const DERIVED_CONSTRUCTOR_BINDING_NAME: &str = "%constructor";
 const CLASS_FIELD_SLOT_NAME: &str = "%classField";

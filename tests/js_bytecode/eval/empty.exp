@@ -32,21 +32,21 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 17 ff   Ret r0
+    0: 18 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 17 ff   Ret r0
+    0: 18 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 17 ff   Ret r0
+    0: 18 ff   Ret r0
 }
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 1
-    0: 17 ff   Ret r0
+    0: 18 ff   Ret r0
 }
 

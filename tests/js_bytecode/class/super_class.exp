@@ -24,6 +24,7 @@
 
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
+    0: DefaultSuperCall 
+    1: CheckThisInitialized <this>
+    3: Ret <this>
 }

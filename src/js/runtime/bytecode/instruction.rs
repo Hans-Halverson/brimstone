@@ -376,6 +376,9 @@ define_instructions!(
         [3] args: Register,
     }
 
+    /// Call the super constructor in a default derived constructor, storing the result in `this`.
+    DefaultSuperCall (DefaultSuperCallInstruction, default_super_call_instruction) {}
+
     /// Return from a function, producing a value.
     Ret (RetInstruction, ret_instruction) {
         [0] return_value: Register,
@@ -926,6 +929,14 @@ define_instructions!(
         [0] dest: Register,
     }
 
+    /// Get the super constructor of a derived constructor, storing the result in dest.
+    ///
+    /// Errors if the super constructor is not a constructor.
+    GetSuperConstructor (GetSuperConstructorInstruction, get_super_constructor_instruction) {
+        [0] dest: Register,
+        [1] derived_constructor: Register,
+    }
+
     /// Check if a binding is being accessed in the Temporal Dead Zone (TDZ), meaning the time
     /// where it is in scope but not yet initialized. If so, throw a ReferenceError.
     ///
@@ -934,6 +945,16 @@ define_instructions!(
     CheckTdz(CheckTdzInstruction, check_tdz_instruction) {
         [0] value: Register,
         [1] name_constant_index: ConstantIndex,
+    }
+
+    /// Check whether a `this` value is initialized, throwing a ReferenceError if it is not.
+    CheckThisInitialized(CheckThisInitializedInstruction, check_this_initialized_instruction) {
+        [0] value: Register,
+    }
+
+    /// Check whether a `this` value is initialized, meaning super() has already been called.
+    CheckSuperAlreadyCalled(CheckSuperAlreadyCalledInstruction, check_super_already_called_instruction) {
+        [0] value: Register,
     }
 
     /// Throw a TypeError for attempting to assign an already initialized const binding.

@@ -25,3 +25,10 @@ function nested(a) {
   -(a.b?.c().d?.e());
   -(a?.b?.c?.()?.d?.e?.());
 }
+
+({
+  superMember() {
+    -(super.a?.b);
+    -(super.a?.());
+  }
+});

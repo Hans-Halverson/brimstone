@@ -1,0 +1,55 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: PushLexicalScope c0
+     2: NewObject r0
+     4: StoreToScope r0, 0, 0
+     8: NewClosure r1, c2
+    11: DefineNamedProperty r0, c1, r1
+    15: NewClosure r1, c4
+    18: DefineNamedProperty r0, c3, r1
+    22: PopScope 
+    23: LoadUndefined r0
+    25: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: namedSuperMemberCall]
+    2: [BytecodeFunction: namedSuperMemberCall]
+    3: [String: computedSuperMemberCall]
+    4: [BytecodeFunction: computedSuperMemberCall]
+}
+
+[BytecodeFunction: namedSuperMemberCall] {
+  Parameters: 0, Registers: 4
+     0: LoadFromScope r0, 0, 0
+     4: GetNamedSuperProperty r0, r0, <this>, c0
+     9: CallWithReceiver r0, r0, <this>, r0, 0
+    15: LoadFromScope r0, 0, 0
+    19: GetNamedSuperProperty r0, r0, <this>, c0
+    24: LoadImmediate r1, 1
+    27: LoadImmediate r2, 2
+    30: LoadImmediate r3, 3
+    33: CallWithReceiver r0, r0, <this>, r1, 3
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [String: foo]
+}
+
+[BytecodeFunction: computedSuperMemberCall] {
+  Parameters: 0, Registers: 4
+     0: LoadFromScope r0, 0, 0
+     4: LoadConstant r1, c0
+     7: GetSuperProperty r0, r0, <this>, r1
+    12: CallWithReceiver r0, r0, <this>, r0, 0
+    18: LoadFromScope r0, 0, 0
+    22: LoadConstant r1, c0
+    25: GetSuperProperty r0, r0, <this>, r1
+    30: LoadImmediate r1, 1
+    33: LoadImmediate r2, 2
+    36: LoadImmediate r3, 3
+    39: CallWithReceiver r0, r0, <this>, r1, 3
+    45: LoadUndefined r0
+    47: Ret r0
+  Constant Table:
+    0: [String: foo]
+}

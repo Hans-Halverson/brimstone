@@ -2,7 +2,7 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use crate::js::parser::scope_tree::DERIVED_CONSTRUCTOR_BINDING_NAME;
+use crate::js::parser::scope_tree::{DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME};
 
 use super::scope_tree::BindingKind;
 use super::{
@@ -197,6 +197,7 @@ impl fmt::Display for ParseError {
                     BindingKind::ImplicitArguments => "`arguments`",
                     BindingKind::ImplicitNewTarget => "`new.target`",
                     BindingKind::DerivedConstructor => DERIVED_CONSTRUCTOR_BINDING_NAME,
+                    BindingKind::HomeObject => HOME_OBJECT_BINDING_NAME,
                 };
                 write!(f, "Redeclaration of {} {}", kind_string, name)
             }

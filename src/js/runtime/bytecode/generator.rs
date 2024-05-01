@@ -16,13 +16,14 @@ use crate::js::{
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            DERIVED_CONSTRUCTOR_BINDING_NAME, NEW_TARGET_BINDING_NAME,
+            DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME,
+            STATIC_HOME_OBJECT_BINDING_NAME,
         },
         source::Source,
     },
     runtime::{
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
-        class_names::{ClassNames, Method},
+        class_names::{ClassNames, HomeObjectLocation, Method},
         environment::private_environment::PrivateEnvironment,
         eval::{class::create_private_environment, expression::generate_template_object},
         gc::{Escapable, HandleScope, HashKeyPtr},
@@ -1482,8 +1483,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Class(expr) => self.gen_class_expression(expr, None, dest),
             ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
             ast::Expression::Yield(_) => unimplemented!("bytecode for yield expressions"),
-            ast::Expression::SuperMember(_) => {
-                unimplemented!("bytecode for super member expressions")
+            ast::Expression::SuperMember(expr) => {
+                self.gen_super_member_expression(expr, dest, None)
             }
             ast::Expression::SuperCall(expr) => self.gen_super_call_expression(expr, dest),
             ast::Expression::Template(expr) => self.gen_template_literal_expression(expr, dest),
@@ -2048,11 +2049,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ThisExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        self.gen_load_this(expr.scope, dest)
+    }
+
+    fn gen_load_this(
+        &mut self,
+        scope: Option<AstPtr<AstScopeNode>>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         let mut needs_init_check = false;
 
         // If scope has been resolved this may be a captured `this`. Load from scope directly to
         // the dest.
-        let this_value = if let Some(scope) = expr.scope.as_ref() {
+        let this_value = if let Some(scope) = scope.as_ref() {
             let binding = scope.as_ref().get_binding("this");
 
             if let BindingKind::ImplicitThis { in_derived_constructor: true } = binding.kind() {
@@ -2666,6 +2675,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok((callee, Some(call_receiver.receiver)))
             }
+            ast::Expression::SuperMember(super_expr) => {
+                // Dummy value that will be overwritten when generating member expression
+                let mut call_receiver =
+                    CallReceiver { receiver: Register::this(), is_chain: false };
+
+                let callee = self.gen_super_member_expression(
+                    super_expr,
+                    ExprDest::Any,
+                    Some(&mut call_receiver),
+                )?;
+
+                Ok((callee, Some(call_receiver.receiver)))
+            }
             // If the callee is a chain member expression there will either be a receiver or the
             // chain expression short circuits and the callee is undefined.
             ast::Expression::Chain(chain_expr)
@@ -2954,8 +2976,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ObjectExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let body_scope = expr.scope.as_ref();
+        self.gen_scope_start(body_scope, None)?;
+
         let object = self.allocate_destination(dest)?;
         self.writer.new_object_instruction(object);
+
+        // If the body scope exists then the home object must have been used in a method, so store
+        // the home object to the scope.
+        if body_scope.vm_scope_id().is_some() {
+            self.gen_store_captured_home_object(body_scope, object)?;
+        }
 
         for property in &expr.properties {
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
@@ -3119,7 +3150,46 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        self.gen_scope_end(body_scope);
+
         Ok(object)
+    }
+
+    fn gen_store_captured_home_object(
+        &mut self,
+        scope: &AstScopeNode,
+        home_object: GenRegister,
+    ) -> EmitResult<()> {
+        match scope.get_binding(HOME_OBJECT_BINDING_NAME).vm_location() {
+            // Home object is captured so it must be stored in the scope
+            Some(VMLocation::Scope { scope_id, index }) => {
+                self.gen_store_scope_binding(scope_id, index, home_object)
+            }
+            // Home object is not captured so it is not used
+            None => Ok(()),
+            _ => unreachable!("home object must be captured or have no VM location"),
+        }
+    }
+
+    fn get_home_object_location(
+        &mut self,
+        scope: &AstScopeNode,
+        name: &str,
+    ) -> EmitResult<Option<HomeObjectLocation>> {
+        match scope.get_binding(name).vm_location() {
+            Some(VMLocation::Scope { scope_id, index }) => {
+                let parent_depth = self.find_scope_depth(scope_id)?;
+                let scope_index =
+                    GenUInt::try_from_unsigned(index).ok_or(EmitError::IndexTooLarge)?;
+
+                Ok(Some(HomeObjectLocation {
+                    parent_depth: parent_depth.value(),
+                    scope_index: scope_index.value(),
+                }))
+            }
+            None => Ok(None),
+            _ => unreachable!("home object must be captured or have no VM location"),
+        }
     }
 
     /// Generate a member expression. Write the object's register to the `call_receiver` register if
@@ -3275,6 +3345,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match expr {
             ast::Expression::Member(member_expr) => {
                 self.gen_member_expression(member_expr, dest, call_receiver, optional_nullish_block)
+            }
+            ast::Expression::SuperMember(super_expr) => {
+                self.gen_super_member_expression(super_expr, dest, call_receiver)
             }
             ast::Expression::Call(call_expr) => {
                 self.gen_call_expression(call_expr, dest, optional_nullish_block)
@@ -3600,6 +3673,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(object);
 
             self.gen_mov_reg_to_dest(temp, dest)
+        } else if let ast::Expression::SuperMember(_) = expr.argument.as_ref() {
+            unimplemented!("bytecode for super member update expressions")
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
@@ -3782,6 +3857,85 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
 
         Ok(dest)
+    }
+
+    /// Generate a super member expression. Write the object's register to the `call_receiver` register if
+    /// one is provided, if evaluating a callee. Otherwise release the object's register.
+    fn gen_super_member_expression(
+        &mut self,
+        expr: &ast::SuperMemberExpression,
+        dest: ExprDest,
+        mut call_receiver: Option<&mut CallReceiver>,
+    ) -> EmitResult<GenRegister> {
+        // Load `this` value
+        let this_value = self.gen_load_this(expr.this_scope, ExprDest::Any)?;
+
+        // Load home object
+        let home_object_name = expr.home_object_name();
+        let home_object = self.gen_resolved_or_dynamic_binding(
+            expr.home_object_scope,
+            home_object_name,
+            ExprDest::Any,
+        )?;
+
+        // Store `this` value in the CallReceiver if one is provided
+        if let Some(call_receiver) = call_receiver.as_deref_mut() {
+            call_receiver.receiver = this_value;
+        }
+
+        let result = self.gen_super_member_property(
+            expr,
+            home_object,
+            this_value,
+            dest,
+            /* release_receiver */ call_receiver.is_none(),
+        )?;
+
+        Ok(result)
+    }
+
+    fn gen_super_member_property(
+        &mut self,
+        expr: &ast::SuperMemberExpression,
+        home_object: GenRegister,
+        receiver: GenRegister,
+        dest: ExprDest,
+        release_receiver: bool,
+    ) -> EmitResult<GenRegister> {
+        if expr.is_computed {
+            let key = self.gen_expression(&expr.property)?;
+
+            self.register_allocator.release(key);
+            self.register_allocator.release(home_object);
+            if release_receiver {
+                self.register_allocator.release(receiver);
+            }
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer
+                .get_super_property_instruction(dest, home_object, receiver, key);
+
+            Ok(dest)
+        } else {
+            // Must be a named access
+            let name = expr.property.to_id();
+            let name_constant_index = self.add_string_constant(&name.name)?;
+
+            self.register_allocator.release(home_object);
+            if release_receiver {
+                self.register_allocator.release(receiver);
+            }
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer.get_named_super_property_instruction(
+                dest,
+                home_object,
+                receiver,
+                name_constant_index,
+            );
+
+            Ok(dest)
+        }
     }
 
     fn gen_super_call_expression(
@@ -4615,10 +4769,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let body_scope = class.scope.as_ref();
         self.gen_scope_start(body_scope, None)?;
 
-        let body_vm_node = body_scope
-            .vm_scope_id()
-            .map(|id| self.scope_tree.get_vm_node(id));
-
         // Generate all methods, collecting method definitions into a ClassNames object which is
         // used in the NewClass instruction.
         let mut methods = vec![];
@@ -4713,8 +4863,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let pending_constructor = PendingFunctionNode::Constructor { node, name, fields, is_base };
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
+        // Find the scope locations for the home objects if they are needed
+        let home_object = self.get_home_object_location(body_scope, HOME_OBJECT_BINDING_NAME)?;
+        let static_home_object =
+            self.get_home_object_location(body_scope, STATIC_HOME_OBJECT_BINDING_NAME)?;
+
         // ClassNames object is stored in the constant table
-        let class_names = ClassNames::new(self.cx, &methods);
+        let class_names = ClassNames::new(self.cx, &methods, home_object, static_home_object);
         let class_names_index = self
             .constant_table_builder
             .add_heap_object(class_names.cast())?;
@@ -4736,22 +4891,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             first_argument_reg,
         );
 
-        // Initialize the class itself in scope body scope. We can tell if the class is added to its
-        // own body because it will be the last binding in the scope.
+        // Initialize the class itself in the body scope if necessary.
         if let Some(class_id) = class.id.as_ref() {
-            if let Some(vm_node) = body_vm_node {
-                let bindings = vm_node.bindings();
-                if let Some(last_binding) = bindings.last() {
-                    let class_name = &class_id.name;
-                    if last_binding == class_name {
-                        let binding = body_scope.get_binding(class_name);
-                        self.gen_store_binding(
-                            class_name,
-                            binding,
-                            constructor_reg,
-                            StoreFlags::INITIALIZATION,
-                        )?;
-                    }
+            let class_name = &class_id.name;
+            if let Some(binding) = body_scope.get_binding_opt(class_name) {
+                if let Some(VMLocation::Scope { .. }) = binding.vm_location() {
+                    self.gen_store_binding(
+                        class_name,
+                        binding,
+                        constructor_reg,
+                        StoreFlags::INITIALIZATION,
+                    )?;
                 }
             }
         }

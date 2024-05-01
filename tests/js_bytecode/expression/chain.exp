@@ -1,5 +1,5 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: NewClosure r0, c0
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
@@ -8,8 +8,14 @@
     15: StoreGlobal r0, c5
     18: NewClosure r0, c6
     21: StoreGlobal r0, c7
-    24: LoadUndefined r0
-    26: Ret r0
+    24: PushLexicalScope c8
+    26: NewObject r0
+    28: StoreToScope r0, 0, 0
+    32: NewClosure r1, c10
+    35: DefineNamedProperty r0, c9, r1
+    39: PopScope 
+    40: LoadUndefined r0
+    42: Ret r0
   Constant Table:
     0: [BytecodeFunction: namedMember]
     1: [String: namedMember]
@@ -19,6 +25,9 @@
     5: [String: call]
     6: [BytecodeFunction: nested]
     7: [String: nested]
+    8: [ScopeNames]
+    9: [String: superMember]
+    10: [BytecodeFunction: superMember]
 }
 
 [BytecodeFunction: namedMember] {
@@ -210,4 +219,31 @@
     1: [String: c]
     2: [String: d]
     3: [String: e]
+}
+
+[BytecodeFunction: superMember] {
+  Parameters: 0, Registers: 1
+     0: LoadFromScope r0, 0, 0
+     4: GetNamedSuperProperty r0, r0, <this>, c0
+     9: JumpNullish r0, 9 (.L0)
+    12: GetNamedProperty r0, r0, c1
+    16: Jump 4 (.L1)
+  .L0:
+    18: LoadUndefined r0
+  .L1:
+    20: Neg r0, r0
+    23: LoadFromScope r0, 0, 0
+    27: GetNamedSuperProperty r0, r0, <this>, c0
+    32: JumpNullish r0, 11 (.L2)
+    35: CallWithReceiver r0, r0, <this>, r0, 0
+    41: Jump 4 (.L3)
+  .L2:
+    43: LoadUndefined r0
+  .L3:
+    45: Neg r0, r0
+    48: LoadUndefined r0
+    50: Ret r0
+  Constant Table:
+    0: [String: a]
+    1: [String: b]
 }

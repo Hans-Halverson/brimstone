@@ -66,11 +66,12 @@ use super::{
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
-        GetNamedPropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
-        GreaterThanInstruction, GreaterThanOrEqualInstruction, InInstruction, IncInstruction,
-        InstanceOfInstruction, Instruction, IteratorCloseInstruction, IteratorNextInstruction,
-        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
-        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction, GetPropertyInstruction,
+        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
+        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -567,6 +568,12 @@ impl VM {
                         OpCode::DefineProperty => {
                             dispatch_or_throw!(DefinePropertyInstruction, execute_define_property)
                         }
+                        OpCode::GetSuperProperty => {
+                            dispatch_or_throw!(
+                                GetSuperPropertyInstruction,
+                                execute_get_super_property
+                            )
+                        }
                         OpCode::GetNamedProperty => {
                             dispatch_or_throw!(
                                 GetNamedPropertyInstruction,
@@ -583,6 +590,12 @@ impl VM {
                             dispatch_or_throw!(
                                 DefineNamedPropertyInstruction,
                                 execute_define_named_property
+                            )
+                        }
+                        OpCode::GetNamedSuperProperty => {
+                            dispatch_or_throw!(
+                                GetNamedSuperPropertyInstruction,
+                                execute_get_named_super_property
                             )
                         }
                         OpCode::DeleteProperty => {
@@ -2762,6 +2775,32 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_super_property<W: Width>(
+        &mut self,
+        instr: &GetSuperPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let home_object = self
+            .read_register_to_handle(instr.home_object())
+            .as_object();
+        let receiver = self.read_register_to_handle(instr.receiver());
+        let key = self.read_register_to_handle(instr.key());
+        let dest = instr.dest();
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, key));
+        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
+            None => return type_error_(self.cx, "prototype is null"),
+            Some(prototype) => prototype,
+        };
+
+        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_get_named_property<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
@@ -2845,6 +2884,37 @@ impl VM {
         let property_key = key.replace_into(property_key);
 
         create_data_property_or_throw(self.cx, object, property_key, value)
+    }
+
+    #[inline]
+    fn execute_get_named_super_property<W: Width>(
+        &mut self,
+        instr: &GetNamedSuperPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let home_object = self
+            .read_register_to_handle(instr.home_object())
+            .as_object();
+        let receiver = self.read_register_to_handle(instr.receiver());
+
+        let key = self.get_constant(instr.name_constant_index());
+        let key = key.as_string().to_handle();
+
+        let dest = instr.dest();
+
+        // May allocate, replace handle
+        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = key.replace_into(property_key);
+
+        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
+            None => return type_error_(self.cx, "prototype is null"),
+            Some(prototype) => prototype,
+        };
+
+        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
+
+        self.write_register(dest, result.get());
+
+        ().into()
     }
 
     #[inline]
@@ -3015,6 +3085,15 @@ impl VM {
     }
 
     #[inline]
+    pub fn store_to_scope_at_depth(&self, scope_index: usize, parent_depth: usize, value: Value) {
+        // Find the scope at the given parent depth
+        let mut scope = self.scope_at_depth(parent_depth);
+
+        // Store the value in the scope at the given index
+        scope.set_slot(scope_index, value);
+    }
+
+    #[inline]
     fn execute_load_from_scope<W: Width>(&mut self, instr: &LoadFromScopeInstruction<W>) {
         let scope_index = instr.scope_index().value().to_usize();
         let parent_depth = instr.parent_depth().value().to_usize();
@@ -3035,11 +3114,7 @@ impl VM {
         let parent_depth = instr.parent_depth().value().to_usize();
         let value = self.read_register(instr.value());
 
-        // Find the scope at the given parent depth
-        let mut scope = self.scope_at_depth(parent_depth);
-
-        // Store the value in the scope at the given index
-        scope.set_slot(scope_index, value);
+        self.store_to_scope_at_depth(scope_index, parent_depth, value);
     }
 
     #[inline]

@@ -1,0 +1,95 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 4
+     0: LoadGlobal r1, c0
+     3: PushLexicalScope c1
+     5: NewClosure r2, c2
+     8: NewClosure r3, c3
+    11: NewClass r0, c5, c4, r1, r2
+    17: PopScope 
+    18: StoreToScope r0, 1, 0
+    22: LoadGlobal r1, c0
+    25: PushLexicalScope c6
+    27: NewClass r0, c8, c7, r1, r0
+    33: PopScope 
+    34: StoreToScope r0, 2, 0
+    38: LoadUndefined r0
+    40: Ret r0
+  Constant Table:
+    0: [String: String]
+    1: [ScopeNames]
+    2: [BytecodeFunction: instanceSuperMember]
+    3: [BytecodeFunction: staticSuperMember]
+    4: [BytecodeFunction: C1]
+    5: [ClassNames]
+    6: [ScopeNames]
+    7: [BytecodeFunction: C2]
+    8: [ClassNames]
+}
+
+[BytecodeFunction: instanceSuperMember] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: GetNamedSuperProperty r0, r0, <this>, c0
+    9: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: staticSuperMember] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 1, 0
+    4: GetNamedSuperProperty r0, r0, <this>, c0
+    9: Ret r0
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: CheckThisInitialized <this>
+    21: LoadFromScope r2, 0, 0
+    25: GetNamedSuperProperty r2, r2, <this>, c0
+    30: CheckThisInitialized <this>
+    32: Ret <this>
+  Constant Table:
+    0: [String: x]
+}
+
+[BytecodeFunction: C2] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 2, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewClosure r0, c1
+    19: LoadFromScope r0, 0, 0
+    23: CheckThisInitialized r0
+    25: LoadFromScope r1, 0, 1
+    29: GetNamedSuperProperty r0, r1, r0, c2
+    34: LoadFromScope r0, 0, 0
+    38: CheckThisInitialized r0
+    40: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+    2: [String: x]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 1, 0
+     4: GetSuperConstructor r0, r0
+     7: LoadFromScope r1, 2, 0
+    11: Construct r0, r0, r1, r1, 0
+    17: LoadFromScope r1, 0, 0
+    21: CheckSuperAlreadyCalled r1
+    23: StoreToScope r0, 0, 0
+    27: Ret r0
+}

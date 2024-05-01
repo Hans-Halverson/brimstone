@@ -803,6 +803,15 @@ define_instructions!(
         [3] flags: UInt,
     }
 
+    /// Get a super property from an object, storing the result in dest. The property key may be any
+    /// value. Takes both the home object and receiver of the enclosing method.
+    GetSuperProperty (GetSuperPropertyInstruction, get_super_property_instruction) {
+        [0] dest: Register,
+        [1] home_object: Register,
+        [2] receiver: Register,
+        [3] key: Register,
+    }
+
     /// Get a named property from an object, storing the result in dest. The name must be a string
     /// literal in the constant table.
     GetNamedProperty (GetNamedPropertyInstruction, get_named_property_instruction) {
@@ -825,6 +834,15 @@ define_instructions!(
         [0] object: Register,
         [1] name_constant_index: ConstantIndex,
         [2] value: Register,
+    }
+
+    /// Get a named super property, storing the result in dest. The name must be a string literal
+    /// in the constant table. Takes both the home object and receiver of the enclosing method.
+    GetNamedSuperProperty (GetNamedSuperPropertyInstruction, get_named_super_property_instruction) {
+        [0] dest: Register,
+        [1] home_object: Register,
+        [2] receiver: Register,
+        [3] name_constant_index: ConstantIndex,
     }
 
     /// Delete the property with the given key from an object. The property key may be any value

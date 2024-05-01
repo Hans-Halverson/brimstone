@@ -273,6 +273,12 @@ impl ScopeTree {
         }
     }
 
+    /// Add a binding to the current scope in the AST scope tree.
+    pub fn add_binding_to_current_node(&mut self, name: &str, kind: BindingKind) {
+        self.get_ast_node_mut(self.current_node_id)
+            .add_binding(name, kind, /* vm_location */ None, /* needs_tdz_check */ false);
+    }
+
     /// Resolve a use of the given name in the provided AST scope id to the scope where the binding
     /// with that name is defined. If the name could not be statically resolved to a definition then
     /// return None.
@@ -649,8 +655,12 @@ impl ScopeTree {
                 let enclosed_scope = self.get_ast_node_mut(*enclosed_scope);
                 for (_, binding) in enclosed_scope.bindings.iter_mut() {
                     if binding.vm_location.is_none()
-                        && !binding.is_implicit_this()
-                        && !matches!(binding.kind(), BindingKind::Class { in_body_scope: true })
+                        && !matches!(
+                            binding.kind(),
+                            BindingKind::ImplicitThis { .. }
+                                | BindingKind::HomeObject
+                                | BindingKind::Class { in_body_scope: true }
+                        )
                     {
                         binding.set_vm_location(VMLocation::LocalRegister(num_local_registers));
                         num_local_registers += 1;
@@ -925,6 +935,8 @@ pub enum BindingKind {
     /// The constructor itself is treated as a binding in derived constructors, since super calls
     /// need to look up the constructor.
     DerivedConstructor,
+    /// The home object for methods defined on an object literal or class.
+    HomeObject,
 }
 
 impl BindingKind {
@@ -940,7 +952,8 @@ impl BindingKind {
             | BindingKind::ImplicitThis { .. }
             | BindingKind::ImplicitArguments
             | BindingKind::ImplicitNewTarget
-            | BindingKind::DerivedConstructor => false,
+            | BindingKind::DerivedConstructor
+            | BindingKind::HomeObject => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
@@ -1086,4 +1099,6 @@ pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
 pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
 pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
 pub const DERIVED_CONSTRUCTOR_BINDING_NAME: &str = "%constructor";
+pub const HOME_OBJECT_BINDING_NAME: &str = "%homeObject";
+pub const STATIC_HOME_OBJECT_BINDING_NAME: &str = "%staticHomeObject";
 const CLASS_FIELD_SLOT_NAME: &str = "%classField";

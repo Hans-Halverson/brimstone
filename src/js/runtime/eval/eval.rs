@@ -90,6 +90,7 @@ pub fn perform_bytecode_eval(
         /* private_names */ None,
         in_function,
         /* in_method */ false,
+        /* in_static_method */ false,
         /* in_derived_constructor */ false,
         /* in_class_field_initializer */ false,
     );
@@ -357,6 +358,8 @@ pub fn perform_ast_eval(
         private_names,
         in_function,
         in_method,
+        // Always false since only used by bytecode VM
+        /* in_static_method */ false,
         in_derived_constructor,
         in_class_field_initializer,
     );

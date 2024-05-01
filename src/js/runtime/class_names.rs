@@ -32,6 +32,10 @@ pub struct ClassNames {
     /// Number of arguments in the contiguous sequence of registers passed to the NewClass
     /// instruction.
     num_arguments: usize,
+    /// Location of the home object if it should be stored in the scope chain.
+    home_object: Option<HomeObjectLocation>,
+    /// Location of the static home object if it should be stored in the scope chain.
+    static_home_object: Option<HomeObjectLocation>,
     /// Array of global names. The first `num_functions` are global var scoped functions, the rest
     /// are global vars. All names are interned strings.
     methods: InlineArray<HeapMethod>,
@@ -61,13 +65,28 @@ struct HeapMethod {
     is_private: bool,
 }
 
+/// The location where a home object should be stored in the scope chain. The scope index and depth
+/// are treated as the operands for a `StoreToScope` instruction.
+#[repr(C)]
+pub struct HomeObjectLocation {
+    pub scope_index: u32,
+    pub parent_depth: u32,
+}
+
 impl ClassNames {
-    pub fn new(cx: Context, methods: &[Method]) -> Handle<ClassNames> {
+    pub fn new(
+        cx: Context,
+        methods: &[Method],
+        home_object: Option<HomeObjectLocation>,
+        static_home_object: Option<HomeObjectLocation>,
+    ) -> Handle<ClassNames> {
         let num_methods = methods.len();
         let size = Self::calculate_size_in_bytes(num_methods);
         let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size);
 
         set_uninit!(class_names.descriptor, cx.base_descriptors.get(ObjectKind::ClassNames));
+        set_uninit!(class_names.home_object, home_object);
+        set_uninit!(class_names.static_home_object, static_home_object);
 
         // Calculate number of arguments needed for the NewClass instruction
         let mut num_arguments = 0;
@@ -196,6 +215,24 @@ pub fn new_class(
     // Define a `prototype` property on the constructor
     let desc = PropertyDescriptor::data(prototype.into(), false, false, false);
     maybe!(define_property_or_throw(cx, constructor.into(), cx.names.prototype(), desc));
+
+    // Store the prototype as the home object if needed
+    if let Some(home_object) = &class_names.home_object {
+        cx.vm().store_to_scope_at_depth(
+            home_object.scope_index as usize,
+            home_object.parent_depth as usize,
+            prototype.get_().into(),
+        );
+    }
+
+    // Store the constructor as the home object if needed
+    if let Some(home_object) = &class_names.static_home_object {
+        cx.vm().store_to_scope_at_depth(
+            home_object.scope_index as usize,
+            home_object.parent_depth as usize,
+            constructor.cast::<ObjectValue>().get_().into(),
+        );
+    }
 
     let mut arg_index = 0;
 

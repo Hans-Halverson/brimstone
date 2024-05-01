@@ -14,7 +14,7 @@ use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
 use super::scope_tree::{
     AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
-    DERIVED_CONSTRUCTOR_BINDING_NAME,
+    DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
 };
 use super::source::Source;
 use super::token::Token;
@@ -259,6 +259,18 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             Err(error) => self.error(id.loc, error),
+        }
+    }
+
+    fn add_home_object_to_scope(&mut self, include_static: bool) {
+        self.scope_builder
+            .add_binding_to_current_node(HOME_OBJECT_BINDING_NAME, BindingKind::HomeObject);
+
+        if include_static {
+            self.scope_builder.add_binding_to_current_node(
+                STATIC_HOME_OBJECT_BINDING_NAME,
+                BindingKind::HomeObject,
+            );
         }
     }
 
@@ -2380,12 +2392,12 @@ impl<'a> Parser<'a> {
 
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperMember(SuperMemberExpression {
+                Ok(p(Expression::SuperMember(SuperMemberExpression::new(
                     loc,
-                    super_: super_loc,
-                    property: p(Expression::Id(id)),
-                    is_computed: false,
-                })))
+                    super_loc,
+                    p(Expression::Id(id)),
+                    /* is_computed */ false,
+                ))))
             }
             Token::LeftBracket => {
                 self.advance()?;
@@ -2393,12 +2405,9 @@ impl<'a> Parser<'a> {
                 self.expect(Token::RightBracket)?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperMember(SuperMemberExpression {
-                    loc,
-                    super_: super_loc,
-                    property,
-                    is_computed: true,
-                })))
+                Ok(p(Expression::SuperMember(SuperMemberExpression::new(
+                    loc, super_loc, property, /* is_computed */ true,
+                ))))
             }
             Token::LeftParen => {
                 let arguments = self.parse_call_arguments()?;
@@ -2892,6 +2901,10 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
+        // Body of the object literal is in its own scope that contains the home object
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
+        self.add_home_object_to_scope(/* include_static */ false);
+
         let mut properties = vec![];
         while self.token != Token::RightBrace {
             if self.token == Token::Spread {
@@ -2924,10 +2937,13 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
         let loc = self.mark_loc(start_pos);
 
+        self.scope_builder.exit_scope();
+
         Ok(p(Expression::Object(ObjectExpression {
             loc,
             properties,
             is_parenthesized: false,
+            scope,
         })))
     }
 
@@ -3372,7 +3388,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        // Body of the class it in its own scope
+        // Body of the class is in its own scope
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
 
         // Always add class name to the body scope
@@ -3381,6 +3397,9 @@ impl<'a> Parser<'a> {
                 .add_binding(&id.name, BindingKind::Class { in_body_scope: true })
                 .unwrap();
         }
+
+        // Class body scope always contains the home object and static home object
+        self.add_home_object_to_scope(/* include_static */ true);
 
         let mut body = vec![];
 

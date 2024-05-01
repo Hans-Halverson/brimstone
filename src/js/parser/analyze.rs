@@ -50,7 +50,7 @@ pub struct Analyzer<'a> {
     // Whether a return statement is allowed
     allow_return_stack: Vec<bool>,
     // Whether a super member expression is allowed
-    allow_super_member_stack: Vec<bool>,
+    allow_super_member_stack: Vec<AllowSuperStackEntry>,
     /// Whether the current expression context has an assignment expression. A single value is
     /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
     /// around each expression.
@@ -61,6 +61,14 @@ struct FunctionStackEntry {
     is_arrow_function: bool,
     _is_method: bool,
     is_derived_constructor: bool,
+}
+
+enum AllowSuperStackEntry {
+    Allow {
+        /// Whether the super member expression references the static home object.
+        is_static: bool,
+    },
+    Disallow,
 }
 
 struct ClassStackEntry {
@@ -116,7 +124,7 @@ impl<'a> Analyzer<'a> {
             scope_stack: vec![],
             allow_arguments: true,
             allow_return_stack: vec![false],
-            allow_super_member_stack: vec![false],
+            allow_super_member_stack: vec![],
             has_assign_expr: false,
         }
     }
@@ -287,7 +295,8 @@ impl<'a> AstVisitor for Analyzer<'a> {
     fn visit_function_declaration(&mut self, func: &mut Function) {
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
-            /*is_derived_constructor */ false, /* is_static_initializer */ false,
+            /* is_static_method */ false, /*is_derived_constructor */ false,
+            /* is_static_initializer */ false,
         );
     }
 
@@ -382,14 +391,16 @@ impl<'a> AstVisitor for Analyzer<'a> {
     fn visit_function_expression(&mut self, func: &mut Function) {
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
-            /*is_derived_constructor */ false, /* is_static_initializer */ false,
+            /* is_static_method */ false, /* is_derived_constructor */ false,
+            /* is_static_initializer */ false,
         );
     }
 
     fn visit_arrow_function(&mut self, func: &mut Function) {
         self.visit_function_common(
             func, /* is_arrow_function */ true, /* is_method */ false,
-            /*is_derived_constructor */ false, /* is_static_initializer */ false,
+            /* is_static_method */ false, /*is_derived_constructor */ false,
+            /* is_static_initializer */ false,
         );
     }
 
@@ -590,7 +601,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
             }
         }
 
+        self.enter_scope(expr.scope);
         default_visit_object_expression(self, expr);
+        self.exit_scope();
     }
 
     fn visit_property(&mut self, prop: &mut Property) {
@@ -612,7 +625,8 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
             self.visit_function_common(
                 func, /* is_arrow_function */ false, /* is_method */ true,
-                /*is_derived_constructor */ false, /* is_static_initializer */ false,
+                /* is_static_method */ false, /*is_derived_constructor */ false,
+                /* is_static_initializer */ false,
             );
         } else {
             visit_opt!(self, prop.value, visit_expression);
@@ -645,7 +659,16 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
         match self.allow_super_member_stack.last() {
-            Some(true) => {}
+            Some(AllowSuperStackEntry::Allow { is_static }) => {
+                expr.is_static = *is_static;
+
+                // Resolve home object
+                let home_object_name = expr.home_object_name();
+                self.resolve_use(&mut expr.home_object_scope, home_object_name, expr.super_);
+
+                // Also resolve `this` which may be used by the super member expression
+                self.resolve_this_use(expr.loc, |scope| expr.this_scope = Some(scope));
+            }
             _ => self.emit_error(expr.loc, ParseError::SuperPropertyOutsideMethod),
         }
 
@@ -755,7 +778,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         self.class_stack
             .push(ClassStackEntry { private_names, is_derived: class.super_class.is_some() });
-        self.allow_super_member_stack.push(true);
 
         // Mark the constructor if it is found, erroring if multiple are found
         let mut constructor = None;
@@ -801,7 +823,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         class.constructor = constructor;
 
-        self.allow_super_member_stack.pop();
         self.class_stack.pop();
 
         // Restore analyzer context after visiting class
@@ -817,6 +838,7 @@ impl Analyzer<'_> {
         func: &mut Function,
         is_arrow_function: bool,
         is_method: bool,
+        is_static_method: bool,
         is_derived_constructor: bool,
         is_static_initializer: bool,
     ) {
@@ -832,7 +854,12 @@ impl Analyzer<'_> {
         // Super member expressions are allowed in methods, and in arrow functions are inherited
         // from surrounding context.
         if !is_arrow_function {
-            self.allow_super_member_stack.push(is_method);
+            let entry = if is_method {
+                AllowSuperStackEntry::Allow { is_static: is_static_method }
+            } else {
+                AllowSuperStackEntry::Disallow
+            };
+            self.allow_super_member_stack.push(entry);
         }
 
         // Save analyzer context before descending into function
@@ -1111,6 +1138,7 @@ impl Analyzer<'_> {
             &mut method.value,
             /* is_arrow_function */ false,
             /* is_method */ true,
+            method.is_static,
             is_derived_constructor,
             method.kind == ClassMethodKind::StaticInitializer,
         );
@@ -1362,6 +1390,7 @@ pub fn analyze_for_eval(
     private_names: Option<HashMap<String, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
+    in_static_method: bool,
     in_derived_constructor: bool,
     in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
@@ -1383,7 +1412,9 @@ pub fn analyze_for_eval(
         });
 
         if in_method {
-            analyzer.allow_super_member_stack.push(true);
+            analyzer
+                .allow_super_member_stack
+                .push(AllowSuperStackEntry::Allow { is_static: in_static_method });
         }
     }
 

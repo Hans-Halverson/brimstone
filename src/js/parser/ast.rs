@@ -16,7 +16,9 @@ use crate::{
 use super::{
     loc::{Loc, EMPTY_LOC},
     regexp::RegExp,
-    scope_tree::{AstScopeNode, Binding},
+    scope_tree::{
+        AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+    },
     source::Source,
 };
 
@@ -1038,6 +1040,9 @@ pub struct ObjectExpression {
     pub properties: Vec<Property>,
     // Needed for reparsing into a pattern
     pub is_parenthesized: bool,
+
+    /// Scope node for the object body, will only contain the home object.
+    pub scope: AstPtr<AstScopeNode>,
 }
 
 pub struct Property {
@@ -1088,6 +1093,40 @@ pub struct SuperMemberExpression {
     pub super_: Loc,
     pub property: P<Expression>,
     pub is_computed: bool,
+
+    /// Whether this super member expression is in a static method. Set during analysis.
+    pub is_static: bool,
+
+    /// Reference to the scope that contains the binding for `this`. Treated the same as the scope
+    /// in the `ThisExpression` node.
+    pub this_scope: Option<AstPtr<AstScopeNode>>,
+
+    /// Reference to the scope that contains the binding for the home object referenced by this
+    /// super expression, or tagged as unresolved dynamic if the scope could not be statically
+    /// determined.
+    pub home_object_scope: TaggedResolvedScope,
+}
+
+impl SuperMemberExpression {
+    pub fn new(loc: Loc, super_: Loc, property: P<Expression>, is_computed: bool) -> Self {
+        Self {
+            loc,
+            super_,
+            property,
+            is_computed,
+            is_static: false,
+            this_scope: None,
+            home_object_scope: TaggedResolvedScope::unresolved_global(),
+        }
+    }
+
+    pub fn home_object_name(&self) -> &'static str {
+        if self.is_static {
+            STATIC_HOME_OBJECT_BINDING_NAME
+        } else {
+            HOME_OBJECT_BINDING_NAME
+        }
+    }
 }
 
 pub struct SuperCallExpression {

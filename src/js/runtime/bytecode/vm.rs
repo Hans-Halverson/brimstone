@@ -65,11 +65,12 @@ use super::{
         CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
         DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
-        ErrorConstInstruction, ExpInstruction, ForInNextInstruction, GetIteratorInstruction,
-        GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction, GetPropertyInstruction,
-        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, ExpInstruction,
+        ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
+        GetNamedSuperPropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
+        GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
+        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
@@ -660,6 +661,12 @@ impl VM {
                         }
                         OpCode::ErrorConst => {
                             dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
+                        }
+                        OpCode::ErrorDeleteSuperProperty => {
+                            dispatch_or_throw!(
+                                ErrorDeleteSuperPropertyInstruction,
+                                execute_error_delete_super_property
+                            )
                         }
                         OpCode::NewForInIterator => {
                             dispatch_or_throw!(
@@ -3229,6 +3236,14 @@ impl VM {
             .as_flat();
 
         err_assign_constant(self.cx, name)
+    }
+
+    #[inline]
+    fn execute_error_delete_super_property<W: Width>(
+        &mut self,
+        _: &ErrorDeleteSuperPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        reference_error_(self.cx, "cannot delete super property")
     }
 
     #[inline]

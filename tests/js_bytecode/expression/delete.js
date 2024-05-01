@@ -65,3 +65,13 @@ function deleteUnresolvedDynamic() {
   eval(``);
   delete unresolved;
 }
+
+({
+  deleteNamedSuperProperty() {
+    return delete super.x;
+  },
+
+  deleteComputedSuperProperty() {
+    return delete super[1 + 2];
+  },
+});

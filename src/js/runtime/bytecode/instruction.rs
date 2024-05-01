@@ -980,6 +980,9 @@ define_instructions!(
         [0] name_constant_index: ConstantIndex,
     }
 
+    /// Throw a ReferenceError for attempting to delete a super property.
+    ErrorDeleteSuperProperty (ErrorDeleteSuperPropertyInstruction, error_delete_super_property_instruction) {}
+
     /// Create a new for-in iterator for the given object, storing in dest. Gathers all the iterable
     /// keys of the object and its prototype chain, storing them in the iterator. Expects that the
     /// object value is not nullish, all other values will be coerced with ToObject.

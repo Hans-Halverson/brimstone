@@ -240,9 +240,9 @@
      3: 05 ff      LoadUndefined r0
      5: 4b fe      NewObject r1
      7: 46 fe 14   JumpNullish r1, 20 (.L1)
-    10: 6c fe fe   NewForInIterator r1, r1
+    10: 6d fe fe   NewForInIterator r1, r1
   .L0:
-    13: 6d fd fe   ForInNext r2, r1
+    13: 6e fd fe   ForInNext r2, r1
     16: 46 fd 0b   JumpNullish r2, 11 (.L1)
     19: 0f fd 01   StoreDynamic r2, c1
     22: 03 ff 01   LoadImmediate r0, 1
@@ -259,9 +259,9 @@
      0: 04 ff 00         LoadConstant r0, c0
      3: 05 ff            LoadUndefined r0
      5: 4c fc            NewArray r3
-     7: 6e fe fd fc      GetIterator r1, r2, r3
+     7: 6f fe fd fc      GetIterator r1, r2, r3
   .L0:
-    11: 6f fc fb fe fd   IteratorNext r3, r4, r1, r2
+    11: 70 fc fb fe fd   IteratorNext r3, r4, r1, r2
     16: 3c fb 1a         JumpTrue r4, 26 (.L2)
     19: 0f fc 01         StoreDynamic r3, c1
     22: 02 fa 03         Mov r5, <scope>
@@ -269,7 +269,7 @@
     28: 3a 0c            Jump 12 (.L1)
     30: 03 fc 00         LoadImmediate r3, 0
     33: 02 03 fa         Mov <scope>, r5
-    36: 70 fe            IteratorClose r1
+    36: 71 fe            IteratorClose r1
     38: 65 fb            Throw r4
   .L1:
     40: 3a e3            Jump -29 (.L0)

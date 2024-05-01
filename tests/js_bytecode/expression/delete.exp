@@ -1,5 +1,5 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: NewClosure r0, c0
      3: StoreGlobal r0, c1
      6: NewClosure r0, c2
@@ -24,8 +24,16 @@
     63: StoreGlobal r0, c21
     66: LoadImmediate r0, 1
     69: StoreGlobal r0, c22
-    72: LoadUndefined r0
-    74: Ret r0
+    72: PushLexicalScope c23
+    74: NewObject r0
+    76: StoreToScope r0, 0, 0
+    80: NewClosure r1, c25
+    83: DefineNamedProperty r0, c24, r1
+    87: NewClosure r1, c27
+    90: DefineNamedProperty r0, c26, r1
+    94: PopScope 
+    95: LoadUndefined r0
+    97: Ret r0
   Constant Table:
     0: [BytecodeFunction: deleteMember]
     1: [String: deleteMember]
@@ -50,6 +58,11 @@
     20: [BytecodeFunction: deleteUnresolvedDynamic]
     21: [String: deleteUnresolvedDynamic]
     22: [String: globalVar]
+    23: [ScopeNames]
+    24: [String: deleteNamedSuperProperty]
+    25: [BytecodeFunction: deleteNamedSuperProperty]
+    26: [String: deleteComputedSuperProperty]
+    27: [BytecodeFunction: deleteComputedSuperProperty]
 }
 
 [BytecodeFunction: deleteMember] {
@@ -207,4 +220,19 @@
     1: [String: eval]
     2: [String: ]
     3: [String: unresolved]
+}
+
+[BytecodeFunction: deleteNamedSuperProperty] {
+  Parameters: 0, Registers: 1
+    0: ErrorDeleteSuperProperty 
+    1: Ret r0
+}
+
+[BytecodeFunction: deleteComputedSuperProperty] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: Add r0, r0, r1
+    10: ErrorDeleteSuperProperty 
+    11: Ret r0
 }

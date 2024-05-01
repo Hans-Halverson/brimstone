@@ -2319,8 +2319,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok(dest)
             }
-            ast::Expression::SuperMember(_) => {
-                unimplemented!("bytecode for deleting super member expressions")
+            ast::Expression::SuperMember(super_expr) => {
+                // Error when deleting a super member expression. But first be sure to evaluate the
+                // computed key.
+                if super_expr.is_computed {
+                    let property = self.gen_expression(&super_expr.property)?;
+                    self.register_allocator.release(property);
+                }
+
+                self.writer.error_delete_super_property_instruction();
+
+                // No need to initialize dest since it will not be used
+                self.allocate_destination(dest)
             }
             _ => {
                 // Otherwise evaluate argument but discard value, always returning true

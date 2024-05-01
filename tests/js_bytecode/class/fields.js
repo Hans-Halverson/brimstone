@@ -37,6 +37,23 @@ function withConstructor() {
   }
 }
 
+function withImplicitDerivedConstructor() {
+  class C extends String {
+    named = 1;
+  }
+}
+
+function withDerivedConstructor() {
+  class C extends String {
+    named = 1;
+    constructor() {
+      2;
+      super();
+      3;
+    }
+  }
+}
+
 function withMethods() {
   class C {
     namedField = 1;

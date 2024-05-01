@@ -16,8 +16,12 @@
     39: StoreGlobal r0, c13
     42: NewClosure r0, c14
     45: StoreGlobal r0, c15
-    48: LoadUndefined r0
-    50: Ret r0
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: LoadUndefined r0
+    62: Ret r0
   Constant Table:
     0: [BytecodeFunction: named]
     1: [String: named]
@@ -27,14 +31,18 @@
     5: [String: noInitializer]
     6: [BytecodeFunction: withConstructor]
     7: [String: withConstructor]
-    8: [BytecodeFunction: withMethods]
-    9: [String: withMethods]
-    10: [BytecodeFunction: withCapturedName]
-    11: [String: withCapturedName]
-    12: [BytecodeFunction: withStaticInitializers]
-    13: [String: withStaticInitializers]
-    14: [BytecodeFunction: namedEvaluation]
-    15: [String: namedEvaluation]
+    8: [BytecodeFunction: withImplicitDerivedConstructor]
+    9: [String: withImplicitDerivedConstructor]
+    10: [BytecodeFunction: withDerivedConstructor]
+    11: [String: withDerivedConstructor]
+    12: [BytecodeFunction: withMethods]
+    13: [String: withMethods]
+    14: [BytecodeFunction: withCapturedName]
+    15: [String: withCapturedName]
+    16: [BytecodeFunction: withStaticInitializers]
+    17: [String: withStaticInitializers]
+    18: [BytecodeFunction: namedEvaluation]
+    19: [String: namedEvaluation]
 }
 
 [BytecodeFunction: named] {
@@ -206,6 +214,59 @@
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
     4: Ret r0
+}
+
+[BytecodeFunction: withImplicitDerivedConstructor] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r1, c0
+     3: NewClass r0, c2, c1, r1, r0
+     9: LoadUndefined r1
+    11: Ret r1
+  Constant Table:
+    0: [String: String]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 2
+     0: DefaultSuperCall 
+     1: LoadImmediate r1, 1
+     4: DefineNamedProperty <this>, c0, r1
+     8: CheckThisInitialized <this>
+    10: Ret <this>
+  Constant Table:
+    0: [String: named]
+}
+
+[BytecodeFunction: withDerivedConstructor] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r1, c0
+     3: NewClass r0, c2, c1, r1, r0
+     9: LoadUndefined r1
+    11: Ret r1
+  Constant Table:
+    0: [String: String]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 4
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: LoadImmediate r2, 2
+     8: GetSuperConstructor r2, r0
+    11: Construct r2, r2, r1, r1, 0
+    17: CheckSuperAlreadyCalled <this>
+    19: Mov <this>, r2
+    22: LoadImmediate r3, 1
+    25: DefineNamedProperty <this>, c0, r3
+    29: LoadImmediate r2, 3
+    32: CheckThisInitialized <this>
+    34: Ret <this>
+  Constant Table:
+    0: [String: named]
 }
 
 [BytecodeFunction: withMethods] {

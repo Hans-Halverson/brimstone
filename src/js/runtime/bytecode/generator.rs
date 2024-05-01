@@ -302,12 +302,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
             self.realm,
             None,
             self.source_file,
+            /* class_fields */ vec![],
             is_constructor,
             /* is_class_constructor */ false,
             /* is_base_constructor */ is_constructor,
         )?;
 
-        let emit_result = generator.generate(function, /* class_fields */ &[])?;
+        let emit_result = generator.generate(function)?;
 
         // Generate all pending functions that were discovered while emitting the original function
         self.enqueue_pending_functions(
@@ -327,7 +328,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         pending_function: PatchablePendingFunction,
     ) -> EmitResult<()> {
         let PatchablePendingFunction {
-            func_node,
+            mut func_node,
             parent_function,
             constant_index,
             scope,
@@ -339,7 +340,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         HandleScope::new(self.cx, |_| {
             // Special handling if emitting a default constructor
             if let PendingFunctionNode::Constructor { node: None, name, fields, is_base } =
-                &func_node
+                func_node
             {
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
@@ -349,10 +350,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.realm,
                     &name,
                     self.source_file,
-                    /* is_base_constructor */ *is_base,
+                    fields,
+                    /* is_base_constructor */ is_base,
                 )?;
 
-                emit_result = generator.generate_default_constructor(&fields)?;
+                emit_result = generator.generate_default_constructor()?;
             } else {
                 let func_ptr = func_node.ast_ptr();
                 let func = func_ptr.as_ref();
@@ -369,12 +371,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     is_base_constructor = is_constructor;
                 }
 
-                let default_name = func_node.default_name();
-
-                let class_fields: &[ClassField] = match &func_node {
-                    PendingFunctionNode::Constructor { fields, .. } => &fields,
-                    _ => &[],
+                let class_fields = match &mut func_node {
+                    PendingFunctionNode::Constructor { ref mut fields, .. } => {
+                        std::mem::replace(fields, vec![])
+                    }
+                    _ => vec![],
                 };
+
+                let default_name = func_node.default_name();
 
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
@@ -385,12 +389,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.realm,
                     default_name,
                     self.source_file,
+                    class_fields,
                     is_constructor,
                     is_class_constructor,
                     is_base_constructor,
                 )?;
 
-                emit_result = generator.generate(func, class_fields)?;
+                emit_result = generator.generate(func)?;
             }
 
             Ok(())
@@ -550,6 +555,9 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// emit conservatively worse code to avoid assignment hazards.
     has_assign_expr: bool,
 
+    /// Class fields that must be initialized in this function. Only set if this is a constructor.
+    class_fields: Vec<ClassField>,
+
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
     exception_handler_builder: ExceptionHandlersBuilder,
@@ -568,6 +576,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<Wtf8String>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
+        class_fields: Vec<ClassField>,
         num_parameters: u32,
         function_length: u32,
         num_local_registers: u32,
@@ -601,6 +610,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             new_target_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
+            class_fields,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
@@ -617,6 +627,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         default_name: Option<&Wtf8String>,
         source_file: Handle<SourceFile>,
+        class_fields: Vec<ClassField>,
         is_constructor: bool,
         is_class_constructor: bool,
         is_base_constructor: bool,
@@ -668,6 +679,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             source_file,
             func.loc.to_range(),
+            class_fields,
             num_parameters as u32,
             function_length as u32,
             num_local_registers as u32,
@@ -706,6 +718,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(Wtf8String::from_str(name)),
             source_file,
             program.loc.to_range(),
+            /* class_fields */ vec![],
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers as u32,
@@ -724,6 +737,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         name: &Wtf8String,
         source_file: Handle<SourceFile>,
+        class_fields: Vec<ClassField>,
         is_base_constructor: bool,
     ) -> EmitResult<Self> {
         // First local register used for new target in derived constructors
@@ -738,6 +752,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(name.clone()),
             source_file,
             0..0,
+            class_fields,
             /* num_parameters */ 0,
             /* function_length */ 0,
             num_local_registers,
@@ -1092,18 +1107,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a function.
-    fn generate(
-        mut self,
-        func: &ast::Function,
-        class_fields: &[ClassField],
-    ) -> EmitResult<EmitFunctionResult> {
+    fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
         if func.is_async() || func.is_generator() {
             unimplemented!("bytecode for async and generator functions")
         }
 
-        // Emit class fields if this is a constructor, defined onto the `this` value
-        for field in class_fields {
-            self.gen_class_field(field, Register::this())?;
+        // Base constructors generate class fields immediately
+        if !self.is_derived_constructor() {
+            self.gen_constructor_class_fields()?;
         }
 
         let func_scope = func.scope.as_ref();
@@ -1360,19 +1371,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a default constructor.
-    fn generate_default_constructor(
-        mut self,
-        class_fields: &[ClassField],
-    ) -> EmitResult<EmitFunctionResult> {
+    fn generate_default_constructor(mut self) -> EmitResult<EmitFunctionResult> {
         // Call super constructor if necessary
         if self.is_derived_constructor() {
             self.writer.default_super_call_instruction();
         }
 
         // Emit fields if any exist, defined onto the `this` value
-        for field in class_fields {
-            self.gen_class_field(field, Register::this())?;
-        }
+        self.gen_constructor_class_fields()?;
 
         // Return undefined for a base constructor and `this` for a derived constructor. No default
         // constructor scope is needed since it is only needed if `this` is captured.
@@ -3860,7 +3866,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.write_mov_instruction(Register::this(), call_result);
         }
 
+        // Derived constructors initialize fields after the super call
+        if self.is_derived_constructor() {
+            self.gen_constructor_class_fields()?;
+        }
+
         Ok(call_result)
+    }
+
+    /// Emit class fields in a constructor, defined onto the `this` value.
+    fn gen_constructor_class_fields(&mut self) -> EmitResult<()> {
+        let class_fields = std::mem::replace(&mut self.class_fields, vec![]);
+        for field in class_fields {
+            self.gen_class_field(&field, Register::this())?;
+        }
+
+        Ok(())
     }
 
     fn gen_template_literal_expression(

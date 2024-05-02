@@ -28,7 +28,7 @@
     18: NewClass r0, c4, c3, r1, r0
     24: LoadConstant r2, c5
     27: LoadFromScope r3, 1, 0
-    31: DefineProperty r0, r2, r3, 0
+    31: DefinePrivateProperty r0, r2, r3, 1
     36: PopScope 
     37: LoadUndefined r1
     39: Ret r1
@@ -57,7 +57,7 @@
   Parameters: 0, Registers: 2
      0: LoadConstant r0, c0
      3: LoadFromScope r1, 0, 0
-     7: DefineProperty <this>, r0, r1, 0
+     7: DefinePrivateProperty <this>, r0, r1, 1
     12: LoadUndefined r0
     14: Ret r0
   Constant Table:
@@ -79,10 +79,10 @@
     32: NewClass r0, c6, c5, r1, r0
     38: LoadConstant r2, c7
     41: LoadFromScope r3, 2, 0
-    45: DefineProperty r0, r2, r3, 2
+    45: DefinePrivateProperty r0, r2, r3, 2
     50: LoadConstant r2, c8
     53: LoadFromScope r3, 3, 0
-    57: DefineProperty r0, r2, r3, 4
+    57: DefinePrivateProperty r0, r2, r3, 4
     62: PopScope 
     63: LoadUndefined r1
     65: Ret r1
@@ -126,10 +126,10 @@
   Parameters: 0, Registers: 2
      0: LoadConstant r0, c0
      3: LoadFromScope r1, 0, 0
-     7: DefineProperty <this>, r0, r1, 2
+     7: DefinePrivateProperty <this>, r0, r1, 2
     12: LoadConstant r0, c1
     15: LoadFromScope r1, 1, 0
-    19: DefineProperty <this>, r0, r1, 4
+    19: DefinePrivateProperty <this>, r0, r1, 4
     24: LoadUndefined r0
     26: Ret r0
   Constant Table:
@@ -159,7 +159,7 @@
     55: NewClass r0, c11, c10, r1, r2
     61: LoadConstant r5, c12
     64: LoadFromScope r6, 1, 0
-    68: DefineProperty r0, r5, r6, 0
+    68: DefinePrivateProperty r0, r5, r6, 6
     73: PopScope 
     74: LoadUndefined r1
     76: Ret r1
@@ -237,10 +237,10 @@
   Parameters: 0, Registers: 2
      0: LoadConstant r0, c0
      3: LoadFromScope r1, 0, 0
-     7: DefineProperty <this>, r0, r1, 0
+     7: DefinePrivateProperty <this>, r0, r1, 6
     12: LoadConstant r0, c1
     15: LoadFromScope r1, 2, 0
-    19: DefineProperty <this>, r0, r1, 0
+    19: DefinePrivateProperty <this>, r0, r1, 6
     24: LoadUndefined r0
     26: Ret r0
   Constant Table:

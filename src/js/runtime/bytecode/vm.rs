@@ -4,7 +4,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
-            define_property_or_throw, get_method, has_property, set,
+            define_property_or_throw, get_method, has_property, private_get, private_set, set,
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
@@ -63,14 +63,15 @@ use super::{
         CallWithReceiverInstruction, CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
         CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
         CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
-        DefineNamedPropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
+        DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
+        DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, ExpInstruction,
         ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
-        GetNamedSuperPropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
-        GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
-        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction, GetPropertyInstruction,
+        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
@@ -89,12 +90,12 @@ use super::{
         NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
         PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
         RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction,
+        SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
+        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
+        ShiftRightLogicalInstruction, StoreDynamicInstruction, StoreGlobalInstruction,
+        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
+        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToObjectInstruction,
+        ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -607,6 +608,24 @@ impl VM {
                         }
                         OpCode::DeleteBinding => {
                             dispatch_or_throw!(DeleteBindingInstruction, execute_delete_binding)
+                        }
+                        OpCode::GetPrivateProperty => {
+                            dispatch_or_throw!(
+                                GetPrivatePropertyInstruction,
+                                execute_get_private_property
+                            )
+                        }
+                        OpCode::SetPrivateProperty => {
+                            dispatch_or_throw!(
+                                SetPrivatePropertyInstruction,
+                                execute_set_private_property
+                            )
+                        }
+                        OpCode::DefinePrivateProperty => {
+                            dispatch_or_throw!(
+                                DefinePrivatePropertyInstruction,
+                                execute_define_private_property
+                            )
                         }
                         OpCode::SetArrayProperty => {
                             dispatch!(SetArrayPropertyInstruction, execute_set_array_property)
@@ -2976,6 +2995,69 @@ impl VM {
         self.write_register(dest, Value::bool(delete_status));
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_get_private_property<W: Width>(
+        &mut self,
+        instr: &GetPrivatePropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key()).as_symbol();
+        let dest = instr.dest();
+
+        // May allocate
+        let coerced_object = maybe!(to_object(self.cx, object));
+        let result = maybe!(private_get(self.cx, coerced_object, key));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_set_private_property<W: Width>(
+        &mut self,
+        instr: &SetPrivatePropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.read_register_to_handle(instr.key()).as_symbol();
+        let value = self.read_register_to_handle(instr.value());
+
+        // May allocate
+        let coerced_object = maybe!(to_object(self.cx, object));
+        maybe!(private_set(self.cx, coerced_object, key, value));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_define_private_property<W: Width>(
+        &mut self,
+        instr: &DefinePrivatePropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let mut object = self.read_register_to_handle(instr.object()).as_object();
+        let key = self.read_register_to_handle(instr.key()).as_symbol();
+        let value = self.read_register_to_handle(instr.value());
+        let flags =
+            DefinePrivatePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
+
+        // May allocate
+        let property = if flags == DefinePrivatePropertyFlags::empty() {
+            Property::private_field(value)
+        } else if flags == DefinePrivatePropertyFlags::METHOD {
+            Property::private_method(value.as_object())
+        } else if flags.contains(DefinePrivatePropertyFlags::GETTER) {
+            if flags.contains(DefinePrivatePropertyFlags::SETTER) {
+                Property::private_accessor(value.as_accessor())
+            } else {
+                Property::private_getter(self.cx, value.as_object())
+            }
+        } else {
+            Property::private_setter(self.cx, value.as_object())
+        };
+
+        object.property_property_add(self.cx, key, property)
     }
 
     #[inline]

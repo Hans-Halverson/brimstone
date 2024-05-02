@@ -113,6 +113,13 @@ impl Property {
         }
     }
 
+    pub fn private_accessor(accessor: Handle<AccessorValue>) -> Property {
+        Property {
+            value: accessor.into(),
+            flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
+        }
+    }
+
     pub fn value(&self) -> Handle<Value> {
         self.value
     }

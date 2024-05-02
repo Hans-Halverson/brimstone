@@ -801,9 +801,6 @@ define_instructions!(
     }
 
     /// Define a property on an object with the given value. The property key may be any value.
-    ///
-    /// The `is_named` operand is a boolean flag (0 or 1) specifying whether the value is an unnamed
-    /// closure that needs its name set to the key with SetFunctionName.
     DefineProperty (DefinePropertyInstruction, define_property_instruction) {
         [0] object: Register,
         [1] key: Register,
@@ -866,6 +863,30 @@ define_instructions!(
     DeleteBinding (DeleteBindingInstruction, delete_binding_instruction) {
         [0] dest: Register,
         [1] name_constant_index: ConstantIndex,
+    }
+
+    /// Get a private property from an object, storing the result in dest. The key must be a private
+    /// symbol.
+    GetPrivateProperty (GetPrivatePropertyInstruction, get_private_property_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] key: Register,
+    }
+
+    /// Set a private property on an object to the given value. The key must be a private symbol.
+    SetPrivateProperty (SetPrivatePropertyInstruction, set_private_property_instruction) {
+        [0] object: Register,
+        [1] key: Register,
+        [2] value: Register,
+    }
+
+    /// Define a private property on an object with the given value. The key must be a private
+    /// symbol.
+    DefinePrivateProperty (DefinePrivatePropertyInstruction, define_private_property_instruction) {
+        [0] object: Register,
+        [1] key: Register,
+        [2] value: Register,
+        [3] flags: UInt,
     }
 
     /// Set a property on an array literal to the given value.
@@ -1037,6 +1058,19 @@ bitflags! {
         /// SetFunctionName.
         const NEEDS_NAME = 1 << 0;
         /// Whether to define a getter property.
+        const GETTER = 1 << 1;
+        /// Whether to define a setter property.
+        const SETTER = 1 << 2;
+    }
+}
+
+bitflags! {
+    /// Flags for the DefinePrivateProperty instruction.
+    #[derive(Clone, Copy, PartialEq)]
+    pub struct DefinePrivatePropertyFlags: u8 {
+        /// Whether to define a method property.
+        const METHOD = 1 << 0;
+        /// Whether to define a setter property.
         const GETTER = 1 << 1;
         /// Whether to define a setter property.
         const SETTER = 1 << 2;

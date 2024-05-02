@@ -1,5 +1,5 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 9
+  Parameters: 0, Registers: 10
      0: LoadEmpty r1
      2: PushLexicalScope c0
      4: NewClosure r2, c1
@@ -11,11 +11,12 @@
     23: NewClosure r6, c6
     26: NewClosure r7, c7
     29: NewClosure r8, c8
-    32: NewClass r0, c10, c9, r1, r2
-    38: PopScope 
-    39: StoreToScope r0, 1, 0
-    43: LoadUndefined r0
-    45: Ret r0
+    32: NewClosure r9, c9
+    35: NewClass r0, c11, c10, r1, r2
+    41: PopScope 
+    42: StoreToScope r0, 1, 0
+    46: LoadUndefined r0
+    48: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: #method]
@@ -24,10 +25,11 @@
     4: [BytecodeFunction: privateOptionalMember]
     5: [BytecodeFunction: privateOptionalCall]
     6: [BytecodeFunction: privateAssignment]
-    7: [BytecodeFunction: privateUpdate]
-    8: [BytecodeFunction: privateDestructure]
-    9: [BytecodeFunction: C]
-    10: [ClassNames]
+    7: [BytecodeFunction: privateCompoundAssignment]
+    8: [BytecodeFunction: privateUpdate]
+    9: [BytecodeFunction: privateDestructure]
+    10: [BytecodeFunction: C]
+    11: [ClassNames]
 }
 
 [BytecodeFunction: #method] {
@@ -39,7 +41,7 @@
 [BytecodeFunction: privateMember] {
   Parameters: 0, Registers: 1
     0: LoadConstant r0, c0
-    3: GetProperty r0, <this>, r0
+    3: GetPrivateProperty r0, <this>, r0
     7: Ret r0
   Constant Table:
     0: [Symbol: method]
@@ -48,7 +50,7 @@
 [BytecodeFunction: privateCall] {
   Parameters: 0, Registers: 1
      0: LoadConstant r0, c0
-     3: GetProperty r0, <this>, r0
+     3: GetPrivateProperty r0, <this>, r0
      7: CallWithReceiver r0, r0, <this>, r0, 0
     13: Ret r0
   Constant Table:
@@ -58,7 +60,7 @@
 [BytecodeFunction: privateOptionalMember] {
   Parameters: 0, Registers: 1
      0: LoadConstant r0, c0
-     3: GetProperty r0, <this>, r0
+     3: GetPrivateProperty r0, <this>, r0
      7: JumpNullish r0, 11 (.L0)
     10: CallWithReceiver r0, r0, <this>, r0, 0
     16: Jump 4 (.L1)
@@ -73,7 +75,7 @@
 [BytecodeFunction: privateOptionalCall] {
   Parameters: 0, Registers: 1
      0: LoadConstant r0, c0
-     3: GetProperty r0, <this>, r0
+     3: GetPrivateProperty r0, <this>, r0
      7: JumpNullish r0, 11 (.L0)
     10: CallWithReceiver r0, r0, <this>, r0, 0
     16: Jump 4 (.L1)
@@ -89,9 +91,21 @@
   Parameters: 1, Registers: 2
      0: LoadConstant r1, c0
      3: Mov r0, a0
-     6: SetProperty <this>, r1, r0
+     6: SetPrivateProperty <this>, r1, r0
     10: LoadUndefined r0
     12: Ret r0
+  Constant Table:
+    0: [Symbol: method]
+}
+
+[BytecodeFunction: privateCompoundAssignment] {
+  Parameters: 1, Registers: 2
+     0: LoadConstant r1, c0
+     3: GetPrivateProperty r0, <this>, r1
+     7: Add r0, r0, a0
+    11: SetPrivateProperty <this>, r1, r0
+    15: LoadUndefined r0
+    17: Ret r0
   Constant Table:
     0: [Symbol: method]
 }
@@ -99,11 +113,11 @@
 [BytecodeFunction: privateUpdate] {
   Parameters: 0, Registers: 3
      0: LoadConstant r1, c0
-     3: GetProperty r0, <this>, r1
+     3: GetPrivateProperty r0, <this>, r1
      7: ToNumeric r0, r0
     10: Mov r2, r0
     13: Inc r2
-    15: SetProperty <this>, r1, r2
+    15: SetPrivateProperty <this>, r1, r2
     19: LoadUndefined r0
     21: Ret r0
   Constant Table:
@@ -114,7 +128,7 @@
   Parameters: 1, Registers: 2
      0: LoadConstant r1, c0
      3: GetNamedProperty r0, a0, c1
-     7: SetProperty <this>, r1, r0
+     7: SetPrivateProperty <this>, r1, r0
     11: LoadUndefined r0
     13: Ret r0
   Constant Table:
@@ -126,7 +140,7 @@
   Parameters: 0, Registers: 2
      0: LoadConstant r0, c0
      3: LoadFromScope r1, 0, 0
-     7: DefineProperty <this>, r0, r1, 0
+     7: DefinePrivateProperty <this>, r0, r1, 1
     12: LoadUndefined r0
     14: Ret r0
   Constant Table:

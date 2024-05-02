@@ -21,6 +21,10 @@ class C {
     this.#method = x;
   }
 
+  privateCompoundAssignment(x) {
+    this.#method += x;
+  }
+
   privateUpdate() {
     this.#method++;
   }

@@ -447,11 +447,11 @@ impl Handle<ObjectValue> {
     }
 
     // 7.3.29 PrivateMethodOrAccessorAdd
-    pub fn private_method_or_accessor_add(
+    pub fn property_property_add(
         &mut self,
         cx: Context,
         private_name: PrivateName,
-        private_method: Property,
+        private_property: Property,
     ) -> EvalResult<()> {
         if self.has_private_element(private_name) {
             type_error_(cx, "private property already defined")
@@ -460,7 +460,7 @@ impl Handle<ObjectValue> {
             let property_key = PropertyKey::symbol(private_name);
             self.named_properties_field()
                 .maybe_grow_for_insertion(cx)
-                .insert_without_growing(property_key.get(), private_method.to_heap());
+                .insert_without_growing(property_key.get(), private_property.to_heap());
             ().into()
         }
     }

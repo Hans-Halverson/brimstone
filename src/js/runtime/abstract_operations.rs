@@ -643,7 +643,7 @@ pub fn initialize_instance_elements(
     constructor: Handle<Function>,
 ) -> EvalResult<()> {
     maybe!(constructor.iter_private_methods(cx, |cx, private_name, private_method| {
-        object.private_method_or_accessor_add(cx, private_name, private_method)
+        object.property_property_add(cx, private_name, private_method)
     }));
 
     maybe!(constructor.iter_fields(cx, |cx, field| { define_field(cx, object, field) }));

@@ -40,7 +40,7 @@ use crate::js::{
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-    instruction::{DecodeInfo, OpCode},
+    instruction::{DecodeInfo, DefinePrivatePropertyFlags, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
     width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
@@ -3252,12 +3252,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_object: bool,
     ) -> EmitResult<GenRegister> {
-        if expr.is_computed || expr.is_private {
-            let key = if expr.is_computed {
-                self.gen_expression(&expr.property)?
-            } else {
-                self.gen_private_symbol(&expr.property.to_id().name)?
-            };
+        if expr.is_computed {
+            let key = self.gen_expression(&expr.property)?;
 
             self.register_allocator.release(key);
             if release_object {
@@ -3266,6 +3262,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let dest = self.allocate_destination(dest)?;
             self.writer.get_property_instruction(dest, object, key);
+
+            Ok(dest)
+        } else if expr.is_private {
+            let key = self.gen_private_symbol(&expr.property.to_id().name)?;
+
+            self.register_allocator.release(key);
+            if release_object {
+                self.register_allocator.release(object);
+            }
+
+            let dest = self.allocate_destination(dest)?;
+            self.writer
+                .get_private_property_instruction(dest, object, key);
 
             Ok(dest)
         } else {
@@ -3450,6 +3459,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 enum Property {
                     Computed(GenRegister),
                     Named(GenConstantIndex),
+                    Private(GenRegister),
                 }
 
                 // Use a temporary register since intermediate values will be written, and we do
@@ -3464,7 +3474,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let property = if member.is_computed {
                     Property::Computed(self.gen_expression(&member.property)?)
                 } else if member.is_private {
-                    Property::Computed(self.gen_private_symbol(&member.property.to_id().name)?)
+                    Property::Private(self.gen_private_symbol(&member.property.to_id().name)?)
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
@@ -3488,6 +3498,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         Property::Named(name_constant_index) => self
                             .writer
                             .get_named_property_instruction(temp, object, name_constant_index),
+                        Property::Private(key) => self
+                            .writer
+                            .get_private_property_instruction(temp, object, key),
                     }
 
                     if !expr.operator.is_logical() {
@@ -3521,6 +3534,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             name_constant_index,
                             temp,
                         );
+                    }
+                    Property::Private(key) => {
+                        self.writer
+                            .set_private_property_instruction(object, key, temp);
+                        self.register_allocator.release(key);
                     }
                 }
 
@@ -3615,6 +3633,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             enum Property {
                 Computed(GenRegister),
                 Named(GenConstantIndex),
+                Private(GenRegister),
             }
 
             // We will need a temporary register to hold intermediate values. This temporary
@@ -3626,16 +3645,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let object = self.gen_expression(&member.object)?;
 
             // Load the property to the temporary register
-            let property = if member.is_computed || member.is_private {
-                let key = if member.is_computed {
-                    self.gen_expression(&member.property)?
-                } else {
-                    self.gen_private_symbol(&member.property.to_id().name)?
-                };
-
+            let property = if member.is_computed {
+                let key = self.gen_expression(&member.property)?;
                 self.writer.get_property_instruction(temp, object, key);
 
                 Property::Computed(key)
+            } else if member.is_private {
+                let key = self.gen_private_symbol(&member.property.to_id().name)?;
+                self.writer
+                    .get_private_property_instruction(temp, object, key);
+
+                Property::Private(key)
             } else {
                 // Must be a named access
                 let name = member.property.to_id();
@@ -3677,6 +3697,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         name_constant_index,
                         modified_temp,
                     );
+                }
+                Property::Private(key) => {
+                    self.writer
+                        .set_private_property_instruction(object, key, modified_temp);
+                    self.register_allocator.release(key);
                 }
             }
 
@@ -4261,7 +4286,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
         } else if member.is_private {
             let property = self.gen_private_symbol(&member.property.to_id().name)?;
-            Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::PrivateProperty { object, property }))
         } else {
             // Must be a named access
             let name = member.property.to_id();
@@ -4305,6 +4330,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ReferenceKind::ComputedProperty { object, property } => {
                 self.writer
                     .set_property_instruction(*object, *property, value);
+
+                self.register_allocator.release(*property);
+                self.register_allocator.release(*object);
+
+                Ok(())
+            }
+            ReferenceKind::PrivateProperty { object, property } => {
+                self.writer
+                    .set_private_property_instruction(*object, *property, value);
 
                 self.register_allocator.release(*property);
                 self.register_allocator.release(*object);
@@ -4847,8 +4881,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             self.writer
                                 .new_accessor_instruction(accessor_value, getter, setter);
 
-                            is_getter = false;
-                            is_setter = false;
+                            is_getter = true;
+                            is_setter = true;
 
                             accessor_value
                         } else {
@@ -4900,13 +4934,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         ClassField::Named { field, name }
                     } else {
                         // Evaluate key to a property key
-                        let key_reg = if property.is_private {
-                            self.gen_private_symbol(&property.key.expr.to_id().name)?
-                        } else {
-                            let key_reg = self.gen_outer_expression(&property.key)?;
-                            self.writer.to_property_key_instruction(key_reg, key_reg);
-                            key_reg
-                        };
+                        let key_reg = self.gen_outer_expression(&property.key)?;
+                        self.writer.to_property_key_instruction(key_reg, key_reg);
 
                         // And store in scope at the next available index
                         let scope_index = GenUInt::try_from_unsigned(field_scope_index)
@@ -5150,17 +5179,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer
                 .load_from_scope_instruction(value, *scope_index, UInt::new(0));
 
-            // Set up flags for DefineProperty instruction
-            let mut flags = DefinePropertyFlags::empty();
+            // Set up flags for DefinePrivateProperty instruction
+            let mut flags = DefinePrivatePropertyFlags::empty();
+            if !is_getter && !is_setter {
+                flags |= DefinePrivatePropertyFlags::METHOD;
+            }
             if *is_getter {
-                flags |= DefinePropertyFlags::GETTER;
-            } else if *is_setter {
-                flags |= DefinePropertyFlags::SETTER;
+                flags |= DefinePrivatePropertyFlags::GETTER;
+            }
+            if *is_setter {
+                flags |= DefinePrivatePropertyFlags::SETTER;
             }
             let flags = UInt::new(flags.bits() as u32);
 
             self.writer
-                .define_property_instruction(target, name, value, flags);
+                .define_private_property_instruction(target, name, value, flags);
 
             self.register_allocator.release(value);
             self.register_allocator.release(name);
@@ -5225,10 +5258,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ClassField::PrivateField { name, .. } => {
                 // Define the private field using the private symbol
                 let name = self.gen_private_symbol(&name)?;
-                let flags = UInt::new(DefinePropertyFlags::empty().bits() as u32);
+                let flags = UInt::new(DefinePrivatePropertyFlags::empty().bits() as u32);
 
                 self.writer
-                    .define_property_instruction(target, name, value, flags);
+                    .define_private_property_instruction(target, name, value, flags);
 
                 self.register_allocator.release(name);
             }
@@ -7062,6 +7095,7 @@ enum ReferenceKind<'a> {
     Id(&'a ast::Identifier),
     NamedProperty { object: GenRegister, property: GenConstantIndex },
     ComputedProperty { object: GenRegister, property: GenRegister },
+    PrivateProperty { object: GenRegister, property: GenRegister },
     ArrayPattern(&'a ast::ArrayPattern),
     ObjectPattern(&'a ast::ObjectPattern),
 }

@@ -40,8 +40,8 @@
      6: 04 ff 02   LoadConstant r0, c2
      9: 03 fe 01   LoadImmediate r1, 1
     12: 0f fe 03   StoreDynamic r1, c3
-    15: 5a ff 03   DeleteBinding r0, c3
-    18: 5a ff 01   DeleteBinding r0, c1
+    15: 5b ff 03   DeleteBinding r0, c3
+    18: 5b ff 01   DeleteBinding r0, c1
     21: 18 ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: f]
@@ -63,8 +63,8 @@
      6: 04 ff 02   LoadConstant r0, c2
      9: 03 fe 01   LoadImmediate r1, 1
     12: 0f fe 03   StoreDynamic r1, c3
-    15: 5a ff 03   DeleteBinding r0, c3
-    18: 5a ff 01   DeleteBinding r0, c1
+    15: 5b ff 03   DeleteBinding r0, c3
+    18: 5b ff 01   DeleteBinding r0, c1
     21: 18 ff      Ret r0
   Constant Table:
     0: [BytecodeFunction: f]

@@ -48,19 +48,16 @@
   Parameters: 0, Registers: 3
      0: LoadEmpty r1
      2: PushLexicalScope c0
-     4: LoadConstant r2, c1
-     7: StoreToScope r2, 0, 0
-    11: NewClosure r2, c2
-    14: NewClass r0, c4, c3, r1, r2
-    20: PopScope 
-    21: LoadUndefined r1
-    23: Ret r1
+     4: NewClosure r2, c1
+     7: NewClass r0, c3, c2, r1, r2
+    13: PopScope 
+    14: LoadUndefined r1
+    16: Ret r1
   Constant Table:
     0: [ScopeNames]
-    1: [Symbol: field]
-    2: [BytecodeFunction: method]
-    3: [BytecodeFunction: C]
-    4: [ClassNames]
+    1: [BytecodeFunction: method]
+    2: [BytecodeFunction: C]
+    3: [ClassNames]
 }
 
 [BytecodeFunction: method] {
@@ -76,8 +73,10 @@
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
-     3: LoadFromScope r1, 0, 0
-     7: DefineProperty <this>, r1, r0, 0
-    12: LoadUndefined r0
-    14: Ret r0
+     3: LoadConstant r1, c0
+     6: DefineProperty <this>, r1, r0, 0
+    11: LoadUndefined r0
+    13: Ret r0
+  Constant Table:
+    0: [Symbol: field]
 }

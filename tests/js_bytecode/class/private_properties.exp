@@ -1,0 +1,249 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: LoadUndefined r0
+    20: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: methods]
+    1: [String: methods]
+    2: [BytecodeFunction: individualAccessors]
+    3: [String: individualAccessors]
+    4: [BytecodeFunction: accessorPairs]
+    5: [String: accessorPairs]
+}
+
+[BytecodeFunction: methods] {
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: NewClosure r2, c1
+     7: StoreToScope r2, 0, 0
+    11: NewClosure r2, c2
+    14: StoreToScope r2, 1, 0
+    18: NewClass r0, c4, c3, r1, r0
+    24: LoadConstant r2, c5
+    27: LoadFromScope r3, 1, 0
+    31: DefineProperty r0, r2, r3, 0
+    36: PopScope 
+    37: LoadUndefined r1
+    39: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: #method1]
+    2: [BytecodeFunction: #method2]
+    3: [BytecodeFunction: C]
+    4: [ClassNames]
+    5: [Symbol: method2]
+}
+
+[BytecodeFunction: #method1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: #method2] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 2
+     0: LoadConstant r0, c0
+     3: LoadFromScope r1, 0, 0
+     7: DefineProperty <this>, r0, r1, 0
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [Symbol: method1]
+}
+
+[BytecodeFunction: individualAccessors] {
+  Parameters: 0, Registers: 4
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: NewClosure r2, c1
+     7: StoreToScope r2, 0, 0
+    11: NewClosure r2, c2
+    14: StoreToScope r2, 1, 0
+    18: NewClosure r2, c3
+    21: StoreToScope r2, 2, 0
+    25: NewClosure r2, c4
+    28: StoreToScope r2, 3, 0
+    32: NewClass r0, c6, c5, r1, r0
+    38: LoadConstant r2, c7
+    41: LoadFromScope r3, 2, 0
+    45: DefineProperty r0, r2, r3, 2
+    50: LoadConstant r2, c8
+    53: LoadFromScope r3, 3, 0
+    57: DefineProperty r0, r2, r3, 4
+    62: PopScope 
+    63: LoadUndefined r1
+    65: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: get #getter1]
+    2: [BytecodeFunction: set #setter1]
+    3: [BytecodeFunction: get #getter2]
+    4: [BytecodeFunction: set #setter2]
+    5: [BytecodeFunction: C]
+    6: [ClassNames]
+    7: [Symbol: getter2]
+    8: [Symbol: setter2]
+}
+
+[BytecodeFunction: get #getter1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: set #setter1] {
+  Parameters: 1, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get #getter2] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: set #setter2] {
+  Parameters: 1, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 2
+     0: LoadConstant r0, c0
+     3: LoadFromScope r1, 0, 0
+     7: DefineProperty <this>, r0, r1, 2
+    12: LoadConstant r0, c1
+    15: LoadFromScope r1, 1, 0
+    19: DefineProperty <this>, r0, r1, 4
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [Symbol: getter1]
+    1: [Symbol: setter1]
+}
+
+[BytecodeFunction: accessorPairs] {
+  Parameters: 0, Registers: 7
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: NewClosure r2, c1
+     7: NewClosure r3, c2
+    10: NewAccessor r2, r3, r2
+    14: StoreToScope r2, 0, 0
+    18: NewClosure r2, c3
+    21: NewClosure r3, c4
+    24: NewAccessor r2, r2, r3
+    28: StoreToScope r2, 1, 0
+    32: NewClosure r2, c5
+    35: NewClosure r3, c6
+    38: NewClosure r4, c7
+    41: NewClosure r5, c8
+    44: NewAccessor r4, r5, r4
+    48: StoreToScope r4, 2, 0
+    52: NewClosure r4, c9
+    55: NewClass r0, c11, c10, r1, r2
+    61: LoadConstant r5, c12
+    64: LoadFromScope r6, 1, 0
+    68: DefineProperty r0, r5, r6, 0
+    73: PopScope 
+    74: LoadUndefined r1
+    76: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: set #acc1]
+    2: [BytecodeFunction: get #acc1]
+    3: [BytecodeFunction: get #acc2]
+    4: [BytecodeFunction: set #acc2]
+    5: [BytecodeFunction: method1]
+    6: [BytecodeFunction: method2]
+    7: [BytecodeFunction: set #acc3]
+    8: [BytecodeFunction: get #acc3]
+    9: [BytecodeFunction: method3]
+    10: [BytecodeFunction: C]
+    11: [ClassNames]
+    12: [Symbol: acc2]
+}
+
+[BytecodeFunction: set #acc1] {
+  Parameters: 1, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get #acc1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get #acc2] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: set #acc2] {
+  Parameters: 1, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method2] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: set #acc3] {
+  Parameters: 1, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: get #acc3] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method3] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 2
+     0: LoadConstant r0, c0
+     3: LoadFromScope r1, 0, 0
+     7: DefineProperty <this>, r0, r1, 0
+    12: LoadConstant r0, c1
+    15: LoadFromScope r1, 2, 0
+    19: DefineProperty <this>, r0, r1, 0
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [Symbol: acc1]
+    1: [Symbol: acc3]
+}

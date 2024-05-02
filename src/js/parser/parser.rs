@@ -3468,10 +3468,11 @@ impl<'a> Parser<'a> {
 
                 // Static initializers implemented as method with block body. All fields except for
                 // the kind and the function's block body are ignored, so put in placeholders.
-                return Ok(ClassElement::Method(ClassMethod {
+                return Ok(ClassElement::Method(ClassMethod::new(
                     loc,
-                    key: Expression::Null(loc).to_outer(),
-                    value: p(Function::new(
+                    /* key */ Expression::Null(loc).to_outer(),
+                    /* value */
+                    p(Function::new(
                         loc,
                         None,
                         params,
@@ -3479,11 +3480,11 @@ impl<'a> Parser<'a> {
                         param_flags | FunctionFlags::IS_STRICT_MODE,
                         scope,
                     )),
-                    kind: ClassMethodKind::StaticInitializer,
-                    is_computed: false,
-                    is_static: false,
-                    is_private: false,
-                }));
+                    ClassMethodKind::StaticInitializer,
+                    /* is_computed */ false,
+                    /* is_static */ false,
+                    /* is_private */ false,
+                )));
             }
 
             // Handle `static` as name of method: `static() {}`
@@ -3579,15 +3580,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        ClassMethod {
-            loc,
-            key: key.to_outer(),
-            value: func_value,
-            kind,
-            is_computed,
-            is_static,
-            is_private,
-        }
+        ClassMethod::new(loc, key.to_outer(), func_value, kind, is_computed, is_static, is_private)
     }
 
     fn is_constructor_key(key: &Expression) -> bool {

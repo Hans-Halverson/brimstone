@@ -8,9 +8,14 @@ function named() {
 function computed() {
   class C {
     [1 + 2] = 2;
-    #private1 = 3;
     static [3 + 4] = 4;
-    static #private2 = 5;
+  }
+}
+
+function private() {
+  class C {
+    #private1 = 1;
+    static #private2 = 2;
   }
 }
 
@@ -68,7 +73,7 @@ function withMethods() {
 function withCapturedName() {
   class C {
     [1 + 2] = 2;
-    #private1 = 3;
+    #private1() {};
 
     method() {
       return C;

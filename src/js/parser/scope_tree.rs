@@ -551,7 +551,7 @@ impl ScopeTree {
                 bindings[arg_index] = name.clone();
             }
         } else if num_extra_slots.is_some() && ast_node.kind() == ScopeNodeKind::Class {
-            // Extra slots for a class scope will hold computed field names
+            // Extra slots for a class scope will hold computed and private field names
             bindings = vec![CLASS_FIELD_SLOT_NAME.to_owned(); num_extra_slots.unwrap()];
         }
 

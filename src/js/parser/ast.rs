@@ -544,6 +544,32 @@ pub struct ClassMethod {
     pub is_computed: bool,
     pub is_static: bool,
     pub is_private: bool,
+    /// Whether this is the first part of a private accessor pair, where the second part appears
+    /// laster in the class. Set during analysis.
+    pub is_private_pair_start: bool,
+}
+
+impl ClassMethod {
+    pub fn new(
+        loc: Loc,
+        key: P<OuterExpression>,
+        value: P<Function>,
+        kind: ClassMethodKind,
+        is_computed: bool,
+        is_static: bool,
+        is_private: bool,
+    ) -> ClassMethod {
+        ClassMethod {
+            loc,
+            key,
+            value,
+            kind,
+            is_computed,
+            is_static,
+            is_private,
+            is_private_pair_start: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

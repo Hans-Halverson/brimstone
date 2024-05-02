@@ -777,6 +777,14 @@ define_instructions!(
         [4] methods: Register,
     }
 
+    /// Create a new accessor value from the getter and setter functions. The result is stored in
+    /// dest. Getter and setter operands must both be closures.
+    NewAccessor (NewAccessorInstruction, new_accessor_instruction) {
+        [0] dest: Register,
+        [1] getter: Register,
+        [2] setter: Register,
+    }
+
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
     GetProperty (GetPropertyInstruction, get_property_instruction) {

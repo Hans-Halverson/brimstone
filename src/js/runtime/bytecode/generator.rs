@@ -2427,7 +2427,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::BinaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let key = self.gen_private_symbol(expr.left.to_id())?;
+        let key = self.gen_private_symbol(&expr.left.to_id().name)?;
         let object = self.gen_expression(&expr.right)?;
 
         self.register_allocator.release(object);
@@ -2448,7 +2448,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let join_block = self.new_block();
 
         // If the destination is not a temporary register then we must write intermediate values
-        // to a temporary register, then move that to final destionation at the end. This avoids
+        // to a temporary register, then move that to the final destination at the end. This avoids
         // clobbering the non-temporary register if the expression throws.
         let needs_temporary_dest = !self.register_allocator.is_temporary_register(dest);
         let temporary_dest = if needs_temporary_dest {
@@ -3256,7 +3256,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let key = if expr.is_computed {
                 self.gen_expression(&expr.property)?
             } else {
-                self.gen_private_symbol(expr.property.to_id())?
+                self.gen_private_symbol(&expr.property.to_id().name)?
             };
 
             self.register_allocator.release(key);
@@ -3285,8 +3285,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_private_symbol(&mut self, id: &ast::Identifier) -> EmitResult<GenRegister> {
-        let name = InternedStrings::get_str(self.cx, &id.name);
+    fn gen_private_symbol(&mut self, name: &str) -> EmitResult<GenRegister> {
+        let name = InternedStrings::get_str(self.cx, name);
         let symbol = self
             .private_environment
             .unwrap()
@@ -3464,7 +3464,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let property = if member.is_computed {
                     Property::Computed(self.gen_expression(&member.property)?)
                 } else if member.is_private {
-                    Property::Computed(self.gen_private_symbol(member.property.to_id())?)
+                    Property::Computed(self.gen_private_symbol(&member.property.to_id().name)?)
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
@@ -3630,7 +3630,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let key = if member.is_computed {
                     self.gen_expression(&member.property)?
                 } else {
-                    self.gen_private_symbol(member.property.to_id())?
+                    self.gen_private_symbol(&member.property.to_id().name)?
                 };
 
                 self.writer.get_property_instruction(temp, object, key);
@@ -4260,7 +4260,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let property = self.gen_expression(&member.property)?;
             Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
         } else if member.is_private {
-            let property = self.gen_private_symbol(member.property.to_id())?;
+            let property = self.gen_private_symbol(&member.property.to_id().name)?;
             Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
         } else {
             // Must be a named access
@@ -4788,6 +4788,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut field_scope_index = 0;
         let mut fields = vec![];
 
+        let mut private_accessor_pairs = HashMap::new();
+
         for element in &class.body {
             match element {
                 ast::ClassElement::Method(method) => {
@@ -4802,12 +4804,87 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         continue;
                     }
 
-                    methods.push(self.gen_class_method(method, &mut new_class_arguments)?);
+                    // Save the start of each private accessor pair until the second accessor is
+                    // found, at which point both will be emitted.
+                    if method.is_private_pair_start {
+                        let name = &method.key.expr.to_id().name;
+                        private_accessor_pairs.insert(name, method);
+                        continue;
+                    }
+
+                    let (method_info, method_value) =
+                        self.gen_class_method(method, &mut new_class_arguments)?;
+
+                    if !method.is_private {
+                        // Method is stored as an argument to the NewClass instruction
+                        new_class_arguments.push(method_value);
+                        methods.push(method_info);
+                    } else {
+                        let name = &method.key.expr.to_id().name;
+
+                        let mut is_getter = method.kind == ast::ClassMethodKind::Get;
+                        let mut is_setter = method.kind == ast::ClassMethodKind::Set;
+
+                        // Handle private accessor pairs
+                        let value = if let Some(first_method) = private_accessor_pairs.remove(name)
+                        {
+                            // Generate the other method in the pair that was saved from earlier
+                            let (_, first_method_value) =
+                                self.gen_class_method(first_method, &mut new_class_arguments)?;
+
+                            // Determine which method is the getter and which is the setter
+                            let (getter, setter) = if is_getter {
+                                (method_value, first_method_value)
+                            } else {
+                                (first_method_value, method_value)
+                            };
+
+                            self.register_allocator.release(first_method_value);
+                            self.register_allocator.release(method_value);
+
+                            // Combine getter and setter into a single accessor
+                            let accessor_value = self.register_allocator.allocate()?;
+                            self.writer
+                                .new_accessor_instruction(accessor_value, getter, setter);
+
+                            is_getter = false;
+                            is_setter = false;
+
+                            accessor_value
+                        } else {
+                            method_value
+                        };
+
+                        // Private properties will instead be stored in the class's scope at the
+                        // next available index.
+                        let scope_index = GenUInt::try_from_unsigned(field_scope_index)
+                            .ok_or(EmitError::IntegerTooLarge)?;
+                        field_scope_index += 1;
+
+                        // Method or accessor is stored in the class's scope, which is guaranteed to
+                        // be the current enclosing scope.
+                        self.writer
+                            .store_to_scope_instruction(value, scope_index, UInt::new(0));
+                        self.register_allocator.release(value);
+
+                        let field = ClassField::PrivateMethodOrAccessor {
+                            name: name.clone(),
+                            scope_index,
+                            is_getter,
+                            is_setter,
+                        };
+
+                        if method.is_static {
+                            static_elements.push(StaticElement::Field(field));
+                        } else {
+                            fields.push(field);
+                        }
+                    }
                 }
                 ast::ClassElement::Property(property) => {
                     // Determine if field has a statically known string name
                     let name = match &property.key.expr {
-                        _ if property.is_computed || property.is_private => None,
+                        _ if property.is_computed => None,
                         ast::Expression::Id(id) => Some(Wtf8String::from_str(&id.name)),
                         ast::Expression::String(string) => Some(string.value.clone()),
                         ast::Expression::Number(_) | ast::Expression::BigInt(_) => None,
@@ -4816,12 +4893,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     let field = AstPtr::from_ref(property);
 
-                    let field = if let Some(name) = name {
+                    let field = if property.is_private {
+                        let name = property.key.expr.to_id().name.clone();
+                        ClassField::PrivateField { field, name }
+                    } else if let Some(name) = name {
                         ClassField::Named { field, name }
                     } else {
                         // Evaluate key to a property key
                         let key_reg = if property.is_private {
-                            self.gen_private_symbol(property.key.expr.to_id())?
+                            self.gen_private_symbol(&property.key.expr.to_id().name)?
                         } else {
                             let key_reg = self.gen_outer_expression(&property.key)?;
                             self.writer.to_property_key_instruction(key_reg, key_reg);
@@ -4967,7 +5047,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         method: &ast::ClassMethod,
         new_class_arguments: &mut Vec<GenRegister>,
-    ) -> EmitResult<Method> {
+    ) -> EmitResult<(Method, GenRegister)> {
         enum Name<'a> {
             Named(AnyStr<'a>),
             Computed(GenRegister),
@@ -4976,8 +5056,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Evaluate class element name
         let key = if method.is_computed {
             Name::Computed(self.gen_outer_expression(&method.key)?)
-        } else if method.is_private {
-            Name::Computed(self.gen_private_symbol(method.key.expr.to_id())?)
         } else {
             match &method.key.expr {
                 ast::Expression::Id(id) => Name::Named(AnyStr::from_id(id)),
@@ -4992,17 +5070,26 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Find the name that should be set of the method's closure
         let closure_name = match key {
             Name::Named(name) => {
+                // Prefix name with `#` if private
+                let name = if method.is_private {
+                    let mut prefixed_name = Wtf8String::from_str("#");
+                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    prefixed_name
+                } else {
+                    name.to_owned()
+                };
+
                 // Add accessor prefix to the name if name is known
                 if method.kind == ast::ClassMethodKind::Get {
                     let mut prefixed_name = Wtf8String::from_str("get ");
-                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    prefixed_name.push_wtf8_str(&name);
                     Some(prefixed_name)
                 } else if method.kind == ast::ClassMethodKind::Set {
                     let mut prefixed_name = Wtf8String::from_str("set ");
-                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    prefixed_name.push_wtf8_str(&name);
                     Some(prefixed_name)
                 } else {
-                    Some(name.to_owned())
+                    Some(name)
                 }
             }
             Name::Computed(name_register) => {
@@ -5026,10 +5113,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
         let method_constant_index = self.enqueue_function_to_generate(pending_node)?;
 
-        // Create the method and store as an argument to the NewClass instruction
+        // Create the method closure itself
         let method_value = self.register_allocator.allocate()?;
-        new_class_arguments.push(method_value);
-
         self.writer
             .new_closure_instruction(method_value, ConstantIndex::new(method_constant_index));
 
@@ -5039,24 +5124,71 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             None
         };
 
-        Ok(Method {
+        let method_info = Method {
             name: method_name,
             is_static: method.is_static,
             is_getter: method.kind == ast::ClassMethodKind::Get,
             is_setter: method.kind == ast::ClassMethodKind::Set,
             is_private: method.is_private,
-        })
+        };
+
+        Ok((method_info, method_value))
     }
 
     fn gen_class_field(&mut self, field: &ClassField, target: GenRegister) -> EmitResult<()> {
-        let field_node = field.field();
+        // Private methods and accessors had their clsoure value created and stored in the class's
+        // scope when the class definition was evaluated.
+        if let ClassField::PrivateMethodOrAccessor {
+            name, scope_index, is_getter, is_setter, ..
+        } = field
+        {
+            // Load the private symbol from the constant table
+            let name = self.gen_private_symbol(&name)?;
+
+            // Load the value from the current class scope
+            let value = self.register_allocator.allocate()?;
+            self.writer
+                .load_from_scope_instruction(value, *scope_index, UInt::new(0));
+
+            // Set up flags for DefineProperty instruction
+            let mut flags = DefinePropertyFlags::empty();
+            if *is_getter {
+                flags |= DefinePropertyFlags::GETTER;
+            } else if *is_setter {
+                flags |= DefinePropertyFlags::SETTER;
+            }
+            let flags = UInt::new(flags.bits() as u32);
+
+            self.writer
+                .define_property_instruction(target, name, value, flags);
+
+            self.register_allocator.release(value);
+            self.register_allocator.release(name);
+
+            return Ok(());
+        }
+
+        let field_node = match field {
+            ClassField::Named { field, .. }
+            | ClassField::Computed { field, .. }
+            | ClassField::PrivateField { field, .. } => field.as_ref(),
+            ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
+        };
 
         // Evaluate the initializer, otherwise field is set to undefined
         let value = if let Some(initializer) = field_node.value.as_deref() {
-            if let ClassField::Named { name, .. } = field {
-                self.gen_named_outer_expression(AnyStr::Wtf8(&name), initializer, ExprDest::Any)?
-            } else {
-                self.gen_outer_expression(initializer)?
+            match field {
+                ClassField::Named { name, .. } => self.gen_named_outer_expression(
+                    AnyStr::Wtf8(&name),
+                    initializer,
+                    ExprDest::Any,
+                )?,
+                ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
+                ClassField::PrivateField { name, .. } => {
+                    let name = format!("#{name}");
+                    self.gen_named_outer_expression(AnyStr::Str(&name), initializer, ExprDest::Any)?
+                }
+                ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
             }
         } else {
             let value = self.register_allocator.allocate()?;
@@ -5090,6 +5222,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.register_allocator.release(name);
             }
+            ClassField::PrivateField { name, .. } => {
+                // Define the private field using the private symbol
+                let name = self.gen_private_symbol(&name)?;
+                let flags = UInt::new(DefinePropertyFlags::empty().bits() as u32);
+
+                self.writer
+                    .define_property_instruction(target, name, value, flags);
+
+                self.register_allocator.release(name);
+            }
+            ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
         }
 
         self.register_allocator.release(value);
@@ -7112,16 +7255,24 @@ enum ArrayElement<'a> {
 }
 
 enum ClassField {
-    Named { name: Wtf8String, field: AstPtr<ast::ClassProperty> },
-    Computed { scope_index: GenUInt, field: AstPtr<ast::ClassProperty> },
-}
-
-impl ClassField {
-    fn field(&self) -> &ast::ClassProperty {
-        match self {
-            ClassField::Named { field, .. } | ClassField::Computed { field, .. } => field.as_ref(),
-        }
-    }
+    Named {
+        name: Wtf8String,
+        field: AstPtr<ast::ClassProperty>,
+    },
+    Computed {
+        scope_index: GenUInt,
+        field: AstPtr<ast::ClassProperty>,
+    },
+    PrivateField {
+        name: String,
+        field: AstPtr<ast::ClassProperty>,
+    },
+    PrivateMethodOrAccessor {
+        name: String,
+        scope_index: GenUInt,
+        is_getter: bool,
+        is_setter: bool,
+    },
 }
 
 enum CallArgs {

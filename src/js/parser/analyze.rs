@@ -1,4 +1,7 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use crate::{
     js::{
@@ -259,10 +262,10 @@ impl<'a> Analyzer<'a> {
         }
     }
 
-    fn exit_scope_with_class_fields(&mut self, num_computed_fields: usize) {
+    fn exit_scope_with_class_fields(&mut self, num_extra_fields: usize) {
         if let Some(exited_scope_node) = self.scope_stack.pop() {
             self.scope_tree
-                .finish_vm_scope_node(exited_scope_node.as_ref().id(), Some(num_computed_fields));
+                .finish_vm_scope_node(exited_scope_node.as_ref().id(), Some(num_extra_fields));
         }
     }
 
@@ -775,6 +778,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
         let saved_state = self.save_state();
 
         let private_names = self.collect_class_private_names(class);
+        let num_private_names = private_names.len();
 
         self.class_stack
             .push(ClassStackEntry { private_names, is_derived: class.super_class.is_some() });
@@ -785,9 +789,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Body is in its own scope
         self.enter_scope(class.scope);
 
-        // Determine the number of computed field names in the class, as each will need a scope
-        // slot to be stored between name evaluation and field definition.
-        let mut num_computed_field_names = 0;
+        // Determine the number of computed and private properties in the class, as each will need
+        // a scope slot to be stored between name evaluation and field definition.
+        let mut num_extra_scope_field_names = num_private_names;
 
         for element in &mut class.body {
             match element {
@@ -804,14 +808,13 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 }
                 ClassElement::Property(property) => {
                     let is_computed = property.is_computed
-                        || property.is_private
                         || matches!(
                             &property.key.expr,
                             Expression::Number(_) | Expression::BigInt(_)
                         );
 
                     if is_computed {
-                        num_computed_field_names += 1;
+                        num_extra_scope_field_names += 1;
                     }
 
                     self.visit_class_property(property);
@@ -819,7 +822,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
             }
         }
 
-        self.exit_scope_with_class_fields(num_computed_field_names);
+        self.exit_scope_with_class_fields(num_extra_scope_field_names);
 
         class.constructor = constructor;
 
@@ -1008,9 +1011,14 @@ impl Analyzer<'_> {
         self.restore_state(saved_state);
     }
 
-    fn collect_class_private_names(&mut self, class: &Class) -> HashMap<String, PrivateNameUsage> {
+    fn collect_class_private_names(
+        &mut self,
+        class: &mut Class,
+    ) -> HashMap<String, PrivateNameUsage> {
         // Create new private name scope for stack and initialize with defined private names
         let mut private_names = HashMap::new();
+        let mut has_private_accessor_pair = false;
+
         for element in &class.body {
             match element {
                 ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
@@ -1077,6 +1085,10 @@ impl Analyzer<'_> {
                                 true
                             };
 
+                            if usage.has_getter && usage.has_setter {
+                                has_private_accessor_pair = true;
+                            }
+
                             if is_duplicate {
                                 self.emit_error(
                                     private_id.loc,
@@ -1091,6 +1103,30 @@ impl Analyzer<'_> {
                     }
                 }
                 _ => {}
+            }
+        }
+
+        // If any private accessor pair was encountered then mark the first part of every pair in
+        // the AST so that it can be identified during bytecode generation.
+        if has_private_accessor_pair {
+            let mut marked_pairs = HashSet::new();
+            for element in &mut class.body {
+                if let ClassElement::Method(ClassMethod {
+                    is_private: true,
+                    kind: ClassMethodKind::Get | ClassMethodKind::Set,
+                    key,
+                    is_private_pair_start,
+                    ..
+                }) = element
+                {
+                    let private_id = key.expr.to_id();
+                    let usage = private_names.get(&private_id.name).unwrap();
+                    if usage.has_getter && usage.has_setter {
+                        if marked_pairs.insert(&private_id.name) {
+                            *is_private_pair_start = true;
+                        }
+                    }
+                }
             }
         }
 

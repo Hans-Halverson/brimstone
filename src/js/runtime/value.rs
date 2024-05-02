@@ -16,7 +16,7 @@ use super::{
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN
-/// packing implementation in JavaScriptCorre and SerenityOS's LibWeb.
+/// packing implementation in JavaScriptCore and SerenityOS's LibJS.
 ///
 /// Floating point numbers have the following format:
 ///
@@ -44,9 +44,9 @@ use super::{
 ///
 /// In this scheme all non-pointer values have the following representation:
 ///
-////                    sign     exponent         mantissa
-////                    (1 bit)  (11 bits)        (52 bits total. Top bit reserved for qNaN,
-////                                               next 3 bits are tag, last 48 bits are payload)
+///                     sign     exponent         mantissa
+///                     (1 bit)  (11 bits)        (52 bits total. Top bit reserved for qNaN,
+///                                                next 3 bits are tag, last 48 bits are payload)
 ///
 /// +Inf:               0        11111111111      0 000 00...0
 /// -Inf:               1        11111111111      0 000 00...0

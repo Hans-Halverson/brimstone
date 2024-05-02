@@ -46,7 +46,7 @@ use crate::{
             is_callable_object, is_constructor_object_value, is_loosely_equal, is_strictly_equal,
             same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
-        value::BigIntValue,
+        value::{AccessorValue, BigIntValue},
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     maybe, must,
@@ -84,7 +84,7 @@ use super::{
         LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
+        NewAccessorInstruction, NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
         NewForInIteratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
         NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
         PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
@@ -559,6 +559,9 @@ impl VM {
                         }
                         OpCode::NewClass => {
                             dispatch_or_throw!(NewClassInstruction, execute_new_class)
+                        }
+                        OpCode::NewAccessor => {
+                            dispatch!(NewAccessorInstruction, execute_new_accessor)
                         }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
@@ -2675,6 +2678,18 @@ impl VM {
         self.write_register(dest, constructor.cast::<Value>().get());
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_new_accessor<W: Width>(&mut self, instr: &NewAccessorInstruction<W>) {
+        let dest = instr.dest();
+        let getter = self.read_register_to_handle(instr.getter()).as_object();
+        let setter = self.read_register_to_handle(instr.setter()).as_object();
+
+        // Allocates
+        let accessor = AccessorValue::new(self.cx, Some(getter), Some(setter));
+
+        self.write_register(dest, accessor.get_().into());
     }
 
     #[inline]

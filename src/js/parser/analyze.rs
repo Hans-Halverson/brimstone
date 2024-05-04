@@ -554,7 +554,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
         if expr.is_private {
-            self.visit_private_name_use(&expr.property);
+            self.visit_private_name_use(&mut expr.property);
         }
 
         self.visit_expression(&mut expr.object);
@@ -567,10 +567,11 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
     fn visit_binary_expression(&mut self, expr: &mut BinaryExpression) {
         if expr.operator == BinaryOperator::InPrivate {
-            self.visit_private_name_use(&expr.left);
+            self.visit_private_name_use(&mut expr.left);
+            self.visit_expression(&mut expr.right);
+        } else {
+            default_visit_binary_expression(self, expr);
         }
-
-        default_visit_binary_expression(self, expr);
     }
 
     fn visit_assignment_expression(&mut self, expr: &mut AssignmentExpression) {
@@ -777,6 +778,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Save analyzer context before descending into class body
         let saved_state = self.save_state();
 
+        // Body is in its own scope
+        self.enter_scope(class.scope);
+
         let private_names = self.collect_class_private_names(class);
         let num_private_names = private_names.len();
 
@@ -785,9 +789,6 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         // Mark the constructor if it is found, erroring if multiple are found
         let mut constructor = None;
-
-        // Body is in its own scope
-        self.enter_scope(class.scope);
 
         // Determine the number of computed and private properties in the class, as each will need
         // a scope slot to be stored between name evaluation and field definition.
@@ -1019,10 +1020,10 @@ impl Analyzer<'_> {
         let mut private_names = HashMap::new();
         let mut has_private_accessor_pair = false;
 
-        for element in &class.body {
-            match element {
+        for element in &mut class.body {
+            let private_id = match element {
                 ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
-                    let private_id = key.expr.to_id();
+                    let private_id = key.expr.to_id_mut();
 
                     // If this name has been used at all so far it is a duplicate name
                     if private_names.contains_key(&private_id.name) {
@@ -1040,9 +1041,7 @@ impl Analyzer<'_> {
                         private_names.insert(private_id.name.clone(), usage);
                     }
 
-                    if private_id.name == "constructor" {
-                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
-                    }
+                    private_id
                 }
 
                 ClassElement::Method(ClassMethod {
@@ -1052,7 +1051,7 @@ impl Analyzer<'_> {
                     kind,
                     ..
                 }) => {
-                    let private_id = key.expr.to_id();
+                    let private_id = key.expr.to_id_mut();
 
                     // Check for duplicate name definitions. Only allow multiple definitions if
                     // there is exactly one getter and setter that have the same static property.
@@ -1098,12 +1097,16 @@ impl Analyzer<'_> {
                         }
                     }
 
-                    if private_id.name == "constructor" {
-                        self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
-                    }
+                    private_id
                 }
-                _ => {}
+                _ => continue,
+            };
+
+            if private_id.name == "constructor" {
+                self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
             }
+
+            self.resolve_private_identifier_use(private_id);
         }
 
         // If any private accessor pair was encountered then mark the first part of every pair in
@@ -1165,7 +1168,9 @@ impl Analyzer<'_> {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }
 
-        self.visit_outer_expression(&mut method.key);
+        if method.is_computed {
+            self.visit_outer_expression(&mut method.key);
+        }
 
         let is_derived_constructor = method.kind == ClassMethodKind::Constructor
             && self.class_stack.last().unwrap().is_derived;
@@ -1201,7 +1206,9 @@ impl Analyzer<'_> {
             _ => {}
         }
 
-        self.visit_outer_expression(&mut prop.key);
+        if prop.is_computed {
+            self.visit_outer_expression(&mut prop.key);
+        }
 
         // "arguments" is not allowed in initializer (but is allowed in key)
         let old_allow_arguments = self.allow_arguments;
@@ -1345,8 +1352,8 @@ impl Analyzer<'_> {
         }
     }
 
-    fn visit_private_name_use(&mut self, expr: &Expression) {
-        let id = expr.to_id();
+    fn visit_private_name_use(&mut self, expr: &mut Expression) {
+        let id = expr.to_id_mut();
 
         if self.class_stack.is_empty() {
             self.emit_error(id.loc, ParseError::PrivateNameOutsideClass);
@@ -1359,6 +1366,8 @@ impl Analyzer<'_> {
                     break;
                 }
             }
+
+            self.resolve_private_identifier_use(id);
 
             if !is_defined {
                 self.emit_error(id.loc, ParseError::PrivateNameNotDefined(id.name.clone()));
@@ -1374,6 +1383,12 @@ impl Analyzer<'_> {
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier) {
         self.resolve_use(&mut id.scope, &id.name, id.loc);
+    }
+
+    fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier) {
+        // Private name has a "#" prefix
+        let private_name = format!("#{}", &private_id.name);
+        self.resolve_use(&mut private_id.scope, &private_name, private_id.loc);
     }
 
     fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode>)) {

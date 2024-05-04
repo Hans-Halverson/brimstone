@@ -26,7 +26,7 @@ use super::{
     environment::{
         environment::{DynEnvironment, HeapDynEnvironment},
         function_environment::FunctionEnvironment,
-        private_environment::{HeapPrivateName, PrivateEnvironment, PrivateName},
+        private_environment::{HeapPrivateName, LegacyPrivateEnvironment, PrivateName},
     },
     error::type_error_,
     eval::{
@@ -81,7 +81,7 @@ extend_object! {
         func_node: HeapFuncKind,
         source: Option<Weak<Source>>,
         environment: HeapDynEnvironment,
-        private_environment: Option<HeapPtr<PrivateEnvironment>>,
+        private_environment: Option<HeapPtr<LegacyPrivateEnvironment>>,
         fields: Option<HeapPtr<FieldsArray>>,
         private_methods: Option<HeapPtr<PrivateMethodsArray>>,
     }
@@ -115,7 +115,7 @@ impl Function {
         is_lexical_this: bool,
         is_strict: bool,
         environment: DynEnvironment,
-        private_environment: Option<Handle<PrivateEnvironment>>,
+        private_environment: Option<Handle<LegacyPrivateEnvironment>>,
     ) -> Handle<Function> {
         let this_mode = if is_lexical_this {
             ThisMode::Lexical
@@ -171,7 +171,7 @@ impl Function {
     }
 
     #[inline]
-    fn private_environment(&self) -> Option<Handle<PrivateEnvironment>> {
+    fn private_environment(&self) -> Option<Handle<LegacyPrivateEnvironment>> {
         self.private_environment.map(|env| env.to_handle())
     }
 
@@ -591,7 +591,7 @@ pub fn ordinary_function_create(
     func_node: &ast::Function,
     is_lexical_this: bool,
     environment: DynEnvironment,
-    private_environment: Option<Handle<PrivateEnvironment>>,
+    private_environment: Option<Handle<LegacyPrivateEnvironment>>,
 ) -> Handle<Function> {
     let is_strict = func_node.is_strict_mode();
     let argument_count = expected_argument_count(func_node);
@@ -622,7 +622,7 @@ pub fn ordinary_function_create_special_kind(
     is_strict: bool,
     argument_count: u32,
     environment: DynEnvironment,
-    private_environment: Option<Handle<PrivateEnvironment>>,
+    private_environment: Option<Handle<LegacyPrivateEnvironment>>,
 ) -> Handle<Function> {
     let func = Function::new(
         cx,
@@ -775,7 +775,7 @@ pub fn instantiate_function_object(
     cx: Context,
     func_node: &ast::Function,
     env: DynEnvironment,
-    private_env: Option<Handle<PrivateEnvironment>>,
+    private_env: Option<Handle<LegacyPrivateEnvironment>>,
 ) -> Handle<Function> {
     if func_node.is_async() || func_node.is_generator() {
         unimplemented!("async and generator functions")

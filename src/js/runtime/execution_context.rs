@@ -6,7 +6,7 @@ use super::{
     completion::EvalResult,
     environment::{
         environment::{get_identifier_reference, DynEnvironment, HeapDynEnvironment},
-        private_environment::PrivateEnvironment,
+        private_environment::LegacyPrivateEnvironment,
     },
     eval::script::Script,
     gc::{Handle, HeapObject, HeapVisitor},
@@ -29,7 +29,7 @@ pub struct ExecutionContext {
     script_or_module: Option<HeapScriptOrModule>,
     lexical_env: HeapDynEnvironment,
     variable_env: HeapDynEnvironment,
-    private_env: Option<HeapPtr<PrivateEnvironment>>,
+    private_env: Option<HeapPtr<LegacyPrivateEnvironment>>,
     is_strict_mode: bool,
 }
 
@@ -41,7 +41,7 @@ impl ExecutionContext {
         script_or_module: Option<ScriptOrModule>,
         lexical_env: Option<DynEnvironment>,
         variable_env: Option<DynEnvironment>,
-        private_env: Option<Handle<PrivateEnvironment>>,
+        private_env: Option<Handle<LegacyPrivateEnvironment>>,
         is_strict_mode: bool,
     ) -> Handle<ExecutionContext> {
         let mut exec_context = cx.alloc_uninit::<ExecutionContext>();
@@ -98,12 +98,12 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn private_env_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
+    pub fn private_env_ptr(&self) -> Option<HeapPtr<LegacyPrivateEnvironment>> {
         self.private_env
     }
 
     #[inline]
-    pub fn private_env(&self) -> Option<Handle<PrivateEnvironment>> {
+    pub fn private_env(&self) -> Option<Handle<LegacyPrivateEnvironment>> {
         self.private_env.map(|p| p.to_handle())
     }
 
@@ -123,7 +123,7 @@ impl ExecutionContext {
     }
 
     #[inline]
-    pub fn set_private_env(&mut self, private_env: Option<Handle<PrivateEnvironment>>) {
+    pub fn set_private_env(&mut self, private_env: Option<Handle<LegacyPrivateEnvironment>>) {
         self.private_env = private_env.map(|p| p.get_());
     }
 

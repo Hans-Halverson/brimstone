@@ -26,7 +26,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{DynEnvironment, Environment},
-                private_environment::PrivateEnvironment,
+                private_environment::LegacyPrivateEnvironment,
             },
             error::syntax_error_,
             eval::pattern::id_property_key,
@@ -330,7 +330,7 @@ pub fn instantiate_ordinary_function_object(
     cx: Context,
     func_node: &ast::Function,
     env: DynEnvironment,
-    private_env: Option<Handle<PrivateEnvironment>>,
+    private_env: Option<Handle<LegacyPrivateEnvironment>>,
 ) -> Handle<Function> {
     let name_key = match &func_node.id {
         None => cx.names.default(),

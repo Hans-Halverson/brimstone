@@ -19,7 +19,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::{DynEnvironment, Environment},
-                private_environment::PrivateEnvironment,
+                private_environment::LegacyPrivateEnvironment,
             },
             error::{syntax_error_, type_error_},
             execution_context::{get_this_environment, ExecutionContext},
@@ -441,7 +441,7 @@ fn eval_declaration_instantiation_legacy(
     ast: &ast::Program,
     mut var_env: DynEnvironment,
     mut lex_env: DynEnvironment,
-    private_env: Option<Handle<PrivateEnvironment>>,
+    private_env: Option<Handle<LegacyPrivateEnvironment>>,
     is_strict_eval: bool,
 ) -> EvalResult<()> {
     if !is_strict_eval {

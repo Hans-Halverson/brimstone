@@ -785,6 +785,13 @@ define_instructions!(
         [2] setter: Register,
     }
 
+    /// Create a new private symbol and store in dest. The private symbol has the name stored at the
+    /// given index in the constant table. Name is not prefixed with "#".
+    NewPrivateSymbol (NewPrivateSymbolInstruction, new_private_symbol_instruction) {
+        [0] dest: Register,
+        [1] name_index: ConstantIndex,
+    }
+
     /// Get a property from an object, storing the result in dest. The property key may be any
     /// value.
     GetProperty (GetPropertyInstruction, get_property_instruction) {

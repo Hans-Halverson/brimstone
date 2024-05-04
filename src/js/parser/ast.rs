@@ -149,6 +149,11 @@ impl Identifier {
     pub fn get_binding(&self) -> &Binding {
         self.scope.unwrap_resolved().get_binding(&self.name)
     }
+
+    pub fn get_private_name_binding(&self) -> &Binding {
+        let private_name = format!("#{}", self.name);
+        self.scope.unwrap_resolved().get_binding(&private_name)
+    }
 }
 
 /// Reference to a scope node without lifetime constraints. Only valid to use while scope tree is
@@ -843,6 +848,13 @@ pub enum Expression {
 
 impl Expression {
     pub fn to_id(&self) -> &Identifier {
+        match self {
+            Expression::Id(id) => id,
+            _ => panic!("Expected identifier expression"),
+        }
+    }
+
+    pub fn to_id_mut(&mut self) -> &mut Identifier {
         match self {
             Expression::Id(id) => id,
             _ => panic!("Expected identifier expression"),

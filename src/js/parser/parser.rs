@@ -3536,6 +3536,13 @@ impl<'a> Parser<'a> {
             self.parse_property(PropertyContext::Class, has_super_class)?;
         let loc = self.mark_loc(start_pos);
 
+        // All private names are added to the current class scope
+        if is_private {
+            let private_name = format!("#{}", &property.key.to_id().name);
+            self.scope_builder
+                .add_binding_to_current_node(&private_name, BindingKind::PrivateName);
+        }
+
         // Translate from object property to class property or method
         if property.is_method {
             Ok(ClassElement::Method(

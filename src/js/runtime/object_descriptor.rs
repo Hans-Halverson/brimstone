@@ -130,7 +130,7 @@ pub enum ObjectKind {
     GlobalEnvironment,
     ModuleEnvironment,
     ObjectEnvironment,
-    PrivateEnvironment,
+    LegacyPrivateEnvironment,
 
     DenseArrayProperties,
     SparseArrayProperties,
@@ -148,7 +148,7 @@ pub enum ObjectKind {
     WeakMapObjectWeakValueMap,
     DeclarativeEnvironmentBindingsMap,
     RealmTemplateMap,
-    PrivateEnvironmentNameMap,
+    LegacyPrivateEnvironmentNameMap,
     GlobalEnvironmentNameSet,
     GlobalSymbolRegistryMap,
     InternedStringsMap,
@@ -360,7 +360,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::GlobalEnvironment);
         other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
         other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
-        other_heap_object_descriptor!(ObjectKind::PrivateEnvironment);
+        other_heap_object_descriptor!(ObjectKind::LegacyPrivateEnvironment);
 
         other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);
@@ -377,7 +377,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::WeakSetObjectWeakValueSet);
         other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
         other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
-        other_heap_object_descriptor!(ObjectKind::PrivateEnvironmentNameMap);
+        other_heap_object_descriptor!(ObjectKind::LegacyPrivateEnvironmentNameMap);
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);

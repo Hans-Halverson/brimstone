@@ -1,8 +1,6 @@
 use std::{collections::HashMap, hash};
 
-use crate::js::runtime::{
-    gc::HeapItem, string_value::FlatString, value::SymbolValue, Context, Handle, Value,
-};
+use crate::js::runtime::{gc::HeapItem, string_value::FlatString, Context, Handle, Value};
 
 use super::{
     constant_table::ConstantTable,
@@ -96,10 +94,6 @@ pub struct ConstantTableBuilder {
     /// in the resulting array.
     constants: HashMap<ConstantTableEntry, ConstantTableIndex>,
 
-    /// Cache of symbols that have already been added to the constant table. Used to avoid adding
-    /// duplicate symbols.
-    symbols: HashMap<Handle<SymbolValue>, ConstantTableIndex>,
-
     narrow_allocated: ConstantTableIndex,
     narrow_reserved: ConstantTableIndex,
 
@@ -137,7 +131,6 @@ impl ConstantTableBuilder {
     pub fn new() -> Self {
         Self {
             constants: HashMap::new(),
-            symbols: HashMap::new(),
 
             narrow_allocated: 0,
             narrow_reserved: 0,
@@ -306,19 +299,6 @@ impl ConstantTableBuilder {
     pub fn add_string(&mut self, string: Handle<FlatString>) -> EmitResult<ConstantTableIndex> {
         debug_assert!(string.is_interned());
         self.insert_if_missing(ConstantTableEntry::String(string))
-    }
-
-    /// Add a symbol to the constant table. Symbols are deduplicated - if this symbol has already
-    /// been added, the existing index is returned.
-    pub fn add_symbol(&mut self, symbol: Handle<SymbolValue>) -> EmitResult<ConstantTableIndex> {
-        if let Some(index) = self.symbols.get(&symbol) {
-            return Ok(*index);
-        }
-
-        let index = self.add_heap_object(symbol.cast())?;
-        self.symbols.insert(symbol, index);
-
-        Ok(index)
     }
 
     pub fn add_heap_object(&mut self, object: Handle<HeapItem>) -> EmitResult<ConstantTableIndex> {

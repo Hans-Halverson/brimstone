@@ -22,29 +22,36 @@ pub type PrivateName = Handle<SymbolValue>;
 /// A PrivateName that is stored on the heap.
 pub type HeapPrivateName = HeapPtr<SymbolValue>;
 
+// A private environment for the legacy interpreter.
+//
 // 9.2 Private Environment Record
 #[repr(C)]
-pub struct PrivateEnvironment {
+pub struct LegacyPrivateEnvironment {
     descriptor: HeapPtr<ObjectDescriptor>,
-    names: HeapPtr<PrivateNameMap>,
-    outer: Option<HeapPtr<PrivateEnvironment>>,
+    names: HeapPtr<LegacyPrivateNameMap>,
+    outer: Option<HeapPtr<LegacyPrivateEnvironment>>,
 }
 
-type PrivateNameMap = BsHashMap<HeapPtr<FlatString>, HeapPrivateName>;
+type LegacyPrivateNameMap = BsHashMap<HeapPtr<FlatString>, HeapPrivateName>;
 
-impl PrivateEnvironment {
+impl LegacyPrivateEnvironment {
     // 9.2.1.1 NewPrivateEnvironment
     pub fn new(
         cx: Context,
-        outer: Option<Handle<PrivateEnvironment>>,
-    ) -> Handle<PrivateEnvironment> {
+        outer: Option<Handle<LegacyPrivateEnvironment>>,
+    ) -> Handle<LegacyPrivateEnvironment> {
         // Allocate and place behind handle before allocating environment
         let names_map =
-            PrivateNameMap::new_initial(cx, ObjectKind::PrivateEnvironmentNameMap).to_handle();
+            LegacyPrivateNameMap::new_initial(cx, ObjectKind::LegacyPrivateEnvironmentNameMap)
+                .to_handle();
 
-        let mut env = cx.alloc_uninit::<PrivateEnvironment>();
+        let mut env = cx.alloc_uninit::<LegacyPrivateEnvironment>();
 
-        set_uninit!(env.descriptor, cx.base_descriptors.get(ObjectKind::PrivateEnvironment));
+        set_uninit!(
+            env.descriptor,
+            cx.base_descriptors
+                .get(ObjectKind::LegacyPrivateEnvironment)
+        );
         set_uninit!(env.names, names_map.get_());
         set_uninit!(env.outer, outer.map(|p| p.get_()));
 
@@ -52,13 +59,8 @@ impl PrivateEnvironment {
     }
 
     #[inline]
-    pub fn outer_ptr(&self) -> Option<HeapPtr<PrivateEnvironment>> {
+    pub fn outer_ptr(&self) -> Option<HeapPtr<LegacyPrivateEnvironment>> {
         self.outer
-    }
-
-    #[inline]
-    pub fn outer(&self) -> Option<Handle<PrivateEnvironment>> {
-        self.outer.map(|p| p.to_handle())
     }
 
     // 9.2.1.2 ResolvePrivateIdentifier
@@ -83,16 +85,11 @@ impl PrivateEnvironment {
             f(name)
         }
     }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.names.is_empty()
-    }
 }
 
-impl Handle<PrivateEnvironment> {
-    fn names_field(&self) -> PrivateEnvironmentNamesField {
-        PrivateEnvironmentNamesField(*self)
+impl Handle<LegacyPrivateEnvironment> {
+    fn names_field(&self) -> LegacyPrivateEnvironmentNamesField {
+        LegacyPrivateEnvironmentNamesField(*self)
     }
 
     pub fn add_private_name(&mut self, cx: Context, name: Handle<StringValue>) {
@@ -104,25 +101,25 @@ impl Handle<PrivateEnvironment> {
     }
 }
 
-pub struct PrivateEnvironmentNamesField(Handle<PrivateEnvironment>);
+pub struct LegacyPrivateEnvironmentNamesField(Handle<LegacyPrivateEnvironment>);
 
-impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for PrivateEnvironmentNamesField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<PrivateNameMap> {
-        PrivateNameMap::new(cx, ObjectKind::PrivateEnvironmentNameMap, capacity)
+impl BsHashMapField<HeapPtr<FlatString>, HeapPrivateName> for LegacyPrivateEnvironmentNamesField {
+    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<LegacyPrivateNameMap> {
+        LegacyPrivateNameMap::new(cx, ObjectKind::LegacyPrivateEnvironmentNameMap, capacity)
     }
 
-    fn get(&self, _: Context) -> HeapPtr<PrivateNameMap> {
+    fn get(&self, _: Context) -> HeapPtr<LegacyPrivateNameMap> {
         self.0.names
     }
 
-    fn set(&mut self, _: Context, map: HeapPtr<PrivateNameMap>) {
+    fn set(&mut self, _: Context, map: HeapPtr<LegacyPrivateNameMap>) {
         self.0.names = map;
     }
 }
 
-impl HeapObject for HeapPtr<PrivateEnvironment> {
+impl HeapObject for HeapPtr<LegacyPrivateEnvironment> {
     fn byte_size(&self) -> usize {
-        size_of::<PrivateEnvironment>()
+        size_of::<LegacyPrivateEnvironment>()
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
@@ -132,12 +129,12 @@ impl HeapObject for HeapPtr<PrivateEnvironment> {
     }
 }
 
-impl PrivateEnvironmentNamesField {
-    pub fn byte_size(map: &HeapPtr<PrivateNameMap>) -> usize {
-        PrivateNameMap::calculate_size_in_bytes(map.capacity())
+impl LegacyPrivateEnvironmentNamesField {
+    pub fn byte_size(map: &HeapPtr<LegacyPrivateNameMap>) -> usize {
+        LegacyPrivateNameMap::calculate_size_in_bytes(map.capacity())
     }
 
-    pub fn visit_pointers(map: &mut HeapPtr<PrivateNameMap>, visitor: &mut impl HeapVisitor) {
+    pub fn visit_pointers(map: &mut HeapPtr<LegacyPrivateNameMap>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
         for (key, value) in map.iter_mut_gc_unsafe() {

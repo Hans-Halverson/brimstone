@@ -8,7 +8,7 @@ use crate::{
             environment::{
                 declarative_environment::DeclarativeEnvironment,
                 environment::Environment,
-                private_environment::{HeapPrivateName, PrivateEnvironment, PrivateName},
+                private_environment::{HeapPrivateName, LegacyPrivateEnvironment, PrivateName},
             },
             error::type_error_,
             eval::pattern::initialize_bound_name,
@@ -179,7 +179,7 @@ pub fn class_definition_evaluation(
     }
 
     let outer_private_env = current_execution_context.private_env();
-    let class_private_env = create_private_environment(cx, &class, outer_private_env);
+    let class_private_env = create_legacy_private_environment(cx, &class, outer_private_env);
 
     // Evaluate super class in the class environment
     let (proto_parent, constructor_parent) = if let Some(super_class) = class.super_class.as_deref()
@@ -466,12 +466,12 @@ pub fn class_definition_evaluation(
 }
 
 /// Create a private environment containing all the private properties of the class.
-pub fn create_private_environment(
+pub fn create_legacy_private_environment(
     cx: Context,
     class: &ast::Class,
-    outer: Option<Handle<PrivateEnvironment>>,
-) -> Handle<PrivateEnvironment> {
-    let mut private_env = PrivateEnvironment::new(cx, outer);
+    outer: Option<Handle<LegacyPrivateEnvironment>>,
+) -> Handle<LegacyPrivateEnvironment> {
+    let mut private_env = LegacyPrivateEnvironment::new(cx, outer);
 
     // Add private fields to class's private environment
     for element in &class.body {

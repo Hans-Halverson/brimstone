@@ -20,7 +20,7 @@ use crate::js::runtime::{
         global_environment::{GlobalEnvironment, GlobalEnvironmentVarNamesField},
         module_environment::ModuleEnvironment,
         object_environment::ObjectEnvironment,
-        private_environment::{PrivateEnvironment, PrivateEnvironmentNamesField},
+        private_environment::{LegacyPrivateEnvironment, LegacyPrivateEnvironmentNamesField},
     },
     eval::script::Script,
     execution_context::ExecutionContext,
@@ -167,7 +167,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
             ObjectKind::ModuleEnvironment => self.cast::<ModuleEnvironment>().byte_size(),
             ObjectKind::ObjectEnvironment => self.cast::<ObjectEnvironment>().byte_size(),
-            ObjectKind::PrivateEnvironment => self.cast::<PrivateEnvironment>().byte_size(),
+            ObjectKind::LegacyPrivateEnvironment => {
+                self.cast::<LegacyPrivateEnvironment>().byte_size()
+            }
             ObjectKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             ObjectKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
             ObjectKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
@@ -188,8 +190,8 @@ impl HeapObject for HeapPtr<HeapItem> {
                 DeclarativeEnvironmentBindingsMapField::byte_size(&self.cast())
             }
             ObjectKind::RealmTemplateMap => RealmTemplateMapField::byte_size(&self.cast()),
-            ObjectKind::PrivateEnvironmentNameMap => {
-                PrivateEnvironmentNamesField::byte_size(&self.cast())
+            ObjectKind::LegacyPrivateEnvironmentNameMap => {
+                LegacyPrivateEnvironmentNamesField::byte_size(&self.cast())
             }
             ObjectKind::GlobalEnvironmentNameSet => {
                 GlobalEnvironmentVarNamesField::byte_size(&self.cast())
@@ -311,9 +313,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ObjectEnvironment => {
                 self.cast::<ObjectEnvironment>().visit_pointers(visitor)
             }
-            ObjectKind::PrivateEnvironment => {
-                self.cast::<PrivateEnvironment>().visit_pointers(visitor)
-            }
+            ObjectKind::LegacyPrivateEnvironment => self
+                .cast::<LegacyPrivateEnvironment>()
+                .visit_pointers(visitor),
             ObjectKind::DenseArrayProperties => {
                 self.cast::<DenseArrayProperties>().visit_pointers(visitor)
             }
@@ -350,8 +352,8 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::RealmTemplateMap => {
                 RealmTemplateMapField::visit_pointers(self.cast_mut(), visitor)
             }
-            ObjectKind::PrivateEnvironmentNameMap => {
-                PrivateEnvironmentNamesField::visit_pointers(self.cast_mut(), visitor)
+            ObjectKind::LegacyPrivateEnvironmentNameMap => {
+                LegacyPrivateEnvironmentNamesField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::GlobalEnvironmentNameSet => {
                 GlobalEnvironmentVarNamesField::visit_pointers(self.cast_mut(), visitor)

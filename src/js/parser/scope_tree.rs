@@ -571,6 +571,8 @@ impl ScopeTree {
             let needs_vm_scope = (
                 // All captured bindings must be placed in a VM scope
                 binding.is_captured ||
+                // All private names must be placed in a VM scope
+                matches!(binding.kind(), BindingKind::PrivateName) ||
                 // We sometimes force bindings in VM scopes due to dynamic accesses.
                 // e.g. in the presence of `eval` or `with`
                 //
@@ -937,6 +939,8 @@ pub enum BindingKind {
     DerivedConstructor,
     /// The home object for methods defined on an object literal or class.
     HomeObject,
+    /// A private name introduced in a class. Includes the "#" prefix.
+    PrivateName,
 }
 
 impl BindingKind {
@@ -953,7 +957,8 @@ impl BindingKind {
             | BindingKind::ImplicitArguments
             | BindingKind::ImplicitNewTarget
             | BindingKind::DerivedConstructor
-            | BindingKind::HomeObject => false,
+            | BindingKind::HomeObject
+            | BindingKind::PrivateName => false,
             BindingKind::Function { is_lexical, .. } => *is_lexical,
             BindingKind::Const { .. }
             | BindingKind::Let { .. }

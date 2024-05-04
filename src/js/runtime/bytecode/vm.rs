@@ -46,7 +46,7 @@ use crate::{
             is_callable_object, is_constructor_object_value, is_loosely_equal, is_strictly_equal,
             same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
-        value::{AccessorValue, BigIntValue},
+        value::{AccessorValue, BigIntValue, SymbolValue},
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     maybe, must,
@@ -87,15 +87,16 @@ use super::{
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewAccessorInstruction, NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
         NewForInIteratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
-        NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
-        PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
-        RemInstruction, RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
-        SetPrototypeOfInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-        ShiftRightLogicalInstruction, StoreDynamicInstruction, StoreGlobalInstruction,
-        StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction,
-        ThrowInstruction, ToNumberInstruction, ToNumericInstruction, ToObjectInstruction,
-        ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
+        NewPrivateSymbolInstruction, NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode,
+        PopScopeInstruction, PushFunctionScopeInstruction, PushLexicalScopeInstruction,
+        PushWithScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
+        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPrivatePropertyInstruction,
+        SetPropertyInstruction, SetPrototypeOfInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
+        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -563,6 +564,9 @@ impl VM {
                         }
                         OpCode::NewAccessor => {
                             dispatch!(NewAccessorInstruction, execute_new_accessor)
+                        }
+                        OpCode::NewPrivateSymbol => {
+                            dispatch!(NewPrivateSymbolInstruction, execute_new_private_symbol)
                         }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
@@ -2709,6 +2713,20 @@ impl VM {
         let accessor = AccessorValue::new(self.cx, Some(getter), Some(setter));
 
         self.write_register(dest, accessor.get_().into());
+    }
+
+    #[inline]
+    fn execute_new_private_symbol<W: Width>(&mut self, instr: &NewPrivateSymbolInstruction<W>) {
+        let dest = instr.dest();
+        let name = self
+            .get_constant(instr.name_index())
+            .as_string()
+            .to_handle();
+
+        // Allocates
+        let private_symbol = SymbolValue::new(self.cx, Some(name), /* is_private */ true);
+
+        self.write_register(dest, private_symbol.get_().into());
     }
 
     #[inline]

@@ -340,6 +340,7 @@ impl ScopeTree {
                     // end of the binding's initialization. If so we need to check for the TDZ.
                     if let BindingKind::Const { init_pos }
                     | BindingKind::Let { init_pos }
+                    | BindingKind::Class { init_pos, in_body_scope: false }
                     | BindingKind::CatchParameter { init_pos }
                     | BindingKind::FunctionParameter { init_pos, .. } = binding.kind()
                     {
@@ -661,7 +662,7 @@ impl ScopeTree {
                             binding.kind(),
                             BindingKind::ImplicitThis { .. }
                                 | BindingKind::HomeObject
-                                | BindingKind::Class { in_body_scope: true }
+                                | BindingKind::Class { in_body_scope: true, .. }
                         )
                     {
                         binding.set_vm_location(VMLocation::LocalRegister(num_local_registers));
@@ -919,6 +920,9 @@ pub enum BindingKind {
         /// Whether this is the class name binding inside the class body, as opposed to in the
         /// surrounding scope.
         in_body_scope: bool,
+        /// The source position after which this class has been initialized, inclusive. Only set
+        /// for the class name binding in the parent scope, not the binding in the class body.
+        init_pos: Cell<Pos>,
     },
     CatchParameter {
         /// The source position after which this parameter has been initialized, inclusive.

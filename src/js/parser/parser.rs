@@ -649,6 +649,7 @@ impl<'a> Parser<'a> {
         match binding.kind() {
             BindingKind::Const { init_pos }
             | BindingKind::Let { init_pos }
+            | BindingKind::Class { init_pos, .. }
             | BindingKind::CatchParameter { init_pos }
             | BindingKind::FunctionParameter { init_pos, .. } => init_pos.set(pos),
             _ => {}
@@ -3365,7 +3366,7 @@ impl<'a> Parser<'a> {
         {
             // Only introduce a binding for class declarations
             let binding_kind = if is_decl {
-                Some(BindingKind::Class { in_body_scope: false })
+                Some(BindingKind::Class { in_body_scope: false, init_pos: Cell::new(0) })
             } else {
                 None
             };
@@ -3382,13 +3383,24 @@ impl<'a> Parser<'a> {
             None
         };
 
+        // If a lexical binding was introduced in the parent scope, mark the location after which
+        // the binding was initialized and can be accessed without a TDZ check.
+        if let Some(id) = id.as_ref() {
+            if is_decl {
+                Self::set_id_binding_init_pos(id, self.prev_loc.end);
+            }
+        }
+
         // Body of the class is in its own scope
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
 
         // Always add class name to the body scope
         if let Some(id) = id.as_ref() {
             self.scope_builder
-                .add_binding(&id.name, BindingKind::Class { in_body_scope: true })
+                .add_binding(
+                    &id.name,
+                    BindingKind::Class { in_body_scope: true, init_pos: Cell::new(0) },
+                )
                 .unwrap();
         }
 

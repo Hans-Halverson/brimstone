@@ -1,0 +1,98 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+     0: NewClosure r0, c0
+     3: StoreGlobal r0, c1
+     6: NewClosure r0, c2
+     9: StoreGlobal r0, c3
+    12: NewClosure r0, c4
+    15: StoreGlobal r0, c5
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: LoadEmpty r1
+    26: NewClass r0, c9, c8, r1, r0
+    32: StoreToScope r0, 1, 0
+    36: LoadUndefined r0
+    38: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: tdzGlobals]
+    1: [String: tdzGlobals]
+    2: [BytecodeFunction: noTdzLocals]
+    3: [String: noTdzLocals]
+    4: [BytecodeFunction: tdzLocals]
+    5: [String: tdzLocals]
+    6: [BytecodeFunction: tdzUseInSuperClass]
+    7: [String: tdzUseInSuperClass]
+    8: [BytecodeFunction: C1]
+    9: [ClassNames]
+}
+
+[BytecodeFunction: tdzGlobals] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 1, 0
+    4: CheckTdz r0, c0
+    7: Ret r0
+  Constant Table:
+    0: [String: C1]
+}
+
+[BytecodeFunction: noTdzLocals] {
+  Parameters: 0, Registers: 2
+    0: LoadEmpty r1
+    2: NewClass r0, c1, c0, r1, r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: C]
+    1: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: tdzLocals] {
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r0
+     2: CheckTdz r0, c0
+     5: LoadEmpty r1
+     7: NewClass r0, c2, c1, r1, r0
+    13: LoadUndefined r1
+    15: Ret r1
+  Constant Table:
+    0: [String: C]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: tdzUseInSuperClass] {
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r0
+     2: CheckTdz r0, c0
+     5: NewClass r0, c2, c1, r0, r0
+    11: LoadUndefined r1
+    13: Ret r1
+  Constant Table:
+    0: [String: C]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: DefaultSuperCall 
+    1: CheckThisInitialized <this>
+    3: Ret <this>
+}
+
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

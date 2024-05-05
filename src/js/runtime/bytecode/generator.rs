@@ -3296,7 +3296,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let private_name_index = self.add_string_constant(&private_name)?;
 
                 let dest = self.register_allocator.allocate()?;
-                self.writer.load_dynamic_instruction(dest, private_name_index);
+                self.writer
+                    .load_dynamic_instruction(dest, private_name_index);
 
                 Ok(dest)
             }

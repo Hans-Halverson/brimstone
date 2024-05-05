@@ -206,7 +206,7 @@ impl Handle<Realm> {
     }
 
     /// Check if a set of lexical names can be declared in the realm. A lexical name cannot be
-    /// declared if it conflicts with an existing global var of lexical name.
+    /// declared if it conflicts with an existing global var or lexical name.
     pub fn can_declare_lexical_names(
         &self,
         cx: Context,
@@ -225,6 +225,22 @@ impl Handle<Realm> {
 
             if is_global_var_name || is_global_lex_name {
                 return syntax_error_(cx, &format!("redeclaration of {}", name.get_()));
+            }
+        }
+
+        ().into()
+    }
+
+    /// Check if a set of var names can be declared in the realm. A var name cannot be declared if
+    /// it conflicts with an existing global lexical name.
+    pub fn can_declare_var_names(
+        &self,
+        cx: Context,
+        names: &[HeapPtr<FlatString>],
+    ) -> EvalResult<()> {
+        for name in names {
+            if self.get_lexical_name(*name).is_some() {
+                return syntax_error_(cx, &format!("redeclaration of {}", name));
             }
         }
 

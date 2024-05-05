@@ -130,6 +130,9 @@ fn global_declaration_instantiation(
     }
     maybe!(realm.can_declare_lexical_names(cx, &lexical_names));
 
+    // Check whether any var names conflict with existing global names
+    maybe!(realm.can_declare_var_names(cx, global_names.names.as_slice()));
+
     // Reuse handle between iterations
     let mut name_handle = Handle::<FlatString>::empty(cx);
 

@@ -3376,6 +3376,9 @@ impl<'a> Parser<'a> {
             None
         };
 
+        // Body (including extends clause) of the class in in its own scope
+        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
+
         let super_class = if self.token == Token::Extends {
             self.advance()?;
             Some(self.parse_left_hand_side_expression()?.to_outer())
@@ -3385,21 +3388,22 @@ impl<'a> Parser<'a> {
 
         // If a lexical binding was introduced in the parent scope, mark the location after which
         // the binding was initialized and can be accessed without a TDZ check.
+        let binding_init_pos = self.prev_loc.end;
         if let Some(id) = id.as_ref() {
             if is_decl {
-                Self::set_id_binding_init_pos(id, self.prev_loc.end);
+                Self::set_id_binding_init_pos(id, binding_init_pos);
             }
         }
-
-        // Body of the class is in its own scope
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
 
         // Always add class name to the body scope
         if let Some(id) = id.as_ref() {
             self.scope_builder
                 .add_binding(
                     &id.name,
-                    BindingKind::Class { in_body_scope: true, init_pos: Cell::new(0) },
+                    BindingKind::Class {
+                        in_body_scope: true,
+                        init_pos: Cell::new(binding_init_pos),
+                    },
                 )
                 .unwrap();
         }

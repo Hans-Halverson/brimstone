@@ -1,9 +1,9 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
-     4: LoadEmpty r2
-     6: StoreToScope r2, 0, 0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: LoadEmpty r1
     10: NewClosure r2, c1
     13: NewClosure r3, c2
     16: NewClass r0, c4, c3, r1, r2

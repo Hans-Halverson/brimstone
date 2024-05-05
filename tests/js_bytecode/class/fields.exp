@@ -79,8 +79,8 @@
 
 [BytecodeFunction: computed] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: LoadImmediate r2, 1
      7: LoadImmediate r3, 2
     10: Add r2, r2, r3
@@ -115,8 +115,8 @@
 
 [BytecodeFunction: private] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 2, 0
     11: NewPrivateSymbol r2, c2
@@ -147,8 +147,8 @@
 
 [BytecodeFunction: noInitializer] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 4, 0
     11: NewPrivateSymbol r2, c2
@@ -202,8 +202,8 @@
 
 [BytecodeFunction: withConstructor] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: LoadImmediate r2, 1
      7: LoadImmediate r3, 2
     10: Add r2, r2, r3
@@ -299,8 +299,8 @@
 
 [BytecodeFunction: withMethods] {
   Parameters: 0, Registers: 6
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 3, 0
     11: NewPrivateSymbol r2, c2
@@ -372,10 +372,10 @@
 
 [BytecodeFunction: withCapturedName] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
-     4: LoadEmpty r2
-     6: StoreToScope r2, 2, 0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 2, 0
+     8: LoadEmpty r1
     10: NewPrivateSymbol r2, c1
     13: StoreToScope r2, 3, 0
     17: LoadImmediate r2, 1
@@ -429,8 +429,8 @@
 
 [BytecodeFunction: withStaticInitializers] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 2, 0
     11: LoadImmediate r2, 1
@@ -465,8 +465,8 @@
 
 [BytecodeFunction: namedEvaluation] {
   Parameters: 0, Registers: 4
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 4, 0
     11: NewPrivateSymbol r2, c2
@@ -562,8 +562,8 @@
 
 [BytecodeFunction: superMemberInFields] {
   Parameters: 0, Registers: 3
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewClass r0, c2, c1, r1, r0
     10: LoadFromScope r2, 1, 0
     14: GetNamedSuperProperty r2, r2, <this>, c3

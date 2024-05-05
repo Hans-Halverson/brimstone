@@ -1,9 +1,9 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 6
-     0: LoadGlobal r1, c0
-     3: PushLexicalScope c1
-     5: LoadEmpty r2
-     7: StoreToScope r2, 0, 0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: LoadGlobal r1, c1
     11: NewClosure r2, c2
     14: NewClosure r3, c3
     17: NewClass r0, c5, c4, r1, r2
@@ -28,8 +28,8 @@
     94: LoadUndefined r0
     96: Ret r0
   Constant Table:
-    0: [String: String]
-    1: [ScopeNames]
+    0: [ScopeNames]
+    1: [String: String]
     2: [BytecodeFunction: method1]
     3: [BytecodeFunction: method2]
     4: [BytecodeFunction: C]

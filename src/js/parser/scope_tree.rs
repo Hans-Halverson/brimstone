@@ -349,9 +349,13 @@ impl ScopeTree {
                         }
                     }
 
-                    // Home object bindings must always be stored in a VM scope. Do not need to set
-                    // this flag in other case since binding will have been captured.
-                    if matches!(binding.kind(), BindingKind::HomeObject) {
+                    // Home object bindings and class names in the scope body must always be stored
+                    // in a VM scope. Do not need to set this flag in other case since binding will
+                    // have been captured.
+                    if matches!(
+                        binding.kind(),
+                        BindingKind::Class { in_body_scope: true, .. } | BindingKind::HomeObject
+                    ) {
                         binding.force_vm_scope = true;
                     }
 

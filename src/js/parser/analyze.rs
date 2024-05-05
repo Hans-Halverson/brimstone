@@ -782,15 +782,15 @@ impl<'a> AstVisitor for Analyzer<'a> {
             self.error_if_strict_eval_or_arguments(class_id);
         }
 
-        if let Some(super_class) = class.super_class.as_deref_mut() {
-            self.visit_outer_expression(super_class);
-        }
-
         // Save analyzer context before descending into class body
         let saved_state = self.save_state();
 
-        // Body is in its own scope
+        // Body (including extends clause) is in its own scope
         self.enter_scope(class.scope);
+
+        if let Some(super_class) = class.super_class.as_deref_mut() {
+            self.visit_outer_expression(super_class);
+        }
 
         let private_names = self.collect_class_private_names(class);
         let num_private_names = private_names.len();

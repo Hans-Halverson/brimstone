@@ -3,10 +3,10 @@
      0: LoadGlobal r0, c0
      3: LoadConstant r1, c1
      6: CallMaybeEval r0, r0, r1, 1, 0
-    12: LoadGlobal r1, c2
-    15: PushLexicalScope c3
-    17: LoadEmpty r2
-    19: StoreToScope r2, 0, 0
+    12: PushLexicalScope c2
+    14: LoadEmpty r1
+    16: StoreToScope r1, 0, 0
+    20: LoadGlobal r1, c3
     23: NewClosure r2, c4
     26: NewClosure r3, c5
     29: NewClass r0, c7, c6, r1, r2
@@ -17,10 +17,10 @@
     51: DefineNamedProperty r0, c8, r4
     55: PopScope 
     56: StoreToScope r0, 1, 0
-    60: LoadEmpty r1
-    62: PushLexicalScope c9
-    64: LoadEmpty r2
-    66: StoreToScope r2, 0, 0
+    60: PushLexicalScope c9
+    62: LoadEmpty r1
+    64: StoreToScope r1, 0, 0
+    68: LoadEmpty r1
     70: NewClass r0, c11, c10, r1, r0
     76: StoreToScope r0, 0, 0
     80: PopScope 
@@ -30,8 +30,8 @@
   Constant Table:
     0: [String: eval]
     1: [String: ]
-    2: [String: String]
-    3: [ScopeNames]
+    2: [ScopeNames]
+    3: [String: String]
     4: [BytecodeFunction: method1]
     5: [BytecodeFunction: method2]
     6: [BytecodeFunction: C1]

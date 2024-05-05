@@ -4791,6 +4791,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
         let constructor_reg = self.allocate_destination(constructor_dest)?;
 
+        // Start the body's scope
+        let body_scope = class.scope.as_ref();
+        self.gen_scope_start(body_scope, Some(ScopeFlags::IS_CLASS_SCOPE))?;
+
         // Evaluate super class if it exists, otherwise use empty as sentinel value
         let super_class = if let Some(super_class) = class.super_class.as_ref() {
             self.gen_outer_expression(super_class)?
@@ -4799,10 +4803,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.load_empty_instruction(super_class);
             super_class
         };
-
-        // Start the body's scope
-        let body_scope = class.scope.as_ref();
-        self.gen_scope_start(body_scope, Some(ScopeFlags::IS_CLASS_SCOPE))?;
 
         // Create private symbols and store to body scope
         for element in &class.body {

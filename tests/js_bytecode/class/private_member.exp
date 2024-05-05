@@ -1,7 +1,7 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 10
-     0: LoadEmpty r1
-     2: PushLexicalScope c0
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
      4: NewPrivateSymbol r2, c1
      7: StoreToScope r2, 1, 0
     11: NewClosure r2, c2

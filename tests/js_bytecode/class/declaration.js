@@ -17,4 +17,5 @@ function tdzLocals() {
 
 function tdzUseInSuperClass() {
   class C extends C {}
+  (class C extends C {});
 }

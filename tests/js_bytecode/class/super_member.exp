@@ -1,22 +1,22 @@
 [BytecodeFunction: <global>] {
   Parameters: 0, Registers: 4
-     0: LoadGlobal r1, c0
-     3: PushLexicalScope c1
+     0: PushLexicalScope c0
+     2: LoadGlobal r1, c1
      5: NewClosure r2, c2
      8: NewClosure r3, c3
     11: NewClass r0, c5, c4, r1, r2
     17: PopScope 
     18: StoreToScope r0, 1, 0
-    22: LoadGlobal r1, c0
-    25: PushLexicalScope c6
+    22: PushLexicalScope c6
+    24: LoadGlobal r1, c1
     27: NewClass r0, c8, c7, r1, r0
     33: PopScope 
     34: StoreToScope r0, 2, 0
     38: LoadUndefined r0
     40: Ret r0
   Constant Table:
-    0: [String: String]
-    1: [ScopeNames]
+    0: [ScopeNames]
+    1: [String: String]
     2: [BytecodeFunction: instanceSuperMember]
     3: [BytecodeFunction: staticSuperMember]
     4: [BytecodeFunction: C1]

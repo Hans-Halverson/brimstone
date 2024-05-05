@@ -192,10 +192,10 @@ impl ScopeTree {
         node.add_binding(name, kind, None, needs_tdz_check);
 
         // Lexically scoped bindings in the global scope must be placed in a VM scope node so that
-        // they can be accessed by different scripts. We can force this by marking them as captured.
+        // they can be accessed by different scripts.
         if node.kind == ScopeNodeKind::Global {
             let binding = node.bindings.get_mut(name).unwrap();
-            binding.is_captured = true;
+            binding.force_vm_scope = true;
         }
 
         Ok(self.get_ast_node_ptr(self.current_node_id))
@@ -347,6 +347,12 @@ impl ScopeTree {
                         if name_loc.start < init_pos.get() {
                             binding.needs_tdz_check = true;
                         }
+                    }
+
+                    // Home object bindings must always be stored in a VM scope. Do not need to set
+                    // this flag in other case since binding will have been captured.
+                    if matches!(binding.kind(), BindingKind::HomeObject) {
+                        binding.force_vm_scope = true;
                     }
 
                     binding
@@ -572,6 +578,7 @@ impl ScopeTree {
             let needs_vm_scope = (
                 // All captured bindings must be placed in a VM scope
                 binding.is_captured ||
+                binding.force_vm_scope ||
                 // All private names must be placed in a VM scope
                 matches!(binding.kind(), BindingKind::PrivateName) ||
                 // We sometimes force bindings in VM scopes due to dynamic accesses.
@@ -1032,6 +1039,8 @@ pub struct Binding {
     index: usize,
     /// Whether this binding is captured by a nested function. Set during use analysis.
     is_captured: bool,
+    /// Whether to force this binding to be in a VM scope. Set during use analysis.
+    force_vm_scope: bool,
     /// If this is a const or let declaration, whether there is some use that requires a TDZ check.
     needs_tdz_check: bool,
     /// Location of the binding in the VM, must be set before bytecode generation.
@@ -1049,6 +1058,7 @@ impl Binding {
             kind,
             index,
             is_captured: false,
+            force_vm_scope: false,
             needs_tdz_check,
             vm_location,
         }

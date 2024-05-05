@@ -106,3 +106,10 @@ function namedEvaluation() {
     static #private2 = () => {};
   }
 }
+
+function superMemberInFields() {
+  class C {
+    field1 = super.foo;
+    static field2 = super.foo;
+  }
+}

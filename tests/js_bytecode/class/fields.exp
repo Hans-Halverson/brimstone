@@ -22,8 +22,10 @@
     57: StoreGlobal r0, c19
     60: NewClosure r0, c20
     63: StoreGlobal r0, c21
-    66: LoadUndefined r0
-    68: Ret r0
+    66: NewClosure r0, c22
+    69: StoreGlobal r0, c23
+    72: LoadUndefined r0
+    74: Ret r0
   Constant Table:
     0: [BytecodeFunction: named]
     1: [String: named]
@@ -47,6 +49,8 @@
     19: [String: withStaticInitializers]
     20: [BytecodeFunction: namedEvaluation]
     21: [String: namedEvaluation]
+    22: [BytecodeFunction: superMemberInFields]
+    23: [String: superMemberInFields]
 }
 
 [BytecodeFunction: named] {
@@ -554,4 +558,35 @@
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: superMemberInFields] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty r1
+     2: PushLexicalScope c0
+     4: NewClass r0, c2, c1, r1, r0
+    10: LoadFromScope r2, 1, 0
+    14: GetNamedSuperProperty r2, r2, <this>, c3
+    19: DefineNamedProperty r0, c4, r2
+    23: PopScope 
+    24: LoadUndefined r1
+    26: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: C]
+    2: [ClassNames]
+    3: [String: foo]
+    4: [String: field2]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+     0: LoadFromScope r0, 0, 0
+     4: GetNamedSuperProperty r0, r0, <this>, c0
+     9: DefineNamedProperty <this>, c1, r0
+    13: LoadUndefined r0
+    15: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: field1]
 }

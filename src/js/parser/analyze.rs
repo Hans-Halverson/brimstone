@@ -1229,6 +1229,8 @@ impl Analyzer<'_> {
 
         // Class field initializers are in their own function scope. Class field initializer bodies
         // are treated as (potentially static) methods.
+        self.allow_super_member_stack
+            .push(AllowSuperStackEntry::Allow { is_static: prop.is_static });
         self.function_stack.push(FunctionStackEntry {
             is_arrow_function: false,
             is_method: true,
@@ -1240,6 +1242,7 @@ impl Analyzer<'_> {
         visit_opt!(self, prop.value, visit_outer_expression);
 
         self.function_stack.pop();
+        self.allow_super_member_stack.pop();
 
         self.allow_arguments = old_allow_arguments;
     }

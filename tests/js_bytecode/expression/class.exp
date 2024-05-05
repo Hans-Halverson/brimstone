@@ -35,11 +35,11 @@
     2: NewClass r0, c1, c0, r1, r0
     8: Ret r0
   Constant Table:
-    0: [BytecodeFunction: default]
+    0: [BytecodeFunction: ]
     1: [ClassNames]
 }
 
-[BytecodeFunction: default] {
+[BytecodeFunction: ] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
@@ -70,7 +70,7 @@
     14: Ret r0
   Constant Table:
     0: [BytecodeFunction: method]
-    1: [BytecodeFunction: default]
+    1: [BytecodeFunction: ]
     2: [ClassNames]
 }
 
@@ -80,7 +80,7 @@
     3: Ret r0
 }
 
-[BytecodeFunction: default] {
+[BytecodeFunction: ] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

@@ -4994,8 +4994,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Handle name passed from named evaluation
             name
         } else {
-            // Otherwise name is "default" if class has no name
-            Wtf8String::from_str("default")
+            // Otherwise name is the empty string if class has no name
+            Wtf8String::new()
         };
 
         // Create the constructor's static BytecodeFunction

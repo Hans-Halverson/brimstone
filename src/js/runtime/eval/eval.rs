@@ -33,7 +33,7 @@ use crate::{
             property::Property,
             scope::{Scope, ScopeKind},
             string_value::FlatString,
-            Completion, CompletionKind, Context, EvalResult, Handle, Value,
+            Completion, CompletionKind, Context, EvalResult, Handle, HeapPtr, Value,
         },
     },
     maybe, must,
@@ -55,7 +55,7 @@ pub fn perform_bytecode_eval(
 
     let is_direct = direct_scope.is_some();
 
-    // TODO: Gather private names from surrounding context
+    let private_names = get_private_names_from_scopes(direct_scope.map(|s| s.get_()));
 
     // Parse source code
     let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
@@ -69,7 +69,7 @@ pub fn perform_bytecode_eval(
     let analyze_result = analyze_for_eval(
         &mut parse_result,
         source,
-        /* private_names */ None,
+        private_names,
         flags.contains(EvalFlags::IN_FUNCTION),
         flags.contains(EvalFlags::IN_METHOD),
         flags.contains(EvalFlags::IN_STATIC),
@@ -119,6 +119,40 @@ pub fn perform_bytecode_eval(
 
     // Execute the eval function's bytecode in the VM
     cx.vm().call_from_rust(closure.into(), receiver, &[])
+}
+
+/// Gather private names from parent class scopes.
+fn get_private_names_from_scopes(
+    scope: Option<HeapPtr<Scope>>,
+) -> Option<HashMap<String, PrivateNameUsage>> {
+    let mut private_names = None;
+    let mut scope_opt = scope;
+
+    while let Some(scope) = scope_opt {
+        let scope_names = scope.scope_names_ptr();
+        if scope_names.is_class_scope() {
+            if private_names.is_none() {
+                private_names = Some(HashMap::new());
+            }
+
+            for (i, name) in scope_names.name_ptrs().iter().enumerate() {
+                if scope_names.is_private_name(i) {
+                    // Exclude the "#" prefix
+                    let prefixed_private_name = name.to_string();
+                    let private_name = prefixed_private_name[1..].to_string();
+
+                    private_names
+                        .as_mut()
+                        .unwrap()
+                        .insert(private_name, PrivateNameUsage::used());
+                }
+            }
+        }
+
+        scope_opt = scope.parent();
+    }
+
+    private_names
 }
 
 // Check if any names conflict with lexical bindings in parent scopes.

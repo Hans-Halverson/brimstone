@@ -3281,12 +3281,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_private_symbol(&mut self, private_id: &ast::Identifier) -> EmitResult<GenRegister> {
         match private_id.scope.kind() {
-            ResolvedScope::UnresolvedDynamic => {
-                unimplemented!("bytecode for dynamic private names")
-            }
-            ResolvedScope::UnresolvedGlobal => {
-                unreachable!("private names must be dynamic or resolved to scope")
-            }
+            // If resolved then directly load from the scope directly
             ResolvedScope::Resolved => {
                 match private_id.get_private_name_binding().vm_location().unwrap() {
                     VMLocation::Scope { scope_id, index } => {
@@ -3294,6 +3289,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                     _ => unreachable!("private names must be stored in scope"),
                 }
+            }
+            // Otherwise must be dynamic, so perform a dynamic lookup
+            ResolvedScope::UnresolvedDynamic => {
+                let private_name = format!("#{}", &private_id.name);
+                let private_name_index = self.add_string_constant(&private_name)?;
+
+                let dest = self.register_allocator.allocate()?;
+                self.writer.load_dynamic_instruction(dest, private_name_index);
+
+                Ok(dest)
+            }
+            ResolvedScope::UnresolvedGlobal => {
+                unreachable!("private names must be dynamic or resolved to scope")
             }
         }
     }
@@ -4792,7 +4800,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start the body's scope
         let body_scope = class.scope.as_ref();
-        self.gen_scope_start(body_scope, None)?;
+        self.gen_scope_start(body_scope, Some(ScopeFlags::IS_CLASS_SCOPE))?;
 
         // Create private symbols and store to body scope
         for element in &class.body {
@@ -5506,6 +5514,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             if binding.kind().is_function_expression_name() {
                 flags |= ScopeNameFlags::IS_FUNCTION_EXPRESSION_NAME;
+            }
+
+            if binding.kind().is_private_name() {
+                flags |= ScopeNameFlags::IS_PRIVATE_NAME;
             }
 
             all_flags.push(flags);

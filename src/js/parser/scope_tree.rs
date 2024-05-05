@@ -991,6 +991,10 @@ impl BindingKind {
         matches!(self, BindingKind::FunctionParameter { .. })
     }
 
+    pub fn is_private_name(&self) -> bool {
+        matches!(self, BindingKind::PrivateName)
+    }
+
     fn has_tdz(&self) -> bool {
         matches!(
             self,

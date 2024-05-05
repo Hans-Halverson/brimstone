@@ -25,10 +25,12 @@ bitflags! {
     #[derive(Clone, Copy)]
     pub struct ScopeFlags: u8 {
         /// Whether this scope is a "var scope", meaning sloppy eval will create vars in this scope.
-        const IS_VAR_SCOPE = 0x1;
+        const IS_VAR_SCOPE = 1 << 0;
         /// Whether this is the scope that contains function params, separate from the function
         /// body because the function params contains expressions.
-        const IS_FUNCTION_PARAMETERS_SCOPE = 0x2;
+        const IS_FUNCTION_PARAMETERS_SCOPE = 1 << 1;
+        /// Whether this scope is a class body scope.
+        const IS_CLASS_SCOPE = 1 << 2;
     }
 }
 
@@ -36,13 +38,15 @@ bitflags! {
     #[derive(Clone, Copy)]
     pub struct ScopeNameFlags: u8 {
         /// Whether this is a const binding
-        const IS_CONST = 0x1;
+        const IS_CONST = 1 << 0;
         /// Whether this is a lexically scoped binding.
-        const IS_LEXICAL = 0x2;
+        const IS_LEXICAL = 1 << 1;
         /// Whether this is a function parameter binding.
-        const IS_FUNCTION_PARAMETER = 0x4;
+        const IS_FUNCTION_PARAMETER = 1 << 2;
         /// Whether this if a function expression name binding.
-        const IS_FUNCTION_EXPRESSION_NAME = 0x8;
+        const IS_FUNCTION_EXPRESSION_NAME = 1 << 3;
+        /// Whether this is a private name binding.
+        const IS_PRIVATE_NAME = 1 << 4;
     }
 }
 
@@ -111,6 +115,10 @@ impl ScopeNames {
             .contains(ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE)
     }
 
+    pub fn is_class_scope(&self) -> bool {
+        self.flags.contains(ScopeFlags::IS_CLASS_SCOPE)
+    }
+
     pub fn name_ptrs(&self) -> &[HeapPtr<FlatString>] {
         self.names.as_slice()
     }
@@ -156,6 +164,12 @@ impl ScopeNames {
     pub fn is_function_expression_name(&self, index: usize) -> bool {
         self.get_name_flags(index)
             .contains(ScopeNameFlags::IS_FUNCTION_EXPRESSION_NAME)
+    }
+
+    /// Return whether the binding at index is a private name binding.
+    pub fn is_private_name(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_PRIVATE_NAME)
     }
 }
 

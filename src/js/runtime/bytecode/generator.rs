@@ -4064,8 +4064,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Emit class fields in a constructor, defined onto the `this` value.
     fn gen_constructor_class_fields(&mut self) -> EmitResult<()> {
         let class_fields = std::mem::replace(&mut self.class_fields, vec![]);
+
+        // Private methods and accessors are initialized first
+        for field in &class_fields {
+            if matches!(field, ClassField::PrivateMethodOrAccessor { .. }) {
+                self.gen_class_field(&field, Register::this())?;
+            }
+        }
+
+        // All other fields are initialized second
         for field in class_fields {
-            self.gen_class_field(&field, Register::this())?;
+            if !matches!(field, ClassField::PrivateMethodOrAccessor { .. }) {
+                self.gen_class_field(&field, Register::this())?;
+            }
         }
 
         Ok(())
@@ -5170,7 +5181,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_class_field(&mut self, field: &ClassField, target: GenRegister) -> EmitResult<()> {
-        // Private methods and accessors had their clsoure value created and stored in the class's
+        // Private methods and accessors had their closure value created and stored in the class's
         // scope when the class definition was evaluated.
         if let ClassField::PrivateMethodOrAccessor {
             name, scope_index, is_getter, is_setter, ..

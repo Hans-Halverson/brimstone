@@ -3292,14 +3292,12 @@ impl VM {
         // May allocate
         let super_constructor = must!(derived_constructor.get_prototype_of(self.cx));
 
-        // Check that super constructor exists and is a constructor
-        if super_constructor.is_none()
-            || !is_constructor_object_value(self.cx, super_constructor.unwrap())
-        {
-            return type_error_(self.cx, "super must be a constructor");
-        }
+        // Return null if there is no prototype
+        let super_constructor = super_constructor
+            .map(|o| o.get_().into())
+            .unwrap_or(Value::null());
 
-        self.write_register(dest, super_constructor.unwrap().cast::<Value>().get());
+        self.write_register(dest, super_constructor);
 
         ().into()
     }

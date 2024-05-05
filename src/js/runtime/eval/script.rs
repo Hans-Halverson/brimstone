@@ -165,7 +165,7 @@ fn global_declaration_instantiation_legacy(
 
     for (name, binding) in script.scope.as_ref().iter_lex_decls() {
         let name_value = InternedStrings::get_str(cx, name);
-        if binding.is_const() {
+        if binding.is_immutable() {
             maybe__!(env.create_immutable_binding(cx, name_value, true));
         } else {
             maybe__!(env.create_mutable_binding(cx, name_value, false));

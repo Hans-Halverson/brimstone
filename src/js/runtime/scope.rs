@@ -227,7 +227,7 @@ impl Handle<Scope> {
             let scope_names = scope.scope_names_ptr();
             if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
                 // Check if storing to a constant
-                if scope_names.is_const(index) {
+                if scope_names.is_immutable(index) {
                     return err_assign_constant(cx, name.as_flat().get_());
                 }
 

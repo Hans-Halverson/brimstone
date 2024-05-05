@@ -270,7 +270,7 @@ pub fn function_declaration_instantiation(
     // Create bindings for lex decls in function body
     iter_lex_decls(func_node, |(name, binding)| {
         let name_value = InternedStrings::get_str(cx, name);
-        if binding.is_const() {
+        if binding.is_immutable() {
             must!(lex_env.create_immutable_binding(cx, name_value, true));
         } else {
             must!(lex_env.create_mutable_binding(cx, name_value, false))

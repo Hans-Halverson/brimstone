@@ -147,7 +147,7 @@ impl Realm {
         value: Value,
     ) -> EvalResult<bool> {
         if let Some(location) = self.lexical_names.get(&name) {
-            if location.is_const() {
+            if location.is_immutable() {
                 return err_assign_constant(cx, name);
             }
 
@@ -187,10 +187,10 @@ impl Handle<Realm> {
         name: Handle<FlatString>,
         global_scope_index: usize,
         slot_index: u32,
-        is_const: bool,
+        is_immutable: bool,
     ) {
         let lexical_name_location =
-            LexicalNameLocation::new(global_scope_index, slot_index, is_const);
+            LexicalNameLocation::new(global_scope_index, slot_index, is_immutable);
         self.lexical_names_field()
             .maybe_grow_for_insertion(cx)
             .insert_without_growing(name.get_(), lexical_name_location);
@@ -267,8 +267,8 @@ impl Handle<Realm> {
                 // And add to map of all lexical names
                 name_handle.replace(scope_names.get_slot_name(i));
 
-                let is_const = scope_names.is_const(i);
-                self.add_lexical_name(cx, name_handle, global_scope_index, i as u32, is_const);
+                let is_immutable = scope_names.is_immutable(i);
+                self.add_lexical_name(cx, name_handle, global_scope_index, i as u32, is_immutable);
             }
         }
 
@@ -435,17 +435,17 @@ pub struct LexicalNameLocation {
     global_scope_index: usize,
     /// The slot index of the lexical name in that global scope.
     slot_index: u32,
-    /// Whether this is a constant binding.
-    is_const: bool,
+    /// Whether this is an immutable binding.
+    is_immutable: bool,
 }
 
 impl LexicalNameLocation {
-    pub fn new(global_scope_index: usize, slot_index: u32, is_const: bool) -> Self {
-        Self { global_scope_index, slot_index, is_const }
+    pub fn new(global_scope_index: usize, slot_index: u32, is_immutable: bool) -> Self {
+        Self { global_scope_index, slot_index, is_immutable }
     }
 
-    pub fn is_const(&self) -> bool {
-        self.is_const
+    pub fn is_immutable(&self) -> bool {
+        self.is_immutable
     }
 }
 

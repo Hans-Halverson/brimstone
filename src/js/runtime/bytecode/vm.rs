@@ -43,8 +43,8 @@ use crate::{
         scope_names::ScopeNames,
         to_string,
         type_utilities::{
-            is_callable_object, is_constructor_object_value, is_loosely_equal, is_strictly_equal,
-            same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
+            is_callable_object, is_loosely_equal, is_strictly_equal, same_object_value, to_boolean,
+            to_number, to_numeric, to_object, to_property_key,
         },
         value::{AccessorValue, BigIntValue, SymbolValue},
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,

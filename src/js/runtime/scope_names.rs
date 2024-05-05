@@ -37,8 +37,8 @@ bitflags! {
 bitflags! {
     #[derive(Clone, Copy)]
     pub struct ScopeNameFlags: u8 {
-        /// Whether this is a const binding
-        const IS_CONST = 1 << 0;
+        /// Whether this is an immutable binding
+        const IS_IMMUTABLE = 1 << 0;
         /// Whether this is a lexically scoped binding.
         const IS_LEXICAL = 1 << 1;
         /// Whether this is a function parameter binding.
@@ -142,10 +142,10 @@ impl ScopeNames {
         }
     }
 
-    /// Return whether the binding at index is a const binding.
-    pub fn is_const(&self, index: usize) -> bool {
+    /// Return whether the binding at index is an immutable binding.
+    pub fn is_immutable(&self, index: usize) -> bool {
         self.get_name_flags(index)
-            .contains(ScopeNameFlags::IS_CONST)
+            .contains(ScopeNameFlags::IS_IMMUTABLE)
     }
 
     /// Return whether the binding at index is a lexical binding.

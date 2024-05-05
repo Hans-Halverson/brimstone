@@ -1666,8 +1666,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         value: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
-        if self.is_const_reassignment(binding, flags) {
-            // Error if we are trying to reassign a const
+        if self.is_immutable_reassignment(binding, flags) {
+            // Error if we are trying to reassign an immutable binding
             let name_constant_index = self.add_string_constant(name)?;
             self.writer.error_const_instruction(name_constant_index);
         } else if self.is_noop_reassignment(binding, flags) {
@@ -1766,12 +1766,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | VMLocation::WithVar => return ExprDest::Any,
         };
 
-        // Reassigning to a const will error. Make sure to not treat the true fixed register as the
-        // destination, otherwise a value may be stored directly to that fixed register before we
-        // error, which is observable.
+        // Reassigning to an immutable binding will error. Make sure to not treat the true fixed
+        // register as the destination, otherwise a value may be stored directly to that fixed
+        // register before we error, which is observable.
         //
-        // Similarly make sure that noop reassignmetn is not observable.
-        if self.is_const_reassignment(binding, store_flags)
+        // Similarly make sure that noop reassignment is not observable.
+        if self.is_immutable_reassignment(binding, store_flags)
             || self.is_noop_reassignment(binding, store_flags)
         {
             return ExprDest::Any;
@@ -1780,13 +1780,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         ExprDest::Fixed(fixed_register)
     }
 
-    fn is_const_reassignment(&self, binding: &Binding, store_flags: StoreFlags) -> bool {
+    fn is_immutable_reassignment(&self, binding: &Binding, store_flags: StoreFlags) -> bool {
         if store_flags.contains(StoreFlags::INITIALIZATION) {
             return false;
         }
 
         // Function expression names cannot be reassigned in strict mode
-        binding.is_const() || (binding.kind().is_function_expression_name() && self.is_strict)
+        binding.is_immutable() || (binding.kind().is_function_expression_name() && self.is_strict)
     }
 
     fn is_noop_reassignment(&self, binding: &Binding, store_flags: StoreFlags) -> bool {
@@ -3718,10 +3718,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if let ResolvedScope::Resolved = id.scope.kind() {
                 let binding = id.get_binding();
 
-                // If we are reassigning a const then we should immediately throw an error. This
-                // should be done before calling ToNumeric or inc/dec since those operations may be
-                // performeddirectly on a local register, which would be observable.
-                if self.is_const_reassignment(binding, store_flags) {
+                // If we are reassigning an immutable binding then we should immediately throw an
+                // error. This should be done before calling ToNumeric or inc/dec since those
+                // operations may be performed directly on a local register, which would be
+                // observable.
+                if self.is_immutable_reassignment(binding, store_flags) {
                     let name_constant_index = self.add_string_constant(&id.name)?;
                     self.writer.error_const_instruction(name_constant_index);
                 }
@@ -5499,8 +5500,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let binding = binding.unwrap();
 
-            if binding.is_const() {
-                flags |= ScopeNameFlags::IS_CONST;
+            if binding.is_immutable() {
+                flags |= ScopeNameFlags::IS_IMMUTABLE;
             }
 
             if binding.kind().is_lexically_scoped() {

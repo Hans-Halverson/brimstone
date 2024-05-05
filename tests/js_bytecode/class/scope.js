@@ -37,3 +37,13 @@ function capturedByEval() {
     }
   }
 }
+
+function canReassignOutsideBodyButNotInside() {
+  class C {
+    method() {
+      C = 1;
+    }
+  }
+
+  C = 2;
+}

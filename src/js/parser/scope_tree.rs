@@ -978,8 +978,9 @@ impl BindingKind {
         }
     }
 
-    pub fn is_const(&self) -> bool {
+    pub fn is_immutable(&self) -> bool {
         matches!(self, BindingKind::Const { .. })
+            | matches!(self, BindingKind::Class { in_body_scope: true, .. })
     }
 
     pub fn is_function(&self) -> bool {
@@ -1068,8 +1069,8 @@ impl Binding {
         &self.kind
     }
 
-    pub fn is_const(&self) -> bool {
-        self.kind.is_const()
+    pub fn is_immutable(&self) -> bool {
+        self.kind.is_immutable()
     }
 
     pub fn is_implicit_this(&self) -> bool {

@@ -538,7 +538,7 @@ fn eval_declaration_instantiation_legacy(
 
     for (name, binding) in ast.scope.as_ref().iter_lex_decls() {
         let name_value = InternedStrings::get_str(cx, name);
-        if binding.is_const() {
+        if binding.is_immutable() {
             maybe!(lex_env.create_immutable_binding(cx, name_value, true));
         } else {
             maybe!(lex_env.create_mutable_binding(cx, name_value, false));

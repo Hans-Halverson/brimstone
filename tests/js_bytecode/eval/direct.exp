@@ -12,9 +12,9 @@
     27: StoreGlobal r0, c9
     30: LoadGlobal r0, c10
     33: LoadConstant r1, c11
-    36: CallMaybeEval r0, r0, r1, 1
-    41: LoadUndefined r0
-    43: Ret r0
+    36: CallMaybeEval r0, r0, r1, 1, 0
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
     0: [BytecodeFunction: simple]
     1: [String: simple]
@@ -39,8 +39,8 @@
     12: StoreToScope r0, 1, 0
     16: LoadDynamic r0, c1
     19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1
-    27: Ret r0
+    22: CallMaybeEval r0, r0, r1, 1, 1
+    28: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -56,8 +56,8 @@
     12: StoreToScope r0, 1, 0
     16: LoadDynamic r0, c1
     19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1
-    27: Ret r0
+    22: CallMaybeEval r0, r0, r1, 1, 1
+    28: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -88,8 +88,8 @@
     10: NewMappedArguments r0
     12: StoreToScope r0, 1, 0
     16: LoadDynamic r0, c1
-    19: CallMaybeEval r0, r0, r0, 0
-    24: Ret r0
+    19: CallMaybeEval r0, r0, r0, 0, 1
+    25: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]
@@ -106,8 +106,8 @@
     19: LoadImmediate r1, 1
     22: LoadImmediate r2, 2
     25: LoadImmediate r3, 3
-    28: CallMaybeEval r0, r0, r1, 3
-    33: Ret r0
+    28: CallMaybeEval r0, r0, r1, 3, 1
+    34: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

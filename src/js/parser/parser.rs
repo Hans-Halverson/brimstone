@@ -2153,12 +2153,9 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
-                let call_expr = p(Expression::Call(CallExpression {
-                    loc,
-                    callee: expr,
-                    arguments,
-                    is_optional: false,
-                }));
+                let call_expr = p(Expression::Call(CallExpression::new(
+                    loc, expr, arguments, /* is_optional */ false,
+                )));
 
                 self.parse_call_expression(call_expr, start_pos, allow_call, in_optional_chain)
             }
@@ -2230,12 +2227,9 @@ impl<'a> Parser<'a> {
                         let arguments = self.parse_call_arguments()?;
                         let loc = self.mark_loc(start_pos);
 
-                        let call_expr = p(Expression::Call(CallExpression {
-                            loc,
-                            callee: expr,
-                            arguments,
-                            is_optional: true,
-                        }));
+                        let call_expr = p(Expression::Call(CallExpression::new(
+                            loc, expr, arguments, /* is_optional */ true,
+                        )));
 
                         let full_expr =
                             self.parse_call_expression(call_expr, start_pos, allow_call, true)?;

@@ -3,48 +3,48 @@
       0: Mov r0, <scope>
       3: LoadGlobal r1, c0
       6: LoadConstant r2, c1
-      9: CallMaybeEval r1, r1, r2, 1
-     14: Jump 5 (.L0)
-     16: Mov <scope>, r0
+      9: CallMaybeEval r1, r1, r2, 1, 0
+     15: Jump 5 (.L0)
+     17: Mov <scope>, r0
   .L0:
-     19: LoadGlobal r0, c0
-     22: LoadConstant r1, c2
-     25: CallMaybeEval r0, r0, r1, 1
-     30: LoadGlobal r0, c0
-     33: LoadConstant r1, c3
-     36: CallMaybeEval r0, r0, r1, 1
-     41: LoadGlobal r0, c0
-     44: LoadConstant r1, c4
-     47: CallMaybeEval r0, r0, r1, 1
-     52: LoadGlobal r0, c0
-     55: LoadConstant r1, c5
-     58: CallMaybeEval r0, r0, r1, 1
-     63: LoadGlobal r0, c0
-     66: LoadConstant r1, c6
-     69: CallMaybeEval r0, r0, r1, 1
-     74: LoadGlobal r0, c0
-     77: LoadConstant r1, c7
-     80: CallMaybeEval r0, r0, r1, 1
-     85: LoadGlobal r0, c0
-     88: LoadConstant r1, c8
-     91: CallMaybeEval r0, r0, r1, 1
-     96: LoadGlobal r0, c0
-     99: LoadConstant r1, c9
-    102: CallMaybeEval r0, r0, r1, 1
-    107: LoadGlobal r0, c0
-    110: LoadConstant r1, c10
-    113: CallMaybeEval r0, r0, r1, 1
-    118: LoadGlobal r0, c0
-    121: LoadConstant r1, c11
-    124: CallMaybeEval r0, r0, r1, 1
-    129: LoadGlobal r0, c0
-    132: LoadConstant r1, c12
-    135: CallMaybeEval r0, r0, r1, 1
+     20: LoadGlobal r0, c0
+     23: LoadConstant r1, c2
+     26: CallMaybeEval r0, r0, r1, 1, 0
+     32: LoadGlobal r0, c0
+     35: LoadConstant r1, c3
+     38: CallMaybeEval r0, r0, r1, 1, 0
+     44: LoadGlobal r0, c0
+     47: LoadConstant r1, c4
+     50: CallMaybeEval r0, r0, r1, 1, 0
+     56: LoadGlobal r0, c0
+     59: LoadConstant r1, c5
+     62: CallMaybeEval r0, r0, r1, 1, 0
+     68: LoadGlobal r0, c0
+     71: LoadConstant r1, c6
+     74: CallMaybeEval r0, r0, r1, 1, 0
+     80: LoadGlobal r0, c0
+     83: LoadConstant r1, c7
+     86: CallMaybeEval r0, r0, r1, 1, 0
+     92: LoadGlobal r0, c0
+     95: LoadConstant r1, c8
+     98: CallMaybeEval r0, r0, r1, 1, 0
+    104: LoadGlobal r0, c0
+    107: LoadConstant r1, c9
+    110: CallMaybeEval r0, r0, r1, 1, 0
+    116: LoadGlobal r0, c0
+    119: LoadConstant r1, c10
+    122: CallMaybeEval r0, r0, r1, 1, 0
+    128: LoadGlobal r0, c0
+    131: LoadConstant r1, c11
+    134: CallMaybeEval r0, r0, r1, 1, 0
     140: LoadGlobal r0, c0
-    143: LoadConstant r1, c13
-    146: CallMaybeEval r0, r0, r1, 1
-    151: LoadUndefined r0
-    153: Ret r0
+    143: LoadConstant r1, c12
+    146: CallMaybeEval r0, r0, r1, 1, 0
+    152: LoadGlobal r0, c0
+    155: LoadConstant r1, c13
+    158: CallMaybeEval r0, r0, r1, 1, 0
+    164: LoadUndefined r0
+    166: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: 
@@ -109,7 +109,7 @@
   try { 1; } catch { 2; } finally { 3; }
 ]
   Exception Handlers:
-    3-14 -> 16
+    3-15 -> 17
 }
 
 [BytecodeFunction: <eval>] {

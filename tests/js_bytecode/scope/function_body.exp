@@ -164,16 +164,16 @@
      6: StoreToScope r0, 3, 0
     10: NewUnmappedArguments r0
     12: StoreToScope r0, 2, 0
-    16: JumpNotUndefined a0, 14 (.L0)
+    16: JumpNotUndefined a0, 15 (.L0)
     19: LoadDynamic r0, c1
     22: LoadConstant r1, c2
-    25: CallMaybeEval a0, r0, r1, 1
+    25: CallMaybeEval a0, r0, r1, 1, 1
   .L0:
-    30: StoreToScope a0, 1, 0
-    34: PushFunctionScope c3
-    36: LoadImmediate r0, 1
-    39: LoadUndefined r0
-    41: Ret r0
+    31: StoreToScope a0, 1, 0
+    35: PushFunctionScope c3
+    37: LoadImmediate r0, 1
+    40: LoadUndefined r0
+    42: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

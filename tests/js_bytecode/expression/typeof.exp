@@ -57,17 +57,17 @@
     12: StoreToScope r0, 2, 0
     16: LoadDynamic r0, c1
     19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1
-    27: LoadImmediate r0, 2
-    30: StoreToScope r0, 1, 0
-    34: LoadDynamicOrUnresolved r0, c3
-    37: TypeOf r0, r0
-    40: LoadFromScope r0, 1, 0
-    44: TypeOf r0, r0
-    47: LoadDynamicOrUnresolved r0, c4
-    50: TypeOf r0, r0
-    53: LoadUndefined r0
-    55: Ret r0
+    22: CallMaybeEval r0, r0, r1, 1, 1
+    28: LoadImmediate r0, 2
+    31: StoreToScope r0, 1, 0
+    35: LoadDynamicOrUnresolved r0, c3
+    38: TypeOf r0, r0
+    41: LoadFromScope r0, 1, 0
+    45: TypeOf r0, r0
+    48: LoadDynamicOrUnresolved r0, c4
+    51: TypeOf r0, r0
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

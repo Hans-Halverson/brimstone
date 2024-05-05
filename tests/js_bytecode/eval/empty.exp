@@ -2,28 +2,28 @@
   Parameters: 0, Registers: 2
      0: LoadGlobal r0, c0
      3: LoadConstant r1, c1
-     6: CallMaybeEval r0, r0, r1, 1
-    11: LoadGlobal r0, c0
-    14: LoadConstant r1, c2
-    17: CallMaybeEval r0, r0, r1, 1
-    22: LoadGlobal r0, c0
-    25: JumpNullish r0, 13 (.L0)
-    28: LoadConstant r1, c1
-    31: Call r0, r0, r1, 1
-    36: Jump 4 (.L1)
+     6: CallMaybeEval r0, r0, r1, 1, 0
+    12: LoadGlobal r0, c0
+    15: LoadConstant r1, c2
+    18: CallMaybeEval r0, r0, r1, 1, 0
+    24: LoadGlobal r0, c0
+    27: JumpNullish r0, 13 (.L0)
+    30: LoadConstant r1, c1
+    33: Call r0, r0, r1, 1
+    38: Jump 4 (.L1)
   .L0:
-    38: LoadUndefined r0
+    40: LoadUndefined r0
   .L1:
-    40: LoadGlobal r0, c0
-    43: JumpNullish r0, 13 (.L2)
-    46: LoadConstant r1, c2
-    49: Call r0, r0, r1, 1
-    54: Jump 4 (.L3)
+    42: LoadGlobal r0, c0
+    45: JumpNullish r0, 13 (.L2)
+    48: LoadConstant r1, c2
+    51: Call r0, r0, r1, 1
+    56: Jump 4 (.L3)
   .L2:
-    56: LoadUndefined r0
-  .L3:
     58: LoadUndefined r0
-    60: Ret r0
+  .L3:
+    60: LoadUndefined r0
+    62: Ret r0
   Constant Table:
     0: [String: eval]
     1: [String: ]

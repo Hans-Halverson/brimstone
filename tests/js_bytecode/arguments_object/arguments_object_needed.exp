@@ -118,9 +118,9 @@
     12: StoreToScope r0, 1, 0
     16: LoadGlobal r0, c1
     19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1
-    27: LoadUndefined r0
-    29: Ret r0
+    22: CallMaybeEval r0, r0, r1, 1, 1
+    28: LoadUndefined r0
+    30: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

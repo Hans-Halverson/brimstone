@@ -344,6 +344,7 @@ define_instructions!(
         [1] function: Register,
         [2] argv: Register,
         [3] argc: UInt,
+        [4] flags: UInt,
     }
 
     /// Call a function with variable number of arguments, where the function may be a direct eval.
@@ -355,6 +356,7 @@ define_instructions!(
         [0] dest: Register,
         [1] function: Register,
         [2] args: Register,
+        [3] flags: UInt,
     }
 
     /// Call a constructor. Arguments are passed in contiguous sequence of registers starting at
@@ -1081,6 +1083,24 @@ bitflags! {
         const GETTER = 1 << 1;
         /// Whether to define a setter property.
         const SETTER = 1 << 2;
+    }
+}
+
+bitflags! {
+    /// Flags for the CallMaybeEval instructions.
+    #[derive(Clone, Copy)]
+    pub struct EvalFlags: u8 {
+        /// Whether eval is in a non-arrow function, meaning new.target expressions are allowed.
+        const IN_FUNCTION = 1 << 0;
+        /// Whether eval is in a method, meaning super member expressions are allowed.
+        const IN_METHOD = 1 << 1;
+        /// Whether eval is in a static method or class field, meaning super member expressions
+        /// reference the static home object.
+        const IN_STATIC = 1 << 2;
+        /// Whether eval is in a derived constructor meaning super constructor calls are allowed.
+        const IN_DERIVED_CONSTRUCTOR = 1 << 3;
+        /// Whether eval is in a class field initializer meaning `arguments` is not allowed.
+        const IN_CLASS_FIELD_INITIALIZER = 1 << 4;
     }
 }
 

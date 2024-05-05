@@ -1036,6 +1036,45 @@ pub struct CallExpression {
     pub callee: P<Expression>,
     pub arguments: Vec<CallArgument>,
     pub is_optional: bool,
+
+    // The reamining fields are only set if the call expression is potentially a direct eval.
+    // These fields are set during analysis.
+    /// Whether the function is potentially a direct eval and inside a non-arrow function, meaning a
+    /// new.target expression is allowed.
+    pub maybe_eval_in_function: bool,
+    /// Whether the function is potentially a direct eval and inside a method, meaning a super
+    /// member expression is allowed.
+    pub maybe_eval_in_method: bool,
+    /// Whether the function is potentially a direct eval and inside a static method or class field,
+    /// meaning a super member expression refers to the static home object.
+    pub maybe_eval_in_static: bool,
+    /// Whether the function is potentially a direct eval and inside a derived constructor,
+    /// meaning a super constructor call is allowed.
+    pub maybe_eval_in_derived_constructor: bool,
+    /// Whether the function is potentially a direct eval and inside a class field initializer,
+    /// meaning accessing the arguments binding is not allowed.
+    pub maybe_eval_in_class_field_initializer: bool,
+}
+
+impl CallExpression {
+    pub fn new(
+        loc: Loc,
+        callee: P<Expression>,
+        arguments: Vec<CallArgument>,
+        is_optional: bool,
+    ) -> CallExpression {
+        CallExpression {
+            loc,
+            callee,
+            arguments,
+            is_optional,
+            maybe_eval_in_function: false,
+            maybe_eval_in_method: false,
+            maybe_eval_in_static: false,
+            maybe_eval_in_derived_constructor: false,
+            maybe_eval_in_class_field_initializer: false,
+        }
+    }
 }
 
 pub enum CallArgument {

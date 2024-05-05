@@ -15,6 +15,7 @@ use crate::{
             bytecode::{
                 function::{dump_bytecode_function, Closure},
                 generator::BytecodeProgramGenerator,
+                instruction::EvalFlags,
             },
             environment::{
                 declarative_environment::DeclarativeEnvironment,
@@ -45,6 +46,7 @@ pub fn perform_bytecode_eval(
     code: Handle<Value>,
     is_strict_caller: bool,
     direct_scope: Option<Handle<Scope>>,
+    flags: EvalFlags,
 ) -> EvalResult<Handle<Value>> {
     if !code.is_string() {
         return code.into();
@@ -52,26 +54,6 @@ pub fn perform_bytecode_eval(
     let code = code.as_string();
 
     let is_direct = direct_scope.is_some();
-    let mut in_function = false;
-
-    // Walk scope chain, determining context that eval was called in
-    if is_direct {
-        let mut scope = cx.vm().scope();
-        loop {
-            // Check if we are inside a function, meaning `new.target` can be used in the eval
-            if scope.scope_names_ptr().is_non_arrow_function_scope() {
-                in_function = true;
-            }
-
-            // TODO: Check if inside a method, derived constructor, and class field initializer
-
-            if let Some(parent_scope) = scope.parent() {
-                scope = parent_scope;
-            } else {
-                break;
-            }
-        }
-    }
 
     // TODO: Gather private names from surrounding context
 
@@ -88,11 +70,11 @@ pub fn perform_bytecode_eval(
         &mut parse_result,
         source,
         /* private_names */ None,
-        in_function,
-        /* in_method */ false,
-        /* in_static_method */ false,
-        /* in_derived_constructor */ false,
-        /* in_class_field_initializer */ false,
+        flags.contains(EvalFlags::IN_FUNCTION),
+        flags.contains(EvalFlags::IN_METHOD),
+        flags.contains(EvalFlags::IN_STATIC),
+        flags.contains(EvalFlags::IN_DERIVED_CONSTRUCTOR),
+        flags.contains(EvalFlags::IN_CLASS_FIELD_INITIALIZER),
     );
     if let Err(errors) = analyze_result {
         // TODO: Return an aggregate error with all syntax errors

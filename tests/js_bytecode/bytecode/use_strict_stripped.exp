@@ -5,9 +5,9 @@
      6: LoadImmediate r0, 1
      9: LoadGlobal r0, c2
     12: LoadConstant r1, c3
-    15: CallMaybeEval r0, r0, r1, 1
-    20: LoadUndefined r0
-    22: Ret r0
+    15: CallMaybeEval r0, r0, r1, 1, 0
+    21: LoadUndefined r0
+    23: Ret r0
   Constant Table:
     0: [BytecodeFunction: func]
     1: [String: func]

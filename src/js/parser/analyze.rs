@@ -62,8 +62,10 @@ pub struct Analyzer<'a> {
 
 struct FunctionStackEntry {
     is_arrow_function: bool,
-    _is_method: bool,
+    is_method: bool,
+    is_static: bool,
     is_derived_constructor: bool,
+    is_class_field_initializer: bool,
 }
 
 enum AllowSuperStackEntry {
@@ -721,6 +723,15 @@ impl<'a> AstVisitor for Analyzer<'a> {
             Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
                 self.scope_tree
                     .support_dynamic_access_in_visible_bindings(self.current_scope_id());
+
+                if let Some(current_func) = self.enclosing_non_arrow_function() {
+                    expr.maybe_eval_in_function = true;
+                    expr.maybe_eval_in_method = current_func.is_method;
+                    expr.maybe_eval_in_static = current_func.is_static;
+                    expr.maybe_eval_in_derived_constructor = current_func.is_derived_constructor;
+                    expr.maybe_eval_in_class_field_initializer =
+                        current_func.is_class_field_initializer;
+                }
             }
             _ => {}
         }
@@ -848,8 +859,10 @@ impl Analyzer<'_> {
     ) {
         self.function_stack.push(FunctionStackEntry {
             is_arrow_function,
-            _is_method: is_method,
+            is_method,
+            is_static: is_static_method,
             is_derived_constructor,
+            is_class_field_initializer: false,
         });
 
         // Return is not allowed in static initializers, but is allowed in all other functions
@@ -1214,7 +1227,19 @@ impl Analyzer<'_> {
         let old_allow_arguments = self.allow_arguments;
         self.allow_arguments = false;
 
+        // Class field initializers are in their own function scope. Class field initializer bodies
+        // are treated as (potentially static) methods.
+        self.function_stack.push(FunctionStackEntry {
+            is_arrow_function: false,
+            is_method: true,
+            is_static: prop.is_static,
+            is_derived_constructor: false,
+            is_class_field_initializer: true,
+        });
+
         visit_opt!(self, prop.value, visit_outer_expression);
+
+        self.function_stack.pop();
 
         self.allow_arguments = old_allow_arguments;
     }
@@ -1441,7 +1466,7 @@ pub fn analyze_for_eval(
     private_names: Option<HashMap<String, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
-    in_static_method: bool,
+    in_static: bool,
     in_derived_constructor: bool,
     in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
@@ -1458,14 +1483,16 @@ pub fn analyze_for_eval(
     if in_function {
         analyzer.function_stack.push(FunctionStackEntry {
             is_arrow_function: false,
-            _is_method: in_method,
+            is_method: in_method,
+            is_static: in_static,
             is_derived_constructor: in_derived_constructor,
+            is_class_field_initializer: in_class_field_initializer,
         });
 
-        if in_method {
+        if in_method || in_class_field_initializer {
             analyzer
                 .allow_super_member_stack
-                .push(AllowSuperStackEntry::Allow { is_static: in_static_method });
+                .push(AllowSuperStackEntry::Allow { is_static: in_static });
         }
     }
 

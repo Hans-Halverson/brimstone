@@ -19,13 +19,13 @@
     50: CheckTdz r0, c6
     53: LoadGlobal r0, c7
     56: LoadConstant r1, c8
-    59: CallMaybeEval r0, r0, r1, 1
-    64: PopScope 
-    65: LoadGlobal r0, c4
-    68: LoadGlobal r0, c6
-    71: LoadGlobal r0, c5
-    74: LoadUndefined r0
-    76: Ret r0
+    59: CallMaybeEval r0, r0, r1, 1, 0
+    65: PopScope 
+    66: LoadGlobal r0, c4
+    69: LoadGlobal r0, c6
+    72: LoadGlobal r0, c5
+    75: LoadUndefined r0
+    77: Ret r0
   Constant Table:
     0: [BytecodeFunction: forcesDynamicInScopeAndParents]
     1: [String: forcesDynamicInScopeAndParents]
@@ -69,21 +69,21 @@
      87: LoadDynamic r0, c5
      90: LoadDynamic r0, c6
      93: LoadConstant r1, c7
-     96: CallMaybeEval r0, r0, r1, 1
-    101: PopScope 
-    102: LoadFromScope r0, 2, 0
-    106: LoadFromScope r0, 4, 0
-    110: LoadFromScope r0, 3, 0
-    114: CheckTdz r0, c2
-    117: LoadDynamic r0, c5
-    120: LoadImmediate r1, 5
-    123: Add r0, r0, r1
-    127: LoadDynamic r0, c4
-    130: LoadDynamic r0, c5
-    133: LoadImmediate r1, 6
-    136: Add r0, r0, r1
-    140: LoadUndefined r0
-    142: Ret r0
+     96: CallMaybeEval r0, r0, r1, 1, 1
+    102: PopScope 
+    103: LoadFromScope r0, 2, 0
+    107: LoadFromScope r0, 4, 0
+    111: LoadFromScope r0, 3, 0
+    115: CheckTdz r0, c2
+    118: LoadDynamic r0, c5
+    121: LoadImmediate r1, 5
+    124: Add r0, r0, r1
+    128: LoadDynamic r0, c4
+    131: LoadDynamic r0, c5
+    134: LoadImmediate r1, 6
+    137: Add r0, r0, r1
+    141: LoadUndefined r0
+    143: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

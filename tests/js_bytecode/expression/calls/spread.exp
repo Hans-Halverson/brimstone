@@ -143,8 +143,8 @@
     48: Inc r2
     50: Jump -14 (.L0)
   .L1:
-    52: CallMaybeEvalVarargs r0, r0, r1
-    56: Ret r0
+    52: CallMaybeEvalVarargs r0, r0, r1, 1
+    57: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

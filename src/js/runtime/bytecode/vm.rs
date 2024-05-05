@@ -66,7 +66,7 @@ use super::{
         DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
         DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
-        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, ExpInstruction,
+        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction,
         ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
         GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction, GetPropertyInstruction,
         GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
@@ -1741,6 +1741,7 @@ impl VM {
         let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
         if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
             let argc = instr.argc().value().to_usize();
+            let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
             let dest = instr.dest();
 
             // Return undefined if there are no arguments
@@ -1752,7 +1753,7 @@ impl VM {
             // Only the first argument is passed to eval
             let arg = self.read_register_to_handle(instr.argv());
 
-            self.direct_eval(arg, dest)
+            self.direct_eval(arg, dest, flags)
         } else {
             self.execute_generic_call(instr)
         }
@@ -1768,6 +1769,7 @@ impl VM {
         // Check if the callee is the eval function, if so this is a direct eval
         let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
         if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
+            let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
             let dest = instr.dest();
 
             // Extract the first argument from the array
@@ -1779,19 +1781,25 @@ impl VM {
 
             let arg = args_slice[0].to_handle(self.cx);
 
-            self.direct_eval(arg, dest)
+            self.direct_eval(arg, dest, flags)
         } else {
             self.execute_generic_call(instr)
         }
     }
 
     #[inline]
-    fn direct_eval<W: Width>(&mut self, arg: Handle<Value>, dest: Register<W>) -> EvalResult<()> {
+    fn direct_eval<W: Width>(
+        &mut self,
+        arg: Handle<Value>,
+        dest: Register<W>,
+        flags: EvalFlags,
+    ) -> EvalResult<()> {
         let is_strict_caller = self.closure().function_ptr().is_strict();
         let scope = self.scope().to_handle();
 
         // Allocates
-        let result = maybe!(perform_bytecode_eval(self.cx, arg, is_strict_caller, Some(scope)));
+        let result =
+            maybe!(perform_bytecode_eval(self.cx, arg, is_strict_caller, Some(scope), flags));
         self.write_register(dest, result.get());
 
         ().into()

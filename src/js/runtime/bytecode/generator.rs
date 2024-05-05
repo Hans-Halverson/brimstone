@@ -39,7 +39,7 @@ use crate::js::{
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-    instruction::{DecodeInfo, DefinePrivatePropertyFlags, OpCode},
+    instruction::{DecodeInfo, DefinePrivatePropertyFlags, EvalFlags, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
     width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
@@ -1090,11 +1090,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if body.scope.is_some() {
                 func_scope_flags |= ScopeFlags::IS_FUNCTION_PARAMETERS_SCOPE;
             }
-        }
-
-        // Mark the function scope for additional properties of the function
-        if !func.is_arrow() {
-            func_scope_flags |= ScopeFlags::IS_NON_ARROW_FUNCTION_SCOPE;
         }
 
         // Entire function parameters and body are in their own scope.
@@ -2510,14 +2505,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
         } else if is_maybe_direct_eval {
+            let flags = Self::create_eval_flags(expr);
+            let flags = UInt::new(flags.bits() as u32);
+
             match args {
                 CallArgs::Varargs { args, .. } => {
                     self.writer
-                        .call_maybe_eval_varargs_instruction(dest, callee, args);
+                        .call_maybe_eval_varargs_instruction(dest, callee, args, flags);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer
-                        .call_maybe_eval_instruction(dest, callee, argv, argc);
+                        .call_maybe_eval_instruction(dest, callee, argv, argc, flags);
                 }
             }
         } else {
@@ -2536,6 +2534,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(dest)
+    }
+
+    fn create_eval_flags(expr: &ast::CallExpression) -> EvalFlags {
+        let mut flags = EvalFlags::empty();
+
+        if expr.maybe_eval_in_function {
+            flags |= EvalFlags::IN_FUNCTION;
+        }
+
+        if expr.maybe_eval_in_method {
+            flags |= EvalFlags::IN_METHOD;
+        }
+
+        if expr.maybe_eval_in_static {
+            flags |= EvalFlags::IN_STATIC;
+        }
+
+        if expr.maybe_eval_in_derived_constructor {
+            flags |= EvalFlags::IN_DERIVED_CONSTRUCTOR;
+        }
+
+        if expr.maybe_eval_in_class_field_initializer {
+            flags |= EvalFlags::IN_CLASS_FIELD_INITIALIZER;
+        }
+
+        flags
     }
 
     fn gen_tagged_template_expression(

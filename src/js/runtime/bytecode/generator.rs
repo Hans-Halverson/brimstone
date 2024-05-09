@@ -3590,11 +3590,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
-            ast::Pattern::Member(member) => {
+            member @ (ast::Pattern::Member(_) | ast::Pattern::SuperMember(_)) => {
                 enum Property {
                     Computed(GenRegister),
                     Named(GenConstantIndex),
                     Private(GenRegister),
+                    Super { key: GenRegister, this_value: GenRegister },
                 }
 
                 // Use a temporary register since intermediate values will be written, and we do
@@ -3603,18 +3604,51 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let temp_dest = self.gen_ensure_dest_is_temporary(dest);
                 let temp = self.allocate_destination(temp_dest)?;
 
-                let object = self.gen_expression(&member.object)?;
+                // Evaluate the object expression, or find the home object if `super`
+                let object = match member {
+                    ast::Pattern::Member(member) => self.gen_expression(&member.object)?,
+                    ast::Pattern::SuperMember(member) => {
+                        self.gen_load_home_object(member, ExprDest::Any)?
+                    }
+                    _ => unreachable!("must be a member or super member pattern"),
+                };
 
                 // Emit the property itself, which may be a computed expression or literal name
-                let property = if member.is_computed {
-                    Property::Computed(self.gen_expression(&member.property)?)
-                } else if member.is_private {
-                    Property::Private(self.gen_load_private_symbol(&member.property.to_id())?)
+                let property = if let ast::Pattern::SuperMember(member) = member {
+                    let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+
+                    if member.is_computed {
+                        let key = self.gen_expression(&member.property)?;
+                        Property::Super { key, this_value }
+                    } else {
+                        // Must be a super named access, but we do not have a SetNamedSuperProperty
+                        // instruction so load to a register.
+                        let name = member.property.to_id();
+                        let name_constant_index = self.add_string_constant(&name.name)?;
+
+                        let key = self.register_allocator.allocate()?;
+                        self.writer
+                            .load_constant_instruction(key, name_constant_index);
+
+                        Property::Super { key, this_value }
+                    }
                 } else {
-                    // Must be a named access
-                    let name = member.property.to_id();
-                    let name_constant_index = self.add_string_constant(&name.name)?;
-                    Property::Named(name_constant_index)
+                    let member = if let ast::Pattern::Member(member) = member {
+                        member
+                    } else {
+                        unreachable!("must be a member or super member pattern")
+                    };
+
+                    if member.is_computed {
+                        Property::Computed(self.gen_expression(&member.property)?)
+                    } else if member.is_private {
+                        Property::Private(self.gen_load_private_symbol(&member.property.to_id())?)
+                    } else {
+                        // Must be a named access
+                        let name = member.property.to_id();
+                        let name_constant_index = self.add_string_constant(&name.name)?;
+                        Property::Named(name_constant_index)
+                    }
                 };
 
                 let mut join_block = 0;
@@ -3636,6 +3670,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         Property::Private(key) => self
                             .writer
                             .get_private_property_instruction(temp, object, key),
+                        Property::Super { key, this_value } => self
+                            .writer
+                            .get_super_property_instruction(temp, object, this_value, key),
                     }
 
                     if !expr.operator.is_logical() {
@@ -3675,6 +3712,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             .set_private_property_instruction(object, key, temp);
                         self.register_allocator.release(key);
                     }
+                    Property::Super { key, this_value } => {
+                        self.writer
+                            .set_super_property_instruction(object, this_value, key, temp);
+                        self.register_allocator.release(key);
+                        self.register_allocator.release(this_value);
+                    }
                 }
 
                 self.register_allocator.release(object);
@@ -3694,9 +3737,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.gen_store_to_pattern(pattern, stored_value, store_flags)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
-            }
-            ast::Pattern::SuperMember(_) => {
-                unimplemented!("bytecode for super member assignment")
             }
             ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
@@ -3764,11 +3804,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UpdateExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        if let ast::Expression::Member(member) = expr.argument.as_ref() {
+        if let member @ (ast::Expression::Member(_) | ast::Expression::SuperMember(_)) =
+            expr.argument.as_ref()
+        {
             enum Property {
                 Computed(GenRegister),
                 Named(GenConstantIndex),
                 Private(GenRegister),
+                Super { key: GenRegister, this_value: GenRegister },
             }
 
             // We will need a temporary register to hold intermediate values. This temporary
@@ -3777,28 +3820,61 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let temp_dest = self.gen_ensure_dest_is_temporary(dest);
             let temp = self.allocate_destination(temp_dest)?;
 
-            let object = self.gen_expression(&member.object)?;
+            // Evaluate the object expression, or find the home object if `super`
+            let object = match member {
+                ast::Expression::Member(member) => self.gen_expression(&member.object)?,
+                ast::Expression::SuperMember(member) => {
+                    self.gen_load_home_object(member, ExprDest::Any)?
+                }
+                _ => unreachable!("must be a member or super member pattern"),
+            };
 
-            // Load the property to the temporary register
-            let property = if member.is_computed {
-                let key = self.gen_expression(&member.property)?;
-                self.writer.get_property_instruction(temp, object, key);
+            let property = if let ast::Expression::SuperMember(member) = member {
+                let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
 
-                Property::Computed(key)
-            } else if member.is_private {
-                let key = self.gen_load_private_symbol(&member.property.to_id())?;
-                self.writer
-                    .get_private_property_instruction(temp, object, key);
+                if member.is_computed {
+                    let key = self.gen_expression(&member.property)?;
+                    Property::Super { key, this_value }
+                } else {
+                    // Must be a super named access, but we do not have a SetNamedSuperProperty
+                    // instruction so load to a register.
+                    let name = member.property.to_id();
+                    let name_constant_index = self.add_string_constant(&name.name)?;
 
-                Property::Private(key)
+                    let key = self.register_allocator.allocate()?;
+                    self.writer
+                        .load_constant_instruction(key, name_constant_index);
+
+                    Property::Super { key, this_value }
+                }
             } else {
-                // Must be a named access
-                let name = member.property.to_id();
-                let name_constant_index = self.add_string_constant(&name.name)?;
-                self.writer
-                    .get_named_property_instruction(temp, object, name_constant_index);
+                let member = if let ast::Expression::Member(member) = member {
+                    member
+                } else {
+                    unreachable!("must be a member or super member pattern")
+                };
 
-                Property::Named(name_constant_index)
+                // Load the property to the temporary register
+                if member.is_computed {
+                    let key = self.gen_expression(&member.property)?;
+                    self.writer.get_property_instruction(temp, object, key);
+
+                    Property::Computed(key)
+                } else if member.is_private {
+                    let key = self.gen_load_private_symbol(&member.property.to_id())?;
+                    self.writer
+                        .get_private_property_instruction(temp, object, key);
+
+                    Property::Private(key)
+                } else {
+                    // Must be a named access
+                    let name = member.property.to_id();
+                    let name_constant_index = self.add_string_constant(&name.name)?;
+                    self.writer
+                        .get_named_property_instruction(temp, object, name_constant_index);
+
+                    Property::Named(name_constant_index)
+                }
             };
 
             // Perform the converstion and inc/dec operation in place on the temporary register
@@ -3838,13 +3914,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .set_private_property_instruction(object, key, modified_temp);
                     self.register_allocator.release(key);
                 }
+                Property::Super { key, this_value } => {
+                    self.writer.set_super_property_instruction(
+                        object,
+                        this_value,
+                        key,
+                        modified_temp,
+                    );
+                    self.register_allocator.release(key);
+                    self.register_allocator.release(this_value);
+                }
             }
 
             self.register_allocator.release(object);
 
             self.gen_mov_reg_to_dest(temp, dest)
-        } else if let ast::Expression::SuperMember(_) = expr.argument.as_ref() {
-            unimplemented!("bytecode for super member update expressions")
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
@@ -4038,16 +4122,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
     ) -> EmitResult<GenRegister> {
-        // Load `this` value
+        // Load `this` value and home object
         let this_value = self.gen_load_this(expr.this_scope, ExprDest::Any)?;
-
-        // Load home object
-        let home_object_name = expr.home_object_name();
-        let home_object = self.gen_resolved_or_dynamic_binding(
-            expr.home_object_scope,
-            home_object_name,
-            ExprDest::Any,
-        )?;
+        let home_object = self.gen_load_home_object(expr, ExprDest::Any)?;
 
         // Store `this` value in the CallReceiver if one is provided
         if let Some(call_receiver) = call_receiver.as_deref_mut() {
@@ -4107,6 +4184,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             Ok(dest)
         }
+    }
+
+    fn gen_load_home_object(
+        &mut self,
+        expr: &ast::SuperMemberExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let home_object_name = expr.home_object_name();
+        self.gen_resolved_or_dynamic_binding(expr.home_object_scope, home_object_name, dest)
     }
 
     fn gen_super_call_expression(
@@ -4463,8 +4549,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match pattern {
             ast::Pattern::Id(id) => Ok(Reference::new(ReferenceKind::Id(id))),
             ast::Pattern::Member(member) => self.gen_member_expression_to_reference(member),
-            ast::Pattern::SuperMember(_) => {
-                unimplemented!("bytecode for super member destructuring")
+            ast::Pattern::SuperMember(super_member) => {
+                self.gen_super_member_expression_to_reference(super_member)
             }
             ast::Pattern::Object(object) => {
                 Ok(Reference::new(ReferenceKind::ObjectPattern(object)))
@@ -4497,6 +4583,34 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let property = self.add_string_constant(&name.name)?;
             Ok(Reference::new(ReferenceKind::NamedProperty { object, property }))
         }
+    }
+
+    fn gen_super_member_expression_to_reference<'b>(
+        &mut self,
+        member: &'b ast::SuperMemberExpression,
+    ) -> EmitResult<Reference<'b>> {
+        let home_object = self.gen_load_home_object(member, ExprDest::Any)?;
+        let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+
+        let property = if member.is_computed {
+            self.gen_expression(&member.property)?
+        } else {
+            // Must be a named access
+            let name = member.property.to_id();
+            let name_constant_index = self.add_string_constant(&name.name)?;
+
+            let property = self.register_allocator.allocate()?;
+            self.writer
+                .load_constant_instruction(property, name_constant_index);
+
+            property
+        };
+
+        Ok(Reference::new(ReferenceKind::SuperProperty {
+            home_object,
+            this_value,
+            property,
+        }))
     }
 
     fn gen_store_to_reference(
@@ -4546,6 +4660,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 self.register_allocator.release(*property);
                 self.register_allocator.release(*object);
+
+                Ok(())
+            }
+            ReferenceKind::SuperProperty { home_object, this_value, property } => {
+                self.writer.set_super_property_instruction(
+                    *home_object,
+                    *this_value,
+                    *property,
+                    value,
+                );
+
+                self.register_allocator.release(*property);
+                self.register_allocator.release(*this_value);
+                self.register_allocator.release(*home_object);
 
                 Ok(())
             }
@@ -7339,9 +7467,23 @@ impl<'a> Reference<'a> {
 
 enum ReferenceKind<'a> {
     Id(&'a ast::Identifier),
-    NamedProperty { object: GenRegister, property: GenConstantIndex },
-    ComputedProperty { object: GenRegister, property: GenRegister },
-    PrivateProperty { object: GenRegister, property: GenRegister },
+    NamedProperty {
+        object: GenRegister,
+        property: GenConstantIndex,
+    },
+    ComputedProperty {
+        object: GenRegister,
+        property: GenRegister,
+    },
+    PrivateProperty {
+        object: GenRegister,
+        property: GenRegister,
+    },
+    SuperProperty {
+        home_object: GenRegister,
+        this_value: GenRegister,
+        property: GenRegister,
+    },
     ArrayPattern(&'a ast::ArrayPattern),
     ObjectPattern(&'a ast::ObjectPattern),
 }

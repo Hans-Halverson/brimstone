@@ -19,8 +19,14 @@
     51: NewObject r4
     53: CopyDataProperties r4, r0, r1, 3
     58: StoreGlobal r4, c8
-    61: LoadUndefined r0
-    63: Ret r0
+    61: PushLexicalScope c9
+    63: NewObject r0
+    65: StoreToScope r0, 0, 0
+    69: NewClosure r1, c11
+    72: DefineNamedProperty r0, c10, r1
+    76: PopScope 
+    77: LoadUndefined r0
+    79: Ret r0
   Constant Table:
     0: [BytecodeFunction: constants]
     1: [String: constants]
@@ -31,6 +37,9 @@
     6: [String: v2]
     7: [String: v3]
     8: [String: v4]
+    9: [ScopeNames]
+    10: [String: superMember]
+    11: [BytecodeFunction: superMember]
 }
 
 [BytecodeFunction: constants] {
@@ -62,5 +71,19 @@
     13: Ret r0
   Constant Table:
     0: [String: b]
+    1: [String: a]
+}
+
+[BytecodeFunction: superMember] {
+  Parameters: 1, Registers: 4
+     0: LoadImmediate r0, 1
+     3: LoadFromScope r2, 0, 0
+     7: LoadConstant r3, c0
+    10: GetNamedProperty r1, r0, c1
+    14: SetSuperProperty r2, <this>, r3, r1
+    19: LoadUndefined r0
+    21: Ret r0
+  Constant Table:
+    0: [String: x]
     1: [String: a]
 }

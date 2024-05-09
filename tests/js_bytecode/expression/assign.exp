@@ -1,35 +1,43 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 1
-     0: NewClosure r0, c0
-     3: StoreGlobal r0, c1
-     6: NewClosure r0, c2
-     9: StoreGlobal r0, c3
-    12: NewClosure r0, c4
-    15: StoreGlobal r0, c5
-    18: NewClosure r0, c6
-    21: StoreGlobal r0, c7
-    24: NewClosure r0, c8
-    27: StoreGlobal r0, c9
-    30: NewClosure r0, c10
-    33: StoreGlobal r0, c11
-    36: NewClosure r0, c12
-    39: StoreGlobal r0, c13
-    42: NewClosure r0, c14
-    45: StoreGlobal r0, c15
-    48: NewClosure r0, c16
-    51: StoreGlobal r0, c17
-    54: NewClosure r0, c18
-    57: StoreGlobal r0, c19
-    60: NewClosure r0, c20
-    63: StoreGlobal r0, c21
-    66: NewClosure r0, c22
-    69: StoreGlobal r0, c23
-    72: NewClosure r0, c24
-    75: StoreGlobal r0, c25
-    78: LoadImmediate r0, 1
-    81: StoreGlobal r0, c26
-    84: LoadUndefined r0
-    86: Ret r0
+  Parameters: 0, Registers: 2
+      0: NewClosure r0, c0
+      3: StoreGlobal r0, c1
+      6: NewClosure r0, c2
+      9: StoreGlobal r0, c3
+     12: NewClosure r0, c4
+     15: StoreGlobal r0, c5
+     18: NewClosure r0, c6
+     21: StoreGlobal r0, c7
+     24: NewClosure r0, c8
+     27: StoreGlobal r0, c9
+     30: NewClosure r0, c10
+     33: StoreGlobal r0, c11
+     36: NewClosure r0, c12
+     39: StoreGlobal r0, c13
+     42: NewClosure r0, c14
+     45: StoreGlobal r0, c15
+     48: NewClosure r0, c16
+     51: StoreGlobal r0, c17
+     54: NewClosure r0, c18
+     57: StoreGlobal r0, c19
+     60: NewClosure r0, c20
+     63: StoreGlobal r0, c21
+     66: NewClosure r0, c22
+     69: StoreGlobal r0, c23
+     72: NewClosure r0, c24
+     75: StoreGlobal r0, c25
+     78: LoadImmediate r0, 1
+     81: StoreGlobal r0, c26
+     84: PushLexicalScope c27
+     86: NewObject r0
+     88: StoreToScope r0, 0, 0
+     92: NewClosure r1, c29
+     95: DefineNamedProperty r0, c28, r1
+     99: NewClosure r1, c31
+    102: DefineNamedProperty r0, c30, r1
+    106: PopScope 
+    107: LoadUndefined r0
+    109: Ret r0
   Constant Table:
     0: [BytecodeFunction: use]
     1: [String: use]
@@ -58,6 +66,11 @@
     24: [BytecodeFunction: tdzCheck]
     25: [String: tdzCheck]
     26: [String: global]
+    27: [ScopeNames]
+    28: [String: testSuperNamedMemberAssign]
+    29: [BytecodeFunction: testSuperNamedMemberAssign]
+    30: [String: testSuperComputedMemberAssign]
+    31: [BytecodeFunction: testSuperComputedMemberAssign]
 }
 
 [BytecodeFunction: use] {
@@ -451,4 +464,80 @@
     9: Ret r0
   Constant Table:
     0: [String: x]
+}
+
+[BytecodeFunction: testSuperNamedMemberAssign] {
+  Parameters: 1, Registers: 5
+      0: LoadFromScope r1, 0, 0
+      4: LoadConstant r2, c0
+      7: LoadImmediate r0, 1
+     10: SetSuperProperty r1, <this>, r2, r0
+     15: LoadGlobal r0, c1
+     18: LoadFromScope r2, 0, 0
+     22: LoadConstant r3, c0
+     25: LoadImmediate r1, 2
+     28: SetSuperProperty r2, <this>, r3, r1
+     33: Call r0, r0, r1, 1
+     38: LoadFromScope r1, 0, 0
+     42: LoadConstant r2, c0
+     45: LoadFromScope r3, 0, 0
+     49: LoadConstant r4, c2
+     52: LoadImmediate r0, 3
+     55: SetSuperProperty r3, <this>, r4, r0
+     60: SetSuperProperty r1, <this>, r2, r0
+     65: LoadGlobal r0, c1
+     68: LoadFromScope r2, 0, 0
+     72: LoadConstant r3, c0
+     75: Mov r1, a0
+     78: SetSuperProperty r2, <this>, r3, r1
+     83: Call r0, r0, r1, 1
+     88: LoadFromScope r1, 0, 0
+     92: LoadConstant r2, c0
+     95: LoadImmediate r0, 4
+     98: SetSuperProperty r1, <this>, r2, r0
+    103: Mov a0, r0
+    106: LoadUndefined r0
+    108: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: use]
+    2: [String: bar]
+}
+
+[BytecodeFunction: testSuperComputedMemberAssign] {
+  Parameters: 1, Registers: 5
+      0: LoadFromScope r1, 0, 0
+      4: LoadConstant r2, c0
+      7: LoadImmediate r0, 1
+     10: SetSuperProperty r1, <this>, r2, r0
+     15: LoadGlobal r0, c1
+     18: LoadFromScope r2, 0, 0
+     22: LoadConstant r3, c0
+     25: LoadImmediate r1, 2
+     28: SetSuperProperty r2, <this>, r3, r1
+     33: Call r0, r0, r1, 1
+     38: LoadFromScope r1, 0, 0
+     42: LoadConstant r2, c0
+     45: LoadFromScope r3, 0, 0
+     49: LoadConstant r4, c2
+     52: LoadImmediate r0, 3
+     55: SetSuperProperty r3, <this>, r4, r0
+     60: SetSuperProperty r1, <this>, r2, r0
+     65: LoadGlobal r0, c1
+     68: LoadFromScope r2, 0, 0
+     72: LoadConstant r3, c0
+     75: Mov r1, a0
+     78: SetSuperProperty r2, <this>, r3, r1
+     83: Call r0, r0, r1, 1
+     88: LoadFromScope r1, 0, 0
+     92: LoadConstant r2, c0
+     95: LoadImmediate r0, 4
+     98: SetSuperProperty r1, <this>, r2, r0
+    103: Mov a0, r0
+    106: LoadUndefined r0
+    108: Ret r0
+  Constant Table:
+    0: [String: foo]
+    1: [String: use]
+    2: [String: bar]
 }

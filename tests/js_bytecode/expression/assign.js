@@ -46,6 +46,32 @@ function testComputedMemberAssign(x, y) {
   y = x['foo'] = 4;
 }
 
+({
+  testSuperNamedMemberAssign(x) {
+    super.foo = 1;
+    use(super.foo = 2);
+  
+    super.foo = super.bar = 3;
+  
+    use(super.foo = x);
+  
+    // Do not clobber destination with intermediate value
+    x = super.foo = 4;
+  },
+
+  testSuperComputedMemberAssign(x) {
+    super['foo'] = 1;
+    use(super['foo'] = 2);
+  
+    super['foo'] = super['bar'] = 3;
+  
+    use(super['foo'] = x);
+  
+    // Do not clobber destination with intermediate value
+    x = super['foo'] = 4;
+  },
+});
+
 function named() {
   var x = 1;
   

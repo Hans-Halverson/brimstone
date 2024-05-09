@@ -91,12 +91,12 @@ use super::{
         PopScopeInstruction, PushFunctionScopeInstruction, PushLexicalScopeInstruction,
         PushWithScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
         SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPrivatePropertyInstruction,
-        SetPropertyInstruction, SetPrototypeOfInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
-        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction,
+        SetPropertyInstruction, SetPrototypeOfInstruction, SetSuperPropertyInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -577,12 +577,6 @@ impl VM {
                         OpCode::DefineProperty => {
                             dispatch_or_throw!(DefinePropertyInstruction, execute_define_property)
                         }
-                        OpCode::GetSuperProperty => {
-                            dispatch_or_throw!(
-                                GetSuperPropertyInstruction,
-                                execute_get_super_property
-                            )
-                        }
                         OpCode::GetNamedProperty => {
                             dispatch_or_throw!(
                                 GetNamedPropertyInstruction,
@@ -601,10 +595,22 @@ impl VM {
                                 execute_define_named_property
                             )
                         }
+                        OpCode::GetSuperProperty => {
+                            dispatch_or_throw!(
+                                GetSuperPropertyInstruction,
+                                execute_get_super_property
+                            )
+                        }
                         OpCode::GetNamedSuperProperty => {
                             dispatch_or_throw!(
                                 GetNamedSuperPropertyInstruction,
                                 execute_get_named_super_property
+                            )
+                        }
+                        OpCode::SetSuperProperty => {
+                            dispatch_or_throw!(
+                                SetSuperPropertyInstruction,
+                                execute_set_super_property
                             )
                         }
                         OpCode::DeleteProperty => {
@@ -2842,32 +2848,6 @@ impl VM {
     }
 
     #[inline]
-    fn execute_get_super_property<W: Width>(
-        &mut self,
-        instr: &GetSuperPropertyInstruction<W>,
-    ) -> EvalResult<()> {
-        let home_object = self
-            .read_register_to_handle(instr.home_object())
-            .as_object();
-        let receiver = self.read_register_to_handle(instr.receiver());
-        let key = self.read_register_to_handle(instr.key());
-        let dest = instr.dest();
-
-        // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error_(self.cx, "prototype is null"),
-            Some(prototype) => prototype,
-        };
-
-        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
-
-        self.write_register(dest, result.get());
-
-        ().into()
-    }
-
-    #[inline]
     fn execute_get_named_property<W: Width>(
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
@@ -2954,6 +2934,32 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_super_property<W: Width>(
+        &mut self,
+        instr: &GetSuperPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let home_object = self
+            .read_register_to_handle(instr.home_object())
+            .as_object();
+        let receiver = self.read_register_to_handle(instr.receiver());
+        let key = self.read_register_to_handle(instr.key());
+        let dest = instr.dest();
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, key));
+        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
+            None => return type_error_(self.cx, "prototype is null"),
+            Some(prototype) => prototype,
+        };
+
+        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
+
+        self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_get_named_super_property<W: Width>(
         &mut self,
         instr: &GetNamedSuperPropertyInstruction<W>,
@@ -2980,6 +2986,38 @@ impl VM {
         let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
 
         self.write_register(dest, result.get());
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_set_super_property<W: Width>(
+        &mut self,
+        instr: &SetSuperPropertyInstruction<W>,
+    ) -> EvalResult<()> {
+        let home_object = self
+            .read_register_to_handle(instr.home_object())
+            .as_object();
+        let receiver = self.read_register_to_handle(instr.receiver());
+        let key = self.read_register_to_handle(instr.key());
+        let value = self.read_register_to_handle(instr.value());
+        let is_strict = self.closure().function_ptr().is_strict();
+
+        // May allocate
+        let property_key = maybe!(to_property_key(self.cx, key));
+        let mut home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
+            None => return type_error_(self.cx, "prototype is null"),
+            Some(prototype) => prototype,
+        };
+
+        if is_strict {
+            let success = maybe!(home_prototype.set(self.cx, property_key, value, receiver));
+            if !success {
+                return err_cannot_set_property(self.cx, property_key);
+            }
+        } else {
+            maybe!(home_prototype.set(self.cx, property_key, value, receiver));
+        }
 
         ().into()
     }

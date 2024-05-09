@@ -74,6 +74,26 @@ function postfixMember(x, y) {
   y = x.prop++;
 }
 
+({
+  prefixSuperMember(x) {
+    // Temporary dest
+    -(++super.prop);
+    -(++super[0]);
+  
+    // Fixed dest
+    x = ++super.prop;
+  },
+  
+  postfixSuperMember(x) {
+    // Temporary dest
+    -(super.prop++);
+    -(super[0]++);
+  
+    // Fixed dest
+    x = super.prop++;
+  },
+});
+
 function decrement(param) {
   --param;
   param--;

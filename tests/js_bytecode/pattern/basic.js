@@ -8,3 +8,9 @@ function constants() {
 function nestedMember(x) {
    ({ a: x.b } = 1);
 }
+
+({
+  superMember(x) {
+   ({ a: super.x } = 1);
+  }
+});

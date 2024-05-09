@@ -6,7 +6,7 @@ use crate::{
         },
         array_object::array_create,
         builtin_function::BuiltinFunction,
-        error::{range_error_, type_error, type_error_},
+        error::{range_error_, type_error_},
         function::get_argument,
         get,
         iterator::iter_iterator_method_values,
@@ -15,7 +15,7 @@ use crate::{
         ordinary_object::get_prototype_from_constructor,
         property_key::PropertyKey,
         type_utilities::{is_array, is_callable, is_constructor_value, to_object, to_uint32},
-        Completion, Context, EvalResult, Handle, Realm, Value,
+        Context, EvalResult, Handle, Realm, Value,
     },
     maybe, must,
 };
@@ -141,39 +141,36 @@ impl ArrayConstructor {
             let mut index_value: Handle<Value> = Handle::empty(cx);
             let mut i = 0;
 
-            let completion =
-                iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
-                    if i >= MAX_SAFE_INTEGER_U64 {
-                        return Some(type_error(cx, "array is too large"));
+            maybe!(iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
+                if i >= MAX_SAFE_INTEGER_U64 {
+                    return Some(type_error_(cx, "array is too large"));
+                }
+
+                let value = if let Some(map_function) = map_function {
+                    index_value.replace(Value::from(i));
+
+                    // Apply map function if present, returning if abnormal completion
+                    let result = call_object(cx, map_function, this_arg, &[value, index_value]);
+                    match result {
+                        EvalResult::Ok(mapped_value) => mapped_value,
+                        EvalResult::Throw(_) => return Some(result.into()),
                     }
+                } else {
+                    value
+                };
 
-                    let value = if let Some(map_function) = map_function {
-                        index_value.replace(Value::from(i));
+                key.replace(PropertyKey::from_u64(cx, i));
 
-                        // Apply map function if present, returning if abnormal completion
-                        let result = call_object(cx, map_function, this_arg, &[value, index_value]);
-                        match result {
-                            EvalResult::Ok(mapped_value) => mapped_value,
-                            EvalResult::Throw(_) => return Some(result.into()),
-                        }
-                    } else {
-                        value
-                    };
+                // Append value to array, returning if abnormal completion
+                let result = create_data_property_or_throw(cx, array, key, value);
+                if let EvalResult::Throw(thrown_value) = result {
+                    return Some(EvalResult::Throw(thrown_value));
+                }
 
-                    key.replace(PropertyKey::from_u64(cx, i));
+                i += 1;
 
-                    // Append value to array, returning if abnormal completion
-                    let result = create_data_property_or_throw(cx, array, key, value);
-                    if let EvalResult::Throw(thrown_value) = result {
-                        return Some(Completion::throw(thrown_value));
-                    }
-
-                    i += 1;
-
-                    None
-                });
-
-            maybe!(completion.into_eval_result());
+                None
+            }));
 
             let length_value = Value::from(i).to_handle(cx);
             maybe!(set(cx, array, cx.names.length(), length_value, true));

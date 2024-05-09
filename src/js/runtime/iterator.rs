@@ -4,16 +4,15 @@ use crate::{
         error::type_error_,
         get,
     },
-    maybe, maybe_, maybe__, must,
+    maybe, must,
 };
 
 use super::{
     abstract_operations::{call, create_data_property_or_throw},
-    error::type_error,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     type_utilities::to_boolean,
-    Completion, CompletionKind, Context, EvalResult, Handle, Value,
+    Context, EvalResult, Handle, Value,
 };
 
 // 7.4.1 Iterator Records
@@ -123,7 +122,11 @@ pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Hand
 }
 
 // 7.4.7 IteratorClose
-pub fn iterator_close(cx: Context, iterator: &Iterator, completion: Completion) -> Completion {
+pub fn iterator_close(
+    cx: Context,
+    iterator: &Iterator,
+    completion: EvalResult<Handle<Value>>,
+) -> EvalResult<Handle<Value>> {
     let inner_result = get_method(cx, iterator.iterator.into(), cx.names.return_());
     let inner_result = match inner_result {
         EvalResult::Ok(None) => return completion,
@@ -131,20 +134,16 @@ pub fn iterator_close(cx: Context, iterator: &Iterator, completion: Completion) 
         EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
     };
 
-    if completion.kind() == CompletionKind::Throw {
+    if let EvalResult::Throw(_) = completion {
         return completion;
     }
 
-    match inner_result {
-        EvalResult::Throw(thrown_value) => return Completion::throw(thrown_value),
-        EvalResult::Ok(inner_value) => {
-            if !inner_value.is_object() {
-                return type_error(cx, "iterator's return method must return an object");
-            }
-
-            return completion;
-        }
+    let inner_value = maybe!(inner_result);
+    if !inner_value.is_object() {
+        return type_error_(cx, "iterator's return method must return an object");
     }
+
+    completion
 }
 
 // 7.4.10 CreateIterResultObject
@@ -165,49 +164,53 @@ pub fn create_iter_result_object(
 
 // Iterate over an object, executing a callback function against every value returned by the
 // iterator. Return a completion from the callback function to stop and close the iterator.
-pub fn iter_iterator_values<F: FnMut(Context, Handle<Value>) -> Option<Completion>>(
+pub fn iter_iterator_values<
+    F: FnMut(Context, Handle<Value>) -> Option<EvalResult<Handle<Value>>>,
+>(
     cx: Context,
     object: Handle<Value>,
     f: &mut F,
-) -> Completion {
-    let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, None));
+) -> EvalResult<Handle<Value>> {
+    let iterator = maybe!(get_iterator(cx, object, IteratorHint::Sync, None));
 
     loop {
-        let iter_result = maybe__!(iterator_step(cx, &iterator));
+        let iter_result = maybe!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return Completion::empty(cx),
+            None => return cx.empty().into(),
             Some(iter_result) => {
-                let value = maybe__!(iterator_value(cx, iter_result));
+                let value = maybe!(iterator_value(cx, iter_result));
 
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return maybe_!(iterator_close(cx, &iterator, completion)).into();
+                    return maybe!(iterator_close(cx, &iterator, completion)).into();
                 }
             }
         }
     }
 }
 
-pub fn iter_iterator_method_values<F: FnMut(Context, Handle<Value>) -> Option<Completion>>(
+pub fn iter_iterator_method_values<
+    F: FnMut(Context, Handle<Value>) -> Option<EvalResult<Handle<Value>>>,
+>(
     cx: Context,
     object: Handle<Value>,
     method: Handle<ObjectValue>,
     f: &mut F,
-) -> Completion {
-    let iterator = maybe__!(get_iterator(cx, object, IteratorHint::Sync, Some(method)));
+) -> EvalResult<Handle<Value>> {
+    let iterator = maybe!(get_iterator(cx, object, IteratorHint::Sync, Some(method)));
 
     loop {
-        let iter_result = maybe__!(iterator_step(cx, &iterator));
+        let iter_result = maybe!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return Completion::empty(cx),
+            None => return cx.empty().into(),
             Some(iter_result) => {
-                let value = maybe__!(iterator_value(cx, iter_result));
+                let value = maybe!(iterator_value(cx, iter_result));
 
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return maybe_!(iterator_close(cx, &iterator, completion)).into();
+                    return maybe!(iterator_close(cx, &iterator, completion)).into();
                 }
             }
         }

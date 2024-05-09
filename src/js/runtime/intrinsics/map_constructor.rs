@@ -1,18 +1,9 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object,
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::{type_error, type_error_},
-        function::get_argument,
-        get,
-        iterator::iter_iterator_values,
-        object_value::ObjectValue,
-        property_key::PropertyKey,
-        realm::Realm,
-        type_utilities::is_callable,
-        value::Value,
-        Completion, Context, Handle,
+        abstract_operations::call_object, builtin_function::BuiltinFunction,
+        completion::EvalResult, error::type_error_, function::get_argument, get,
+        iterator::iter_iterator_values, object_value::ObjectValue, property_key::PropertyKey,
+        realm::Realm, type_utilities::is_callable, value::Value, Context, Handle,
     },
     maybe,
 };
@@ -98,9 +89,9 @@ pub fn add_entries_from_iterable(
     let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
     let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
 
-    let completion = iter_iterator_values(cx, iterable, &mut |cx, entry| {
+    maybe!(iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {
-            return Some(type_error(cx, "entry must be an object"));
+            return Some(type_error_(cx, "entry must be an object"));
         }
 
         let entry = entry.as_object();
@@ -109,25 +100,23 @@ pub fn add_entries_from_iterable(
         let key_result = get(cx, entry, key_index);
         let key = match key_result {
             EvalResult::Ok(key) => key,
-            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+            EvalResult::Throw(_) => return Some(key_result),
         };
 
         // Extract value from entry, returning throw completion on error
         let value_result = get(cx, entry, value_index);
         let value = match value_result {
             EvalResult::Ok(value) => value,
-            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+            EvalResult::Throw(_) => return Some(value_result),
         };
 
         // Add key and value to target
         let result = adder(cx, key, value);
         match result {
             EvalResult::Ok(_) => None,
-            EvalResult::Throw(thrown_value) => return Some(Completion::throw(thrown_value)),
+            EvalResult::Throw(thrown_value) => return Some(EvalResult::Throw(thrown_value)),
         }
-    });
-
-    maybe!(completion.into_eval_result());
+    }));
 
     target.into()
 }

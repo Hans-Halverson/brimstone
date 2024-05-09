@@ -92,12 +92,10 @@ impl TypedArrayConstructor {
         if let Some(iterator) = iterator {
             // Collect all values from iterator
             let mut values = vec![];
-            let completion = iter_iterator_method_values(cx, source, iterator, &mut |_, value| {
+            maybe!(iter_iterator_method_values(cx, source, iterator, &mut |_, value| {
                 values.push(value);
                 None
-            });
-
-            maybe!(completion.into_eval_result());
+            }));
 
             let length = values.len();
 
@@ -792,13 +790,10 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Handle<Value>> {
                 // Collect all values from iterator
                 let mut values = vec![];
-                let completion =
-                    iter_iterator_method_values(cx, iterable, iterator, &mut |_, value| {
-                        values.push(value);
-                        None
-                    });
-
-                maybe!(completion.into_eval_result());
+                maybe!(iter_iterator_method_values(cx, iterable, iterator, &mut |_, value| {
+                    values.push(value);
+                    None
+                }));
 
                 // Allocated typed array
                 let length = values.len();

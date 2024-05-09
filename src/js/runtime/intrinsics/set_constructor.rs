@@ -3,8 +3,8 @@ use crate::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
         completion::EvalResult, error::type_error_, function::get_argument, get,
         intrinsics::set_object::SetObject, iterator::iter_iterator_values,
-        object_value::ObjectValue, realm::Realm, type_utilities::is_callable, Completion, Context,
-        Handle, Value,
+        object_value::ObjectValue, realm::Realm, type_utilities::is_callable, Context, Handle,
+        Value,
     },
     maybe,
 };
@@ -66,15 +66,13 @@ impl SetConstructor {
         let adder = adder.as_object();
         let set_value = set_object.into();
 
-        let completion = iter_iterator_values(cx, iterable, &mut |cx, value| {
+        maybe!(iter_iterator_values(cx, iterable, &mut |cx, value| {
             let result = call_object(cx, adder, set_value, &[value]);
             match result {
                 EvalResult::Ok(_) => None,
-                EvalResult::Throw(thrown_value) => Some(Completion::throw(thrown_value)),
+                EvalResult::Throw(_) => Some(result),
             }
-        });
-
-        maybe!(completion.into_eval_result());
+        }));
 
         set_value.into()
     }

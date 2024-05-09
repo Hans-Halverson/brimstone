@@ -21,8 +21,8 @@ use brimstone::js::{
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
-        test_262_object::Test262Object, to_console_string, to_string, Completion, CompletionKind,
-        Context, EvalResult, Handle, Realm, Value,
+        test_262_object::Test262Object, to_console_string, to_string, Context, EvalResult, Handle,
+        Realm, Value,
     },
 };
 
@@ -306,11 +306,8 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
 
     let eval_result = execute_as_bytecode(cx, realm, &ast_and_source.0);
 
-    match eval_result.kind() {
-        CompletionKind::Normal => {}
-        CompletionKind::Throw => {
-            panic!("Failed to evaluate test harness file {}", full_path.display())
-        }
+    if let EvalResult::Throw(_) = eval_result {
+        panic!("Failed to evaluate test harness file {}", full_path.display())
     }
 }
 
@@ -318,20 +315,20 @@ fn execute_as_bytecode(
     mut cx: Context,
     realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
-) -> Completion {
+) -> EvalResult<Handle<Value>> {
     let generate_result =
         BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
     let bytecode_program = match generate_result {
         Ok(bytecode_program) => bytecode_program,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
-            return Completion::throw(err_string.into());
+            return EvalResult::Throw(err_string.into());
         }
     };
 
     match cx.execute_program(bytecode_program) {
-        Ok(value) => Completion::normal(value),
-        Err(error_value) => Completion::throw(error_value),
+        Ok(value) => EvalResult::Ok(value),
+        Err(error_value) => EvalResult::Throw(error_value),
     }
 }
 
@@ -340,12 +337,12 @@ fn execute_as_bytecode(
 fn check_expected_completion(
     cx: Context,
     test: &Test,
-    completion: Completion,
+    completion: EvalResult<Handle<Value>>,
     duration: Duration,
 ) -> TestResult {
-    match completion.kind() {
+    match completion {
         // A normal completion is a success only if the test was expected to not throw
-        CompletionKind::Normal => match &test.expected_result {
+        EvalResult::Ok(_) => match &test.expected_result {
             ExpectedResult::Positive => TestResult::success(test, duration),
             other => TestResult::failure(
                 test,
@@ -355,10 +352,9 @@ fn check_expected_completion(
         },
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
-        CompletionKind::Throw => match &test.expected_result {
+        EvalResult::Throw(thrown_value) => match &test.expected_result {
             ExpectedResult::Negative { phase: TestPhase::Runtime, type_ } => {
                 // Check that the thrown error matches the expected error type
-                let thrown_value = completion.value();
                 let is_expected_error = if thrown_value.is_object() {
                     let thrown_object = thrown_value.as_object();
                     if thrown_object.is_error() {
@@ -401,7 +397,7 @@ fn check_expected_completion(
                 }
             }
             other => {
-                let thrown_string = to_console_string_test262(cx, completion.value());
+                let thrown_string = to_console_string_test262(cx, thrown_value);
                 TestResult::failure(
                     test,
                     format!(

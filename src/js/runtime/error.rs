@@ -1,5 +1,5 @@
 use super::{
-    completion::{Completion, EvalResult},
+    completion::EvalResult,
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
     string_value::{FlatString, StringValue},
     Context, Handle, HeapPtr, Value,
@@ -23,10 +23,6 @@ fn range_error_value(cx: Context, message: &str) -> Handle<Value> {
 
 fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
     URIError::new_with_message(cx, message.to_owned()).into()
-}
-
-pub fn type_error(cx: Context, message: &str) -> Completion {
-    Completion::throw(type_error_value(cx, message))
 }
 
 pub fn syntax_error_<T>(cx: Context, message: &str) -> EvalResult<T> {

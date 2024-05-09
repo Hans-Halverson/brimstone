@@ -44,7 +44,7 @@ mod type_utilities;
 mod value;
 
 pub use abstract_operations::get;
-pub use completion::{Completion, CompletionKind, EvalResult};
+pub use completion::EvalResult;
 pub use console::to_console_string;
 pub use context::Context;
 pub use gc::{Handle, HeapPtr};

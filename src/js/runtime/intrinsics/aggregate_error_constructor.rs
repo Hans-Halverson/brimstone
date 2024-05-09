@@ -99,12 +99,10 @@ impl AggregateErrorConstructor {
 
         // Collect errors in iterable and create a new array containing all errors
         let mut errors_list = vec![];
-        let completion = iter_iterator_values(cx, errors, &mut |_, value| {
+        maybe!(iter_iterator_values(cx, errors, &mut |_, value| {
             errors_list.push(value);
             None
-        });
-
-        maybe!(completion.into_eval_result());
+        }));
 
         let errors_array: Handle<ObjectValue> = create_array_from_list(cx, &errors_list).into();
 

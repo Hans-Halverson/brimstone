@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        abstract_operations::create_non_enumerable_data_property_or_throw,
+        abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
@@ -11,7 +11,7 @@ use crate::{
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle, Value,
+        Context, Handle, HeapPtr, Value,
     },
     maybe,
 };
@@ -53,6 +53,17 @@ macro_rules! create_native_error {
                 ));
 
                 object.to_handle().into()
+            }
+
+            #[allow(dead_code)]
+            pub fn new_with_message_in_realm(
+                mut cx: Context,
+                realm: HeapPtr<Realm>,
+                message: &str,
+            ) -> EvalResult<Handle<ObjectValue>> {
+                let type_error_constructor = realm.get_intrinsic(Intrinsic::$constructor);
+                let message_value = cx.alloc_string(message).into();
+                construct(cx, type_error_constructor, &[message_value], None)
             }
         }
 

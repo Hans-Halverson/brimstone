@@ -29,7 +29,7 @@ use crate::{
         gc::{HandleScope, HeapVisitor},
         get,
         intrinsics::{
-            intrinsics::Intrinsic, regexp_constructor::RegExpObject,
+            intrinsics::Intrinsic, native_error::TypeError, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
@@ -994,7 +994,7 @@ impl VM {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Check whether the value is callable, potentially deferring to proxy.
-        let closure_handle = match self.check_value_is_callable(function.get()) {
+        let closure_handle = match maybe!(self.check_value_is_callable(function.get())) {
             CallableObject::Closure(closure) => closure.to_handle(),
             CallableObject::Proxy(proxy) => {
                 return proxy.to_handle().call(self.cx, receiver, arguments)
@@ -1141,7 +1141,7 @@ impl VM {
         let return_value_address = self.register_address(instr.dest());
 
         // Check whether the value is callable, potentially deferring to proxy.
-        let closure_ptr = match self.check_value_is_callable(function_value) {
+        let closure_ptr = match maybe!(self.check_value_is_callable(function_value)) {
             CallableObject::Closure(closure) => closure,
             // Proxy constructors call into the rust runtime
             CallableObject::Proxy(proxy) => {
@@ -1355,7 +1355,7 @@ impl VM {
     /// Check that a value is a callable (either a closure or proxy object), returning the
     /// categorization of the callable object
     #[inline]
-    fn check_value_is_callable(&self, value: Value) -> CallableObject {
+    fn check_value_is_callable(&mut self, value: Value) -> EvalResult<CallableObject> {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
             if kind == ObjectKind::Closure {
@@ -1363,24 +1363,28 @@ impl VM {
 
                 // Class constructors cannot be called directly
                 if closure.function_ptr().is_class_constructor() {
-                    return CallableObject::Error(type_error_value(
+                    let function_realm = closure.function_ptr().realm_ptr();
+                    let error_value = maybe!(TypeError::new_with_message_in_realm(
                         self.cx,
+                        function_realm,
                         "cannot call class constructor",
                     ));
+
+                    return CallableObject::Error(error_value.into()).into();
                 }
 
                 // All other closures all callable
-                return CallableObject::Closure(closure);
+                return CallableObject::Closure(closure).into();
             } else if kind == ObjectKind::Proxy {
                 // Check if proxy is callable, and if so return the attached closure
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
                 if proxy_object.is_callable_() {
-                    return CallableObject::Proxy(proxy_object);
+                    return CallableObject::Proxy(proxy_object).into();
                 }
             }
         }
 
-        CallableObject::Error(type_error_value(self.cx, "value is not a function"))
+        CallableObject::Error(type_error_value(self.cx, "value is not a function")).into()
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the

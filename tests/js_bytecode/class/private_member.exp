@@ -125,6 +125,16 @@
 }
 
 [BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: CallWithReceiver r0, r0, <this>, r0, 0
+     9: LoadUndefined r0
+    11: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: fieldsInitializer]
+}
+
+[BytecodeFunction: fieldsInitializer] {
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 1, 0
      4: LoadFromScope r1, 0, 0

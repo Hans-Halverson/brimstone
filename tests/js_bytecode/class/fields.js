@@ -113,3 +113,31 @@ function superMemberInFields() {
     static field2 = super.foo;
   }
 }
+
+function thisInFields() {
+  class C {
+    field1 = this;
+    static field2 = this;
+  }
+}
+
+function newTargetInFields() {
+  class C {
+    field1 = new.target;
+    static field2 = new.target;
+  }
+}
+
+function fieldNoInitializer() {
+  class C {
+    field1;
+    static field2;
+  }
+}
+
+function privateFieldNoInitializer() {
+  class C {
+    #field1;
+    static #field2;
+  }
+}

@@ -226,7 +226,7 @@ impl TaggedResolvedScope {
 pub enum Statement {
     VarDecl(VariableDeclaration),
     FuncDecl(P<Function>),
-    ClassDecl(Class),
+    ClassDecl(P<Class>),
     Expr(ExpressionStatement),
     Block(Block),
     If(IfStatement),
@@ -522,6 +522,14 @@ pub struct Class {
 
     /// Scope node for the class body
     pub scope: AstPtr<AstScopeNode>,
+
+    /// Scope node for the instance fields initializer. Only present if the class has instance
+    /// fields.
+    pub fields_initializer_scope: Option<AstPtr<AstScopeNode>>,
+
+    /// Scope node for the static initializer, including static fields and initializer blocks.
+    /// Only present if the class has static fields or static initializer blocks.
+    pub static_initializer_scope: Option<AstPtr<AstScopeNode>>,
 }
 
 impl Class {
@@ -531,8 +539,19 @@ impl Class {
         super_class: Option<P<OuterExpression>>,
         body: Vec<ClassElement>,
         scope: AstPtr<AstScopeNode>,
+        fields_initializer_scope: Option<AstPtr<AstScopeNode>>,
+        static_initializer_scope: Option<AstPtr<AstScopeNode>>,
     ) -> Class {
-        Class { loc, id, super_class, body, constructor: None, scope }
+        Class {
+            loc,
+            id,
+            super_class,
+            body,
+            constructor: None,
+            scope,
+            fields_initializer_scope,
+            static_initializer_scope,
+        }
     }
 }
 
@@ -834,12 +853,12 @@ pub enum Expression {
     Object(ObjectExpression),
     Function(P<Function>),
     ArrowFunction(P<Function>),
-    Class(Class),
+    Class(P<Class>),
     This(ThisExpression),
     Await(AwaitExpression),
     Yield(YieldExpression),
     SuperMember(SuperMemberExpression),
-    SuperCall(SuperCallExpression),
+    SuperCall(P<SuperCallExpression>),
     Template(TemplateLiteral),
     TaggedTemplate(TaggedTemplateExpression),
     MetaProperty(MetaProperty),

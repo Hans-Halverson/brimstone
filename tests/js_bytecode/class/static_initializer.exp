@@ -1,49 +1,87 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 5
+  Parameters: 0, Registers: 4
       0: LoadEmpty r1
       2: NewClass r0, c1, c0, r1, r0
-      8: LoadImmediate r2, 1
-     11: LoadImmediate r3, 2
-     14: Add r2, r2, r3
-     18: LoadImmediate r2, 3
-     21: LoadImmediate r3, 4
-     24: Add r2, r2, r3
-     28: StoreToScope r0, 1, 0
-     32: LoadEmpty r1
-     34: NewClosure r2, c2
-     37: NewClass r0, c4, c3, r1, r2
-     43: LoadImmediate r3, 1
-     46: LoadImmediate r4, 2
-     49: Add r3, r3, r4
-     53: StoreToScope r0, 2, 0
-     57: LoadEmpty r1
-     59: NewClass r0, c6, c5, r1, r0
-     65: LoadImmediate r2, 1
-     68: LoadImmediate r3, 2
-     71: Add r2, r2, r3
-     75: LoadImmediate r2, 3
-     78: LoadImmediate r3, 4
-     81: Add r2, r2, r3
-     85: LoadImmediate r2, 5
-     88: LoadImmediate r3, 6
-     91: Add r2, r2, r3
-     95: StoreToScope r0, 3, 0
-     99: LoadUndefined r0
-    101: Ret r0
+      8: NewClosure r2, c2
+     11: CallWithReceiver r2, r2, r0, r2, 0
+     17: StoreToScope r0, 1, 0
+     21: LoadEmpty r1
+     23: NewClosure r2, c3
+     26: NewClass r0, c5, c4, r1, r2
+     32: NewClosure r3, c6
+     35: CallWithReceiver r3, r3, r0, r3, 0
+     41: StoreToScope r0, 2, 0
+     45: LoadEmpty r1
+     47: NewClass r0, c8, c7, r1, r0
+     53: NewClosure r2, c9
+     56: CallWithReceiver r2, r2, r0, r2, 0
+     62: StoreToScope r0, 3, 0
+     66: PushLexicalScope c10
+     68: LoadEmpty r1
+     70: StoreToScope r1, 0, 0
+     74: LoadEmpty r1
+     76: NewClass r0, c12, c11, r1, r0
+     82: StoreToScope r0, 0, 0
+     86: NewClosure r2, c13
+     89: CallWithReceiver r2, r2, r0, r2, 0
+     95: PopScope 
+     96: StoreToScope r0, 4, 0
+    100: LoadEmpty r1
+    102: NewClass r0, c15, c14, r1, r0
+    108: NewClosure r2, c16
+    111: CallWithReceiver r2, r2, r0, r2, 0
+    117: StoreToScope r0, 5, 0
+    121: PushLexicalScope c17
+    123: LoadEmpty r1
+    125: NewClosure r2, c18
+    128: NewClass r0, c20, c19, r1, r2
+    134: NewClosure r3, c21
+    137: CallWithReceiver r3, r3, r0, r3, 0
+    143: PopScope 
+    144: StoreToScope r0, 6, 0
+    148: LoadUndefined r0
+    150: Ret r0
   Constant Table:
     0: [BytecodeFunction: OnlyStaticInitializer]
     1: [ClassNames]
-    2: [BytecodeFunction: method1]
-    3: [BytecodeFunction: StaticInitializerAfterCreateClass]
-    4: [ClassNames]
-    5: [BytecodeFunction: MultipleStaticInitializers]
-    6: [ClassNames]
+    2: [BytecodeFunction: staticInitializer]
+    3: [BytecodeFunction: method1]
+    4: [BytecodeFunction: StaticInitializerAfterCreateClass]
+    5: [ClassNames]
+    6: [BytecodeFunction: staticInitializer]
+    7: [BytecodeFunction: MultipleStaticInitializers]
+    8: [ClassNames]
+    9: [BytecodeFunction: staticInitializer]
+    10: [ScopeNames]
+    11: [BytecodeFunction: EvalInStaticInitializer]
+    12: [ClassNames]
+    13: [BytecodeFunction: staticInitializer]
+    14: [BytecodeFunction: SeparateVariableScopes]
+    15: [ClassNames]
+    16: [BytecodeFunction: staticInitializer]
+    17: [ScopeNames]
+    18: [BytecodeFunction: method]
+    19: [BytecodeFunction: SpecialExpressionAccess]
+    20: [ClassNames]
+    21: [BytecodeFunction: staticInitializer]
 }
 
 [BytecodeFunction: OnlyStaticInitializer] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: Add r0, r0, r1
+    10: LoadImmediate r0, 3
+    13: LoadImmediate r1, 4
+    16: Add r0, r0, r1
+    20: LoadUndefined r0
+    22: Ret r0
 }
 
 [BytecodeFunction: method1] {
@@ -58,8 +96,106 @@
     2: Ret r0
 }
 
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: Add r0, r0, r1
+    10: LoadUndefined r0
+    12: Ret r0
+}
+
 [BytecodeFunction: MultipleStaticInitializers] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadImmediate r1, 2
+     6: Add r0, r0, r1
+    10: LoadImmediate r0, 3
+    13: LoadImmediate r1, 4
+    16: Add r0, r0, r1
+    20: LoadImmediate r0, 5
+    23: LoadImmediate r1, 6
+    26: Add r0, r0, r1
+    30: LoadUndefined r0
+    32: Ret r0
+}
+
+[BytecodeFunction: EvalInStaticInitializer] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: PushLexicalScope c1
+    12: LoadImmediate r0, 1
+    15: StoreToScope r0, 0, 0
+    19: LoadGlobal r0, c2
+    22: LoadConstant r1, c3
+    25: CallMaybeEval r0, r0, r1, 1, 3
+    31: PopScope 
+    32: PopScope 
+    33: LoadUndefined r0
+    35: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [ScopeNames]
+    2: [String: eval]
+    3: [String: ]
+}
+
+[BytecodeFunction: SeparateVariableScopes] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 3
+    0: LoadImmediate r1, 1
+    3: LoadImmediate r0, 2
+    6: LoadUndefined r2
+    8: Ret r2
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+     0: LoadFromScope r0, 0, 0
+     4: GetNamedSuperProperty r0, r0, <this>, c0
+     9: LoadUndefined r0
+    11: Ret r0
+  Constant Table:
+    0: [String: foo]
+}
+
+[BytecodeFunction: SpecialExpressionAccess] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r1, 1
+     3: Add r1, <this>, r1
+     7: LoadImmediate r1, 2
+    10: Add r1, r0, r1
+    14: LoadFromScope r1, 1, 0
+    18: GetNamedSuperProperty r1, r1, <this>, c0
+    23: LoadImmediate r2, 3
+    26: Add r1, r1, r2
+    30: LoadUndefined r1
+    32: Ret r1
+  Constant Table:
+    0: [String: foo]
 }

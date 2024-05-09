@@ -242,7 +242,7 @@ pub fn eval_named_anonymous_function_or_expression(
         ast::Expression::ArrowFunction(func) => {
             instantiate_arrow_function_expression(cx, &func, Some(name)).into()
         }
-        ast::Expression::Class(class @ ast::Class { id: None, .. }) => {
+        ast::Expression::Class(class) if class.id.is_none() => {
             let value = maybe!(class_definition_evaluation(cx, class, None, name));
             value.into()
         }
@@ -264,7 +264,7 @@ pub fn eval_named_anonymous_function_or_expression_if<F: Fn() -> bool>(
         ast::Expression::ArrowFunction(func) if if_predicate() => {
             instantiate_arrow_function_expression(cx, &func, Some(name)).into()
         }
-        ast::Expression::Class(class @ ast::Class { id: None, .. }) if if_predicate() => {
+        ast::Expression::Class(class) if class.id.is_none() && if_predicate() => {
             let value = maybe!(class_definition_evaluation(cx, class, None, name));
             value.into()
         }

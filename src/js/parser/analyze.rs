@@ -250,6 +250,10 @@ impl<'a> Analyzer<'a> {
         self.scope_stack.push(scope);
     }
 
+    fn exit_scope_without_finishing(&mut self) {
+        self.scope_stack.pop();
+    }
+
     fn exit_scope(&mut self) {
         if let Some(exited_scope_node) = self.scope_stack.pop() {
             self.scope_tree
@@ -805,6 +809,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // a scope slot to be stored between name evaluation and field definition.
         let mut num_extra_scope_field_names = num_private_names;
 
+        let field_init_scope = class.fields_initializer_scope;
+        let static_init_scope = class.static_initializer_scope;
+
         for element in &mut class.body {
             match element {
                 ClassElement::Method(method) => {
@@ -829,11 +836,28 @@ impl<'a> AstVisitor for Analyzer<'a> {
                         num_extra_scope_field_names += 1;
                     }
 
-                    self.visit_class_property(property);
+                    let init_scope = if property.is_static {
+                        static_init_scope
+                    } else {
+                        field_init_scope
+                    };
+
+                    self.visit_class_property(property, init_scope);
                 }
             }
         }
 
+        // Finish the init scopes if they exist since all fields have been visited
+        if let Some(scope) = field_init_scope {
+            self.scope_tree
+                .finish_vm_scope_node(scope.as_ref().id(), None);
+        }
+        if let Some(scope) = static_init_scope {
+            self.scope_tree
+                .finish_vm_scope_node(scope.as_ref().id(), None);
+        }
+
+        // Then finish and exit the class scope
         self.exit_scope_with_class_fields(num_extra_scope_field_names);
 
         class.constructor = constructor;
@@ -872,7 +896,8 @@ impl Analyzer<'_> {
         // from surrounding context.
         if !is_arrow_function {
             let entry = if is_method {
-                AllowSuperStackEntry::Allow { is_static: is_static_method }
+                let is_static = is_static_method || is_static_initializer;
+                AllowSuperStackEntry::Allow { is_static }
             } else {
                 AllowSuperStackEntry::Disallow
             };
@@ -1198,7 +1223,11 @@ impl Analyzer<'_> {
         );
     }
 
-    fn visit_class_property(&mut self, prop: &mut ClassProperty) {
+    fn visit_class_property(
+        &mut self,
+        prop: &mut ClassProperty,
+        init_scope: Option<AstPtr<AstScopeNode>>,
+    ) {
         let key_name_bytes = if prop.is_computed {
             None
         } else {
@@ -1229,6 +1258,10 @@ impl Analyzer<'_> {
 
         // Class field initializers are in their own function scope. Class field initializer bodies
         // are treated as (potentially static) methods.
+        if let Some(init_scope) = init_scope {
+            self.enter_scope(init_scope);
+        }
+
         self.allow_super_member_stack
             .push(AllowSuperStackEntry::Allow { is_static: prop.is_static });
         self.function_stack.push(FunctionStackEntry {
@@ -1243,6 +1276,11 @@ impl Analyzer<'_> {
 
         self.function_stack.pop();
         self.allow_super_member_stack.pop();
+
+        // Do not finish init scope yet since there may be other fields
+        if init_scope.is_some() {
+            self.exit_scope_without_finishing();
+        }
 
         self.allow_arguments = old_allow_arguments;
     }

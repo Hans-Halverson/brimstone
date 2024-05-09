@@ -66,12 +66,14 @@
      0: LoadEmpty r1
      2: NewClosure r2, c0
      5: NewClass r0, c2, c1, r1, r2
-    11: LoadImmediate r3, 2
-    14: Ret r0
+    11: NewClosure r3, c3
+    14: CallWithReceiver r3, r3, r0, r3, 0
+    20: Ret r0
   Constant Table:
     0: [BytecodeFunction: method]
     1: [BytecodeFunction: ]
     2: [ClassNames]
+    3: [BytecodeFunction: staticInitializer]
 }
 
 [BytecodeFunction: method] {
@@ -86,17 +88,26 @@
     2: Ret r0
 }
 
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 2
+    3: LoadUndefined r0
+    5: Ret r0
+}
+
 [BytecodeFunction: nonEmptyNamed] {
   Parameters: 0, Registers: 4
      0: LoadEmpty r1
      2: NewClosure r2, c0
      5: NewClass r0, c2, c1, r1, r2
-    11: LoadImmediate r3, 2
-    14: Ret r0
+    11: NewClosure r3, c3
+    14: CallWithReceiver r3, r3, r0, r3, 0
+    20: Ret r0
   Constant Table:
     0: [BytecodeFunction: method]
     1: [BytecodeFunction: C]
     2: [ClassNames]
+    3: [BytecodeFunction: staticInitializer]
 }
 
 [BytecodeFunction: method] {
@@ -109,6 +120,13 @@
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 2
+    3: LoadUndefined r0
+    5: Ret r0
 }
 
 [BytecodeFunction: storeToParam] {

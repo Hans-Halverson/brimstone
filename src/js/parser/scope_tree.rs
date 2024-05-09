@@ -100,6 +100,10 @@ impl ScopeTree {
         AstPtr::from_ref(self.ast_nodes[self.current_node_id].as_ref())
     }
 
+    pub fn set_current_scope(&mut self, node_id: ScopeNodeId) {
+        self.current_node_id = node_id;
+    }
+
     fn get_ast_node(&self, node_id: ScopeNodeId) -> &AstScopeNode {
         &self.ast_nodes[node_id]
     }
@@ -717,6 +721,8 @@ pub enum ScopeNodeKind {
         /// Whether the eval body is in strict mode.
         is_strict: bool,
     },
+    /// Scope for a static initializer block of a class. Acts as a var hoist target.
+    StaticInitializer,
 }
 
 impl ScopeNodeKind {
@@ -727,7 +733,8 @@ impl ScopeNodeKind {
             | ScopeNodeKind::FunctionBody
             // Sloppy eval will add var bindings to the parent var scope. However we still consider
             // the eval scope to be a hoist target during analysis.
-            | ScopeNodeKind::Eval { .. } => true,
+            | ScopeNodeKind::Eval { .. }
+            | ScopeNodeKind::StaticInitializer => true,
             ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Class | ScopeNodeKind::With => false,
         }
     }

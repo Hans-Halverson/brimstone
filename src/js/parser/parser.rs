@@ -2408,7 +2408,7 @@ impl<'a> Parser<'a> {
                 let arguments = self.parse_call_arguments()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperCall(SuperCallExpression::new(loc, super_loc, arguments))))
+                Ok(p(Expression::SuperCall(p(SuperCallExpression::new(loc, super_loc, arguments)))))
             }
             _ => self.error_expected_token(self.loc, &self.token, &Token::LeftParen),
         }
@@ -2918,6 +2918,7 @@ impl<'a> Parser<'a> {
                 let (property, _) = self.parse_property(
                     PropertyContext::Object,
                     /* in_class_with_super */ false,
+                    /* init_scope */ None,
                 )?;
                 properties.push(property);
             }
@@ -2946,6 +2947,7 @@ impl<'a> Parser<'a> {
         &mut self,
         prop_context: PropertyContext,
         in_class_with_super: bool,
+        init_scope: Option<&mut Option<AstPtr<AstScopeNode>>>,
     ) -> ParseResult<(Property, bool)> {
         let start_pos = self.current_start_pos();
 
@@ -2990,6 +2992,7 @@ impl<'a> Parser<'a> {
                         name,
                         start_pos,
                         prop_context,
+                        init_scope,
                         /* is_computed */ false,
                         /* is_shorthand */ !is_init_property,
                         /* is_private */ false,
@@ -3045,6 +3048,7 @@ impl<'a> Parser<'a> {
                     name,
                     start_pos,
                     prop_context,
+                    init_scope,
                     /* is_computed */ false,
                     /* is_shorthand */ !is_init_property,
                     /* is_private */ false,
@@ -3116,6 +3120,7 @@ impl<'a> Parser<'a> {
                 property_name.key,
                 start_pos,
                 prop_context,
+                init_scope,
                 property_name.is_computed,
                 property_name.is_shorthand,
                 property_name.is_private,
@@ -3210,10 +3215,20 @@ impl<'a> Parser<'a> {
         key: P<Expression>,
         start_pos: Pos,
         prop_context: PropertyContext,
+        init_scope: Option<&mut Option<AstPtr<AstScopeNode>>>,
         is_computed: bool,
         is_shorthand: bool,
         is_private: bool,
     ) -> ParseResult<(Property, bool)> {
+        // If there is a field initializer scope then the initializer should be parsed in it
+        let scope_to_restore = if let Some(init_scope) = init_scope {
+            let scope_to_restore = self.scope_builder.current_scope().as_ref().id();
+            self.enter_init_scope(init_scope, start_pos)?;
+            Some(scope_to_restore)
+        } else {
+            None
+        };
+
         let value = if is_shorthand {
             if prop_context != PropertyContext::Class {
                 let key_id = key.to_id();
@@ -3246,7 +3261,6 @@ impl<'a> Parser<'a> {
         } else if self.is_property_initializer(prop_context) {
             self.advance()?;
             let value = self.parse_assignment_expression()?;
-
             Some(value)
         } else {
             let expected_token = self.get_property_initializer(prop_context);
@@ -3256,6 +3270,10 @@ impl<'a> Parser<'a> {
         // In classes, properties must be followed by a semicolon
         if prop_context == PropertyContext::Class {
             self.expect_semicolon()?;
+        }
+
+        if let Some(scope_to_restore) = scope_to_restore {
+            self.scope_builder.set_current_scope(scope_to_restore);
         }
 
         let loc = self.mark_loc(start_pos);
@@ -3352,7 +3370,7 @@ impl<'a> Parser<'a> {
         Ok((property, is_private))
     }
 
-    fn parse_class(&mut self, is_decl: bool, is_name_required: bool) -> ParseResult<Class> {
+    fn parse_class(&mut self, is_decl: bool, is_name_required: bool) -> ParseResult<P<Class>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -3413,6 +3431,9 @@ impl<'a> Parser<'a> {
 
         let mut body = vec![];
 
+        let mut field_init_scope = None;
+        let mut static_init_scope = None;
+
         self.expect(Token::LeftBrace)?;
         while self.token != Token::RightBrace {
             // Empty semicolon statements are allowed in class body
@@ -3421,7 +3442,11 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            body.push(self.parse_class_element(/* has_super_class */ super_class.is_some())?);
+            body.push(self.parse_class_element(
+                /* has_super_class */ super_class.is_some(),
+                &mut field_init_scope,
+                &mut static_init_scope,
+            )?);
         }
 
         self.advance()?;
@@ -3432,7 +3457,15 @@ impl<'a> Parser<'a> {
         // Restore to strict mode context from beforehand
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok(Class::new(loc, id, super_class, body, scope))
+        Ok(p(Class::new(
+            loc,
+            id,
+            super_class,
+            body,
+            scope,
+            field_init_scope,
+            static_init_scope,
+        )))
     }
 
     fn parse_private_name(&mut self) -> ParseResult<Identifier> {
@@ -3450,7 +3483,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_class_element(&mut self, has_super_class: bool) -> ParseResult<ClassElement> {
+    fn parse_class_element(
+        &mut self,
+        has_super_class: bool,
+        field_init_scope: &mut Option<AstPtr<AstScopeNode>>,
+        static_init_scope: &mut Option<AstPtr<AstScopeNode>>,
+    ) -> ParseResult<ClassElement> {
         let start_pos = self.current_start_pos();
 
         // Every class element can start with a `static` modifier
@@ -3461,18 +3499,20 @@ impl<'a> Parser<'a> {
 
             // Check for static initializer
             if self.token == Token::LeftBrace {
-                // Static initializers are functions and are wrapped in a function scope, as vars
-                // cannot be hoisted out of the static initializer.
-                let scope = self.enter_function_scope(
-                    start_pos, /* is_arrow */ false, /* is_expression */ false,
-                    /* is_derived_constructor */ false,
-                )?;
+                // Static initializer is within the static initializer function scope
+                let scope_to_restore = self.scope_builder.current_scope().as_ref().id();
+                self.enter_init_scope(static_init_scope, static_loc.start)?;
+
+                // Static initializer is within its own scope
+                let scope = self
+                    .scope_builder
+                    .enter_scope(ScopeNodeKind::StaticInitializer);
 
                 let params = vec![];
                 let param_flags = self.analyze_function_params(&params);
                 let (block, _) = self.parse_function_block_body(param_flags)?;
 
-                self.scope_builder.exit_scope();
+                self.scope_builder.set_current_scope(scope_to_restore);
 
                 let loc = self.mark_loc(start_pos);
 
@@ -3515,8 +3555,12 @@ impl<'a> Parser<'a> {
                 let loc = self.mark_loc(start_pos);
 
                 return Ok(ClassElement::Method(self.reparse_property_as_class_method(
-                    loc, property, /* is_static */ false, is_private,
-                )));
+                    loc,
+                    property,
+                    /* is_static */ false,
+                    is_private,
+                    field_init_scope,
+                )?));
             }
 
             // Handle `static` as shorthand or init property
@@ -3529,6 +3573,7 @@ impl<'a> Parser<'a> {
                     name,
                     start_pos,
                     PropertyContext::Class,
+                    Some(field_init_scope),
                     /* is_computed */ false,
                     /* is_shorthand */ !is_init_property,
                     /* is_private */ false,
@@ -3541,9 +3586,16 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // Property may need to be parsed in an initializer function scope
+        let init_scope = if is_static {
+            static_init_scope
+        } else {
+            field_init_scope
+        };
+
         // Parse an object property because syntax is almost identical to class property
         let (property, is_private) =
-            self.parse_property(PropertyContext::Class, has_super_class)?;
+            self.parse_property(PropertyContext::Class, has_super_class, Some(init_scope))?;
         let loc = self.mark_loc(start_pos);
 
         // All private names are added to the current class scope
@@ -3555,14 +3607,34 @@ impl<'a> Parser<'a> {
 
         // Translate from object property to class property or method
         if property.is_method {
-            Ok(ClassElement::Method(
-                self.reparse_property_as_class_method(loc, property, is_static, is_private),
-            ))
+            Ok(ClassElement::Method(self.reparse_property_as_class_method(
+                loc, property, is_static, is_private, init_scope,
+            )?))
         } else {
             Ok(ClassElement::Property(
                 self.reparse_property_as_class_property(loc, property, is_static, is_private),
             ))
         }
+    }
+
+    /// Enter an initializer scope, creating it if necessary.
+    fn enter_init_scope(
+        &mut self,
+        scope: &mut Option<AstPtr<AstScopeNode>>,
+        start_pos: Pos,
+    ) -> ParseResult<()> {
+        if let Some(scope) = scope {
+            self.scope_builder.set_current_scope(scope.as_ref().id());
+            return Ok(());
+        }
+
+        let init_scope = self.enter_function_scope(
+            start_pos, /* is_arrow */ false, /* is_expression */ false,
+            /* is_derived_constructor */ false,
+        )?;
+        *scope = Some(init_scope);
+
+        Ok(())
     }
 
     fn reparse_property_as_class_method(
@@ -3571,8 +3643,17 @@ impl<'a> Parser<'a> {
         property: Property,
         is_static: bool,
         is_private: bool,
-    ) -> ClassMethod {
+        init_scope: &mut Option<AstPtr<AstScopeNode>>,
+    ) -> ParseResult<ClassMethod> {
         let Property { key, value, is_computed, kind, .. } = property;
+
+        // Private methods will be created in the appropriate class initializer scope..
+        // Scope is created but not entered yet.
+        if is_private {
+            let scope_to_restore = self.scope_builder.current_scope().as_ref().id();
+            self.enter_init_scope(init_scope, loc.start)?;
+            self.scope_builder.set_current_scope(scope_to_restore);
+        }
 
         let func_value = if let Expression::Function(func) = *value.unwrap() {
             func
@@ -3597,7 +3678,15 @@ impl<'a> Parser<'a> {
             }
         };
 
-        ClassMethod::new(loc, key.to_outer(), func_value, kind, is_computed, is_static, is_private)
+        Ok(ClassMethod::new(
+            loc,
+            key.to_outer(),
+            func_value,
+            kind,
+            is_computed,
+            is_static,
+            is_private,
+        ))
     }
 
     fn is_constructor_key(key: &Expression) -> bool {

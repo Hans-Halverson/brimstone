@@ -97,22 +97,32 @@
      8: LoadEmpty r1
     10: NewClass r0, c2, c1, r1, r0
     16: StoreToScope r0, 0, 0
-    20: LoadFromScope r2, 0, 0
-    24: CheckTdz r2, c3
-    27: PopScope 
-    28: LoadUndefined r1
-    30: Ret r1
+    20: NewClosure r2, c3
+    23: CallWithReceiver r2, r2, r0, r2, 0
+    29: PopScope 
+    30: LoadUndefined r1
+    32: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: C]
     2: [ClassNames]
-    3: [String: C]
+    3: [BytecodeFunction: staticInitializer]
 }
 
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [String: C]
 }
 
 [BytecodeFunction: classExpressionCaptured] {

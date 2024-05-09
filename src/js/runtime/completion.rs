@@ -12,10 +12,7 @@ use super::{
 #[derive(Clone, Copy, PartialEq)]
 pub enum CompletionKind {
     Normal,
-    Return,
     Throw,
-    Break,
-    Continue,
 }
 
 #[derive(Clone)]
@@ -39,21 +36,6 @@ impl Completion {
     }
 
     #[inline]
-    pub const fn return_(value: Handle<Value>) -> Completion {
-        Completion { kind: CompletionKind::Return, label: EMPTY_LABEL, value }
-    }
-
-    #[inline]
-    pub fn break_(cx: Context, label: LabelId) -> Completion {
-        Completion { kind: CompletionKind::Break, label, value: cx.empty() }
-    }
-
-    #[inline]
-    pub fn continue_(cx: Context, label: LabelId) -> Completion {
-        Completion { kind: CompletionKind::Continue, label, value: cx.empty() }
-    }
-
-    #[inline]
     pub fn empty(cx: Context) -> Completion {
         Completion::normal(cx.empty())
     }
@@ -74,23 +56,8 @@ impl Completion {
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.value.is_empty()
-    }
-
-    #[inline]
     pub fn is_normal(&self) -> bool {
         self.kind == CompletionKind::Normal
-    }
-
-    // 6.2.3.4 UpdateEmpty
-    #[inline]
-    pub fn update_if_empty(mut self, value: Handle<Value>) -> Completion {
-        if self.is_empty() {
-            self.value = value;
-        }
-
-        self
     }
 
     /// Convert a completion into an EvalResult, panicking if the completion is a non-throw
@@ -101,9 +68,6 @@ impl Completion {
         match self.kind() {
             CompletionKind::Normal => EvalResult::Ok(self.value()),
             CompletionKind::Throw => EvalResult::Throw(self.value()),
-            CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
-                unreachable!("")
-            }
         }
     }
 }

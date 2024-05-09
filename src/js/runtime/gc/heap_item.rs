@@ -1,12 +1,7 @@
 use crate::js::runtime::{
-    arguments_object::{
-        ArgAccessorClosureEnvironment, LegacyMappedArgumentsObject, MappedArgumentsObject,
-        UnmappedArgumentsObject,
-    },
+    arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
-    bound_function_object::LegacyBoundFunctionObject,
-    builtin_function::BuiltinFunction,
     bytecode::{
         constant_table::ConstantTable,
         exception_handlers::ExceptionHandlers,
@@ -14,18 +9,7 @@ use crate::js::runtime::{
     },
     class_names::ClassNames,
     context::GlobalSymbolRegistryField,
-    environment::{
-        declarative_environment::{DeclarativeEnvironment, DeclarativeEnvironmentBindingsMapField},
-        function_environment::FunctionEnvironment,
-        global_environment::{GlobalEnvironment, GlobalEnvironmentVarNamesField},
-        module_environment::ModuleEnvironment,
-        object_environment::ObjectEnvironment,
-        private_environment::{LegacyPrivateEnvironment, LegacyPrivateEnvironmentNamesField},
-    },
-    eval::script::Script,
-    execution_context::ExecutionContext,
     for_in_iterator::ForInIterator,
-    function::{Function, FunctionFieldsArray, FunctionPrivateMethodsArray},
     global_names::GlobalNames,
     interned_strings::{InternedStringsMapField, InternedStringsSetField},
     intrinsics::{
@@ -42,7 +26,6 @@ use crate::js::runtime::{
         map_object::{MapObject, MapObjectMapField},
         number_constructor::NumberObject,
         object_prototype::ObjectPrototype,
-        proxy_constructor::RevokeProxyClosureEnvironment,
         regexp_constructor::RegExpObject,
         regexp_string_iterator::RegExpStringIterator,
         set_iterator::SetIterator,
@@ -60,7 +43,7 @@ use crate::js::runtime::{
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
     proxy_object::ProxyObject,
-    realm::{GlobalScopes, LexicalNamesMapField, RealmTemplateMapField},
+    realm::{GlobalScopes, LexicalNamesMapField},
     regexp::compiled_regexp::CompiledRegExpObject,
     scope::Scope,
     scope_names::ScopeNames,
@@ -113,15 +96,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FinalizationRegistryObject => {
                 self.cast::<FinalizationRegistryObject>().byte_size()
             }
-            ObjectKind::Function => self.cast::<Function>().byte_size(),
-            ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().byte_size(),
-            ObjectKind::LegacyBoundFunctionObject => {
-                self.cast::<LegacyBoundFunctionObject>().byte_size()
-            }
             ObjectKind::MappedArgumentsObject => self.cast::<MappedArgumentsObject>().byte_size(),
-            ObjectKind::LegacyMappedArgumentsObject => {
-                self.cast::<LegacyMappedArgumentsObject>().byte_size()
-            }
             ObjectKind::UnmappedArgumentsObject => {
                 self.cast::<UnmappedArgumentsObject>().byte_size()
             }
@@ -150,9 +125,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Symbol => self.cast::<SymbolValue>().byte_size(),
             ObjectKind::BigInt => self.cast::<BigIntValue>().byte_size(),
             ObjectKind::Accessor => self.cast::<AccessorValue>().byte_size(),
-            ObjectKind::ExecutionContext => self.cast::<ExecutionContext>().byte_size(),
             ObjectKind::Realm => self.cast::<Realm>().byte_size(),
-            ObjectKind::Script => self.cast::<Script>().byte_size(),
             ObjectKind::Closure => self.cast::<Closure>().byte_size(),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().byte_size(),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().byte_size(),
@@ -162,23 +135,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
-            ObjectKind::DeclarativeEnvironment => self.cast::<DeclarativeEnvironment>().byte_size(),
-            ObjectKind::FunctionEnvironment => self.cast::<FunctionEnvironment>().byte_size(),
-            ObjectKind::GlobalEnvironment => self.cast::<GlobalEnvironment>().byte_size(),
-            ObjectKind::ModuleEnvironment => self.cast::<ModuleEnvironment>().byte_size(),
-            ObjectKind::ObjectEnvironment => self.cast::<ObjectEnvironment>().byte_size(),
-            ObjectKind::LegacyPrivateEnvironment => {
-                self.cast::<LegacyPrivateEnvironment>().byte_size()
-            }
             ObjectKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             ObjectKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
             ObjectKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
-            ObjectKind::ArgAccessorClosureEnvironment => {
-                self.cast::<ArgAccessorClosureEnvironment>().byte_size()
-            }
-            ObjectKind::RevokeProxyClosureEnvironment => {
-                self.cast::<RevokeProxyClosureEnvironment>().byte_size()
-            }
             ObjectKind::ObjectNamedPropertiesMap => {
                 NamedPropertiesMapField::byte_size(&self.cast())
             }
@@ -186,16 +145,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::SetObjectValueSet => SetObjectSetField::byte_size(&self.cast()),
             ObjectKind::WeakMapObjectWeakValueMap => WeakMapObjectMapField::byte_size(&self.cast()),
             ObjectKind::WeakSetObjectWeakValueSet => WeakSetObjectSetField::byte_size(&self.cast()),
-            ObjectKind::DeclarativeEnvironmentBindingsMap => {
-                DeclarativeEnvironmentBindingsMapField::byte_size(&self.cast())
-            }
-            ObjectKind::RealmTemplateMap => RealmTemplateMapField::byte_size(&self.cast()),
-            ObjectKind::LegacyPrivateEnvironmentNameMap => {
-                LegacyPrivateEnvironmentNamesField::byte_size(&self.cast())
-            }
-            ObjectKind::GlobalEnvironmentNameSet => {
-                GlobalEnvironmentVarNamesField::byte_size(&self.cast())
-            }
             ObjectKind::GlobalSymbolRegistryMap => {
                 GlobalSymbolRegistryField::byte_size(&self.cast())
             }
@@ -203,10 +152,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
             ObjectKind::ArrayBufferDataArray => ArrayBufferDataField::byte_size(&self.cast()),
-            ObjectKind::FunctionFieldsArray => FunctionFieldsArray::byte_size(&self.cast()),
-            ObjectKind::FunctionPrivateMethodsArray => {
-                FunctionPrivateMethodsArray::byte_size(&self.cast())
-            }
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
@@ -237,17 +182,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::FinalizationRegistryObject => self
                 .cast::<FinalizationRegistryObject>()
                 .visit_pointers(visitor),
-            ObjectKind::Function => self.cast::<Function>().visit_pointers(visitor),
-            ObjectKind::BuiltinFunction => self.cast::<BuiltinFunction>().visit_pointers(visitor),
-            ObjectKind::LegacyBoundFunctionObject => self
-                .cast::<LegacyBoundFunctionObject>()
-                .visit_pointers(visitor),
             ObjectKind::MappedArgumentsObject => {
                 self.cast::<MappedArgumentsObject>().visit_pointers(visitor)
             }
-            ObjectKind::LegacyMappedArgumentsObject => self
-                .cast::<LegacyMappedArgumentsObject>()
-                .visit_pointers(visitor),
             ObjectKind::UnmappedArgumentsObject => self
                 .cast::<UnmappedArgumentsObject>()
                 .visit_pointers(visitor),
@@ -284,9 +221,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Symbol => self.cast::<SymbolValue>().visit_pointers(visitor),
             ObjectKind::BigInt => self.cast::<BigIntValue>().visit_pointers(visitor),
             ObjectKind::Accessor => self.cast::<AccessorValue>().visit_pointers(visitor),
-            ObjectKind::ExecutionContext => self.cast::<ExecutionContext>().visit_pointers(visitor),
             ObjectKind::Realm => self.cast::<Realm>().visit_pointers(visitor),
-            ObjectKind::Script => self.cast::<Script>().visit_pointers(visitor),
             ObjectKind::Closure => self.cast::<Closure>().visit_pointers(visitor),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().visit_pointers(visitor),
             ObjectKind::ConstantTable => self.cast::<ConstantTable>().visit_pointers(visitor),
@@ -298,24 +233,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
-            ObjectKind::DeclarativeEnvironment => self
-                .cast::<DeclarativeEnvironment>()
-                .visit_pointers(visitor),
-            ObjectKind::FunctionEnvironment => {
-                self.cast::<FunctionEnvironment>().visit_pointers(visitor)
-            }
-            ObjectKind::GlobalEnvironment => {
-                self.cast::<GlobalEnvironment>().visit_pointers(visitor)
-            }
-            ObjectKind::ModuleEnvironment => {
-                self.cast::<ModuleEnvironment>().visit_pointers(visitor)
-            }
-            ObjectKind::ObjectEnvironment => {
-                self.cast::<ObjectEnvironment>().visit_pointers(visitor)
-            }
-            ObjectKind::LegacyPrivateEnvironment => self
-                .cast::<LegacyPrivateEnvironment>()
-                .visit_pointers(visitor),
             ObjectKind::DenseArrayProperties => {
                 self.cast::<DenseArrayProperties>().visit_pointers(visitor)
             }
@@ -325,12 +242,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::CompiledRegExpObject => {
                 self.cast::<CompiledRegExpObject>().visit_pointers(visitor)
             }
-            ObjectKind::ArgAccessorClosureEnvironment => self
-                .cast::<ArgAccessorClosureEnvironment>()
-                .visit_pointers(visitor),
-            ObjectKind::RevokeProxyClosureEnvironment => self
-                .cast::<RevokeProxyClosureEnvironment>()
-                .visit_pointers(visitor),
             ObjectKind::ObjectNamedPropertiesMap => {
                 NamedPropertiesMapField::visit_pointers(self.cast_mut(), visitor)
             }
@@ -346,18 +257,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::WeakSetObjectWeakValueSet => {
                 WeakSetObjectSetField::visit_pointers(self.cast_mut(), visitor)
             }
-            ObjectKind::DeclarativeEnvironmentBindingsMap => {
-                DeclarativeEnvironmentBindingsMapField::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::RealmTemplateMap => {
-                RealmTemplateMapField::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::LegacyPrivateEnvironmentNameMap => {
-                LegacyPrivateEnvironmentNamesField::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::GlobalEnvironmentNameSet => {
-                GlobalEnvironmentVarNamesField::visit_pointers(self.cast_mut(), visitor)
-            }
             ObjectKind::GlobalSymbolRegistryMap => {
                 GlobalSymbolRegistryField::visit_pointers(self.cast_mut(), visitor)
             }
@@ -372,12 +271,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::ArrayBufferDataArray => {
                 ArrayBufferDataField::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::FunctionFieldsArray => {
-                FunctionFieldsArray::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::FunctionPrivateMethodsArray => {
-                FunctionPrivateMethodsArray::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()

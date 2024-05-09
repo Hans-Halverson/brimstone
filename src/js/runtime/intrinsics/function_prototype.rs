@@ -1,36 +1,31 @@
-use std::{mem::size_of, rc::Weak};
+use std::mem::size_of;
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::{
-        common::wtf_8::Wtf8String,
-        runtime::{
-            abstract_operations::{
-                call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
-            },
-            bound_function_object::{BoundFunctionObject, LegacyBoundFunctionObject},
-            builtin_function::BuiltinFunction,
-            bytecode::function::{BytecodeFunction, Closure},
-            completion::EvalResult,
-            error::type_error_,
-            function::{
-                get_argument, set_function_length_maybe_infinity, set_function_name, Function,
-            },
-            gc::{HeapObject, HeapVisitor},
-            get,
-            interned_strings::InternedStrings,
-            object_descriptor::ObjectKind,
-            object_value::{ObjectValue, VirtualObject},
-            ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
-            property_descriptor::PropertyDescriptor,
-            property_key::PropertyKey,
-            realm::Realm,
-            string_value::{FlatString, StringValue},
-            type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
-            Context, Handle, HeapPtr, Value,
+    js::runtime::{
+        abstract_operations::{
+            call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
         },
+        bound_function_object::BoundFunctionObject,
+        builtin_function::BuiltinFunction,
+        bytecode::function::{BytecodeFunction, Closure},
+        completion::EvalResult,
+        error::type_error_,
+        function::{get_argument, set_function_length_maybe_infinity, set_function_name},
+        gc::{HeapObject, HeapVisitor},
+        get,
+        interned_strings::InternedStrings,
+        object_descriptor::ObjectKind,
+        object_value::{ObjectValue, VirtualObject},
+        ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        realm::Realm,
+        string_value::{FlatString, StringValue},
+        type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
+        Context, Handle, HeapPtr, Value,
     },
     maybe, must,
 };
@@ -46,20 +41,11 @@ impl FunctionPrototype {
     pub fn new_uninit(cx: Context) -> Handle<ObjectValue> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
-        if cx.options.bytecode {
-            let mut object =
-                object_create_with_optional_proto::<Closure>(cx, ObjectKind::Closure, None);
-            object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
+        let mut object =
+            object_create_with_optional_proto::<Closure>(cx, ObjectKind::Closure, None);
+        object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
-            object.to_handle().into()
-        } else {
-            let object = cx.alloc_uninit::<FunctionPrototype>();
-
-            let descriptor = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-            object_ordinary_init(cx, object.into(), descriptor, None);
-
-            object.to_handle().into()
-        }
+        object.to_handle().into()
     }
 
     /// 20.2.3 Properties of the Function Prototype Object
@@ -69,28 +55,23 @@ impl FunctionPrototype {
         let mut object = function_prototype.object();
 
         // Initialize all fields of the prototype objec
-        if cx.options.bytecode {
-            let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
-            object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
+        let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
+        object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
 
-            // The prototype object is itself a function with special behavior, implemented as a
-            // builtin function.
-            let function = BytecodeFunction::new_rust_runtime_function(
-                cx,
-                Self::prototype_call,
-                realm,
-                /* is_constructor */ false,
-                /* name */ None,
-            );
-            let scope = realm.default_global_scope();
+        // The prototype object is itself a function with special behavior, implemented as a
+        // builtin function.
+        let function = BytecodeFunction::new_rust_runtime_function(
+            cx,
+            Self::prototype_call,
+            realm,
+            /* is_constructor */ false,
+            /* name */ None,
+        );
+        let scope = realm.default_global_scope();
 
-            object
-                .cast::<Closure>()
-                .init_extra_fields(function.get_(), scope.get_());
-        } else {
-            let descriptor_ptr = cx.base_descriptors.get(ObjectKind::FunctionPrototype);
-            object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
-        }
+        object
+            .cast::<Closure>()
+            .init_extra_fields(function.get_(), scope.get_());
 
         object.instrinsic_length_prop(cx, 0);
         object.intrinsic_name_prop(cx, "");
@@ -161,11 +142,8 @@ impl FunctionPrototype {
         };
         let num_bound_args = bound_args.len();
 
-        let bound_func: Handle<ObjectValue> = if cx.options.bytecode {
-            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args))
-        } else {
-            maybe!(LegacyBoundFunctionObject::new(cx, target, this_arg, bound_args)).into()
-        };
+        let bound_func: Handle<ObjectValue> =
+            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args));
 
         let mut length = Some(0);
 
@@ -267,34 +245,7 @@ impl FunctionPrototype {
             return func_string.into();
         }
 
-        if this_object.is_function_object() {
-            // If this is a function, return the original source code if it is available
-            let this_function = this_object.cast::<Function>();
-            if let Some(source_loc) = this_function.source_loc() {
-                if let Some(source) = this_function.source().as_ref().and_then(Weak::upgrade) {
-                    let func_bytes = &source.contents.as_bytes()[source_loc.start..source_loc.end];
-                    let func_string = FlatString::from_wtf8(cx, func_bytes)
-                        .as_string()
-                        .to_handle();
-
-                    return func_string.into();
-                }
-            }
-        } else if this_object.is_builtin_function_object() {
-            // All builtin functions are formatted specially
-            let this_func = this_object.cast::<BuiltinFunction>();
-            let func_name = if let Some(initial_name) = this_func.initial_name() {
-                initial_name.to_wtf8_string()
-            } else {
-                Wtf8String::new()
-            };
-
-            let mut func_string = Wtf8String::from_str("function ");
-            func_string.push_wtf8_str(&func_name);
-            func_string.push_str("() { [native code] }");
-
-            return cx.alloc_wtf8_string(&func_string).into();
-        } else if is_callable_object(this_object) {
+        if is_callable_object(this_object) {
             return cx.alloc_string("function () { [native code] }").into();
         }
 

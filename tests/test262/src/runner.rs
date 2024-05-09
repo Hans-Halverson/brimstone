@@ -20,9 +20,9 @@ use brimstone::js::{
     self,
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, eval_module, eval_script, get,
-        initialize_host_defined_realm, test_262_object::Test262Object, to_console_string,
-        to_string, Completion, CompletionKind, Context, EvalResult, Handle, Realm, Value,
+        bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
+        test_262_object::Test262Object, to_console_string, to_string, Completion, CompletionKind,
+        Context, EvalResult, Handle, Realm, Value,
     },
 };
 
@@ -32,7 +32,6 @@ pub struct TestRunner {
     thread_pool: ThreadPool,
     filter: Option<String>,
     feature: Option<String>,
-    bytecode: bool,
 }
 
 // Runner threads have an 8MB stack
@@ -45,20 +44,18 @@ impl TestRunner {
         num_threads: u8,
         filter: Option<String>,
         feature: Option<String>,
-        bytecode: bool,
     ) -> TestRunner {
         let thread_pool = threadpool::Builder::new()
             .num_threads(num_threads.into())
             .thread_stack_size(RUNNER_THREAD_STACK_SIZE)
             .build();
-        TestRunner { index, ignored, thread_pool, filter, feature, bytecode }
+        TestRunner { index, ignored, thread_pool, filter, feature }
     }
 
     pub fn run(&mut self, verbose: bool) -> TestResults {
         let (sender, receiver) = channel::<TestResult>();
         let mut num_jobs = 0;
         let mut num_skipped = 0;
-        let bytecode = self.bytecode;
 
         let all_tests_start_timestamp = SystemTime::now();
 
@@ -83,7 +80,7 @@ impl TestRunner {
                         println!("{i}: {}", test.path);
                     }
 
-                    run_full_test(&test, &test262_root, start_timestamp, bytecode)
+                    run_full_test(&test, &test262_root, start_timestamp)
                 });
 
                 let duration = start_timestamp.elapsed().unwrap();
@@ -99,8 +96,8 @@ impl TestRunner {
                         };
 
                         let result = if ignore_async_generator
-                            && (message == "not implemented: async and generator functions"
-                             || message == "not implemented: bytecode for async and generator functions")
+                            && (message
+                                == "not implemented: bytecode for async and generator functions")
                         {
                             TestResult::skipped(&test)
                         } else {
@@ -139,25 +136,17 @@ impl TestRunner {
     }
 }
 
-fn run_full_test(
-    test: &Test,
-    test262_root: &str,
-    start_timestamp: SystemTime,
-    bytecode: bool,
-) -> TestResult {
+fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -> TestResult {
     match test.mode {
-        TestMode::StrictScript => {
-            run_single_test(test, test262_root, true, start_timestamp, bytecode)
-        }
+        TestMode::StrictScript => run_single_test(test, test262_root, true, start_timestamp),
         TestMode::NonStrictScript | TestMode::Module | TestMode::Raw => {
-            run_single_test(test, test262_root, false, start_timestamp, bytecode)
+            run_single_test(test, test262_root, false, start_timestamp)
         }
         // Run in both strict and non strict mode, both must pass for this test to be successful
         TestMode::Script => {
-            let non_strict_result =
-                run_single_test(test, test262_root, false, start_timestamp, bytecode);
+            let non_strict_result = run_single_test(test, test262_root, false, start_timestamp);
             if let TestResultCompletion::Success = non_strict_result.result {
-                run_single_test(test, test262_root, true, start_timestamp, bytecode)
+                run_single_test(test, test262_root, true, start_timestamp)
             } else {
                 non_strict_result
             }
@@ -170,14 +159,9 @@ fn run_single_test(
     test262_root: &str,
     force_strict_mode: bool,
     start_timestamp: SystemTime,
-    bytecode: bool,
 ) -> TestResult {
     // Set up options
-    let options = {
-        let mut options = Options::default();
-        options.bytecode = bytecode;
-        Rc::new(options)
-    };
+    let options = Rc::new(Options::default());
 
     // Each test is executed in its own realm
     let (cx, realm) = Context::new(options, |cx| {
@@ -260,18 +244,10 @@ fn run_single_test(
             }
         }
 
-        let completion = if bytecode {
-            if test.mode == TestMode::Module {
-                unimplemented!("module evaluation")
-            } else {
-                execute_as_bytecode(cx, realm, &ast_and_source.0)
-            }
+        let completion = if test.mode == TestMode::Module {
+            unimplemented!("module evaluation")
         } else {
-            if test.mode == TestMode::Module {
-                eval_module(cx, Rc::new(ast_and_source.0), realm)
-            } else {
-                eval_script(cx, Rc::new(ast_and_source.0), realm)
-            }
+            execute_as_bytecode(cx, realm, &ast_and_source.0)
         };
 
         let duration = start_timestamp.elapsed().unwrap();
@@ -328,21 +304,13 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
     js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
-    let eval_result = if cx.options.bytecode {
-        execute_as_bytecode(cx, realm, &ast_and_source.0)
-    } else {
-        eval_script(cx, Rc::new(ast_and_source.0), realm)
-    };
+    let eval_result = execute_as_bytecode(cx, realm, &ast_and_source.0);
 
     match eval_result.kind() {
         CompletionKind::Normal => {}
         CompletionKind::Throw => {
             panic!("Failed to evaluate test harness file {}", full_path.display())
         }
-        _ => panic!(
-            "Unexpected abnormal completion when evaluating test harness file {}",
-            full_path.display()
-        ),
     }
 }
 
@@ -445,12 +413,6 @@ fn check_expected_completion(
                 )
             }
         },
-        // Other abnormal completions are never valid
-        _ => TestResult::failure(
-            test,
-            String::from("Unexpected abnormal completion when evaluating file"),
-            duration,
-        ),
     }
 }
 

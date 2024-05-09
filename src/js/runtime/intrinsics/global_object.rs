@@ -10,7 +10,7 @@ use crate::{
             bytecode::instruction::EvalFlags,
             console::ConsoleObject,
             error::uri_error_,
-            eval::eval::{perform_ast_eval, perform_bytecode_eval},
+            eval::eval::perform_eval,
             function::get_argument,
             gc::HandleScope,
             gc_object::GcObject,
@@ -78,7 +78,7 @@ pub fn set_default_global_bindings(
         let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
         let nan_value = Value::nan().to_handle(cx);
 
-        value_prop!(cx.names.global_this(), realm.global_this_value().into(), true, false, true);
+        value_prop!(cx.names.global_this(), realm.global_object().into(), true, false, true);
         value_prop!(cx.names.infinity(), infinity_value, false, false, false);
         value_prop!(cx.names.nan(), nan_value, false, false, false);
         value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
@@ -178,17 +178,7 @@ pub fn eval(
 ) -> EvalResult<Handle<Value>> {
     let code_arg = get_argument(cx, arguments, 0);
 
-    if cx.options.bytecode {
-        perform_bytecode_eval(
-            cx,
-            code_arg,
-            /* is_strict_caller */ false,
-            None,
-            EvalFlags::empty(),
-        )
-    } else {
-        perform_ast_eval(cx, code_arg, false, false)
-    }
+    perform_eval(cx, code_arg, /* is_strict_caller */ false, None, EvalFlags::empty())
 }
 
 // 19.2.2 isFinite

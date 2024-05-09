@@ -14,7 +14,7 @@ use crate::{
             type_error_, type_error_value,
         },
         eval::{
-            eval::perform_bytecode_eval,
+            eval::perform_eval,
             expression::{
                 eval_add, eval_bitwise_and, eval_bitwise_not, eval_bitwise_or, eval_bitwise_xor,
                 eval_delete_property, eval_divide, eval_exponentiation, eval_greater_than,
@@ -1808,8 +1808,7 @@ impl VM {
         let scope = self.scope().to_handle();
 
         // Allocates
-        let result =
-            maybe!(perform_bytecode_eval(self.cx, arg, is_strict_caller, Some(scope), flags));
+        let result = maybe!(perform_eval(self.cx, arg, is_strict_caller, Some(scope), flags));
         self.write_register(dest, result.get());
 
         ().into()

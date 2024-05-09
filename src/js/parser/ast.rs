@@ -259,19 +259,6 @@ pub struct VariableDeclaration {
     pub declarations: Vec<VariableDeclarator>,
 }
 
-impl VariableDeclaration {
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
-        &'a self,
-        f: &mut F,
-    ) -> EvalResult<()> {
-        for decl in &self.declarations {
-            maybe!(decl.iter_bound_names(f))
-        }
-
-        ().into()
-    }
-}
-
 pub struct VariableDeclarator {
     pub loc: Loc,
     pub id: P<Pattern>,
@@ -393,11 +380,6 @@ impl Function {
             .contains(FunctionFlags::HAS_SIMPLE_PARAMETER_LIST)
     }
 
-    pub fn has_parameter_expressions(&self) -> bool {
-        self.flags
-            .contains(FunctionFlags::HAS_PARAMETER_EXPRESSIONS)
-    }
-
     pub fn has_duplicate_parameters(&self) -> bool {
         self.flags.contains(FunctionFlags::HAS_DUPLICATE_PARAMETERS)
     }
@@ -472,18 +454,6 @@ impl FunctionParam {
             FunctionParam::Pattern { pattern, .. } => pattern.iter_patterns(f),
             FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
                 argument.iter_patterns(f)
-            }
-        }
-    }
-
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier) -> EvalResult<()>>(
-        &'a self,
-        f: &mut F,
-    ) -> EvalResult<()> {
-        match &self {
-            FunctionParam::Pattern { pattern, .. } => pattern.iter_bound_names(f),
-            FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
-                argument.iter_bound_names(f)
             }
         }
     }
@@ -1325,13 +1295,6 @@ impl Pattern {
         match self {
             Pattern::Id(_) => true,
             _ => false,
-        }
-    }
-
-    pub fn to_assign(&self) -> &AssignmentPattern {
-        match self {
-            Pattern::Assign(assign) => assign,
-            _ => panic!("Expected assignment pattern"),
         }
     }
 

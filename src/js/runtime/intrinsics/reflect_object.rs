@@ -90,7 +90,7 @@ impl ReflectObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
-        if !is_constructor_value(cx, target) {
+        if !is_constructor_value(target) {
             return type_error_(cx, "value is not a constructor");
         }
 
@@ -98,7 +98,7 @@ impl ReflectObject {
 
         let new_target = if arguments.len() >= 3 {
             let new_target = get_argument(cx, arguments, 2);
-            if !is_constructor_value(cx, new_target) {
+            if !is_constructor_value(new_target) {
                 return type_error_(cx, "value is not a constructor");
             }
 

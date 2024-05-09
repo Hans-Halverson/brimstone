@@ -6,23 +6,14 @@ use std::{
 
 use crate::js::{
     common::{options::Options, wtf_8::Wtf8String},
-    parser::{
-        parser::{ParseFunctionResult, ParseProgramResult},
-        source::Source,
-    },
     runtime::gc::HandleScope,
 };
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
-    builtin_function::ClosureEnvironment,
     builtin_names::{BuiltinNames, BuiltinSymbols},
     bytecode::{generator::BytecodeProgram, vm::VM},
     collections::{BsHashMap, BsHashMapField},
-    environment::{
-        declarative_environment::DeclarativeEnvironment, environment::HeapDynEnvironment,
-    },
-    execution_context::{ExecutionContext, ScriptOrModule},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{
@@ -56,7 +47,6 @@ pub struct Context {
 }
 
 pub struct ContextCell {
-    execution_context_stack: Vec<HeapPtr<ExecutionContext>>,
     pub heap: Heap,
     global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
     pub names: BuiltinNames,
@@ -77,17 +67,11 @@ pub struct ContextCell {
     // Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
 
-    // Stack of closure environments for all builtin functions currently being evaluated
-    pub closure_environments: Vec<Option<HeapPtr<ClosureEnvironment>>>,
-
     // An empty named properties map to use as the initial value for named properties
     pub default_named_properties: HeapPtr<NamedPropertiesMap>,
 
     // An empty, dense array properties object to use as the initial value for array properties
     pub default_array_properties: HeapPtr<ArrayProperties>,
-
-    // An empty environment to be used as an uninitialized value
-    pub uninit_environment: HeapDynEnvironment,
 
     // All pending finalizer callbacks for garbage collected values.
     // TODO: Call finalizer callbacks
@@ -95,12 +79,6 @@ pub struct ContextCell {
 
     /// Options passed to this program.
     pub options: Rc<Options>,
-
-    // All ASTs produced by eval and function constructors in this context. Saved here so that they
-    // are not freed while the context is still running, as they may be needed e.g. due to functions
-    // returned from an eval.
-    pub eval_asts: Vec<ParseProgramResult>,
-    pub function_constructor_asts: Vec<(ParseFunctionResult, Rc<Source>)>,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -110,7 +88,6 @@ impl Context {
     /// the permanent heap.
     pub fn new<R>(options: Rc<Options>, mut init: impl FnMut(Context) -> R) -> (Context, R) {
         let cx_cell = Box::new(ContextCell {
-            execution_context_stack: vec![],
             heap: Heap::new(),
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
@@ -124,14 +101,10 @@ impl Context {
             true_: Value::bool(true),
             false_: Value::bool(false),
             interned_strings: InternedStrings::uninit(),
-            closure_environments: vec![],
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
-            uninit_environment: HeapDynEnvironment::uninit(),
             finalizer_callbacks: vec![],
             options,
-            eval_asts: vec![],
-            function_constructor_asts: vec![],
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
@@ -153,7 +126,6 @@ impl Context {
             cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
             cx.default_named_properties =
                 NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, 0);
-            cx.uninit_environment = DeclarativeEnvironment::uninit(cx).into_dyn_env().to_heap();
         });
 
         // Execute the init callback, and turn its allocations into the permanent heap
@@ -197,36 +169,14 @@ impl Context {
         Heap::alloc_uninit_with_size::<T>(*self, size)
     }
 
-    pub fn push_execution_context(&mut self, exec_ctx: Handle<ExecutionContext>) {
-        self.execution_context_stack.push(exec_ctx.get_())
-    }
-
-    pub fn pop_execution_context(&mut self) {
-        self.execution_context_stack.pop();
-    }
-
-    #[inline]
-    pub fn current_execution_context_ptr(&self) -> HeapPtr<ExecutionContext> {
-        *self.execution_context_stack.last().unwrap()
-    }
-
-    #[inline]
-    pub fn current_execution_context(&self) -> Handle<ExecutionContext> {
-        self.current_execution_context_ptr().to_handle()
-    }
-
     #[inline]
     pub fn current_realm_ptr(&self) -> HeapPtr<Realm> {
-        if self.options.bytecode {
-            self.vm
-                .as_ref()
-                .unwrap()
-                .closure()
-                .function_ptr()
-                .realm_ptr()
-        } else {
-            self.current_execution_context_ptr().realm_ptr()
-        }
+        self.vm
+            .as_ref()
+            .unwrap()
+            .closure()
+            .function_ptr()
+            .realm_ptr()
     }
 
     #[inline]
@@ -246,24 +196,7 @@ impl Context {
     }
 
     pub fn current_function(&mut self) -> Handle<ObjectValue> {
-        if self.options.bytecode {
-            self.vm().closure().to_handle().into()
-        } else {
-            self.current_execution_context_ptr().function().into()
-        }
-    }
-
-    /// 9.4.6 GetGlobalObject. Return the global object for the current realm.
-    pub fn get_global_object(&self) -> Handle<ObjectValue> {
-        self.current_execution_context_ptr().global_object()
-    }
-
-    // 9.4.1 GetActiveScriptOrModule
-    pub fn get_active_script_or_module(&self) -> Option<ScriptOrModule> {
-        self.execution_context_stack
-            .iter()
-            .rev()
-            .find_map(|exec_ctx| exec_ctx.script_or_module())
+        self.vm().closure().to_handle().into()
     }
 
     pub fn global_symbol_registry(&self) -> HeapPtr<GlobalSymbolRegistry> {
@@ -272,19 +205,6 @@ impl Context {
 
     pub fn global_symbol_registry_field(&mut self) -> GlobalSymbolRegistryField {
         GlobalSymbolRegistryField
-    }
-
-    pub fn push_closure_environment(&mut self, env: Option<HeapPtr<ClosureEnvironment>>) {
-        self.closure_environments.push(env)
-    }
-
-    pub fn pop_closure_environment(&mut self) {
-        self.closure_environments.pop();
-    }
-
-    pub fn get_closure_environment_ptr<T>(&self) -> HeapPtr<T> {
-        let closure_environment = self.closure_environments.last().unwrap().unwrap();
-        closure_environment.cast::<T>()
     }
 
     pub fn add_finalizer_callbacks(&mut self, finalizer_callbacks: Vec<FinalizerCallback>) {
@@ -336,18 +256,10 @@ impl Context {
     }
 
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
-        for execution_context in self.execution_context_stack.iter_mut() {
-            visitor.visit_pointer(execution_context);
-        }
-
         self.heap.visit_roots(visitor);
 
         visitor.visit_pointer(&mut self.global_symbol_registry);
         self.interned_strings.visit_roots(visitor);
-
-        for closure_environment in self.closure_environments.iter_mut() {
-            visitor.visit_pointer_opt(closure_environment);
-        }
 
         for finalizer_callback in self.finalizer_callbacks.iter_mut() {
             visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);
@@ -365,7 +277,6 @@ impl Context {
         // - All builtin descriptors
         // - default_named_properties
         // - default_array_properties
-        // - uninit_environment
     }
 
     #[cfg(feature = "gc_stress_test")]

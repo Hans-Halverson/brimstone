@@ -804,26 +804,22 @@ pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
 }
 
 // 7.2.4 IsConstructor
-pub fn is_constructor_value(cx: Context, value: Handle<Value>) -> bool {
+pub fn is_constructor_value(value: Handle<Value>) -> bool {
     if !value.is_object() {
         return false;
     }
 
-    is_constructor_object_value(cx, value.as_object())
+    is_constructor_object_value(value.as_object())
 }
 
-pub fn is_constructor_object_value(cx: Context, value: Handle<ObjectValue>) -> bool {
-    if cx.options.bytecode {
-        let kind = value.descriptor().kind();
-        if kind == ObjectKind::Closure {
-            value.cast::<Closure>().function_ptr().is_constructor()
-        } else if kind == ObjectKind::Proxy {
-            value.cast::<ProxyObject>().is_constructor()
-        } else {
-            false
-        }
+pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
+    let kind = value.descriptor().kind();
+    if kind == ObjectKind::Closure {
+        value.cast::<Closure>().function_ptr().is_constructor()
+    } else if kind == ObjectKind::Proxy {
+        value.cast::<ProxyObject>().is_constructor()
     } else {
-        value.is_constructor()
+        false
     }
 }
 

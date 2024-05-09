@@ -867,20 +867,6 @@ impl AstScopeNode {
             })
     }
 
-    /// Iterator over all LexicallyScopedDeclarations in this scope. Note that this does not include
-    /// catch parameters, which are handled separately.
-    pub fn iter_lex_decls(&self) -> impl DoubleEndedIterator<Item = (&String, &Binding)> {
-        self.bindings
-            .iter()
-            .filter(|(_, binding)| match binding.kind {
-                BindingKind::Const { .. }
-                | BindingKind::Let { .. }
-                | BindingKind::Class { .. }
-                | BindingKind::Function { is_lexical: true, .. } => true,
-                _ => false,
-            })
-    }
-
     /// Error if the provided lexical name is already declared in this scope.
     pub fn error_if_lexical_name_already_declared(&self, name: &str) -> Option<ParseError> {
         // Error if there is already any binding with this name in the current scope, which is
@@ -925,7 +911,7 @@ pub enum BindingKind {
         is_lexical: bool,
         /// Whether this is the name of a function expression.
         is_expression: bool,
-        /// Function AST node - needed for the tree walk interpreter.
+        /// Function AST node.
         func_node: AstPtr<ast::Function>,
     },
     FunctionParameter {

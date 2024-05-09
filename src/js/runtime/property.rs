@@ -180,19 +180,6 @@ impl Property {
         }
     }
 
-    // Combine a getter and setter accessor. Either this is a getter and the input is a setter,
-    // or vice versa. No other inputs are allowed.
-    pub fn add_accessor(&mut self, other: Property) {
-        let mut this_accessor = self.value.as_accessor();
-        let other_accessor = other.value.as_accessor();
-
-        if this_accessor.get.is_none() {
-            this_accessor.get = other_accessor.get;
-        } else {
-            this_accessor.set = other_accessor.set;
-        }
-    }
-
     pub fn to_heap(&self) -> HeapProperty {
         HeapProperty { value: self.value.get(), flags: self.flags }
     }

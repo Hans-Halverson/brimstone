@@ -25,10 +25,6 @@ fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
     URIError::new_with_message(cx, message.to_owned()).into()
 }
 
-pub fn syntax_error(cx: Context, message: &str) -> Completion {
-    Completion::throw(syntax_error_value(cx, message))
-}
-
 pub fn type_error(cx: Context, message: &str) -> Completion {
     Completion::throw(type_error_value(cx, message))
 }
@@ -55,10 +51,6 @@ pub fn uri_error_<T>(cx: Context, message: &str) -> EvalResult<T> {
 
 pub fn err_not_defined_<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {
     reference_error_(cx, &format!("{} is not defined", name))
-}
-
-pub fn err_uninitialized_<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {
-    reference_error_(cx, &format!("{} is not initialized", name))
 }
 
 pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {

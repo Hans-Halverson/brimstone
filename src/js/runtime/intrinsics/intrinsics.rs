@@ -409,10 +409,12 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     let throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
         cx,
         throw_type_error,
+        /* name */ None,
         realm,
-        None,
+        /* prototype */ None,
         /* is_constructor */ false,
-    );
+    )
+    .into();
 
     let zero_value = Value::smi(0).to_handle(cx);
     let length_desc = PropertyDescriptor::data(zero_value, false, false, false);

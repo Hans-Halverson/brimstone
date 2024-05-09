@@ -9,9 +9,7 @@ use crate::{
 };
 
 use super::{
-    completion::CompletionKind,
     error::{syntax_error_, type_error_},
-    eval::script::eval_script,
     function::get_argument,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject, global_object::set_default_global_bindings,
@@ -85,8 +83,7 @@ impl Test262Object {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm
-        let mut realm = Realm::new_uninit(cx);
-        realm.initialize(cx);
+        let realm = Realm::new_uninit(cx);
         maybe!(set_default_global_bindings(
             cx, realm, /* expose_gc */ false, /* expose_test262 */ false
         ));
@@ -127,32 +124,16 @@ impl Test262Object {
         }
 
         let realm = cx.current_realm();
+        let gen_result =
+            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm);
+        let bytecode_program = match gen_result {
+            Ok(bytecode_program) => bytecode_program,
+            Err(error) => return syntax_error_(cx, &error.to_string()),
+        };
 
-        if cx.options.bytecode {
-            let gen_result = BytecodeProgramGenerator::generate_from_program_parse_result(
-                cx,
-                &parse_result,
-                realm,
-            );
-            let bytecode_program = match gen_result {
-                Ok(bytecode_program) => bytecode_program,
-                Err(error) => return syntax_error_(cx, &error.to_string()),
-            };
-
-            return match cx.execute_program(bytecode_program) {
-                Ok(value) => EvalResult::Ok(value),
-                Err(error) => EvalResult::Throw(error),
-            };
-        } else {
-            let completion = eval_script(cx, Rc::new(parse_result), realm);
-
-            match completion.kind() {
-                CompletionKind::Normal => EvalResult::Ok(completion.value()),
-                CompletionKind::Throw => EvalResult::Throw(completion.value()),
-                CompletionKind::Return | CompletionKind::Break | CompletionKind::Continue => {
-                    panic!("unexpected abnormal completion")
-                }
-            }
+        match cx.execute_program(bytecode_program) {
+            Ok(value) => EvalResult::Ok(value),
+            Err(error) => EvalResult::Throw(error),
         }
     }
 

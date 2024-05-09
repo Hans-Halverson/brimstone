@@ -156,7 +156,7 @@ pub fn array_species_create(
     }
 
     let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
-    if is_constructor_value(cx, constructor) {
+    if is_constructor_value(constructor) {
         let this_realm_ptr = cx.current_realm_ptr();
         let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
 
@@ -184,7 +184,7 @@ pub fn array_species_create(
         return array_object.into();
     }
 
-    if !is_constructor_value(cx, constructor) {
+    if !is_constructor_value(constructor) {
         return type_error_(cx, "expected array constructor");
     }
 

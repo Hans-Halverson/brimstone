@@ -178,7 +178,7 @@ pub fn new_class(
         if super_class.is_null() {
             let constructor_parent = cx.get_intrinsic(Intrinsic::FunctionPrototype);
             (None, constructor_parent)
-        } else if !is_constructor_value(cx, super_class) {
+        } else if !is_constructor_value(super_class) {
             return type_error_(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();

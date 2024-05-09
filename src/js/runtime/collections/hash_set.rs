@@ -13,8 +13,6 @@ use super::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField};
 pub struct BsHashSet<T>(BsHashMap<T, ()>);
 
 impl<T: Eq + Hash + Clone> BsHashSet<T> {
-    pub const MIN_CAPACITY: usize = BsHashMap::<T, ()>::MIN_CAPACITY;
-
     pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new(cx, kind, capacity).cast()
     }

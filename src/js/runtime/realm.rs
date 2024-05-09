@@ -1,20 +1,12 @@
 use crate::{
     field_offset,
-    js::{
-        parser::{
-            ast::{AstPtr, TemplateLiteral},
-            scope_tree::REALM_SCOPE_SLOT_NAME,
-        },
-        runtime::gc::HandleScope,
-    },
+    js::{parser::scope_tree::REALM_SCOPE_SLOT_NAME, runtime::gc::HandleScope},
     maybe, must, set_uninit,
 };
 
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
-    environment::global_environment::GlobalEnvironment,
     error::{err_assign_constant, syntax_error_},
-    execution_context::ExecutionContext,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     global_names::has_restricted_global_property,
     interned_strings::InternedStrings,
@@ -34,7 +26,6 @@ use super::{
 #[repr(C)]
 pub struct Realm {
     descriptor: HeapPtr<ObjectDescriptor>,
-    global_env: HeapPtr<GlobalEnvironment>,
     global_object: HeapPtr<ObjectValue>,
     /// Array of all global scopes in this realm. Each script has its own global scope which
     /// contains that script's lexical bindings.
@@ -42,11 +33,8 @@ pub struct Realm {
     /// Map of all lexical bindings in this realm, mapped to the global scope that contains them
     /// along with their slot index in that global scope.
     lexical_names: HeapPtr<LexicalNamesMap>,
-    template_map: HeapPtr<TemplateMap>,
     pub intrinsics: Intrinsics,
 }
-
-type TemplateMap = BsHashMap<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>>;
 
 const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 
@@ -61,11 +49,9 @@ impl Realm {
             let mut realm = cx.alloc_uninit_with_size::<Realm>(size);
 
             set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
-            set_uninit!(realm.global_env, HeapPtr::uninit());
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
-            set_uninit!(realm.template_map, HeapPtr::uninit());
 
             let realm = realm.to_handle();
 
@@ -97,17 +83,8 @@ impl Realm {
     }
 
     #[inline]
-    pub fn global_env(&self) -> Handle<GlobalEnvironment> {
-        self.global_env.to_handle()
-    }
-
-    #[inline]
     pub fn default_global_scope(&self) -> Handle<Scope> {
         self.global_scopes.get(0).to_handle()
-    }
-
-    pub fn global_this_value(&self) -> Handle<ObjectValue> {
-        self.global_env.global_this_value()
     }
 
     pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
@@ -116,15 +93,6 @@ impl Realm {
 
     pub fn get_intrinsic(&self, intrinsic: Intrinsic) -> Handle<ObjectValue> {
         self.intrinsics.get(intrinsic)
-    }
-
-    pub fn get_template_object(
-        &self,
-        template_node: AstPtr<TemplateLiteral>,
-    ) -> Option<Handle<ObjectValue>> {
-        self.template_map
-            .get(&template_node)
-            .map(|template_object| template_object.to_handle())
     }
 
     /// Get the value associated with a lexical name in the realm's lexical names map, if one
@@ -162,21 +130,6 @@ impl Realm {
 }
 
 impl Handle<Realm> {
-    fn template_map_field(&self) -> RealmTemplateMapField {
-        RealmTemplateMapField(*self)
-    }
-
-    pub fn add_template_object(
-        &mut self,
-        cx: Context,
-        template_node: AstPtr<TemplateLiteral>,
-        template_object: Handle<ObjectValue>,
-    ) {
-        self.template_map_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(template_node, template_object.get_());
-    }
-
     fn lexical_names_field(&self) -> LexicalNamesMapField {
         LexicalNamesMapField(*self)
     }
@@ -194,15 +147,6 @@ impl Handle<Realm> {
         self.lexical_names_field()
             .maybe_grow_for_insertion(cx)
             .insert_without_growing(name.get_(), lexical_name_location);
-    }
-
-    // 9.3.3 SetRealmGlobalObject
-    // Initializes remaining properties of realm that were not initialized in `new_uninit`.
-    pub fn initialize(&mut self, cx: Context) {
-        // Global object and scope were created in `Intrinsics::initialize`
-        let global_object = self.global_object();
-        self.global_env = GlobalEnvironment::new(cx, global_object, global_object).get_();
-        self.template_map = TemplateMap::new_initial(cx, ObjectKind::RealmTemplateMap);
     }
 
     /// Check if a set of lexical names can be declared in the realm. A lexical name cannot be
@@ -314,17 +258,8 @@ pub fn initialize_host_defined_realm(
     expose_gc: bool,
     expose_test262: bool,
 ) -> Handle<Realm> {
-    HandleScope::new(cx, |mut cx| {
-        let mut realm = Realm::new_uninit(cx);
-        let exec_ctx = ExecutionContext::new(
-            cx, /* function */ None, realm, /* script_or_module */ None,
-            /* lexical_env */ None, /* variable_env */ None, /* private_env */ None,
-            /* is_strict_mode */ false,
-        );
-
-        cx.push_execution_context(exec_ctx);
-
-        realm.initialize(cx);
+    HandleScope::new(cx, |cx| {
+        let realm = Realm::new_uninit(cx);
         must!(set_default_global_bindings(cx, realm, expose_gc, expose_test262));
 
         realm
@@ -338,11 +273,9 @@ impl HeapObject for HeapPtr<Realm> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.global_env);
         visitor.visit_pointer(&mut self.global_object);
         visitor.visit_pointer(&mut self.global_scopes);
         visitor.visit_pointer(&mut self.lexical_names);
-        visitor.visit_pointer(&mut self.template_map);
         self.intrinsics.visit_pointers(visitor);
     }
 }
@@ -494,36 +427,6 @@ impl LexicalNamesMapField {
 
         for (name, _) in map.iter_mut_gc_unsafe() {
             visitor.visit_pointer(name);
-        }
-    }
-}
-
-pub struct RealmTemplateMapField(Handle<Realm>);
-
-impl BsHashMapField<AstPtr<TemplateLiteral>, HeapPtr<ObjectValue>> for RealmTemplateMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<TemplateMap> {
-        TemplateMap::new(cx, ObjectKind::RealmTemplateMap, capacity)
-    }
-
-    fn get(&self, _: Context) -> HeapPtr<TemplateMap> {
-        self.0.template_map
-    }
-
-    fn set(&mut self, _: Context, map: HeapPtr<TemplateMap>) {
-        self.0.template_map = map;
-    }
-}
-
-impl RealmTemplateMapField {
-    pub fn byte_size(map: &HeapPtr<TemplateMap>) -> usize {
-        TemplateMap::calculate_size_in_bytes(map.capacity())
-    }
-
-    pub fn visit_pointers(map: &mut HeapPtr<TemplateMap>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
-
-        for (_, value) in map.iter_mut_gc_unsafe() {
-            visitor.visit_pointer(value);
         }
     }
 }

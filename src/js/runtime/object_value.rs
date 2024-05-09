@@ -12,7 +12,6 @@ use super::{
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     collections::{BsIndexMap, BsIndexMapField},
     completion::EvalResult,
-    environment::private_environment::PrivateName,
     error::type_error_,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::typed_array::DynTypedArray,
@@ -21,7 +20,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
-    value::{AccessorValue, Value},
+    value::{AccessorValue, SymbolValue, Value},
     Context, Realm,
 };
 
@@ -148,7 +147,11 @@ impl ObjectValue {
     }
 
     // 7.3.27 PrivateElementFind
-    pub fn private_element_find(&self, cx: Context, private_name: PrivateName) -> Option<Property> {
+    pub fn private_element_find(
+        &self,
+        cx: Context,
+        private_name: Handle<SymbolValue>,
+    ) -> Option<Property> {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
@@ -157,7 +160,7 @@ impl ObjectValue {
             .map(|property| Property::from_heap(cx, property))
     }
 
-    pub fn has_private_element(&self, private_name: PrivateName) -> bool {
+    pub fn has_private_element(&self, private_name: Handle<SymbolValue>) -> bool {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since contains_key does not allocate on managed heap
         self.named_properties.contains_key(&property_key.get())
@@ -291,14 +294,6 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::RegExpObject
     }
 
-    pub fn is_function_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::Function
-    }
-
-    pub fn is_builtin_function_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::BuiltinFunction
-    }
-
     pub fn is_closure(&self) -> bool {
         self.descriptor_kind() == ObjectKind::Closure
     }
@@ -330,19 +325,13 @@ impl ObjectValue {
 
     pub fn is_arguments_object(&self) -> bool {
         match self.descriptor_kind() {
-            ObjectKind::MappedArgumentsObject
-            | ObjectKind::LegacyMappedArgumentsObject
-            | ObjectKind::UnmappedArgumentsObject => true,
+            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject => true,
             _ => false,
         }
     }
 
     pub fn is_proxy(&self) -> bool {
         self.descriptor_kind() == ObjectKind::Proxy
-    }
-
-    pub fn is_legacy_bound_function(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::LegacyBoundFunctionObject
     }
 
     pub fn is_object_prototype(&self) -> bool {
@@ -415,7 +404,7 @@ impl Handle<ObjectValue> {
     pub fn private_element_set(
         &mut self,
         cx: Context,
-        private_name: PrivateName,
+        private_name: Handle<SymbolValue>,
         value: Handle<Value>,
     ) {
         let property_key = PropertyKey::symbol(private_name);
@@ -426,31 +415,12 @@ impl Handle<ObjectValue> {
             .insert_without_growing(property_key.get(), property.to_heap());
     }
 
-    // 7.3.28 PrivateFieldAdd
-    pub fn private_field_add(
-        &mut self,
-        cx: Context,
-        private_name: PrivateName,
-        value: Handle<Value>,
-    ) -> EvalResult<()> {
-        if self.has_private_element(private_name) {
-            type_error_(cx, "private property already defined")
-        } else {
-            let property_key = PropertyKey::symbol(private_name);
-            let property = Property::private_field(value);
-            // Safe since insert does not allocate on managed heap
-            self.named_properties_field()
-                .maybe_grow_for_insertion(cx)
-                .insert_without_growing(property_key.get(), property.to_heap());
-            ().into()
-        }
-    }
-
-    // 7.3.29 PrivateMethodOrAccessorAdd
+    /// 7.3.28 PrivateFieldAdd
+    /// 7.3.29 PrivateMethodOrAccessorAdd
     pub fn property_property_add(
         &mut self,
         cx: Context,
-        private_name: PrivateName,
+        private_name: Handle<SymbolValue>,
         private_property: Property,
     ) -> EvalResult<()> {
         if self.has_private_element(private_name) {
@@ -640,26 +610,6 @@ impl Handle<ObjectValue> {
     #[inline]
     pub fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         self.virtual_object().own_property_keys(cx)
-    }
-
-    #[inline]
-    pub fn call(
-        &self,
-        cx: Context,
-        this_argument: Handle<Value>,
-        arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        self.virtual_object().call(cx, this_argument, arguments)
-    }
-
-    #[inline]
-    pub fn construct(
-        &self,
-        cx: Context,
-        arguments: &[Handle<Value>],
-        new_target: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<ObjectValue>> {
-        self.virtual_object().construct(cx, arguments, new_target)
     }
 
     // Type utilities

@@ -2,9 +2,9 @@ use std::{collections::HashMap, mem::size_of};
 
 use crate::{
     js::runtime::{
-        arguments_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
-        gc_object::GcObject, global_names, object_value::ObjectValue,
-        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
+        bound_function_object::BoundFunctionObject, console::ConsoleObject, gc_object::GcObject,
+        global_names, object_value::ObjectValue, test_262_object::Test262Object, Context,
+        EvalResult, Handle, Value,
     },
     static_assert,
 };
@@ -142,8 +142,6 @@ macro_rules! rust_runtime_functions {
 // Every builtin function must be registered in this list so that an id can be assigned.
 rust_runtime_functions!(
     AggregateErrorConstructor::construct,
-    arguments_object::arg_getter,
-    arguments_object::arg_setter,
     ArrayBufferConstructor::construct,
     ArrayBufferConstructor::is_view,
     ArrayBufferConstructor::get_species,

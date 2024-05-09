@@ -5,7 +5,6 @@ use crate::{
     js::{
         common::{unicode::is_newline, wtf_8::Wtf8String},
         parser::{
-            ast,
             lexer_stream::{
                 HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
                 HeapTwoByteCodeUnitLexerStream, LexerStream,
@@ -91,17 +90,6 @@ impl RegExpObject {
         maybe!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
 
         object.into()
-    }
-
-    pub fn new_from_literal(
-        cx: Context,
-        lit: &ast::RegExpLiteral,
-    ) -> EvalResult<Handle<RegExpObject>> {
-        // Can use source directly as "escaped" pattern source string
-        let source = InternedStrings::get_wtf8_str(cx, &lit.pattern);
-        let compiled_regexp = compile_regexp(cx, &lit.regexp, source);
-
-        Self::new_from_compiled_regexp(cx, compiled_regexp)
     }
 
     fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {

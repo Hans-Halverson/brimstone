@@ -30,18 +30,12 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_test262: bool,
 
-    /// Use the bytecode interpreter
-    #[arg(long, default_value_t = false)]
-    pub bytecode: bool,
-
     #[arg(required = true)]
     pub files: Vec<String>,
 }
 
 /// Options passed throughout the program.
 pub struct Options {
-    /// Use the bytecode interpreter
-    pub bytecode: bool,
     /// Print the bytecode to the console
     pub print_bytecode: bool,
     /// Print the bytecode for all RegExps to the console
@@ -54,7 +48,6 @@ impl Options {
     /// Create a new options struct from the command line arguments.
     pub fn new_from_args(args: &Args) -> Self {
         Self {
-            bytecode: args.bytecode || args.print_bytecode,
             print_bytecode: args.print_bytecode,
             print_regexp_bytecode: args.print_regexp_bytecode,
             dump_buffer: None,
@@ -74,7 +67,6 @@ impl Default for Options {
     /// Create a new options struct with default values.
     fn default() -> Self {
         Self {
-            bytecode: false,
             print_bytecode: false,
             print_regexp_bytecode: false,
             dump_buffer: None,

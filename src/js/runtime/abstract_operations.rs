@@ -1,16 +1,14 @@
 use std::collections::HashSet;
 
-use crate::{js::runtime::eval::class::ClassFieldDefinitionName, maybe, must};
+use crate::{maybe, must};
 
 use super::{
     array_object::create_array_from_list,
-    bound_function_object::{BoundFunctionObject, LegacyBoundFunctionObject},
+    bound_function_object::BoundFunctionObject,
     bytecode::function::Closure,
     completion::EvalResult,
-    environment::private_environment::PrivateName,
     error::{err_cannot_set_property, type_error_},
-    eval::{class::ClassFieldDefinition, expression::eval_instanceof_expression},
-    function::Function,
+    eval::expression::eval_instanceof_expression,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
@@ -20,9 +18,9 @@ use super::{
     proxy_object::ProxyObject,
     realm::Realm,
     type_utilities::{
-        is_callable, is_callable_object, is_constructor_value, same_object_value_handles,
-        to_length, to_object,
+        is_callable, is_constructor_value, same_object_value_handles, to_length, to_object,
     },
+    value::SymbolValue,
     Context, Value,
 };
 
@@ -187,15 +185,7 @@ pub fn call(
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    if cx.options.bytecode {
-        cx.vm().call_from_rust(func, receiver, arguments)
-    } else {
-        if !is_callable(func) {
-            return type_error_(cx, "value is not a function");
-        }
-
-        func.as_object().call(cx, receiver, arguments)
-    }
+    cx.vm().call_from_rust(func, receiver, arguments)
 }
 
 pub fn call_object(
@@ -204,15 +194,7 @@ pub fn call_object(
     receiver: Handle<Value>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    if cx.options.bytecode {
-        cx.vm().call_from_rust(func.into(), receiver, arguments)
-    } else {
-        if !is_callable_object(func) {
-            return type_error_(cx, "value is not a function");
-        }
-
-        func.call(cx, receiver, arguments)
-    }
+    cx.vm().call_from_rust(func.into(), receiver, arguments)
 }
 
 // 7.3.15 Construct
@@ -223,13 +205,8 @@ pub fn construct(
     new_target: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let new_target = new_target.unwrap_or(func);
-
-    if cx.options.bytecode {
-        cx.vm()
-            .construct_from_rust(func.into(), arguments, new_target)
-    } else {
-        func.construct(cx, arguments, new_target)
-    }
+    cx.vm()
+        .construct_from_rust(func.into(), arguments, new_target)
 }
 
 #[derive(PartialEq)]
@@ -373,19 +350,8 @@ pub fn ordinary_has_instance(
 
     let func = func.as_object();
 
-    if cx.options.bytecode {
-        if let Some(target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func) {
-            return eval_instanceof_expression(cx, object, target_func.into());
-        }
-    } else {
-        if func.is_legacy_bound_function() {
-            let bound_func = func.cast::<LegacyBoundFunctionObject>();
-            return eval_instanceof_expression(
-                cx,
-                object,
-                bound_func.bound_target_function().into(),
-            );
-        }
+    if let Some(target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func) {
+        return eval_instanceof_expression(cx, object, target_func.into());
     }
 
     if !object.is_object() {
@@ -437,7 +403,7 @@ pub fn species_constructor(
         return cx.get_intrinsic(default_constructor).into();
     }
 
-    if is_constructor_value(cx, species) {
+    if is_constructor_value(species) {
         return species.as_object().into();
     }
 
@@ -495,30 +461,25 @@ pub fn enumerable_own_property_names(
 
 // 7.3.25 GetFunctionRealm
 pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<HeapPtr<Realm>> {
-    if cx.options.bytecode {
-        let kind = func.descriptor().kind();
+    let kind = func.descriptor().kind();
 
-        // Bound functions are also represented as closures with the correct realm set
-        if kind == ObjectKind::Closure {
-            if let Some(bound_target_func) =
-                BoundFunctionObject::get_target_if_bound_function(cx, func)
-            {
-                get_function_realm(cx, bound_target_func)
-            } else {
-                func.cast::<Closure>().function_ptr().realm_ptr().into()
-            }
-        } else if kind == ObjectKind::Proxy {
-            let proxy_object = func.cast::<ProxyObject>();
-            if proxy_object.is_revoked() {
-                return type_error_(cx, "operation attempted on revoked proxy");
-            }
-
-            get_function_realm(cx, proxy_object.target().unwrap())
+    // Bound functions are also represented as closures with the correct realm set
+    if kind == ObjectKind::Closure {
+        if let Some(bound_target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func)
+        {
+            get_function_realm(cx, bound_target_func)
         } else {
-            cx.current_realm_ptr().into()
+            func.cast::<Closure>().function_ptr().realm_ptr().into()
         }
+    } else if kind == ObjectKind::Proxy {
+        let proxy_object = func.cast::<ProxyObject>();
+        if proxy_object.is_revoked() {
+            return type_error_(cx, "operation attempted on revoked proxy");
+        }
+
+        get_function_realm(cx, proxy_object.target().unwrap())
     } else {
-        func.get_realm(cx)
+        cx.current_realm_ptr().into()
     }
 }
 
@@ -561,7 +522,7 @@ pub fn copy_data_properties(
 pub fn private_get(
     cx: Context,
     object: Handle<ObjectValue>,
-    private_name: PrivateName,
+    private_name: Handle<SymbolValue>,
 ) -> EvalResult<Handle<Value>> {
     let property = match object.private_element_find(cx, private_name) {
         None => return type_error_(cx, "can't access private field or method"),
@@ -586,7 +547,7 @@ pub fn private_get(
 pub fn private_set(
     cx: Context,
     mut object: Handle<ObjectValue>,
-    private_name: PrivateName,
+    private_name: Handle<SymbolValue>,
     value: Handle<Value>,
 ) -> EvalResult<()> {
     let property = match object.private_element_find(cx, private_name) {
@@ -611,42 +572,4 @@ pub fn private_set(
             }
         }
     }
-}
-
-// 7.3.32 DefineField
-pub fn define_field(
-    cx: Context,
-    mut receiver: Handle<ObjectValue>,
-    field_def: ClassFieldDefinition,
-) -> EvalResult<()> {
-    let init_value = match field_def.initializer {
-        None => cx.undefined(),
-        Some(func) => maybe!(call_object(cx, func.into(), receiver.into(), &[])),
-    };
-
-    match field_def.name {
-        ClassFieldDefinitionName::Normal(property_key) => {
-            maybe!(create_data_property_or_throw(cx, receiver, property_key, init_value));
-        }
-        ClassFieldDefinitionName::Private(private_name) => {
-            maybe!(receiver.private_field_add(cx, private_name, init_value))
-        }
-    }
-
-    ().into()
-}
-
-// 7.3.33 InitializeInstanceElements
-pub fn initialize_instance_elements(
-    cx: Context,
-    mut object: Handle<ObjectValue>,
-    constructor: Handle<Function>,
-) -> EvalResult<()> {
-    maybe!(constructor.iter_private_methods(cx, |cx, private_name, private_method| {
-        object.property_property_add(cx, private_name, private_method)
-    }));
-
-    maybe!(constructor.iter_fields(cx, |cx, field| { define_field(cx, object, field) }));
-
-    ().into()
 }

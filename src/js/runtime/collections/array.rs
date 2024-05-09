@@ -29,27 +29,6 @@ impl<T: Clone> BsArray<T> {
         array
     }
 
-    pub fn new_from_vec(
-        cx: Context,
-        kind: ObjectKind,
-        length: usize,
-        gen_elements: impl Fn() -> Vec<T>,
-    ) -> HeapPtr<Self> {
-        let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
-
-        set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
-
-        // Initialize entries array to empty
-        array.array.init_with_uninit(length);
-
-        for (i, element) in gen_elements().into_iter().enumerate() {
-            array.array.set_unchecked(i, element);
-        }
-
-        array
-    }
-
     #[inline]
     pub fn calculate_size_in_bytes(length: usize) -> usize {
         ARRAY_BYTE_OFFSITE + InlineArray::<T>::calculate_size_in_bytes(length)
@@ -58,11 +37,6 @@ impl<T: Clone> BsArray<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.array.len()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.array.as_slice()
     }
 
     #[inline]

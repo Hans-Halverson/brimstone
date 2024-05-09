@@ -59,27 +59,22 @@ fn evaluate_file(
         println!("{}", js::parser::print_program(&parse_result.program, &source));
     }
 
-    if options.bytecode {
-        // Generate bytecode for the program
-        let bytecode_program =
-            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm)?;
+    // Generate bytecode for the program
+    let bytecode_program =
+        BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm)?;
 
-        if options.print_bytecode {
-            println!(
-                "{}",
-                bytecode_program
-                    .script_function
-                    .debug_print_recursive(false)
-            );
-        }
+    if options.print_bytecode {
+        println!(
+            "{}",
+            bytecode_program
+                .script_function
+                .debug_print_recursive(false)
+        );
+    }
 
-        // Execute in the bytecode interpreter
-        if let Err(err) = cx.execute_program(bytecode_program) {
-            print_eval_error_and_exit(cx, err);
-        }
-    } else {
-        // Use the tree walk interpreter
-        js::runtime::evaluate(cx, parse_result, realm)?;
+    // Execute in the bytecode interpreter
+    if let Err(err) = cx.execute_program(bytecode_program) {
+        print_eval_error_and_exit(cx, err);
     }
 
     Ok(())

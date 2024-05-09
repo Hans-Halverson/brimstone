@@ -11,11 +11,7 @@ use crate::{
 };
 
 use super::{
-    arguments_object::LegacyMappedArgumentsObject,
     array_object::ArrayObject,
-    bound_function_object::LegacyBoundFunctionObject,
-    builtin_function::BuiltinFunction,
-    function::Function,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::{
         function_prototype::FunctionPrototype,
@@ -71,12 +67,7 @@ pub enum ObjectKind {
     WeakMapObject,
     FinalizationRegistryObject,
 
-    Function,
-    BuiltinFunction,
-    LegacyBoundFunctionObject,
-
     MappedArgumentsObject,
-    LegacyMappedArgumentsObject,
     UnmappedArgumentsObject,
 
     Int8Array,
@@ -110,9 +101,7 @@ pub enum ObjectKind {
     BigInt,
     Accessor,
 
-    ExecutionContext,
     Realm,
-    Script,
 
     Closure,
     BytecodeFunction,
@@ -125,20 +114,10 @@ pub enum ObjectKind {
     GlobalNames,
     ClassNames,
 
-    DeclarativeEnvironment,
-    FunctionEnvironment,
-    GlobalEnvironment,
-    ModuleEnvironment,
-    ObjectEnvironment,
-    LegacyPrivateEnvironment,
-
     DenseArrayProperties,
     SparseArrayProperties,
 
     CompiledRegExpObject,
-
-    ArgAccessorClosureEnvironment,
-    RevokeProxyClosureEnvironment,
 
     // Hash maps
     ObjectNamedPropertiesMap,
@@ -146,10 +125,6 @@ pub enum ObjectKind {
     SetObjectValueSet,
     WeakSetObjectWeakValueSet,
     WeakMapObjectWeakValueMap,
-    DeclarativeEnvironmentBindingsMap,
-    RealmTemplateMap,
-    LegacyPrivateEnvironmentNameMap,
-    GlobalEnvironmentNameSet,
     GlobalSymbolRegistryMap,
     InternedStringsMap,
     InternedStringsSet,
@@ -157,8 +132,6 @@ pub enum ObjectKind {
 
     // Arrays
     ArrayBufferDataArray,
-    FunctionFieldsArray,
-    FunctionPrivateMethodsArray,
     FinalizationRegistryCells,
     GlobalScopes,
 
@@ -282,22 +255,9 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::WeakMapObject);
         ordinary_object_descriptor!(ObjectKind::FinalizationRegistryObject);
 
-        register_descriptor!(ObjectKind::Function, Function, DescFlags::IS_OBJECT);
-        register_descriptor!(ObjectKind::BuiltinFunction, BuiltinFunction, DescFlags::IS_OBJECT);
-        register_descriptor!(
-            ObjectKind::LegacyBoundFunctionObject,
-            LegacyBoundFunctionObject,
-            DescFlags::IS_OBJECT
-        );
-
         register_descriptor!(
             ObjectKind::MappedArgumentsObject,
             MappedArgumentsObject,
-            DescFlags::IS_OBJECT
-        );
-        register_descriptor!(
-            ObjectKind::LegacyMappedArgumentsObject,
-            LegacyMappedArgumentsObject,
             DescFlags::IS_OBJECT
         );
         ordinary_object_descriptor!(ObjectKind::UnmappedArgumentsObject);
@@ -340,9 +300,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::BigInt);
         other_heap_object_descriptor!(ObjectKind::Accessor);
 
-        other_heap_object_descriptor!(ObjectKind::ExecutionContext);
         other_heap_object_descriptor!(ObjectKind::Realm);
-        other_heap_object_descriptor!(ObjectKind::Script);
 
         register_descriptor!(ObjectKind::Closure, Closure, DescFlags::IS_OBJECT);
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
@@ -355,38 +313,22 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::GlobalNames);
         other_heap_object_descriptor!(ObjectKind::ClassNames);
 
-        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironment);
-        other_heap_object_descriptor!(ObjectKind::FunctionEnvironment);
-        other_heap_object_descriptor!(ObjectKind::GlobalEnvironment);
-        other_heap_object_descriptor!(ObjectKind::ModuleEnvironment);
-        other_heap_object_descriptor!(ObjectKind::ObjectEnvironment);
-        other_heap_object_descriptor!(ObjectKind::LegacyPrivateEnvironment);
-
         other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);
 
         other_heap_object_descriptor!(ObjectKind::CompiledRegExpObject);
-
-        other_heap_object_descriptor!(ObjectKind::ArgAccessorClosureEnvironment);
-        other_heap_object_descriptor!(ObjectKind::RevokeProxyClosureEnvironment);
 
         other_heap_object_descriptor!(ObjectKind::ObjectNamedPropertiesMap);
         other_heap_object_descriptor!(ObjectKind::MapObjectValueMap);
         other_heap_object_descriptor!(ObjectKind::SetObjectValueSet);
         other_heap_object_descriptor!(ObjectKind::WeakMapObjectWeakValueMap);
         other_heap_object_descriptor!(ObjectKind::WeakSetObjectWeakValueSet);
-        other_heap_object_descriptor!(ObjectKind::DeclarativeEnvironmentBindingsMap);
-        other_heap_object_descriptor!(ObjectKind::RealmTemplateMap);
-        other_heap_object_descriptor!(ObjectKind::LegacyPrivateEnvironmentNameMap);
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
-        other_heap_object_descriptor!(ObjectKind::GlobalEnvironmentNameSet);
 
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
-        other_heap_object_descriptor!(ObjectKind::FunctionFieldsArray);
-        other_heap_object_descriptor!(ObjectKind::FunctionPrivateMethodsArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 

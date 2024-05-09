@@ -121,17 +121,6 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         })
     }
 
-    /// Returns the value associated with the given key in this map, or None is the key is not present.
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.find_index(key).map(move |index| {
-            &mut self
-                .entries
-                .get_unchecked_mut(index)
-                .as_occupied_mut()
-                .value
-        })
-    }
-
     /// Remove an entry from this map if the key is present. Return whether an entry was removed.
     pub fn remove(&mut self, key: &K) -> bool {
         match self.find_index(key) {
@@ -313,14 +302,6 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
 impl<K, V> Entry<K, V> {
     fn as_occupied(&self) -> &KVPair<K, V> {
-        if let Entry::Occupied(kv_pair) = self {
-            kv_pair
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn as_occupied_mut(&mut self) -> &mut KVPair<K, V> {
         if let Entry::Occupied(kv_pair) = self {
             kv_pair
         } else {

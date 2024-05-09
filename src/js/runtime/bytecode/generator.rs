@@ -295,6 +295,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             self.realm,
             None,
             self.source_file,
+            /* source_range */ function.loc.to_range(),
             ClassFieldsInitializer::none(),
             is_constructor,
             /* is_class_constructor */ false,
@@ -327,8 +328,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         HandleScope::new(self.cx, |_| {
             // Special handling if emitting a default constructor
-            if let PendingFunctionNode::Constructor { node: None, name, fields, is_base } =
-                func_node
+            if let PendingFunctionNode::Constructor {
+                node: None,
+                name,
+                fields,
+                is_base,
+                source_range,
+            } = func_node
             {
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
@@ -337,6 +343,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.realm,
                     &name,
                     self.source_file,
+                    source_range,
                     fields,
                     /* is_base_constructor */ is_base,
                 )?;
@@ -385,13 +392,21 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let is_constructor = func_node.is_constructor();
                 let is_class_constructor;
                 let is_base_constructor;
+                let source_range;
 
-                if let PendingFunctionNode::Constructor { is_base, .. } = &func_node {
+                if let PendingFunctionNode::Constructor {
+                    is_base,
+                    source_range: source_range_,
+                    ..
+                } = &func_node
+                {
                     is_class_constructor = true;
                     is_base_constructor = *is_base;
+                    source_range = source_range_.clone();
                 } else {
                     is_class_constructor = false;
                     is_base_constructor = is_constructor;
+                    source_range = func.loc.to_range();
                 }
 
                 let class_fields = match &mut func_node {
@@ -411,6 +426,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.realm,
                     default_name,
                     self.source_file,
+                    source_range,
                     class_fields,
                     is_constructor,
                     is_class_constructor,
@@ -614,6 +630,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         default_name: Option<&Wtf8String>,
         source_file: Handle<SourceFile>,
+        source_range: Range<Pos>,
         class_fields: ClassFieldsInitializer,
         is_constructor: bool,
         is_class_constructor: bool,
@@ -664,7 +681,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             realm,
             name,
             source_file,
-            func.loc.to_range(),
+            source_range,
             class_fields,
             num_parameters as u32,
             function_length as u32,
@@ -721,6 +738,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         realm: Handle<Realm>,
         name: &Wtf8String,
         source_file: Handle<SourceFile>,
+        source_range: Range<Pos>,
         class_fields: ClassFieldsInitializer,
         is_base_constructor: bool,
     ) -> EmitResult<Self> {
@@ -734,7 +752,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             realm,
             Some(name.clone()),
             source_file,
-            0..0,
+            source_range,
             class_fields,
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -5329,7 +5347,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Create the constructor's static BytecodeFunction
         let fields = ClassFieldsInitializer { fields, scope: class.fields_initializer_scope };
         let is_base = class.super_class.is_none();
-        let pending_constructor = PendingFunctionNode::Constructor { node, name, fields, is_base };
+        let source_range = class.loc.to_range();
+        let pending_constructor =
+            PendingFunctionNode::Constructor { node, name, fields, is_base, source_range };
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
         // Find the scope locations for the home objects if they are needed
@@ -7361,6 +7381,7 @@ enum PendingFunctionNode {
         name: Wtf8String,
         fields: ClassFieldsInitializer,
         is_base: bool,
+        source_range: Range<Pos>,
     },
     ClassFieldsInitializer {
         scope: AstPtr<AstScopeNode>,

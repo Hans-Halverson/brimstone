@@ -1,7 +1,5 @@
 use std::{mem::size_of, ops::Range};
 
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
     extend_object, field_offset,
     js::{
@@ -15,13 +13,13 @@ use crate::{
             gc::{HeapObject, HeapVisitor},
             intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
             object_descriptor::{ObjectDescriptor, ObjectKind},
-            object_value::{ObjectValue, VirtualObject},
+            object_value::ObjectValue,
             ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
             property::Property,
             scope::Scope,
             source_file::SourceFile,
             string_value::StringValue,
-            Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
+            Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
         },
     },
     must, set_uninit,
@@ -183,13 +181,6 @@ impl Handle<Closure> {
     pub fn set_lazy_function_name(&mut self, cx: Context, name: Handle<StringValue>) {
         let property = Property::data(name.into(), false, false, true);
         self.object().set_property(cx, cx.names.name(), property);
-    }
-}
-
-#[wrap_ordinary_object]
-impl VirtualObject for Handle<Closure> {
-    fn is_callable(&self) -> bool {
-        true
     }
 }
 

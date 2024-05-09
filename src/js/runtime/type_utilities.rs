@@ -16,7 +16,7 @@ use super::{
     },
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
     object_descriptor::ObjectKind,
-    object_value::{ObjectValue, VirtualObject},
+    object_value::ObjectValue,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
     string_object::StringObject,
@@ -800,7 +800,14 @@ pub fn is_callable(value: Handle<Value>) -> bool {
 }
 
 pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
-    value.is_callable()
+    let kind = value.descriptor().kind();
+    if kind == ObjectKind::Closure {
+        true
+    } else if kind == ObjectKind::Proxy {
+        value.cast::<ProxyObject>().is_callable()
+    } else {
+        false
+    }
 }
 
 // 7.2.4 IsConstructor

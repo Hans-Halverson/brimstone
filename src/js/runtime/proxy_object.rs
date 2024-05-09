@@ -63,12 +63,12 @@ impl ProxyObject {
     }
 
     #[inline]
-    pub fn is_callable_(&self) -> bool {
+    pub fn is_callable(&self) -> bool {
         self.is_callable
     }
 
     #[inline]
-    pub fn is_constructor_(&self) -> bool {
+    pub fn is_constructor(&self) -> bool {
         self.is_constructor
     }
 
@@ -576,14 +576,6 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         new_object.as_object().into()
-    }
-
-    fn is_callable(&self) -> bool {
-        self.is_callable_()
-    }
-
-    fn is_constructor(&self) -> bool {
-        self.is_constructor_()
     }
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {

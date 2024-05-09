@@ -11,7 +11,7 @@ use super::{
     object_value::ObjectValue,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
-    type_utilities::same_object_value_handles,
+    type_utilities::{is_constructor_object_value, same_object_value_handles},
     value::Value,
     Context, Handle,
 };
@@ -33,11 +33,11 @@ impl BoundFunctionObject {
                 .function_ptr()
                 .is_constructor()
         } else if target_function.is_proxy() {
-            target_function.cast::<ProxyObject>().is_constructor_()
+            target_function.cast::<ProxyObject>().is_constructor()
         } else if let Some(target_function) =
             BoundFunctionObject::get_target_if_bound_function(cx, target_function)
         {
-            target_function.is_constructor()
+            is_constructor_object_value(target_function)
         } else {
             false
         };

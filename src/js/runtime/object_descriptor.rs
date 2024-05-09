@@ -4,8 +4,7 @@ use bitflags::bitflags;
 
 use crate::{
     js::runtime::{
-        arguments_object::MappedArgumentsObject, bytecode::function::Closure,
-        ordinary_object::OrdinaryObject, Value,
+        arguments_object::MappedArgumentsObject, ordinary_object::OrdinaryObject, Value,
     },
     set_uninit,
 };
@@ -13,12 +12,9 @@ use crate::{
 use super::{
     array_object::ArrayObject,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
-    intrinsics::{
-        function_prototype::FunctionPrototype,
-        typed_array::{
-            BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
-            Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
-        },
+    intrinsics::typed_array::{
+        BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
+        Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
     },
     object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
     proxy_object::ProxyObject,
@@ -93,7 +89,6 @@ pub enum ObjectKind {
     ForInIterator,
 
     ObjectPrototype,
-    FunctionPrototype,
 
     // Other heap items
     String,
@@ -289,11 +284,6 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ForInIterator);
 
         ordinary_object_descriptor!(ObjectKind::ObjectPrototype);
-        register_descriptor!(
-            ObjectKind::FunctionPrototype,
-            FunctionPrototype,
-            DescFlags::IS_OBJECT
-        );
 
         other_heap_object_descriptor!(ObjectKind::String);
         other_heap_object_descriptor!(ObjectKind::Symbol);
@@ -302,7 +292,7 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::Realm);
 
-        register_descriptor!(ObjectKind::Closure, Closure, DescFlags::IS_OBJECT);
+        ordinary_object_descriptor!(ObjectKind::Closure);
         other_heap_object_descriptor!(ObjectKind::BytecodeFunction);
         other_heap_object_descriptor!(ObjectKind::ConstantTable);
         other_heap_object_descriptor!(ObjectKind::ExceptionHandlers);

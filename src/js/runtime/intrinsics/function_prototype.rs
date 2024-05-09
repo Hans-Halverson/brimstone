@@ -1,9 +1,4 @@
-use std::mem::size_of;
-
-use wrap_ordinary_object::wrap_ordinary_object;
-
 use crate::{
-    extend_object,
     js::runtime::{
         abstract_operations::{
             call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
@@ -14,13 +9,11 @@ use crate::{
         completion::EvalResult,
         error::type_error_,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
-        gc::{HeapObject, HeapVisitor},
         get,
         interned_strings::InternedStrings,
         object_descriptor::ObjectKind,
-        object_value::{ObjectValue, VirtualObject},
+        object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
-        property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
         string_value::{FlatString, StringValue},
@@ -32,9 +25,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-extend_object! {
-    pub struct FunctionPrototype {}
-}
+pub struct FunctionPrototype {}
 
 impl FunctionPrototype {
     /// Start out uninitialized and then initialize later to break dependency cycles.
@@ -275,33 +266,5 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         cx.undefined().into()
-    }
-}
-
-#[wrap_ordinary_object]
-impl VirtualObject for Handle<FunctionPrototype> {
-    fn call(
-        &self,
-        cx: Context,
-        _this_argument: Handle<Value>,
-        _arguments: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        // 20.2.3 Properties of the Function Prototype Object
-        // Accepts any arguments and returns undefined when invoked
-        cx.undefined().into()
-    }
-
-    fn is_callable(&self) -> bool {
-        true
-    }
-}
-
-impl HeapObject for HeapPtr<FunctionPrototype> {
-    fn byte_size(&self) -> usize {
-        size_of::<FunctionPrototype>()
-    }
-
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
     }
 }

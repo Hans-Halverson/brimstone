@@ -1378,7 +1378,7 @@ impl VM {
             } else if kind == ObjectKind::Proxy {
                 // Check if proxy is callable, and if so return the attached closure
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
-                if proxy_object.is_callable_() {
+                if proxy_object.is_callable() {
                     return CallableObject::Proxy(proxy_object).into();
                 }
             }
@@ -1402,7 +1402,7 @@ impl VM {
             } else if kind == ObjectKind::Proxy {
                 // Check if proxy is a constructor
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
-                if proxy_object.is_constructor_() {
+                if proxy_object.is_constructor() {
                     return CallableObject::Proxy(proxy_object);
                 }
             }

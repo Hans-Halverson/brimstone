@@ -21,7 +21,6 @@ use crate::js::runtime::{
         date_object::DateObject,
         error_constructor::ErrorObject,
         finalization_registry_object::{FinalizationRegistryCells, FinalizationRegistryObject},
-        function_prototype::FunctionPrototype,
         map_iterator::MapIterator,
         map_object::{MapObject, MapObjectMapField},
         number_constructor::NumberObject,
@@ -120,7 +119,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().byte_size(),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
-            ObjectKind::FunctionPrototype => self.cast::<FunctionPrototype>().byte_size(),
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
             ObjectKind::Symbol => self.cast::<SymbolValue>().byte_size(),
             ObjectKind::BigInt => self.cast::<BigIntValue>().byte_size(),
@@ -214,9 +212,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().visit_pointers(visitor),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
-            ObjectKind::FunctionPrototype => {
-                self.cast::<FunctionPrototype>().visit_pointers(visitor)
-            }
             ObjectKind::String => self.cast::<StringValue>().visit_pointers(visitor),
             ObjectKind::Symbol => self.cast::<SymbolValue>().visit_pointers(visitor),
             ObjectKind::BigInt => self.cast::<BigIntValue>().visit_pointers(visitor),

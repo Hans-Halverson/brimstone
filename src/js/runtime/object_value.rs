@@ -20,6 +20,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
+    type_utilities::is_callable_object,
     value::{AccessorValue, SymbolValue, Value},
     Context, Realm,
 };
@@ -615,12 +616,7 @@ impl Handle<ObjectValue> {
     // Type utilities
     #[inline]
     pub fn is_callable(&self) -> bool {
-        self.virtual_object().is_callable()
-    }
-
-    #[inline]
-    pub fn is_constructor(&self) -> bool {
-        self.virtual_object().is_constructor()
+        is_callable_object(*self)
     }
 
     #[inline]
@@ -688,15 +684,6 @@ pub trait VirtualObject {
         _new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         panic!("[[Construct]] not implemented for this object")
-    }
-
-    // Type utilities
-    fn is_callable(&self) -> bool {
-        false
-    }
-
-    fn is_constructor(&self) -> bool {
-        false
     }
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {

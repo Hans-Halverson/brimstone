@@ -19,7 +19,7 @@ use crate::{
             },
             completion::EvalResult,
             error::syntax_error_,
-            intrinsics::intrinsics::Intrinsic,
+            intrinsics::{generator_prototype::GeneratorPrototype, intrinsics::Intrinsic},
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
             to_string, Context, Handle, Value,
@@ -34,13 +34,21 @@ pub fn create_dynamic_function(
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
     args: &[Handle<Value>],
+    is_generator: bool,
 ) -> EvalResult<Handle<ObjectValue>> {
+    let is_async = false;
+
     let new_target = new_target.unwrap_or(constructor);
 
-    let prefix = "function";
-    let fallback_proto = Intrinsic::FunctionPrototype;
-    let is_async = false;
-    let is_generator = false;
+    let prefix;
+    let fallback_proto;
+    if is_generator {
+        prefix = "function*";
+        fallback_proto = Intrinsic::GeneratorFunctionPrototype;
+    } else {
+        prefix = "function";
+        fallback_proto = Intrinsic::FunctionPrototype;
+    }
 
     let arg_count = args.len();
 
@@ -141,6 +149,10 @@ pub fn create_dynamic_function(
     // Dynamic functions are always in the global scope
     let global_scope = realm.default_global_scope();
     let closure = Closure::new_with_proto(cx, bytecode_function, global_scope, proto);
+
+    if is_generator && !is_async {
+        maybe!(GeneratorPrototype::install_on_generator_function(cx, closure));
+    }
 
     let closure_object: Handle<ObjectValue> = closure.into();
     closure_object.into()

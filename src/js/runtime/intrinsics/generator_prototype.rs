@@ -1,12 +1,19 @@
-use crate::js::runtime::{
-    completion::EvalResult,
-    function::get_argument,
-    generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    value::Value,
-    Context, Handle,
+use crate::{
+    js::runtime::{
+        abstract_operations::define_property_or_throw,
+        bytecode::function::Closure,
+        completion::EvalResult,
+        function::get_argument,
+        generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create,
+        property::Property,
+        realm::Realm,
+        value::Value,
+        Context, Handle, PropertyDescriptor,
+    },
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -67,5 +74,21 @@ impl GeneratorPrototype {
     ) -> EvalResult<Handle<Value>> {
         let error = get_argument(cx, arguments, 0);
         generator_resume_abrupt(cx, this_value, error, GeneratorCompletionType::Throw)
+    }
+
+    /// Every generator function has a prototype property referencing an instance of the generator
+    /// prototype. Install this property on a generator function.
+    pub fn install_on_generator_function(cx: Context, closure: Handle<Closure>) -> EvalResult<()> {
+        let proto = object_create::<ObjectValue>(
+            cx,
+            ObjectKind::OrdinaryObject,
+            Intrinsic::GeneratorPrototype,
+        )
+        .to_handle();
+
+        let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
+        maybe!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc));
+
+        ().into()
     }
 }

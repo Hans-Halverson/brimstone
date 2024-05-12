@@ -30,13 +30,14 @@ use crate::{
         generator_object::{GeneratorCompletionType, GeneratorObject},
         get,
         intrinsics::{
-            intrinsics::Intrinsic, native_error::TypeError, regexp_constructor::RegExpObject,
+            generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
+            native_error::TypeError, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{object_create, object_create_from_constructor, ordinary_object_create},
+        ordinary_object::{object_create_from_constructor, ordinary_object_create},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -2775,21 +2776,7 @@ impl VM {
         let func_proto = self.cx.get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
         let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
 
-        // Attach a prototype property referencing the generator prototype
-        let proto = object_create::<ObjectValue>(
-            self.cx,
-            ObjectKind::OrdinaryObject,
-            Intrinsic::GeneratorPrototype,
-        )
-        .to_handle();
-
-        let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
-        maybe!(define_property_or_throw(
-            self.cx,
-            closure.into(),
-            self.cx.names.prototype(),
-            proto_desc
-        ));
+        maybe!(GeneratorPrototype::install_on_generator_function(self.cx, closure));
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 

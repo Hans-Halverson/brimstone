@@ -1,8 +1,8 @@
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction, completion::EvalResult,
-        eval::function::create_dynamic_function, object_value::ObjectValue, realm::Realm, Context,
-        Handle, Value,
+        eval::create_dynamic_function::create_dynamic_function, object_value::ObjectValue,
+        realm::Realm, Context, Handle, Value,
     },
     maybe,
 };
@@ -40,6 +40,13 @@ impl FunctionConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
-        maybe!(create_dynamic_function(cx, constructor, new_target, arguments)).into()
+        maybe!(create_dynamic_function(
+            cx,
+            constructor,
+            new_target,
+            arguments,
+            /* is_generator */ false
+        ))
+        .into()
     }
 }

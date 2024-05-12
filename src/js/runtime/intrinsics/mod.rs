@@ -23,7 +23,7 @@ mod function_constructor;
 pub mod function_prototype;
 mod generator_function_constructor;
 mod generator_function_prototype;
-mod generator_prototype;
+pub mod generator_prototype;
 pub mod global_object;
 pub mod intrinsics;
 mod iterator_prototype;

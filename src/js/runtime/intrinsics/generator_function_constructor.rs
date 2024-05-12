@@ -1,6 +1,10 @@
-use crate::js::runtime::{
-    builtin_function::BuiltinFunction, completion::EvalResult, object_value::ObjectValue,
-    realm::Realm, Context, Handle, Value,
+use crate::{
+    js::runtime::{
+        builtin_function::BuiltinFunction, completion::EvalResult,
+        eval::create_dynamic_function::create_dynamic_function, object_value::ObjectValue,
+        realm::Realm, Context, Handle, Value,
+    },
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -33,11 +37,19 @@ impl GeneratorFunctionConstructor {
 
     // 27.3.1.1 GeneratorFunction
     pub fn construct(
-        _: Context,
+        mut cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
+        arguments: &[Handle<Value>],
+        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!("GeneratorFunction constructor")
+        let constructor = cx.current_function();
+        maybe!(create_dynamic_function(
+            cx,
+            constructor,
+            new_target,
+            arguments,
+            /* is_generator */ true
+        ))
+        .into()
     }
 }

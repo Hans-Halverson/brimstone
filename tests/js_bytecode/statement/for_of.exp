@@ -113,63 +113,57 @@
       5: GetIterator r1, r2, r3
   .L0:
       9: IteratorNext r3, r4, r1, r2
-     14: JumpTrue r4, 112 (.L11)
+     14: JumpTrue r4, 97 (.L10)
      17: Mov r0, r3
      20: Mov r5, <scope>
      23: LoadImmediate r6, 2
      26: JumpToBooleanFalse r6, 8 (.L1)
      29: LoadImmediate r3, 1
-     32: Jump 32 (.L4)
+     32: Jump 29 (.L4)
   .L1:
      34: LoadImmediate r6, 3
-     37: JumpToBooleanFalse r6, 8 (.L2)
-     40: LoadImmediate r3, 2
-     43: Jump 21 (.L4)
+     37: JumpToBooleanFalse r6, 5 (.L2)
+     40: Jump -31 (.L0)
   .L2:
-     45: LoadImmediate r6, 4
-     48: JumpToBooleanFalse r6, 11 (.L3)
-     51: LoadImmediate r3, 3
-     54: Mov r4, a0
-     57: Jump 7 (.L4)
+     42: LoadImmediate r6, 4
+     45: JumpToBooleanFalse r6, 11 (.L3)
+     48: LoadImmediate r3, 2
+     51: Mov r4, a0
+     54: Jump 7 (.L4)
   .L3:
-     59: Jump 65 (.L10)
-     61: LoadImmediate r3, 0
+     56: Jump 53 (.L9)
+     58: LoadImmediate r3, 0
   .L4:
-     64: Mov <scope>, r5
-     67: IteratorClose r1
-     69: Jump 17 (.L6)
-     71: LoadImmediate r6, 0
-     74: StrictEqual r6, r3, r6
-     78: JumpFalse r6, 6 (.L5)
-     81: Mov r5, r4
+     61: Mov <scope>, r5
+     64: IteratorClose r1
+     66: Jump 17 (.L6)
+     68: LoadImmediate r6, 0
+     71: StrictEqual r6, r3, r6
+     75: JumpFalse r6, 6 (.L5)
+     78: Mov r5, r4
   .L5:
-     84: Throw r5
+     81: Throw r5
   .L6:
-     86: LoadImmediate r5, 0
-     89: StrictEqual r5, r3, r5
-     93: JumpFalse r5, 5 (.L7)
-     96: Throw r4
+     83: LoadImmediate r5, 0
+     86: StrictEqual r5, r3, r5
+     90: JumpFalse r5, 5 (.L7)
+     93: Throw r4
   .L7:
-     98: LoadImmediate r5, 3
-    101: StrictEqual r5, r3, r5
-    105: JumpFalse r5, 5 (.L8)
-    108: Ret r4
+     95: LoadImmediate r5, 2
+     98: StrictEqual r5, r3, r5
+    102: JumpFalse r5, 5 (.L8)
+    105: Ret r4
   .L8:
-    110: LoadImmediate r5, 1
-    113: StrictEqual r5, r3, r5
-    117: JumpFalse r5, 5 (.L9)
-    120: Jump 6 (.L11)
+    107: Jump 4 (.L10)
   .L9:
-    122: Jump -113 (.L0)
+    109: Jump -100 (.L0)
   .L10:
-    124: Jump -115 (.L0)
-  .L11:
-    126: LoadImmediate r1, 5
-    129: LoadUndefined r1
-    131: Ret r1
+    111: LoadImmediate r1, 5
+    114: LoadUndefined r1
+    116: Ret r1
   Exception Handlers:
-    17-59 -> 61 (r4)
-    67-69 -> 71 (r5)
+    17-56 -> 58 (r4)
+    64-66 -> 68 (r5)
 }
 
 [BytecodeFunction: lhsIdentifier] {

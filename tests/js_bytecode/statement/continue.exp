@@ -6,8 +6,12 @@
      9: StoreGlobal r0, c3
     12: NewClosure r0, c4
     15: StoreGlobal r0, c5
-    18: LoadUndefined r0
-    20: Ret r0
+    18: NewClosure r0, c6
+    21: StoreGlobal r0, c7
+    24: NewClosure r0, c8
+    27: StoreGlobal r0, c9
+    30: LoadUndefined r0
+    32: Ret r0
   Constant Table:
     0: [BytecodeFunction: testSimple]
     1: [String: testSimple]
@@ -15,6 +19,10 @@
     3: [String: testNestedUnlabeled]
     4: [BytecodeFunction: testLabeled]
     5: [String: testLabeled]
+    6: [BytecodeFunction: continueSkipsLabeledStatement]
+    7: [String: continueSkipsLabeledStatement]
+    8: [BytecodeFunction: continueSkipsSwitch]
+    9: [String: continueSkipsSwitch]
 }
 
 [BytecodeFunction: testSimple] {
@@ -84,4 +92,37 @@
     47: LoadImmediate r0, 7
     50: LoadUndefined r0
     52: Ret r0
+}
+
+[BytecodeFunction: continueSkipsLabeledStatement] {
+  Parameters: 0, Registers: 1
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 16 (.L1)
+     5: LoadImmediate r0, 1
+     8: LoadImmediate r0, 2
+    11: Jump -11 (.L0)
+    13: LoadImmediate r0, 3
+    16: Jump -16 (.L0)
+  .L1:
+    18: LoadUndefined r0
+    20: Ret r0
+}
+
+[BytecodeFunction: continueSkipsSwitch] {
+  Parameters: 0, Registers: 1
+  .L0:
+     0: LoadTrue r0
+     2: JumpFalse r0, 20 (.L2)
+     5: LoadImmediate r0, 1
+     8: LoadFalse r0
+    10: Jump 2 (.L1)
+  .L1:
+    12: LoadImmediate r0, 2
+    15: Jump -15 (.L0)
+    17: LoadImmediate r0, 3
+    20: Jump -20 (.L0)
+  .L2:
+    22: LoadUndefined r0
+    24: Ret r0
 }

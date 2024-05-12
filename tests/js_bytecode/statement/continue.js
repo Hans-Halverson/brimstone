@@ -41,3 +41,26 @@ function testLabeled() {
   }
   7;
 }
+
+function continueSkipsLabeledStatement() {
+  while (true) {
+    1;
+    a: {
+      2;
+      continue;
+    }
+    3;
+  }
+}
+
+function continueSkipsSwitch() {
+  while (true) {
+    1;
+    switch (false) {
+      default:
+        2;
+        continue;
+    }
+    3;
+  }
+}

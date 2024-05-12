@@ -52,3 +52,27 @@ function testLabeledNonLoop() {
   }
   4;
 }
+
+function unlabeledBreakIgnoresLabeledStatement1() {
+  while (true) {
+    1;
+    a: {
+      2;
+      break;
+    }
+    3;
+  }
+}
+
+function unlabeledBreakIgnoresLabeledStatement2() {
+  switch (true) {
+    default: {
+      1;
+      a: {
+        2;
+        break;
+      }
+      3;
+    }
+  }
+}

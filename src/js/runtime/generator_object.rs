@@ -34,9 +34,10 @@ extend_object! {
         pc_to_resume_offset: usize,
         // Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Index of the destination register for the dest operand of the last yield instruction.
-        // The value passed into Generator.prototype.next is writted to this register.
-        yield_dest_index: Option<u32>,
+        // Indices of registers for the completion operands of the last yield instruction. The value
+        // passed into Generator.prototype.{next, return, throw} is written to the first register
+        // and the completion type is written to the second register.
+        yield_completion_indices: Option<(u32, u32)>,
         // The stack frame of the generator, containing all args, locals, and fixed slots in
         // between.
         stack_frame: InlineArray<StackSlotValue>,
@@ -58,6 +59,30 @@ enum GeneratorState {
 impl GeneratorState {
     fn is_suspended(&self) -> bool {
         matches!(self, Self::SuspendedStart | Self::SuspendedYield)
+    }
+}
+
+#[derive(PartialEq)]
+#[repr(u8)]
+pub enum GeneratorCompletionType {
+    Normal,
+    Return,
+    Throw,
+}
+
+impl GeneratorCompletionType {
+    /// Return the representative runtime value for this completion type. This is the value stored
+    /// in the second register of a yield instruction, and will be checked at runtime to determine
+    /// the completion type.
+    ///
+    /// The abormal completions are nullish so we can check them with a single JumpNotNullish
+    /// instruction.
+    pub fn to_value(&self) -> Value {
+        match self {
+            Self::Normal => Value::bool(true),
+            Self::Return => Value::undefined(),
+            Self::Throw => Value::null(),
+        }
     }
 }
 
@@ -84,7 +109,7 @@ impl GeneratorObject {
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
         set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.yield_dest_index, None);
+        set_uninit!(generator.yield_completion_indices, None);
         generator.stack_frame.init_from_slice(stack_frame);
 
         generator.into()
@@ -105,8 +130,8 @@ impl GeneratorObject {
         self.fp_index
     }
 
-    pub fn yield_dest_index(&self) -> Option<u32> {
-        self.yield_dest_index
+    pub fn yield_completion_indices(&self) -> Option<(u32, u32)> {
+        self.yield_completion_indices
     }
 
     pub fn stack_frame(&self) -> &[StackSlotValue] {
@@ -120,12 +145,12 @@ impl GeneratorObject {
     pub fn suspend(
         &mut self,
         pc_to_resume_offset: usize,
-        yield_dest_index: u32,
+        yield_completion_indices: (u32, u32),
         stack_frame: &[StackSlotValue],
     ) {
         self.state = GeneratorState::SuspendedYield;
         self.pc_to_resume_offset = pc_to_resume_offset;
-        self.yield_dest_index = Some(yield_dest_index);
+        self.yield_completion_indices = Some(yield_completion_indices);
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);
     }
 
@@ -166,7 +191,7 @@ fn generator_validate(
 pub fn generator_resume(
     mut cx: Context,
     generator: Handle<Value>,
-    value: Handle<Value>,
+    completion_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
     let mut generator = maybe!(generator_validate(cx, generator));
 
@@ -180,7 +205,45 @@ pub fn generator_resume(
     // Mark the generator as executing then resume the generator
     generator.state = GeneratorState::Executing;
 
-    let next_value = maybe!(cx.vm().resume_generator(generator, value));
+    let next_value = maybe!(cx.vm().resume_generator(
+        generator,
+        completion_value,
+        GeneratorCompletionType::Normal
+    ));
+    let is_done = generator.state == GeneratorState::Completed;
+
+    create_iter_result_object(cx, next_value, is_done).into()
+}
+
+pub fn generator_resume_abrupt(
+    mut cx: Context,
+    generator: Handle<Value>,
+    completion_value: Handle<Value>,
+    completion_type: GeneratorCompletionType,
+) -> EvalResult<Handle<Value>> {
+    let mut generator = maybe!(generator_validate(cx, generator));
+
+    // An abrupt completion on a generator that has not been started immediately completes it
+    if generator.state == GeneratorState::SuspendedStart {
+        generator.state = GeneratorState::Completed;
+    }
+
+    // Check if generator has already completed
+    if generator.state == GeneratorState::Completed {
+        if completion_type == GeneratorCompletionType::Return {
+            return create_iter_result_object(cx, completion_value, true).into();
+        } else {
+            return EvalResult::Throw(completion_value);
+        }
+    }
+
+    debug_assert!(generator.state == GeneratorState::SuspendedYield);
+
+    generator.state = GeneratorState::Executing;
+
+    let next_value = maybe!(cx
+        .vm()
+        .resume_generator(generator, completion_value, completion_type));
     let is_done = generator.state == GeneratorState::Completed;
 
     create_iter_result_object(cx, next_value, is_done).into()

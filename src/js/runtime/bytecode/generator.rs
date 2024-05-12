@@ -4170,14 +4170,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         self.register_allocator.release(yield_value);
-        let dest = self.register_allocator.allocate()?;
+        let completion_value_dest = self.register_allocator.allocate()?;
+        let completion_type_dest = self.register_allocator.allocate()?;
 
         // Find the generator register from the stored index
         let generator = Register::local(self.generator_index.unwrap() as usize);
 
-        self.writer.yield_instruction(dest, generator, yield_value);
+        self.writer.yield_instruction(
+            completion_value_dest,
+            completion_type_dest,
+            generator,
+            yield_value,
+        );
 
-        Ok(dest)
+        // Check the completion type and handle accordingly
+        let normal_block = self.new_block();
+        let throw_block = self.new_block();
+
+        // All abnormal completions are nullish, so jump directly to the normal block
+        self.write_jump_not_nullish_instruction(completion_type_dest, normal_block)?;
+
+        // Otherwise check if this is a return or throw completion
+        self.write_jump_not_undefined_instruction(completion_type_dest, throw_block)?;
+
+        // Must be a return completion if execution falls through
+        self.gen_return(Some(completion_value_dest), /* derived_constructor_scope */ None)?;
+
+        // Otherwise is a throw completion
+        self.start_block(throw_block);
+        self.writer.throw_instruction(completion_value_dest);
+
+        self.start_block(normal_block);
+
+        self.register_allocator.release(completion_type_dest);
+
+        Ok(completion_value_dest)
     }
 
     /// Generate a super member expression. Write the object's register to the `call_receiver` register if

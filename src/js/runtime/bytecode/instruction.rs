@@ -687,7 +687,7 @@ define_instructions!(
     }
 
     /// Conditionally jump to the given instruction if the condition is not undefined, using an
-    /// inlin offset.
+    /// inline offset.
     JumpNotUndefined (JumpNotUndefinedInstruction, jump_not_undefined_instruction) {
         [0] condition: Register,
         [1] offset: SInt,
@@ -1080,12 +1080,16 @@ define_instructions!(
     }
 
     /// Yield a value from the current function, returning the value to the caller. Takes the
-    /// generator for the function and the value to yield. The value passed into GeneratorResume
-    /// when the generator resumes will be stored in dest.
+    /// generator for the function and the value to yield.
+    ///
+    /// The completion passed into GeneratorResume when the generator resumes will be stored in the
+    /// a pair of registers holding the completion value and completion type. The completion type
+    /// is true for normal completions, undefined for returns, and null for throws.
     Yield(YieldInstruction, yield_instruction) {
-        [0] dest: Register,
-        [1] generator: Register,
-        [2] yield_value: Register,
+        [0] completion_value_dest: Register,
+        [1] completion_type_dest: Register,
+        [2] generator: Register,
+        [3] yield_value: Register,
     }
 );
 

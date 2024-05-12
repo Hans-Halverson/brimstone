@@ -27,6 +27,14 @@ function *yieldReturnValue() {
   return (yield) + (yield 1);
 }
 
+function *yieldInFinally() {
+  try {
+    yield;
+  } finally {
+    1;
+  }
+}
+
 (function *generatorExpression() {});
 
 // Anonymous generator expression

@@ -293,6 +293,8 @@ rust_runtime_functions!(
     FunctionPrototype::to_string,
     GeneratorFunctionConstructor::construct,
     GeneratorPrototype::next,
+    GeneratorPrototype::return_,
+    GeneratorPrototype::throw,
     global_names::global_declaration_instantiation_runtime,
     global_object::decode_uri,
     global_object::decode_uri_component,

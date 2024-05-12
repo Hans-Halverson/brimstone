@@ -27,7 +27,7 @@ use crate::{
         for_in_iterator::ForInIterator,
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
-        generator_object::GeneratorObject,
+        generator_object::{GeneratorCompletionType, GeneratorObject},
         get,
         intrinsics::{
             intrinsics::Intrinsic, native_error::TypeError, regexp_constructor::RegExpObject,
@@ -205,7 +205,8 @@ impl VM {
     pub fn resume_generator(
         &mut self,
         mut generator: Handle<GeneratorObject>,
-        value: Handle<Value>,
+        completion_value: Handle<Value>,
+        completion_type: GeneratorCompletionType,
     ) -> EvalResult<Handle<Value>> {
         let saved_stack_frame = generator.stack_frame();
         let stack_frame_size = saved_stack_frame.len();
@@ -236,12 +237,18 @@ impl VM {
         let mut return_value = Value::undefined();
         stack_frame.set_return_value_address((&mut return_value) as *mut Value);
 
-        // Write the resumed value to the yield destination register if necessary
-        if let Some(yield_dest_index) = generator.yield_dest_index() {
+        // Write the resumed value to the yield completion registers if necessary
+        if let Some((completion_value_index, completion_type_index)) =
+            generator.yield_completion_indices()
+        {
             self.write_register(
-                Register::<ExtraWide>::local(yield_dest_index as usize),
-                value.get(),
+                Register::<ExtraWide>::local(completion_value_index as usize),
+                completion_value.get(),
             );
+            self.write_register(
+                Register::<ExtraWide>::local(completion_type_index as usize),
+                completion_type.to_value(),
+            )
         }
 
         // Restore the PC, which was stored as an offset into the BytecodeFunction
@@ -358,7 +365,8 @@ impl VM {
                         .as_object()
                         .cast::<GeneratorObject>();
                     let yield_value = self.read_register(instr.yield_value());
-                    let yield_dest_index = instr.dest().local_index() as u32;
+                    let completion_value_index = instr.completion_value_dest().local_index() as u32;
+                    let completion_type_index = instr.completion_type_dest().local_index() as u32;
 
                     // Set the PC to the next instruction to execute
                     self.set_pc_after(instr);
@@ -368,7 +376,7 @@ impl VM {
                     // Save the stack frame and PC to resume in the generator object
                     generator.suspend(
                         pc_to_resume_offset,
-                        yield_dest_index,
+                        (completion_value_index, completion_type_index),
                         stack_frame.as_slice(),
                     );
 

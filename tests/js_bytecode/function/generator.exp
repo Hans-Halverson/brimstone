@@ -13,16 +13,18 @@
     30: NewGenerator r0, c10
     33: StoreGlobal r0, c11
     36: NewGenerator r0, c12
-    39: NewGenerator r0, c13
-    42: NewObject r0
-    44: NewGenerator r1, c15
-    47: DefineNamedProperty r0, c14, r1
-    51: LoadEmpty r1
-    53: NewGenerator r2, c16
-    56: NewClass r0, c18, c17, r1, r2
-    62: StoreToScope r0, 1, 0
-    66: LoadUndefined r0
-    68: Ret r0
+    39: StoreGlobal r0, c13
+    42: NewGenerator r0, c14
+    45: NewGenerator r0, c15
+    48: NewObject r0
+    50: NewGenerator r1, c17
+    53: DefineNamedProperty r0, c16, r1
+    57: LoadEmpty r1
+    59: NewGenerator r2, c18
+    62: NewClass r0, c20, c19, r1, r2
+    68: StoreToScope r0, 1, 0
+    72: LoadUndefined r0
+    74: Ret r0
   Constant Table:
     0: [BytecodeFunction: empty]
     1: [String: empty]
@@ -36,13 +38,15 @@
     9: [String: multipleYields]
     10: [BytecodeFunction: yieldReturnValue]
     11: [String: yieldReturnValue]
-    12: [BytecodeFunction: generatorExpression]
-    13: [BytecodeFunction: <anonymous>]
-    14: [String: generatorMethod]
-    15: [BytecodeFunction: generatorMethod]
-    16: [BytecodeFunction: generatorMethod]
-    17: [BytecodeFunction: C]
-    18: [ClassNames]
+    12: [BytecodeFunction: yieldInFinally]
+    13: [String: yieldInFinally]
+    14: [BytecodeFunction: generatorExpression]
+    15: [BytecodeFunction: <anonymous>]
+    16: [String: generatorMethod]
+    17: [BytecodeFunction: generatorMethod]
+    18: [BytecodeFunction: generatorMethod]
+    19: [BytecodeFunction: C]
+    20: [ClassNames]
 }
 
 [BytecodeFunction: empty] {
@@ -67,51 +71,137 @@
 }
 
 [BytecodeFunction: simpleYield] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadImmediate r1, 1
      5: LoadUndefined r1
-     7: Yield r1, r0, r1
-    11: LoadImmediate r1, 2
-    14: LoadUndefined r1
-    16: Ret r1
+     7: Yield r1, r2, r0, r1
+    12: JumpNotNullish r2, 10 (.L1)
+    15: JumpNotUndefined r2, 5 (.L0)
+    18: Ret r1
+  .L0:
+    20: Throw r1
+  .L1:
+    22: LoadImmediate r1, 2
+    25: LoadUndefined r1
+    27: Ret r1
 }
 
 [BytecodeFunction: yieldWithArg] {
-  Parameters: 0, Registers: 2
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadImmediate r1, 1
      5: LoadImmediate r1, 2
-     8: Yield r1, r0, r1
-    12: LoadImmediate r1, 3
-    15: LoadUndefined r1
-    17: Ret r1
+     8: Yield r1, r2, r0, r1
+    13: JumpNotNullish r2, 10 (.L1)
+    16: JumpNotUndefined r2, 5 (.L0)
+    19: Ret r1
+  .L0:
+    21: Throw r1
+  .L1:
+    23: LoadImmediate r1, 3
+    26: LoadUndefined r1
+    28: Ret r1
 }
 
 [BytecodeFunction: multipleYields] {
-  Parameters: 0, Registers: 2
-     0: GeneratorStart r0
-     2: LoadUndefined r1
-     4: Yield r1, r0, r1
-     8: LoadImmediate r1, 1
-    11: Yield r1, r0, r1
-    15: LoadUndefined r1
-    17: Yield r1, r0, r1
-    21: LoadImmediate r1, 2
-    24: Yield r1, r0, r1
-    28: LoadUndefined r1
-    30: Ret r1
-}
-
-[BytecodeFunction: yieldReturnValue] {
   Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadUndefined r1
-     4: Yield r1, r0, r1
-     8: LoadImmediate r2, 1
-    11: Yield r2, r0, r2
-    15: Add r1, r1, r2
-    19: Ret r1
+     4: Yield r1, r2, r0, r1
+     9: JumpNotNullish r2, 10 (.L1)
+    12: JumpNotUndefined r2, 5 (.L0)
+    15: Ret r1
+  .L0:
+    17: Throw r1
+  .L1:
+    19: LoadImmediate r1, 1
+    22: Yield r1, r2, r0, r1
+    27: JumpNotNullish r2, 10 (.L3)
+    30: JumpNotUndefined r2, 5 (.L2)
+    33: Ret r1
+  .L2:
+    35: Throw r1
+  .L3:
+    37: LoadUndefined r1
+    39: Yield r1, r2, r0, r1
+    44: JumpNotNullish r2, 10 (.L5)
+    47: JumpNotUndefined r2, 5 (.L4)
+    50: Ret r1
+  .L4:
+    52: Throw r1
+  .L5:
+    54: LoadImmediate r1, 2
+    57: Yield r1, r2, r0, r1
+    62: JumpNotNullish r2, 10 (.L7)
+    65: JumpNotUndefined r2, 5 (.L6)
+    68: Ret r1
+  .L6:
+    70: Throw r1
+  .L7:
+    72: LoadUndefined r1
+    74: Ret r1
+}
+
+[BytecodeFunction: yieldReturnValue] {
+  Parameters: 0, Registers: 4
+     0: GeneratorStart r0
+     2: LoadUndefined r1
+     4: Yield r1, r2, r0, r1
+     9: JumpNotNullish r2, 10 (.L1)
+    12: JumpNotUndefined r2, 5 (.L0)
+    15: Ret r1
+  .L0:
+    17: Throw r1
+  .L1:
+    19: LoadImmediate r2, 1
+    22: Yield r2, r3, r0, r2
+    27: JumpNotNullish r3, 10 (.L3)
+    30: JumpNotUndefined r3, 5 (.L2)
+    33: Ret r2
+  .L2:
+    35: Throw r2
+  .L3:
+    37: Add r1, r1, r2
+    41: Ret r1
+}
+
+[BytecodeFunction: yieldInFinally] {
+  Parameters: 0, Registers: 6
+     0: GeneratorStart r0
+     2: Mov r3, <scope>
+     5: LoadUndefined r4
+     7: Yield r4, r5, r0, r4
+    12: JumpNotNullish r5, 16 (.L1)
+    15: JumpNotUndefined r5, 11 (.L0)
+    18: LoadImmediate r1, 1
+    21: Mov r2, r4
+    24: Jump 12 (.L2)
+  .L0:
+    26: Throw r4
+  .L1:
+    28: LoadImmediate r1, 2
+    31: Jump 5 (.L2)
+    33: LoadImmediate r1, 0
+  .L2:
+    36: Mov <scope>, r3
+    39: LoadImmediate r3, 1
+    42: LoadImmediate r3, 0
+    45: StrictEqual r3, r1, r3
+    49: JumpFalse r3, 5 (.L3)
+    52: Throw r2
+  .L3:
+    54: LoadImmediate r3, 2
+    57: StrictEqual r3, r1, r3
+    61: JumpFalse r3, 5 (.L4)
+    64: Jump 4 (.L5)
+  .L4:
+    66: Ret r2
+  .L5:
+    68: LoadUndefined r1
+    70: Ret r1
+  Exception Handlers:
+    5-28 -> 33 (r2)
 }
 
 [BytecodeFunction: generatorExpression] {

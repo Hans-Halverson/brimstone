@@ -204,14 +204,14 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 64 00         PushLexicalScope c0
-     2: 6a 07 00 00   StoreToScope <this>, 0, 0
+     0: 65 00         PushLexicalScope c0
+     2: 6b 07 00 00   StoreToScope <this>, 0, 0
      6: 04 ff 01      LoadConstant r0, c1
      9: 05 ff         LoadUndefined r0
-    11: 4b fe         NewObject r1
-    13: 66 fe 02      PushWithScope r1, c2
+    11: 4c fe         NewObject r1
+    13: 67 fe 02      PushWithScope r1, c2
     16: 03 ff 01      LoadImmediate r0, 1
-    19: 67            PopScope 
+    19: 68            PopScope 
     20: 18 ff         Ret r0
   Constant Table:
     0: [ScopeNames]
@@ -238,11 +238,11 @@
   Parameters: 0, Registers: 3
      0: 04 ff 00   LoadConstant r0, c0
      3: 05 ff      LoadUndefined r0
-     5: 4b fe      NewObject r1
+     5: 4c fe      NewObject r1
      7: 46 fe 14   JumpNullish r1, 20 (.L1)
-    10: 73 fe fe   NewForInIterator r1, r1
+    10: 74 fe fe   NewForInIterator r1, r1
   .L0:
-    13: 74 fd fe   ForInNext r2, r1
+    13: 75 fd fe   ForInNext r2, r1
     16: 46 fd 0b   JumpNullish r2, 11 (.L1)
     19: 0f fd 01   StoreDynamic r2, c1
     22: 03 ff 01   LoadImmediate r0, 1
@@ -258,10 +258,10 @@
   Parameters: 0, Registers: 6
      0: 04 ff 00         LoadConstant r0, c0
      3: 05 ff            LoadUndefined r0
-     5: 4c fc            NewArray r3
-     7: 75 fe fd fc      GetIterator r1, r2, r3
+     5: 4d fc            NewArray r3
+     7: 76 fe fd fc      GetIterator r1, r2, r3
   .L0:
-    11: 76 fc fb fe fd   IteratorNext r3, r4, r1, r2
+    11: 77 fc fb fe fd   IteratorNext r3, r4, r1, r2
     16: 3c fb 1a         JumpTrue r4, 26 (.L2)
     19: 0f fc 01         StoreDynamic r3, c1
     22: 02 fa 03         Mov r5, <scope>
@@ -269,8 +269,8 @@
     28: 3a 0c            Jump 12 (.L1)
     30: 03 fc 00         LoadImmediate r3, 0
     33: 02 03 fa         Mov <scope>, r5
-    36: 77 fe            IteratorClose r1
-    38: 6b fb            Throw r4
+    36: 78 fe            IteratorClose r1
+    38: 6c fb            Throw r4
   .L1:
     40: 3a e3            Jump -29 (.L0)
   .L2:
@@ -317,7 +317,7 @@
     30: 03 fb 00      LoadImmediate r4, 0
     33: 27 fb fe fb   StrictEqual r4, r1, r4
     37: 40 fb 05      JumpFalse r4, 5 (.L1)
-    40: 6b fd         Throw r2
+    40: 6c fd         Throw r2
   .L1:
     42: 02 ff fc      Mov r0, r3
     45: 3a 02         Jump 2 (.L2)
@@ -350,7 +350,7 @@
     41: 03 fb 00      LoadImmediate r4, 0
     44: 27 fb fe fb   StrictEqual r4, r1, r4
     48: 40 fb 05      JumpFalse r4, 5 (.L1)
-    51: 6b fd         Throw r2
+    51: 6c fd         Throw r2
   .L1:
     53: 02 ff fc      Mov r0, r3
     56: 3a 02         Jump 2 (.L2)

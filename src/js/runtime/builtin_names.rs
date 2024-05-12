@@ -80,6 +80,8 @@ builtin_names!(
     (float32_array, "Float32Array"),
     (float64_array, "Float64Array"),
     (function, "Function"),
+    (generator, "Generator"),
+    (generator_function, "GeneratorFunction"),
     (infinity, "Infinity"),
     (int8_array, "Int8Array"),
     (int16_array, "Int16Array"),

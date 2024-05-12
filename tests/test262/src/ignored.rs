@@ -8,7 +8,7 @@ use crate::{index::Test, utils::GenericError};
 pub struct IgnoredIndex {
     ignored_tests_regex: Regex,
     ignored_features: HashSet<String>,
-    ignore_async_generator: bool,
+    ignore_async: bool,
     ignore_module: bool,
     ignore_annex_b: bool,
 }
@@ -17,7 +17,7 @@ impl IgnoredIndex {
     pub fn load_from_file(
         ignored_path: &Path,
         run_all_tests: bool,
-        ignore_async_generator: bool,
+        ignore_async: bool,
         ignore_module: bool,
         ignore_annex_b: bool,
     ) -> Result<IgnoredIndex, GenericError> {
@@ -59,7 +59,7 @@ impl IgnoredIndex {
         Ok(IgnoredIndex {
             ignored_tests_regex,
             ignored_features,
-            ignore_async_generator,
+            ignore_async,
             ignore_module,
             ignore_annex_b,
         })
@@ -96,12 +96,7 @@ impl IgnoredIndex {
         }
 
         // Crudely ignore tests with certain keywords in name for some filters
-        if self.ignore_async_generator
-            && (test.path.contains("async")
-                || test.path.contains("await")
-                || test.path.contains("generator")
-                || test.path.contains("yield"))
-        {
+        if self.ignore_async && (test.path.contains("async") || test.path.contains("await")) {
             return true;
         }
 
@@ -126,7 +121,7 @@ impl IgnoredIndex {
         return false;
     }
 
-    pub fn ignore_async_generator(&self) -> bool {
-        self.ignore_async_generator
+    pub fn ignore_async(&self) -> bool {
+        self.ignore_async
     }
 }

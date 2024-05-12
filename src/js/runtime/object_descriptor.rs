@@ -109,6 +109,8 @@ pub enum ObjectKind {
     GlobalNames,
     ClassNames,
 
+    Generator,
+
     DenseArrayProperties,
     SparseArrayProperties,
 
@@ -302,6 +304,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ScopeNames);
         other_heap_object_descriptor!(ObjectKind::GlobalNames);
         other_heap_object_descriptor!(ObjectKind::ClassNames);
+
+        ordinary_object_descriptor!(ObjectKind::Generator);
 
         other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);

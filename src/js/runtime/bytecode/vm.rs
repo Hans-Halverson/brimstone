@@ -27,6 +27,7 @@ use crate::{
         for_in_iterator::ForInIterator,
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
+        generator_object::GeneratorObject,
         get,
         intrinsics::{
             intrinsics::Intrinsic, native_error::TypeError, regexp_constructor::RegExpObject,
@@ -35,7 +36,7 @@ use crate::{
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
-        ordinary_object::{object_create_from_constructor, ordinary_object_create},
+        ordinary_object::{object_create, object_create_from_constructor, ordinary_object_create},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -67,11 +68,12 @@ use super::{
         DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
         DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
         ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction,
-        ForInNextInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
-        GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction, GetPropertyInstruction,
-        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        ForInNextInstruction, GeneratorStartInstruction, GetIteratorInstruction,
+        GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
+        GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
+        GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
+        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
@@ -86,17 +88,18 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewAccessorInstruction, NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
-        NewForInIteratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
-        NewPrivateSymbolInstruction, NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode,
-        PopScopeInstruction, PushFunctionScopeInstruction, PushLexicalScopeInstruction,
-        PushWithScopeInstruction, RemInstruction, RestParameterInstruction, RetInstruction,
-        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPrivatePropertyInstruction,
-        SetPropertyInstruction, SetPrototypeOfInstruction, SetSuperPropertyInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction,
+        NewForInIteratorInstruction, NewGeneratorInstruction, NewMappedArgumentsInstruction,
+        NewObjectInstruction, NewPrivateSymbolInstruction, NewRegExpInstruction,
+        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
+        PushLexicalScopeInstruction, PushWithScopeInstruction, RemInstruction,
+        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
+        SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
+        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction, YieldInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -198,6 +201,69 @@ impl VM {
         self.execute(program_closure, &[])
     }
 
+    /// Resume a suspended generator, executing it until it yields or completes.
+    pub fn resume_generator(
+        &mut self,
+        mut generator: Handle<GeneratorObject>,
+        value: Handle<Value>,
+    ) -> EvalResult<Handle<Value>> {
+        let saved_stack_frame = generator.stack_frame();
+        let stack_frame_size = saved_stack_frame.len();
+
+        // Save the PC that should be used as the return address
+        let return_address = self.pc;
+        let parent_fp = self.fp;
+
+        // Push the saved stack frame stored in generator onto the stack
+        unsafe {
+            self.sp = self.sp.sub(stack_frame_size);
+            std::ptr::copy_nonoverlapping(saved_stack_frame.as_ptr(), self.sp, stack_frame_size);
+        }
+
+        // Restore the frame pointer
+        self.fp = unsafe { self.sp.add(generator.fp_index()) };
+
+        let mut stack_frame = StackFrame::for_fp(self.fp);
+
+        // Patch the saved frame pointer in the stack frame
+        unsafe { *self.fp = parent_fp as StackSlotValue };
+
+        // Patch the return address in the stack frame
+        let encoded_return_address = StackFrame::return_address_from_rust(return_address);
+        stack_frame.set_encoded_return_address(encoded_return_address);
+
+        // Patch the address of the return value in the stack frame
+        let mut return_value = Value::undefined();
+        stack_frame.set_return_value_address((&mut return_value) as *mut Value);
+
+        // Write the resumed value to the yield destination register if necessary
+        if let Some(yield_dest_index) = generator.yield_dest_index() {
+            self.write_register(
+                Register::<ExtraWide>::local(yield_dest_index as usize),
+                value.get(),
+            );
+        }
+
+        // Restore the PC, which was stored as an offset into the BytecodeFunction
+        let func_start = self.closure().function_ptr().as_ptr().cast::<u8>();
+        let pc_to_resume = unsafe { func_start.add(generator.pc_to_resume_offset()) };
+        self.pc = pc_to_resume;
+
+        // Start executing the dispatch loop from where the generator was suspended, returning out
+        // of dispatch loop when the marked return address is encountered.
+        let completion = self.dispatch_loop();
+
+        // If the generator did not yeild then it either returned or threw. In either case mark the
+        // generator as completed.
+        generator.complete_if_not_yielded();
+
+        if let Err(error_value) = completion {
+            return EvalResult::Throw(error_value.to_handle(self.cx));
+        }
+
+        return_value.to_handle(self.cx).into()
+    }
+
     fn reset_stack(&mut self) {
         // Reset stack
         self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
@@ -251,13 +317,22 @@ impl VM {
                 };
             }
 
-            // Execute a ret instruction
+            /// Execute a ret instruction
             macro_rules! execute_ret {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(RetInstruction);
+                    let return_value = self.read_register(instr.return_value());
+                    return_!(return_value)
+                }};
+            }
+
+            /// Return a value in the VM, writing the return value into the parent frame and popping
+            /// the stack frame to continue execution in the caller function.
+            macro_rules! return_ {
+                ($return_value:expr) => {{
+                    let return_value = $return_value;
 
                     // Store the return value at the return value address
-                    let return_value = self.read_register(instr.return_value());
                     let return_value_address = self.get_return_value_address();
                     unsafe { *return_value_address = return_value };
 
@@ -271,6 +346,70 @@ impl VM {
                     if is_rust_caller {
                         return Ok(());
                     }
+                }};
+            }
+
+            macro_rules! execute_yield {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(YieldInstruction);
+
+                    let mut generator = self
+                        .read_register(instr.generator())
+                        .as_object()
+                        .cast::<GeneratorObject>();
+                    let yield_value = self.read_register(instr.yield_value());
+                    let yield_dest_index = instr.dest().local_index() as u32;
+
+                    // Set the PC to the next instruction to execute
+                    self.set_pc_after(instr);
+                    let pc_to_resume_offset = self.get_pc_offset();
+                    let stack_frame = StackFrame::for_fp(self.fp);
+
+                    // Save the stack frame and PC to resume in the generator object
+                    generator.suspend(
+                        pc_to_resume_offset,
+                        yield_dest_index,
+                        stack_frame.as_slice(),
+                    );
+
+                    // Return the yielded value to the caller
+                    return_!(yield_value)
+                }};
+            }
+
+            /// Execute a GeneratorStart instruction, copying the current stack frame and execution
+            /// state into the generator object. Returns the generator object to the caller.
+            macro_rules! execute_generator_start {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(GeneratorStartInstruction);
+                    let generator_reg = instr.generator();
+
+                    // Set the PC to the next instruction to execute
+                    self.set_pc_after(instr);
+                    let pc_to_resume_offset = self.get_pc_offset();
+
+                    // Find the index of the FP in the stack frame
+                    let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
+
+                    let current_closure = self.closure().to_handle();
+                    let stack_frame = StackFrame::for_fp(self.fp);
+
+                    // Create the generator in the started state, copying the current stack frame
+                    // and PC to resume.
+                    let mut generator = maybe_throw!(GeneratorObject::new(
+                        self.cx,
+                        current_closure,
+                        pc_to_resume_offset,
+                        fp_index,
+                        stack_frame.as_slice(),
+                    ));
+
+                    // Store the generator into the provided register in the stored stack frame
+                    let generator_value = generator.cast::<ObjectValue>().into();
+                    generator.set_register(generator_reg.local_index(), generator_value);
+
+                    // Return the generator object to the caller
+                    return_!(generator_value)
                 }};
             }
 
@@ -545,6 +684,9 @@ impl VM {
                             self.execute_jump_nullish_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::NewGenerator => {
+                            dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
+                        }
                         OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::NewRegExp => {
@@ -718,6 +860,8 @@ impl VM {
                         OpCode::IteratorClose => {
                             dispatch_or_throw!(IteratorCloseInstruction, execute_iterator_close)
                         }
+                        OpCode::GeneratorStart => execute_generator_start!(get_instr),
+                        OpCode::Yield => execute_yield!(get_instr),
                     }
                 };
             }
@@ -770,6 +914,13 @@ impl VM {
     #[inline]
     fn set_pc_after<I: Instruction>(&mut self, instr: &I) {
         self.pc = self.get_pc_after(instr);
+    }
+
+    /// Calculate the offset of the current PC in the current BytecodeFunction.
+    #[inline]
+    fn get_pc_offset(&self) -> usize {
+        let func_start_ptr = self.closure().function_ptr().as_ptr().cast::<u8>();
+        unsafe { self.pc.offset_from(func_start_ptr) as usize }
     }
 
     /// Push a value onto the stack. Note that the stack grows downwards.
@@ -2602,6 +2753,42 @@ impl VM {
     }
 
     #[inline]
+    fn execute_new_generator<W: Width>(
+        &mut self,
+        instr: &NewGeneratorInstruction<W>,
+    ) -> EvalResult<()> {
+        let func = self.get_constant(instr.function_index());
+        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+
+        let dest = instr.dest();
+        let scope = self.scope().to_handle();
+
+        // Allocates
+        let func_proto = self.cx.get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
+        let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
+
+        // Attach a prototype property referencing the generator prototype
+        let proto = object_create::<ObjectValue>(
+            self.cx,
+            ObjectKind::OrdinaryObject,
+            Intrinsic::GeneratorPrototype,
+        )
+        .to_handle();
+
+        let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
+        maybe!(define_property_or_throw(
+            self.cx,
+            closure.into(),
+            self.cx.names.prototype(),
+            proto_desc
+        ));
+
+        self.write_register(dest, Value::object(closure.get_().cast()));
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_new_object<W: Width>(&mut self, instr: &NewObjectInstruction<W>) {
         let dest = instr.dest();
 
@@ -3586,18 +3773,8 @@ impl VM {
 
         // Walk the stack, visiting all pointers in each frame
         loop {
-            // Visit all args and registers in stack frame
-            for arg in stack_frame.all_args_with_receiver_mut() {
-                visitor.visit_value(arg);
-            }
-
-            for register in stack_frame.registers_mut() {
-                visitor.visit_value(register);
-            }
-
-            visitor.visit_pointer(stack_frame.closure_mut());
-            visitor.visit_pointer(stack_frame.constant_table_mut());
-            visitor.visit_pointer(stack_frame.scope_mut());
+            // Visit all args, registers, and fixed values in stack frame
+            stack_frame.visit_simple_pointers(visitor);
 
             // Move to the parent's stack frame
             if let Some(caller_stack_frame) = stack_frame.previous_frame() {
@@ -3627,12 +3804,13 @@ impl VM {
         instruction_address: *const u8,
         set_instruction_address: impl FnOnce(*const u8),
     ) {
+        let mut bytecode_function = stack_frame.closure().function_ptr();
+
         // Find the offset of the instruction in the BytecodeFunction
-        let function_start = stack_frame.closure().function_ptr().as_ptr() as *const u8;
+        let function_start = bytecode_function.as_ptr() as *const u8;
         let offset = unsafe { instruction_address.offset_from(function_start) };
 
         // Visit the caller's BytecodeFunction, moving it in the heap and rewriting this pointer
-        let mut bytecode_function = stack_frame.closure().function_ptr();
         visitor.visit_pointer(&mut bytecode_function);
 
         // Rewrite the instruction address using the new location of the BytecodeFunction

@@ -7,7 +7,7 @@ pub mod instruction;
 mod instruction_traits;
 mod operand;
 mod register_allocator;
-mod stack_frame;
+pub mod stack_frame;
 pub mod vm;
 mod width;
 mod writer;

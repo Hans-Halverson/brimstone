@@ -1,4 +1,4 @@
-use crate::js::runtime::{scope::Scope, HeapPtr, Value};
+use crate::js::runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value};
 
 use super::{constant_table::ConstantTable, function::Closure};
 
@@ -74,6 +74,27 @@ impl StackFrame {
         unsafe { self.fp.offset(-1 - num_registers as isize).cast_mut() }
     }
 
+    /// Return a slice over the entire stack frame.
+    ///
+    /// Starts at the last register and ends at the last argument.
+    #[inline]
+    pub fn as_slice(&self) -> &[StackSlotValue] {
+        unsafe {
+            let func = self.closure().function_ptr();
+
+            let num_registers = func.num_registers() as usize;
+            let last_register_ptr = self.fp.sub(num_registers);
+
+            // Must round up to number of formal parameters to handle default args and
+            // underapplication.
+            let num_args = (func.num_parameters() as usize).max(self.argc());
+            let last_arg_ptr = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX).add(num_args);
+
+            let stack_frame_size = last_arg_ptr.offset_from(last_register_ptr) as usize;
+            std::slice::from_raw_parts(last_register_ptr, stack_frame_size)
+        }
+    }
+
     /// Highest bit of the return address slot indicates whether the caller is the Rust runtime.
     const IS_RUST_CALLER_TAG: usize = 1 << (usize::BITS - 1);
 
@@ -120,6 +141,12 @@ impl StackFrame {
     pub fn set_return_address(&mut self, addr: *const u8) {
         let is_rust_caller = self.is_rust_caller();
         let encoded_address = Self::encode_return_address_slot(addr, is_rust_caller);
+        self.set_encoded_return_address(encoded_address);
+    }
+
+    /// Set the encoded return address, containing both the return address and the Rust caller flag.
+    #[inline]
+    pub fn set_encoded_return_address(&mut self, encoded_address: usize) {
         unsafe { *(self.fp.add(RETURN_ADDRESS_SLOT_INDEX).cast_mut()) = encoded_address }
     }
 
@@ -127,6 +154,12 @@ impl StackFrame {
     #[inline]
     pub fn return_value_address(&self) -> *mut Value {
         unsafe { *self.fp.add(RETURN_VALUE_ADDRESS_INDEX) as *mut Value }
+    }
+
+    /// Set the address where the return value should be stored.
+    #[inline]
+    pub fn set_return_value_address(&mut self, addr: *mut Value) {
+        unsafe { *(self.fp.add(RETURN_VALUE_ADDRESS_INDEX).cast_mut()) = addr as StackSlotValue }
     }
 
     #[inline]
@@ -216,6 +249,25 @@ impl StackFrame {
             let last_register_ptr = self.fp.sub(num_registers) as *mut Value;
             std::slice::from_raw_parts_mut(last_register_ptr, num_registers)
         }
+    }
+
+    /// Visit all pointers in the stack frame, potentially updating them.
+    ///
+    /// The only stack slot that is not updated is the return address, as this is calculated
+    /// separately since it is an internal pointer to the caller frame's BytecodeFunction.
+    pub fn visit_simple_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        // Visit all args and registers in stack frame
+        for arg in self.all_args_with_receiver_mut() {
+            visitor.visit_value(arg);
+        }
+
+        for register in self.registers_mut() {
+            visitor.visit_value(register);
+        }
+
+        visitor.visit_pointer(self.closure_mut());
+        visitor.visit_pointer(self.constant_table_mut());
+        visitor.visit_pointer(self.scope_mut());
     }
 }
 

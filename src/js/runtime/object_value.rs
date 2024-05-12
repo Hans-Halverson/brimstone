@@ -335,6 +335,10 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::Proxy
     }
 
+    pub fn is_generator(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::Generator
+    }
+
     pub fn is_object_prototype(&self) -> bool {
         self.descriptor_kind() == ObjectKind::ObjectPrototype
     }

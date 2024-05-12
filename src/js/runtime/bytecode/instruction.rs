@@ -734,6 +734,12 @@ define_instructions!(
         [1] function_index: ConstantIndex,
     }
 
+    /// Create a new generator closure from the function at the given index in the constant table.
+    NewGenerator (NewGeneratorInstruction, new_generator_instruction) {
+        [0] dest: Register,
+        [1] function_index: ConstantIndex,
+    }
+
     /// Create a new empty object stored in dest.
     NewObject (NewObjectInstruction, new_object_instruction) {
         [0] dest: Register,
@@ -1065,6 +1071,21 @@ define_instructions!(
     /// Close an iterator, calling its `return` method if it exists.
     IteratorClose(IteratorCloseInstruction, iterator_close_instruction) {
         [0] iterator: Register,
+    }
+
+    /// Create a generator in the current function. Suspends the current function and returns the
+    /// generator to the caller. Also stores the generator to the provided register.
+    GeneratorStart(GeneratorStartInstruction, generator_start_instruction) {
+        [0] generator: Register,
+    }
+
+    /// Yield a value from the current function, returning the value to the caller. Takes the
+    /// generator for the function and the value to yield. The value passed into GeneratorResume
+    /// when the generator resumes will be stored in dest.
+    Yield(YieldInstruction, yield_instruction) {
+        [0] dest: Register,
+        [1] generator: Register,
+        [2] yield_value: Register,
     }
 );
 

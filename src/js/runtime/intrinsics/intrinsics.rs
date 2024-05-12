@@ -30,6 +30,9 @@ use crate::{
             finalization_registry_prototype::FinalizationRegistryPrototype,
             function_constructor::FunctionConstructor,
             function_prototype::FunctionPrototype,
+            generator_function_constructor::GeneratorFunctionConstructor,
+            generator_function_prototype::GeneratorFunctionPrototype,
+            generator_prototype::GeneratorPrototype,
             global_object::{create_eval, create_parse_float, create_parse_int},
             iterator_prototype::IteratorPrototype,
             json_object::JSONObject,
@@ -120,6 +123,9 @@ pub enum Intrinsic {
     Float64ArrayPrototype,
     FunctionConstructor,
     FunctionPrototype,
+    GeneratorFunctionConstructor,
+    GeneratorFunctionPrototype,
+    GeneratorPrototype,
     GlobalDeclarationInstantiation,
     Int8ArrayConstructor,
     Int8ArrayPrototype,
@@ -342,6 +348,23 @@ impl Intrinsics {
         register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
         register_intrinsic!(RegExpStringIteratorPrototype, RegExpStringIteratorPrototype);
 
+        // Generators
+        register_intrinsic!(GeneratorPrototype, GeneratorPrototype);
+        register_intrinsic!(GeneratorFunctionPrototype, GeneratorFunctionPrototype);
+        register_intrinsic!(GeneratorFunctionConstructor, GeneratorFunctionConstructor);
+        Self::add_non_writable_constructor_to_prototype(
+            cx,
+            realm,
+            Intrinsic::GeneratorFunctionPrototype,
+            Intrinsic::GeneratorFunctionConstructor,
+        );
+        Self::add_non_writable_constructor_to_prototype(
+            cx,
+            realm,
+            Intrinsic::GeneratorPrototype,
+            Intrinsic::GeneratorFunctionPrototype,
+        );
+
         // Builtin objects
         register_intrinsic!(JSON, JSONObject);
         register_intrinsic!(Math, MathObject);
@@ -391,6 +414,21 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);
+        must!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
+    }
+
+    // Same as `add_constructor_to_prototype` but sets the constructor property to be non-writable.
+    fn add_non_writable_constructor_to_prototype(
+        cx: Context,
+        realm: Handle<Realm>,
+        prototype: Intrinsic,
+        constructor: Intrinsic,
+    ) {
+        let mut prototype_object = realm.get_intrinsic(prototype);
+        let constructor_object = realm.get_intrinsic(constructor);
+
+        let constructor_desc =
+            PropertyDescriptor::data(constructor_object.into(), false, false, true);
         must!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
     }
 }

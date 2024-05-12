@@ -552,6 +552,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// needed.
     new_target_index: Option<u32>,
 
+    /// Index of the register in which to place the generator for this function, if function is a
+    /// generator function.
+    generator_index: Option<u32>,
+
     /// Register in which to place the completion value of each statement. Only need to generate
     /// completion values when this is set.
     statement_completion_dest: Option<GenRegister>,
@@ -612,6 +616,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_class_constructor,
             is_base_constructor,
             new_target_index: None,
+            generator_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
             class_fields,
@@ -1140,13 +1145,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
-        if func.is_async() || func.is_generator() {
-            unimplemented!("bytecode for async and generator functions")
+        if func.is_async() {
+            unimplemented!("bytecode for async functions")
         }
 
         // Base constructors initialize class fields immediately
         if !self.is_derived_constructor() {
             self.gen_initialize_class_fields(Register::this())?;
+        }
+
+        // Generator functions reserve a register for the generator object
+        let mut generator_reg = None;
+        if func.is_generator() {
+            let register = self.register_allocator.allocate()?;
+            self.generator_index = Some(register.local_index() as u32);
+            generator_reg = Some(register);
         }
 
         let func_scope = func.scope.as_ref();
@@ -1306,6 +1319,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     &block_body.body
                 };
 
+                // If function is a generator then run GeneratorStart once body is ready to be
+                // evaluated.
+                if let Some(generator_reg) = generator_reg {
+                    self.writer.generator_start_instruction(generator_reg);
+                }
+
+                // Continue to the function body
                 let body_completion = self.gen_statement_list(body)?;
 
                 // Scope end not needed since the function immediately returns
@@ -1333,6 +1353,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 )?;
                 self.register_allocator.release(return_value_reg);
             }
+        }
+
+        if let Some(generator_reg) = generator_reg {
+            self.register_allocator.release(generator_reg);
         }
 
         Ok(self.finish())
@@ -1369,6 +1393,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.is_class_constructor,
             self.is_base_constructor,
             self.new_target_index,
+            self.generator_index,
             name,
             Some(self.source_file),
             self.source_range,
@@ -1574,7 +1599,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Expression::Class(expr) => self.gen_class_expression(expr, None, dest),
             ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
-            ast::Expression::Yield(_) => unimplemented!("bytecode for yield expressions"),
+            ast::Expression::Yield(expr) => self.gen_yield_expression(expr),
             ast::Expression::SuperMember(expr) => {
                 self.gen_super_member_expression(expr, dest, None)
             }
@@ -3229,7 +3254,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Method itself is loaded from the constant table
                 let method_value = self.register_allocator.allocate()?;
-                self.writer.new_closure_instruction(
+                self.gen_new_closure_for_function(
+                    func_node,
                     method_value,
                     ConstantIndex::new(method_constant_index),
                 );
@@ -4110,8 +4136,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let func_constant_index = self.enqueue_function_to_generate(pending_node)?;
 
         let dest = self.allocate_destination(dest)?;
-        self.writer
-            .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
+        self.gen_new_closure_for_function(func, dest, ConstantIndex::new(func_constant_index));
 
         Ok(dest)
     }
@@ -4126,8 +4151,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let func_constant_index = self.enqueue_function_to_generate(pending_node)?;
 
         let dest = self.allocate_destination(dest)?;
-        self.writer
-            .new_closure_instruction(dest, ConstantIndex::new(func_constant_index));
+        self.gen_new_closure_for_function(func, dest, ConstantIndex::new(func_constant_index));
+
+        Ok(dest)
+    }
+
+    fn gen_yield_expression(&mut self, expr: &ast::YieldExpression) -> EmitResult<GenRegister> {
+        if expr.is_delegate {
+            unimplemented!("bytecode for yield* expression")
+        }
+
+        let yield_value = if let Some(argument) = expr.argument.as_ref() {
+            self.gen_expression(argument)?
+        } else {
+            let yield_value = self.register_allocator.allocate()?;
+            self.writer.load_undefined_instruction(yield_value);
+            yield_value
+        };
+
+        self.register_allocator.release(yield_value);
+        let dest = self.register_allocator.allocate()?;
+
+        // Find the generator register from the stored index
+        let generator = Register::local(self.generator_index.unwrap() as usize);
+
+        self.writer.yield_instruction(dest, generator, yield_value);
 
         Ok(dest)
     }
@@ -5093,8 +5141,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
         let closure_reg = self.allocate_destination(closure_dest)?;
 
-        self.writer
-            .new_closure_instruction(closure_reg, ConstantIndex::new(func_constant_index));
+        self.gen_new_closure_for_function(
+            func_decl,
+            closure_reg,
+            ConstantIndex::new(func_constant_index),
+        );
 
         // And store at the binding's location. Stores at declarations do not need a TDZ check.
         if let Some(id) = func_decl.id.as_ref() {
@@ -5104,6 +5155,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(closure_reg);
 
         Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_new_closure_for_function(
+        &mut self,
+        func: &ast::Function,
+        dest: GenRegister,
+        func_constant_index: GenConstantIndex,
+    ) {
+        if func.is_generator() {
+            self.writer
+                .new_generator_instruction(dest, func_constant_index);
+        } else {
+            self.writer
+                .new_closure_instruction(dest, func_constant_index);
+        }
     }
 
     fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
@@ -5521,8 +5587,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Create the method closure itself
         let method_value = self.register_allocator.allocate()?;
-        self.writer
-            .new_closure_instruction(method_value, ConstantIndex::new(method_constant_index));
+        self.gen_new_closure_for_function(
+            &method.value,
+            method_value,
+            ConstantIndex::new(method_constant_index),
+        );
 
         let method_name = if let Name::Named(name) = key {
             Some(InternedStrings::get_wtf8_str(self.cx, &name.to_owned()).as_flat())

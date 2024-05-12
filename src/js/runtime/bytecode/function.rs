@@ -225,6 +225,8 @@ pub struct BytecodeFunction {
     is_base_constructor: bool,
     /// Index of the new.target register, if a new.target is needed.
     new_target_index: Option<u32>,
+    /// Index of the generator register, if this is a generator function.
+    generator_index: Option<u32>,
     /// Name of the function, used for debugging and the `name` property of non-runtime functions.
     name: Option<HeapPtr<StringValue>>,
     /// Source file this function was defined in. None if there is no source file, like for builtins
@@ -253,6 +255,7 @@ impl BytecodeFunction {
         is_class_constructor: bool,
         is_base_constructor: bool,
         new_target_index: Option<u32>,
+        generator_index: Option<u32>,
         name: Option<Handle<StringValue>>,
         source_file: Option<Handle<SourceFile>>,
         source_range: Range<Pos>,
@@ -272,6 +275,7 @@ impl BytecodeFunction {
         set_uninit!(object.is_class_constructor, is_class_constructor);
         set_uninit!(object.is_base_constructor, is_base_constructor);
         set_uninit!(object.new_target_index, new_target_index);
+        set_uninit!(object.generator_index, generator_index);
         set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.source_file, source_file.map(|f| f.get_()));
         set_uninit!(object.source_range, source_range);
@@ -305,6 +309,7 @@ impl BytecodeFunction {
         set_uninit!(object.is_class_constructor, false);
         set_uninit!(object.is_base_constructor, true);
         set_uninit!(object.new_target_index, None);
+        set_uninit!(object.generator_index, None);
         set_uninit!(object.name, name.map(|n| n.get_()));
         set_uninit!(object.source_file, None);
         set_uninit!(object.source_range, 0..0);

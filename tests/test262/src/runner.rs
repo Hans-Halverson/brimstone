@@ -66,7 +66,7 @@ impl TestRunner {
             }
 
             let test262_root = self.index.test262_root.clone();
-            let ignore_async_generator = self.ignored.ignore_async_generator();
+            let ignore_async = self.ignored.ignore_async();
 
             let test = test.clone();
             let sender = sender.clone();
@@ -95,9 +95,8 @@ impl TestRunner {
                             None => String::from("<panic message not found>"),
                         };
 
-                        let result = if ignore_async_generator
-                            && (message
-                                == "not implemented: bytecode for async and generator functions")
+                        let result = if ignore_async
+                            && (message == "not implemented: bytecode for async functions")
                         {
                             TestResult::skipped(&test)
                         } else {

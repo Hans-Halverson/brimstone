@@ -7592,9 +7592,12 @@ impl PendingFunctionNode {
 
     fn is_constructor(&self) -> bool {
         match self {
-            PendingFunctionNode::Declaration(_)
-            | PendingFunctionNode::Expression { .. }
-            | PendingFunctionNode::Constructor { .. } => true,
+            PendingFunctionNode::Declaration(node)
+            | PendingFunctionNode::Expression { node, .. } => {
+                let func = node.as_ref();
+                !func.is_async() && !func.is_generator()
+            }
+            PendingFunctionNode::Constructor { .. } => true,
             PendingFunctionNode::Arrow { .. }
             | PendingFunctionNode::Method { .. }
             | PendingFunctionNode::ClassFieldsInitializer { .. }

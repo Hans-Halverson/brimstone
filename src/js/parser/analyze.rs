@@ -25,35 +25,37 @@ use super::{
 };
 
 pub struct Analyzer<'a> {
-    // Current source that is being analyzed
+    /// Current source that is being analyzed
     source: Rc<Source>,
-    // Accumulator or errors reported during analysis
+    /// Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
     /// Scope tree for the AST that is being analyzed
     scope_tree: &'a mut ScopeTree,
-    // Number of nested strict mode contexts the visitor is currently in
+    /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
-    // Set of labels defined where the visitor is currently in
+    /// Set of labels defined where the visitor is currently in
     labels: HashMap<String, LabelInfo>,
-    // Number of labeled statements that the visitor is currently inside. Multiple labels on the
-    // same statement all count as a single "label depth", and will receive the same label id.
+    /// Number of labeled statements that the visitor is currently inside. Multiple labels on the
+    /// same statement all count as a single "label depth", and will receive the same label id.
     label_depth: LabelId,
-    // Number of nested breakable statements the visitor is currently inside
+    /// Number of nested breakable statements the visitor is currently inside
     breakable_depth: usize,
-    // Number of nested iterable statements the visitor is currently inside
+    /// Number of nested iterable statements the visitor is currently inside
     iterable_depth: usize,
-    // The functions that the visitor is currently inside, if any
+    /// The functions that the visitor is currently inside, if any
     function_stack: Vec<FunctionStackEntry>,
-    // The classes that the visitor is currently inside, if any
+    /// The classes that the visitor is currently inside, if any
     class_stack: Vec<ClassStackEntry>,
     /// Stack of scopes that the visitor is currently inside
     scope_stack: Vec<AstPtr<AstScopeNode>>,
-    // Whether the "arguments" identifier is currently disallowed due to being in a class initializer
+    /// Whether the "arguments" identifier is currently disallowed due to being in a class initializer
     allow_arguments: bool,
-    // Whether a return statement is allowed
+    /// Whether a return statement is allowed
     allow_return_stack: Vec<bool>,
-    // Whether a super member expression is allowed
+    /// Whether a super member expression is allowed
     allow_super_member_stack: Vec<AllowSuperStackEntry>,
+    /// Whether a yield expression is allowed
+    allow_yield_stack: Vec<bool>,
     /// Whether the current expression context has an assignment expression. A single value is
     /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
     /// around each expression.
@@ -130,6 +132,7 @@ impl<'a> Analyzer<'a> {
             allow_arguments: true,
             allow_return_stack: vec![false],
             allow_super_member_stack: vec![],
+            allow_yield_stack: vec![false],
             has_assign_expr: false,
         }
     }
@@ -667,6 +670,14 @@ impl<'a> AstVisitor for Analyzer<'a> {
         }
     }
 
+    fn visit_yield_expression(&mut self, expr: &mut YieldExpression) {
+        if !self.allow_yield_stack.last().unwrap() {
+            self.emit_error(expr.loc, ParseError::YieldInParameters)
+        }
+
+        default_visit_yield_expression(self, expr)
+    }
+
     fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
         match self.allow_super_member_stack.last() {
             Some(AllowSuperStackEntry::Allow { is_static }) => {
@@ -892,6 +903,10 @@ impl Analyzer<'_> {
         // Return is not allowed in static initializers, but is allowed in all other functions
         self.allow_return_stack.push(!is_static_initializer);
 
+        // Yield are allowed in functions (we already ensure yield expressions only occur in
+        // generator functions in the parser).
+        self.allow_yield_stack.push(true);
+
         // Super member expressions are allowed in methods, and in arrow functions are inherited
         // from surrounding context.
         if !is_arrow_function {
@@ -932,10 +947,12 @@ impl Analyzer<'_> {
         // Function parameters and body (but not function name) are in the function scope
         self.enter_scope(func.scope);
 
-        // Visit and analyze function parameters
+        // Visit and analyze function parameters. Yield is not allowed within function parameters.
+        self.allow_yield_stack.push(false);
         for param in &mut func.params {
             self.visit_function_param(param);
         }
+        self.allow_yield_stack.pop();
 
         let mut param_index = 0;
         for param in &mut func.params {
@@ -1043,6 +1060,7 @@ impl Analyzer<'_> {
             self.allow_super_member_stack.pop();
         }
 
+        self.allow_yield_stack.pop();
         self.allow_return_stack.pop();
         self.function_stack.pop();
 

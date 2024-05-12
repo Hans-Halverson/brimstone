@@ -515,12 +515,23 @@ impl<'a> Parser<'a> {
 
                         // Functions can be labeled items
                         let body = if self.is_function_start()? {
-                            Statement::FuncDecl(self.parse_function_declaration(
+                            let func = self.parse_function_declaration(
                                 function_ctx_flags | FunctionContext::LABELED,
-                            )?)
+                            )?;
+
+                            // Verify that labeled functions are not async or generators
+                            if func.is_async() || func.is_generator() {
+                                return self.error(
+                                    func.loc,
+                                    ParseError::AsyncOrGeneratorLabeledFunction(func.is_async()),
+                                );
+                            }
+
+                            Statement::FuncDecl(func)
                         } else {
                             // From the perspective of function declaration scoping, function
-                            // declarations arbitrarily nested within labels are still toplevel.
+                            // declarations inside arbitrarily nested within labels are still
+                            // toplevel.
                             self.parse_statement_with_function_context(function_ctx_flags)?
                         };
 
@@ -3510,7 +3521,11 @@ impl<'a> Parser<'a> {
 
                 let params = vec![];
                 let param_flags = self.analyze_function_params(&params);
+
+                // Yield expressions are not allowed in static initializer blocks
+                let did_allow_yield = swap_and_save(&mut self.allow_yield, false);
                 let (block, _) = self.parse_function_block_body(param_flags)?;
+                self.allow_yield = did_allow_yield;
 
                 self.scope_builder.set_current_scope(scope_to_restore);
 

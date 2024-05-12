@@ -54,6 +54,7 @@ pub enum ParseError {
     UseStrictFunctionNonSimpleParameterList,
     InvalidDuplicateParameters(InvalidDuplicateParametersReason),
     InvalidLabeledFunction(bool),
+    AsyncOrGeneratorLabeledFunction(bool),
     ReturnOutsideFunction,
     ContinueOutsideIterable,
     UnlabeledBreakOutsideBreakable,
@@ -75,6 +76,7 @@ pub enum ParseError {
     LetNameInLexicalDeclaration,
     GetterWrongNumberOfParams,
     SetterWrongNumberOfParams,
+    YieldInParameters,
     // RegExpr parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
@@ -244,6 +246,12 @@ impl fmt::Display for ParseError {
             ParseError::InvalidLabeledFunction(false) => {
                 write!(f, "Functions can only be labeled inside blocks")
             }
+            ParseError::AsyncOrGeneratorLabeledFunction(true) => {
+                write!(f, "Async functions cannot be labeled")
+            }
+            ParseError::AsyncOrGeneratorLabeledFunction(false) => {
+                write!(f, "Generator functions cannot be labeled")
+            }
             ParseError::ReturnOutsideFunction => write!(f, "Return must be inside function"),
             ParseError::ContinueOutsideIterable => write!(f, "Continue must be inside loop"),
             ParseError::UnlabeledBreakOutsideBreakable => {
@@ -302,6 +310,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::SetterWrongNumberOfParams => {
                 write!(f, "Setter functions must exactly one parameter")
+            }
+            ParseError::YieldInParameters => {
+                write!(f, "Yield expression not allowed in function parameters")
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

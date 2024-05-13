@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    completion::EvalResult, error::type_error_, object_value::ObjectValue, property::Property,
+    completion::EvalResult, error::type_error, object_value::ObjectValue, property::Property,
     realm::Realm, Context, Handle, Value,
 };
 
@@ -37,7 +37,7 @@ impl WeakRefPrototype {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
             weak_ref_object.weak_ref_target().to_handle(cx).into()
         } else {
-            type_error_(cx, "deref method must be called on WeakRef")
+            type_error(cx, "deref method must be called on WeakRef")
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -71,7 +71,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "add method must be called on set");
+            return type_error(cx, "add method must be called on set");
         };
 
         // Convert negative zero to positive zero in set
@@ -97,7 +97,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "clear method must be called on set");
+            return type_error(cx, "clear method must be called on set");
         };
 
         set.set_data().clear();
@@ -115,7 +115,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "delete method must be called on set");
+            return type_error(cx, "delete method must be called on set");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -134,7 +134,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "entries method must be called on set");
+            return type_error(cx, "entries method must be called on set");
         };
 
         SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).into()
@@ -150,12 +150,12 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "forEach method must be called on set");
+            return type_error(cx, "forEach method must be called on set");
         };
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -186,7 +186,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "has method must be called on set");
+            return type_error(cx, "has method must be called on set");
         };
 
         let value = get_argument(cx, arguments, 0);
@@ -205,7 +205,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "size accessor must be called on set");
+            return type_error(cx, "size accessor must be called on set");
         };
 
         Value::from(set.set_data().num_entries_occupied())
@@ -223,7 +223,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error_(cx, "values method must be called on set");
+            return type_error(cx, "values method must be called on set");
         };
 
         SetIterator::new(cx, set, SetIteratorKind::Value).into()

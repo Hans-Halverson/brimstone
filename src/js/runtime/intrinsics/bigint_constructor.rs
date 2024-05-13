@@ -8,7 +8,7 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -83,7 +83,7 @@ impl BigIntConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if new_target.is_some() {
-            return type_error_(cx, "BigInt is not a constructor");
+            return type_error(cx, "BigInt is not a constructor");
         }
 
         let value = get_argument(cx, arguments, 0);
@@ -91,7 +91,7 @@ impl BigIntConstructor {
 
         if primitive.is_number() {
             if !is_integral_number(primitive.get()) {
-                return range_error_(cx, "number is not an integer");
+                return range_error(cx, "number is not an integer");
             }
 
             if primitive.is_smi() {

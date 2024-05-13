@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
+        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
         function::get_argument, object_value::ObjectValue, realm::Realm,
         type_utilities::is_callable, Context, Handle, Value,
     },
@@ -44,12 +44,12 @@ impl FinalizationRegistryConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "FinalizationRegistry constructor must be called with new");
+            return type_error(cx, "FinalizationRegistry constructor must be called with new");
         };
 
         let cleanup_callback = get_argument(cx, arguments, 0);
         if !is_callable(cleanup_callback) {
-            return type_error_(cx, "FinalizationRegistry cleanup callback is not a function");
+            return type_error(cx, "FinalizationRegistry cleanup callback is not a function");
         }
 
         maybe!(FinalizationRegistryObject::new_from_constructor(

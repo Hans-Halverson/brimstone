@@ -1,8 +1,7 @@
 use crate::js::runtime::{
-    collections::BsHashMapField, completion::EvalResult, error::type_error_,
-    function::get_argument, intrinsics::weak_ref_constructor::can_be_held_weakly,
-    object_value::ObjectValue, property::Property, realm::Realm, value::ValueCollectionKey,
-    Context, Handle, Value,
+    collections::BsHashMapField, completion::EvalResult, error::type_error, function::get_argument,
+    intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
+    property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, weak_map_object::WeakMapObject};
@@ -42,7 +41,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error_(cx, "delete method must be called on WeakMap");
+            return type_error(cx, "delete method must be called on WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -65,7 +64,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error_(cx, "get method must be called on WeakMap");
+            return type_error(cx, "get method must be called on WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -90,7 +89,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error_(cx, "has method must be called on WeakMap");
+            return type_error(cx, "has method must be called on WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -113,14 +112,14 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error_(cx, "set method must be called on WeakMap");
+            return type_error(cx, "set method must be called on WeakMap");
         };
 
         let key = get_argument(cx, arguments, 0);
         let value = get_argument(cx, arguments, 1);
 
         if !can_be_held_weakly(cx, key.get()) {
-            return type_error_(cx, "WeakMap keys must be objects or symbols");
+            return type_error(cx, "WeakMap keys must be objects or symbols");
         }
 
         weak_map_object

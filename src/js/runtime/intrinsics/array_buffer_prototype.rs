@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::{construct, species_constructor},
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -49,13 +49,13 @@ impl ArrayBufferPrototype {
         {
             this_value.as_object().cast::<ArrayBufferObject>()
         } else if this_value.is_object() && this_value.as_object().is_shared_array_buffer() {
-            return type_error_(cx, "cannot slice SharedArrayBuffer");
+            return type_error(cx, "cannot slice SharedArrayBuffer");
         } else {
-            return type_error_(cx, "expected array buffer");
+            return type_error(cx, "expected array buffer");
         };
 
         if array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let length = array_buffer.byte_length() as u64;
@@ -103,22 +103,22 @@ impl ArrayBufferPrototype {
         let mut new_array_buffer = if new_object.is_array_buffer() {
             new_object.cast::<ArrayBufferObject>()
         } else if new_object.is_shared_array_buffer() {
-            return type_error_(cx, "constructor cannot return SharedArrayBuffer");
+            return type_error(cx, "constructor cannot return SharedArrayBuffer");
         } else {
-            return type_error_(cx, "expected array buffer");
+            return type_error(cx, "expected array buffer");
         };
 
         if new_array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         } else if new_array_buffer.ptr_eq(&array_buffer) {
-            return type_error_(cx, "constructor cannot return same array buffer");
+            return type_error(cx, "constructor cannot return same array buffer");
         } else if (new_array_buffer.byte_length() as u64) < new_length {
-            return type_error_(cx, "new array buffer is too small");
+            return type_error(cx, "new array buffer is too small");
         }
 
         // Original array buffer may have become detached during previous calls
         if array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         // Copy data from original array buffer to new array buffer
@@ -146,10 +146,10 @@ impl ArrayBufferPrototype {
 
                 return Value::from(array_buffer.byte_length()).to_handle(cx).into();
             } else if this_object.is_shared_array_buffer() {
-                return type_error_(cx, "cannot access byteLength of SharedArrayBuffer");
+                return type_error(cx, "cannot access byteLength of SharedArrayBuffer");
             }
         }
 
-        type_error_(cx, "expected array buffer")
+        type_error(cx, "expected array buffer")
     }
 }

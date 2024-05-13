@@ -7,7 +7,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         bytecode::function::{BytecodeFunction, Closure},
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
         interned_strings::InternedStrings,
@@ -98,7 +98,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error_(cx, "value is not a function");
+            return type_error(cx, "value is not a function");
         }
 
         let this_arg = get_argument(cx, arguments, 0);
@@ -120,7 +120,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error_(cx, "value is not a function");
+            return type_error(cx, "value is not a function");
         }
 
         let target = this_value.as_object();
@@ -178,7 +178,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error_(cx, "value is not a function");
+            return type_error(cx, "value is not a function");
         }
 
         if arguments.is_empty() {
@@ -197,7 +197,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error_(cx, "Function.prototype.toString expected a function");
+            return type_error(cx, "Function.prototype.toString expected a function");
         }
 
         let this_object = this_value.as_object();
@@ -240,7 +240,7 @@ impl FunctionPrototype {
             return cx.alloc_string("function () { [native code] }").into();
         }
 
-        type_error_(cx, "Function.prototype.toString expected a function")
+        type_error(cx, "Function.prototype.toString expected a function")
     }
 
     // 20.2.3.6 Function.prototype [ @@hasInstance ]

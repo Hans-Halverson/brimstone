@@ -12,7 +12,7 @@ use crate::{
             },
             array_object::array_create_in_realm,
             completion::EvalResult,
-            error::{range_error_, type_error_},
+            error::{range_error, type_error},
             interned_strings::InternedStrings,
             numeric_operations::number_exponentiate,
             object_descriptor::ObjectKind,
@@ -80,7 +80,7 @@ pub fn eval_delete_property(
     let delete_status = maybe!(base_object.delete(cx, key));
 
     if !delete_status && is_strict {
-        return type_error_(cx, "cannot delete property");
+        return type_error(cx, "cannot delete property");
     }
 
     delete_status.into()
@@ -157,7 +157,7 @@ pub fn eval_add(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -180,7 +180,7 @@ pub fn eval_subtract(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -203,7 +203,7 @@ pub fn eval_multiply(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -226,13 +226,13 @@ pub fn eval_divide(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
         let bigint_right = right_num.as_bigint().bigint();
         if bigint_right.eq(&BigInt::default()) {
-            return range_error_(cx, "BigInt division by zero");
+            return range_error(cx, "BigInt division by zero");
         }
 
         let result = left_num.as_bigint().bigint() / bigint_right;
@@ -254,13 +254,13 @@ pub fn eval_remainder(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
         let bigint_right = right_num.as_bigint().bigint();
         if bigint_right.eq(&BigInt::default()) {
-            return range_error_(cx, "BigInt division by zero");
+            return range_error(cx, "BigInt division by zero");
         }
 
         let bigint_left = left_num.as_bigint().bigint();
@@ -287,7 +287,7 @@ pub fn eval_exponentiation(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -295,7 +295,7 @@ pub fn eval_exponentiation(
         let exponent_bignum = right_num.as_bigint().bigint();
 
         if exponent_bignum.lt(&BigInt::default()) {
-            return range_error_(cx, "BigInt negative exponent");
+            return range_error(cx, "BigInt negative exponent");
         } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
             return BigIntValue::new(cx, 1.into()).into();
         }
@@ -305,7 +305,7 @@ pub fn eval_exponentiation(
             return BigIntValue::new(cx, result).into();
         } else {
             // This guarantees a bigint that is too large
-            return range_error_(cx, "BigInt is too large");
+            return range_error(cx, "BigInt is too large");
         }
     } else {
         return Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
@@ -382,7 +382,7 @@ pub fn eval_bitwise_and(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -406,7 +406,7 @@ pub fn eval_bitwise_or(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -430,7 +430,7 @@ pub fn eval_bitwise_xor(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -454,7 +454,7 @@ pub fn eval_shift_left(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -486,7 +486,7 @@ pub fn eval_shift_right_arithmetic(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
@@ -535,7 +535,7 @@ fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalRes
             Ok(exponent) => exponent,
             // This guarantees a bigint that is too large
             Err(_) => {
-                return range_error_(cx, "BigInt is too large");
+                return range_error(cx, "BigInt is too large");
             }
         };
 
@@ -553,7 +553,7 @@ pub fn eval_shift_right_logical(
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint || right_num.is_bigint() {
-        return type_error_(cx, "BigInt cannot be converted to number");
+        return type_error(cx, "BigInt cannot be converted to number");
     }
 
     let left_smi = must!(to_uint32(cx, left_value));
@@ -572,7 +572,7 @@ pub fn eval_instanceof_expression(
     target: Handle<Value>,
 ) -> EvalResult<bool> {
     if !target.is_object() {
-        return type_error_(cx, "invalid instanceof operand");
+        return type_error(cx, "invalid instanceof operand");
     }
 
     let has_instance_key = cx.well_known_symbols.has_instance();
@@ -584,7 +584,7 @@ pub fn eval_instanceof_expression(
 
     let target_object = target.as_object();
     if !target_object.is_callable() {
-        return type_error_(cx, "invalid 'instanceof' operand");
+        return type_error(cx, "invalid 'instanceof' operand");
     }
 
     let has_instance = maybe!(ordinary_has_instance(cx, target, value));
@@ -597,7 +597,7 @@ pub fn eval_in_expression(
     right_value: Handle<Value>,
 ) -> EvalResult<bool> {
     if !right_value.is_object() {
-        return type_error_(cx, "right side of 'in' must be an object");
+        return type_error(cx, "right side of 'in' must be an object");
     }
 
     let property_key = maybe!(to_property_key(cx, left_value));

@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -98,12 +98,12 @@ impl WeakRefConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "WeakRef constructor must be called with new");
+            return type_error(cx, "WeakRef constructor must be called with new");
         };
 
         let target_value = get_argument(cx, arguments, 0);
         if !can_be_held_weakly(cx, target_value.get()) {
-            return type_error_(cx, "WeakRef only holds objects and symbols");
+            return type_error(cx, "WeakRef only holds objects and symbols");
         }
 
         maybe!(WeakRefObject::new_from_constructor(cx, new_target, target_value)).into()

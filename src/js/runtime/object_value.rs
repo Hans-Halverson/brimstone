@@ -12,7 +12,7 @@ use super::{
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     collections::{BsIndexMap, BsIndexMapField},
     completion::EvalResult,
-    error::type_error_,
+    error::type_error,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
@@ -429,7 +429,7 @@ impl Handle<ObjectValue> {
         private_property: Property,
     ) -> EvalResult<()> {
         if self.has_private_element(private_name) {
-            type_error_(cx, "private property already defined")
+            type_error(cx, "private property already defined")
         } else {
             // Safe since insert does not allocate on managed heap
             let property_key = PropertyKey::symbol(private_name);

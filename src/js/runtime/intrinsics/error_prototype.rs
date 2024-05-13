@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        abstract_operations::get, completion::EvalResult, error::type_error_,
+        abstract_operations::get, completion::EvalResult, error::type_error,
         object_value::ObjectValue, realm::Realm, string_value::StringValue,
         type_utilities::to_string, Context, Handle, Value,
     },
@@ -37,7 +37,7 @@ impl ErrorPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error_(cx, "expected object");
+            return type_error(cx, "expected object");
         }
 
         let this_object = this_value.as_object();

@@ -5,7 +5,7 @@ use crate::{
             abstract_operations::length_of_array_like,
             builtin_function::BuiltinFunction,
             completion::EvalResult,
-            error::range_error_,
+            error::range_error,
             function::get_argument,
             get,
             object_value::ObjectValue,
@@ -114,7 +114,7 @@ impl StringConstructor {
 
                 // All valid code points are integers in the smi range
                 if !code_point.is_smi() {
-                    return range_error_(
+                    return range_error(
                         cx,
                         &format!("invalid code point {}", code_point.as_number()),
                     );
@@ -123,7 +123,7 @@ impl StringConstructor {
                 let code_point = code_point.as_smi();
 
                 if code_point < 0 || code_point > 0x10FFFF {
-                    return range_error_(cx, &format!("invalid code point {}", code_point));
+                    return range_error(cx, &format!("invalid code point {}", code_point));
                 }
 
                 code_point as CodePoint

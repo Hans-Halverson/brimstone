@@ -15,7 +15,7 @@ use crate::{
             abstract_operations::{call_object, get_method, invoke},
             array_object::{array_create, create_array_from_list},
             completion::EvalResult,
-            error::{range_error_, type_error_},
+            error::{range_error, type_error},
             function::get_argument,
             get,
             interned_strings::InternedStrings,
@@ -237,7 +237,7 @@ impl StringPrototype {
 
         let search_value = get_argument(cx, arguments, 0);
         if maybe!(is_regexp(cx, search_value)) {
-            return type_error_(cx, "first argument to endsWith cannot be a RegExp");
+            return type_error(cx, "first argument to endsWith cannot be a RegExp");
         }
 
         let search_string = maybe!(to_string(cx, search_value));
@@ -277,7 +277,7 @@ impl StringPrototype {
 
         let search_string = get_argument(cx, arguments, 0);
         if maybe!(is_regexp(cx, search_string)) {
-            return type_error_(cx, "String.prototype.includes cannot take a regular expression");
+            return type_error(cx, "String.prototype.includes cannot take a regular expression");
         }
 
         let search_string = maybe!(to_string(cx, search_string));
@@ -445,7 +445,7 @@ impl StringPrototype {
                 };
 
                 if !has_global_flag {
-                    return type_error_(
+                    return type_error(
                         cx,
                         "String.prototype.matchAll expects RegExp with global flag",
                     );
@@ -494,7 +494,7 @@ impl StringPrototype {
             } else if form_string == cx.names.nfkd.as_string().as_flat() {
                 NormalizationForm::NFKD
             } else {
-                return range_error_(
+                return range_error(
                     cx,
                     "String.prototype.normalize normalization form must be 'NFC', 'NFD', 'NFKC', or 'NFKD'",
                 );
@@ -562,7 +562,7 @@ impl StringPrototype {
         if int_max_length <= string_length as u64 {
             return string.into();
         } else if int_max_length > u32::MAX as u64 {
-            return range_error_(cx, "target string length exceeds maximum string size");
+            return range_error(cx, "target string length exceeds maximum string size");
         }
 
         let int_max_length = int_max_length as u32;
@@ -612,7 +612,7 @@ impl StringPrototype {
         let n_arg = get_argument(cx, arguments, 0);
         let n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n < 0.0 || n > MAX_U32_AS_F64 {
-            return range_error_(cx, "count must be a finite, positive number that does not exceed the maximum string size");
+            return range_error(cx, "count must be a finite, positive number that does not exceed the maximum string size");
         } else if n == 0.0 {
             return cx.names.empty_string().as_string().into();
         }
@@ -723,7 +723,7 @@ impl StringPrototype {
                 let flags_string = maybe!(to_string(cx, flags_value));
 
                 if !flags_string_contains(flags_string, 'g' as u32) {
-                    return type_error_(
+                    return type_error(
                         cx,
                         "String.prototype.replaceAll expects RegExp with global flag",
                     );
@@ -1002,7 +1002,7 @@ impl StringPrototype {
 
         let search_value = get_argument(cx, arguments, 0);
         if maybe!(is_regexp(cx, search_value)) {
-            return type_error_(cx, "first argument to startsWith cannot be a RegExp");
+            return type_error(cx, "first argument to startsWith cannot be a RegExp");
         }
 
         let search_string = maybe!(to_string(cx, search_value));
@@ -1221,7 +1221,7 @@ fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
         }
     }
 
-    type_error_(cx, "value cannot be converted to string")
+    type_error(cx, "value cannot be converted to string")
 }
 
 enum NormalizationForm {

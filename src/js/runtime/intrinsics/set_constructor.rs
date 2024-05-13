@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument, get,
+        completion::EvalResult, error::type_error, function::get_argument, get,
         intrinsics::set_object::SetObject, iterator::iter_iterator_values,
         object_value::ObjectValue, realm::Realm, type_utilities::is_callable, Context, Handle,
         Value,
@@ -47,7 +47,7 @@ impl SetConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "Set constructor must be called with new");
+            return type_error(cx, "Set constructor must be called with new");
         };
 
         let set_object: Handle<ObjectValue> =
@@ -60,7 +60,7 @@ impl SetConstructor {
 
         let adder = maybe!(get(cx, set_object, cx.names.add()));
         if !is_callable(adder) {
-            return type_error_(cx, "set must contain an add method");
+            return type_error(cx, "set must contain an add method");
         }
 
         let adder = adder.as_object();

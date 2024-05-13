@@ -9,7 +9,7 @@ use crate::{
             builtin_function::BuiltinFunction,
             bytecode::instruction::EvalFlags,
             console::ConsoleObject,
-            error::uri_error_,
+            error::uri_error,
             eval::eval::perform_eval,
             function::get_argument,
             gc::HandleScope,
@@ -383,11 +383,11 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
     macro_rules! parse_hex_byte {
         () => {{
             if i + 2 >= string_length {
-                return uri_error_(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "Invalid URI escape sequence");
             }
 
             if flat_string.code_unit_at(i) != '%' as u16 {
-                return uri_error_(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "Invalid URI escape sequence");
             }
 
             let byte = match (
@@ -395,7 +395,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
                 get_hex_value(flat_string.code_unit_at(i + 2) as u32),
             ) {
                 (Some(first), Some(second)) => ((first << 4) | second) as u8,
-                _ => return uri_error_(cx, "Invalid URI escape sequence"),
+                _ => return uri_error(cx, "Invalid URI escape sequence"),
             };
 
             i += 3;
@@ -409,7 +409,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
             let code_unit = parse_hex_byte!();
 
             if !is_continuation_byte(code_unit) {
-                return uri_error_(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "Invalid URI escape sequence");
             }
 
             code_unit
@@ -458,7 +458,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 decoded_string.push(code_point);
             } else {
-                return uri_error_(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "Invalid URI escape sequence");
             }
         } else {
             decoded_string.push(code_unit as u32);
@@ -510,7 +510,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
         let char = match char::from_u32(code_point) {
             Some(char) => char,
             None => {
-                return uri_error_(cx, "Unpaired surrogate cannot be encoded in URI");
+                return uri_error(cx, "Unpaired surrogate cannot be encoded in URI");
             }
         };
 

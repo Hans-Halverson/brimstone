@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::{call_object, get_method},
-        error::type_error_,
+        error::type_error,
         get,
     },
     maybe, must,
@@ -60,7 +60,7 @@ pub fn get_iterator(
                 method
             } else {
                 // Inlined from eventual call to IsCallable(undefined) which would fail
-                return type_error_(cx, "value is not a function");
+                return type_error(cx, "value is not a function");
             }
         }
     };
@@ -68,7 +68,7 @@ pub fn get_iterator(
     let iterator = maybe!(call_object(cx, method, object, &[]));
 
     if !iterator.is_object() {
-        return type_error_(cx, "iterator must be an object");
+        return type_error(cx, "iterator must be an object");
     }
     let iterator = iterator.as_object();
 
@@ -92,7 +92,7 @@ pub fn iterator_next(
     };
 
     if !result.is_object() {
-        return type_error_(cx, "iterator's next method must return an object");
+        return type_error(cx, "iterator's next method must return an object");
     }
 
     return result.as_object().into();
@@ -140,7 +140,7 @@ pub fn iterator_close(
 
     let inner_value = maybe!(inner_result);
     if !inner_value.is_object() {
-        return type_error_(cx, "iterator's return method must return an object");
+        return type_error(cx, "iterator's return method must return an object");
     }
 
     completion

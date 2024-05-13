@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error_, function::get_argument, get,
+        completion::EvalResult, error::type_error, function::get_argument, get,
         iterator::iter_iterator_values, object_value::ObjectValue, property_key::PropertyKey,
         realm::Realm, type_utilities::is_callable, value::Value, Context, Handle,
     },
@@ -46,7 +46,7 @@ impl MapConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "Map constructor must be called with new");
+            return type_error(cx, "Map constructor must be called with new");
         };
 
         let map_object: Handle<ObjectValue> =
@@ -59,7 +59,7 @@ impl MapConstructor {
 
         let adder = maybe!(get(cx, map_object, cx.names.set_()));
         if !is_callable(adder) {
-            return type_error_(cx, "map must contain a set method");
+            return type_error(cx, "map must contain a set method");
         }
 
         add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {
@@ -91,7 +91,7 @@ pub fn add_entries_from_iterable(
 
     maybe!(iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {
-            return Some(type_error_(cx, "entry must be an object"));
+            return Some(type_error(cx, "entry must be an object"));
         }
 
         let entry = entry.as_object();

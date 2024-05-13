@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        completion::EvalResult, error::type_error_, object_value::ObjectValue, realm::Realm,
+        completion::EvalResult, error::type_error, object_value::ObjectValue, realm::Realm,
         Context, Handle, Value,
     },
     maybe,
@@ -64,5 +64,5 @@ fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         }
     }
 
-    type_error_(cx, "value cannot be converted to boolean")
+    type_error(cx, "value cannot be converted to boolean")
 }

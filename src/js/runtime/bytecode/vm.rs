@@ -10,8 +10,8 @@ use crate::{
         array_object::{array_create, ArrayObject},
         class_names::{new_class, ClassNames},
         error::{
-            err_assign_constant, err_cannot_set_property, err_not_defined_, reference_error_,
-            type_error_, type_error_value,
+            err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
+            type_error, type_error_value,
         },
         eval::{
             eval::perform_eval,
@@ -1832,7 +1832,7 @@ impl VM {
             // Derived constructors can either return an object or undefined. The derived
             // constructor implementation will return `this` if the code syntactically returns
             // undefined, so if the return value wasn't an object we should error.
-            type_error_(self.cx, "derived constructor must return object or undefined")
+            type_error(self.cx, "derived constructor must return object or undefined")
         }
     }
 
@@ -1986,7 +1986,7 @@ impl VM {
             .get_prototype_of(self.cx));
 
         if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
-            return type_error_(self.cx, "super must be a constructor");
+            return type_error(self.cx, "super must be a constructor");
         }
         let super_constructor = super_constructor.unwrap();
 
@@ -2108,7 +2108,7 @@ impl VM {
                 value
             } else if error_on_unresolved {
                 // Error if property is not found on the global object
-                return err_not_defined_(cx, name);
+                return err_not_defined(cx, name);
             } else {
                 // If not erroring, return undefined for unresolved names
                 self.write_register(dest, Value::undefined());
@@ -2151,7 +2151,7 @@ impl VM {
                 true
             } else if self.closure().function_ptr().is_strict() {
                 // Otherwise if in strict mode, error on unresolved name
-                return err_not_defined_(cx, name);
+                return err_not_defined(cx, name);
             } else {
                 // Otherwise in sloppy mode create a new global property
                 return set(cx, global_object, name_key, value, false);
@@ -2210,7 +2210,7 @@ impl VM {
             } else {
                 if error_on_unresolved {
                     // Error if name could not be resolved
-                    err_not_defined_(cx, name)
+                    err_not_defined(cx, name)
                 } else {
                     // If not erroring, return undefined for unresolved names
                     self.write_register(dest, Value::undefined());
@@ -2239,7 +2239,7 @@ impl VM {
             if !found_name {
                 if is_strict {
                     // In strict mode names must be resolved otherwise error
-                    return err_not_defined_(cx, name);
+                    return err_not_defined(cx, name);
                 } else {
                     // Name is an interned string (and cannot be a number) so is already a property
                     // key.
@@ -3133,7 +3133,7 @@ impl VM {
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
         let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error_(self.cx, "prototype is null"),
+            None => return type_error(self.cx, "prototype is null"),
             Some(prototype) => prototype,
         };
 
@@ -3164,7 +3164,7 @@ impl VM {
         let property_key = key.replace_into(property_key);
 
         let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error_(self.cx, "prototype is null"),
+            None => return type_error(self.cx, "prototype is null"),
             Some(prototype) => prototype,
         };
 
@@ -3191,7 +3191,7 @@ impl VM {
         // May allocate
         let property_key = maybe!(to_property_key(self.cx, key));
         let mut home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error_(self.cx, "prototype is null"),
+            None => return type_error(self.cx, "prototype is null"),
             Some(prototype) => prototype,
         };
 
@@ -3536,7 +3536,7 @@ impl VM {
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
-        reference_error_(self.cx, &format!("can't access `{}` before initialization", name))
+        reference_error(self.cx, &format!("can't access `{}` before initialization", name))
     }
 
     #[inline]
@@ -3551,7 +3551,7 @@ impl VM {
             return ().into();
         }
 
-        reference_error_(self.cx, "this is not initialized")
+        reference_error(self.cx, "this is not initialized")
     }
 
     #[inline]
@@ -3566,7 +3566,7 @@ impl VM {
             return ().into();
         }
 
-        reference_error_(self.cx, "super constructor called multiple times")
+        reference_error(self.cx, "super constructor called multiple times")
     }
 
     #[inline]
@@ -3587,7 +3587,7 @@ impl VM {
         &mut self,
         _: &ErrorDeleteSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        reference_error_(self.cx, "cannot delete super property")
+        reference_error(self.cx, "cannot delete super property")
     }
 
     #[inline]
@@ -3655,7 +3655,7 @@ impl VM {
 
         // Iterator's function must return an object, otherwise error
         if !iterator_result.is_object() {
-            return type_error_(self.cx, "iterator's next method must return an object");
+            return type_error(self.cx, "iterator's next method must return an object");
         }
         let iterator_result = iterator_result.as_object();
 
@@ -3690,7 +3690,7 @@ impl VM {
 
             // Return method must return an object otherwise error
             if !return_result.is_object() {
-                return type_error_(self.cx, "iterator's return method must return an object");
+                return type_error(self.cx, "iterator's return method must return an object");
             }
         }
 

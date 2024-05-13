@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         collections::BsIndexMapField,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -72,7 +72,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "clear method must be called on map");
+            return type_error(cx, "clear method must be called on map");
         };
 
         map.map_data().clear();
@@ -90,7 +90,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "delete method must be called on map");
+            return type_error(cx, "delete method must be called on map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -109,7 +109,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "entries method must be called on map");
+            return type_error(cx, "entries method must be called on map");
         };
 
         MapIterator::new(cx, map, MapIteratorKind::KeyAndValue).into()
@@ -125,12 +125,12 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "forEach method must be called on map");
+            return type_error(cx, "forEach method must be called on map");
         };
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -163,7 +163,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "get method must be called on map");
+            return type_error(cx, "get method must be called on map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -184,7 +184,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "has method must be called on map");
+            return type_error(cx, "has method must be called on map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -203,7 +203,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "keys method must be called on map");
+            return type_error(cx, "keys method must be called on map");
         };
 
         MapIterator::new(cx, map, MapIteratorKind::Key).into()
@@ -219,7 +219,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "set method must be called on map");
+            return type_error(cx, "set method must be called on map");
         };
 
         let mut key = get_argument(cx, arguments, 0);
@@ -247,7 +247,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "size accessor must be called on map");
+            return type_error(cx, "size accessor must be called on map");
         };
 
         Value::from(map.map_data().num_entries_occupied())
@@ -265,7 +265,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error_(cx, "values method must be called on map");
+            return type_error(cx, "values method must be called on map");
         };
 
         MapIterator::new(cx, map, MapIteratorKind::Value).into()

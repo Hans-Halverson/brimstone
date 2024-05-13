@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{call_object, get},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_value::ObjectValue,
         realm::Realm,
@@ -51,7 +51,7 @@ impl WeakMapConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "WeakMap constructor must be called with new");
+            return type_error(cx, "WeakMap constructor must be called with new");
         };
 
         let weak_map = maybe!(WeakMapObject::new_from_constructor(cx, new_target));
@@ -63,7 +63,7 @@ impl WeakMapConstructor {
 
         let adder = maybe!(get(cx, weak_map.into(), cx.names.set_()));
         if !is_callable(adder) {
-            return type_error_(cx, "WeakMap adder is not callable");
+            return type_error(cx, "WeakMap adder is not callable");
         }
 
         add_entries_from_iterable(cx, weak_map.into(), iterable, |cx, key, value| {

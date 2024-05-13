@@ -3,7 +3,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_method_property, define_property_or_throw},
         bytecode::function::Closure,
-        error::type_error_,
+        error::type_error,
         function::build_function_name,
         get,
         intrinsics::intrinsics::Intrinsic,
@@ -179,7 +179,7 @@ pub fn new_class(
             let constructor_parent = cx.get_intrinsic(Intrinsic::FunctionPrototype);
             (None, constructor_parent)
         } else if !is_constructor_value(super_class) {
-            return type_error_(cx, "super class must be a constructor");
+            return type_error(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();
             let proto_parent = maybe!(get(cx, super_class, cx.names.prototype()));
@@ -189,7 +189,7 @@ pub fn new_class(
             } else if proto_parent.is_null() {
                 (None, super_class)
             } else {
-                return type_error_(cx, "super class prototype must be an object or null");
+                return type_error(cx, "super class prototype must be an object or null");
             }
         }
     } else {

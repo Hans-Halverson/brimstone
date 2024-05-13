@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
-    error::{err_assign_constant, syntax_error_},
+    error::{err_assign_constant, syntax_error},
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     global_names::has_restricted_global_property,
     interned_strings::InternedStrings,
@@ -168,7 +168,7 @@ impl Handle<Realm> {
             let is_global_lex_name = self.get_lexical_name(name.get_()).is_some();
 
             if is_global_var_name || is_global_lex_name {
-                return syntax_error_(cx, &format!("redeclaration of {}", name.get_()));
+                return syntax_error(cx, &format!("redeclaration of {}", name.get_()));
             }
         }
 
@@ -184,7 +184,7 @@ impl Handle<Realm> {
     ) -> EvalResult<()> {
         for name in names {
             if self.get_lexical_name(*name).is_some() {
-                return syntax_error_(cx, &format!("redeclaration of {}", name));
+                return syntax_error(cx, &format!("redeclaration of {}", name));
             }
         }
 

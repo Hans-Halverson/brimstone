@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         interned_strings::InternedStrings,
         object_value::ObjectValue,
@@ -55,7 +55,7 @@ impl NumberPrototype {
         }
 
         if num_fraction_digits < 0.0 || num_fraction_digits > 100.0 {
-            return range_error_(cx, "number of fraction digits must between 0 and 100");
+            return range_error(cx, "number of fraction digits must between 0 and 100");
         }
 
         // If number of fraction digits is not specified then we need to use the minimum number of
@@ -133,7 +133,7 @@ impl NumberPrototype {
             || num_fraction_digits < 0.0
             || num_fraction_digits > 100.0
         {
-            return range_error_(cx, "number of fraction digits must between 0 and 100");
+            return range_error(cx, "number of fraction digits must between 0 and 100");
         }
 
         let num_fraction_digits = num_fraction_digits as u8;
@@ -197,7 +197,7 @@ impl NumberPrototype {
 
         let precision = precision as i64;
         if precision < 1 || precision > 100 {
-            return range_error_(
+            return range_error(
                 cx,
                 "Number.prototype.toPrecision requires precision between 1 and 100",
             );
@@ -279,7 +279,7 @@ impl NumberPrototype {
                 let radix = radix.as_smi();
 
                 if radix < 2 || radix > 36 {
-                    return range_error_(cx, "radix must be between 2 and 36");
+                    return range_error(cx, "radix must be between 2 and 36");
                 }
 
                 radix
@@ -287,7 +287,7 @@ impl NumberPrototype {
                 let radix = maybe!(to_integer_or_infinity(cx, radix));
 
                 if radix < 2.0 || radix > 36.0 {
-                    return range_error_(cx, "radix must be between 2 and 36");
+                    return range_error(cx, "radix must be between 2 and 36");
                 }
 
                 radix as i32
@@ -402,7 +402,7 @@ fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Val
         }
     }
 
-    type_error_(cx, "value cannot be converted to number")
+    type_error(cx, "value cannot be converted to number")
 }
 
 /// Decompose an f64 to its exponent and mantissa, where the mantissa is rounded to exactly the

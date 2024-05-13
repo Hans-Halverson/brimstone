@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error_,
+        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
         object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
         value::SymbolValue, Context, Handle, Value,
     },
@@ -109,7 +109,7 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
         }
     }
 
-    type_error_(cx, "value cannot be converted to symbol")
+    type_error(cx, "value cannot be converted to symbol")
 }
 
 // 20.4.3.3.1 SymbolDescriptiveString

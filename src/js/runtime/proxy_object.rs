@@ -7,7 +7,7 @@ use super::{
         call_object, construct, get_method, is_extensible as is_extensible_, length_of_array_like,
     },
     array_object::create_array_from_list,
-    error::type_error_,
+    error::type_error,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     get,
     intrinsics::intrinsics::Intrinsic,
@@ -90,7 +90,7 @@ impl VirtualObject for Handle<ProxyObject> {
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -112,7 +112,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
 
             if let Some(false) = target_desc.unwrap().is_configurable {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!(
                         "proxy can't report a non-configurable own property '{}' as non-existent",
@@ -122,12 +122,12 @@ impl VirtualObject for Handle<ProxyObject> {
             }
 
             if !maybe!(is_extensible_(cx, target)) {
-                return type_error_(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
+                return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
             }
 
             return None.into();
         } else if !trap_result.is_object() {
-            return type_error_(
+            return type_error(
                 cx,
                 "proxy getOwnPropertyDescriptor must return an object or undefined",
             );
@@ -140,7 +140,7 @@ impl VirtualObject for Handle<ProxyObject> {
         result_desc.complete_property_descriptor(cx);
 
         if !is_compatible_property_descriptor(cx, is_target_extensible, result_desc, target_desc) {
-            return type_error_(
+            return type_error(
                 cx,
                 &format!("proxy can't report an incompatible property descriptor for '{}'", key),
             );
@@ -149,10 +149,10 @@ impl VirtualObject for Handle<ProxyObject> {
         if let Some(false) = result_desc.is_configurable {
             if let None | Some(PropertyDescriptor { is_configurable: Some(true), .. }) = target_desc
             {
-                return type_error_(cx, &format!("proxy can't report existing configurable property '{}' as non-configurable", key));
+                return type_error(cx, &format!("proxy can't report existing configurable property '{}' as non-configurable", key));
             } else if let Some(false) = result_desc.is_writable {
                 if let Some(true) = target_desc.unwrap().is_writable {
-                    return type_error_(cx, &format!("proxy can't report a non-configurable, non-writable property '{}' as writable", key));
+                    return type_error(cx, &format!("proxy can't report a non-configurable, non-writable property '{}' as writable", key));
                 }
             }
         }
@@ -168,7 +168,7 @@ impl VirtualObject for Handle<ProxyObject> {
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -198,7 +198,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         if target_desc.is_none() {
             if !is_target_extensible {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!(
                         "proxy can't define a new property '{}' on a non-extensible object",
@@ -206,7 +206,7 @@ impl VirtualObject for Handle<ProxyObject> {
                     ),
                 );
             } else if is_setting_non_configurable {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!(
                         "proxy can't define a non-existent property '{}' as non-configurable",
@@ -216,7 +216,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         } else {
             if !is_compatible_property_descriptor(cx, is_target_extensible, desc, target_desc) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!(
                         "proxy can't report an incompatible property descriptor for '{}'",
@@ -228,7 +228,7 @@ impl VirtualObject for Handle<ProxyObject> {
             let target_desc = target_desc.unwrap();
             if is_setting_non_configurable {
                 if let Some(true) = target_desc.is_configurable {
-                    return type_error_(cx, &format!("proxy can't define an existing configurable property '{}' as non-configurable", key));
+                    return type_error(cx, &format!("proxy can't define an existing configurable property '{}' as non-configurable", key));
                 }
             }
 
@@ -236,7 +236,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 if let Some(false) = target_desc.is_configurable {
                     if let Some(true) = target_desc.is_writable {
                         if let Some(false) = desc.is_writable {
-                            return type_error_(cx, &format!("proxy can't define an existing non-configurable writable property '{}' as non-writable", key));
+                            return type_error(cx, &format!("proxy can't define an existing non-configurable writable property '{}' as non-writable", key));
                         }
                     }
                 }
@@ -249,7 +249,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.7 [[HasProperty]]
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -269,7 +269,7 @@ impl VirtualObject for Handle<ProxyObject> {
             let target_desc = maybe!(target.get_own_property(cx, key));
             if let Some(desc) = target_desc {
                 if let Some(false) = desc.is_configurable {
-                    return type_error_(
+                    return type_error(
                         cx,
                         &format!(
                             "proxy can't report a non-configurable own property '{}' as non-existent",
@@ -279,7 +279,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 }
 
                 if !maybe!(is_extensible_(cx, target)) {
-                    return type_error_(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
+                    return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
                 }
             }
         }
@@ -295,7 +295,7 @@ impl VirtualObject for Handle<ProxyObject> {
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -316,12 +316,12 @@ impl VirtualObject for Handle<ProxyObject> {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
                         if !same_value(trap_result, target_desc.value.unwrap()) {
-                            return type_error_(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key));
+                            return type_error(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key));
                         }
                     }
                 } else if target_desc.is_accessor_descriptor() {
                     if target_desc.get.is_none() && !trap_result.is_undefined() {
-                        return type_error_(cx, &format!("proxy must report undefined for a non-configurable accessor property '{}' without a getter", key));
+                        return type_error(cx, &format!("proxy must report undefined for a non-configurable accessor property '{}' without a getter", key));
                     }
                 }
             }
@@ -339,7 +339,7 @@ impl VirtualObject for Handle<ProxyObject> {
         receiver: Handle<Value>,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -364,11 +364,11 @@ impl VirtualObject for Handle<ProxyObject> {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
                         if !same_value(value, target_desc.value.unwrap()) {
-                            return type_error_(cx, &format!("proxy can't successfully set a non-writable, non-configurable property '{}'", key));
+                            return type_error(cx, &format!("proxy can't successfully set a non-writable, non-configurable property '{}'", key));
                         }
                     }
                 } else if target_desc.is_accessor_descriptor() && target_desc.set.is_none() {
-                    return type_error_(cx, &format!("proxy can't succesfully set an accessor property '{}' without a setter", key));
+                    return type_error(cx, &format!("proxy can't succesfully set an accessor property '{}' without a setter", key));
                 }
             }
         }
@@ -379,7 +379,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.10 [[Delete]]
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -401,7 +401,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let target_desc = maybe!(target.get_own_property(cx, key));
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("property '{}' is non-configurable and can't be deleted", key),
                 );
@@ -411,7 +411,7 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         if !maybe!(is_extensible_(cx, target)) {
-            return type_error_(
+            return type_error(
                 cx,
                 &format!("proxy can't delete property '{}' on a non-extensible object", key),
             );
@@ -423,7 +423,7 @@ impl VirtualObject for Handle<ProxyObject> {
     // 10.5.11 [[OwnPropertyKeys]]
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -439,7 +439,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         // Inlined CreateListFromArrayLike with type filtering and duplicate detection
         if !trap_result.is_object() {
-            return type_error_(cx, "proxy ownKeys must return an array");
+            return type_error(cx, "proxy ownKeys must return an array");
         }
 
         let trap_result_object = trap_result.as_object();
@@ -454,7 +454,7 @@ impl VirtualObject for Handle<ProxyObject> {
             trap_result_keys.push(next);
 
             if !next.is_string() && !next.is_symbol() {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!(
                         "proxy ownKeys must return an array with only string and symbol objects"
@@ -464,7 +464,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
             let next_key = must!(PropertyKey::from_value(cx, next)).to_handle(cx);
             if !unchecked_result_keys.insert(next_key) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("proxy ownKeys can't report property '{}' more than once", key),
                 );
@@ -494,7 +494,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         for key in target_non_configurable_keys {
             if !unchecked_result_keys.remove(&key) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("proxy can't skip a non-configurable property '{}'", key),
                 );
@@ -507,13 +507,13 @@ impl VirtualObject for Handle<ProxyObject> {
 
         for key in target_configurable_keys {
             if !unchecked_result_keys.remove(&key) {
-                return type_error_(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
+                return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
             }
         }
 
         if !unchecked_result_keys.is_empty() {
             let key = unchecked_result_keys.iter().next().unwrap();
-            return type_error_(
+            return type_error(
                 cx,
                 &format!("proxy can't report a new property '{}' on a non-extensible object", key),
             );
@@ -530,7 +530,7 @@ impl VirtualObject for Handle<ProxyObject> {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -555,7 +555,7 @@ impl VirtualObject for Handle<ProxyObject> {
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -572,7 +572,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let new_object = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
         if !new_object.is_object() {
-            return type_error_(cx, "proxy constructor must return an object");
+            return type_error(cx, "proxy constructor must return an object");
         }
 
         new_object.as_object().into()
@@ -580,7 +580,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         self.target().unwrap().get_realm(cx)
@@ -591,7 +591,7 @@ impl ProxyObject {
     // 10.5.1 [[GetPrototypeOf]]
     pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -611,7 +611,7 @@ impl ProxyObject {
         } else if handler_proto.is_null() {
             None
         } else {
-            return type_error_(cx, "proxy getPrototypeOf handler must return object or null");
+            return type_error(cx, "proxy getPrototypeOf handler must return object or null");
         };
 
         if maybe!(is_extensible_(cx, target)) {
@@ -621,7 +621,7 @@ impl ProxyObject {
         let target_proto = maybe!(target.get_prototype_of(cx));
 
         if !same_opt_object_value_handles(handler_proto, target_proto) {
-            return type_error_(
+            return type_error(
                 cx,
                 "proxy getPrototypeOf handler didn't return the target object's prototype",
             );
@@ -637,7 +637,7 @@ impl ProxyObject {
         proto: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -670,7 +670,7 @@ impl ProxyObject {
         let target_proto = maybe!(target.get_prototype_of(cx));
 
         if !same_opt_object_value_handles(proto, target_proto) {
-            return type_error_(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
+            return type_error(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
         }
 
         true.into()
@@ -679,7 +679,7 @@ impl ProxyObject {
     // 10.5.3 [[IsExtensible]]
     pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -699,7 +699,7 @@ impl ProxyObject {
         let target_result = maybe!(is_extensible_(cx, target));
 
         if trap_result != target_result {
-            return type_error_(cx, "proxy must report same extensiblitity as target");
+            return type_error(cx, "proxy must report same extensiblitity as target");
         }
 
         trap_result.into()
@@ -708,7 +708,7 @@ impl ProxyObject {
     // 10.5.4 [[PreventExtensions]]
     pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         let handler = self.handler().unwrap().into();
@@ -727,10 +727,7 @@ impl ProxyObject {
 
         if trap_result {
             if maybe!(is_extensible_(cx, target)) {
-                return type_error_(
-                    cx,
-                    "proxy can't report an extensible object as non-extensible",
-                );
+                return type_error(cx, "proxy can't report an extensible object as non-extensible");
             }
         }
 
@@ -745,11 +742,11 @@ pub fn proxy_create(
     handler: Handle<Value>,
 ) -> EvalResult<Handle<ProxyObject>> {
     if !target.is_object() {
-        return type_error_(cx, "proxy target must be an object");
+        return type_error(cx, "proxy target must be an object");
     }
 
     if !handler.is_object() {
-        return type_error_(cx, "proxy handler must be an object");
+        return type_error(cx, "proxy handler must be an object");
     }
 
     let target_object = target.as_object();

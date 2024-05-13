@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{call_object, get},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
         object_value::ObjectValue,
@@ -49,7 +49,7 @@ impl WeakSetConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "WeakSet constructor must be called with new");
+            return type_error(cx, "WeakSet constructor must be called with new");
         };
 
         let weak_set = maybe!(WeakSetObject::new_from_constructor(cx, new_target));
@@ -61,7 +61,7 @@ impl WeakSetConstructor {
 
         let adder = maybe!(get(cx, weak_set.into(), cx.names.add()));
         if !is_callable(adder) {
-            return type_error_(cx, "WeakSet adder is not callable");
+            return type_error(cx, "WeakSet adder is not callable");
         }
 
         let iterator = maybe!(get_iterator(cx, iterable, IteratorHint::Sync, None));

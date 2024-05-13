@@ -14,7 +14,7 @@ use crate::{
                 generator::BytecodeProgramGenerator,
                 instruction::EvalFlags,
             },
-            error::{syntax_error_, type_error_},
+            error::{syntax_error, type_error},
             global_names::{
                 can_declare_global_function, can_declare_global_var,
                 create_global_function_binding, create_global_var_binding,
@@ -50,7 +50,7 @@ pub fn perform_eval(
     let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
-        Err(error) => return syntax_error_(cx, &error.to_string()),
+        Err(error) => return syntax_error(cx, &error.to_string()),
     };
 
     // Analyze source code
@@ -68,7 +68,7 @@ pub fn perform_eval(
         // TODO: Return an aggregate error with all syntax errors
         // Choose an arbitrary syntax error to return
         let error = &errors.errors[0];
-        return syntax_error_(cx, &error.to_string());
+        return syntax_error(cx, &error.to_string());
     }
 
     // Sloppy direct evals must perform EvalDeclarationInstantiation as var scoped bindings will
@@ -84,7 +84,7 @@ pub fn perform_eval(
         BytecodeProgramGenerator::generate_from_eval_parse_result(cx, &parse_result, realm);
     let bytecode_function = match generate_result {
         Ok(func) => func,
-        Err(error) => return syntax_error_(cx, &error.to_string()),
+        Err(error) => return syntax_error(cx, &error.to_string()),
     };
 
     // Print the bytecode if necessary, optionally to the internal dump buffer
@@ -237,7 +237,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     if is_global_scope {
         for func_name in &eval_func_names {
             if !maybe!(can_declare_global_function(cx, scope_object, func_name.cast())) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("cannot declare global function {}", func_name.get_()),
                 );
@@ -246,7 +246,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 
         for var_name in &eval_var_names {
             if !maybe!(can_declare_global_var(cx, scope_object, var_name.cast())) {
-                return type_error_(cx, &format!("cannot declare global var {}", var_name.get_()));
+                return type_error(cx, &format!("cannot declare global var {}", var_name.get_()));
             }
         }
     }
@@ -289,5 +289,5 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
-    syntax_error_(cx, &format!("identifier '{}' has already been declared", name.get_()))
+    syntax_error(cx, &format!("identifier '{}' has already been declared", name.get_()))
 }

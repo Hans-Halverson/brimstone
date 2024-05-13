@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         collections::BsHashMapField,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -123,7 +123,7 @@ impl SymbolConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if new_target.is_some() {
-            return type_error_(cx, "Symbol is not a constructor");
+            return type_error(cx, "Symbol is not a constructor");
         }
 
         let description_arg = get_argument(cx, arguments, 0);
@@ -167,7 +167,7 @@ impl SymbolConstructor {
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {
-            return type_error_(cx, "expected symbol value");
+            return type_error(cx, "expected symbol value");
         }
         let symbol_value = symbol_value.as_symbol().get_();
 

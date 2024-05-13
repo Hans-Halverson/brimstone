@@ -8,7 +8,7 @@ use crate::{
         },
         array_object::{array_create, array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         get,
         interned_strings::InternedStrings,
@@ -183,7 +183,7 @@ impl ArrayPrototype {
             let length = maybe!(length_of_array_like(cx, element));
 
             if *n + length > MAX_SAFE_INTEGER_U64 {
-                return type_error_(cx, "array is too large");
+                return type_error(cx, "array is too large");
             }
 
             // Property key is shared between iterations
@@ -206,7 +206,7 @@ impl ArrayPrototype {
             }
         } else {
             if *n >= MAX_SAFE_INTEGER_U64 {
-                return type_error_(cx, "array is too large");
+                return type_error(cx, "array is too large");
             }
 
             let index_key = PropertyKey::from_u64(cx, *n).to_handle(cx).to_handle(cx);
@@ -347,7 +347,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.every expected function");
+            return type_error(cx, "Array.prototype.every expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -439,7 +439,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.filter expected function");
+            return type_error(cx, "Array.prototype.filter expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -490,7 +490,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "Array.prototype.find expected function");
+            return type_error(cx, "Array.prototype.find expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -517,7 +517,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "Array.prototype.findIndex expected function");
+            return type_error(cx, "Array.prototype.findIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -544,7 +544,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "Array.prototype.findLast expected function");
+            return type_error(cx, "Array.prototype.findLast expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -571,7 +571,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "Array.prototype.findLastIndex expected function");
+            return type_error(cx, "Array.prototype.findLastIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -676,7 +676,7 @@ impl ArrayPrototype {
                     ));
                 } else {
                     if target_index >= MAX_SAFE_INTEGER_U64 {
-                        return type_error_(cx, "array is too large");
+                        return type_error(cx, "array is too large");
                     }
 
                     target_key.replace(PropertyKey::from_u64(cx, target_index));
@@ -704,7 +704,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         if !is_callable(mapper_function) {
-            return type_error_(cx, "Array.prototype.flatMap expected function");
+            return type_error(cx, "Array.prototype.flatMap expected function");
         }
 
         let array = maybe!(array_species_create(cx, object, 0));
@@ -735,7 +735,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.forEach expected function");
+            return type_error(cx, "Array.prototype.forEach expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -967,7 +967,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.map expected function");
+            return type_error(cx, "Array.prototype.map expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1035,7 +1035,7 @@ impl ArrayPrototype {
 
         let new_length = length + arguments.len() as u64;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error_(cx, "index is too large");
+            return type_error(cx, "index is too large");
         }
 
         // Property key is shared between iterations
@@ -1064,7 +1064,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.reduce expected function");
+            return type_error(cx, "Array.prototype.reduce expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1073,7 +1073,7 @@ impl ArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error_(cx, "reduce does not have initial value");
+            return type_error(cx, "reduce does not have initial value");
         } else {
             // Property key is shared between iterations
             let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1081,7 +1081,7 @@ impl ArrayPrototype {
             // Find the first value in the array if an initial value was not specified
             loop {
                 if initial_index >= length {
-                    return type_error_(cx, "reduce of empty array with no initial value");
+                    return type_error(cx, "reduce of empty array with no initial value");
                 }
 
                 index_key.replace(PropertyKey::from_u64(cx, initial_index));
@@ -1125,7 +1125,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.reduceRight expected function");
+            return type_error(cx, "Array.prototype.reduceRight expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1134,14 +1134,14 @@ impl ArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error_(cx, "reduceRight does not have initial value");
+            return type_error(cx, "reduceRight does not have initial value");
         } else {
             let mut index_key = PropertyKey::uninit().to_handle(cx);
 
             // Find the first value in the array if an initial value was not specified
             loop {
                 if initial_index < 0 {
-                    return type_error_(cx, "reduce of empty array with no initial value");
+                    return type_error(cx, "reduce of empty array with no initial value");
                 }
 
                 index_key.replace(PropertyKey::from_u64(cx, initial_index as u64));
@@ -1355,7 +1355,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "Array.prototype.some expected function");
+            return type_error(cx, "Array.prototype.some expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1392,7 +1392,7 @@ impl ArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error_(cx, "Array.prototype.sort expects a function");
+            return type_error(cx, "Array.prototype.sort expects a function");
         };
 
         let object = maybe!(to_object(cx, this_value));
@@ -1459,7 +1459,7 @@ impl ArrayPrototype {
 
         let new_length = length + insert_count - actual_delete_count;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error_(cx, "array is too large");
+            return type_error(cx, "array is too large");
         }
 
         // Create array containing deleted elements, which will be return value
@@ -1597,7 +1597,7 @@ impl ArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error_(cx, "Array.prototype.toSorted expects a function");
+            return type_error(cx, "Array.prototype.toSorted expects a function");
         };
 
         let object = maybe!(to_object(cx, this_value));
@@ -1663,7 +1663,7 @@ impl ArrayPrototype {
         // Determine length of new array and make sure it is in range
         let new_length = length + insert_count - actual_skip_count;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error_(cx, "TypedArray.prototype.toSpliced result array is too large");
+            return type_error(cx, "TypedArray.prototype.toSpliced result array is too large");
         }
 
         let array = maybe!(array_create(cx, new_length, None));
@@ -1729,7 +1729,7 @@ impl ArrayPrototype {
         let num_arguments = arguments.len() as u64;
         if num_arguments > 0 {
             if length + num_arguments > MAX_SAFE_INTEGER_U64 {
-                return type_error_(cx, "array is too large");
+                return type_error(cx, "array is too large");
             }
 
             // Shared between iterations
@@ -1787,14 +1787,14 @@ impl ArrayPrototype {
         // Convert from relative to actual index, making sure index is in range
         let actual_index = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return range_error_(cx, "Array.prototype.with index is out of range");
+                return range_error(cx, "Array.prototype.with index is out of range");
             }
 
             relative_index as u64
         } else {
             let actual_index = relative_index + length as f64;
             if actual_index < 0.0 {
-                return range_error_(cx, "Array.prototype.with index is out of range");
+                return range_error(cx, "Array.prototype.with index is out of range");
             }
 
             actual_index as u64

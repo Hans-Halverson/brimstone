@@ -6,7 +6,7 @@ use crate::{
         },
         array_object::array_create,
         builtin_function::BuiltinFunction,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         get,
         iterator::iter_iterator_method_values,
@@ -74,7 +74,7 @@ impl ArrayConstructor {
                 let int_len = must!(to_uint32(cx, length));
 
                 if int_len as f64 != length.as_number() {
-                    return range_error_(cx, "invalid array size");
+                    return range_error(cx, "invalid array size");
                 }
 
                 int_len
@@ -118,7 +118,7 @@ impl ArrayConstructor {
             None
         } else {
             if !is_callable(map_function_arg) {
-                return type_error_(cx, "Array.from map function is not callable");
+                return type_error(cx, "Array.from map function is not callable");
             }
 
             Some(map_function_arg.as_object())
@@ -143,7 +143,7 @@ impl ArrayConstructor {
 
             maybe!(iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
                 if i >= MAX_SAFE_INTEGER_U64 {
-                    return Some(type_error_(cx, "array is too large"));
+                    return Some(type_error(cx, "array is too large"));
                 }
 
                 let value = if let Some(map_function) = map_function {

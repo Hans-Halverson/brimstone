@@ -1,7 +1,7 @@
 use crate::{
     js::runtime::{
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -53,7 +53,7 @@ impl BigIntPrototype {
         } else {
             let radix_int = maybe!(to_integer_or_infinity(cx, radix));
             if radix_int < 2.0 || radix_int > 36.0 {
-                return range_error_(cx, "radix must be an integer between 2 and 36");
+                return range_error(cx, "radix must be an integer between 2 and 36");
             }
 
             radix_int as u32
@@ -86,5 +86,5 @@ fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Big
         }
     }
 
-    type_error_(cx, "value cannot be converted to BigInt")
+    type_error(cx, "value cannot be converted to BigInt")
 }

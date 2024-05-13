@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -89,7 +89,7 @@ impl DataViewPrototype {
         let data_view = maybe!(require_is_data_view(cx, this_value));
 
         if data_view.viewed_array_buffer_ptr().is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         Value::from(data_view.byte_length()).to_handle(cx).into()
@@ -105,7 +105,7 @@ impl DataViewPrototype {
         let data_view = maybe!(require_is_data_view(cx, this_value));
 
         if data_view.viewed_array_buffer_ptr().is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         Value::from(data_view.byte_offset()).to_handle(cx).into()
@@ -392,12 +392,12 @@ impl DataViewPrototype {
 #[inline]
 fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<DataViewObject>> {
     if !value.is_object() {
-        return type_error_(cx, "expected data view");
+        return type_error(cx, "expected data view");
     }
 
     let object = value.as_object();
     if !object.is_data_view() {
-        return type_error_(cx, "expected data view");
+        return type_error(cx, "expected data view");
     }
 
     object.cast::<DataViewObject>().into()
@@ -422,7 +422,7 @@ fn get_view_value<T>(
     let mut buffer = data_view.viewed_array_buffer_ptr();
 
     if buffer.is_detached() {
-        return type_error_(cx, "array buffer is detached");
+        return type_error(cx, "array buffer is detached");
     }
 
     let view_offset = data_view.byte_offset();
@@ -430,7 +430,7 @@ fn get_view_value<T>(
     let element_size = std::mem::size_of::<T>();
 
     if get_index + element_size > data_view.byte_length() {
-        return range_error_(cx, "byte offset is too large");
+        return range_error(cx, "byte offset is too large");
     }
 
     let buffer_index = get_index + view_offset;
@@ -482,14 +482,14 @@ fn set_view_value<T>(
     let mut buffer = data_view.viewed_array_buffer_ptr();
 
     if buffer.is_detached() {
-        return type_error_(cx, "array buffer is detached");
+        return type_error(cx, "array buffer is detached");
     }
 
     let view_offset = data_view.byte_offset();
 
     let element_size = std::mem::size_of::<T>();
     if get_index + element_size > data_view.byte_length() {
-        return range_error_(cx, "byte offset is too large");
+        return range_error(cx, "byte offset is too large");
     }
 
     // Convert number to bytes with correct endianness

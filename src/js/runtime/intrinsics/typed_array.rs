@@ -9,7 +9,7 @@ use crate::{
         abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         iterator::iter_iterator_method_values,

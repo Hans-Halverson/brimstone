@@ -4,7 +4,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         collections::InlineArray,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         gc::{HandleScope, HeapVisitor},
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
@@ -439,7 +439,7 @@ pub fn throw_type_error(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    type_error_(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
+    type_error(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
 // 10.2.4.1 %ThrowTypeError%

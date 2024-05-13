@@ -3,7 +3,7 @@ use crate::{js::runtime::abstract_operations::create_data_property_or_throw, may
 use super::{
     abstract_operations::{get, has_property},
     completion::EvalResult,
-    error::type_error_,
+    error::type_error,
     gc::Handle,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
@@ -267,7 +267,7 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
 // 6.2.5.5 ToPropertyDescriptor
 pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<PropertyDescriptor> {
     if !value.is_object() {
-        return type_error_(cx, "property descriptor must be an object");
+        return type_error(cx, "property descriptor must be an object");
     }
 
     let object = value.as_object();
@@ -306,7 +306,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         let get = maybe!(get(cx, object, cx.names.get()));
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
-            return type_error_(cx, "getter is not callable");
+            return type_error(cx, "getter is not callable");
         }
 
         desc.has_get = true;
@@ -321,7 +321,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         let set = maybe!(get(cx, object, cx.names.set_()));
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
-            return type_error_(cx, "setter is not callable");
+            return type_error(cx, "setter is not callable");
         }
 
         desc.has_set = true;
@@ -333,7 +333,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
     }
 
     if (desc.has_get || desc.has_set) && (desc.value.is_some() || desc.is_writable.is_some()) {
-        return type_error_(cx, "property desriptor must be data or accesor");
+        return type_error(cx, "property desriptor must be data or accesor");
     }
 
     desc.into()

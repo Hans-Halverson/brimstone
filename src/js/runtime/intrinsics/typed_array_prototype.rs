@@ -9,7 +9,7 @@ use crate::{
             species_constructor,
         },
         builtin_function::BuiltinFunction,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         get,
         interned_strings::InternedStrings,
@@ -248,7 +248,7 @@ impl TypedArrayPrototype {
 
         let mut array_buffer = typed_array.viewed_array_buffer();
         if array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let data_ptr = array_buffer.data().as_mut_ptr();
@@ -309,7 +309,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -382,7 +382,7 @@ impl TypedArrayPrototype {
         };
 
         if typed_array.viewed_array_buffer().is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         // Shared between iterations
@@ -409,7 +409,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -470,7 +470,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "TypedArray.prototype.find expected function");
+            return type_error(cx, "TypedArray.prototype.find expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -498,7 +498,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "TypedArray.prototype.findIndex expected function");
+            return type_error(cx, "TypedArray.prototype.findIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -526,7 +526,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "TypedArray.prototype.findLast expected function");
+            return type_error(cx, "TypedArray.prototype.findLast expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -554,7 +554,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error_(cx, "TypedArray.prototype.findLastIndex expected function");
+            return type_error(cx, "TypedArray.prototype.findLastIndex expected function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -582,7 +582,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -833,7 +833,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -878,7 +878,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -887,7 +887,7 @@ impl TypedArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error_(cx, "reduce does not have initial value");
+            return type_error(cx, "reduce does not have initial value");
         } else {
             initial_index = 1;
             let first_index_key = PropertyKey::array_index(cx, 0).to_handle(cx);
@@ -924,7 +924,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -933,7 +933,7 @@ impl TypedArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error_(cx, "reduceRight does not have initial value");
+            return type_error(cx, "reduceRight does not have initial value");
         } else {
             let last_index_key = PropertyKey::from_u64(cx, initial_index as u64).to_handle(cx);
             initial_index -= 1;
@@ -1006,7 +1006,7 @@ impl TypedArrayPrototype {
         let offset_arg = get_argument(cx, arguments, 1);
         let offset = maybe!(to_integer_or_infinity(cx, offset_arg));
         if offset < 0.0 {
-            return range_error_(cx, "TypedArray.prototype.set offset is negative");
+            return range_error(cx, "TypedArray.prototype.set offset is negative");
         }
 
         let source_arg = get_argument(cx, arguments, 0);
@@ -1033,20 +1033,20 @@ impl TypedArrayPrototype {
     ) -> EvalResult<()> {
         let mut target_buffer = target.viewed_array_buffer();
         if target_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let target_length = target.array_length() as u64;
 
         let mut source_buffer = source.viewed_array_buffer();
         if source_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let source_length = source.array_length();
 
         if offset == f64::INFINITY || source_length as u64 + offset as u64 > target_length {
-            return range_error_(cx, "TypedArray.prototype.set offset is out of range");
+            return range_error(cx, "TypedArray.prototype.set offset is out of range");
         }
 
         let source_byte_index =
@@ -1115,7 +1115,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<()> {
         let target_buffer = target.viewed_array_buffer();
         if target_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let target_length = target.array_length() as u64;
@@ -1124,7 +1124,7 @@ impl TypedArrayPrototype {
         let source_length = maybe!(length_of_array_like(cx, source));
 
         if offset == f64::INFINITY || source_length + offset as u64 > target_length {
-            return range_error_(cx, "TypedArray.prototype.set offset is out of range");
+            return range_error(cx, "TypedArray.prototype.set offset is out of range");
         }
         let offset = offset as u64;
 
@@ -1199,7 +1199,7 @@ impl TypedArrayPrototype {
 
         let array_buffer = typed_array.viewed_array_buffer();
         if array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         // If types are different then must call get and set and convert types
@@ -1258,7 +1258,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error_(cx, "expected function");
+            return type_error(cx, "expected function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1293,7 +1293,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error_(cx, "Sort comparator must be a function");
+            return type_error(cx, "Sort comparator must be a function");
         };
 
         let typed_array = maybe!(validate_typed_array(cx, this_value));
@@ -1448,7 +1448,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error_(cx, "Sort comparator must be a function");
+            return type_error(cx, "Sort comparator must be a function");
         };
 
         let typed_array = maybe!(validate_typed_array(cx, this_value));
@@ -1505,14 +1505,14 @@ impl TypedArrayPrototype {
         // Convert from relative to actual index, making sure index is in range
         let actual_index = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return range_error_(cx, "TypedArray.prototype.with index is out of range");
+                return range_error(cx, "TypedArray.prototype.with index is out of range");
             }
 
             relative_index as u64
         } else {
             let actual_index = relative_index + length as f64;
             if actual_index < 0.0 {
-                return range_error_(cx, "TypedArray.prototype.with index is out of range");
+                return range_error(cx, "TypedArray.prototype.with index is out of range");
             }
 
             actual_index as u64
@@ -1598,12 +1598,12 @@ macro_rules! create_typed_array_prototype {
 #[inline]
 fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
     if !value.is_object() {
-        return type_error_(cx, "expected typed array");
+        return type_error(cx, "expected typed array");
     }
 
     let object = value.as_object();
     if !object.is_typed_array() {
-        return type_error_(cx, "expected typed array");
+        return type_error(cx, "expected typed array");
     }
 
     object.as_typed_array().into()
@@ -1644,7 +1644,7 @@ fn typed_array_species_create(
     let result = maybe!(typed_array_create(cx, constructor, arguments, length));
 
     if result.content_type() != exemplar.content_type() {
-        return type_error_(cx, "typed arrays must both contain either numbers or BigInts");
+        return type_error(cx, "typed arrays must both contain either numbers or BigInts");
     }
 
     result.into()
@@ -1673,7 +1673,7 @@ pub fn typed_array_create(
 
     if let Some(length) = length {
         if new_typed_array.array_length() < length {
-            return type_error_(cx, "typed array does not have expected length");
+            return type_error(cx, "typed array does not have expected length");
         }
     }
 
@@ -1712,7 +1712,7 @@ fn validate_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynType
     let typed_array = maybe!(require_typed_array(cx, value));
 
     if typed_array.viewed_array_buffer().is_detached() {
-        return type_error_(cx, "array buffer is detached");
+        return type_error(cx, "array buffer is detached");
     }
 
     typed_array.into()

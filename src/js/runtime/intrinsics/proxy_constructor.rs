@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::create_data_property_or_throw,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         gc::Handle,
         object_value::ObjectValue,
@@ -42,7 +42,7 @@ impl ProxyConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if new_target.is_none() {
-            return type_error_(cx, "Proxy is a constructor");
+            return type_error(cx, "Proxy is a constructor");
         }
 
         let target = get_argument(cx, arguments, 0);

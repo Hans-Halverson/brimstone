@@ -6,7 +6,7 @@ use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, s
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
-    error::{range_error_, type_error_},
+    error::{range_error, type_error},
     gc::{HeapObject, HeapVisitor},
     get,
     intrinsics::intrinsics::Intrinsic,
@@ -130,7 +130,7 @@ pub fn array_create_in_realm(
     proto: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<ArrayObject>> {
     if length > (u32::MAX as u64) {
-        return range_error_(cx, "array length out of range");
+        return range_error(cx, "array length out of range");
     }
 
     let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
@@ -185,7 +185,7 @@ pub fn array_species_create(
     }
 
     if !is_constructor_value(constructor) {
-        return type_error_(cx, "expected array constructor");
+        return type_error(cx, "expected array constructor");
     }
 
     let length_value = Value::from(length).to_handle(cx);
@@ -206,7 +206,7 @@ fn array_set_length(
         let number_len = maybe!(to_number(cx, value));
 
         if <u32 as Into<f64>>::into(new_len) != number_len.as_number() {
-            return range_error_(cx, "invalid array length");
+            return range_error(cx, "invalid array length");
         }
     }
 

@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -240,7 +240,7 @@ impl ObjectPrototype {
         }
 
         if !maybe!(object.as_object().set_prototype_of(cx, proto)) {
-            return type_error_(cx, "failed to set object prototype");
+            return type_error(cx, "failed to set object prototype");
         }
 
         cx.undefined().into()
@@ -257,7 +257,7 @@ impl ObjectPrototype {
 
         let getter = get_argument(cx, arguments, 1);
         if !is_callable(getter) {
-            return type_error_(cx, "getter must be a function");
+            return type_error(cx, "getter must be a function");
         }
 
         let key_arg = get_argument(cx, arguments, 0);
@@ -280,7 +280,7 @@ impl ObjectPrototype {
 
         let setter = get_argument(cx, arguments, 1);
         if !is_callable(setter) {
-            return type_error_(cx, "setter must be a function");
+            return type_error(cx, "setter must be a function");
         }
 
         let key_arg = get_argument(cx, arguments, 0);

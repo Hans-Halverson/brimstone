@@ -8,7 +8,7 @@ use crate::{
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -176,7 +176,7 @@ impl ObjectConstructor {
         } else if proto.is_null() {
             None
         } else {
-            return type_error_(cx, "prototype must be an object or null");
+            return type_error(cx, "prototype must be an object or null");
         };
 
         let object =
@@ -200,7 +200,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let properties_arg = get_argument(cx, arguments, 1);
@@ -248,7 +248,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return type_error_(cx, "can only define property on an object");
+            return type_error(cx, "can only define property on an object");
         }
 
         let property_arg = get_argument(cx, arguments, 1);
@@ -288,7 +288,7 @@ impl ObjectConstructor {
         }
 
         if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Frozen)) {
-            return type_error_(cx, "failed to freeze object");
+            return type_error(cx, "failed to freeze object");
         }
 
         object.into()
@@ -527,7 +527,7 @@ impl ObjectConstructor {
         }
 
         if !maybe!(value.as_object().prevent_extensions(cx)) {
-            return type_error_(cx, "failed to prevent extensions on object");
+            return type_error(cx, "failed to prevent extensions on object");
         }
 
         value.into()
@@ -546,7 +546,7 @@ impl ObjectConstructor {
         }
 
         if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Sealed)) {
-            return type_error_(cx, "failed to seal object");
+            return type_error(cx, "failed to seal object");
         }
 
         object.into()
@@ -568,7 +568,7 @@ impl ObjectConstructor {
         } else if proto.is_null() {
             None
         } else {
-            return type_error_(cx, "prototype must be an object or null");
+            return type_error(cx, "prototype must be an object or null");
         };
 
         if !object.is_object() {
@@ -577,7 +577,7 @@ impl ObjectConstructor {
         let mut object = object.as_object();
 
         if !maybe!(object.set_prototype_of(cx, proto)) {
-            return type_error_(cx, "failed to set object prototype");
+            return type_error(cx, "failed to set object prototype");
         }
 
         object.into()

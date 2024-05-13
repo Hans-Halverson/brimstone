@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::set,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         gc::{HeapObject, HeapVisitor},
         get,
         intrinsics::regexp_prototype::{advance_u64_string_index, regexp_exec},

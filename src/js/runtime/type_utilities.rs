@@ -8,7 +8,7 @@ use super::{
     abstract_operations::{call_object, get, get_method},
     bytecode::function::Closure,
     completion::EvalResult,
-    error::{range_error_, syntax_error_, type_error_},
+    error::{range_error, syntax_error, type_error},
     gc::{Handle, HeapPtr},
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
@@ -57,7 +57,7 @@ pub fn to_primitive(
 
             let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
             if result.is_object() {
-                return type_error_(cx, "object cannot be converted to primitive");
+                return type_error(cx, "object cannot be converted to primitive");
             }
 
             result.into()
@@ -100,7 +100,7 @@ pub fn ordinary_to_primitive(
         call_method!(cx.names.to_string());
     }
 
-    type_error_(cx, "object cannot be converted to primitive")
+    type_error(cx, "object cannot be converted to primitive")
 }
 
 // 7.1.2 ToBoolean
@@ -160,8 +160,8 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
                 ObjectKind::String => string_to_number(value_handle.as_string())
                     .to_handle(cx)
                     .into(),
-                ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to number"),
-                ObjectKind::BigInt => type_error_(cx, "BigInt cannot be converted to number"),
+                ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to number"),
+                ObjectKind::BigInt => type_error(cx, "BigInt cannot be converted to number"),
                 _ => unreachable!(),
             }
         }
@@ -471,7 +471,7 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
                 return if let Some(bigint) = string_to_bigint(primitive_handle.as_string()) {
                     BigIntValue::new(cx, bigint).into()
                 } else {
-                    syntax_error_(cx, "string does not represent a BigInt")
+                    syntax_error(cx, "string does not represent a BigInt")
                 };
             }
             _ => {}
@@ -484,7 +484,7 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
         };
     }
 
-    type_error_(cx, "value cannot be converted to BigInt")
+    type_error(cx, "value cannot be converted to BigInt")
 }
 
 // 7.1.15 ToBigInt64
@@ -535,7 +535,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
                     let bigint_string = value.as_bigint().bigint().to_string();
                     cx.alloc_string(&bigint_string).into()
                 }
-                ObjectKind::Symbol => type_error_(cx, "symbol cannot be converted to string"),
+                ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
             }
         }
@@ -591,8 +591,8 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => type_error_(cx, "null has no properties"),
-            UNDEFINED_TAG => type_error_(cx, "undefined has no properties"),
+            NULL_TAG => type_error(cx, "null has no properties"),
+            UNDEFINED_TAG => type_error(cx, "undefined has no properties"),
             BOOL_TAG => {
                 let object: Handle<ObjectValue> = BooleanObject::new(cx, value.as_bool()).into();
                 object.into()
@@ -738,7 +738,7 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     if value.is_smi() {
         let smi = value.as_smi();
         if smi < 0 {
-            range_error_(cx, &format!("{} is out of range for an array index", smi))
+            range_error(cx, &format!("{} is out of range for an array index", smi))
         } else {
             (smi as usize).into()
         }
@@ -747,7 +747,7 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     } else {
         let integer = maybe!(to_integer_or_infinity(cx, value_handle));
         if integer < 0.0 || integer > MAX_SAFE_INTEGER_F64 {
-            range_error_(cx, &format!("{} is out of range for an array index", integer))
+            range_error(cx, &format!("{} is out of range for an array index", integer))
         } else {
             (integer as usize).into()
         }
@@ -758,10 +758,10 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
 pub fn require_object_coercible(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_nullish() {
         if value.is_null() {
-            return type_error_(cx, "can't convert null to object");
+            return type_error(cx, "can't convert null to object");
         }
 
-        return type_error_(cx, "can't convert undefined to object");
+        return type_error(cx, "can't convert undefined to object");
     }
 
     value.into()
@@ -781,7 +781,7 @@ pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     if object_value.is_proxy() {
         let proxy = object_value.cast::<ProxyObject>();
         if proxy.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         return is_array(cx, proxy.target().unwrap().into());

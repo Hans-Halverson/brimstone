@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    error::{syntax_error_, type_error_},
+    error::{syntax_error, type_error},
     function::get_argument,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject, global_object::set_default_global_bindings,
@@ -103,7 +103,7 @@ impl Test262Object {
     ) -> EvalResult<Handle<Value>> {
         let script_text = get_argument(cx, arguments, 0);
         if !script_text.is_string() {
-            return type_error_(cx, "expected string");
+            return type_error(cx, "expected string");
         }
 
         let source = Rc::new(Source::new_from_wtf8_string(
@@ -113,14 +113,14 @@ impl Test262Object {
         let parse_result = parse_script(&source);
         let mut parse_result = match parse_result {
             Ok(parse_result) => parse_result,
-            Err(error) => return syntax_error_(cx, &error.to_string()),
+            Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
         let analyze_result = analyze(&mut parse_result, source);
         if let Err(errors) = analyze_result {
             // Choose an arbitrary syntax error to return
             let error = &errors.errors[0];
-            return syntax_error_(cx, &error.to_string());
+            return syntax_error(cx, &error.to_string());
         }
 
         let realm = cx.current_realm();
@@ -128,7 +128,7 @@ impl Test262Object {
             BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm);
         let bytecode_program = match gen_result {
             Ok(bytecode_program) => bytecode_program,
-            Err(error) => return syntax_error_(cx, &error.to_string()),
+            Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
         match cx.execute_program(bytecode_program) {

@@ -9,7 +9,7 @@ use crate::{
                 enumerable_own_property_names, get_v, length_of_array_like, KeyOrValue,
             },
             array_object::array_create,
-            error::{syntax_error_, type_error_},
+            error::{syntax_error, type_error},
             function::get_argument,
             get,
             intrinsics::{bigint_constructor::BigIntObject, boolean_constructor::BooleanObject},
@@ -69,7 +69,7 @@ impl JSONObject {
         let json_value = if let Some(json_value) = parse_json(&mut lexer) {
             json_value
         } else {
-            return syntax_error_(cx, "JSON.parse: Invalid JSON");
+            return syntax_error(cx, "JSON.parse: Invalid JSON");
         };
 
         // Then convert to a JS value, which may allocate
@@ -600,7 +600,7 @@ impl JSONSerializer {
                 self.builder.push_str("null");
             }
         } else if value.is_bigint() {
-            return type_error_(cx, "BigInt value can't be serialized to JSON");
+            return type_error(cx, "BigInt value can't be serialized to JSON");
         } else if value.is_object() && !is_callable(value) {
             if maybe!(is_array(cx, value)) {
                 maybe!(self.serialize_json_array(cx, value.as_object()));
@@ -659,7 +659,7 @@ impl JSONSerializer {
             .any(|ancestor| ancestor.ptr_eq(&value_ptr));
 
         if has_cycle {
-            type_error_(cx, "Cyclic object can't be serialized to JSON")
+            type_error(cx, "Cyclic object can't be serialized to JSON")
         } else {
             ().into()
         }

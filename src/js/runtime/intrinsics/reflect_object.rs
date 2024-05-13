@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{call_object, construct, create_list_from_array_like},
         array_object::create_array_from_list,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         object_value::ObjectValue,
         property::Property,
@@ -72,7 +72,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !is_callable(target) {
-            return type_error_(cx, "value is not a function");
+            return type_error(cx, "value is not a function");
         }
 
         let this_argument = get_argument(cx, arguments, 1);
@@ -91,7 +91,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !is_constructor_value(target) {
-            return type_error_(cx, "value is not a constructor");
+            return type_error(cx, "value is not a constructor");
         }
 
         let target = target.as_object();
@@ -99,7 +99,7 @@ impl ReflectObject {
         let new_target = if arguments.len() >= 3 {
             let new_target = get_argument(cx, arguments, 2);
             if !is_constructor_value(new_target) {
-                return type_error_(cx, "value is not a constructor");
+                return type_error(cx, "value is not a constructor");
             }
 
             new_target.as_object()
@@ -122,7 +122,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let mut target = target.as_object();
@@ -146,7 +146,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let mut target = target.as_object();
@@ -166,7 +166,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let key_arg = get_argument(cx, arguments, 1);
@@ -190,7 +190,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let target = target.as_object();
@@ -213,7 +213,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let prototype = maybe!(target.as_object().get_prototype_of(cx));
@@ -233,7 +233,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let target = target.as_object();
@@ -253,7 +253,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let is_extensible = maybe!(target.as_object().is_extensible(cx));
@@ -269,7 +269,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let own_keys = maybe!(target.as_object().own_property_keys(cx));
@@ -286,7 +286,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let result = maybe!(target.as_object().prevent_extensions(cx));
@@ -302,7 +302,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let key_arg = get_argument(cx, arguments, 1);
@@ -328,7 +328,7 @@ impl ReflectObject {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
-            return type_error_(cx, "value is not an object");
+            return type_error(cx, "value is not an object");
         }
 
         let proto = get_argument(cx, arguments, 1);
@@ -337,7 +337,7 @@ impl ReflectObject {
         } else if proto.is_null() {
             None
         } else {
-            return type_error_(cx, "prototype must be an object or null");
+            return type_error(cx, "prototype must be an object or null");
         };
 
         let result = maybe!(target.as_object().set_prototype_of(cx, proto));

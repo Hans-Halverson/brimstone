@@ -6,7 +6,7 @@ use crate::{
         array_object::create_array_from_list,
         collections::{index_map::GcSafeEntriesIter, BsIndexMap},
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,

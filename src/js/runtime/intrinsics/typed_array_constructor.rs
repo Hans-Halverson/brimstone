@@ -3,7 +3,7 @@ use crate::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         function::get_argument,
         get,
         intrinsics::typed_array_prototype::typed_array_create_object,
@@ -55,7 +55,7 @@ impl TypedArrayConstructor {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        type_error_(cx, "TypedArray constructor is abstract and cannot be called")
+        type_error(cx, "TypedArray constructor is abstract and cannot be called")
     }
 
     // 23.2.2.1 %TypedArray%.from
@@ -66,7 +66,7 @@ impl TypedArrayConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
-            return type_error_(cx, "TypedArray.from must be called on constructor");
+            return type_error(cx, "TypedArray.from must be called on constructor");
         }
 
         let this_constructor = this_value.as_object();
@@ -76,7 +76,7 @@ impl TypedArrayConstructor {
             if argument.is_undefined() {
                 None
             } else if !is_callable(argument) {
-                return type_error_(cx, "map function must be a function");
+                return type_error(cx, "map function must be a function");
             } else {
                 Some(argument.as_object())
             }
@@ -165,7 +165,7 @@ impl TypedArrayConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
-            return type_error_(cx, "TypedArray.of must be called on constructor");
+            return type_error(cx, "TypedArray.of must be called on constructor");
         }
 
         let this_constructor = this_value.as_object();
@@ -541,7 +541,7 @@ macro_rules! create_typed_array_constructor {
                 let new_target = if let Some(new_target) = new_target {
                     new_target
                 } else {
-                    return type_error_(
+                    return type_error(
                         cx,
                         &format!("{} constructor must be called with new", cx.names.$rust_name()),
                     );
@@ -626,7 +626,7 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Handle<Value>> {
                 let source_data = source_typed_array.viewed_array_buffer();
                 if source_data.is_detached() {
-                    return type_error_(cx, "cannot create typed array from detached array buffer");
+                    return type_error(cx, "cannot create typed array from detached array buffer");
                 }
 
                 // TODO: Handle SharedArrayBuffers
@@ -660,14 +660,14 @@ macro_rules! create_typed_array_constructor {
                     let data = maybe!(ArrayBufferObject::new(cx, buffer_constructor, byte_length));
 
                     if source_data.is_detached() {
-                        return type_error_(
+                        return type_error(
                             cx,
                             "cannot create typed array from detached array buffer",
                         );
                     }
 
                     if source_typed_array.content_type() != $content_type {
-                        return type_error_(
+                        return type_error(
                             cx,
                             "typed arrays must both contain either numbers or BigInts",
                         );
@@ -721,7 +721,7 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Handle<Value>> {
                 let offset = maybe!(to_index(cx, byte_offset));
                 if offset % element_size!() != 0 {
-                    return range_error_(
+                    return range_error(
                         cx,
                         &format!(
                             "byte offset must be a multiple of {} but found {}",
@@ -737,7 +737,7 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 if array_buffer.is_detached() {
-                    return type_error_(cx, "cannot create typed array from detached array buffer");
+                    return type_error(cx, "cannot create typed array from detached array buffer");
                 }
 
                 let byte_length = array_buffer.byte_length();
@@ -745,7 +745,7 @@ macro_rules! create_typed_array_constructor {
 
                 if length.is_undefined() {
                     if byte_length % element_size!() != 0 {
-                        return range_error_(
+                        return range_error(
                             cx,
                             &format!(
                                 "array buffer length must be a multiple of {} but found {}",
@@ -758,7 +758,7 @@ macro_rules! create_typed_array_constructor {
                     let maybe_negative_new_byte_length = byte_length as i64 - offset as i64;
 
                     if maybe_negative_new_byte_length < 0 {
-                        return range_error_(cx, "byte offset larger than array buffer length");
+                        return range_error(cx, "byte offset larger than array buffer length");
                     }
 
                     new_byte_length = maybe_negative_new_byte_length as usize;
@@ -766,7 +766,7 @@ macro_rules! create_typed_array_constructor {
                     new_byte_length = new_length * element_size!();
 
                     if offset + new_byte_length as usize > byte_length {
-                        return range_error_(cx, "byte offset larger than array buffer length");
+                        return range_error(cx, "byte offset larger than array buffer length");
                     }
                 };
 

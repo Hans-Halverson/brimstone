@@ -7,13 +7,13 @@ macro_rules! cast_from_value_fn {
             value: Handle<Value>,
         ) -> EvalResult<Handle<$type $(<$($generics),*>)?>> {
             if !value.is_object() {
-                return type_error_(cx, concat!("expected object of type ", $name));
+                return type_error(cx, concat!("expected object of type ", $name));
             }
 
             // Check if object descriptor's kind matches the kind we are casting to
             let object_value = value.as_object();
             if object_value.descriptor().kind() != ObjectKind::$type {
-                return type_error_(cx, concat!("expected object of type ", $name));
+                return type_error(cx, concat!("expected object of type ", $name));
             }
 
             object_value.cast::<$type>().into()

@@ -7,7 +7,7 @@ use super::{
     bound_function_object::BoundFunctionObject,
     bytecode::function::Closure,
     completion::EvalResult,
-    error::{err_cannot_set_property, type_error_},
+    error::{err_cannot_set_property, type_error},
     eval::expression::eval_instanceof_expression,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
@@ -96,7 +96,7 @@ pub fn create_data_property_or_throw(
 ) -> EvalResult<()> {
     let success = maybe!(create_data_property(cx, object, key, value));
     if !success {
-        return type_error_(cx, &format!("Cannot create property {}", key));
+        return type_error(cx, &format!("Cannot create property {}", key));
     }
 
     ().into()
@@ -122,7 +122,7 @@ pub fn define_property_or_throw(
 ) -> EvalResult<()> {
     let success = maybe!(object.define_own_property(cx, key, prop_desc));
     if !success {
-        return type_error_(cx, &format!("cannot define property {}", key));
+        return type_error(cx, &format!("cannot define property {}", key));
     }
 
     ().into()
@@ -135,7 +135,7 @@ pub fn delete_property_or_throw(
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
     if !maybe!(object.delete(cx, key)) {
-        return type_error_(cx, &format!("cannot delete property {}", key));
+        return type_error(cx, &format!("cannot delete property {}", key));
     }
 
     ().into()
@@ -153,7 +153,7 @@ pub fn get_method(
     }
 
     if !is_callable(func) {
-        return type_error_(cx, "value is not a function");
+        return type_error(cx, "value is not a function");
     }
 
     (Some(func.as_object())).into()
@@ -307,7 +307,7 @@ pub fn create_list_from_array_like(
     object: Handle<Value>,
 ) -> EvalResult<Vec<Handle<Value>>> {
     if !object.is_object() {
-        return type_error_(cx, "value is not an object");
+        return type_error(cx, "value is not an object");
     }
 
     let object = object.as_object();
@@ -360,7 +360,7 @@ pub fn ordinary_has_instance(
 
     let target_prototype = maybe!(get(cx, func, cx.names.prototype()));
     if !target_prototype.is_object() {
-        return type_error_(cx, "prototype must be object");
+        return type_error(cx, "prototype must be object");
     }
     let target_prototype = target_prototype.as_object();
 
@@ -393,7 +393,7 @@ pub fn species_constructor(
     }
 
     if !constructor.is_object() {
-        return type_error_(cx, "constructor must be a function");
+        return type_error(cx, "constructor must be a function");
     }
 
     let species_key = cx.well_known_symbols.species();
@@ -407,7 +407,7 @@ pub fn species_constructor(
         return species.as_object().into();
     }
 
-    type_error_(cx, "species must be a constructor")
+    type_error(cx, "species must be a constructor")
 }
 
 pub enum KeyOrValue {
@@ -474,7 +474,7 @@ pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<
     } else if kind == ObjectKind::Proxy {
         let proxy_object = func.cast::<ProxyObject>();
         if proxy_object.is_revoked() {
-            return type_error_(cx, "operation attempted on revoked proxy");
+            return type_error(cx, "operation attempted on revoked proxy");
         }
 
         get_function_realm(cx, proxy_object.target().unwrap())
@@ -525,7 +525,7 @@ pub fn private_get(
     private_name: Handle<SymbolValue>,
 ) -> EvalResult<Handle<Value>> {
     let property = match object.private_element_find(cx, private_name) {
-        None => return type_error_(cx, "can't access private field or method"),
+        None => return type_error(cx, "can't access private field or method"),
         Some(property) => property,
     };
 
@@ -535,7 +535,7 @@ pub fn private_get(
 
     let accessor = property.value().as_accessor();
     match accessor.get {
-        None => return type_error_(cx, "cannot access private field or method"),
+        None => return type_error(cx, "cannot access private field or method"),
         Some(getter) => {
             let getter_handle = getter.to_handle();
             call_object(cx, getter_handle, object.into(), &[])
@@ -551,7 +551,7 @@ pub fn private_set(
     value: Handle<Value>,
 ) -> EvalResult<()> {
     let property = match object.private_element_find(cx, private_name) {
-        None => return type_error_(cx, "cannot set private field or method"),
+        None => return type_error(cx, "cannot set private field or method"),
         Some(entry) => entry,
     };
 
@@ -559,12 +559,12 @@ pub fn private_set(
         object.private_element_set(cx, private_name, value);
         ().into()
     } else if property.is_private_method() {
-        type_error_(cx, "cannot assign to private method")
+        type_error(cx, "cannot assign to private method")
     } else {
         // Property is an private accessor
         let accessor = property.value().as_accessor();
         match accessor.set {
-            None => type_error_(cx, "cannot set getter-only private property"),
+            None => type_error(cx, "cannot set getter-only private property"),
             Some(setter) => {
                 let setter_handle = setter.to_handle();
                 maybe!(call_object(cx, setter_handle, object.into(), &[value]));

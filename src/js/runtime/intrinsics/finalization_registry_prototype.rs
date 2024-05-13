@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    completion::EvalResult, error::type_error_, function::get_argument,
+    completion::EvalResult, error::type_error, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, type_utilities::same_value, Context, Handle, Value,
 };
@@ -45,7 +45,7 @@ impl FinalizationRegistryPrototype {
             if let Some(registry_object) = this_finalization_registry_value(this_value) {
                 registry_object
             } else {
-                return type_error_(cx, "register method must be called on FinalizationRegistry");
+                return type_error(cx, "register method must be called on FinalizationRegistry");
             };
 
         let target = get_argument(cx, arguments, 0);
@@ -53,11 +53,11 @@ impl FinalizationRegistryPrototype {
         let unregister_token = get_argument(cx, arguments, 2);
 
         if !can_be_held_weakly(cx, target.get()) {
-            return type_error_(cx, "FinalizationRegistry targets must be objects or symbols");
+            return type_error(cx, "FinalizationRegistry targets must be objects or symbols");
         }
 
         if same_value(target, held_value) {
-            return type_error_(
+            return type_error(
                 cx,
                 "The target and held value arguments to register cannot be the same value",
             );
@@ -68,7 +68,7 @@ impl FinalizationRegistryPrototype {
         } else if unregister_token.is_undefined() {
             None
         } else {
-            return type_error_(
+            return type_error(
                 cx,
                 "FinalizationRegistry unregister tokens must be objects or symbols",
             );
@@ -95,13 +95,13 @@ impl FinalizationRegistryPrototype {
             if let Some(registry_object) = this_finalization_registry_value(this_value) {
                 registry_object
             } else {
-                return type_error_(cx, "unregister method must be called on FinalizationRegistry");
+                return type_error(cx, "unregister method must be called on FinalizationRegistry");
             };
 
         let unregister_token = get_argument(cx, arguments, 0);
 
         if !can_be_held_weakly(cx, unregister_token.get()) {
-            return type_error_(
+            return type_error(
                 cx,
                 "FinalizationRegistry unregister tokens must be objects or symbols",
             );

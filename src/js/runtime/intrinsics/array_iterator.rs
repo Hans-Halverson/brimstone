@@ -6,7 +6,7 @@ use crate::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
         completion::EvalResult,
-        error::type_error_,
+        error::type_error,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
@@ -76,7 +76,7 @@ impl ArrayIterator {
     fn get_typed_array_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         let typed_array = array.as_typed_array();
         if typed_array.viewed_array_buffer().is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         (typed_array.array_length() as u64).into()

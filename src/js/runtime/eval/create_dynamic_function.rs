@@ -18,7 +18,7 @@ use crate::{
                 generator::BytecodeProgramGenerator,
             },
             completion::EvalResult,
-            error::syntax_error_,
+            error::syntax_error,
             intrinsics::{generator_prototype::GeneratorPrototype, intrinsics::Intrinsic},
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
@@ -104,27 +104,27 @@ pub fn create_dynamic_function(
         is_async,
         is_generator,
     ) {
-        return syntax_error_(cx, &format!("could not parse function parameters: {}", err));
+        return syntax_error(cx, &format!("could not parse function parameters: {}", err));
     }
 
     let body_source = Source::new_from_wtf8_string("", body_string);
     if let Err(err) =
         parse_function_body_for_function_constructor(&Rc::new(body_source), is_async, is_generator)
     {
-        return syntax_error_(cx, &format!("could not parse function body: {}", err));
+        return syntax_error(cx, &format!("could not parse function body: {}", err));
     }
 
     // Parse and analyze entire function
     let full_source = Rc::new(Source::new_from_wtf8_string("", source_string));
     let mut parse_result = match parse_function_for_function_constructor(&full_source) {
         Ok(parse_result) => parse_result,
-        Err(err) => return syntax_error_(cx, &format!("could not parse function: {}", err)),
+        Err(err) => return syntax_error(cx, &format!("could not parse function: {}", err)),
     };
 
     if let Err(errs) =
         analyze_function_for_function_constructor(&mut parse_result, full_source.clone())
     {
-        return syntax_error_(cx, &format!("could not parse function: {}", errs));
+        return syntax_error(cx, &format!("could not parse function: {}", errs));
     }
 
     // Create function object
@@ -139,7 +139,7 @@ pub fn create_dynamic_function(
     );
     let bytecode_function = match generate_result {
         Ok(func) => func,
-        Err(error) => return syntax_error_(cx, &error.to_string()),
+        Err(error) => return syntax_error(cx, &error.to_string()),
     };
 
     if cx.options.print_bytecode {

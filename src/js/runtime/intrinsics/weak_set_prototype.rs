@@ -1,8 +1,7 @@
 use crate::js::runtime::{
-    collections::BsHashSetField, completion::EvalResult, error::type_error_,
-    function::get_argument, intrinsics::weak_ref_constructor::can_be_held_weakly,
-    object_value::ObjectValue, property::Property, realm::Realm, value::ValueCollectionKey,
-    Context, Handle, Value,
+    collections::BsHashSetField, completion::EvalResult, error::type_error, function::get_argument,
+    intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
+    property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
@@ -41,12 +40,12 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error_(cx, "add method must be called on WeakSet");
+            return type_error(cx, "add method must be called on WeakSet");
         };
 
         let value = get_argument(cx, arguments, 0);
         if !can_be_held_weakly(cx, value.get()) {
-            return type_error_(cx, "WeakSet only holds objects and symbols");
+            return type_error(cx, "WeakSet only holds objects and symbols");
         }
 
         weak_set_object
@@ -67,7 +66,7 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error_(cx, "delete method must be called on WeakSet");
+            return type_error(cx, "delete method must be called on WeakSet");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
@@ -90,7 +89,7 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error_(cx, "has method must be called on WeakSet");
+            return type_error(cx, "has method must be called on WeakSet");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set

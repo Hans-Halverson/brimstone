@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -52,7 +52,7 @@ impl DataViewObject {
 
         // Be sure to check for array buffer detachment since constructor may have run user code
         if viewed_array_buffer.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         object.to_handle().into()
@@ -108,17 +108,17 @@ impl DataViewConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "DataView constructor must be called with new");
+            return type_error(cx, "DataView constructor must be called with new");
         };
 
         let buffer_argument = get_argument(cx, arguments, 0);
         if !buffer_argument.is_object() {
-            return type_error_(cx, "first argument must be an array buffer");
+            return type_error(cx, "first argument must be an array buffer");
         }
 
         let buffer_object = buffer_argument.as_object();
         if !buffer_object.is_array_buffer() {
-            return type_error_(cx, "first argument must be an array buffer");
+            return type_error(cx, "first argument must be an array buffer");
         }
 
         let buffer_object = buffer_object.cast::<ArrayBufferObject>();
@@ -127,12 +127,12 @@ impl DataViewConstructor {
         let offset = maybe!(to_index(cx, offset_arg));
 
         if buffer_object.is_detached() {
-            return type_error_(cx, "array buffer is detached");
+            return type_error(cx, "array buffer is detached");
         }
 
         let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
-            return range_error_(
+            return range_error(
                 cx,
                 &format!(
                     "offset {} must is out of bounds for buffer with byte length {}",
@@ -148,7 +148,7 @@ impl DataViewConstructor {
             let view_byte_length = maybe!(to_index(cx, byte_length_argument));
 
             if offset + view_byte_length > buffer_byte_length {
-                return range_error_(cx, "data view byte length is too large for this buffer");
+                return range_error(cx, "data view byte length is too large for this buffer");
             }
 
             view_byte_length

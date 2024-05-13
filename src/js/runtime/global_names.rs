@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    js::runtime::{error::type_error_, object_descriptor::ObjectKind},
+    js::runtime::{error::type_error, object_descriptor::ObjectKind},
     maybe, set_uninit,
 };
 
@@ -146,14 +146,14 @@ fn global_declaration_instantiation(
 
         if i < global_names.num_functions {
             if !maybe!(can_declare_global_function(cx, global_object, name_key)) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("cannot declare global function {}", name_handle.get_()),
                 );
             }
         } else {
             if !maybe!(can_declare_global_var(cx, global_object, name_key)) {
-                return type_error_(
+                return type_error(
                     cx,
                     &format!("cannot declare global var {}", name_handle.get_()),
                 );

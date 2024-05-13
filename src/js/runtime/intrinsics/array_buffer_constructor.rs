@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         collections::BsArray,
         completion::EvalResult,
-        error::{range_error_, type_error_},
+        error::{range_error, type_error},
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -56,7 +56,7 @@ impl ArrayBufferObject {
         set_uninit!(object.data, None);
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
-            return range_error_(
+            return range_error(
                 cx,
                 &format!("cannot allocate array buffer of size {}", byte_length),
             );
@@ -130,7 +130,7 @@ impl ArrayBufferConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return type_error_(cx, "ArrayBuffer constructor must be called with new");
+            return type_error(cx, "ArrayBuffer constructor must be called with new");
         };
 
         let byte_length_arg = get_argument(cx, arguments, 0);
@@ -180,7 +180,7 @@ pub fn clone_array_buffer(
         maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, source_length));
 
     if source_buffer.is_detached() {
-        return type_error_(cx, "detached array buffer cannot be cloned");
+        return type_error(cx, "detached array buffer cannot be cloned");
     }
 
     // Copy a portion of the source buffer after the given offset to the target buffer

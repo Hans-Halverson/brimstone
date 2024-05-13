@@ -19,7 +19,7 @@ use super::{
         stack_frame::{StackFrame, StackSlotValue},
     },
     collections::InlineArray,
-    error::type_error_,
+    error::type_error,
     Value,
 };
 
@@ -176,13 +176,13 @@ fn generator_validate(
     generator: Handle<Value>,
 ) -> EvalResult<Handle<GeneratorObject>> {
     if !generator.is_object() || !generator.as_object().is_generator() {
-        return type_error_(cx, "expected generator");
+        return type_error(cx, "expected generator");
     }
 
     let generator = generator.as_object().cast::<GeneratorObject>();
 
     if generator.state == GeneratorState::Executing {
-        return type_error_(cx, "generator is already executing");
+        return type_error(cx, "generator is already executing");
     }
 
     generator.into()

@@ -1599,7 +1599,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             ast::Expression::Class(expr) => self.gen_class_expression(expr, None, dest),
             ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
-            ast::Expression::Yield(expr) => self.gen_yield_expression(expr),
+            ast::Expression::Yield(expr) => self.gen_yield_expression(expr, dest),
             ast::Expression::SuperMember(expr) => {
                 self.gen_super_member_expression(expr, dest, None)
             }
@@ -4156,7 +4156,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
-    fn gen_yield_expression(&mut self, expr: &ast::YieldExpression) -> EmitResult<GenRegister> {
+    fn gen_yield_expression(
+        &mut self,
+        expr: &ast::YieldExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         if expr.is_delegate {
             unimplemented!("bytecode for yield* expression")
         }
@@ -4170,7 +4174,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         self.register_allocator.release(yield_value);
-        let completion_value_dest = self.register_allocator.allocate()?;
+        let completion_value_dest = self.allocate_destination(dest)?;
         let completion_type_dest = self.register_allocator.allocate()?;
 
         // Find the generator register from the stored index

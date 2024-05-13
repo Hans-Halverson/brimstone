@@ -4934,11 +4934,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let iterator = self.register_allocator.allocate()?;
         let is_done = self.register_allocator.allocate()?;
 
+        // If break or continue reaches this target then the finally scope has been left
+        self.push_finally_scope_jump_target();
+        let jump_target_depth = self.jump_statement_target_stack.len();
+
+        // Enter a finally scope, setting up necessary registers
+        let join_block = self.new_block();
+        self.gen_start_finally_scope(join_block, jump_target_depth, jump_target_depth)?;
+
         // Registers only needed while iterating
         let next_method = self.register_allocator.allocate()?;
         let value = self.register_allocator.allocate()?;
 
-        let join_block = self.new_block();
         let mut exception_handlers = vec![];
 
         self.writer
@@ -5060,7 +5067,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(value);
         self.register_allocator.release(next_method);
 
-        // We must close the iterator in a finally it was not done
+        // We must close the iterator in a finally if it was not done
         if exception_handlers.is_empty() {
             // If there were no exception handlers needed then we can close the iterator without
             // wrapping in an exception handler, since if closing throws that exception does not
@@ -5068,32 +5075,44 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             //
             // Iterator is only closed if we are not done, which is enforced by the JumpTrue above.
             self.writer.iterator_close_instruction(iterator);
+
+            // Exit the finally scope and release all of its registers
+            let finally_scope = self.pop_finally_scope();
+            self.pop_jump_statement_target();
+
+            // Clean up resources from finally scope, including registers and blocks
+            self.register_allocator
+                .release(finally_scope.saved_scope_register);
+            self.register_allocator
+                .release(finally_scope.result_register);
+            self.register_allocator
+                .release(finally_scope.discriminant_register);
+            self.start_block(finally_scope.finally_block);
         } else {
-            // Otherwise we need a form of finally with a discriminant that tracks if we are coming
-            // from a normal completion or throw (true for normal, false for throw).
-            let discriminant = self.register_allocator.allocate()?;
+            // Extract fields from finally scope
+            let finally_scope = self.current_finally_scope().unwrap();
+            let discriminant = finally_scope.discriminant_register;
+            let finally_block = finally_scope.finally_block;
 
-            let close_block = self.new_block();
+            // Write to the discriminant when coming from the normal completion
+            let normal_branch_id = finally_scope.add_normal_branch();
+            self.gen_load_finally_branch_id(normal_branch_id, discriminant)?;
+            self.write_jump_instruction(finally_block)?;
 
-            // Write true when coming from the normal completion
-            self.writer.load_true_instruction(discriminant);
-            self.write_jump_instruction(close_block)?;
+            // Write a finally-aware exception handler which is shared by all handlers
+            self.gen_exception_handlers_continue_to_finally(exception_handlers)?;
 
-            // Start exception handler for exceptions thrown during iteration. All exception
-            // handlers point to the same block, which sets discriminant then continues to close.
-            let error = self.register_allocator.allocate()?;
-            for mut handler in exception_handlers {
-                handler.handler = self.writer.current_offset();
-                handler.error_register = Some(error);
-                self.exception_handler_builder.add(handler);
-            }
-            self.writer.load_false_instruction(discriminant);
+            // Exit the finally scope
+            let finally_scope = self.pop_finally_scope();
+            self.pop_jump_statement_target();
 
             let finally_footer_block = self.new_block();
 
+            // Start the finally block
+            self.gen_start_finally_block(&finally_scope);
+
             // Catch exceptions when closing the iterator. Only call close if the iterator is not
             // already done.
-            self.start_block(close_block);
             self.write_jump_true_instruction(is_done, finally_footer_block)?;
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
                 Ok(this.writer.iterator_close_instruction(iterator))
@@ -5107,30 +5126,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             close_handler.error_register = Some(close_error);
             self.exception_handler_builder.add(close_handler);
 
+            // Check if iterating threw by checking discriminant
+            let cond = self.register_allocator.allocate()?;
+            self.gen_load_finally_branch_id(finally_scope.throw_branch(), cond)?;
+            self.writer
+                .strict_not_equal_instruction(cond, cond, discriminant);
+
             // If the iterating did not throw then continue to throwing error from close
             let close_handler_rethrow_block = self.new_block();
-            self.write_jump_true_instruction(discriminant, close_handler_rethrow_block)?;
+            self.write_jump_true_instruction(cond, close_handler_rethrow_block)?;
+            self.register_allocator.release(cond);
 
             // Otherwise iterating did throw, we rethrow it by overwriting the close error
-            self.write_mov_instruction(close_error, error);
+            self.write_mov_instruction(close_error, finally_scope.result_register);
 
             // Then throw either the original close error or the error from iterating
             self.start_block(close_handler_rethrow_block);
             self.writer.throw_instruction(close_error);
+            self.register_allocator.release(close_error);
 
             // Emit the finally footer, checking discriminant to see if we came from a normal
-            // completion or a throw.
+            // completion, throw, or return.
             self.start_block(finally_footer_block);
 
-            // If we came from a normal completion then continue normally to join block
-            self.write_jump_true_instruction(discriminant, join_block)?;
-
-            // Otherwise we threw, so rethrow that error
-            self.writer.throw_instruction(error);
-
-            self.register_allocator.release(close_error);
-            self.register_allocator.release(error);
-            self.register_allocator.release(discriminant);
+            // Emit the footer of the finally block, which checks the discriminant to determine the
+            // incoming branch that was taken.
+            self.gen_end_finally_block(
+                &finally_scope,
+                StmtCompletion::Normal,
+                /* saved_normal_completion */ None,
+            )?;
         }
 
         self.start_block(join_block);
@@ -6842,6 +6867,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Save the completed exception handler
         self.exception_handler_builder.add(handler);
+
+        Ok(())
+    }
+
+    /// Generate the provided exception handlers, completing them with the required missing fields.
+    ///
+    /// All exception handlers continues to the current finally block, marking the incoming branch
+    /// as a throw branch;
+    fn gen_exception_handlers_continue_to_finally(
+        &mut self,
+        handlers: Vec<ExceptionHandlerBuilder>,
+    ) -> EmitResult<()> {
+        let finally_scope = self.current_finally_scope().unwrap();
+
+        let discriminant = finally_scope.discriminant_register;
+        let throw_branch_id = finally_scope.throw_branch();
+        let result_register = finally_scope.result_register;
+
+        for mut handler in handlers {
+            // Error is placed in the result register
+            handler.error_register = Some(result_register);
+            handler.handler = self.writer.current_offset();
+
+            // Save the completed exception handler
+            self.exception_handler_builder.add(handler);
+        }
+
+        // Mark the incoming throw branch and continue directly to finally block
+        self.gen_load_finally_branch_id(throw_branch_id, discriminant)?;
 
         Ok(())
     }

@@ -49,3 +49,7 @@ function elementEvaluationOrder() {
 function restEvaluationOrder() {
   ([...a()[b()]] = c());
 }
+
+function *withYield(p) {
+  var [a = yield] = p;
+}

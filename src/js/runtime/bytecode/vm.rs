@@ -225,7 +225,7 @@ impl VM {
         // Restore the frame pointer
         self.fp = unsafe { self.sp.add(generator.fp_index()) };
 
-        let mut stack_frame = StackFrame::for_fp(self.fp);
+        let mut stack_frame = self.stack_frame();
 
         // Patch the saved frame pointer in the stack frame
         unsafe { *self.fp = parent_fp as StackSlotValue };
@@ -345,7 +345,7 @@ impl VM {
                     unsafe { *return_value_address = return_value };
 
                     // Next instruction to execute is the saved return address
-                    let is_rust_caller = StackFrame::for_fp(self.fp).is_rust_caller();
+                    let is_rust_caller = self.stack_frame().is_rust_caller();
 
                     // Destroy the stack frame
                     self.pop_stack_frame();
@@ -372,13 +372,12 @@ impl VM {
                     // Set the PC to the next instruction to execute
                     self.set_pc_after(instr);
                     let pc_to_resume_offset = self.get_pc_offset();
-                    let stack_frame = StackFrame::for_fp(self.fp);
 
                     // Save the stack frame and PC to resume in the generator object
                     generator.suspend(
                         pc_to_resume_offset,
                         (completion_value_index, completion_type_index),
-                        stack_frame.as_slice(),
+                        self.stack_frame().as_slice(),
                     );
 
                     // Return the yielded value to the caller
@@ -401,7 +400,6 @@ impl VM {
                     let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
 
                     let current_closure = self.closure().to_handle();
-                    let stack_frame = StackFrame::for_fp(self.fp);
 
                     // Create the generator in the started state, copying the current stack frame
                     // and PC to resume.
@@ -410,7 +408,7 @@ impl VM {
                         current_closure,
                         pc_to_resume_offset,
                         fp_index,
-                        stack_frame.as_slice(),
+                        self.stack_frame().as_slice(),
                     ));
 
                     // Store the generator into the provided register in the stored stack frame
@@ -428,7 +426,7 @@ impl VM {
 
                     // Walk the stack, looking for an exception handler that covers the current
                     // address.
-                    let mut stack_frame = StackFrame::for_fp(self.fp);
+                    let mut stack_frame = self.stack_frame();
                     if self.visit_frame_for_exception_unwinding(stack_frame, self.pc, error_value) {
                         continue 'dispatch;
                     }
@@ -955,37 +953,42 @@ impl VM {
 
     #[inline]
     fn get_return_address(&self) -> *const u8 {
-        StackFrame::for_fp(self.fp).return_address()
+        self.stack_frame().return_address()
     }
 
     #[inline]
     fn get_return_value_address(&self) -> *mut Value {
-        StackFrame::for_fp(self.fp).return_value_address()
+        self.stack_frame().return_value_address()
+    }
+
+    #[inline]
+    pub fn stack_frame(&self) -> StackFrame {
+        StackFrame::for_fp(self.fp)
     }
 
     #[inline]
     pub fn scope(&self) -> HeapPtr<Scope> {
-        StackFrame::for_fp(self.fp).scope()
+        self.stack_frame().scope()
     }
 
     #[inline]
     pub fn closure(&self) -> HeapPtr<Closure> {
-        StackFrame::for_fp(self.fp).closure()
+        self.stack_frame().closure()
     }
 
     #[inline]
     fn constant_table(&self) -> HeapPtr<ConstantTable> {
-        StackFrame::for_fp(self.fp).constant_table()
+        self.stack_frame().constant_table()
     }
 
     #[inline]
     fn argc(&self) -> usize {
-        StackFrame::for_fp(self.fp).argc()
+        self.stack_frame().argc()
     }
 
     #[inline]
     pub fn receiver(&self) -> Value {
-        StackFrame::for_fp(self.fp).receiver()
+        self.stack_frame().receiver()
     }
 
     #[inline]
@@ -1991,7 +1994,8 @@ impl VM {
         let super_constructor = super_constructor.unwrap();
 
         // Place all arguments behind handles
-        let args = StackFrame::for_fp(self.fp)
+        let args = self
+            .stack_frame()
             .args()
             .iter()
             .map(|arg| arg.to_handle(self.cx))
@@ -2828,7 +2832,8 @@ impl VM {
         let scope = self.scope().to_handle();
         let num_parameters = closure.function_ptr().num_parameters() as usize;
 
-        let arguments = StackFrame::for_fp(self.fp)
+        let arguments = self
+            .stack_frame()
             .args()
             .iter()
             .map(|arg| arg.to_handle(self.cx))
@@ -2849,7 +2854,8 @@ impl VM {
         let dest = instr.dest();
 
         // Place all arguments (up to argc) behind handles
-        let arguments = StackFrame::for_fp(self.fp)
+        let arguments = self
+            .stack_frame()
             .args()
             .iter()
             .map(|arg| arg.to_handle(self.cx))
@@ -3367,7 +3373,7 @@ impl VM {
         let lexical_scope = Scope::new_lexical(self.cx, scope, scope_names).get_();
 
         // Write the new scope to the stack
-        *StackFrame::for_fp(self.fp).scope_mut() = lexical_scope;
+        *self.stack_frame().scope_mut() = lexical_scope;
     }
 
     #[inline]
@@ -3382,7 +3388,7 @@ impl VM {
         let function_scope = Scope::new_function(self.cx, scope, scope_names).get_();
 
         // Write the new scope to the stack
-        *StackFrame::for_fp(self.fp).scope_mut() = function_scope;
+        *self.stack_frame().scope_mut() = function_scope;
     }
 
     #[inline]
@@ -3403,7 +3409,7 @@ impl VM {
         let lexical_scope = Scope::new_with(self.cx, scope, scope_names, object).get_();
 
         // Write the new scope to the stack
-        *StackFrame::for_fp(self.fp).scope_mut() = lexical_scope;
+        *self.stack_frame().scope_mut() = lexical_scope;
 
         ().into()
     }
@@ -3413,7 +3419,7 @@ impl VM {
         let parent_scope = self.scope().parent_ptr();
 
         // Write the new scope to the stack
-        *StackFrame::for_fp(self.fp).scope_mut() = parent_scope;
+        *self.stack_frame().scope_mut() = parent_scope;
     }
 
     #[inline]
@@ -3424,7 +3430,7 @@ impl VM {
         let dup_scope = scope.duplicate(self.cx);
 
         // Write the new scope to the stack
-        *StackFrame::for_fp(self.fp).scope_mut() = dup_scope;
+        *self.stack_frame().scope_mut() = dup_scope;
     }
 
     #[inline]
@@ -3487,8 +3493,10 @@ impl VM {
 
         // No rest parameter needed if there was underapplication of arguments
         if num_parameters <= self.argc() {
-            let stack_frame = StackFrame::for_fp(self.fp);
-            for (i, argument) in stack_frame.args()[num_parameters..].iter().enumerate() {
+            for (i, argument) in self.stack_frame().args()[num_parameters..]
+                .iter()
+                .enumerate()
+            {
                 array_key.replace(PropertyKey::array_index(self.cx, i as u32));
                 value_handle.replace(*argument);
 
@@ -3759,7 +3767,7 @@ impl VM {
             return;
         }
 
-        let mut stack_frame = StackFrame::for_fp(self.fp);
+        let mut stack_frame = self.stack_frame();
 
         // The current PC points into the current stack frame's BytecodeFunction. Rewrite both.
         Self::rewrite_bytecode_function_and_address(visitor, stack_frame, self.pc, |addr| {

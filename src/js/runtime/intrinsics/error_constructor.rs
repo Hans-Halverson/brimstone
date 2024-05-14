@@ -12,6 +12,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
+        stack_trace::attach_stack_trace_to_error,
         type_utilities::to_string,
         Context, Handle, HeapPtr, Value,
     },
@@ -88,6 +89,8 @@ impl ErrorConstructor {
                 message_string.into(),
             );
         }
+
+        attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         let options_arg = get_argument(cx, arguments, 1);
         maybe!(install_error_cause(cx, object, options_arg));

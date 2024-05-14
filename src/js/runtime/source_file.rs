@@ -45,6 +45,11 @@ impl SourceFile {
     }
 
     #[inline]
+    pub fn name(&self) -> Handle<StringValue> {
+        self.name.to_handle()
+    }
+
+    #[inline]
     pub fn contents_as_slice(&self) -> &[u8] {
         self.contents.as_slice()
     }

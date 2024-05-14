@@ -4,12 +4,15 @@ use crate::{
         builtin_function::BuiltinFunction,
         completion::EvalResult,
         function::get_argument,
-        intrinsics::error_constructor::{install_error_cause, ErrorObject},
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{
+            error_constructor::{install_error_cause, ErrorObject},
+            intrinsics::Intrinsic,
+        },
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
+        stack_trace::attach_stack_trace_to_error,
         type_utilities::to_string,
         Context, Handle, HeapPtr, Value,
     },
@@ -38,10 +41,12 @@ macro_rules! create_native_error {
                     .object()
                     .intrinsic_data_prop(cx, cx.names.message(), message_value);
 
+                attach_stack_trace_to_error(cx, object, /* skip_current_frame */ false);
+
                 object
             }
 
-            pub fn new_from_constructor(
+            fn new_from_constructor(
                 cx: Context,
                 constructor: Handle<ObjectValue>,
             ) -> EvalResult<Handle<ErrorObject>> {
@@ -116,6 +121,8 @@ macro_rules! create_native_error {
                         message_string.into(),
                     );
                 }
+
+                attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
                 let options_arg = get_argument(cx, arguments, 1);
                 maybe!(install_error_cause(cx, object, options_arg));

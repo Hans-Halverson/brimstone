@@ -355,6 +355,7 @@ builtin_names!(
     (split, "split"),
     (splice, "splice"),
     (sqrt, "sqrt"),
+    (stack, "stack"),
     (starts_with, "startsWith"),
     (sticky, "sticky"),
     (string_, "string"),

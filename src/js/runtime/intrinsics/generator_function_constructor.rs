@@ -48,6 +48,7 @@ impl GeneratorFunctionConstructor {
             constructor,
             new_target,
             arguments,
+            /* is_async */ false,
             /* is_generator */ true
         ))
         .into()

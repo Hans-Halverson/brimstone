@@ -9,30 +9,33 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-pub struct FunctionConstructor;
+pub struct AsyncFunctionConstructor;
 
-impl FunctionConstructor {
-    // 20.2.2 Properties of the Function Constructor
+impl AsyncFunctionConstructor {
+    // 27.7.2 Properties of the AsyncFunction Constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+        let proto = realm.get_intrinsic(Intrinsic::FunctionConstructor);
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             1,
-            cx.names.function(),
+            cx.names.async_function(),
             realm,
-            None,
+            Some(proto),
         );
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
-            realm.get_intrinsic(Intrinsic::FunctionPrototype).into(),
+            realm
+                .get_intrinsic(Intrinsic::AsyncFunctionPrototype)
+                .into(),
         );
 
         func
     }
 
-    // 20.2.1.1 Function
+    // 27.7.1.1 AsyncFunction
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
@@ -45,8 +48,8 @@ impl FunctionConstructor {
             constructor,
             new_target,
             arguments,
-            /* is_async */ false,
-            /* is_generator */ false
+            /* is_async */ true,
+            /* is_generator */ false,
         ))
         .into()
     }

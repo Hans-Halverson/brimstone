@@ -68,6 +68,7 @@ builtin_names!(
     (aggregate_error, "AggregateError"),
     (array, "Array"),
     (array_buffer, "ArrayBuffer"),
+    (async_function, "AsyncFunction"),
     (bigint, "BigInt"),
     (big_int64_array, "BigInt64Array"),
     (big_uint64_array, "BigUint64Array"),

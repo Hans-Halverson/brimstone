@@ -5,6 +5,8 @@ mod array_buffer_prototype;
 mod array_constructor;
 pub mod array_iterator;
 mod array_prototype;
+mod async_function_constructor;
+mod async_function_prototype;
 pub mod bigint_constructor;
 mod bigint_prototype;
 pub mod boolean_constructor;

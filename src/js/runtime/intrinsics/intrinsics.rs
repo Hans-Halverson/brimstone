@@ -16,6 +16,8 @@ use crate::{
             array_constructor::ArrayConstructor,
             array_iterator::ArrayIteratorPrototype,
             array_prototype::ArrayPrototype,
+            async_function_constructor::AsyncFunctionConstructor,
+            async_function_prototype::AsyncFunctionPrototype,
             bigint_constructor::BigIntConstructor,
             bigint_prototype::BigIntPrototype,
             boolean_constructor::BooleanConstructor,
@@ -98,6 +100,8 @@ pub enum Intrinsic {
     ArrayPrototype,
     ArrayPrototypeToString,
     ArrayPrototypeValues,
+    AsyncFunctionConstructor,
+    AsyncFunctionPrototype,
     BigInt64ArrayConstructor,
     BigInt64ArrayPrototype,
     BigUInt64ArrayConstructor,
@@ -347,6 +351,9 @@ impl Intrinsics {
         register_intrinsic!(MapIteratorPrototype, MapIteratorPrototype);
         register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
         register_intrinsic!(RegExpStringIteratorPrototype, RegExpStringIteratorPrototype);
+
+        // Async functions
+        register_intrinsic_pair!(AsyncFunctionPrototype, AsyncFunctionConstructor);
 
         // Generators
         register_intrinsic!(GeneratorPrototype, GeneratorPrototype);

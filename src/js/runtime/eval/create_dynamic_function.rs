@@ -34,10 +34,9 @@ pub fn create_dynamic_function(
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
     args: &[Handle<Value>],
+    is_async: bool,
     is_generator: bool,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let is_async = false;
-
     let new_target = new_target.unwrap_or(constructor);
 
     let prefix;
@@ -150,8 +149,12 @@ pub fn create_dynamic_function(
     let global_scope = realm.default_global_scope();
     let closure = Closure::new_with_proto(cx, bytecode_function, global_scope, proto);
 
-    if is_generator && !is_async {
-        maybe!(GeneratorPrototype::install_on_generator_function(cx, closure));
+    if is_generator {
+        if is_async {
+            unimplemented!("async generator functions")
+        } else {
+            maybe!(GeneratorPrototype::install_on_generator_function(cx, closure));
+        }
     }
 
     let closure_object: Handle<ObjectValue> = closure.into();

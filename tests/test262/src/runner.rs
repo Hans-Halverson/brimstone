@@ -21,8 +21,8 @@ use brimstone::js::{
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
-        test_262_object::Test262Object, to_console_string, to_string, Context, EvalResult, Handle,
-        Realm, Value,
+        object_value::ObjectValue, test_262_object::Test262Object, to_console_string, to_string,
+        Context, EvalResult, Handle, Realm, Value,
     },
 };
 
@@ -66,7 +66,7 @@ impl TestRunner {
             }
 
             let test262_root = self.index.test262_root.clone();
-            let ignore_async = self.ignored.ignore_async();
+            let ignore_async_generator = self.ignored.ignore_async_generator();
 
             let test = test.clone();
             let sender = sender.clone();
@@ -95,8 +95,9 @@ impl TestRunner {
                             None => String::from("<panic message not found>"),
                         };
 
-                        let result = if ignore_async
-                            && (message == "not implemented: bytecode for async functions")
+                        let result = if ignore_async_generator
+                            && (message
+                                == "not implemented: bytecode for async generator functions")
                         {
                             TestResult::skipped(&test)
                         } else {
@@ -251,7 +252,8 @@ fn run_single_test(
 
         let duration = start_timestamp.elapsed().unwrap();
 
-        check_expected_completion(cx, test, completion, duration)
+        let global_object = realm.global_object();
+        check_expected_completion(cx, test, completion, global_object, duration)
     }));
 
     cx.drop();
@@ -337,12 +339,49 @@ fn check_expected_completion(
     cx: Context,
     test: &Test,
     completion: EvalResult<()>,
+    global_object: Handle<ObjectValue>,
     duration: Duration,
 ) -> TestResult {
     match completion {
         // A normal completion is a success only if the test was expected to not throw
         EvalResult::Ok(_) => match &test.expected_result {
-            ExpectedResult::Positive => TestResult::success(test, duration),
+            ExpectedResult::Positive => {
+                // Async tests determine success by looking at the output logged to print()
+                if test.is_async {
+                    // Get the print log stored on the global object
+                    let print_log = Test262Object::get_print_log(cx, global_object);
+                    let print_log = match print_log {
+                        EvalResult::Ok(log) => log.to_string(),
+                        EvalResult::Throw(_) => {
+                            return TestResult::failure(
+                                test,
+                                "failed to access print log".to_owned(),
+                                duration,
+                            );
+                        }
+                    };
+
+                    // Fail if the print log contains the fail sequence
+                    if print_log.contains("Test262:AsyncTestFailure:") {
+                        return TestResult::failure(
+                            test,
+                            format!("Async test failed with the error: {}", print_log),
+                            duration,
+                        );
+                    }
+
+                    // Only succeed if the print log containst he success sequence
+                    if !print_log.contains("Test262:AsyncTestComplete") {
+                        return TestResult::failure(
+                            test,
+                            format!("print log does not contain Test262:AsyncTestComplete, instead contains:\n{}", print_log),
+                            duration,
+                        );
+                    }
+                }
+
+                TestResult::success(test, duration)
+            }
             other => TestResult::failure(
                 test,
                 format!("Test completed without throwing, but expected {}", other.to_string()),

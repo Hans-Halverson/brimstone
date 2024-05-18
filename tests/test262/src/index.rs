@@ -13,6 +13,7 @@ pub struct Test {
     pub path: String,
     pub expected_result: ExpectedResult,
     pub mode: TestMode,
+    pub is_async: bool,
     // Files that must be evaluated in the global scope prior to test execution. Paths are
     // relative to the test262/harness directory.
     pub includes: Vec<String>,
@@ -153,6 +154,9 @@ impl TestIndex {
             ExpectedResult::Negative { phase, type_ }
         };
 
+        let mut is_async = false;
+        let mut includes = vec![];
+
         let mut mode = TestMode::Script;
         if let Some(raw_features) = metadata[0]["flags"].as_vec() {
             for raw_feature in raw_features {
@@ -169,12 +173,15 @@ impl TestIndex {
                     "raw" => {
                         mode = TestMode::Raw;
                     }
+                    "async" => {
+                        is_async = true;
+                        includes.push("doneprintHandle.js".to_owned());
+                    }
                     _ => {}
                 }
             }
         }
 
-        let mut includes = vec![];
         if let Some(raw_includes) = metadata[0]["includes"].as_vec() {
             for raw_include in raw_includes {
                 includes.push(String::from(raw_include.as_str().unwrap()));
@@ -198,6 +205,7 @@ impl TestIndex {
             path: String::from(path),
             expected_result,
             mode,
+            is_async,
             includes,
             features,
         };

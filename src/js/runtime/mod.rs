@@ -11,7 +11,7 @@ mod collections;
 pub mod completion;
 pub mod console;
 mod context;
-mod debug_print;
+pub mod debug_print;
 pub mod error;
 pub mod eval;
 pub mod for_in_iterator;

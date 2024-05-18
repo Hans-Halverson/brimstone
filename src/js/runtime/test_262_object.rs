@@ -3,12 +3,13 @@ use std::rc::Rc;
 use crate::{
     js::{
         parser::{analyze::analyze, parse_script, source::Source},
-        runtime::bytecode::generator::BytecodeProgramGenerator,
+        runtime::{bytecode::generator::BytecodeProgramGenerator, get},
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{
+    abstract_operations::set,
     error::{syntax_error, type_error},
     function::get_argument,
     intrinsics::{
@@ -16,7 +17,8 @@ use super::{
         intrinsics::Intrinsic,
     },
     object_value::ObjectValue,
-    to_console_string, Context, EvalResult, Handle, PropertyKey, Realm, Value,
+    string_value::StringValue,
+    Context, EvalResult, Handle, PropertyKey, Realm, Value,
 };
 
 /// Utility functions used in test262 tests. Must be included in the main library for now so that
@@ -62,16 +64,57 @@ impl Test262Object {
         realm
             .global_object()
             .intrinsic_func(cx, print_key, Self::print, 1, realm);
+
+        // Install the global print log property
+        must!(Self::set_print_log(
+            cx,
+            realm.global_object(),
+            cx.names.empty_string().as_string()
+        ));
     }
 
+    fn print_log_key(mut cx: Context) -> Handle<PropertyKey> {
+        let print_log_string = cx.alloc_string("$$printLog");
+        PropertyKey::string(cx, print_log_string).to_handle(cx)
+    }
+
+    pub fn get_print_log(
+        cx: Context,
+        global_object: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<StringValue>> {
+        let print_log = maybe!(get(cx, global_object, Self::print_log_key(cx)));
+        if !print_log.is_string() {
+            return type_error(cx, "printLog must be a string");
+        }
+
+        print_log.as_string().into()
+    }
+
+    fn set_print_log(
+        cx: Context,
+        global_object: Handle<ObjectValue>,
+        print_log: Handle<StringValue>,
+    ) -> EvalResult<()> {
+        set(cx, global_object, Self::print_log_key(cx), print_log.into(), true)
+    }
+
+    /// Adds strings to a running print log stored on the global object.
     pub fn print(
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let value = get_argument(cx, arguments, 0);
-        println!("{}", to_console_string(cx, value));
+        let argument = get_argument(cx, arguments, 0);
+        if !argument.is_string() {
+            return type_error(cx, "print expects a string");
+        }
+
+        let global_object = cx.current_realm_ptr().global_object();
+
+        let old_print_log = maybe!(Self::get_print_log(cx, global_object));
+        let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string());
+        maybe!(Self::set_print_log(cx, global_object, new_print_log));
 
         cx.undefined().into()
     }

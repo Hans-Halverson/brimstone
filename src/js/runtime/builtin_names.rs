@@ -92,6 +92,7 @@ builtin_names!(
     (math, "Math"),
     (number, "Number"),
     (object, "Object"),
+    (promise, "Promise"),
     (proxy, "Proxy"),
     (range_error, "RangeError"),
     (reference_error, "ReferenceError"),

@@ -73,7 +73,7 @@ fn evaluate_file(
     }
 
     // Execute in the bytecode interpreter
-    if let Err(err) = cx.execute_program(bytecode_program) {
+    if let Err(err) = cx.run_program(bytecode_program) {
         print_eval_error_and_exit(cx, err);
     }
 

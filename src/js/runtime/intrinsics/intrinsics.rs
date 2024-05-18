@@ -47,6 +47,8 @@ use crate::{
             number_prototype::NumberPrototype,
             object_constructor::ObjectConstructor,
             object_prototype::ObjectPrototype,
+            promise_constructor::PromiseConstructor,
+            promise_prototype::PromisePrototype,
             proxy_constructor::ProxyConstructor,
             reflect_object::ReflectObject,
             regexp_constructor::RegExpConstructor,
@@ -150,6 +152,8 @@ pub enum Intrinsic {
     ObjectPrototypeToString,
     ParseFloat,
     ParseInt,
+    PromiseConstructor,
+    PromisePrototype,
     ProxyConstructor,
     RangeErrorConstructor,
     RangeErrorPrototype,
@@ -297,6 +301,7 @@ impl Intrinsics {
         register_intrinsic_pair!(DatePrototype, DateConstructor);
         register_intrinsic_pair!(ArrayPrototype, ArrayConstructor);
         register_intrinsic_pair!(RegExpPrototype, RegExpConstructor);
+        register_intrinsic_pair!(PromisePrototype, PromiseConstructor);
         register_intrinsic_pair!(ArrayBufferPrototype, ArrayBufferConstructor);
         register_intrinsic_pair!(DataViewPrototype, DataViewConstructor);
         register_intrinsic_pair!(MapPrototype, MapConstructor);

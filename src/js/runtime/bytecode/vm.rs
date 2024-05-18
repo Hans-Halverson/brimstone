@@ -38,6 +38,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
+        promise_object::{coerce_to_ordinary_promise, PromiseObject},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -60,21 +61,21 @@ use super::{
     generator::BytecodeProgram,
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
-        CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
-        CallWithReceiverInstruction, CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
-        CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
-        CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
-        DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
-        DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-        DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
-        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction,
-        ForInNextInstruction, GeneratorStartInstruction, GetIteratorInstruction,
-        GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
-        GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
-        GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
-        IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
+        AwaitInstruction, BitAndInstruction, BitNotInstruction, BitOrInstruction,
+        BitXorInstruction, CallInstruction, CallMaybeEvalInstruction,
+        CallMaybeEvalVarargsInstruction, CallVarargsInstruction, CallWithReceiverInstruction,
+        CheckSuperAlreadyCalledInstruction, CheckTdzInstruction, CheckThisInitializedInstruction,
+        ConstructInstruction, ConstructVarargsInstruction, CopyDataPropertiesInstruction,
+        DecInstruction, DefaultSuperCallInstruction, DefineNamedPropertyInstruction,
+        DefinePrivatePropertyFlags, DefinePrivatePropertyInstruction, DefinePropertyFlags,
+        DefinePropertyInstruction, DeleteBindingInstruction, DeletePropertyInstruction,
+        DivInstruction, DupScopeInstruction, ErrorConstInstruction,
+        ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction, ForInNextInstruction,
+        GeneratorStartInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
+        GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction, GetPropertyInstruction,
+        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
+        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
+        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
         JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
         JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
@@ -90,9 +91,10 @@ use super::{
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewAccessorInstruction, NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
         NewForInIteratorInstruction, NewGeneratorInstruction, NewMappedArgumentsInstruction,
-        NewObjectInstruction, NewPrivateSymbolInstruction, NewRegExpInstruction,
-        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
-        PushLexicalScopeInstruction, PushWithScopeInstruction, RemInstruction,
+        NewObjectInstruction, NewPrivateSymbolInstruction, NewPromiseInstruction,
+        NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
+        PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
+        RejectPromiseInstruction, RemInstruction, ResolvePromiseInstruction,
         RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
         SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
         SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
@@ -240,7 +242,7 @@ impl VM {
 
         // Write the resumed value to the yield completion registers if necessary
         if let Some((completion_value_index, completion_type_index)) =
-            generator.yield_completion_indices()
+            generator.completion_indices()
         {
             self.write_register(
                 Register::<ExtraWide>::local(completion_value_index as usize),
@@ -385,6 +387,40 @@ impl VM {
                 }};
             }
 
+            macro_rules! execute_await {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(AwaitInstruction);
+
+                    let promise = self.read_register_to_handle(instr.promise());
+                    let completion_value_index = instr.completion_value_dest().local_index() as u32;
+                    let completion_type_index = instr.completion_type_dest().local_index() as u32;
+
+                    // Set the PC to the next instruction to execute
+                    self.set_pc_after(instr);
+                    let pc_to_resume_offset = self.get_pc_offset();
+
+                    // Find the index of the FP in the stack frame
+                    let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
+
+                    // May allocate
+                    let mut promise = maybe_throw!(coerce_to_ordinary_promise(self.cx, promise));
+
+                    let generator = GeneratorObject::new_for_async_function(
+                        self.cx,
+                        pc_to_resume_offset,
+                        fp_index,
+                        (completion_value_index, completion_type_index),
+                        self.stack_frame().as_slice(),
+                    )
+                    .to_handle();
+
+                    promise.add_await_reaction(self.cx, generator);
+
+                    // Return the promise to the caller
+                    return_!(promise.cast::<Value>().get())
+                }};
+            }
+
             /// Execute a GeneratorStart instruction, copying the current stack frame and execution
             /// state into the generator object. Returns the generator object to the caller.
             macro_rules! execute_generator_start {
@@ -403,7 +439,7 @@ impl VM {
 
                     // Create the generator in the started state, copying the current stack frame
                     // and PC to resume.
-                    let mut generator = maybe_throw!(GeneratorObject::new(
+                    let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
                         self.cx,
                         current_closure,
                         pc_to_resume_offset,
@@ -869,6 +905,16 @@ impl VM {
                         }
                         OpCode::GeneratorStart => execute_generator_start!(get_instr),
                         OpCode::Yield => execute_yield!(get_instr),
+                        OpCode::NewPromise => {
+                            dispatch!(NewPromiseInstruction, execute_new_promise)
+                        }
+                        OpCode::Await => execute_await!(get_instr),
+                        OpCode::ResolvePromise => {
+                            dispatch!(ResolvePromiseInstruction, execute_resolve_promise)
+                        }
+                        OpCode::RejectPromise => {
+                            dispatch!(RejectPromiseInstruction, execute_reject_promise)
+                        }
                     }
                 };
             }
@@ -3703,6 +3749,38 @@ impl VM {
         }
 
         ().into()
+    }
+
+    #[inline]
+    fn execute_new_promise<W: Width>(&mut self, instr: &NewPromiseInstruction<W>) {
+        let dest = instr.dest();
+
+        // Allocates
+        let promise: HeapPtr<ObjectValue> = PromiseObject::new_pending(self.cx).into();
+
+        self.write_register(dest, promise.into());
+    }
+
+    #[inline]
+    fn execute_resolve_promise<W: Width>(&mut self, instr: &ResolvePromiseInstruction<W>) {
+        let promise = self.read_register(instr.promise());
+        let value = self.read_register(instr.value());
+
+        debug_assert!(promise.is_object() && promise.as_object().is_promise());
+        let mut promise = promise.as_object().cast::<PromiseObject>();
+
+        promise.resolve(self.cx, value);
+    }
+
+    #[inline]
+    fn execute_reject_promise<W: Width>(&mut self, instr: &RejectPromiseInstruction<W>) {
+        let promise = self.read_register(instr.promise());
+        let value = self.read_register(instr.value());
+
+        debug_assert!(promise.is_object() && promise.as_object().is_promise());
+        let mut promise = promise.as_object().cast::<PromiseObject>();
+
+        promise.reject(self.cx, value);
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

@@ -96,6 +96,9 @@ pub enum ObjectKind {
     BigInt,
     Accessor,
 
+    Promise,
+    PromiseReaction,
+
     Realm,
 
     Closure,
@@ -291,6 +294,9 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::Symbol);
         other_heap_object_descriptor!(ObjectKind::BigInt);
         other_heap_object_descriptor!(ObjectKind::Accessor);
+
+        ordinary_object_descriptor!(ObjectKind::Promise);
+        other_heap_object_descriptor!(ObjectKind::PromiseReaction);
 
         other_heap_object_descriptor!(ObjectKind::Realm);
 

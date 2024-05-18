@@ -24,6 +24,7 @@ use super::{
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
     string_value::{FlatString, StringValue},
+    tasks::TaskQueue,
     value::SymbolValue,
     Handle, HeapPtr, Value,
 };
@@ -56,6 +57,9 @@ pub struct ContextCell {
 
     /// The virtual machine used to execute bytecode.
     pub vm: Option<Box<VM>>,
+
+    /// The task queue of all pending tasks.
+    task_queue: TaskQueue,
 
     // Canonical values
     undefined: Value,
@@ -95,6 +99,7 @@ impl Context {
             base_descriptors: BaseDescriptors::uninit(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
+            task_queue: TaskQueue::new(),
             undefined: Value::undefined(),
             null: Value::null(),
             empty: Value::empty(),
@@ -154,11 +159,16 @@ impl Context {
         self.vm.as_mut().unwrap()
     }
 
-    pub fn execute_program(
-        &mut self,
-        bytecode_program: BytecodeProgram,
-    ) -> Result<Handle<Value>, Handle<Value>> {
-        self.vm().execute_program(bytecode_program)
+    pub fn task_queue(&mut self) -> &mut TaskQueue {
+        &mut self.task_queue
+    }
+
+    /// Execute a program, running until the task queue is empty.
+    pub fn run_program(&mut self, bytecode_program: BytecodeProgram) -> Result<(), Handle<Value>> {
+        self.vm().execute_program(bytecode_program)?;
+        self.run_all_tasks().to_rust_result()?;
+
+        Ok(())
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
@@ -259,6 +269,7 @@ impl Context {
         self.heap.visit_roots(visitor);
 
         visitor.visit_pointer(&mut self.global_symbol_registry);
+        self.task_queue.visit_roots(visitor);
         self.interned_strings.visit_roots(visitor);
 
         for finalizer_callback in self.finalizer_callbacks.iter_mut() {

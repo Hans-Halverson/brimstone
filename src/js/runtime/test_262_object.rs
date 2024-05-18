@@ -131,7 +131,7 @@ impl Test262Object {
             Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
-        match cx.execute_program(bytecode_program) {
+        match cx.vm().execute_program(bytecode_program) {
             Ok(value) => EvalResult::Ok(value),
             Err(error) => EvalResult::Throw(error),
         }

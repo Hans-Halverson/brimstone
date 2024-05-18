@@ -98,7 +98,7 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
         .push_str(&format!("{bytecode_string}\n"));
 
     // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
-    let _ = cx.execute_then_drop(|mut cx| cx.execute_program(bytecode_program));
+    let _ = cx.execute_then_drop(|mut cx| cx.run_program(bytecode_program));
 
     // Return a copy of the dump buffer
     let dump_buffer = options.dump_buffer().unwrap();

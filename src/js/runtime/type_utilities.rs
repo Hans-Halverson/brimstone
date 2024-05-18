@@ -962,7 +962,7 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
 }
 
 // Same as same_value_non_numeric but cannot allocate. Callers must ensure that all string values
-// passed to this function are flat.
+// passed to this function are flat (but only if both values are strings).
 #[inline]
 pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
     // Fast path, if values have same bits they are always equal

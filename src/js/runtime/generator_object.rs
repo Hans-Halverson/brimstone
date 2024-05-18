@@ -34,10 +34,13 @@ extend_object! {
         pc_to_resume_offset: usize,
         // Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Indices of registers for the completion operands of the last yield instruction. The value
-        // passed into Generator.prototype.{next, return, throw} is written to the first register
-        // and the completion type is written to the second register.
-        yield_completion_indices: Option<(u32, u32)>,
+        // Indices of registers for the completion operands to return when the generator is resumed.
+        // The value is written to the first register and the completion type is written to the
+        // second register.
+        //
+        // For a generator the value is from Generator.prototype.{next, return, throw}.
+        // For an async function the value is from resolve or reject.
+        completion_indices: Option<(u32, u32)>,
         // The stack frame of the generator, containing all args, locals, and fixed slots in
         // between.
         stack_frame: InlineArray<StackSlotValue>,
@@ -87,7 +90,30 @@ impl GeneratorCompletionType {
 }
 
 impl GeneratorObject {
-    pub fn new(
+    fn new(
+        cx: Context,
+        prototype: Option<Handle<ObjectValue>>,
+        pc_to_resume_offset: usize,
+        fp_index: usize,
+        completion_indices: Option<(u32, u32)>,
+        stack_frame: &[StackSlotValue],
+    ) -> HeapPtr<GeneratorObject> {
+        let size = Self::calculate_size_in_bytes(stack_frame.len());
+        let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size);
+
+        let descriptor = cx.base_descriptors.get(ObjectKind::Generator);
+        object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| p.get_()));
+
+        set_uninit!(generator.state, GeneratorState::SuspendedStart);
+        set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
+        set_uninit!(generator.fp_index, fp_index);
+        set_uninit!(generator.completion_indices, completion_indices);
+        generator.stack_frame.init_from_slice(stack_frame);
+
+        generator
+    }
+
+    pub fn new_for_generator(
         cx: Context,
         closure: Handle<Closure>,
         pc_to_resume_offset: usize,
@@ -100,19 +126,17 @@ impl GeneratorObject {
             Intrinsic::GeneratorPrototype
         ));
 
-        let size = Self::calculate_size_in_bytes(stack_frame.len());
-        let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size);
+        Self::new(cx, Some(proto), pc_to_resume_offset, fp_index, None, stack_frame).into()
+    }
 
-        let descriptor = cx.base_descriptors.get(ObjectKind::Generator);
-        object_ordinary_init(cx, generator.into(), descriptor, Some(proto.get_()));
-
-        set_uninit!(generator.state, GeneratorState::SuspendedStart);
-        set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
-        set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.yield_completion_indices, None);
-        generator.stack_frame.init_from_slice(stack_frame);
-
-        generator.into()
+    pub fn new_for_async_function(
+        cx: Context,
+        pc_to_resume_offset: usize,
+        fp_index: usize,
+        completion_indices: (u32, u32),
+        stack_frame: &[StackSlotValue],
+    ) -> HeapPtr<GeneratorObject> {
+        Self::new(cx, None, pc_to_resume_offset, fp_index, Some(completion_indices), stack_frame)
     }
 
     const STACK_FRAME_OFFSET: usize = field_offset!(GeneratorObject, stack_frame);
@@ -130,8 +154,8 @@ impl GeneratorObject {
         self.fp_index
     }
 
-    pub fn yield_completion_indices(&self) -> Option<(u32, u32)> {
-        self.yield_completion_indices
+    pub fn completion_indices(&self) -> Option<(u32, u32)> {
+        self.completion_indices
     }
 
     pub fn stack_frame(&self) -> &[StackSlotValue] {
@@ -145,12 +169,12 @@ impl GeneratorObject {
     pub fn suspend(
         &mut self,
         pc_to_resume_offset: usize,
-        yield_completion_indices: (u32, u32),
+        completion_indices: (u32, u32),
         stack_frame: &[StackSlotValue],
     ) {
         self.state = GeneratorState::SuspendedYield;
         self.pc_to_resume_offset = pc_to_resume_offset;
-        self.yield_completion_indices = Some(yield_completion_indices);
+        self.completion_indices = Some(completion_indices);
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);
     }
 

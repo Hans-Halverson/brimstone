@@ -314,7 +314,7 @@ fn execute_as_bytecode(
     mut cx: Context,
     realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
-) -> EvalResult<Handle<Value>> {
+) -> EvalResult<()> {
     let generate_result =
         BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
     let bytecode_program = match generate_result {
@@ -325,8 +325,8 @@ fn execute_as_bytecode(
         }
     };
 
-    match cx.execute_program(bytecode_program) {
-        Ok(value) => EvalResult::Ok(value),
+    match cx.run_program(bytecode_program) {
+        Ok(_) => EvalResult::Ok(()),
         Err(error_value) => EvalResult::Throw(error_value),
     }
 }
@@ -336,7 +336,7 @@ fn execute_as_bytecode(
 fn check_expected_completion(
     cx: Context,
     test: &Test,
-    completion: EvalResult<Handle<Value>>,
+    completion: EvalResult<()>,
     duration: Duration,
 ) -> TestResult {
     match completion {

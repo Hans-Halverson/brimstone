@@ -556,6 +556,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// generator function.
     generator_index: Option<u32>,
 
+    /// Index of the register in which to place the promise for this function, if function is an
+    /// async function.
+    promise_index: Option<u32>,
+
     /// Register in which to place the completion value of each statement. Only need to generate
     /// completion values when this is set.
     statement_completion_dest: Option<GenRegister>,
@@ -617,6 +621,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_base_constructor,
             new_target_index: None,
             generator_index: None,
+            promise_index: None,
             statement_completion_dest: None,
             has_assign_expr: false,
             class_fields,
@@ -1145,13 +1150,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
-        if func.is_async() {
-            unimplemented!("bytecode for async functions")
+        if func.is_async() && func.is_generator() {
+            unimplemented!("bytecode for async generator functions")
         }
 
         // Base constructors initialize class fields immediately
         if !self.is_derived_constructor() {
             self.gen_initialize_class_fields(Register::this())?;
+        }
+
+        // Async functions reserve a register for the promise object
+        let mut promise_reg = None;
+        if func.is_async() {
+            let register = self.register_allocator.allocate()?;
+            self.promise_index = Some(register.local_index() as u32);
+            promise_reg = Some(register);
+
+            // Create the promise object that will be returned from the async function
+            self.writer.new_promise_instruction(register);
         }
 
         // Generator functions reserve a register for the generator object
@@ -1250,6 +1266,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.gen_store_binding("arguments", arguments_binding, arguments_object, store_flags)?;
             self.register_allocator.release(arguments_object);
         }
+
+        // Async functions must wrap the parameters and function body in an exception handler
+        let async_body_handler_start = if func.is_async() {
+            Some(self.writer.current_offset())
+        } else {
+            None
+        };
 
         // Generate function parameters including destructuring, default value evaluation, and
         // captured parameters.
@@ -1355,8 +1378,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
+        // Finally emit the async body exception handler if it exists
+        if let Some(body_handler_start) = async_body_handler_start {
+            let body_handler_end = self.writer.current_offset();
+            let mut handler = ExceptionHandlerBuilder::new(body_handler_start, body_handler_end);
+
+            handler.handler = self.writer.current_offset();
+
+            // Reject the current promise with the current error
+            let error = self.register_allocator.allocate()?;
+            handler.error_register = Some(error);
+            self.register_allocator.release(error);
+
+            let promise = promise_reg.unwrap();
+            self.writer.reject_promise_instruction(promise, error);
+            self.exception_handler_builder.add(handler);
+
+            // Then return the rejected promise
+            self.writer.ret_instruction(promise);
+        }
+
         if let Some(generator_reg) = generator_reg {
             self.register_allocator.release(generator_reg);
+        }
+
+        if let Some(promise_reg) = promise_reg {
+            self.register_allocator.release(promise_reg);
         }
 
         Ok(self.finish())
@@ -1598,7 +1645,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_arrow_function_expression(expr, None, dest)
             }
             ast::Expression::Class(expr) => self.gen_class_expression(expr, None, dest),
-            ast::Expression::Await(_) => unimplemented!("bytecode for await expressions"),
+            ast::Expression::Await(expr) => self.gen_await_expression(expr, dest),
             ast::Expression::Yield(expr) => self.gen_yield_expression(expr, dest),
             ast::Expression::SuperMember(expr) => {
                 self.gen_super_member_expression(expr, dest, None)
@@ -4154,6 +4201,34 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_new_closure_for_function(func, dest, ConstantIndex::new(func_constant_index));
 
         Ok(dest)
+    }
+
+    fn gen_await_expression(
+        &mut self,
+        expr: &ast::AwaitExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let argument = self.gen_expression(&expr.argument)?;
+
+        self.register_allocator.release(argument);
+        let completion_value = self.allocate_destination(dest)?;
+        let completion_type = self.register_allocator.allocate()?;
+
+        self.writer
+            .await_instruction(completion_value, completion_type, argument);
+
+        // Check the completion type, and if normal then continue execution using the completion
+        // value as the value of the await expression.
+        let normal_block = self.new_block();
+        self.write_jump_true_instruction(completion_type, normal_block)?;
+        self.register_allocator.release(completion_type);
+
+        // Otherwise completion type must have been a throw so rethrow the error
+        self.writer.throw_instruction(completion_value);
+
+        self.start_block(normal_block);
+
+        Ok(completion_value)
     }
 
     fn gen_yield_expression(
@@ -7242,12 +7317,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             if let Some(return_arg) = return_arg {
                 // Return the value directly if one was provided
-                self.writer.ret_instruction(return_arg);
+                self.gen_ret_or_resolve(return_arg);
             } else {
                 // Otherwise load undefined then return it
                 let return_arg = self.register_allocator.allocate()?;
                 self.writer.load_undefined_instruction(return_arg);
-                self.writer.ret_instruction(return_arg);
+                self.gen_ret_or_resolve(return_arg);
                 self.register_allocator.release(return_arg);
             }
         } else {
@@ -7274,6 +7349,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(())
+    }
+
+    /// Resolve the current async function's promise with the provided value and return the promise,
+    /// if the current function is async. Otherwise return the argument.
+    fn gen_ret_or_resolve(&mut self, argument: GenRegister) {
+        if let Some(promise_index) = self.promise_index {
+            let promise = Register::local(promise_index as usize);
+            self.writer.resolve_promise_instruction(promise, argument);
+            self.writer.ret_instruction(promise);
+        } else {
+            self.writer.ret_instruction(argument)
+        }
     }
 
     /// Break or continue to the given label (or to the innermost loop if no label is provided).

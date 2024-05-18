@@ -339,6 +339,10 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::Generator
     }
 
+    pub fn is_promise(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::Promise
+    }
+
     pub fn is_object_prototype(&self) -> bool {
         self.descriptor_kind() == ObjectKind::ObjectPrototype
     }

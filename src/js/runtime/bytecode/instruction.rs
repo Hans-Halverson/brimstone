@@ -1091,6 +1091,35 @@ define_instructions!(
         [2] generator: Register,
         [3] yield_value: Register,
     }
+
+    /// Create a new promise object at the start of an async function and store it in dest.
+    NewPromise(NewPromiseInstruction, new_promise_instruction) {
+        [0] dest: Register,
+    }
+
+    /// Await a promise, suspend the current async function until the promise is resolved or
+    /// reject. When resumed place the completion value that the await evaluates to in the
+    /// completion value registers.
+    ///
+    /// The completion type must be either true for normal completions or null for throws, no other
+    /// completion types are allowed.
+    Await(AwaitInstruction, await_instruction) {
+        [0] completion_value_dest: Register,
+        [1] completion_type_dest: Register,
+        [2] promise: Register,
+    }
+
+    /// Resolve a promise with a value.
+    ResolvePromise(ResolvePromiseInstruction, resolve_promise_instruction) {
+        [0] promise: Register,
+        [1] value: Register,
+    }
+
+    /// Reject a promise with a value.
+    RejectPromise(RejectPromiseInstruction, reject_promise_instruction) {
+        [0] promise: Register,
+        [1] value: Register,
+    }
 );
 
 bitflags! {

@@ -297,6 +297,7 @@ builtin_names!(
     (pop, "pop"),
     (pow, "pow"),
     (prevent_extensions, "preventExtensions"),
+    (promise_, "promise"),
     (property_is_enumerable, "propertyIsEnumerable"),
     (prototype, "prototype"),
     (proxy_, "proxy"),
@@ -306,6 +307,8 @@ builtin_names!(
     (reduce, "reduce"),
     (reduce_right, "reduceRight"),
     (register, "register"),
+    (reject, "reject"),
+    (resolve, "resolve"),
     (repeat, "repeat"),
     (replace, "replace"),
     (replace_all, "replaceAll"),
@@ -406,6 +409,7 @@ builtin_names!(
     (values, "values"),
     (value_of, "valueOf"),
     (with, "with"),
+    (with_resolvers, "withResolvers"),
     (writable, "writable")
 );
 
@@ -469,5 +473,7 @@ builtin_symbols!(
     // Symbols used for private properties of revocable proxy closures
     (revocable_proxy, ""),
     // Symbols used for private properties of resolve/reject functions
-    (promise, "")
+    (promise, ""),
+    // Symbols used for private properties of capability executor function
+    (capability, "")
 );

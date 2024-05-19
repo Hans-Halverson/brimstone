@@ -42,7 +42,7 @@ use crate::js::runtime::{
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
-    promise_object::{PromiseObject, PromiseReaction},
+    promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
     proxy_object::ProxyObject,
     realm::{GlobalScopes, LexicalNamesMapField},
     regexp::compiled_regexp::CompiledRegExpObject,
@@ -127,6 +127,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Accessor => self.cast::<AccessorValue>().byte_size(),
             ObjectKind::Promise => self.cast::<PromiseObject>().byte_size(),
             ObjectKind::PromiseReaction => self.cast::<PromiseReaction>().byte_size(),
+            ObjectKind::PromiseCapability => self.cast::<PromiseCapability>().byte_size(),
             ObjectKind::Realm => self.cast::<Realm>().byte_size(),
             ObjectKind::Closure => self.cast::<Closure>().byte_size(),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().byte_size(),
@@ -223,6 +224,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::Accessor => self.cast::<AccessorValue>().visit_pointers(visitor),
             ObjectKind::Promise => self.cast::<PromiseObject>().visit_pointers(visitor),
             ObjectKind::PromiseReaction => self.cast::<PromiseReaction>().visit_pointers(visitor),
+            ObjectKind::PromiseCapability => {
+                self.cast::<PromiseCapability>().visit_pointers(visitor)
+            }
             ObjectKind::Realm => self.cast::<Realm>().visit_pointers(visitor),
             ObjectKind::Closure => self.cast::<Closure>().visit_pointers(visitor),
             ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().visit_pointers(visitor),

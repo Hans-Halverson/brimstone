@@ -98,6 +98,7 @@ pub enum ObjectKind {
 
     Promise,
     PromiseReaction,
+    PromiseCapability,
 
     Realm,
 
@@ -297,6 +298,7 @@ impl BaseDescriptors {
 
         ordinary_object_descriptor!(ObjectKind::Promise);
         other_heap_object_descriptor!(ObjectKind::PromiseReaction);
+        other_heap_object_descriptor!(ObjectKind::PromiseCapability);
 
         other_heap_object_descriptor!(ObjectKind::Realm);
 

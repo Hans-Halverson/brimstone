@@ -3,8 +3,8 @@ use std::{collections::HashMap, mem::size_of};
 use crate::{
     js::runtime::{
         bound_function_object::BoundFunctionObject, console::ConsoleObject, gc_object::GcObject,
-        global_names, object_value::ObjectValue, test_262_object::Test262Object, Context,
-        EvalResult, Handle, Value,
+        global_names, object_value::ObjectValue, promise_object::PromiseCapability,
+        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
     },
     static_assert,
 };
@@ -398,7 +398,11 @@ rust_runtime_functions!(
     ObjectPrototype::define_setter,
     ObjectPrototype::lookup_getter,
     ObjectPrototype::lookup_setter,
+    PromiseCapability::executor,
     PromiseConstructor::construct,
+    PromiseConstructor::reject,
+    PromiseConstructor::resolve,
+    PromiseConstructor::with_resolvers,
     promise_constructor::reject,
     promise_constructor::resolve,
     ProxyConstructor::construct,

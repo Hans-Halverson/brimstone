@@ -3,11 +3,15 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     js::runtime::{
+        abstract_operations::{call_object, construct},
+        builtin_function::BuiltinFunction,
+        error::type_error,
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
+        type_utilities::{is_callable, is_constructor_value},
         value::Value,
         Context, HeapPtr,
     },
@@ -15,8 +19,12 @@ use crate::{
 };
 
 use super::{
-    generator_object::GeneratorObject, get, object_descriptor::ObjectDescriptor,
-    type_utilities::same_object_value, EvalResult, Handle,
+    function::get_argument,
+    generator_object::GeneratorObject,
+    get,
+    object_descriptor::ObjectDescriptor,
+    type_utilities::{same_object_value, same_value},
+    EvalResult, Handle,
 };
 
 // 27.2.6 Properties of Promise Instances
@@ -234,6 +242,30 @@ pub fn coerce_to_ordinary_promise(
     PromiseObject::new_resolved(cx, value).to_handle().into()
 }
 
+/// Creates a new promise with the provided constructor and immediately resolves it with a result.
+///
+/// 27.2.4.7.1 PromiseResolve
+pub fn promise_resolve(
+    cx: Context,
+    constructor: Handle<Value>,
+    result: Handle<Value>,
+) -> EvalResult<Handle<ObjectValue>> {
+    // If result is already a promise, return it if it was constructed with the same constructor.
+    if is_promise(result.get()) {
+        let result = result.as_object();
+        let value_constructor = maybe!(get(cx, result.into(), cx.names.constructor()));
+        if same_value(value_constructor, constructor) {
+            return result.into();
+        }
+    }
+
+    // Create a new promise and immediately resolve it
+    let capability = maybe!(PromiseCapability::new(cx, constructor));
+    maybe!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
+
+    capability.promise().into()
+}
+
 impl PromiseReaction {
     pub fn new(
         cx: Context,
@@ -251,6 +283,113 @@ impl PromiseReaction {
         set_uninit!(reaction.next, next.map(|r| r.get_()));
 
         reaction
+    }
+}
+
+/// A promise along with its resolve and reject functions.
+#[repr(C)]
+pub struct PromiseCapability {
+    descriptor: HeapPtr<ObjectDescriptor>,
+    /// The promise object. Guaranteed to be Some after construction.
+    promise: Option<HeapPtr<ObjectValue>>,
+    /// The resolve function for the promise. Guaranteed to be a callable object after construction.
+    resolve: Value,
+    /// The reject function for the promise. Guaranteed to be a callable object after construction.
+    reject: Value,
+}
+
+impl PromiseCapability {
+    /// 27.2.1.5 NewPromiseCapability
+    pub fn new(cx: Context, constructor: Handle<Value>) -> EvalResult<Handle<PromiseCapability>> {
+        if !is_constructor_value(constructor) {
+            return type_error(cx, "expected constructor");
+        }
+        let constructor = constructor.as_object();
+
+        // Create an empty capability object whose fields will be set later
+        let mut capability = cx.alloc_uninit::<PromiseCapability>();
+
+        set_uninit!(capability.descriptor, cx.base_descriptors.get(ObjectKind::PromiseCapability));
+        set_uninit!(capability.promise, None);
+        set_uninit!(capability.resolve, Value::undefined());
+        set_uninit!(capability.reject, Value::undefined());
+
+        let mut capability = capability.to_handle();
+
+        // Create the executor function and attach the capability object to it
+        let mut executor = BuiltinFunction::create(
+            cx,
+            Self::executor,
+            2,
+            cx.names.empty_string(),
+            cx.current_realm(),
+            None,
+            None,
+        );
+
+        executor.private_element_set(
+            cx,
+            cx.well_known_symbols.capability().cast(),
+            capability.into(),
+        );
+
+        // Construct the promise using the provided constructor. This will fill the resolve and
+        // reject fields of the capability.
+        let promise = maybe!(construct(cx, constructor, &[executor.into()], None));
+
+        if !is_callable(capability.resolve.to_handle(cx)) {
+            return type_error(cx, "resolve must be callable");
+        } else if !is_callable(capability.reject.to_handle(cx)) {
+            return type_error(cx, "reject must be callable");
+        }
+
+        // Finally store the promise in the capability record, completing it
+        capability.promise = Some(promise.get_());
+
+        capability.into()
+    }
+
+    pub fn promise(&self) -> Handle<ObjectValue> {
+        self.promise.unwrap().to_handle()
+    }
+
+    pub fn resolve(&self) -> Handle<ObjectValue> {
+        self.resolve.as_object().to_handle()
+    }
+
+    pub fn reject(&self) -> Handle<ObjectValue> {
+        self.reject.as_object().to_handle()
+    }
+
+    pub fn executor(
+        mut cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        // Get the capability object that was attached to the executor function
+        let current_function = cx.current_function();
+        let mut capability = current_function
+            .private_element_find(cx, cx.well_known_symbols.capability().cast())
+            .unwrap()
+            .value()
+            .cast::<PromiseCapability>();
+
+        // Check if the resolve and reject fields have already been set
+        if !capability.resolve.is_undefined() {
+            return type_error(cx, "resolve already set");
+        } else if !capability.reject.is_undefined() {
+            return type_error(cx, "reject already set");
+        }
+
+        // If not, set them from the executor's arguments
+        let resolve = get_argument(cx, arguments, 0);
+        let reject = get_argument(cx, arguments, 1);
+
+        capability.resolve = resolve.get();
+        capability.reject = reject.get();
+
+        cx.undefined().into()
     }
 }
 
@@ -282,5 +421,18 @@ impl HeapObject for HeapPtr<PromiseReaction> {
         visitor.visit_pointer(&mut self.descriptor);
         visitor.visit_pointer(&mut self.handler);
         visitor.visit_pointer_opt(&mut self.next);
+    }
+}
+
+impl HeapObject for HeapPtr<PromiseCapability> {
+    fn byte_size(&self) -> usize {
+        size_of::<PromiseCapability>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_pointer_opt(&mut self.promise);
+        visitor.visit_value(&mut self.resolve);
+        visitor.visit_value(&mut self.reject);
     }
 }

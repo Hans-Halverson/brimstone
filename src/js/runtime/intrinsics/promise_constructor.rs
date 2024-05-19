@@ -1,18 +1,19 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object,
+        abstract_operations::{call_object, create_data_property_or_throw},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         completion::EvalResult,
         error::{type_error, type_error_value},
         function::get_argument,
         get,
         object_value::ObjectValue,
-        promise_object::PromiseObject,
+        ordinary_object::ordinary_object_create,
+        promise_object::{promise_resolve, PromiseCapability, PromiseObject},
         realm::Realm,
         type_utilities::{is_callable, same_value},
         Context, Handle, Value,
     },
-    maybe,
+    maybe, must,
 };
 
 use super::intrinsics::Intrinsic;
@@ -20,7 +21,7 @@ use super::intrinsics::Intrinsic;
 pub struct PromiseConstructor;
 
 impl PromiseConstructor {
-    // 27.2.4 Properties of the Promise Constructor
+    /// 27.2.4 Properties of the Promise Constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -37,10 +38,14 @@ impl PromiseConstructor {
             realm.get_intrinsic(Intrinsic::PromisePrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.reject(), Self::reject, 1, realm);
+        func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm);
+        func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm);
+
         func
     }
 
-    // 27.2.3.1 Promise
+    /// 27.2.3.1 Promise
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -63,6 +68,66 @@ impl PromiseConstructor {
         let promise = maybe!(PromiseObject::new_from_constructor(cx, new_target));
 
         execute_then(cx, executor, cx.undefined(), promise)
+    }
+
+    /// 27.2.4.6 Promise.reject
+    pub fn reject(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let result = get_argument(cx, arguments, 0);
+
+        // Create a new promise and immediately reject it
+        let capability = maybe!(PromiseCapability::new(cx, this_value));
+        maybe!(call_object(cx, capability.reject(), cx.undefined(), &[result]));
+
+        capability.promise().into()
+    }
+
+    /// 27.2.4.7 Promise.resolve
+    pub fn resolve(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let result = get_argument(cx, arguments, 0);
+        maybe!(promise_resolve(cx, this_value, result)).into()
+    }
+
+    /// 27.2.4.8 Promise.withResolvers
+    pub fn with_resolvers(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let capability = maybe!(PromiseCapability::new(cx, this_value));
+
+        let object = ordinary_object_create(cx);
+
+        must!(create_data_property_or_throw(
+            cx,
+            object,
+            cx.names.promise_(),
+            capability.promise().into()
+        ));
+        must!(create_data_property_or_throw(
+            cx,
+            object,
+            cx.names.resolve(),
+            capability.resolve().into()
+        ));
+        must!(create_data_property_or_throw(
+            cx,
+            object,
+            cx.names.reject(),
+            capability.reject().into()
+        ));
+
+        object.into()
     }
 }
 

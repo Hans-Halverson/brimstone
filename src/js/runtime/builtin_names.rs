@@ -367,6 +367,7 @@ builtin_names!(
     (tan, "tan"),
     (tanh, "tanh"),
     (test, "test"),
+    (then, "then"),
     (this, "this"),
     (throw, "throw"),
     (to_date_string, "toDateString"),
@@ -466,5 +467,7 @@ builtin_symbols!(
     (bound_this, ""),
     (bound_arguments, ""),
     // Symbols used for private properties of revocable proxy closures
-    (revocable_proxy, "")
+    (revocable_proxy, ""),
+    // Symbols used for private properties of resolve/reject functions
+    (promise, "")
 );

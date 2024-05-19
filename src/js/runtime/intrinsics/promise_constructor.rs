@@ -1,6 +1,18 @@
-use crate::js::runtime::{
-    builtin_function::BuiltinFunction, completion::EvalResult, object_value::ObjectValue,
-    realm::Realm, Context, Handle, Value,
+use crate::{
+    js::runtime::{
+        abstract_operations::call_object,
+        builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+        completion::EvalResult,
+        error::{type_error, type_error_value},
+        function::get_argument,
+        get,
+        object_value::ObjectValue,
+        promise_object::PromiseObject,
+        realm::Realm,
+        type_utilities::{is_callable, same_value},
+        Context, Handle, Value,
+    },
+    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -30,11 +42,160 @@ impl PromiseConstructor {
 
     // 27.2.3.1 Promise
     pub fn construct(
-        _: Context,
+        cx: Context,
         _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
+        arguments: &[Handle<Value>],
+        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!("Promise constructor")
+        let new_target = if let Some(target) = new_target {
+            target
+        } else {
+            return type_error(cx, "Promise constructor must be called with new");
+        };
+
+        // Extract and check type of executor
+        let executor = get_argument(cx, arguments, 0);
+        if !is_callable(executor) {
+            return type_error(cx, "Promise executor must be a function");
+        }
+        let executor = executor.as_object();
+
+        let promise = maybe!(PromiseObject::new_from_constructor(cx, new_target));
+
+        execute_then(cx, executor, cx.undefined(), promise)
     }
+}
+
+pub fn execute_then(
+    cx: Context,
+    executor: Handle<ObjectValue>,
+    this_value: Handle<Value>,
+    promise: Handle<PromiseObject>,
+) -> EvalResult<Handle<Value>> {
+    // Create resolve and reject functions, passing into the executor
+    let resolve_function = create_resolve_function(cx, promise);
+    let reject_function = create_reject_function(cx, promise);
+
+    let completion =
+        call_object(cx, executor, this_value, &[resolve_function.into(), reject_function.into()]);
+
+    // Reject if the executor function throws
+    if let EvalResult::Throw(error) = completion {
+        maybe!(call_object(cx, reject_function, cx.undefined(), &[error]));
+    }
+
+    promise.into()
+}
+
+fn create_resolve_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
+    create_settle_function(cx, promise, resolve)
+}
+
+fn create_reject_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
+    create_settle_function(cx, promise, reject)
+}
+
+fn create_settle_function(
+    cx: Context,
+    promise: Handle<PromiseObject>,
+    func: BuiltinFunctionPtr,
+) -> Handle<ObjectValue> {
+    let mut function = BuiltinFunction::create(
+        cx,
+        func,
+        1,
+        cx.names.empty_string(),
+        cx.current_realm(),
+        None,
+        None,
+    );
+
+    function.private_element_set(cx, cx.well_known_symbols.promise().cast(), promise.into());
+
+    function
+}
+
+fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<PromiseObject> {
+    settle_function
+        .private_element_find(cx, cx.well_known_symbols.promise().cast())
+        .unwrap()
+        .value()
+        .as_object()
+        .cast::<PromiseObject>()
+}
+
+/// 27.2.1.3.2 Promise Resolve Functions
+pub fn resolve(
+    mut cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let resolution = get_argument(cx, arguments, 0);
+
+    let function = cx.current_function();
+    let mut promise = get_promise(cx, function);
+
+    // Resolving an already settled promise has no effect
+    if !promise.is_pending() {
+        return cx.undefined().into();
+    }
+
+    // Check if a promise is trying to resolve itself
+    if same_value(resolution, promise.into()) {
+        let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself");
+        promise.reject(cx, self_resolution_error.get());
+        return cx.undefined().into();
+    }
+
+    // Resolving to a non-object immediately fulfills the promise
+    if !resolution.is_object() {
+        promise.resolve(cx, resolution.get());
+        return cx.undefined().into();
+    }
+
+    // Otherwise look for a "then" property on the resolution object
+    let then_completion = get(cx, resolution.as_object(), cx.names.then());
+    let then_value = match then_completion {
+        EvalResult::Ok(value) => value,
+        EvalResult::Throw(error) => {
+            promise.reject(cx, error.get());
+            return cx.undefined().into();
+        }
+    };
+
+    // If "then" is not callable, immediately fulfill the promise
+    if !is_callable(then_value) {
+        promise.resolve(cx, resolution.get());
+        return cx.undefined().into();
+    }
+
+    // Otherwise enqueue "then" to be called
+    cx.task_queue().enqueue_promise_then_settle_task(
+        then_value.as_object().get_(),
+        resolution.as_object().get_(),
+        promise.get_(),
+    );
+
+    cx.undefined().into()
+}
+
+/// 27.2.1.3.1 Promise Reject Functions
+pub fn reject(
+    mut cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    let resolution = get_argument(cx, arguments, 0);
+
+    let function = cx.current_function();
+    let mut promise = get_promise(cx, function);
+
+    // Rejecting an already settled promise has no effect
+    if promise.is_pending() {
+        promise.reject(cx, resolution.get());
+    }
+
+    cx.undefined().into()
 }

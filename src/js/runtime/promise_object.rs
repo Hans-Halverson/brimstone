@@ -7,7 +7,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_create,
+        ordinary_object::{object_create, object_create_from_constructor},
         value::Value,
         Context, HeapPtr,
     },
@@ -86,11 +86,33 @@ impl PromiseObject {
         object
     }
 
+    pub fn new_from_constructor(
+        cx: Context,
+        constructor: Handle<ObjectValue>,
+    ) -> EvalResult<Handle<PromiseObject>> {
+        let mut object = maybe!(object_create_from_constructor::<PromiseObject>(
+            cx,
+            constructor,
+            ObjectKind::Promise,
+            Intrinsic::PromisePrototype
+        ));
+
+        set_uninit!(object.state, PromiseState::Pending { reactions: None });
+
+        object.to_handle().into()
+    }
+
+    pub fn is_pending(&self) -> bool {
+        matches!(self.state, PromiseState::Pending { .. })
+    }
+
+    /// 27.2.1.4 FulfillPromise
     pub fn resolve(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Fulfill, value);
         self.state = PromiseState::Fulfilled { result: value };
     }
 
+    /// 27.2.1.7 RejectPromise
     pub fn reject(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Reject, value);
         self.state = PromiseState::Rejected { result: value };

@@ -40,7 +40,7 @@ pub mod number_constructor;
 mod number_prototype;
 mod object_constructor;
 pub mod object_prototype;
-mod promise_constructor;
+pub mod promise_constructor;
 mod promise_prototype;
 pub mod proxy_constructor;
 mod reflect_object;

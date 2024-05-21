@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{call_object, construct},
         builtin_function::BuiltinFunction,
-        error::type_error,
+        error::{type_error, type_error_value},
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
@@ -174,6 +174,58 @@ impl PromiseObject {
             }
         }
     }
+}
+
+/// 27.2.1.3.2 Promise Resolve Functions
+pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: Handle<Value>) {
+    // Resolving an already settled promise has no effect
+    if !promise.is_pending() {
+        return;
+    }
+
+    // Check if a promise is trying to resolve itself
+    if same_value(resolution, promise.into()) {
+        let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself");
+        promise.reject(cx, self_resolution_error.get());
+        return;
+    }
+
+    // Resolving to a non-object immediately fulfills the promise
+    if !resolution.is_object() {
+        promise.resolve(cx, resolution.get());
+        return;
+    }
+
+    // Otherwise look for a "then" property on the resolution object
+    let then_completion = get(cx, resolution.as_object(), cx.names.then());
+    let then_value = match then_completion {
+        EvalResult::Ok(value) => value,
+        EvalResult::Throw(error) => {
+            promise.reject(cx, error.get());
+            return;
+        }
+    };
+
+    // If "then" is not callable, immediately fulfill the promise
+    if !is_callable(then_value) {
+        promise.resolve(cx, resolution.get());
+        return;
+    }
+
+    // Get the realm of the "then" function, defaulting to the current realm if getting the
+    // realm fails (i.e. the "then" function is a revoked proxy).
+    let realm = match get_function_realm_no_error(cx, then_value.as_object()) {
+        Some(realm) => realm,
+        None => cx.current_realm_ptr(),
+    };
+
+    // Otherwise enqueue "then" to be called
+    cx.task_queue().enqueue_promise_then_settle_task(
+        then_value.as_object().get_(),
+        resolution.as_object().get_(),
+        promise.get_(),
+        realm,
+    );
 }
 
 impl Handle<PromiseObject> {

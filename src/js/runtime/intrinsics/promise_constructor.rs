@@ -1,18 +1,15 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{
-            call_object, create_data_property_or_throw, get_function_realm_no_error,
-        },
+        abstract_operations::{call_object, create_data_property_or_throw},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         completion::EvalResult,
-        error::{type_error, type_error_value},
+        error::type_error,
         function::get_argument,
-        get,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
-        promise_object::{promise_resolve, PromiseCapability, PromiseObject},
+        promise_object::{promise_resolve, resolve, PromiseCapability, PromiseObject},
         realm::Realm,
-        type_utilities::{is_callable, same_value},
+        type_utilities::is_callable,
         Context, Handle, Value,
     },
     maybe, must,
@@ -168,11 +165,11 @@ pub fn execute_then(
 }
 
 fn create_resolve_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
-    create_settle_function(cx, promise, resolve)
+    create_settle_function(cx, promise, resolve_builtin_function)
 }
 
 fn create_reject_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
-    create_settle_function(cx, promise, reject)
+    create_settle_function(cx, promise, reject_builtin_function)
 }
 
 fn create_settle_function(
@@ -205,7 +202,7 @@ fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<Prom
 }
 
 /// 27.2.1.3.2 Promise Resolve Functions
-pub fn resolve(
+pub fn resolve_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
@@ -214,62 +211,15 @@ pub fn resolve(
     let resolution = get_argument(cx, arguments, 0);
 
     let function = cx.current_function();
-    let mut promise = get_promise(cx, function);
+    let promise = get_promise(cx, function);
 
-    // Resolving an already settled promise has no effect
-    if !promise.is_pending() {
-        return cx.undefined().into();
-    }
-
-    // Check if a promise is trying to resolve itself
-    if same_value(resolution, promise.into()) {
-        let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself");
-        promise.reject(cx, self_resolution_error.get());
-        return cx.undefined().into();
-    }
-
-    // Resolving to a non-object immediately fulfills the promise
-    if !resolution.is_object() {
-        promise.resolve(cx, resolution.get());
-        return cx.undefined().into();
-    }
-
-    // Otherwise look for a "then" property on the resolution object
-    let then_completion = get(cx, resolution.as_object(), cx.names.then());
-    let then_value = match then_completion {
-        EvalResult::Ok(value) => value,
-        EvalResult::Throw(error) => {
-            promise.reject(cx, error.get());
-            return cx.undefined().into();
-        }
-    };
-
-    // If "then" is not callable, immediately fulfill the promise
-    if !is_callable(then_value) {
-        promise.resolve(cx, resolution.get());
-        return cx.undefined().into();
-    }
-
-    // Get the realm of the "then" function, defaulting to the current realm if getting the
-    // realm fails (i.e. the "then" function is a revoked proxy).
-    let realm = match get_function_realm_no_error(cx, then_value.as_object()) {
-        Some(realm) => realm,
-        None => cx.current_realm_ptr(),
-    };
-
-    // Otherwise enqueue "then" to be called
-    cx.task_queue().enqueue_promise_then_settle_task(
-        then_value.as_object().get_(),
-        resolution.as_object().get_(),
-        promise.get_(),
-        realm,
-    );
+    resolve(cx, promise, resolution);
 
     cx.undefined().into()
 }
 
 /// 27.2.1.3.1 Promise Reject Functions
-pub fn reject(
+pub fn reject_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],

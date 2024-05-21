@@ -38,7 +38,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
-        promise_object::{coerce_to_ordinary_promise, PromiseObject},
+        promise_object::{coerce_to_ordinary_promise, resolve, PromiseObject},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -3780,13 +3780,13 @@ impl VM {
 
     #[inline]
     fn execute_resolve_promise<W: Width>(&mut self, instr: &ResolvePromiseInstruction<W>) {
-        let promise = self.read_register(instr.promise());
-        let value = self.read_register(instr.value());
+        let promise = self.read_register_to_handle(instr.promise());
+        let value = self.read_register_to_handle(instr.value());
 
         debug_assert!(promise.is_object() && promise.as_object().is_promise());
-        let mut promise = promise.as_object().cast::<PromiseObject>();
+        let promise = promise.as_object().cast::<PromiseObject>();
 
-        promise.resolve(self.cx, value);
+        resolve(self.cx, promise, value);
     }
 
     #[inline]

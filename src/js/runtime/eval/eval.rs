@@ -9,6 +9,7 @@ use crate::{
             source::Source,
         },
         runtime::{
+            abstract_operations::call_object,
             bytecode::{
                 function::{dump_bytecode_function, Closure},
                 generator::BytecodeProgramGenerator,
@@ -106,7 +107,7 @@ pub fn perform_eval(
     };
 
     // Execute the eval function's bytecode in the VM
-    cx.vm().call_from_rust(closure.into(), receiver, &[])
+    call_object(cx, closure.into(), receiver, &[])
 }
 
 /// Gather private names from parent class scopes.

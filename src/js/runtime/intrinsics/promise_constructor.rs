@@ -1,6 +1,8 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{call_object, create_data_property_or_throw},
+        abstract_operations::{
+            call_object, create_data_property_or_throw, get_function_realm_no_error,
+        },
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         completion::EvalResult,
         error::{type_error, type_error_value},
@@ -41,6 +43,9 @@ impl PromiseConstructor {
         func.intrinsic_func(cx, cx.names.reject(), Self::reject, 1, realm);
         func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm);
         func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm);
+
+        let species_key = cx.well_known_symbols.species();
+        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
 
         func
     }
@@ -101,7 +106,7 @@ impl PromiseConstructor {
     pub fn with_resolvers(
         cx: Context,
         this_value: Handle<Value>,
-        arguments: &[Handle<Value>],
+        _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let capability = maybe!(PromiseCapability::new(cx, this_value));
@@ -128,6 +133,16 @@ impl PromiseConstructor {
         ));
 
         object.into()
+    }
+
+    /// 27.2.4.9 get Promise [ @@species ]
+    pub fn get_species(
+        _: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        this_value.into()
     }
 }
 
@@ -235,11 +250,19 @@ pub fn resolve(
         return cx.undefined().into();
     }
 
+    // Get the realm of the "then" function, defaulting to the current realm if getting the
+    // realm fails (i.e. the "then" function is a revoked proxy).
+    let realm = match get_function_realm_no_error(cx, then_value.as_object()) {
+        Some(realm) => realm,
+        None => cx.current_realm_ptr(),
+    };
+
     // Otherwise enqueue "then" to be called
     cx.task_queue().enqueue_promise_then_settle_task(
         then_value.as_object().get_(),
         resolution.as_object().get_(),
         promise.get_(),
+        realm,
     );
 
     cx.undefined().into()

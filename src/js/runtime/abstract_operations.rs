@@ -459,27 +459,38 @@ pub fn enumerable_own_property_names(
     properties.into()
 }
 
-// 7.3.25 GetFunctionRealm
+/// 7.3.25 GetFunctionRealm
 pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<HeapPtr<Realm>> {
+    match get_function_realm_no_error(cx, func) {
+        Some(realm) => realm.into(),
+        None => type_error(cx, "operation attempted on revoked proxy"),
+    }
+}
+
+/// 7.3.25 GetFunctionRealm but does not allocate an error on the error path.
+pub fn get_function_realm_no_error(
+    cx: Context,
+    func: Handle<ObjectValue>,
+) -> Option<HeapPtr<Realm>> {
     let kind = func.descriptor().kind();
 
     // Bound functions are also represented as closures with the correct realm set
     if kind == ObjectKind::Closure {
         if let Some(bound_target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func)
         {
-            get_function_realm(cx, bound_target_func)
+            get_function_realm_no_error(cx, bound_target_func)
         } else {
-            func.cast::<Closure>().function_ptr().realm_ptr().into()
+            Some(func.cast::<Closure>().function_ptr().realm_ptr())
         }
     } else if kind == ObjectKind::Proxy {
         let proxy_object = func.cast::<ProxyObject>();
         if proxy_object.is_revoked() {
-            return type_error(cx, "operation attempted on revoked proxy");
+            return None;
         }
 
-        get_function_realm(cx, proxy_object.target().unwrap())
+        get_function_realm_no_error(cx, proxy_object.target().unwrap())
     } else {
-        cx.current_realm_ptr().into()
+        Some(cx.current_realm_ptr())
     }
 }
 

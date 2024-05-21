@@ -19,6 +19,7 @@ use crate::{
 };
 
 use super::{
+    abstract_operations::get_function_realm_no_error,
     function::get_argument,
     generator_object::GeneratorObject,
     get,
@@ -54,19 +55,28 @@ enum PromiseState {
 #[repr(C)]
 pub struct PromiseReaction {
     descriptor: HeapPtr<ObjectDescriptor>,
-    /// Whether this is a reaction for when the promise is fulfilled.
-    for_fulfill: bool,
-    /// Whether this is a reaction for when the promise is rejected.
-    for_reject: bool,
-    /// The function that should be called when the promise is settled. This may be either a Closure
-    /// if a function was registered with Promise.prototype.{catch, finally, then}, otherwise must
-    /// be a GeneratorObject representing an async function suspended at an await expression.
-    handler: HeapPtr<ObjectValue>,
+    /// The functions to be called when the promise is settled.
+    handler: ReactionHandler,
     /// The promise this reaction references. The promise must be fulfilled or rejected and stores
     /// the value that the promise was fulfilled or rejected with.
     // promise: HeapPtr<PromiseObject>,
     /// The next reaction in the chain of reactions.
     next: Option<HeapPtr<PromiseReaction>>,
+}
+
+enum ReactionHandler {
+    AwaitResume {
+        /// An async function suspended at an await expression.
+        suspended_function: HeapPtr<GeneratorObject>,
+    },
+    Then {
+        /// A function to be called when the promise is fulfilled, if one exists.
+        fulfill_handler: Option<HeapPtr<ObjectValue>>,
+        /// A function to be called when the promise is rejected, if one exists.
+        reject_handler: Option<HeapPtr<ObjectValue>>,
+        /// A capability that will be resolved or rejected depending on the reaction type.
+        capability: HeapPtr<PromiseCapability>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -143,59 +153,45 @@ impl PromiseObject {
         // Traverse linked list of reactions, adding to Vec so they can be processed in reverse
         // order.
         while let Some(reaction) = next_reaction {
-            let is_match = match kind {
-                PromiseReactionKind::Fulfill => reaction.for_fulfill,
-                PromiseReactionKind::Reject => reaction.for_reject,
-            };
-
-            if is_match {
-                matching_reactions.push(reaction);
-            }
-
+            matching_reactions.push(reaction);
             next_reaction = reaction.next;
         }
 
         // Add a task to the queue for each matching reaction in the order they were added
         for reaction in matching_reactions.into_iter().rev() {
-            let handler = reaction.handler;
-            if handler.is_generator() {
-                let suspended_async_function = handler.cast::<GeneratorObject>();
-                cx.task_queue()
-                    .enqueue_await_resume_task(kind, suspended_async_function, value);
-            } else {
-                unimplemented!("tasks for non-generator promise reactions")
+            match reaction.handler {
+                ReactionHandler::AwaitResume { suspended_function } => {
+                    cx.task_queue()
+                        .enqueue_await_resume_task(kind, suspended_function, value);
+                }
+                ReactionHandler::Then { fulfill_handler, reject_handler, capability } => {
+                    let handler = match kind {
+                        PromiseReactionKind::Fulfill => fulfill_handler,
+                        PromiseReactionKind::Reject => reject_handler,
+                    };
+                    enqueue_promise_then_reaction_task(cx, kind, handler, capability, value);
+                }
             }
         }
     }
 }
 
 impl Handle<PromiseObject> {
-    /// Prepend reaction onto the current linked list of reactions.
-    fn add_reaction(
-        &mut self,
-        cx: Context,
-        is_fullfill: bool,
-        is_reject: bool,
-        handler: Handle<ObjectValue>,
-    ) {
-        if let PromiseState::Pending { reactions } = &mut self.state {
-            let prev_reactions = reactions.map(|r| r.to_handle());
-            *reactions =
-                Some(PromiseReaction::new(cx, is_fullfill, is_reject, handler, prev_reactions));
-        } else {
-            unreachable!("only called when promise is pending");
-        }
-    }
-
     pub fn add_await_reaction(
         &mut self,
         mut cx: Context,
         suspended_async_function: Handle<GeneratorObject>,
     ) {
-        let handler: Handle<ObjectValue> = suspended_async_function.into();
         match &mut self.state {
-            PromiseState::Pending { .. } => self
-                .add_reaction(cx, /* is_fulfill */ true, /* is_reject */ true, handler),
+            // Prepend reaction onto the current linked list of reactions.
+            PromiseState::Pending { reactions } => {
+                let prev_reactions = reactions.map(|r| r.to_handle());
+                *reactions = Some(PromiseReaction::new_await_resume(
+                    cx,
+                    suspended_async_function,
+                    prev_reactions,
+                ));
+            }
             PromiseState::Fulfilled { result } => {
                 cx.task_queue().enqueue_await_resume_task(
                     PromiseReactionKind::Fulfill,
@@ -212,10 +208,50 @@ impl Handle<PromiseObject> {
             }
         }
     }
+
+    pub fn add_then_reaction(
+        &mut self,
+        cx: Context,
+        fulfill_handler: Option<Handle<ObjectValue>>,
+        reject_handler: Option<Handle<ObjectValue>>,
+        capability: Handle<PromiseCapability>,
+    ) {
+        match &mut self.state {
+            // Prepend reaction onto the current linked list of reactions.
+            PromiseState::Pending { reactions } => {
+                let prev_reactions = reactions.map(|r| r.to_handle());
+                *reactions = Some(PromiseReaction::new_then(
+                    cx,
+                    fulfill_handler,
+                    reject_handler,
+                    capability,
+                    prev_reactions,
+                ));
+            }
+            PromiseState::Fulfilled { result } => {
+                enqueue_promise_then_reaction_task(
+                    cx,
+                    PromiseReactionKind::Fulfill,
+                    fulfill_handler.map(|h| h.get_()),
+                    capability.get_(),
+                    *result,
+                );
+            }
+            PromiseState::Rejected { result } => {
+                enqueue_promise_then_reaction_task(
+                    cx,
+                    PromiseReactionKind::Reject,
+                    reject_handler.map(|h| h.get_()),
+                    capability.get_(),
+                    *result,
+                );
+            }
+        }
+    }
 }
 
 /// 27.2.1.6 IsPromise
-fn is_promise(value: Value) -> bool {
+pub fn is_promise(value: Value) -> bool {
     value.is_object() && value.as_object().is_promise()
 }
 
@@ -266,20 +302,63 @@ pub fn promise_resolve(
     capability.promise().into()
 }
 
+fn enqueue_promise_then_reaction_task(
+    mut cx: Context,
+    kind: PromiseReactionKind,
+    handler: Option<HeapPtr<ObjectValue>>,
+    capability: HeapPtr<PromiseCapability>,
+    result: Value,
+) {
+    // Get the realm of the handler function, defaulting to the current realm if getting the
+    // realm fails (i.e. the handler function is a revoked proxy).
+    let realm = match handler {
+        Some(handler) => match get_function_realm_no_error(cx, handler.to_handle()) {
+            Some(realm) => Some(realm),
+            None => Some(cx.current_realm_ptr()),
+        },
+        None => None,
+    };
+
+    cx.task_queue()
+        .enqueue_promise_then_reaction_task(kind, handler, capability, result, realm);
+}
+
 impl PromiseReaction {
-    pub fn new(
+    fn new_await_resume(
         cx: Context,
-        for_fulfill: bool,
-        for_reject: bool,
-        handler: Handle<ObjectValue>,
+        suspended_function: Handle<GeneratorObject>,
         next: Option<Handle<PromiseReaction>>,
     ) -> HeapPtr<PromiseReaction> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>();
 
         set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
-        set_uninit!(reaction.for_fulfill, for_fulfill);
-        set_uninit!(reaction.for_reject, for_reject);
-        set_uninit!(reaction.handler, handler.get_());
+        set_uninit!(
+            reaction.handler,
+            ReactionHandler::AwaitResume { suspended_function: suspended_function.get_() }
+        );
+        set_uninit!(reaction.next, next.map(|r| r.get_()));
+
+        reaction
+    }
+
+    fn new_then(
+        cx: Context,
+        fulfill_handler: Option<Handle<ObjectValue>>,
+        reject_handler: Option<Handle<ObjectValue>>,
+        capability: Handle<PromiseCapability>,
+        next: Option<Handle<PromiseReaction>>,
+    ) -> HeapPtr<PromiseReaction> {
+        let mut reaction = cx.alloc_uninit::<PromiseReaction>();
+
+        set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
+        set_uninit!(
+            reaction.handler,
+            ReactionHandler::Then {
+                fulfill_handler: fulfill_handler.map(|h| h.get_()),
+                reject_handler: reject_handler.map(|h| h.get_()),
+                capability: capability.get_()
+            }
+        );
         set_uninit!(reaction.next, next.map(|r| r.get_()));
 
         reaction
@@ -419,7 +498,16 @@ impl HeapObject for HeapPtr<PromiseReaction> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.handler);
+        match &mut self.handler {
+            ReactionHandler::AwaitResume { suspended_function } => {
+                visitor.visit_pointer(suspended_function);
+            }
+            ReactionHandler::Then { fulfill_handler, reject_handler, capability } => {
+                visitor.visit_pointer_opt(fulfill_handler);
+                visitor.visit_pointer_opt(reject_handler);
+                visitor.visit_pointer(capability);
+            }
+        }
         visitor.visit_pointer_opt(&mut self.next);
     }
 }

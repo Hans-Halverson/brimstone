@@ -5,6 +5,8 @@ use crate::{
 };
 
 use super::{
+    builtin_function::BuiltinFunction,
+    bytecode::function::Closure,
     collections::{BsHashMap, BsHashMapField, InlineArray},
     error::{err_assign_constant, syntax_error},
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
@@ -33,6 +35,9 @@ pub struct Realm {
     /// Map of all lexical bindings in this realm, mapped to the global scope that contains them
     /// along with their slot index in that global scope.
     lexical_names: HeapPtr<LexicalNamesMap>,
+    /// An empty function in this realm. Used to form a dummy stack frame to set the current realm
+    /// when the stack would otherwise be empty.
+    empty_function: HeapPtr<Closure>,
     pub intrinsics: Intrinsics,
 }
 
@@ -52,6 +57,7 @@ impl Realm {
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
+            set_uninit!(realm.empty_function, HeapPtr::uninit());
 
             let realm = realm.to_handle();
 
@@ -85,6 +91,11 @@ impl Realm {
     #[inline]
     pub fn default_global_scope(&self) -> Handle<Scope> {
         self.global_scopes.get(0).to_handle()
+    }
+
+    #[inline]
+    pub fn empty_function_ptr(&self) -> HeapPtr<Closure> {
+        self.empty_function
     }
 
     pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
@@ -249,7 +260,23 @@ impl Handle<Realm> {
             ScopeNames::new(cx, ScopeFlags::IS_VAR_SCOPE, binding_names, binding_flags);
 
         self.new_global_scope(cx, scope_names);
+
+        let empty_function = BuiltinFunction::create_builtin_function_without_properties(
+            cx, empty, /* name */ None, *self, /* prototype */ None,
+            /* is_constructor */ false,
+        );
+        self.empty_function = empty_function.get_();
     }
+}
+
+/// An empty function.
+pub fn empty(
+    cx: Context,
+    _: Handle<Value>,
+    _: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    cx.undefined().into()
 }
 
 // 9.6 InitializeHostDefinedRealm
@@ -276,6 +303,7 @@ impl HeapObject for HeapPtr<Realm> {
         visitor.visit_pointer(&mut self.global_object);
         visitor.visit_pointer(&mut self.global_scopes);
         visitor.visit_pointer(&mut self.lexical_names);
+        visitor.visit_pointer(&mut self.empty_function);
         self.intrinsics.visit_pointers(visitor);
     }
 }

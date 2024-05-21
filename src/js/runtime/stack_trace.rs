@@ -1,6 +1,7 @@
 use super::{
     abstract_operations::create_non_enumerable_data_property_or_throw,
-    console::format_error_one_line, intrinsics::error_constructor::ErrorObject, Context, Handle,
+    console::format_error_one_line, intrinsics::error_constructor::ErrorObject, realm, Context,
+    Handle,
 };
 
 /// Create the string representaton of the current stack trace and attach to an error object.
@@ -24,6 +25,16 @@ pub fn attach_stack_trace_to_error(
     };
 
     while let Some(stack_frame) = stack_frame_opt {
+        // Skip the last frame if it's a dummy frame for the realm
+        if stack_frame.previous_frame().is_none() {
+            let function = stack_frame.closure().function_ptr();
+            if let Some(id) = function.rust_runtime_function_id() {
+                if id == *cx.rust_runtime_functions.get_id(realm::empty).unwrap() {
+                    break;
+                }
+            }
+        }
+
         // Each line of the stack trace starts indented
         stack_trace.push_str("  at ");
 

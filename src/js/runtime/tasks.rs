@@ -1,13 +1,18 @@
 use std::collections::VecDeque;
 
-use crate::{js::runtime::intrinsics::promise_constructor::execute_then, maybe};
+use crate::{
+    js::runtime::{
+        abstract_operations::call_object, intrinsics::promise_constructor::execute_then,
+    },
+    maybe,
+};
 
 use super::{
     gc::HeapVisitor,
     generator_object::{GeneratorCompletionType, GeneratorObject},
     object_value::ObjectValue,
-    promise_object::{PromiseObject, PromiseReactionKind},
-    Context, EvalResult, HeapPtr, Value,
+    promise_object::{PromiseCapability, PromiseObject, PromiseReactionKind},
+    Context, EvalResult, HeapPtr, Realm, Value,
 };
 
 pub struct TaskQueue {
@@ -16,6 +21,7 @@ pub struct TaskQueue {
 
 pub enum Task {
     AwaitResume(AwaitResumeTask),
+    PromiseThenReaction(PromiseThenReactionTask),
     PromiseThenSettle(PromiseThenSettleTask),
 }
 
@@ -37,16 +43,31 @@ impl TaskQueue {
         self.enqueue(Task::AwaitResume(AwaitResumeTask::new(kind, suspended_function, result)));
     }
 
+    pub fn enqueue_promise_then_reaction_task(
+        &mut self,
+        kind: PromiseReactionKind,
+        handler: Option<HeapPtr<ObjectValue>>,
+        capability: HeapPtr<PromiseCapability>,
+        result: Value,
+        realm: Option<HeapPtr<Realm>>,
+    ) {
+        self.enqueue(Task::PromiseThenReaction(PromiseThenReactionTask::new(
+            kind, handler, capability, result, realm,
+        )));
+    }
+
     pub fn enqueue_promise_then_settle_task(
         &mut self,
         then_function: HeapPtr<ObjectValue>,
         resolution: HeapPtr<ObjectValue>,
         promise: HeapPtr<PromiseObject>,
+        realm: HeapPtr<Realm>,
     ) {
         self.enqueue(Task::PromiseThenSettle(PromiseThenSettleTask::new(
             then_function,
             resolution,
             promise,
+            realm,
         )));
     }
 
@@ -57,14 +78,28 @@ impl TaskQueue {
                     visitor.visit_pointer(suspended_function);
                     visitor.visit_value(result);
                 }
+                Task::PromiseThenReaction(PromiseThenReactionTask {
+                    kind: _,
+                    handler,
+                    capability,
+                    result,
+                    realm,
+                }) => {
+                    visitor.visit_pointer_opt(handler);
+                    visitor.visit_pointer(capability);
+                    visitor.visit_value(result);
+                    visitor.visit_pointer_opt(realm);
+                }
                 Task::PromiseThenSettle(PromiseThenSettleTask {
                     then_function,
                     resolution,
                     promise,
+                    realm,
                 }) => {
                     visitor.visit_pointer(then_function);
                     visitor.visit_pointer(resolution);
                     visitor.visit_pointer(promise);
+                    visitor.visit_pointer(realm);
                 }
             }
         }
@@ -77,6 +112,7 @@ impl Context {
         while let Some(task) = self.task_queue().tasks.pop_front() {
             match task {
                 Task::AwaitResume(task) => maybe!(task.execute(*self)),
+                Task::PromiseThenReaction(task) => maybe!(task.execute(*self)),
                 Task::PromiseThenSettle(task) => maybe!(task.execute(*self)),
             }
         }
@@ -120,15 +156,82 @@ impl AwaitResumeTask {
     }
 }
 
-/// Call then `then` function with new `resolve` and `reject` functions in order to settle a
-/// promise.
+pub struct PromiseThenReactionTask {
+    /// Whether the promise was resolved or rejected.
+    kind: PromiseReactionKind,
+    /// A function to call on the result value.
+    handler: Option<HeapPtr<ObjectValue>>,
+    /// A promise capability to resolve or reject with the result of the handler function.
+    capability: HeapPtr<PromiseCapability>,
+    /// The value that the promise was resolved or rejected with.
+    result: Value,
+    /// The realm to set as the topmost execution context before executing the handler.
+    realm: Option<HeapPtr<Realm>>,
+}
+
+impl PromiseThenReactionTask {
+    fn new(
+        kind: PromiseReactionKind,
+        handler: Option<HeapPtr<ObjectValue>>,
+        capability: HeapPtr<PromiseCapability>,
+        result: Value,
+        realm: Option<HeapPtr<Realm>>,
+    ) -> Self {
+        Self { kind, handler, capability, result, realm }
+    }
+
+    fn execute(&self, mut cx: Context) -> EvalResult<()> {
+        if let Some(realm) = self.realm {
+            cx.vm().push_initial_realm_stack_frame(realm);
+        }
+
+        let result = self.result.to_handle(cx);
+
+        // Call the handler if it exists on the result value
+        let handler_result = if let Some(handler) = self.handler {
+            let handler = handler.to_handle();
+            call_object(cx, handler, cx.undefined(), &[result])
+        } else {
+            // If no handler was provided treat the handler result as a default normal or throw
+            match self.kind {
+                PromiseReactionKind::Fulfill => EvalResult::Ok(result),
+                PromiseReactionKind::Reject => EvalResult::Throw(result),
+            }
+        };
+
+        // Resolve or reject the capability with the result of the handler
+        let completion = match handler_result {
+            EvalResult::Ok(handler_result) => {
+                let resolve = self.capability.resolve();
+                call_object(cx, resolve, cx.undefined(), &[handler_result])
+            }
+            EvalResult::Throw(handler_result) => {
+                let reject = self.capability.reject();
+                call_object(cx, reject, cx.undefined(), &[handler_result])
+            }
+        };
+
+        // Make sure we clean up the realm's stack frame before returning or throwing
+        if self.realm.is_some() {
+            cx.vm().pop_initial_realm_stack_frame();
+        }
+
+        maybe!(completion);
+
+        ().into()
+    }
+}
+
+/// Call a `then` function with new `resolve` and `reject` functions in order to settle a promise.
 pub struct PromiseThenSettleTask {
-    /// The `then` function to
+    /// The `then` function that should be called.
     then_function: HeapPtr<ObjectValue>,
     /// The object that contains the `then` function, used as the `this` value when calling `then`.
     resolution: HeapPtr<ObjectValue>,
     /// The promise that will be settled by calling `then`.
     promise: HeapPtr<PromiseObject>,
+    /// The realm to set as the topmost execution context before executing the `then` function.
+    realm: HeapPtr<Realm>,
 }
 
 impl PromiseThenSettleTask {
@@ -136,16 +239,24 @@ impl PromiseThenSettleTask {
         then_function: HeapPtr<ObjectValue>,
         resolution: HeapPtr<ObjectValue>,
         promise: HeapPtr<PromiseObject>,
+        realm: HeapPtr<Realm>,
     ) -> Self {
-        Self { then_function, resolution, promise }
+        Self { then_function, resolution, promise, realm }
     }
 
-    fn execute(&self, cx: Context) -> EvalResult<()> {
+    fn execute(&self, mut cx: Context) -> EvalResult<()> {
+        cx.vm().push_initial_realm_stack_frame(self.realm);
+
         let then_function = self.then_function.to_handle();
         let resolution = self.resolution.to_handle().into();
         let promise = self.promise.to_handle();
 
-        maybe!(execute_then(cx, then_function, resolution, promise));
+        let completion = execute_then(cx, then_function, resolution, promise);
+
+        // Make sure we clean up the realm's stack frame before returning or throwing
+        cx.vm().pop_initial_realm_stack_frame();
+
+        maybe!(completion);
 
         ().into()
     }

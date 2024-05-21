@@ -137,6 +137,7 @@ builtin_names!(
     (call, "call"),
     (callee, "callee"),
     (caller, "caller"),
+    (catch, "catch"),
     (cause, "cause"),
     (cbrt, "cbrt"),
     (ceil, "ceil"),

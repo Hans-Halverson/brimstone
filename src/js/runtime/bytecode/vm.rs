@@ -50,7 +50,7 @@ use crate::{
             to_number, to_numeric, to_object, to_property_key,
         },
         value::{AccessorValue, BigIntValue, SymbolValue},
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
     maybe, must,
 };
@@ -151,22 +151,7 @@ impl VM {
         vm
     }
 
-    /// Execute a closure with the provided arguments.
-    pub fn execute(
-        &mut self,
-        closure: Handle<Closure>,
-        arguments: &[Handle<Value>],
-    ) -> Result<Handle<Value>, Handle<Value>> {
-        // Evaluate with the global object as the receiver
-        let receiver = closure.global_object().into();
-
-        // Evaluate the provided function
-        let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
-
-        eval_result.to_rust_result()
-    }
-
-    /// Execute an entire bytecode program, first instantiation the global declarations then
+    /// Execute an entire bytecode program, first instantiating the global declarations then
     /// running the script function.
     pub fn execute_program(
         &mut self,
@@ -202,6 +187,21 @@ impl VM {
             Closure::new_in_realm(self.cx, bytecode_program.script_function, global_scope, realm);
 
         self.execute(program_closure, &[])
+    }
+
+    /// Execute a closure with the provided arguments.
+    fn execute(
+        &mut self,
+        closure: Handle<Closure>,
+        arguments: &[Handle<Value>],
+    ) -> Result<Handle<Value>, Handle<Value>> {
+        // Evaluate with the global object as the receiver
+        let receiver = closure.global_object().into();
+
+        // Evaluate the provided function
+        let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
+
+        eval_result.to_rust_result()
     }
 
     /// Resume a suspended generator, executing it until it yields or completes.
@@ -1690,6 +1690,23 @@ impl VM {
             self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments);
             self.fp = *self.fp as *mut StackSlotValue;
         }
+    }
+
+    /// Push a dummy stack frame that sets the initial realm for the VM. Pushes the realm's empty
+    /// function with no arguments.
+    pub fn push_initial_realm_stack_frame(&mut self, realm: HeapPtr<Realm>) {
+        self.push_stack_frame(
+            realm.empty_function_ptr(),
+            Value::undefined(),
+            [].iter(),
+            0,
+            true,
+            std::ptr::null_mut(),
+        )
+    }
+
+    pub fn pop_initial_realm_stack_frame(&mut self) {
+        self.pop_stack_frame();
     }
 
     #[inline]

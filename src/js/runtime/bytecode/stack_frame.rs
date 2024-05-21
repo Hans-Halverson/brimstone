@@ -71,7 +71,7 @@ impl StackFrame {
     #[inline]
     pub fn sp(&self) -> *mut StackSlotValue {
         let num_registers = self.closure().function_ptr().num_registers() as usize;
-        unsafe { self.fp.offset(-1 - num_registers as isize).cast_mut() }
+        unsafe { self.fp.sub(num_registers).cast_mut() }
     }
 
     /// Return a slice over the entire stack frame.

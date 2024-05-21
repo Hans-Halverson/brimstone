@@ -4208,14 +4208,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::AwaitExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let argument = self.gen_expression(&expr.argument)?;
+        let argument_promise = self.gen_expression(&expr.argument)?;
 
-        self.register_allocator.release(argument);
+        self.register_allocator.release(argument_promise);
         let completion_value = self.allocate_destination(dest)?;
         let completion_type = self.register_allocator.allocate()?;
+        let return_promise = Register::local(self.promise_index.unwrap() as usize);
 
-        self.writer
-            .await_instruction(completion_value, completion_type, argument);
+        self.writer.await_instruction(
+            completion_value,
+            completion_type,
+            return_promise,
+            argument_promise,
+        );
 
         // Check the completion type, and if normal then continue execution using the completion
         // value as the value of the await expression.

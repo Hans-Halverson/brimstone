@@ -62,18 +62,18 @@
      5: LoadImmediate r1, 2
      8: LoadImmediate r2, 3
     11: Add r1, r1, r2
-    15: Await r1, r2, r1
-    19: JumpTrue r2, 5 (.L0)
-    22: Throw r1
+    15: Await r1, r2, r0, r1
+    20: JumpTrue r2, 5 (.L0)
+    23: Throw r1
   .L0:
-    24: LoadImmediate r1, 4
-    27: LoadUndefined r1
-    29: ResolvePromise r0, r1
-    32: Ret r0
-    34: RejectPromise r0, r1
-    37: Ret r0
+    25: LoadImmediate r1, 4
+    28: LoadUndefined r1
+    30: ResolvePromise r0, r1
+    33: Ret r0
+    35: RejectPromise r0, r1
+    38: Ret r0
   Exception Handlers:
-    2-34 -> 34 (r1)
+    2-35 -> 35 (r1)
 }
 
 [BytecodeFunction: paramExpressions] {

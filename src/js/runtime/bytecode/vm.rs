@@ -391,7 +391,8 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(AwaitInstruction);
 
-                    let promise = self.read_register_to_handle(instr.promise());
+                    let return_promise = self.read_register_to_handle(instr.return_promise());
+                    let argument_promise = self.read_register_to_handle(instr.argument_promise());
                     let completion_value_index = instr.completion_value_dest().local_index() as u32;
                     let completion_type_index = instr.completion_type_dest().local_index() as u32;
 
@@ -403,7 +404,8 @@ impl VM {
                     let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
 
                     // May allocate
-                    let mut promise = maybe_throw!(coerce_to_ordinary_promise(self.cx, promise));
+                    let mut argument_promise =
+                        maybe_throw!(coerce_to_ordinary_promise(self.cx, argument_promise));
 
                     let generator = GeneratorObject::new_for_async_function(
                         self.cx,
@@ -414,10 +416,10 @@ impl VM {
                     )
                     .to_handle();
 
-                    promise.add_await_reaction(self.cx, generator);
+                    argument_promise.add_await_reaction(self.cx, generator);
 
                     // Return the promise to the caller
-                    return_!(promise.cast::<Value>().get())
+                    return_!(return_promise.cast::<Value>().get())
                 }};
             }
 

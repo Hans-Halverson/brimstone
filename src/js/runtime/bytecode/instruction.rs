@@ -1097,16 +1097,19 @@ define_instructions!(
         [0] dest: Register,
     }
 
-    /// Await a promise, suspend the current async function until the promise is resolved or
-    /// reject. When resumed place the completion value that the await evaluates to in the
-    /// completion value registers.
+    /// Await a promise passed as an argument, suspend the current async function until the promise
+    /// is resolved or rejected. When resumed place the completion value that the await evaluates to
+    /// in the completion value registers.
     ///
     /// The completion type must be either true for normal completions or null for throws, no other
     /// completion types are allowed.
+    ///
+    /// Returns the `return_promise` of the current function to the caller.
     Await(AwaitInstruction, await_instruction) {
         [0] completion_value_dest: Register,
         [1] completion_type_dest: Register,
-        [2] promise: Register,
+        [2] return_promise: Register,
+        [3] argument_promise: Register,
     }
 
     /// Resolve a promise with a value.

@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-26:8",
+  loc: "1:0-29:25",
   body: [
     {
       type: "ExpressionStatement",
@@ -310,6 +310,38 @@
         },
         arguments: [],
         optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "29:0-29:25",
+      kind: {
+        type: "ArrowFunctionExpression",
+        loc: "29:0-29:24",
+        id: null,
+        params: [],
+        body: {
+          type: "Block",
+          loc: "29:12-29:24",
+          body: [
+            {
+              type: "ExpressionStatement",
+              loc: "29:14-29:22",
+              kind: {
+                type: "AwaitExpression",
+                loc: "29:14-29:21",
+                argument: {
+                  type: "Literal",
+                  loc: "29:20-29:21",
+                  value: 1,
+                },
+              },
+            },
+          ],
+        },
+        async: true,
+        generator: false,
+        has_use_strict_directive: false,
       },
     },
   ],

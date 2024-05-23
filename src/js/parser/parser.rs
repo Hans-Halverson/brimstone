@@ -213,12 +213,23 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Return the next token.
     fn peek(&mut self) -> ParseResult<Token> {
         let lexer_state = self.lexer.save();
         let (token, _) = self.lexer.next()?;
         self.lexer.restore(&lexer_state);
 
         Ok(token)
+    }
+
+    /// Return the next token, along with whether it is directly preceded by a newline.
+    fn peek_with_newline(&mut self) -> ParseResult<(Token, bool)> {
+        let lexer_state = self.lexer.save();
+        let (token, _) = self.lexer.next()?;
+        let has_newline = self.lexer.is_new_line_before_current();
+        self.lexer.restore(&lexer_state);
+
+        Ok((token, has_newline))
     }
 
     fn expect(&mut self, token: Token) -> ParseResult<()> {
@@ -557,7 +568,12 @@ impl<'a> Parser<'a> {
     fn is_function_start(&mut self) -> ParseResult<bool> {
         match self.token {
             Token::Function => Ok(true),
-            Token::Async => Ok(self.peek()? == Token::Function),
+            // Async keyword is only the start of a function if it is followed by the function
+            // keyword without a newline in between.
+            Token::Async => {
+                let (next_token, has_newline) = self.peek_with_newline()?;
+                Ok(next_token == Token::Function && !has_newline)
+            }
             _ => Ok(false),
         }
     }
@@ -1566,7 +1582,7 @@ impl<'a> Parser<'a> {
 
         // Force parsing as an async function if we see an arrow
         if self.token == Token::Arrow {
-            return self.error(self.loc, FAIL_TRY_PARSED_ERROR);
+            return self.error_unexpected_token(self.loc, &Token::Arrow);
         }
 
         result
@@ -1588,6 +1604,10 @@ impl<'a> Parser<'a> {
 
             // Special case for when async is actually the single parameter: async => body
             if self.token == Token::Arrow {
+                if self.lexer.is_new_line_before_current() {
+                    return self.error(self.loc, ParseError::ArrowOnNewLine);
+                }
+
                 self.advance()?;
 
                 let mut async_id = Identifier::new(async_loc, "async".to_owned());
@@ -1611,7 +1631,16 @@ impl<'a> Parser<'a> {
                     scope,
                 )))));
             }
+
+            // If newline appears after the async keyword this cannot be a valid async arrow
+            // function so fail parsing and report the error from parsing as a non-arrow assignment.
+            if self.lexer.is_new_line_before_current() {
+                return self.error(self.loc, FAIL_TRY_PARSED_ERROR);
+            }
         }
+
+        // Enter async context for parsing the function arguments and body
+        let did_allow_await = swap_and_save(&mut self.allow_await, is_async);
 
         // Arrow function params can be either parenthesized function params or a single id
         let params = match self.token {
@@ -1639,6 +1668,7 @@ impl<'a> Parser<'a> {
         let (body, strict_flags) = self.parse_arrow_function_body(param_flags)?;
         let loc = self.mark_loc(start_pos);
 
+        self.allow_await = did_allow_await;
         self.scope_builder.exit_scope();
 
         let mut flags = param_flags | strict_flags | FunctionFlags::IS_ARROW;
@@ -3031,6 +3061,8 @@ impl<'a> Parser<'a> {
             let async_loc = self.loc;
             self.advance()?;
 
+            let newline_after_async = self.lexer.is_new_line_before_current();
+
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
                 let async_id = Identifier::new(async_loc, "async".to_owned());
@@ -3050,7 +3082,8 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as shorthand or init property
             let is_init_property = self.is_property_initializer(prop_context)
-                || self.is_pattern_initializer_in_object(prop_context);
+                || self.is_pattern_initializer_in_object(prop_context)
+                || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
                 let async_id = Identifier::new(async_loc, "async".to_owned());
                 let name = p(Expression::Id(async_id));
@@ -4173,35 +4206,31 @@ impl<'a> Parser<'a> {
                 self.advance()?;
 
                 // Default function and class declarations have an optional name
-                match self.token {
-                    Token::Function | Token::Async => {
-                        let declaration = p(Statement::FuncDecl(
-                            self.parse_function_declaration(FunctionContext::OPTIONAL_NAME)?,
-                        ));
-                        let loc = self.mark_loc(start_pos);
+                if self.token == Token::Class {
+                    let declaration = p(Statement::ClassDecl(self.parse_class(true, false)?));
+                    let loc = self.mark_loc(start_pos);
 
-                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
-                    }
-                    Token::Class => {
-                        let declaration = p(Statement::ClassDecl(self.parse_class(true, false)?));
-                        let loc = self.mark_loc(start_pos);
+                    Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
+                } else if self.is_function_start()? {
+                    let declaration = p(Statement::FuncDecl(
+                        self.parse_function_declaration(FunctionContext::OPTIONAL_NAME)?,
+                    ));
+                    let loc = self.mark_loc(start_pos);
 
-                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
-                    }
+                    Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
+                } else {
                     // Otherwise default export is an expression
-                    _ => {
-                        let expr_start_pos = self.current_start_pos();
-                        let expr = self.parse_assignment_expression()?.to_outer();
+                    let expr_start_pos = self.current_start_pos();
+                    let expr = self.parse_assignment_expression()?.to_outer();
 
-                        self.expect_semicolon()?;
-                        let loc = self.mark_loc(start_pos);
+                    self.expect_semicolon()?;
+                    let loc = self.mark_loc(start_pos);
 
-                        let expr_stmt_loc = self.mark_loc(expr_start_pos);
-                        let declaration =
-                            p(Statement::Expr(ExpressionStatement { loc: expr_stmt_loc, expr }));
+                    let expr_stmt_loc = self.mark_loc(expr_start_pos);
+                    let declaration =
+                        p(Statement::Expr(ExpressionStatement { loc: expr_stmt_loc, expr }));
 
-                        Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
-                    }
+                    Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 }
             }
             _ => self.error_unexpected_token(self.loc, &self.token),

@@ -672,7 +672,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {
-        if let Some (true) = self.in_function_params_stack.last() {
+        if let Some(true) = self.in_function_params_stack.last() {
             self.emit_error(expr.loc, ParseError::AwaitInParameters)
         }
 
@@ -680,7 +680,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_yield_expression(&mut self, expr: &mut YieldExpression) {
-        if let Some (true) = self.in_function_params_stack.last() {
+        if let Some(true) = self.in_function_params_stack.last() {
             self.emit_error(expr.loc, ParseError::YieldInParameters)
         }
 

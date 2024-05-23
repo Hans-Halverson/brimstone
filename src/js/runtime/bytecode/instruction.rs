@@ -734,6 +734,12 @@ define_instructions!(
         [1] function_index: ConstantIndex,
     }
 
+    /// Create a new closure from the async function at the given index in the constant table.
+    NewAsyncClosure (NewAsyncClosureInstruction, new_async_closure_instruction) {
+        [0] dest: Register,
+        [1] function_index: ConstantIndex,
+    }
+
     /// Create a new generator closure from the function at the given index in the constant table.
     NewGenerator (NewGeneratorInstruction, new_generator_instruction) {
         [0] dest: Register,

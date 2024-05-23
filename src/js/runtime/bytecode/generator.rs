@@ -5302,6 +5302,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if func.is_generator() {
             self.writer
                 .new_generator_instruction(dest, func_constant_index);
+        } else if func.is_async() {
+            self.writer
+                .new_async_closure_instruction(dest, func_constant_index);
         } else {
             self.writer
                 .new_closure_instruction(dest, func_constant_index);

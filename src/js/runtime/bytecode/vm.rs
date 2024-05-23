@@ -89,20 +89,20 @@ use super::{
         LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
-        NewAccessorInstruction, NewArrayInstruction, NewClassInstruction, NewClosureInstruction,
-        NewForInIteratorInstruction, NewGeneratorInstruction, NewMappedArgumentsInstruction,
-        NewObjectInstruction, NewPrivateSymbolInstruction, NewPromiseInstruction,
-        NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
-        PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
-        RejectPromiseInstruction, RemInstruction, ResolvePromiseInstruction,
-        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
-        SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
-        SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
-        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
-        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction, YieldInstruction,
+        NewAccessorInstruction, NewArrayInstruction, NewAsyncClosureInstruction,
+        NewClassInstruction, NewClosureInstruction, NewForInIteratorInstruction,
+        NewGeneratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
+        NewPrivateSymbolInstruction, NewPromiseInstruction, NewRegExpInstruction,
+        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
+        PushLexicalScopeInstruction, PushWithScopeInstruction, RejectPromiseInstruction,
+        RemInstruction, ResolvePromiseInstruction, RestParameterInstruction, RetInstruction,
+        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPrivatePropertyInstruction,
+        SetPropertyInstruction, SetPrototypeOfInstruction, SetSuperPropertyInstruction,
+        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction, YieldInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -729,6 +729,9 @@ impl VM {
                             self.execute_jump_nullish_constant(instr)
                         }
                         OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::NewAsyncClosure => {
+                            dispatch!(NewAsyncClosureInstruction, execute_new_async_closure)
+                        }
                         OpCode::NewGenerator => {
                             dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
                         }
@@ -2826,6 +2829,21 @@ impl VM {
 
         // Allocates
         let closure = Closure::new(self.cx, func, scope);
+
+        self.write_register(dest, Value::object(closure.get_().cast()));
+    }
+
+    #[inline]
+    fn execute_new_async_closure<W: Width>(&mut self, instr: &NewAsyncClosureInstruction<W>) {
+        let func = self.get_constant(instr.function_index());
+        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+
+        let dest = instr.dest();
+        let scope = self.scope().to_handle();
+
+        // Allocates
+        let proto = self.cx.get_intrinsic(Intrinsic::AsyncFunctionPrototype);
+        let closure = Closure::new_with_proto(self.cx, func, scope, proto);
 
         self.write_register(dest, Value::object(closure.get_().cast()));
     }

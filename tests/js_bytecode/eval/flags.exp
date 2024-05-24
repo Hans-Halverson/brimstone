@@ -114,7 +114,7 @@
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1
     13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 19
+    16: CallMaybeEval r0, r0, r1, 1, 35
     22: DefineNamedProperty <this>, c3, r0
     26: PopScope 
     27: LoadUndefined r0
@@ -133,11 +133,14 @@
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1
     13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 23
-    22: DefineNamedProperty <this>, c3, r0
-    26: PopScope 
-    27: LoadUndefined r0
-    29: Ret r0
+    16: CallMaybeEval r0, r0, r1, 1, 19
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 39
+    34: DefineNamedProperty <this>, c3, r0
+    38: PopScope 
+    39: LoadUndefined r0
+    41: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [String: eval]

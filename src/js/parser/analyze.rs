@@ -54,9 +54,8 @@ pub struct Analyzer<'a> {
     allow_return_stack: Vec<bool>,
     /// Whether a super member expression is allowed
     allow_super_member_stack: Vec<AllowSuperStackEntry>,
-    /// Whether the visitor is inside function expressions (meaning await and yield expressions are
-    /// not allowed).
-    in_function_params_stack: Vec<bool>,
+    /// Whether the visitor is inside function parameters
+    in_parameters_stack: Vec<bool>,
     /// Whether the current expression context has an assignment expression. A single value is
     /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
     /// around each expression.
@@ -68,6 +67,7 @@ struct FunctionStackEntry {
     is_method: bool,
     is_static: bool,
     is_derived_constructor: bool,
+    is_static_initializer: bool,
     is_class_field_initializer: bool,
 }
 
@@ -133,7 +133,7 @@ impl<'a> Analyzer<'a> {
             allow_arguments: true,
             allow_return_stack: vec![false],
             allow_super_member_stack: vec![],
-            in_function_params_stack: vec![false],
+            in_parameters_stack: vec![],
             has_assign_expr: false,
         }
     }
@@ -672,15 +672,19 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {
-        if let Some(true) = self.in_function_params_stack.last() {
+        if let Some(true) = self.in_parameters_stack.last() {
             self.emit_error(expr.loc, ParseError::AwaitInParameters)
+        } else if let Some(FunctionStackEntry { is_static_initializer: true, .. }) =
+            self.current_function()
+        {
+            self.emit_error(expr.loc, ParseError::AwaitInStaticInitializer)
         }
 
         default_visit_await_expression(self, expr)
     }
 
     fn visit_yield_expression(&mut self, expr: &mut YieldExpression) {
-        if let Some(true) = self.in_function_params_stack.last() {
+        if let Some(true) = self.in_parameters_stack.last() {
             self.emit_error(expr.loc, ParseError::YieldInParameters)
         }
 
@@ -753,6 +757,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
                     expr.maybe_eval_in_method = current_func.is_method;
                     expr.maybe_eval_in_static = current_func.is_static;
                     expr.maybe_eval_in_derived_constructor = current_func.is_derived_constructor;
+                    expr.maybe_eval_in_static_initializer = current_func.is_static_initializer;
                     expr.maybe_eval_in_class_field_initializer =
                         current_func.is_class_field_initializer;
                 }
@@ -906,6 +911,7 @@ impl Analyzer<'_> {
             is_method,
             is_static: is_static_method,
             is_derived_constructor,
+            is_static_initializer,
             is_class_field_initializer: false,
         });
 
@@ -914,7 +920,7 @@ impl Analyzer<'_> {
 
         // Await and yield are allowed in functions (we already ensure await and yield expressions
         // only occur in async/generator functions in the parser).
-        self.in_function_params_stack.push(false);
+        self.in_parameters_stack.push(false);
 
         // Super member expressions are allowed in methods, and in arrow functions are inherited
         // from surrounding context.
@@ -958,11 +964,13 @@ impl Analyzer<'_> {
 
         // Visit and analyze function parameters. Await and yield expressions are not allowed within
         // function parameters.
-        self.in_function_params_stack.push(true);
+        self.in_parameters_stack.push(true);
+
         for param in &mut func.params {
             self.visit_function_param(param);
         }
-        self.in_function_params_stack.pop();
+
+        self.in_parameters_stack.pop();
 
         let mut param_index = 0;
         for param in &mut func.params {
@@ -1070,7 +1078,7 @@ impl Analyzer<'_> {
             self.allow_super_member_stack.pop();
         }
 
-        self.in_function_params_stack.pop();
+        self.in_parameters_stack.pop();
         self.allow_return_stack.pop();
         self.function_stack.pop();
 
@@ -1297,6 +1305,7 @@ impl Analyzer<'_> {
             is_method: true,
             is_static: prop.is_static,
             is_derived_constructor: false,
+            is_static_initializer: false,
             is_class_field_initializer: true,
         });
 
@@ -1537,6 +1546,7 @@ pub fn analyze_for_eval(
     in_method: bool,
     in_static: bool,
     in_derived_constructor: bool,
+    in_static_initializer: bool,
     in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
@@ -1555,6 +1565,7 @@ pub fn analyze_for_eval(
             is_method: in_method,
             is_static: in_static,
             is_derived_constructor: in_derived_constructor,
+            is_static_initializer: in_static_initializer,
             is_class_field_initializer: in_class_field_initializer,
         });
 

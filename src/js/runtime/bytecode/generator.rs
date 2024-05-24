@@ -2783,6 +2783,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             flags |= EvalFlags::IN_DERIVED_CONSTRUCTOR;
         }
 
+        if expr.maybe_eval_in_static_initializer {
+            flags |= EvalFlags::IN_STATIC_INITIALIZER;
+        }
+
         if expr.maybe_eval_in_class_field_initializer {
             flags |= EvalFlags::IN_CLASS_FIELD_INITIALIZER;
         }

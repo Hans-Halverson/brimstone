@@ -63,6 +63,7 @@ pub fn perform_eval(
         flags.contains(EvalFlags::IN_METHOD),
         flags.contains(EvalFlags::IN_STATIC),
         flags.contains(EvalFlags::IN_DERIVED_CONSTRUCTOR),
+        flags.contains(EvalFlags::IN_STATIC_INITIALIZER),
         flags.contains(EvalFlags::IN_CLASS_FIELD_INITIALIZER),
     );
     if let Err(errors) = analyze_result {

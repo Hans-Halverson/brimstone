@@ -93,7 +93,7 @@
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1
     13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 19
+    16: CallMaybeEval r0, r0, r1, 1, 35
     22: DefineNamedProperty <this>, c3, r0
     26: PopScope 
     27: LoadUndefined r0
@@ -112,7 +112,7 @@
      6: StoreToScope r0, 2, 0
     10: LoadGlobal r0, c1
     13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 23
+    16: CallMaybeEval r0, r0, r1, 1, 39
     22: DefineNamedProperty <this>, c3, r0
     26: PopScope 
     27: LoadUndefined r0

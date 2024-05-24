@@ -1040,6 +1040,9 @@ pub struct CallExpression {
     /// Whether the function is potentially a direct eval and inside a derived constructor,
     /// meaning a super constructor call is allowed.
     pub maybe_eval_in_derived_constructor: bool,
+    /// Whether the function is potentially a direct eval and inside a class static block
+    /// initializer, meaning the await token is not allowed.
+    pub maybe_eval_in_static_initializer: bool,
     /// Whether the function is potentially a direct eval and inside a class field initializer,
     /// meaning accessing the arguments binding is not allowed.
     pub maybe_eval_in_class_field_initializer: bool,
@@ -1061,6 +1064,7 @@ impl CallExpression {
             maybe_eval_in_method: false,
             maybe_eval_in_static: false,
             maybe_eval_in_derived_constructor: false,
+            maybe_eval_in_static_initializer: false,
             maybe_eval_in_class_field_initializer: false,
         }
     }

@@ -76,6 +76,7 @@ pub enum ParseError {
     LetNameInLexicalDeclaration,
     GetterWrongNumberOfParams,
     SetterWrongNumberOfParams,
+    AwaitInStaticInitializer,
     AwaitInParameters,
     YieldInParameters,
     // RegExpr parsing errors
@@ -311,6 +312,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::SetterWrongNumberOfParams => {
                 write!(f, "Setter functions must exactly one parameter")
+            }
+            ParseError::AwaitInStaticInitializer => {
+                write!(f, "Await expression not allowed in static initializer")
             }
             ParseError::AwaitInParameters => {
                 write!(f, "Await expression not allowed in function parameters")

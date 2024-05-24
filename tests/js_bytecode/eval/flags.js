@@ -22,6 +22,11 @@ class C1 extends String {
   // Field flags
   field1 = eval('');
 
+  // Static initializer flags
+  static {
+    eval('');
+  }
+
   // Static field flags
   static field2 = eval('');
 }

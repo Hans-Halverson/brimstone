@@ -1171,8 +1171,10 @@ bitflags! {
         const IN_STATIC = 1 << 2;
         /// Whether eval is in a derived constructor meaning super constructor calls are allowed.
         const IN_DERIVED_CONSTRUCTOR = 1 << 3;
+        /// Whether eval is in a class static initializer block, meaning `await` is not allowed.
+        const IN_STATIC_INITIALIZER = 1 << 4;
         /// Whether eval is in a class field initializer meaning `arguments` is not allowed.
-        const IN_CLASS_FIELD_INITIALIZER = 1 << 4;
+        const IN_CLASS_FIELD_INITIALIZER = 1 << 5;
     }
 }
 

@@ -2683,7 +2683,9 @@ impl<'a> Parser<'a> {
     ) -> bool {
         match token {
             // Identifier's value cannot be a reserved word (e.g. due to escape characters)
-            Token::Identifier(name) => !Self::is_reserved_word(name, in_strict_mode, allow_yield),
+            Token::Identifier(name) => {
+                !Self::is_reserved_word(name, in_strict_mode, allow_await, allow_yield)
+            }
             // Tokens that are always allowed as identifiers
             Token::Async
             | Token::Of
@@ -2772,13 +2774,18 @@ impl<'a> Parser<'a> {
     }
 
     fn is_reserved_word_in_current_context(&self, str: &str) -> bool {
-        Self::is_reserved_word(str, self.in_strict_mode, self.allow_yield)
+        Self::is_reserved_word(str, self.in_strict_mode, self.allow_await, self.allow_yield)
     }
 
-    fn is_reserved_word(str: &str, in_strict_mode: bool, allow_yield: bool) -> bool {
+    fn is_reserved_word(
+        str: &str,
+        in_strict_mode: bool,
+        allow_await: bool,
+        allow_yield: bool,
+    ) -> bool {
         match str {
             // Names that are always reserved
-            "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger"
+            "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger"
             | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false"
             | "finally" | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new"
             | "null" | "return" | "super" | "switch" | "this" | "throw" | "true" | "try"
@@ -2790,6 +2797,7 @@ impl<'a> Parser<'a> {
             {
                 true
             }
+            "await" => allow_await,
             "yield" => in_strict_mode || allow_yield,
             _ => false,
         }
@@ -3555,10 +3563,17 @@ impl<'a> Parser<'a> {
                 let params = vec![];
                 let param_flags = self.analyze_function_params(&params);
 
+                // Await expressions are allowed in static initializer blocks from the perspective
+                // of parsing, but will early error in analysis.
+                let did_allow_await = swap_and_save(&mut self.allow_await, true);
+
                 // Yield expressions are not allowed in static initializer blocks
                 let did_allow_yield = swap_and_save(&mut self.allow_yield, false);
+
                 let (block, _) = self.parse_function_block_body(param_flags)?;
+
                 self.allow_yield = did_allow_yield;
+                self.allow_await = did_allow_await;
 
                 self.scope_builder.set_current_scope(scope_to_restore);
 

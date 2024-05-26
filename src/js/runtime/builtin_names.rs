@@ -182,6 +182,7 @@ builtin_names!(
     (expm1, "expm1"),
     (fill, "fill"),
     (filter, "filter"),
+    (finally, "finally"),
     (find, "find"),
     (find_index, "findIndex"),
     (find_last, "findLast"),
@@ -489,5 +490,8 @@ builtin_symbols!(
     (already_called, ""),
     (index, ""),
     (values, ""),
-    (remaining_elements, "")
+    (remaining_elements, ""),
+    // Symbols used for private properties of Promise.prototype.finally resolve/reject functions
+    (constructor, ""),
+    (on_finally, "")
 );

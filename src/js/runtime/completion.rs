@@ -22,6 +22,15 @@ impl<T> EvalResult<T> {
     }
 }
 
+impl<T: Clone> Clone for EvalResult<T> {
+    fn clone(&self) -> Self {
+        match self {
+            EvalResult::Ok(ok) => EvalResult::Ok(ok.clone()),
+            EvalResult::Throw(throw) => EvalResult::Throw(throw.clone()),
+        }
+    }
+}
+
 impl<T> From<T> for EvalResult<T> {
     #[inline]
     fn from(value: T) -> Self {

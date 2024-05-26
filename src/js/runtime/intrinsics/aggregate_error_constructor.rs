@@ -1,7 +1,8 @@
 use crate::{
     js::runtime::{
         abstract_operations::{
-            create_non_enumerable_data_property_or_throw, define_property_or_throw,
+            create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
+            define_property_or_throw,
         },
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
@@ -11,7 +12,7 @@ use crate::{
         iterator::iter_iterator_values,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::{object_create, object_create_from_constructor},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         stack_trace::attach_stack_trace_to_error,
@@ -39,6 +40,21 @@ impl AggregateErrorObject {
         ));
 
         object.to_handle().into()
+    }
+
+    pub fn new(cx: Context, errors: Handle<Value>) -> Handle<ErrorObject> {
+        let object = object_create::<ErrorObject>(
+            cx,
+            ObjectKind::ErrorObject,
+            Intrinsic::AggregateErrorPrototype,
+        )
+        .to_handle();
+
+        must!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
+
+        attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
+
+        object
     }
 }
 

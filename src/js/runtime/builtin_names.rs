@@ -117,7 +117,10 @@ builtin_names!(
     (acos, "acos"),
     (acosh, "acosh"),
     (add, "add"),
+    (all, "all"),
+    (all_settled, "allSettled"),
     (anonymous, "anonymous"),
+    (any, "any"),
     (apply, "apply"),
     (arguments, "arguments"),
     (as_int_n, "asIntN"),
@@ -195,6 +198,7 @@ builtin_names!(
     (from_code_point, "fromCodePoint"),
     (from_entries, "fromEntries"),
     (fround, "fround"),
+    (fulfilled, "fulfilled"),
     (gc, "gc"),
     (get, "get"),
     (get_big_int64, "getBigInt64"),
@@ -303,12 +307,15 @@ builtin_names!(
     (prototype, "prototype"),
     (proxy_, "proxy"),
     (push, "push"),
+    (race, "race"),
     (random, "random"),
     (raw, "raw"),
+    (reason, "reason"),
     (reduce, "reduce"),
     (reduce_right, "reduceRight"),
     (register, "register"),
     (reject, "reject"),
+    (rejected, "rejected"),
     (resolve, "resolve"),
     (repeat, "repeat"),
     (replace, "replace"),
@@ -363,6 +370,7 @@ builtin_names!(
     (sqrt, "sqrt"),
     (stack, "stack"),
     (starts_with, "startsWith"),
+    (status, "status"),
     (sticky, "sticky"),
     (string_, "string"),
     (stringify, "stringify"),
@@ -476,5 +484,10 @@ builtin_symbols!(
     // Symbols used for private properties of resolve/reject functions
     (promise, ""),
     // Symbols used for private properties of capability executor function
-    (capability, "")
+    (capability, ""),
+    // Symbols used for private properties of Promise.{all, allSettled, any} resolve/reject functions
+    (already_called, ""),
+    (index, ""),
+    (values, ""),
+    (remaining_elements, "")
 );

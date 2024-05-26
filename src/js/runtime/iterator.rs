@@ -146,6 +146,49 @@ pub fn iterator_close(
     completion
 }
 
+/// 7.4.8 IteratorStepValue
+///
+/// Returns the value from the next iteration of the iterator, unless the iterator is done, in which
+/// case it returns None.
+///
+/// Also mutates the iterator, marking done if the iterator is done or an abrupt completion occurs.
+pub fn iterator_step_value(
+    cx: Context,
+    iterator: &mut Iterator,
+) -> EvalResult<Option<Handle<Value>>> {
+    let iter_result_completion = iterator_next(cx, iterator, None);
+    let iter_result = match iter_result_completion {
+        EvalResult::Ok(iter_result) => iter_result,
+        EvalResult::Throw(error) => {
+            iterator.is_done = true;
+            return EvalResult::Throw(error);
+        }
+    };
+
+    let done_completion = iterator_complete(cx, iter_result);
+    let done = match done_completion {
+        EvalResult::Ok(done) => done,
+        EvalResult::Throw(error) => {
+            iterator.is_done = true;
+            return EvalResult::Throw(error);
+        }
+    };
+
+    if done {
+        iterator.is_done = true;
+        return None.into();
+    }
+
+    let value_completion = get(cx, iter_result, cx.names.value());
+    match value_completion {
+        EvalResult::Ok(value) => Some(value).into(),
+        EvalResult::Throw(error) => {
+            iterator.is_done = true;
+            EvalResult::Throw(error)
+        }
+    }
+}
+
 // 7.4.10 CreateIterResultObject
 pub fn create_iter_result_object(
     cx: Context,

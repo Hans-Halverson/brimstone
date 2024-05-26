@@ -78,6 +78,10 @@ impl NumberObject {
     pub fn number_data(&self) -> f64 {
         self.number_data
     }
+
+    pub fn set_number_data(&mut self, number_data: f64) {
+        self.number_data = number_data;
+    }
 }
 
 pub struct NumberConstructor;

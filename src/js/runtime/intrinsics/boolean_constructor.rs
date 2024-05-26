@@ -75,6 +75,10 @@ impl BooleanObject {
     pub fn boolean_data(&self) -> bool {
         self.boolean_data
     }
+
+    pub fn set_boolean_data(&mut self, boolean_data: bool) {
+        self.boolean_data = boolean_data;
+    }
 }
 
 pub struct BooleanConstructor;

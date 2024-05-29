@@ -1281,30 +1281,40 @@ impl VM {
             CallableObject::Error(error) => return EvalResult::Throw(error),
         };
 
-        // Create the receiver to use. Allocates.
-        let is_base = closure_handle.function_ptr().is_base_constructor();
-        let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
-
-        // Reuse function handle for receiver
         let closure_ptr = closure_handle.get_();
         let function_ptr = closure_ptr.function_ptr();
 
-        let mut receiver_handle = closure_handle.cast::<Value>();
-        receiver_handle.replace(receiver);
-
         // Check if this is a call to a function in the Rust runtime
-        let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            // Calling builtin functions does not pass a receiver - pass empty as the uninitialized
+            // value.
+            let receiver = self.cx.empty();
+
             // Call rust runtime function directly in its own handle scope
-            maybe!(HandleScope::new(self.cx, |_| {
+            let return_value = maybe!(HandleScope::new(self.cx, |_| {
                 self.call_rust_runtime(
                     closure_ptr,
                     function_id,
-                    receiver_handle,
+                    receiver,
                     arguments,
                     Some(new_target),
                 )
-            }))
+            }));
+
+            // Return value must be an object
+            return_value.as_object().into()
         } else {
+            // Create the receiver to use. Allocates.
+            let is_base = function_ptr.is_base_constructor();
+            let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
+
+            // Reuse function handle for receiver
+            let closure_ptr = closure_handle.get_();
+            let function_ptr = closure_ptr.function_ptr();
+
+            let mut receiver_handle = closure_handle.cast::<Value>();
+            receiver_handle.replace(receiver);
+
             // Otherwise this is a call to a JS function in the VM
             let args_rev_iter = arguments.iter().rev().map(Handle::deref);
 
@@ -1331,14 +1341,14 @@ impl VM {
                 return EvalResult::Throw(error_value.to_handle(self.cx));
             }
 
-            return_value.to_handle(self.cx)
-        };
+            let return_value = return_value.to_handle(self.cx);
 
-        // Use the function's return value if it is an object
-        if return_value.is_object() {
-            return_value.as_object().into()
-        } else {
-            self.constructor_non_object_return_value(receiver_handle, is_base)
+            // Use the function's return value if it is an object
+            if return_value.is_object() {
+                return_value.as_object().into()
+            } else {
+                self.constructor_non_object_return_value(receiver_handle, is_base)
+            }
         }
     }
 
@@ -1467,20 +1477,13 @@ impl VM {
         };
 
         let function_ptr = closure_ptr.function_ptr();
-        let is_base = function_ptr.is_base_constructor();
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx, |_| {
-                let closure_handle = closure_ptr.to_handle();
-
-                // Create the receiver to use. Allocates.
-                let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
-
-                // Reuse function handle for receiver
-                let closure_ptr = closure_handle.get_();
-                let mut receiver_handle = closure_handle.cast::<Value>();
-                receiver_handle.replace(receiver);
+                // Calling builtin functions does not pass a receiver - pass empty as the
+                // uninitialized value.
+                let receiver = self.cx.empty();
 
                 // Prepare arguments for the runtime call
                 let arguments = self.prepare_rust_runtime_args(args);
@@ -1488,17 +1491,13 @@ impl VM {
                 let return_value = maybe!(self.call_rust_runtime(
                     closure_ptr,
                     function_id,
-                    receiver_handle,
+                    receiver,
                     &arguments,
                     Some(new_target)
                 ));
 
-                // Use the function's return value if it is an object
-                if return_value.is_object() {
-                    return_value.as_object().into()
-                } else {
-                    self.constructor_non_object_return_value(receiver_handle, is_base)
-                }
+                // Return value must be an object
+                return_value.as_object().into()
             }));
 
             return_value.get_()
@@ -1508,6 +1507,7 @@ impl VM {
             let function_handle = function_ptr.to_handle();
 
             // Create the receiver to use. Allocates.
+            let is_base = function_ptr.is_base_constructor();
             let receiver = maybe!(self.generate_constructor_receiver(new_target, is_base));
 
             let closure_ptr = closure_handle.get_();

@@ -40,6 +40,9 @@ enum PromiseState {
         /// A chain of all reactions to be executed when the promise is settled. The first reaction
         /// is the newest and the last is the oldest.
         reactions: Option<HeapPtr<PromiseReaction>>,
+        /// A flag to mark a promise that has already started resolution, even if it has not yet
+        /// transitioned to a fulfilled or rejected state with a result value.
+        already_resolved: bool,
     },
     Fulfilled {
         /// The value passed to resolve.
@@ -90,7 +93,10 @@ impl PromiseObject {
         let mut object =
             object_create::<PromiseObject>(cx, ObjectKind::Promise, Intrinsic::PromisePrototype);
 
-        set_uninit!(object.state, PromiseState::Pending { reactions: None });
+        set_uninit!(
+            object.state,
+            PromiseState::Pending { reactions: None, already_resolved: false }
+        );
 
         object
     }
@@ -115,13 +121,23 @@ impl PromiseObject {
             Intrinsic::PromisePrototype
         ));
 
-        set_uninit!(object.state, PromiseState::Pending { reactions: None });
+        set_uninit!(
+            object.state,
+            PromiseState::Pending { reactions: None, already_resolved: false }
+        );
 
         object.to_handle().into()
     }
 
     pub fn is_pending(&self) -> bool {
-        matches!(self.state, PromiseState::Pending { .. })
+        matches!(self.state, PromiseState::Pending { already_resolved: false, .. })
+    }
+
+    pub fn set_already_resolved(&mut self, value: bool) {
+        match self.state {
+            PromiseState::Pending { ref mut already_resolved, .. } => *already_resolved = value,
+            _ => unreachable!("only called when promise is pending"),
+        }
     }
 
     /// 27.2.1.4 FulfillPromise
@@ -142,7 +158,7 @@ impl PromiseObject {
         kind: PromiseReactionKind,
         value: Value,
     ) {
-        let mut next_reaction = if let PromiseState::Pending { reactions } = &mut self.state {
+        let mut next_reaction = if let PromiseState::Pending { reactions, .. } = &mut self.state {
             reactions.clone()
         } else {
             unreachable!("only called when promise is pending");
@@ -178,9 +194,18 @@ impl PromiseObject {
 
 /// 27.2.1.3.2 Promise Resolve Functions
 pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: Handle<Value>) {
-    // Resolving an already settled promise has no effect
-    if !promise.is_pending() {
-        return;
+    // Resolving an already settled promise has no effect. Immediately mark promise as
+    // "already resolved" to prevent further settlement, since fulfill or reject may not be called
+    // right away.
+    match &mut promise.state {
+        PromiseState::Pending { already_resolved, .. } => {
+            if *already_resolved {
+                return;
+            }
+
+            *already_resolved = true;
+        }
+        _ => return,
     }
 
     // Check if a promise is trying to resolve itself
@@ -236,7 +261,7 @@ impl Handle<PromiseObject> {
     ) {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
-            PromiseState::Pending { reactions } => {
+            PromiseState::Pending { reactions, .. } => {
                 let prev_reactions = reactions.map(|r| r.to_handle());
                 *reactions = Some(PromiseReaction::new_await_resume(
                     cx,
@@ -270,7 +295,7 @@ impl Handle<PromiseObject> {
     ) {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
-            PromiseState::Pending { reactions } => {
+            PromiseState::Pending { reactions, .. } => {
                 let prev_reactions = reactions.map(|r| r.to_handle());
                 *reactions = Some(PromiseReaction::new_then(
                     cx,
@@ -533,7 +558,7 @@ impl HeapObject for HeapPtr<PromiseObject> {
         self.cast::<ObjectValue>().visit_pointers(visitor);
 
         match &mut self.state {
-            PromiseState::Pending { reactions } => {
+            PromiseState::Pending { reactions, .. } => {
                 visitor.visit_pointer_opt(reactions);
             }
             PromiseState::Fulfilled { result } | PromiseState::Rejected { result } => {

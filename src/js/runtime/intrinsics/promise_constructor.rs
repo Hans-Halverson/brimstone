@@ -720,6 +720,10 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Promise.resolve called on non-object");
+        }
+
         let result = get_argument(cx, arguments, 0);
         maybe!(promise_resolve(cx, this_value, result)).into()
     }
@@ -772,11 +776,13 @@ pub fn execute_then(
     cx: Context,
     executor: Handle<ObjectValue>,
     this_value: Handle<Value>,
-    promise: Handle<PromiseObject>,
+    mut promise: Handle<PromiseObject>,
 ) -> EvalResult<Handle<Value>> {
     // Create resolve and reject functions, passing into the executor
     let resolve_function = create_resolve_function(cx, promise);
     let reject_function = create_reject_function(cx, promise);
+
+    promise.set_already_resolved(false);
 
     let completion =
         call_object(cx, executor, this_value, &[resolve_function.into(), reject_function.into()]);

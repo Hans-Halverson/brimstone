@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    gc::HeapVisitor,
+    gc::{HandleScope, HeapVisitor},
     generator_object::{GeneratorCompletionType, GeneratorObject},
     object_value::ObjectValue,
     promise_object::{PromiseCapability, PromiseObject, PromiseReactionKind},
@@ -110,11 +110,13 @@ impl Context {
     /// Run all tasks until the task queue is empty.
     pub fn run_all_tasks(&mut self) -> EvalResult<()> {
         while let Some(task) = self.task_queue().tasks.pop_front() {
-            match task {
-                Task::AwaitResume(task) => maybe!(task.execute(*self)),
-                Task::PromiseThenReaction(task) => maybe!(task.execute(*self)),
-                Task::PromiseThenSettle(task) => maybe!(task.execute(*self)),
-            }
+            maybe!(HandleScope::new(*self, |cx| {
+                match task {
+                    Task::AwaitResume(task) => task.execute(cx),
+                    Task::PromiseThenReaction(task) => task.execute(cx),
+                    Task::PromiseThenSettle(task) => task.execute(cx),
+                }
+            }));
         }
 
         ().into()
@@ -186,6 +188,8 @@ impl PromiseThenReactionTask {
         }
 
         let result = self.result.to_handle(cx);
+        let capability = self.capability.to_handle();
+        let realm = self.realm.map(|r| r.to_handle());
 
         // Call the handler if it exists on the result value
         let handler_result = if let Some(handler) = self.handler {
@@ -202,17 +206,17 @@ impl PromiseThenReactionTask {
         // Resolve or reject the capability with the result of the handler
         let completion = match handler_result {
             EvalResult::Ok(handler_result) => {
-                let resolve = self.capability.resolve();
+                let resolve = capability.resolve();
                 call_object(cx, resolve, cx.undefined(), &[handler_result])
             }
             EvalResult::Throw(handler_result) => {
-                let reject = self.capability.reject();
+                let reject = capability.reject();
                 call_object(cx, reject, cx.undefined(), &[handler_result])
             }
         };
 
         // Make sure we clean up the realm's stack frame before returning or throwing
-        if self.realm.is_some() {
+        if realm.is_some() {
             cx.vm().pop_initial_realm_stack_frame();
         }
 

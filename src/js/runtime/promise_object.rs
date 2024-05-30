@@ -60,9 +60,6 @@ pub struct PromiseReaction {
     descriptor: HeapPtr<ObjectDescriptor>,
     /// The functions to be called when the promise is settled.
     handler: ReactionHandler,
-    /// The promise this reaction references. The promise must be fulfilled or rejected and stores
-    /// the value that the promise was fulfilled or rejected with.
-    // promise: HeapPtr<PromiseObject>,
     /// The next reaction in the chain of reactions.
     next: Option<HeapPtr<PromiseReaction>>,
 }
@@ -254,6 +251,13 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
 }
 
 impl Handle<PromiseObject> {
+    fn set_reactions(&mut self, value: Option<HeapPtr<PromiseReaction>>) {
+        match self.state {
+            PromiseState::Pending { ref mut reactions, .. } => *reactions = value,
+            _ => unreachable!("only called when promise is pending"),
+        }
+    }
+
     pub fn add_await_reaction(
         &mut self,
         mut cx: Context,
@@ -263,11 +267,13 @@ impl Handle<PromiseObject> {
             // Prepend reaction onto the current linked list of reactions.
             PromiseState::Pending { reactions, .. } => {
                 let prev_reactions = reactions.map(|r| r.to_handle());
-                *reactions = Some(PromiseReaction::new_await_resume(
+                let new_reactions = Some(PromiseReaction::new_await_resume(
                     cx,
                     suspended_async_function,
                     prev_reactions,
                 ));
+
+                self.set_reactions(new_reactions);
             }
             PromiseState::Fulfilled { result } => {
                 cx.task_queue().enqueue_await_resume_task(
@@ -297,13 +303,15 @@ impl Handle<PromiseObject> {
             // Prepend reaction onto the current linked list of reactions.
             PromiseState::Pending { reactions, .. } => {
                 let prev_reactions = reactions.map(|r| r.to_handle());
-                *reactions = Some(PromiseReaction::new_then(
+                let new_reactions = Some(PromiseReaction::new_then(
                     cx,
                     fulfill_handler,
                     reject_handler,
                     capability,
                     prev_reactions,
                 ));
+
+                self.set_reactions(new_reactions);
             }
             PromiseState::Fulfilled { result } => {
                 enqueue_promise_then_reaction_task(

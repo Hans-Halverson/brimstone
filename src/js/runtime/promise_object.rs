@@ -98,15 +98,6 @@ impl PromiseObject {
         object
     }
 
-    pub fn new_resolved(cx: Context, result: Handle<Value>) -> HeapPtr<PromiseObject> {
-        let mut object =
-            object_create::<PromiseObject>(cx, ObjectKind::Promise, Intrinsic::PromisePrototype);
-
-        set_uninit!(object.state, PromiseState::Fulfilled { result: result.get() });
-
-        object
-    }
-
     pub fn new_from_constructor(
         cx: Context,
         constructor: Handle<ObjectValue>,
@@ -360,7 +351,10 @@ pub fn coerce_to_ordinary_promise(
         }
     }
 
-    PromiseObject::new_resolved(cx, value).to_handle().into()
+    let promise = PromiseObject::new_pending(cx).to_handle();
+    resolve(cx, promise, value);
+
+    promise.into()
 }
 
 /// Creates a new promise with the provided constructor and immediately resolves it with a result.

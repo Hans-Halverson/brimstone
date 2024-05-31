@@ -18,6 +18,10 @@ use crate::{
             array_prototype::ArrayPrototype,
             async_function_constructor::AsyncFunctionConstructor,
             async_function_prototype::AsyncFunctionPrototype,
+            async_generator_function_constructor::AsyncGeneratorFunctionConstructor,
+            async_generator_function_prototype::AsyncGeneratorFunctionPrototype,
+            async_generator_prototype::AsyncGeneratorPrototype,
+            async_iterator_prototype::AsyncIteratorPrototype,
             bigint_constructor::BigIntConstructor,
             bigint_prototype::BigIntPrototype,
             boolean_constructor::BooleanConstructor,
@@ -104,6 +108,10 @@ pub enum Intrinsic {
     ArrayPrototypeValues,
     AsyncFunctionConstructor,
     AsyncFunctionPrototype,
+    AsyncGeneratorFunctionConstructor,
+    AsyncGeneratorFunctionPrototype,
+    AsyncGeneratorPrototype,
+    AsyncIteratorPrototype,
     BigInt64ArrayConstructor,
     BigInt64ArrayPrototype,
     BigUInt64ArrayConstructor,
@@ -351,6 +359,7 @@ impl Intrinsics {
 
         // Iterators
         register_intrinsic!(IteratorPrototype, IteratorPrototype);
+        register_intrinsic!(AsyncIteratorPrototype, AsyncIteratorPrototype);
         register_intrinsic!(ArrayIteratorPrototype, ArrayIteratorPrototype);
         register_intrinsic!(StringIteratorPrototype, StringIteratorPrototype);
         register_intrinsic!(MapIteratorPrototype, MapIteratorPrototype);
@@ -375,6 +384,23 @@ impl Intrinsics {
             realm,
             Intrinsic::GeneratorPrototype,
             Intrinsic::GeneratorFunctionPrototype,
+        );
+
+        // Async generators
+        register_intrinsic!(AsyncGeneratorPrototype, AsyncGeneratorPrototype);
+        register_intrinsic!(AsyncGeneratorFunctionPrototype, AsyncGeneratorFunctionPrototype);
+        register_intrinsic!(AsyncGeneratorFunctionConstructor, AsyncGeneratorFunctionConstructor);
+        Self::add_non_writable_constructor_to_prototype(
+            cx,
+            realm,
+            Intrinsic::AsyncGeneratorFunctionPrototype,
+            Intrinsic::AsyncGeneratorFunctionConstructor,
+        );
+        Self::add_non_writable_constructor_to_prototype(
+            cx,
+            realm,
+            Intrinsic::AsyncGeneratorPrototype,
+            Intrinsic::AsyncGeneratorFunctionPrototype,
         );
 
         // Builtin objects

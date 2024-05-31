@@ -69,6 +69,8 @@ builtin_names!(
     (array, "Array"),
     (array_buffer, "ArrayBuffer"),
     (async_function, "AsyncFunction"),
+    (async_generator, "AsyncGenerator"),
+    (async_generator_function, "AsyncGeneratorFunction"),
     (bigint, "BigInt"),
     (big_int64_array, "BigInt64Array"),
     (big_uint64_array, "BigUint64Array"),

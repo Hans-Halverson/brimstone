@@ -8,6 +8,7 @@ use crate::{
 };
 
 use super::{
+    async_generator_object::{async_generator_resume, AsyncGeneratorObject},
     gc::{HandleScope, HeapVisitor},
     generator_object::{GeneratorCompletionType, GeneratorObject},
     object_value::ObjectValue,
@@ -37,10 +38,10 @@ impl TaskQueue {
     pub fn enqueue_await_resume_task(
         &mut self,
         kind: PromiseReactionKind,
-        suspended_function: HeapPtr<GeneratorObject>,
+        generator: HeapPtr<ObjectValue>,
         result: Value,
     ) {
-        self.enqueue(Task::AwaitResume(AwaitResumeTask::new(kind, suspended_function, result)));
+        self.enqueue(Task::AwaitResume(AwaitResumeTask::new(kind, generator, result)));
     }
 
     pub fn enqueue_promise_then_reaction_task(
@@ -74,8 +75,8 @@ impl TaskQueue {
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
         for task in &mut self.tasks {
             match task {
-                Task::AwaitResume(AwaitResumeTask { suspended_function, result, .. }) => {
-                    visitor.visit_pointer(suspended_function);
+                Task::AwaitResume(AwaitResumeTask { generator, result, .. }) => {
+                    visitor.visit_pointer(generator);
                     visitor.visit_value(result);
                 }
                 Task::PromiseThenReaction(PromiseThenReactionTask {
@@ -127,32 +128,44 @@ impl Context {
 pub struct AwaitResumeTask {
     /// Whether the awaited promise was resolved or rejected.
     kind: PromiseReactionKind,
-    /// The suspended async function that should be resumed with the provided completion.
-    suspended_function: HeapPtr<GeneratorObject>,
+    /// The suspended async function that should be resumed with the provided completion. For
+    /// regular async functions this is a GeneratorObject, for async generators this is an
+    /// AsyncGeneratorObject.
+    generator: HeapPtr<ObjectValue>,
     /// The value the await expression completes to, whether a normal value or thrown error.
     result: Value,
 }
 
 impl AwaitResumeTask {
-    fn new(
-        kind: PromiseReactionKind,
-        suspended_function: HeapPtr<GeneratorObject>,
-        result: Value,
-    ) -> Self {
-        Self { kind, suspended_function, result }
+    fn new(kind: PromiseReactionKind, generator: HeapPtr<ObjectValue>, result: Value) -> Self {
+        Self { kind, generator, result }
     }
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
-        let generator = self.suspended_function.to_handle();
+        let generator = self.generator.to_handle();
         let completion_value = self.result.to_handle(cx);
         let completion_type = match self.kind {
             PromiseReactionKind::Fulfill => GeneratorCompletionType::Normal,
             PromiseReactionKind::Reject => GeneratorCompletionType::Throw,
         };
 
-        maybe!(cx
-            .vm()
-            .resume_generator(generator, completion_value, completion_type));
+        if generator.is_generator() {
+            let generator = generator.cast::<GeneratorObject>();
+            maybe!(cx
+                .vm()
+                .resume_generator(generator, completion_value, completion_type));
+        } else {
+            let async_generator = generator.cast::<AsyncGeneratorObject>();
+
+            // Must execute in the realm of the async generator since AsyncGeneratorResume may need
+            // to drain the async queue when the VM stack is empty.
+            cx.vm()
+                .push_initial_realm_stack_frame(async_generator.realm_ptr());
+
+            async_generator_resume(cx, async_generator, completion_value, completion_type);
+
+            cx.vm().pop_initial_realm_stack_frame();
+        }
 
         ().into()
     }

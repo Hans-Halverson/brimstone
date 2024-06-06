@@ -437,7 +437,8 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(AwaitInstruction);
 
-                    let return_promise = self.read_register_to_handle(instr.return_promise());
+                    let return_promise_or_generator =
+                        self.read_register_to_handle(instr.return_promise_or_generator());
                     let argument_promise = self.read_register_to_handle(instr.argument_promise());
                     let completion_value_index = instr.completion_value_dest().local_index() as u32;
                     let completion_type_index = instr.completion_type_dest().local_index() as u32;
@@ -453,20 +454,38 @@ impl VM {
                     let mut argument_promise =
                         maybe_throw!(coerce_to_ordinary_promise(self.cx, argument_promise));
 
-                    let generator = GeneratorObject::new_for_async_function(
-                        self.cx,
-                        pc_to_resume_offset,
-                        fp_index,
-                        (completion_value_index, completion_type_index),
-                        self.stack_frame().as_slice(),
-                    )
-                    .to_handle();
+                    if return_promise_or_generator.as_object().is_promise() {
+                        // Create a new generator object that holds the stack frame's state
+                        let generator = GeneratorObject::new_for_async_function(
+                            self.cx,
+                            pc_to_resume_offset,
+                            fp_index,
+                            (completion_value_index, completion_type_index),
+                            self.stack_frame().as_slice(),
+                        )
+                        .to_handle();
 
-                    argument_promise.add_await_reaction(self.cx, generator);
+                        argument_promise.add_await_reaction(self.cx, generator.into());
 
-                    // Return the promise to the caller. For async generators this will be the
-                    // empty value to signal that the async generator has suspended.
-                    return_!(return_promise.cast::<Value>().get())
+                        // Return the promise to the caller
+                        return_!(return_promise_or_generator.get())
+                    } else {
+                        // Reuse the existing async generator object
+                        let mut async_generator =
+                            return_promise_or_generator.cast::<AsyncGeneratorObject>();
+
+                        // Save the stack frame's state in the async generator object
+                        async_generator.save_state(
+                            pc_to_resume_offset,
+                            (completion_value_index, completion_type_index),
+                            self.stack_frame().as_slice(),
+                        );
+
+                        argument_promise.add_await_reaction(self.cx, async_generator.into());
+
+                        // Return empty value to signal that the async generator has suspended
+                        return_!(Value::empty())
+                    }
                 }};
             }
 

@@ -1117,13 +1117,14 @@ define_instructions!(
     /// The completion type must be either true for normal completions or null for throws, no other
     /// completion types are allowed.
     ///
-    /// For async functions returns the `return_promise` of the current function to the caller.
-    /// For async generators the `return_promise` will always be empty to signal that the async
-    /// generator has suspended.
+    /// For async functions the promise for the current function is returned to the caller.
+    ///
+    /// For async generators the generator is passed in place of the return promise, and empty will
+    /// be returned to signal that the async generator has suspended.
     Await(AwaitInstruction, await_instruction) {
         [0] completion_value_dest: Register,
         [1] completion_type_dest: Register,
-        [2] return_promise: Register,
+        [2] return_promise_or_generator: Register,
         [3] argument_promise: Register,
     }
 

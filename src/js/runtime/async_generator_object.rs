@@ -145,6 +145,14 @@ impl AsyncGeneratorObject {
         unsafe { self.stack_frame.data_ptr().add(self.fp_index) }
     }
 
+    /// Return the realm for the suspended function in this generator.
+    pub fn realm_ptr(&self) -> HeapPtr<Realm> {
+        StackFrame::for_fp(self.current_fp().cast_mut())
+            .closure()
+            .function_ptr()
+            .realm_ptr()
+    }
+
     pub fn suspend(
         &mut self,
         pc_to_resume_offset: usize,
@@ -152,6 +160,15 @@ impl AsyncGeneratorObject {
         stack_frame: &[StackSlotValue],
     ) {
         self.state = AsyncGeneratorState::SuspendedYield;
+        self.save_state(pc_to_resume_offset, completion_indices, stack_frame);
+    }
+
+    pub fn save_state(
+        &mut self,
+        pc_to_resume_offset: usize,
+        completion_indices: (u32, u32),
+        stack_frame: &[StackSlotValue],
+    ) {
         self.pc_to_resume_offset = pc_to_resume_offset;
         self.completion_indices = Some(completion_indices);
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);

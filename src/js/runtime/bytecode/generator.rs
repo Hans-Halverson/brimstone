@@ -4241,19 +4241,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let return_promise = if let Some(promise_index) = self.promise_index {
             Register::local(promise_index as usize)
         } else {
-            // Otherwise this is an async generator so return empty to signal that the generator has
-            // suspended.
-            let temp = self.register_allocator.allocate()?;
-            self.writer.load_empty_instruction(temp);
-            temp
+            // Otherwise this is an async generator so pass the generator into the await.
+            Register::local(self.generator_index.unwrap() as usize)
         };
 
         self.writer
             .await_instruction(completion_value, completion_type, return_promise, value);
-
-        if self.promise_index.is_none() {
-            self.register_allocator.release(return_promise);
-        }
 
         // Check the completion type, and if normal then continue execution using the completion
         // value as the value of the await expression.

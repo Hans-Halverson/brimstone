@@ -21,7 +21,6 @@ use crate::{
 use super::{
     abstract_operations::get_function_realm_no_error,
     function::get_argument,
-    generator_object::GeneratorObject,
     get,
     object_descriptor::ObjectDescriptor,
     type_utilities::{same_object_value, same_value},
@@ -66,8 +65,9 @@ pub struct PromiseReaction {
 
 enum ReactionHandler {
     AwaitResume {
-        /// An async function suspended at an await expression.
-        suspended_function: HeapPtr<GeneratorObject>,
+        /// An async function suspended at an await expression. Is a regular generator object for
+        /// async functions and an async generator object for async generators.
+        suspended_generator: HeapPtr<ObjectValue>,
     },
     Then {
         /// A function to be called when the promise is fulfilled, if one exists.
@@ -164,9 +164,9 @@ impl PromiseObject {
         // Add a task to the queue for each matching reaction in the order they were added
         for reaction in matching_reactions.into_iter().rev() {
             match reaction.handler {
-                ReactionHandler::AwaitResume { suspended_function } => {
+                ReactionHandler::AwaitResume { suspended_generator } => {
                     cx.task_queue()
-                        .enqueue_await_resume_task(kind, suspended_function, value);
+                        .enqueue_await_resume_task(kind, suspended_generator, value);
                 }
                 ReactionHandler::Then { fulfill_handler, reject_handler, capability } => {
                     let handler = match kind {
@@ -252,7 +252,7 @@ impl Handle<PromiseObject> {
     pub fn add_await_reaction(
         &mut self,
         mut cx: Context,
-        suspended_async_function: Handle<GeneratorObject>,
+        suspended_generator: Handle<ObjectValue>,
     ) {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
@@ -260,7 +260,7 @@ impl Handle<PromiseObject> {
                 let prev_reactions = reactions.map(|r| r.to_handle());
                 let new_reactions = Some(PromiseReaction::new_await_resume(
                     cx,
-                    suspended_async_function,
+                    suspended_generator,
                     prev_reactions,
                 ));
 
@@ -269,14 +269,14 @@ impl Handle<PromiseObject> {
             PromiseState::Fulfilled { result } => {
                 cx.task_queue().enqueue_await_resume_task(
                     PromiseReactionKind::Fulfill,
-                    suspended_async_function.get_(),
+                    suspended_generator.get_(),
                     *result,
                 );
             }
             PromiseState::Rejected { result } => {
                 cx.task_queue().enqueue_await_resume_task(
                     PromiseReactionKind::Reject,
-                    suspended_async_function.get_(),
+                    suspended_generator.get_(),
                     *result,
                 );
             }
@@ -405,7 +405,7 @@ fn enqueue_promise_then_reaction_task(
 impl PromiseReaction {
     fn new_await_resume(
         cx: Context,
-        suspended_function: Handle<GeneratorObject>,
+        suspended_generator: Handle<ObjectValue>,
         next: Option<Handle<PromiseReaction>>,
     ) -> HeapPtr<PromiseReaction> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>();
@@ -413,7 +413,7 @@ impl PromiseReaction {
         set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
-            ReactionHandler::AwaitResume { suspended_function: suspended_function.get_() }
+            ReactionHandler::AwaitResume { suspended_generator: suspended_generator.get_() }
         );
         set_uninit!(reaction.next, next.map(|r| r.get_()));
 
@@ -578,8 +578,8 @@ impl HeapObject for HeapPtr<PromiseReaction> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
         match &mut self.handler {
-            ReactionHandler::AwaitResume { suspended_function } => {
-                visitor.visit_pointer(suspended_function);
+            ReactionHandler::AwaitResume { suspended_generator } => {
+                visitor.visit_pointer(suspended_generator);
             }
             ReactionHandler::Then { fulfill_handler, reject_handler, capability } => {
                 visitor.visit_pointer_opt(fulfill_handler);

@@ -51,61 +51,57 @@
 }
 
 [BytecodeFunction: simpleYield] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadImmediate r1, 1
      5: LoadUndefined r1
-     7: LoadEmpty r3
-     9: Await r1, r2, r3, r1
-    14: JumpTrue r2, 5 (.L0)
-    17: Throw r1
+     7: Await r1, r2, r0, r1
+    12: JumpTrue r2, 5 (.L0)
+    15: Throw r1
   .L0:
-    19: Yield r1, r2, r0, r1
-    24: JumpNotNullish r2, 22 (.L3)
-    27: JumpNotUndefined r2, 17 (.L2)
-    30: LoadEmpty r3
-    32: Await r1, r2, r3, r1
-    37: JumpTrue r2, 5 (.L1)
-    40: Throw r1
+    17: Yield r1, r2, r0, r1
+    22: JumpNotNullish r2, 20 (.L3)
+    25: JumpNotUndefined r2, 15 (.L2)
+    28: Await r1, r2, r0, r1
+    33: JumpTrue r2, 5 (.L1)
+    36: Throw r1
   .L1:
-    42: Ret r1
+    38: Ret r1
   .L2:
-    44: Throw r1
+    40: Throw r1
   .L3:
-    46: LoadImmediate r1, 2
-    49: LoadUndefined r1
-    51: Ret r1
+    42: LoadImmediate r1, 2
+    45: LoadUndefined r1
+    47: Ret r1
 }
 
 [BytecodeFunction: yieldWithArg] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadImmediate r1, 1
      5: LoadImmediate r1, 2
-     8: LoadEmpty r3
-    10: Await r1, r2, r3, r1
-    15: JumpTrue r2, 5 (.L0)
-    18: Throw r1
+     8: Await r1, r2, r0, r1
+    13: JumpTrue r2, 5 (.L0)
+    16: Throw r1
   .L0:
-    20: Yield r1, r2, r0, r1
-    25: JumpNotNullish r2, 22 (.L3)
-    28: JumpNotUndefined r2, 17 (.L2)
-    31: LoadEmpty r3
-    33: Await r1, r2, r3, r1
-    38: JumpTrue r2, 5 (.L1)
-    41: Throw r1
+    18: Yield r1, r2, r0, r1
+    23: JumpNotNullish r2, 20 (.L3)
+    26: JumpNotUndefined r2, 15 (.L2)
+    29: Await r1, r2, r0, r1
+    34: JumpTrue r2, 5 (.L1)
+    37: Throw r1
   .L1:
-    43: Ret r1
+    39: Ret r1
   .L2:
-    45: Throw r1
+    41: Throw r1
   .L3:
-    47: LoadImmediate r1, 3
-    50: LoadUndefined r1
-    52: Ret r1
+    43: LoadImmediate r1, 3
+    46: LoadUndefined r1
+    48: Ret r1
 }
 
 [BytecodeFunction: withReturn] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadTrue r1
      4: JumpFalse r1, 7 (.L0)
@@ -113,25 +109,23 @@
      9: Ret r1
   .L0:
     11: LoadImmediate r1, 1
-    14: LoadEmpty r3
-    16: Await r1, r2, r3, r1
-    21: JumpTrue r2, 5 (.L1)
-    24: Throw r1
+    14: Await r1, r2, r0, r1
+    19: JumpTrue r2, 5 (.L1)
+    22: Throw r1
   .L1:
-    26: Ret r1
+    24: Ret r1
 }
 
 [BytecodeFunction: withAwait] {
-  Parameters: 0, Registers: 4
+  Parameters: 0, Registers: 3
      0: GeneratorStart r0
      2: LoadImmediate r1, 1
      5: LoadImmediate r1, 2
-     8: LoadEmpty r3
-    10: Await r1, r2, r3, r1
-    15: JumpTrue r2, 5 (.L0)
-    18: Throw r1
+     8: Await r1, r2, r0, r1
+    13: JumpTrue r2, 5 (.L0)
+    16: Throw r1
   .L0:
-    20: LoadImmediate r1, 3
-    23: LoadUndefined r1
-    25: Ret r1
+    18: LoadImmediate r1, 3
+    21: LoadUndefined r1
+    23: Ret r1
 }

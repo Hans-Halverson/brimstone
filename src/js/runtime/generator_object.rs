@@ -246,9 +246,9 @@ fn generate_resume_impl(
     // Mark the generator as executing then resume the generator
     generator.state = GeneratorState::Executing;
 
-    let next_value = maybe!(cx
+    let next_completion = cx
         .vm()
-        .resume_generator(generator, completion_value, completion_type,));
+        .resume_generator(generator, completion_value, completion_type);
 
     // If the generator did not yield then it either returned or threw. In either case mark the
     // generator as completed.
@@ -256,6 +256,7 @@ fn generate_resume_impl(
         generator.state = GeneratorState::Completed;
     }
 
+    let next_value = maybe!(next_completion);
     let is_done = generator.state == GeneratorState::Completed;
 
     create_iter_result_object(cx, next_value, is_done).into()

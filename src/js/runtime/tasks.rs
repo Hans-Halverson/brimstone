@@ -47,7 +47,7 @@ impl TaskQueue {
         &mut self,
         kind: PromiseReactionKind,
         handler: Option<HeapPtr<ObjectValue>>,
-        capability: HeapPtr<PromiseCapability>,
+        capability: Option<HeapPtr<PromiseCapability>>,
         result: Value,
         realm: Option<HeapPtr<Realm>>,
     ) {
@@ -86,7 +86,7 @@ impl TaskQueue {
                     realm,
                 }) => {
                     visitor.visit_pointer_opt(handler);
-                    visitor.visit_pointer(capability);
+                    visitor.visit_pointer_opt(capability);
                     visitor.visit_value(result);
                     visitor.visit_pointer_opt(realm);
                 }
@@ -164,7 +164,7 @@ pub struct PromiseThenReactionTask {
     /// A function to call on the result value.
     handler: Option<HeapPtr<ObjectValue>>,
     /// A promise capability to resolve or reject with the result of the handler function.
-    capability: HeapPtr<PromiseCapability>,
+    capability: Option<HeapPtr<PromiseCapability>>,
     /// The value that the promise was resolved or rejected with.
     result: Value,
     /// The realm to set as the topmost execution context before executing the handler.
@@ -175,7 +175,7 @@ impl PromiseThenReactionTask {
     fn new(
         kind: PromiseReactionKind,
         handler: Option<HeapPtr<ObjectValue>>,
-        capability: HeapPtr<PromiseCapability>,
+        capability: Option<HeapPtr<PromiseCapability>>,
         result: Value,
         realm: Option<HeapPtr<Realm>>,
     ) -> Self {
@@ -188,7 +188,7 @@ impl PromiseThenReactionTask {
         }
 
         let result = self.result.to_handle(cx);
-        let capability = self.capability.to_handle();
+        let capability = self.capability.map(|c| c.to_handle());
         let realm = self.realm.map(|r| r.to_handle());
 
         // Call the handler if it exists on the result value
@@ -203,16 +203,21 @@ impl PromiseThenReactionTask {
             }
         };
 
-        // Resolve or reject the capability with the result of the handler
-        let completion = match handler_result {
-            EvalResult::Ok(handler_result) => {
-                let resolve = capability.resolve();
-                call_object(cx, resolve, cx.undefined(), &[handler_result])
+        let completion = if let Some(capability) = capability {
+            // Resolve or reject the capability with the result of the handler
+            match handler_result {
+                EvalResult::Ok(handler_result) => {
+                    let resolve = capability.resolve();
+                    call_object(cx, resolve, cx.undefined(), &[handler_result])
+                }
+                EvalResult::Throw(handler_result) => {
+                    let reject = capability.reject();
+                    call_object(cx, reject, cx.undefined(), &[handler_result])
+                }
             }
-            EvalResult::Throw(handler_result) => {
-                let reject = capability.reject();
-                call_object(cx, reject, cx.undefined(), &[handler_result])
-            }
+        } else {
+            debug_assert!(matches!(handler_result, EvalResult::Ok(_)));
+            cx.undefined().into()
         };
 
         // Make sure we clean up the realm's stack frame before returning or throwing

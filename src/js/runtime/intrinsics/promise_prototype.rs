@@ -252,18 +252,18 @@ impl PromisePrototype {
         let on_fulfilled = get_argument(cx, arguments, 0);
         let on_rejected = get_argument(cx, arguments, 1);
 
-        perform_promise_then(cx, promise, on_fulfilled, on_rejected, capability)
+        perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)).into()
     }
 }
 
 /// 27.2.5.4.1 PerformPromiseThen with a capability provided.
-fn perform_promise_then(
+pub fn perform_promise_then(
     cx: Context,
     mut promise: Handle<PromiseObject>,
     fulfill_handler: Handle<Value>,
     reject_handler: Handle<Value>,
-    capability: Handle<PromiseCapability>,
-) -> EvalResult<Handle<Value>> {
+    capability: Option<Handle<PromiseCapability>>,
+) -> Handle<Value> {
     let fulfill_handler = if is_callable(fulfill_handler) {
         Some(fulfill_handler.as_object())
     } else {
@@ -278,5 +278,9 @@ fn perform_promise_then(
 
     promise.add_then_reaction(cx, fulfill_handler, reject_handler, capability);
 
-    capability.promise().into()
+    if let Some(capability) = capability {
+        capability.promise().into()
+    } else {
+        cx.undefined()
+    }
 }

@@ -746,6 +746,13 @@ define_instructions!(
         [1] function_index: ConstantIndex,
     }
 
+    /// Create a new async generator closure from the function at the given index in the constant
+    /// table.
+    NewAsyncGenerator (NewAsyncGeneratorInstruction, new_async_generator_instruction) {
+        [0] dest: Register,
+        [1] function_index: ConstantIndex,
+    }
+
     /// Create a new empty object stored in dest.
     NewObject (NewObjectInstruction, new_object_instruction) {
         [0] dest: Register,
@@ -1086,7 +1093,7 @@ define_instructions!(
     }
 
     /// Yield a value from the current function, returning the value to the caller. Takes the
-    /// generator for the function and the value to yield.
+    /// generator for the function and the value to yield. Can take a normal or async generator.
     ///
     /// The completion passed into GeneratorResume when the generator resumes will be stored in the
     /// a pair of registers holding the completion value and completion type. The completion type
@@ -1110,7 +1117,9 @@ define_instructions!(
     /// The completion type must be either true for normal completions or null for throws, no other
     /// completion types are allowed.
     ///
-    /// Returns the `return_promise` of the current function to the caller.
+    /// For async functions returns the `return_promise` of the current function to the caller.
+    /// For async generators the `return_promise` will always be empty to signal that the async
+    /// generator has suspended.
     Await(AwaitInstruction, await_instruction) {
         [0] completion_value_dest: Register,
         [1] completion_type_dest: Register,

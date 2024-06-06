@@ -2,6 +2,7 @@ use crate::js::runtime::{
     arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
+    async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
     bytecode::{
         constant_table::ConstantTable,
         exception_handlers::ExceptionHandlers,
@@ -139,6 +140,8 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
             ObjectKind::Generator => self.cast::<GeneratorObject>().byte_size(),
+            ObjectKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
+            ObjectKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
             ObjectKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             ObjectKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
             ObjectKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
@@ -240,6 +243,12 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
             ObjectKind::Generator => self.cast::<GeneratorObject>().visit_pointers(visitor),
+            ObjectKind::AsyncGenerator => {
+                self.cast::<AsyncGeneratorObject>().visit_pointers(visitor)
+            }
+            ObjectKind::AsyncGeneratorRequest => {
+                self.cast::<AsyncGeneratorRequest>().visit_pointers(visitor)
+            }
             ObjectKind::DenseArrayProperties => {
                 self.cast::<DenseArrayProperties>().visit_pointers(visitor)
             }

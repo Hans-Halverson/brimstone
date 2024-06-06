@@ -75,7 +75,7 @@ enum ReactionHandler {
         /// A function to be called when the promise is rejected, if one exists.
         reject_handler: Option<HeapPtr<ObjectValue>>,
         /// A capability that will be resolved or rejected depending on the reaction type.
-        capability: HeapPtr<PromiseCapability>,
+        capability: Option<HeapPtr<PromiseCapability>>,
     },
 }
 
@@ -288,7 +288,7 @@ impl Handle<PromiseObject> {
         cx: Context,
         fulfill_handler: Option<Handle<ObjectValue>>,
         reject_handler: Option<Handle<ObjectValue>>,
-        capability: Handle<PromiseCapability>,
+        capability: Option<Handle<PromiseCapability>>,
     ) {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
@@ -309,7 +309,7 @@ impl Handle<PromiseObject> {
                     cx,
                     PromiseReactionKind::Fulfill,
                     fulfill_handler.map(|h| h.get_()),
-                    capability.get_(),
+                    capability.map(|c| c.get_()),
                     *result,
                 );
             }
@@ -318,7 +318,7 @@ impl Handle<PromiseObject> {
                     cx,
                     PromiseReactionKind::Reject,
                     reject_handler.map(|h| h.get_()),
-                    capability.get_(),
+                    capability.map(|c| c.get_()),
                     *result,
                 );
             }
@@ -385,7 +385,7 @@ fn enqueue_promise_then_reaction_task(
     mut cx: Context,
     kind: PromiseReactionKind,
     handler: Option<HeapPtr<ObjectValue>>,
-    capability: HeapPtr<PromiseCapability>,
+    capability: Option<HeapPtr<PromiseCapability>>,
     result: Value,
 ) {
     // Get the realm of the handler function, defaulting to the current realm if getting the
@@ -424,7 +424,7 @@ impl PromiseReaction {
         cx: Context,
         fulfill_handler: Option<Handle<ObjectValue>>,
         reject_handler: Option<Handle<ObjectValue>>,
-        capability: Handle<PromiseCapability>,
+        capability: Option<Handle<PromiseCapability>>,
         next: Option<Handle<PromiseReaction>>,
     ) -> HeapPtr<PromiseReaction> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>();
@@ -435,7 +435,7 @@ impl PromiseReaction {
             ReactionHandler::Then {
                 fulfill_handler: fulfill_handler.map(|h| h.get_()),
                 reject_handler: reject_handler.map(|h| h.get_()),
-                capability: capability.get_()
+                capability: capability.map(|c| c.get_()),
             }
         );
         set_uninit!(reaction.next, next.map(|r| r.get_()));
@@ -584,7 +584,7 @@ impl HeapObject for HeapPtr<PromiseReaction> {
             ReactionHandler::Then { fulfill_handler, reject_handler, capability } => {
                 visitor.visit_pointer_opt(fulfill_handler);
                 visitor.visit_pointer_opt(reject_handler);
-                visitor.visit_pointer(capability);
+                visitor.visit_pointer_opt(capability);
             }
         }
         visitor.visit_pointer_opt(&mut self.next);

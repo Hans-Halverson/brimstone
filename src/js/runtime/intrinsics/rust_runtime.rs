@@ -2,9 +2,10 @@ use std::{collections::HashMap, mem::size_of};
 
 use crate::{
     js::runtime::{
-        bound_function_object::BoundFunctionObject, console::ConsoleObject, gc_object::GcObject,
-        global_names, object_value::ObjectValue, promise_object::PromiseCapability, realm,
-        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
+        async_generator_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
+        gc_object::GcObject, global_names, object_value::ObjectValue,
+        promise_object::PromiseCapability, realm, test_262_object::Test262Object, Context,
+        EvalResult, Handle, Value,
     },
     static_assert,
 };
@@ -18,6 +19,7 @@ use super::{
     array_prototype::ArrayPrototype,
     async_function_constructor::AsyncFunctionConstructor,
     async_generator_function_constructor::AsyncGeneratorFunctionConstructor,
+    async_generator_prototype::AsyncGeneratorPrototype,
     async_iterator_prototype::AsyncIteratorPrototype,
     bigint_constructor::BigIntConstructor,
     bigint_prototype::BigIntPrototype,
@@ -200,6 +202,11 @@ rust_runtime_functions!(
     ArrayPrototype::with,
     AsyncFunctionConstructor::construct,
     AsyncGeneratorFunctionConstructor::construct,
+    async_generator_object::await_return_reject,
+    async_generator_object::await_return_resolve,
+    AsyncGeneratorPrototype::next,
+    AsyncGeneratorPrototype::return_,
+    AsyncGeneratorPrototype::throw,
     AsyncIteratorPrototype::async_iterator,
     BigInt64ArrayConstructor::construct,
     BigIntConstructor::construct,

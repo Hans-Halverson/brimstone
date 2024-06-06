@@ -8,7 +8,6 @@ use crate::{index::Test, utils::GenericError};
 pub struct IgnoredIndex {
     ignored_tests_regex: Regex,
     ignored_features: HashSet<String>,
-    ignore_async_generator: bool,
     ignore_module: bool,
     ignore_annex_b: bool,
 }
@@ -17,7 +16,6 @@ impl IgnoredIndex {
     pub fn load_from_file(
         ignored_path: &Path,
         run_all_tests: bool,
-        ignore_async_generator: bool,
         ignore_module: bool,
         ignore_annex_b: bool,
     ) -> Result<IgnoredIndex, GenericError> {
@@ -59,7 +57,6 @@ impl IgnoredIndex {
         Ok(IgnoredIndex {
             ignored_tests_regex,
             ignored_features,
-            ignore_async_generator,
             ignore_module,
             ignore_annex_b,
         })
@@ -114,9 +111,5 @@ impl IgnoredIndex {
         }
 
         return false;
-    }
-
-    pub fn ignore_async_generator(&self) -> bool {
-        self.ignore_async_generator
     }
 }

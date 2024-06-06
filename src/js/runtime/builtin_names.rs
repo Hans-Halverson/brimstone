@@ -495,5 +495,7 @@ builtin_symbols!(
     (remaining_elements, ""),
     // Symbols used for private properties of Promise.prototype.finally resolve/reject functions
     (constructor, ""),
-    (on_finally, "")
+    (on_finally, ""),
+    // Symbols used for private properties of async generator resolve/reject functions
+    (async_generator, "")
 );

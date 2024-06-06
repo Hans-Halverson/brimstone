@@ -25,10 +25,6 @@ struct Args {
     #[arg(long, default_value_t = String::from("ignored_tests.jsonc"))]
     ignored_path: String,
 
-    /// Ignore async generator tests
-    #[arg(long, default_value_t = false)]
-    ignore_async_generator: bool,
-
     /// Ignore module tests
     #[arg(long, default_value_t = false)]
     ignore_module: bool,
@@ -87,7 +83,6 @@ fn main_impl() -> GenericResult {
     let ignored = IgnoredIndex::load_from_file(
         ignored_path,
         args.all,
-        args.ignore_async_generator,
         args.ignore_module,
         args.ignore_annex_b,
     )?;

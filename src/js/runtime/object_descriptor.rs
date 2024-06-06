@@ -114,6 +114,8 @@ pub enum ObjectKind {
     ClassNames,
 
     Generator,
+    AsyncGenerator,
+    AsyncGeneratorRequest,
 
     DenseArrayProperties,
     SparseArrayProperties,
@@ -314,6 +316,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ClassNames);
 
         ordinary_object_descriptor!(ObjectKind::Generator);
+        ordinary_object_descriptor!(ObjectKind::AsyncGenerator);
+        other_heap_object_descriptor!(ObjectKind::AsyncGeneratorRequest);
 
         other_heap_object_descriptor!(ObjectKind::DenseArrayProperties);
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);

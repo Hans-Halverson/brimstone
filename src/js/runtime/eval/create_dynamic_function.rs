@@ -19,7 +19,10 @@ use crate::{
             },
             completion::EvalResult,
             error::syntax_error,
-            intrinsics::{generator_prototype::GeneratorPrototype, intrinsics::Intrinsic},
+            intrinsics::{
+                async_generator_prototype::AsyncGeneratorPrototype,
+                generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
+            },
             object_value::ObjectValue,
             ordinary_object::get_prototype_from_constructor,
             to_string, Context, Handle, Value,
@@ -41,9 +44,18 @@ pub fn create_dynamic_function(
 
     let prefix;
     let fallback_proto;
+
     if is_generator {
-        prefix = "function*";
-        fallback_proto = Intrinsic::GeneratorFunctionPrototype;
+        if is_async {
+            prefix = "async function*";
+            fallback_proto = Intrinsic::AsyncGeneratorFunctionPrototype;
+        } else {
+            prefix = "function*";
+            fallback_proto = Intrinsic::GeneratorFunctionPrototype;
+        }
+    } else if is_async {
+        prefix = "async function";
+        fallback_proto = Intrinsic::AsyncFunctionPrototype;
     } else {
         prefix = "function";
         fallback_proto = Intrinsic::FunctionPrototype;
@@ -151,7 +163,7 @@ pub fn create_dynamic_function(
 
     if is_generator {
         if is_async {
-            unimplemented!("async generator functions")
+            maybe!(AsyncGeneratorPrototype::install_on_async_generator_function(cx, closure));
         } else {
             maybe!(GeneratorPrototype::install_on_generator_function(cx, closure));
         }

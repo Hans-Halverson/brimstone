@@ -8,6 +8,7 @@ use crate::{
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
+        async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
@@ -27,9 +28,10 @@ use crate::{
         for_in_iterator::ForInIterator,
         function::build_function_name,
         gc::{HandleScope, HeapVisitor},
-        generator_object::{GeneratorCompletionType, GeneratorObject},
+        generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         intrinsics::{
+            async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
             native_error::TypeError, regexp_constructor::RegExpObject,
             rust_runtime::RustRuntimeFunctionId,
@@ -90,19 +92,20 @@ use super::{
         LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewAccessorInstruction, NewArrayInstruction, NewAsyncClosureInstruction,
-        NewClassInstruction, NewClosureInstruction, NewForInIteratorInstruction,
-        NewGeneratorInstruction, NewMappedArgumentsInstruction, NewObjectInstruction,
-        NewPrivateSymbolInstruction, NewPromiseInstruction, NewRegExpInstruction,
-        NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
-        PushLexicalScopeInstruction, PushWithScopeInstruction, RejectPromiseInstruction,
-        RemInstruction, ResolvePromiseInstruction, RestParameterInstruction, RetInstruction,
-        SetArrayPropertyInstruction, SetNamedPropertyInstruction, SetPrivatePropertyInstruction,
-        SetPropertyInstruction, SetPrototypeOfInstruction, SetSuperPropertyInstruction,
-        ShiftLeftInstruction, ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
-        StoreDynamicInstruction, StoreGlobalInstruction, StoreToScopeInstruction,
-        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction, YieldInstruction,
+        NewAsyncGeneratorInstruction, NewClassInstruction, NewClosureInstruction,
+        NewForInIteratorInstruction, NewGeneratorInstruction, NewMappedArgumentsInstruction,
+        NewObjectInstruction, NewPrivateSymbolInstruction, NewPromiseInstruction,
+        NewRegExpInstruction, NewUnmappedArgumentsInstruction, OpCode, PopScopeInstruction,
+        PushFunctionScopeInstruction, PushLexicalScopeInstruction, PushWithScopeInstruction,
+        RejectPromiseInstruction, RemInstruction, ResolvePromiseInstruction,
+        RestParameterInstruction, RetInstruction, SetArrayPropertyInstruction,
+        SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
+        SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
+        ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
+        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
+        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
+        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
+        TypeOfInstruction, YieldInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -204,10 +207,16 @@ impl VM {
         eval_result.to_rust_result()
     }
 
-    /// Resume a suspended generator, executing it until it yields or completes.
+    /// Resume a suspended generator, executing it until it suspends or completes.
+    ///
+    /// For generators this returns either the value passed to yield or the completion of the
+    /// entire generator.
+    ///
+    /// For async generators this returns either the empty value to signal that the generator was
+    /// suspended by await or yield, or returns the completion of the entire generator.
     pub fn resume_generator(
         &mut self,
-        mut generator: Handle<GeneratorObject>,
+        generator: impl TGeneratorObject,
         completion_value: Handle<Value>,
         completion_type: GeneratorCompletionType,
     ) -> EvalResult<Handle<Value>> {
@@ -262,10 +271,6 @@ impl VM {
         // Start executing the dispatch loop from where the generator was suspended, returning out
         // of dispatch loop when the marked return address is encountered.
         let completion = self.dispatch_loop();
-
-        // If the generator did not yeild then it either returned or threw. In either case mark the
-        // generator as completed.
-        generator.complete_if_not_yielded();
 
         if let Err(error_value) = completion {
             return EvalResult::Throw(error_value.to_handle(self.cx));
@@ -363,10 +368,7 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(YieldInstruction);
 
-                    let mut generator = self
-                        .read_register(instr.generator())
-                        .as_object()
-                        .cast::<GeneratorObject>();
+                    let generator_object = self.read_register(instr.generator()).as_object();
                     let yield_value = self.read_register(instr.yield_value());
                     let completion_value_index = instr.completion_value_dest().local_index() as u32;
                     let completion_type_index = instr.completion_type_dest().local_index() as u32;
@@ -375,15 +377,59 @@ impl VM {
                     self.set_pc_after(instr);
                     let pc_to_resume_offset = self.get_pc_offset();
 
-                    // Save the stack frame and PC to resume in the generator object
-                    generator.suspend(
-                        pc_to_resume_offset,
-                        (completion_value_index, completion_type_index),
-                        self.stack_frame().as_slice(),
-                    );
+                    if generator_object.is_generator() {
+                        // 27.5.3.6 GeneratorYield
+                        let mut generator = generator_object.cast::<GeneratorObject>();
 
-                    // Return the yielded value to the caller
-                    return_!(yield_value)
+                        // Save the stack frame and PC to resume in the generator object
+                        generator.suspend(
+                            pc_to_resume_offset,
+                            (completion_value_index, completion_type_index),
+                            self.stack_frame().as_slice(),
+                        );
+
+                        // Return the yielded value to the caller
+                        return_!(yield_value)
+                    } else {
+                        // 27.6.3.8 AsyncGeneratorYield
+                        debug_assert!(generator_object.is_async_generator());
+
+                        let mut async_generator =
+                            generator_object.cast::<AsyncGeneratorObject>().to_handle();
+                        let yield_value = yield_value.to_handle(self.cx);
+
+                        async_generator_complete_step(
+                            self.cx,
+                            async_generator,
+                            EvalResult::Ok(yield_value),
+                            /* is_done */ false,
+                            None,
+                        );
+
+                        if let Some(request) = async_generator.pop_request() {
+                            // If there is a pending request then immediately resume with the
+                            // completion contained inside it.
+                            self.write_register(
+                                Register::<ExtraWide>::local(completion_value_index as usize),
+                                request.completion_value(),
+                            );
+                            self.write_register(
+                                Register::<ExtraWide>::local(completion_type_index as usize),
+                                request.completion_type().to_value(),
+                            )
+                        } else {
+                            // Otherwise the stack frame and PC to resume in the generator object.
+                            // Generator will be resumed with the completion set.
+                            async_generator.suspend(
+                                pc_to_resume_offset,
+                                (completion_value_index, completion_type_index),
+                                self.stack_frame().as_slice(),
+                            );
+                        }
+
+                        // Return an empty value to signal that the async generator has suspended
+                        return_!(Value::empty())
+                    }
                 }};
             }
 
@@ -418,7 +464,8 @@ impl VM {
 
                     argument_promise.add_await_reaction(self.cx, generator);
 
-                    // Return the promise to the caller
+                    // Return the promise to the caller. For async generators this will be the
+                    // empty value to signal that the async generator has suspended.
                     return_!(return_promise.cast::<Value>().get())
                 }};
             }
@@ -441,17 +488,35 @@ impl VM {
 
                     // Create the generator in the started state, copying the current stack frame
                     // and PC to resume.
-                    let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
-                        self.cx,
-                        current_closure,
-                        pc_to_resume_offset,
-                        fp_index,
-                        self.stack_frame().as_slice(),
-                    ));
+                    let generator_value = if current_closure.function_ptr().is_async() {
+                        let mut async_generator = maybe_throw!(AsyncGeneratorObject::new(
+                            self.cx,
+                            current_closure,
+                            pc_to_resume_offset,
+                            fp_index,
+                            self.stack_frame().as_slice(),
+                        ));
 
-                    // Store the generator into the provided register in the stored stack frame
-                    let generator_value = generator.cast::<ObjectValue>().into();
-                    generator.set_register(generator_reg.local_index(), generator_value);
+                        // Store the generator into the provided register in the stored stack frame
+                        let generator_value = async_generator.cast::<ObjectValue>().into();
+                        async_generator.set_register(generator_reg.local_index(), generator_value);
+
+                        generator_value
+                    } else {
+                        let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
+                            self.cx,
+                            current_closure,
+                            pc_to_resume_offset,
+                            fp_index,
+                            self.stack_frame().as_slice(),
+                        ));
+
+                        // Store the generator into the provided register in the stored stack frame
+                        let generator_value = generator.cast::<ObjectValue>().into();
+                        generator.set_register(generator_reg.local_index(), generator_value);
+
+                        generator_value
+                    };
 
                     // Return the generator object to the caller
                     return_!(generator_value)
@@ -734,6 +799,12 @@ impl VM {
                         }
                         OpCode::NewGenerator => {
                             dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
+                        }
+                        OpCode::NewAsyncGenerator => {
+                            dispatch_or_throw!(
+                                NewAsyncGeneratorInstruction,
+                                execute_new_async_generator
+                            )
                         }
                         OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
@@ -2864,6 +2935,30 @@ impl VM {
         let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
 
         maybe!(GeneratorPrototype::install_on_generator_function(self.cx, closure));
+
+        self.write_register(dest, Value::object(closure.get_().cast()));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_new_async_generator<W: Width>(
+        &mut self,
+        instr: &NewAsyncGeneratorInstruction<W>,
+    ) -> EvalResult<()> {
+        let func = self.get_constant(instr.function_index());
+        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+
+        let dest = instr.dest();
+        let scope = self.scope().to_handle();
+
+        // Allocates
+        let func_proto = self
+            .cx
+            .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
+        let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
+
+        maybe!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx, closure));
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 

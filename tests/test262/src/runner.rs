@@ -66,7 +66,6 @@ impl TestRunner {
             }
 
             let test262_root = self.index.test262_root.clone();
-            let ignore_async_generator = self.ignored.ignore_async_generator();
 
             let test = test.clone();
             let sender = sender.clone();
@@ -95,18 +94,11 @@ impl TestRunner {
                             None => String::from("<panic message not found>"),
                         };
 
-                        let result = if ignore_async_generator
-                            && (message
-                                == "not implemented: bytecode for async generator functions")
-                        {
-                            TestResult::skipped(&test)
-                        } else {
-                            TestResult::failure(
-                                &test,
-                                format!("Thread panicked:\n{}", message),
-                                duration,
-                            )
-                        };
+                        let result = TestResult::failure(
+                            &test,
+                            format!("Thread panicked:\n{}", message),
+                            duration,
+                        );
 
                         sender.send(result).unwrap()
                     }
@@ -478,6 +470,7 @@ struct TestResult {
 enum TestResultCompletion {
     Success,
     Failure(String),
+    #[allow(dead_code)]
     Skipped,
 }
 
@@ -498,6 +491,7 @@ impl TestResult {
         }
     }
 
+    #[allow(dead_code)]
     fn skipped(test: &Test) -> TestResult {
         TestResult {
             path: test.path.clone(),

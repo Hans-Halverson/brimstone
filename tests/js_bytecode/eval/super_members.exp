@@ -127,7 +127,7 @@
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
     0: 0d fe 00         LoadDynamic r1, c0
-    3: 5c ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
+    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
     8: 18 ff            Ret r0
   Constant Table:
     0: [String: %staticHomeObject]
@@ -137,7 +137,7 @@
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
     0: 0d fe 00         LoadDynamic r1, c0
-    3: 5c ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
+    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
     8: 18 ff            Ret r0
   Constant Table:
     0: [String: %homeObject]
@@ -147,7 +147,7 @@
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
     0: 0d fe 00         LoadDynamic r1, c0
-    3: 5c ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
+    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
     8: 18 ff            Ret r0
   Constant Table:
     0: [String: %homeObject]
@@ -157,7 +157,7 @@
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
     0: 0d fe 00         LoadDynamic r1, c0
-    3: 5c ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
+    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
     8: 18 ff            Ret r0
   Constant Table:
     0: [String: %staticHomeObject]

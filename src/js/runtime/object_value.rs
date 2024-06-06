@@ -339,6 +339,10 @@ impl ObjectValue {
         self.descriptor_kind() == ObjectKind::Generator
     }
 
+    pub fn is_async_generator(&self) -> bool {
+        self.descriptor_kind() == ObjectKind::AsyncGenerator
+    }
+
     pub fn is_promise(&self) -> bool {
         self.descriptor_kind() == ObjectKind::Promise
     }

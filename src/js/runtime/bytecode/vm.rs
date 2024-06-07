@@ -406,8 +406,8 @@ impl VM {
                             None,
                         );
 
-                        if let Some(request) = async_generator.pop_request() {
-                            // If there is a pending request then immediately resume with the
+                        if let Some(request) = async_generator.peek_request_ptr() {
+                            // If there is a pending request then immediately continue with the
                             // completion contained inside it.
                             self.write_register(
                                 Register::<ExtraWide>::local(completion_value_index as usize),
@@ -425,10 +425,10 @@ impl VM {
                                 (completion_value_index, completion_type_index),
                                 self.stack_frame().as_slice(),
                             );
-                        }
 
-                        // Return an empty value to signal that the async generator has suspended
-                        return_!(Value::empty())
+                            // Return an empty value to signal that the async generator has suspended
+                            return_!(Value::empty())
+                        }
                     }
                 }};
             }
@@ -480,7 +480,6 @@ impl VM {
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
                         );
-
                         argument_promise.add_await_reaction(self.cx, async_generator.into());
 
                         // Return empty value to signal that the async generator has suspended

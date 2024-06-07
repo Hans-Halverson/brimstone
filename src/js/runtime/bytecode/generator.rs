@@ -4228,8 +4228,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::AwaitExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let arguement = self.gen_expression(&expr.argument)?;
-        self.gen_await(arguement, dest)
+        let argument = self.gen_expression(&expr.argument)?;
+        self.gen_await(argument, dest)
     }
 
     fn gen_await(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {

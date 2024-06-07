@@ -174,11 +174,15 @@ impl AsyncGeneratorObject {
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);
     }
 
-    pub fn peek_request(&self) -> Option<Handle<AsyncGeneratorRequest>> {
+    pub fn peek_request_ptr(&self) -> Option<HeapPtr<AsyncGeneratorRequest>> {
+        self.request_queue
+    }
+
+    fn peek_request(&self) -> Option<Handle<AsyncGeneratorRequest>> {
         self.request_queue.map(|r| r.to_handle())
     }
 
-    pub fn pop_request(&mut self) -> Option<HeapPtr<AsyncGeneratorRequest>> {
+    fn pop_request(&mut self) -> Option<HeapPtr<AsyncGeneratorRequest>> {
         if let Some(request) = self.request_queue {
             self.request_queue = request.next;
             Some(request)
@@ -339,7 +343,7 @@ pub fn async_generator_await_return(
 ) -> EvalResult<()> {
     async_generator.state = AsyncGeneratorState::AwaitingReturn;
 
-    let request = async_generator.peek_request().unwrap();
+    let request = async_generator.peek_request_ptr().unwrap();
     let completion_value = request.completion_value().to_handle(cx);
 
     let promise = maybe!(coerce_to_ordinary_promise(cx, completion_value));

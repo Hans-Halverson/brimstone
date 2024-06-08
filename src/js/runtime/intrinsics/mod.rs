@@ -5,6 +5,7 @@ mod array_buffer_prototype;
 mod array_constructor;
 pub mod array_iterator;
 mod array_prototype;
+pub mod async_from_sync_iterator_prototype;
 mod async_function_constructor;
 mod async_function_prototype;
 mod async_generator_function_constructor;

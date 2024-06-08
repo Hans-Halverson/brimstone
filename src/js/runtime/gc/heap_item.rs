@@ -17,6 +17,7 @@ use crate::js::runtime::{
     intrinsics::{
         array_buffer_constructor::{ArrayBufferDataField, ArrayBufferObject},
         array_iterator::ArrayIterator,
+        async_from_sync_iterator_prototype::AsyncFromSyncIterator,
         bigint_constructor::BigIntObject,
         boolean_constructor::BooleanObject,
         data_view_constructor::DataViewObject,
@@ -121,6 +122,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::MapIterator => self.cast::<MapIterator>().byte_size(),
             ObjectKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().byte_size(),
+            ObjectKind::AsyncFromSyncIterator => self.cast::<AsyncFromSyncIterator>().byte_size(),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
             ObjectKind::Symbol => self.cast::<SymbolValue>().byte_size(),
@@ -220,6 +222,9 @@ impl HeapObject for HeapPtr<HeapItem> {
                 self.cast::<RegExpStringIterator>().visit_pointers(visitor)
             }
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().visit_pointers(visitor),
+            ObjectKind::AsyncFromSyncIterator => {
+                self.cast::<AsyncFromSyncIterator>().visit_pointers(visitor)
+            }
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
             ObjectKind::String => self.cast::<StringValue>().visit_pointers(visitor),
             ObjectKind::Symbol => self.cast::<SymbolValue>().visit_pointers(visitor),

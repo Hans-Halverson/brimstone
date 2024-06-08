@@ -3,6 +3,7 @@ use crate::{
         abstract_operations::{call_object, get_method},
         error::type_error,
         get,
+        intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
     },
     maybe, must,
 };
@@ -50,7 +51,7 @@ pub fn get_iterator(
                 let sync_iterator_record =
                     maybe!(get_iterator(cx, object, IteratorHint::Sync, sync_method));
 
-                return create_async_from_sync_iterator(sync_iterator_record).into();
+                return create_async_from_sync_iterator(cx, sync_iterator_record).into();
             }
         } else {
             let iterator_key = cx.well_known_symbols.iterator();
@@ -82,13 +83,14 @@ pub fn get_iterator(
 // 7.4.3 IteratorNext
 pub fn iterator_next(
     cx: Context,
-    iterator: &Iterator,
+    iterator: Handle<ObjectValue>,
+    next_method: Handle<Value>,
     value: Option<Handle<Value>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = if let Some(value) = value {
-        maybe!(call(cx, iterator.next_method, iterator.iterator.into(), &[value]))
+        maybe!(call(cx, next_method, iterator.into(), &[value]))
     } else {
-        maybe!(call(cx, iterator.next_method, iterator.iterator.into(), &[]))
+        maybe!(call(cx, next_method, iterator.into(), &[]))
     };
 
     if !result.is_object() {
@@ -111,7 +113,7 @@ pub fn iterator_value(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResu
 
 // 7.4.6 IteratorStep
 pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Handle<ObjectValue>>> {
-    let iter_result = maybe!(iterator_next(cx, iterator, None));
+    let iter_result = maybe!(iterator_next(cx, iterator.iterator, iterator.next_method, None));
     let is_done = maybe!(iterator_complete(cx, iter_result));
 
     if is_done {
@@ -156,7 +158,7 @@ pub fn iterator_step_value(
     cx: Context,
     iterator: &mut Iterator,
 ) -> EvalResult<Option<Handle<Value>>> {
-    let iter_result_completion = iterator_next(cx, iterator, None);
+    let iter_result_completion = iterator_next(cx, iterator.iterator, iterator.next_method, None);
     let iter_result = match iter_result_completion {
         EvalResult::Ok(iter_result) => iter_result,
         EvalResult::Throw(error) => {
@@ -261,6 +263,9 @@ pub fn iter_iterator_method_values<
 }
 
 // 27.1.4.1 CreateAsyncFromSyncIterator
-fn create_async_from_sync_iterator(_sync_iterator_record: Iterator) -> Iterator {
-    unimplemented!("CreateAsyncFromSyncIterator")
+fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> Iterator {
+    let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator).into();
+    let next_method = must!(get(cx, async_iterator, cx.names.next()));
+
+    Iterator { iterator: async_iterator, next_method, is_done: false }
 }

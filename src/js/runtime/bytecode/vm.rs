@@ -63,23 +63,24 @@ use super::{
     generator::BytecodeProgram,
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
-        AwaitInstruction, BitAndInstruction, BitNotInstruction, BitOrInstruction,
-        BitXorInstruction, CallInstruction, CallMaybeEvalInstruction,
-        CallMaybeEvalVarargsInstruction, CallVarargsInstruction, CallWithReceiverInstruction,
-        CheckSuperAlreadyCalledInstruction, CheckTdzInstruction, CheckThisInitializedInstruction,
-        ConstructInstruction, ConstructVarargsInstruction, CopyDataPropertiesInstruction,
-        DecInstruction, DefaultSuperCallInstruction, DefineNamedPropertyInstruction,
-        DefinePrivatePropertyFlags, DefinePrivatePropertyInstruction, DefinePropertyFlags,
-        DefinePropertyInstruction, DeleteBindingInstruction, DeletePropertyInstruction,
-        DivInstruction, DupScopeInstruction, ErrorConstInstruction,
-        ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction, ForInNextInstruction,
-        GeneratorStartInstruction, GetIteratorInstruction, GetNamedPropertyInstruction,
-        GetNamedSuperPropertyInstruction, GetPrivatePropertyInstruction, GetPropertyInstruction,
-        GetSuperConstructorInstruction, GetSuperPropertyInstruction, GreaterThanInstruction,
-        GreaterThanOrEqualInstruction, InInstruction, IncInstruction, InstanceOfInstruction,
-        Instruction, IteratorCloseInstruction, IteratorNextInstruction, JumpConstantInstruction,
-        JumpFalseConstantInstruction, JumpFalseInstruction, JumpInstruction,
-        JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+        AsyncIteratorCloseFinishInstruction, AsyncIteratorCloseStartInstruction, AwaitInstruction,
+        BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
+        CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
+        CallWithReceiverInstruction, CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
+        CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
+        CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
+        DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
+        DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
+        DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
+        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction,
+        ForInNextInstruction, GeneratorStartInstruction, GetAsyncIteratorInstruction,
+        GetIteratorInstruction, GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
+        GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
+        GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
+        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
+        IteratorCloseInstruction, IteratorNextInstruction, IteratorUnpackResultInstruction,
+        JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
+        JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
         JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
         JumpNullishConstantInstruction, JumpNullishInstruction,
         JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
@@ -991,11 +992,35 @@ impl VM {
                         OpCode::GetIterator => {
                             dispatch_or_throw!(GetIteratorInstruction, execute_get_iterator)
                         }
+                        OpCode::GetAsyncIterator => {
+                            dispatch_or_throw!(
+                                GetAsyncIteratorInstruction,
+                                execute_get_async_iterator
+                            )
+                        }
                         OpCode::IteratorNext => {
                             dispatch_or_throw!(IteratorNextInstruction, execute_iterator_next)
                         }
+                        OpCode::IteratorUnpackResult => {
+                            dispatch_or_throw!(
+                                IteratorUnpackResultInstruction,
+                                execute_iterator_unpack_result
+                            )
+                        }
                         OpCode::IteratorClose => {
                             dispatch_or_throw!(IteratorCloseInstruction, execute_iterator_close)
+                        }
+                        OpCode::AsyncIteratorCloseStart => {
+                            dispatch_or_throw!(
+                                AsyncIteratorCloseStartInstruction,
+                                execute_async_iterator_close_start
+                            )
+                        }
+                        OpCode::AsyncIteratorCloseFinish => {
+                            dispatch_or_throw!(
+                                AsyncIteratorCloseFinishInstruction,
+                                execute_async_iterator_close_finish
+                            )
                         }
                         OpCode::GeneratorStart => execute_generator_start!(get_instr),
                         OpCode::Yield => execute_yield!(get_instr),
@@ -3845,6 +3870,24 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_async_iterator<W: Width>(
+        &mut self,
+        instr: &GetAsyncIteratorInstruction<W>,
+    ) -> EvalResult<()> {
+        let iterable = self.read_register_to_handle(instr.iterable());
+        let iterator_dest = instr.iterator();
+        let next_method_dest = instr.next_method();
+
+        // May allocate
+        let iterator_result = maybe!(get_iterator(self.cx, iterable, IteratorHint::Async, None));
+
+        self.write_register(iterator_dest, iterator_result.iterator.get_().into());
+        self.write_register(next_method_dest, iterator_result.next_method.get());
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_iterator_next<W: Width>(
         &mut self,
         instr: &IteratorNextInstruction<W>,
@@ -3857,6 +3900,29 @@ impl VM {
         // Call the iterator's next method. May allocate.
         let iterator_result = maybe!(call(self.cx, next_method, iterator, &[]));
 
+        // Unpack iterator result and store value and is_done
+        self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+    }
+
+    #[inline]
+    fn execute_iterator_unpack_result<W: Width>(
+        &mut self,
+        instr: &IteratorUnpackResultInstruction<W>,
+    ) -> EvalResult<()> {
+        let iterator_result = self.read_register_to_handle(instr.iterator_result());
+        let value_dest = instr.value();
+        let is_done_dest = instr.is_done();
+
+        self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+    }
+
+    #[inline]
+    fn iterator_unpack_result<W: Width>(
+        &mut self,
+        iterator_result: Handle<Value>,
+        value_dest: Register<W>,
+        is_done_dest: Register<W>,
+    ) -> EvalResult<()> {
         // Iterator's function must return an object, otherwise error
         if !iterator_result.is_object() {
             return type_error(self.cx, "iterator's next method must return an object");
@@ -3896,6 +3962,44 @@ impl VM {
             if !return_result.is_object() {
                 return type_error(self.cx, "iterator's return method must return an object");
             }
+        }
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_async_iterator_close_start<W: Width>(
+        &mut self,
+        instr: &AsyncIteratorCloseStartInstruction<W>,
+    ) -> EvalResult<()> {
+        let return_result_dest = instr.return_result();
+        let has_return_method = instr.has_return_method();
+        let iterator = self.read_register_to_handle(instr.iterator());
+
+        // May allocate
+        let return_method = maybe!(get_method(self.cx, iterator, self.cx.names.return_()));
+
+        // Check if there is a return method and call it
+        if let Some(return_method) = return_method {
+            let return_result = maybe!(call_object(self.cx, return_method, iterator, &[]));
+            self.write_register(return_result_dest, return_result.get());
+        }
+
+        self.write_register(has_return_method, Value::bool(return_method.is_some()));
+
+        ().into()
+    }
+
+    #[inline]
+    fn execute_async_iterator_close_finish<W: Width>(
+        &mut self,
+        instr: &AsyncIteratorCloseFinishInstruction<W>,
+    ) -> EvalResult<()> {
+        let return_result = self.read_register(instr.return_result());
+
+        // Return method must return an object otherwise error.
+        if !return_result.is_object() {
+            return type_error(self.cx, "iterator's return method must return an object");
         }
 
         ().into()

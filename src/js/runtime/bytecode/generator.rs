@@ -6403,10 +6403,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &ast::ForEachStatement,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
-        if stmt.is_await {
-            unimplemented!("bytecode for for-await-of statement")
-        }
-
         self.gen_undefined_completion_if_necessary();
 
         let jump_targets =
@@ -6431,8 +6427,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Evaluate the right hand side and get its iterator
         let iterable = self.gen_outer_expression(&stmt.right)?;
-        self.writer
-            .get_iterator_instruction(iterator, next_method, iterable);
+
+        if stmt.is_await {
+            self.writer
+                .get_async_iterator_instruction(iterator, next_method, iterable);
+        } else {
+            self.writer
+                .get_iterator_instruction(iterator, next_method, iterable);
+        }
+
         self.register_allocator.release(iterable);
 
         // End of scope for evaluating the right hand side
@@ -6445,8 +6448,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Iteration starts by calling IteratorNext to get the value and done flag
         let value = self.register_allocator.allocate()?;
         let is_done = self.register_allocator.allocate()?;
-        self.writer
-            .iterator_next_instruction(value, is_done, iterator, next_method);
+
+        // For-await-of must await the iterator result before unpacking it, essentially breaking up
+        // the combined IteratorNext around the await.
+        if stmt.is_await {
+            let iterator_result = self.register_allocator.allocate()?;
+            self.writer.call_with_receiver_instruction(
+                iterator_result,
+                next_method,
+                iterator,
+                // Dummy argv since no args are provided
+                iterator,
+                UInt::new(0),
+            );
+
+            let awaited_result = self.gen_await(iterator_result, ExprDest::Any)?;
+            self.register_allocator.release(awaited_result);
+
+            self.writer
+                .iterator_unpack_result_instruction(value, is_done, awaited_result);
+        } else {
+            // Synchronous for-of can use a combined IteratorNext instruction
+            self.writer
+                .iterator_next_instruction(value, is_done, iterator, next_method);
+        }
 
         // If we are done then exit the loop, closing the iterator is not needed
         self.write_jump_true_instruction(is_done, loop_end_block)?;
@@ -6501,7 +6526,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Finally is only entered if there is an abrupt completion in the body, so always
             // try to close the iterator. Catch exceptions when closing the iterator.
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
-                Ok(this.writer.iterator_close_instruction(iterator))
+                if stmt.is_await {
+                    this.gen_async_iterator_close(iterator)
+                } else {
+                    Ok(this.writer.iterator_close_instruction(iterator))
+                }
             })?;
 
             // Otherwise enter the close exception handler
@@ -6690,6 +6719,37 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Otherwise we store to a temporary register
             _ => self.register_allocator.allocate(),
         }
+    }
+
+    fn gen_async_iterator_close(&mut self, iterator: GenRegister) -> EmitResult<()> {
+        let has_return_method = self.register_allocator.allocate()?;
+        let return_result = self.register_allocator.allocate()?;
+
+        // Perform the first part of AsyncIteratorClose up until the await, storing intermediate
+        // results in registers.
+        self.writer.async_iterator_close_start_instruction(
+            return_result,
+            has_return_method,
+            iterator,
+        );
+
+        // If there was no return method then there is no return result and we are done closing
+        let join_block = self.new_block();
+        self.write_jump_false_instruction(has_return_method, join_block)?;
+
+        // Otherwise there was a return result so await it
+        let awaited_return_result = self.gen_await(return_result, ExprDest::Any)?;
+
+        // And then finish the AsyncIteratorClosure using the stored intermediate results
+        self.writer
+            .async_iterator_close_finish_instruction(awaited_return_result);
+
+        self.start_block(join_block);
+
+        self.register_allocator.release(awaited_return_result);
+        self.register_allocator.release(has_return_method);
+
+        Ok(())
     }
 
     fn gen_while_statement(

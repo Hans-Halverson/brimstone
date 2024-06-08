@@ -14,8 +14,10 @@
     33: StoreGlobal r0, c11
     36: NewClosure r0, c12
     39: StoreGlobal r0, c13
-    42: LoadUndefined r0
-    44: Ret r0
+    42: NewAsyncClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: LoadUndefined r0
+    50: Ret r0
   Constant Table:
     0: [BytecodeFunction: basicVar]
     1: [String: basicVar]
@@ -31,6 +33,8 @@
     11: [String: lhsDestructuring]
     12: [BytecodeFunction: lhsTdz]
     13: [String: lhsTdz]
+    14: [BytecodeFunction: forAwaitOf]
+    15: [String: forAwaitOf]
 }
 
 [BytecodeFunction: basicVar] {
@@ -384,4 +388,48 @@
     7: Ret r0
   Constant Table:
     0: [String: y]
+}
+
+[BytecodeFunction: forAwaitOf] {
+  Parameters: 0, Registers: 9
+     0: NewPromise r1
+     2: LoadImmediate r2, 1
+     5: NewArray r4
+     7: GetAsyncIterator r2, r3, r4
+  .L0:
+    11: CallWithReceiver r6, r3, r2, r2, 0
+    17: Await r6, r7, r1, r6
+    22: JumpTrue r7, 5 (.L1)
+    25: Throw r6
+  .L1:
+    27: IteratorUnpackResult r4, r5, r6
+    31: JumpTrue r5, 43 (.L5)
+    34: Mov r0, r4
+    37: Mov r6, <scope>
+    40: LoadImmediate r7, 2
+    43: Jump 29 (.L4)
+    45: LoadImmediate r4, 0
+    48: Mov <scope>, r6
+    51: AsyncIteratorCloseStart r7, r6, r2
+    55: JumpFalse r6, 15 (.L3)
+    58: Await r7, r8, r1, r7
+    63: JumpTrue r8, 5 (.L2)
+    66: Throw r7
+  .L2:
+    68: AsyncIteratorCloseFinish r7
+  .L3:
+    70: Throw r5
+  .L4:
+    72: Jump -61 (.L0)
+  .L5:
+    74: LoadImmediate r2, 3
+    77: LoadUndefined r2
+    79: ResolvePromise r1, r2
+    82: Ret r1
+    84: RejectPromise r1, r2
+    87: Ret r1
+  Exception Handlers:
+    34-43 -> 45 (r5)
+    51-70 -> 70
+    2-84 -> 84 (r2)
 }

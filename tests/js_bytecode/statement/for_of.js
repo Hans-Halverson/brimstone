@@ -79,3 +79,11 @@ function lhsTdz() {
     function inner() { return y; }
   }
 }
+
+async function forAwaitOf() {
+  1;
+  for await (var x of []) {
+    2;
+  }
+  3;
+}

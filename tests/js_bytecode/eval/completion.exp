@@ -261,7 +261,7 @@
      5: 4f fc            NewArray r3
      7: 78 fe fd fc      GetIterator r1, r2, r3
   .L0:
-    11: 79 fc fb fe fd   IteratorNext r3, r4, r1, r2
+    11: 7a fc fb fe fd   IteratorNext r3, r4, r1, r2
     16: 3c fb 1a         JumpTrue r4, 26 (.L2)
     19: 0f fc 01         StoreDynamic r3, c1
     22: 02 fa 03         Mov r5, <scope>
@@ -269,7 +269,7 @@
     28: 3a 0c            Jump 12 (.L1)
     30: 03 fc 00         LoadImmediate r3, 0
     33: 02 03 fa         Mov <scope>, r5
-    36: 7a fe            IteratorClose r1
+    36: 7c fe            IteratorClose r1
     38: 6e fb            Throw r4
   .L1:
     40: 3a e3            Jump -29 (.L0)

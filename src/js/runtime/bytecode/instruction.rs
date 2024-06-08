@@ -1072,6 +1072,14 @@ define_instructions!(
         [2] iterable: Register,
     }
 
+    /// Get the async iterator for a given iterable, storing the iterator and its next method in
+    /// registers.
+    GetAsyncIterator(GetAsyncIteratorInstruction, get_async_iterator_instruction) {
+        [0] iterator: Register,
+        [1] next_method: Register,
+        [2] iterable: Register,
+    }
+
     /// Call the `next` method on an iterator, storing the returned value and boolean `is_done` flag
     /// in registers.
     IteratorNext(IteratorNextInstruction, iterator_next_instruction) {
@@ -1081,9 +1089,32 @@ define_instructions!(
         [3] next_method: Register,
     }
 
+    /// Unpack an iterator result object, storing the returned value and boolean `is_done` flag in
+    /// registers. Errors if the iterator result is not an object.
+    IteratorUnpackResult(IteratorUnpackResultInstruction, iterator_unpack_result_instruction) {
+        [0] value: Register,
+        [1] is_done: Register,
+        [2] iterator_result: Register,
+    }
+
     /// Close an iterator, calling its `return` method if it exists.
     IteratorClose(IteratorCloseInstruction, iterator_close_instruction) {
         [0] iterator: Register,
+    }
+
+    /// The portion of AsyncIteratorClose before the await. Closes an async iterator, calling its
+    /// `return` method if it exists. Stores whether the return method exists, and if so also stores
+    /// the return result in a register.
+    AsyncIteratorCloseStart(AsyncIteratorCloseStartInstruction, async_iterator_close_start_instruction) {
+        [0] return_result: Register,
+        [1] has_return_method: Register,
+        [2] iterator: Register,
+    }
+
+    /// The portion of AsyncIteratorClose after the await, taking the intermediate value from
+    /// AsyncIteratorCloseStart.
+    AsyncIteratorCloseFinish(AsyncIteratorCloseFinishInstruction, async_iterator_close_finish_instruction) {
+        [0] return_result: Register,
     }
 
     /// Create a generator in the current function. Suspends the current function and returns the

@@ -4233,7 +4233,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_await(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
-        self.register_allocator.release(value);
+        // Only release if destination is not the same as the source register
+        if !matches!(dest, ExprDest::Fixed(dest) if dest == value) {
+            self.register_allocator.release(value);
+        }
+
         let completion_value = self.allocate_destination(dest)?;
         let completion_type = self.register_allocator.allocate()?;
 
@@ -4284,17 +4288,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
         let mut yield_value = value;
-        let completion_value_dest;
 
         if self.is_async() {
             yield_value = self.gen_await(yield_value, ExprDest::Any)?;
-            completion_value_dest = ExprDest::Any;
-        } else {
-            completion_value_dest = dest;
         }
 
         self.register_allocator.release(yield_value);
-        let mut completion_value = self.allocate_destination(completion_value_dest)?;
+        let completion_value = self.allocate_destination(dest)?;
         let completion_type = self.register_allocator.allocate()?;
 
         // Find the generator register from the stored index
@@ -4318,7 +4318,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Must be a return completion if execution falls through. Async generators must first
         // await the completion value before returning it.
         if self.is_async() {
-            completion_value = self.gen_await(completion_value, dest)?;
+            self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
         }
 
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;

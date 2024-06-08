@@ -65,7 +65,7 @@ impl GeneratorState {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum GeneratorCompletionType {
     Normal,

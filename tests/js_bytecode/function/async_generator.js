@@ -29,3 +29,11 @@ async function *withAwait() {
   await 2;
   3;
 }
+
+var global = 0;
+
+async function *yieldDestination() {
+  var x = 1;
+  x = yield;
+  global = yield;
+}

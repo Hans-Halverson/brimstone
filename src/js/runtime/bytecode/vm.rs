@@ -407,7 +407,6 @@ impl VM {
                             async_generator,
                             EvalResult::Ok(yield_value),
                             /* is_done */ false,
-                            None,
                         );
 
                         if let Some(request) = async_generator.peek_request_ptr() {

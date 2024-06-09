@@ -273,7 +273,6 @@ pub fn async_generator_complete_step(
     mut async_generator: Handle<AsyncGeneratorObject>,
     completion: EvalResult<Handle<Value>>,
     is_done: bool,
-    realm: Option<Handle<Realm>>,
 ) {
     debug_assert!(async_generator.request_queue.is_some());
 
@@ -282,14 +281,8 @@ pub fn async_generator_complete_step(
 
     match completion {
         EvalResult::Ok(value) => {
-            // Create iterator object in the given realm if specified
-            let result_object = if let Some(_) = realm {
-                todo!()
-            } else {
-                create_iter_result_object(cx, value, is_done).into()
-            };
-
-            must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object]));
+            let result_object = create_iter_result_object(cx, value, is_done);
+            must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object.into()]));
         }
         EvalResult::Throw(value) => {
             must!(call_object(cx, capability.reject(), cx.undefined(), &[value],));
@@ -332,7 +325,7 @@ pub fn async_generator_resume(
     // Otherwise body returned or throw so the generator has completed
     async_generator.state = AsyncGeneratorState::Completed;
 
-    async_generator_complete_step(cx, async_generator, completion, /* is_done */ true, None);
+    async_generator_complete_step(cx, async_generator, completion, /* is_done */ true);
     async_generator_drain_queue(cx, async_generator);
 }
 
@@ -395,9 +388,7 @@ pub fn await_return_resolve(
         async_generator,
         EvalResult::Ok(value),
         /* is_done */ true,
-        None,
     );
-
     async_generator_drain_queue(cx, async_generator);
 
     cx.undefined().into()
@@ -421,7 +412,6 @@ pub fn await_return_reject(
         async_generator,
         EvalResult::Throw(value),
         /* is_done */ true,
-        None,
     );
 
     async_generator_drain_queue(cx, async_generator);
@@ -470,7 +460,6 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
                     async_generator,
                     completion,
                     /* is_done */ true,
-                    None,
                 );
             }
             GeneratorCompletionType::Throw => {
@@ -480,7 +469,6 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
                     async_generator,
                     completion,
                     /* is_done */ true,
-                    None,
                 );
             }
         }
@@ -494,6 +482,7 @@ impl HeapObject for HeapPtr<AsyncGeneratorObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
+        visitor.visit_pointer_opt(&mut self.request_queue);
 
         if self.state.is_suspended() {
             let mut stack_frame = StackFrame::for_fp(self.current_fp().cast_mut());

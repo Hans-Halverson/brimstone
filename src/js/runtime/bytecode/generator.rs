@@ -4271,10 +4271,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::YieldExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        if expr.is_delegate {
-            unimplemented!("bytecode for yield* expression")
-        }
-
         let yield_value = if let Some(argument) = expr.argument.as_ref() {
             self.gen_expression(argument)?
         } else {
@@ -4283,25 +4279,48 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             yield_value
         };
 
-        self.gen_yield(yield_value, dest)
+        if expr.is_delegate {
+            self.gen_yield_star(yield_value, dest)
+        } else if self.is_async() {
+            self.gen_async_yield(yield_value, dest)
+        } else {
+            self.gen_yield(yield_value, dest)
+        }
     }
 
     fn gen_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
-        let mut yield_value = value;
+        self.register_allocator.release(value);
 
-        if self.is_async() {
-            yield_value = self.gen_await(yield_value, ExprDest::Any)?;
-        }
-
-        self.register_allocator.release(yield_value);
         let completion_value = self.allocate_destination(dest)?;
-        let completion_type = self.register_allocator.allocate()?;
+        let temp_value = self.register_allocator.allocate()?;
+
+        // Write the value to the temp value register
+        self.write_mov_instruction(temp_value, value);
+
+        // Create an iterator result object that holds the yielded value
+        let iter_result = self.register_allocator.allocate()?;
+        self.writer.new_object_instruction(iter_result);
+
+        // Iterator result object holds the yielded value
+        let value_constant_index = self.add_string_constant("value")?;
+        self.writer
+            .set_named_property_instruction(iter_result, value_constant_index, temp_value);
+
+        // Iterator result object is marked as not done
+        let done_constant_index = self.add_string_constant("done")?;
+        self.writer.load_false_instruction(temp_value);
+        self.writer
+            .set_named_property_instruction(iter_result, done_constant_index, temp_value);
 
         // Find the generator register from the stored index
         let generator = Register::local(self.generator_index.unwrap() as usize);
 
+        // Reuse the temp value register as the completion type for the remainder of the yield
+        let completion_type = temp_value;
+
         self.writer
-            .yield_instruction(completion_value, completion_type, generator, yield_value);
+            .yield_instruction(completion_value, completion_type, generator, iter_result);
+        self.register_allocator.release(iter_result);
 
         // Check the completion type and handle accordingly
         let normal_block = self.new_block();
@@ -4315,12 +4334,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.register_allocator.release(completion_type);
 
-        // Must be a return completion if execution falls through. Async generators must first
-        // await the completion value before returning it.
-        if self.is_async() {
-            self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
-        }
-
+        // Must be a return completion if execution falls through.
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
 
         // Otherwise is a throw completion
@@ -4330,6 +4344,289 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(normal_block);
 
         Ok(completion_value)
+    }
+
+    fn gen_async_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+        let awaited_value = self.gen_await(value, ExprDest::Any)?;
+
+        self.register_allocator.release(awaited_value);
+        let completion_value = self.allocate_destination(dest)?;
+        let completion_type = self.register_allocator.allocate()?;
+
+        // Find the generator register from the stored index
+        let generator = Register::local(self.generator_index.unwrap() as usize);
+
+        self.writer
+            .yield_instruction(completion_value, completion_type, generator, awaited_value);
+
+        // Check the completion type and handle accordingly
+        let normal_block = self.new_block();
+        let throw_block = self.new_block();
+
+        // All abnormal completions are nullish, so jump directly to the normal block
+        self.write_jump_not_nullish_instruction(completion_type, normal_block)?;
+
+        // Otherwise check if this is a return or throw completion
+        self.write_jump_not_undefined_instruction(completion_type, throw_block)?;
+
+        self.register_allocator.release(completion_type);
+
+        // Must be a return completion if execution falls through. Must await the completion and
+        // then return it.
+        self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+        self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
+
+        // Otherwise is a throw completion
+        self.start_block(throw_block);
+        self.writer.throw_instruction(completion_value);
+
+        self.start_block(normal_block);
+
+        Ok(completion_value)
+    }
+
+    fn gen_yield_star(&mut self, argument: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+        self.register_allocator.release(argument);
+
+        let dest = self.allocate_destination(dest)?;
+        let iterator = self.register_allocator.allocate()?;
+        let next_method = self.register_allocator.allocate()?;
+
+        if self.is_async() {
+            self.writer
+                .get_async_iterator_instruction(iterator, next_method, argument);
+        } else {
+            self.writer
+                .get_iterator_instruction(iterator, next_method, argument);
+        }
+
+        let done_constant_index = self.add_string_constant("done")?;
+        let value_constant_index = self.add_string_constant("value")?;
+        let throw_constant_index = self.add_string_constant("throw")?;
+        let return_constant_index = self.add_string_constant("return")?;
+
+        let completion_value = self.register_allocator.allocate()?;
+        let completion_type = self.register_allocator.allocate()?;
+
+        // Start with a normal, undefined completion
+        self.writer.load_undefined_instruction(completion_value);
+        self.writer.load_true_instruction(completion_type);
+
+        let iterator_result = self.register_allocator.allocate()?;
+        let is_done = self.register_allocator.allocate()?;
+
+        let loop_start = self.new_block();
+        let abnormal_block = self.new_block();
+        let throw_block = self.new_block();
+        let loop_yield_footer = self.new_block();
+        let join_block = self.new_block();
+
+        self.start_block(loop_start);
+
+        // All abnormal completions are nullish so check if we can proceed to the normal block
+        self.write_jump_nullish_instruction(completion_type, abnormal_block)?;
+
+        // Normal completion block starts by calling the iterator's next method, awaiting result
+        self.writer.call_with_receiver_instruction(
+            iterator_result,
+            next_method,
+            iterator,
+            completion_value,
+            UInt::new(1),
+        );
+
+        if self.is_async() {
+            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+        }
+
+        // Check if the iterator result is valid then check if iterator is done
+        self.writer
+            .check_iterator_result_object_instruction(iterator_result);
+        self.writer
+            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+
+        // If iterator is not done then continue to yield
+        let done_block = self.new_block();
+        self.write_jump_true_instruction(is_done, done_block)?;
+        self.write_jump_instruction(loop_yield_footer)?;
+
+        // If iterator is done then yield* evaluates to the result object's current value
+        self.start_block(done_block);
+        self.writer
+            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.write_jump_instruction(join_block)?;
+
+        // Yield had an abnormal completion - check if this is a return or throw
+        self.start_block(abnormal_block);
+        self.write_jump_not_undefined_instruction(completion_type, throw_block)?;
+
+        // Must be a return completion if execution falls through. Extract the iterator's return
+        // method if it exists.
+        let return_method = self.register_allocator.allocate()?;
+        self.writer
+            .get_method_instruction(return_method, iterator, return_constant_index);
+
+        // If return method does not exist then return the (awaited) completion value
+        let has_return_method_block = self.new_block();
+        self.write_jump_not_undefined_instruction(return_method, has_return_method_block)?;
+
+        if self.is_async() {
+            self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+        }
+
+        self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
+
+        // If return method does exist then call it
+        self.start_block(has_return_method_block);
+        self.writer.call_with_receiver_instruction(
+            iterator_result,
+            return_method,
+            iterator,
+            completion_value,
+            UInt::new(1),
+        );
+        self.register_allocator.release(return_method);
+
+        if self.is_async() {
+            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+        }
+
+        // Check if the iterator result is valid then check if iterator is done
+        self.writer
+            .check_iterator_result_object_instruction(iterator_result);
+        self.writer
+            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+
+        // If iterator is not done then continue to yield
+        let done_block = self.new_block();
+        self.write_jump_true_instruction(is_done, done_block)?;
+        self.write_jump_instruction(loop_yield_footer)?;
+
+        // If iterator is done then return the result object's current value
+        self.start_block(done_block);
+        let return_value = self.register_allocator.allocate()?;
+        self.writer.get_named_property_instruction(
+            return_value,
+            iterator_result,
+            value_constant_index,
+        );
+        self.gen_return(Some(return_value), /* derived_constructor_scope */ None)?;
+        self.register_allocator.release(return_value);
+
+        // Handle a throw completion from the yield
+        self.start_block(throw_block);
+
+        // Extract the throw method from the iterator if one exists
+        let throw_method = self.register_allocator.allocate()?;
+        self.writer
+            .get_method_instruction(throw_method, iterator, throw_constant_index);
+
+        // If throw method does not exist then close the iterator and throw an error
+        let has_throw_method_block = self.new_block();
+        self.write_jump_not_undefined_instruction(throw_method, has_throw_method_block)?;
+
+        if self.is_async() {
+            self.gen_async_iterator_close(iterator)?;
+        } else {
+            self.writer.iterator_close_instruction(iterator);
+        }
+
+        self.writer.error_iterator_no_throw_method_instruction();
+
+        // If throw method does exist then call it
+        self.start_block(has_throw_method_block);
+        self.writer.call_with_receiver_instruction(
+            iterator_result,
+            throw_method,
+            iterator,
+            completion_value,
+            UInt::new(1),
+        );
+        self.register_allocator.release(throw_method);
+
+        if self.is_async() {
+            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+        }
+
+        // Check if the iterator result is valid then check if iterator is done
+        self.writer
+            .check_iterator_result_object_instruction(iterator_result);
+        self.writer
+            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+
+        // If iterator is not done then continue to yield
+        let done_block = self.new_block();
+        self.write_jump_true_instruction(is_done, done_block)?;
+        self.write_jump_instruction(loop_yield_footer)?;
+
+        // If iterator is done then yield* evaluates to the result object's current value
+        self.start_block(done_block);
+        self.writer
+            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.write_jump_instruction(join_block)?;
+
+        // If the iterator is not done we end here, performing a yield then starting another
+        // iteration of the loop.
+        self.start_block(loop_yield_footer);
+
+        // Find the generator register from the stored index
+        let generator = Register::local(self.generator_index.unwrap() as usize);
+
+        if !self.is_async() {
+            // Yielding in a sync generator is easy - simply yield the entire iter result object
+            self.writer.yield_instruction(
+                completion_value,
+                completion_type,
+                generator,
+                iterator_result,
+            );
+        } else {
+            // Async generators must extract the value from the iter result object and yield it
+            let value = self.register_allocator.allocate()?;
+            self.writer.get_named_property_instruction(
+                value,
+                iterator_result,
+                value_constant_index,
+            );
+
+            self.writer
+                .yield_instruction(completion_value, completion_type, generator, value);
+            self.register_allocator.release(value);
+
+            // If yield had a non-return completion then start loop again
+            self.write_jump_not_undefined_instruction(completion_type, loop_start)?;
+
+            // Await the completion value and store as a new completion, which may be a normal or
+            // throw completion.
+            self.writer.await_instruction(
+                completion_value,
+                completion_type,
+                generator,
+                completion_value,
+            );
+
+            // If completion is now a throw, use it directly as the new completion for next
+            // iteration of the loop.
+            self.write_jump_nullish_instruction(completion_type, loop_start)?;
+
+            // Otherwise completion was normal - convert to a return completion and continue to next
+            // iteration of loop.
+            self.writer.load_undefined_instruction(completion_type);
+        }
+
+        // Start the loop again once the yield completes
+        self.write_jump_instruction(loop_start)?;
+
+        self.start_block(join_block);
+
+        self.register_allocator.release(is_done);
+        self.register_allocator.release(iterator_result);
+        self.register_allocator.release(completion_type);
+        self.register_allocator.release(completion_value);
+        self.register_allocator.release(next_method);
+        self.register_allocator.release(iterator);
+
+        Ok(dest)
     }
 
     /// Generate a super member expression. Write the object's register to the `call_receiver` register if

@@ -1,0 +1,159 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewGenerator r0, c0
+     3: StoreGlobal r0, c1
+     6: NewAsyncGenerator r0, c2
+     9: StoreGlobal r0, c3
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: syncYieldStar]
+    1: [String: syncYieldStar]
+    2: [BytecodeFunction: asyncYieldStar]
+    3: [String: asyncYieldStar]
+}
+
+[BytecodeFunction: syncYieldStar] {
+  Parameters: 1, Registers: 9
+      0: GeneratorStart r0
+      2: GetIterator r2, r3, a0
+      6: LoadUndefined r4
+      8: LoadTrue r5
+  .L0:
+     10: JumpNullish r5, 26 (.L2)
+     13: CallWithReceiver r6, r3, r2, r4, 1
+     19: CheckIteratorResultObject r6
+     21: GetNamedProperty r7, r6, c0
+     25: JumpTrue r7, 5 (.L1)
+     28: Jump 76 (.L8)
+  .L1:
+     30: GetNamedProperty r1, r6, c1
+     34: Jump 77 (.L9)
+  .L2:
+     36: JumpNotUndefined r5, 35 (.L5)
+     39: GetMethod r8, r2, c3
+     43: JumpNotUndefined r8, 5 (.L3)
+     46: Ret r4
+  .L3:
+     48: CallWithReceiver r6, r8, r2, r4, 1
+     54: CheckIteratorResultObject r6
+     56: GetNamedProperty r7, r6, c0
+     60: JumpTrue r7, 5 (.L4)
+     63: Jump 41 (.L8)
+  .L4:
+     65: GetNamedProperty r8, r6, c1
+     69: Ret r8
+  .L5:
+     71: GetMethod r8, r2, c2
+     75: JumpNotUndefined r8, 6 (.L6)
+     78: IteratorClose r2
+     80: ErrorIteratorNoThrowMethod 
+  .L6:
+     81: CallWithReceiver r6, r8, r2, r4, 1
+     87: CheckIteratorResultObject r6
+     89: GetNamedProperty r7, r6, c0
+     93: JumpTrue r7, 5 (.L7)
+     96: Jump 8 (.L8)
+  .L7:
+     98: GetNamedProperty r1, r6, c1
+    102: Jump 9 (.L9)
+  .L8:
+    104: Yield r4, r5, r0, r6
+    109: Jump -99 (.L0)
+  .L9:
+    111: Ret r1
+  Constant Table:
+    0: [String: done]
+    1: [String: value]
+    2: [String: throw]
+    3: [String: return]
+}
+
+[BytecodeFunction: asyncYieldStar] {
+  Parameters: 1, Registers: 12
+      0: GeneratorStart r0
+      2: GetAsyncIterator r2, r3, a0
+      6: LoadUndefined r4
+      8: LoadTrue r5
+  .L0:
+     10: JumpNullish r5, 36 (.L3)
+     13: CallWithReceiver r6, r3, r2, r4, 1
+     19: Await r6, r8, r0, r6
+     24: JumpTrue r8, 5 (.L1)
+     27: Throw r6
+  .L1:
+     29: CheckIteratorResultObject r6
+     31: GetNamedProperty r7, r6, c0
+     35: JumpTrue r7, 5 (.L2)
+     38: Jump 123 (.L15)
+  .L2:
+     40: GetNamedProperty r1, r6, c1
+     44: JumpConstant c4 (.L4)
+  .L3:
+     46: JumpNotUndefined r5, 55 (.L9)
+     49: GetMethod r8, r2, c3
+     53: JumpNotUndefined r8, 15 (.L6)
+     56: Await r4, r9, r0, r4
+     61: JumpTrue r9, 5 (.L5)
+     64: Throw r4
+  .L5:
+     66: Ret r4
+  .L6:
+     68: CallWithReceiver r6, r8, r2, r4, 1
+     74: Await r6, r8, r0, r6
+     79: JumpTrue r8, 5 (.L7)
+     82: Throw r6
+  .L7:
+     84: CheckIteratorResultObject r6
+     86: GetNamedProperty r7, r6, c0
+     90: JumpTrue r7, 5 (.L8)
+     93: Jump 68 (.L15)
+  .L8:
+     95: GetNamedProperty r8, r6, c1
+     99: Ret r8
+  .L9:
+    101: GetMethod r8, r2, c2
+    105: JumpNotUndefined r8, 23 (.L12)
+    108: AsyncIteratorCloseStart r10, r9, r2
+    112: JumpFalse r9, 15 (.L11)
+    115: Await r10, r11, r0, r10
+    120: JumpTrue r11, 5 (.L10)
+    123: Throw r10
+  .L10:
+    125: AsyncIteratorCloseFinish r10
+  .L11:
+    127: ErrorIteratorNoThrowMethod 
+  .L12:
+    128: CallWithReceiver r6, r8, r2, r4, 1
+    134: Await r6, r8, r0, r6
+    139: JumpTrue r8, 5 (.L13)
+    142: Throw r6
+  .L13:
+    144: CheckIteratorResultObject r6
+    146: GetNamedProperty r7, r6, c0
+    150: JumpTrue r7, 5 (.L14)
+    153: Jump 8 (.L15)
+  .L14:
+    155: GetNamedProperty r1, r6, c1
+    159: Jump 35 (.L16)
+  .L15:
+    161: GetNamedProperty r8, r6, c1
+    165: Yield r4, r5, r0, r8
+    170: JumpNotUndefined (Wide) r5, -160 (.L0)
+    176: Await r4, r5, r0, r4
+    181: JumpNullish (Wide) r5, -171 (.L0)
+    188: LoadUndefined r5
+    190: Jump (Wide) -180 (.L0)
+  .L16:
+    194: Await r1, r2, r0, r1
+    199: JumpTrue r2, 5 (.L17)
+    202: Throw r1
+  .L17:
+    204: Ret r1
+  Constant Table:
+    0: [String: done]
+    1: [String: value]
+    2: [String: throw]
+    3: [String: return]
+    4: 150
+}

@@ -4,7 +4,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
-            define_property_or_throw, get_method, has_property, private_get, private_set, set,
+            define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
+            set,
         },
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
@@ -48,8 +49,8 @@ use crate::{
         scope_names::ScopeNames,
         to_string,
         type_utilities::{
-            is_callable_object, is_loosely_equal, is_strictly_equal, same_object_value, to_boolean,
-            to_number, to_numeric, to_object, to_property_key,
+            is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
+            same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
         value::{AccessorValue, BigIntValue, SymbolValue},
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
@@ -66,15 +67,17 @@ use super::{
         AsyncIteratorCloseFinishInstruction, AsyncIteratorCloseStartInstruction, AwaitInstruction,
         BitAndInstruction, BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
         CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction, CallVarargsInstruction,
-        CallWithReceiverInstruction, CheckSuperAlreadyCalledInstruction, CheckTdzInstruction,
-        CheckThisInitializedInstruction, ConstructInstruction, ConstructVarargsInstruction,
-        CopyDataPropertiesInstruction, DecInstruction, DefaultSuperCallInstruction,
-        DefineNamedPropertyInstruction, DefinePrivatePropertyFlags,
-        DefinePrivatePropertyInstruction, DefinePropertyFlags, DefinePropertyInstruction,
-        DeleteBindingInstruction, DeletePropertyInstruction, DivInstruction, DupScopeInstruction,
-        ErrorConstInstruction, ErrorDeleteSuperPropertyInstruction, EvalFlags, ExpInstruction,
-        ForInNextInstruction, GeneratorStartInstruction, GetAsyncIteratorInstruction,
-        GetIteratorInstruction, GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
+        CallWithReceiverInstruction, CheckIteratorResultObjectInstruction,
+        CheckSuperAlreadyCalledInstruction, CheckTdzInstruction, CheckThisInitializedInstruction,
+        ConstructInstruction, ConstructVarargsInstruction, CopyDataPropertiesInstruction,
+        DecInstruction, DefaultSuperCallInstruction, DefineNamedPropertyInstruction,
+        DefinePrivatePropertyFlags, DefinePrivatePropertyInstruction, DefinePropertyFlags,
+        DefinePropertyInstruction, DeleteBindingInstruction, DeletePropertyInstruction,
+        DivInstruction, DupScopeInstruction, ErrorConstInstruction,
+        ErrorDeleteSuperPropertyInstruction, ErrorIteratorNoThrowMethodInstruction, EvalFlags,
+        ExpInstruction, ForInNextInstruction, GeneratorStartInstruction,
+        GetAsyncIteratorInstruction, GetIteratorInstruction, GetMethodInstruction,
+        GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
         GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
         GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
         InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
@@ -929,6 +932,10 @@ impl VM {
                                 execute_copy_data_properties
                             )
                         }
+
+                        OpCode::GetMethod => {
+                            dispatch_or_throw!(GetMethodInstruction, execute_get_method)
+                        }
                         OpCode::PushLexicalScope => {
                             dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
                         }
@@ -971,6 +978,12 @@ impl VM {
                                 execute_check_super_already_called
                             )
                         }
+                        OpCode::CheckIteratorResultObject => {
+                            dispatch_or_throw!(
+                                CheckIteratorResultObjectInstruction,
+                                execute_check_iterator_result_object
+                            )
+                        }
                         OpCode::ErrorConst => {
                             dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
                         }
@@ -978,6 +991,12 @@ impl VM {
                             dispatch_or_throw!(
                                 ErrorDeleteSuperPropertyInstruction,
                                 execute_error_delete_super_property
+                            )
+                        }
+                        OpCode::ErrorIteratorNoThrowMethod => {
+                            dispatch_or_throw!(
+                                ErrorIteratorNoThrowMethodInstruction,
+                                execute_error_iterator_no_throw_method
                             )
                         }
                         OpCode::NewForInIterator => {
@@ -3583,6 +3602,27 @@ impl VM {
     }
 
     #[inline]
+    fn execute_get_method<W: Width>(&mut self, instr: &GetMethodInstruction<W>) -> EvalResult<()> {
+        let dest = instr.dest();
+        let object = self.read_register_to_handle(instr.object());
+        let key = self.get_constant(instr.name()).as_string().to_handle();
+
+        let key = PropertyKey::string(self.cx, key).to_handle(self.cx);
+
+        let function = maybe!(get_v(self.cx, object, key));
+
+        if function.is_nullish() {
+            self.write_register(dest, Value::undefined());
+        } else if !is_callable(function) {
+            return type_error(self.cx, "value is not a function");
+        } else {
+            self.write_register(dest, function.get());
+        }
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_push_lexical_scope<W: Width>(&mut self, instr: &PushLexicalScopeInstruction<W>) {
         let scope = self.scope().to_handle();
         let scope_names = self
@@ -3799,6 +3839,20 @@ impl VM {
     }
 
     #[inline]
+    fn execute_check_iterator_result_object<W: Width>(
+        &mut self,
+        instr: &CheckIteratorResultObjectInstruction<W>,
+    ) -> EvalResult<()> {
+        let value = self.read_register(instr.value());
+
+        if !value.is_object() {
+            return type_error(self.cx, "iterator result must be an object");
+        }
+
+        ().into()
+    }
+
+    #[inline]
     fn execute_error_const<W: Width>(
         &mut self,
         instr: &ErrorConstInstruction<W>,
@@ -3817,6 +3871,14 @@ impl VM {
         _: &ErrorDeleteSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
         reference_error(self.cx, "cannot delete super property")
+    }
+
+    #[inline]
+    fn execute_error_iterator_no_throw_method<W: Width>(
+        &mut self,
+        _: &ErrorIteratorNoThrowMethodInstruction<W>,
+    ) -> EvalResult<()> {
+        type_error(self.cx, "iterator does not have a throw method")
     }
 
     #[inline]

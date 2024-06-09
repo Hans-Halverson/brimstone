@@ -952,6 +952,15 @@ define_instructions!(
         [3] argc: UInt,
     }
 
+    /// Lookup a method with the given name on a value, storing the result in dest. If there is no
+    /// property with the given name the result is undefined. If there is a property but it is not
+    /// nullish and not callable then error.
+    GetMethod (GetMethodInstruction, get_method_instruction) {
+        [0] dest: Register,
+        [1] object: Register,
+        [2] name: ConstantIndex,
+    }
+
     /// Create a new lexical scope and push it to the stack, becoming the current scope. The old
     /// current scope becomes the parent scope.
     ///
@@ -1041,6 +1050,11 @@ define_instructions!(
         [0] value: Register,
     }
 
+    /// Check whether a value is valid as the return value of an iterator, throwing an error if not.
+    CheckIteratorResultObject(CheckIteratorResultObjectInstruction, check_iterator_result_object_instruction) {
+        [0] value: Register,
+    }
+
     /// Throw a TypeError for attempting to assign an already initialized const binding.
     ErrorConst(ErrorConstInstruction, error_const_instruction) {
         [0] name_constant_index: ConstantIndex,
@@ -1048,6 +1062,10 @@ define_instructions!(
 
     /// Throw a ReferenceError for attempting to delete a super property.
     ErrorDeleteSuperProperty (ErrorDeleteSuperPropertyInstruction, error_delete_super_property_instruction) {}
+
+    /// Throw a TypeError for a throw completion in a yield* where the iterator does not have a
+    /// throw method.
+    ErrorIteratorNoThrowMethod (ErrorIteratorNoThrowMethodInstruction, error_iterator_no_throw_method_instruction) {}
 
     /// Create a new for-in iterator for the given object, storing in dest. Gathers all the iterable
     /// keys of the object and its prototype chain, storing them in the iterator. Expects that the

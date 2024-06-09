@@ -250,11 +250,14 @@ fn generate_resume_impl(
         .vm()
         .resume_generator(generator, completion_value, completion_type);
 
+    // A yielding generator returns the yielded value
+    if generator.state == GeneratorState::SuspendedYield {
+        return next_completion;
+    }
+
     // If the generator did not yield then it either returned or threw. In either case mark the
     // generator as completed.
-    if generator.state != GeneratorState::SuspendedYield {
-        generator.state = GeneratorState::Completed;
-    }
+    generator.state = GeneratorState::Completed;
 
     let next_value = maybe!(next_completion);
     let is_done = generator.state == GeneratorState::Completed;

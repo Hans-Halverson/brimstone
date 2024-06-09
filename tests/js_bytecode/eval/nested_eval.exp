@@ -78,8 +78,8 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 3
-     0: 67 00               PushLexicalScope c0
-     2: 6d 07 00 00         StoreToScope <this>, 0, 0
+     0: 68 00               PushLexicalScope c0
+     2: 6e 07 00 00         StoreToScope <this>, 0, 0
      6: 0d fe 01            LoadDynamic r1, c1
      9: 04 fd 02            LoadConstant r2, c2
     12: 13 ff fe fd 01 03   CallMaybeEval r0, r1, r2, 1, 3
@@ -97,8 +97,8 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-     0: 67 00            PushLexicalScope c0
-     2: 6d 07 00 00      StoreToScope <this>, 0, 0
+     0: 68 00            PushLexicalScope c0
+     2: 6e 07 00 00      StoreToScope <this>, 0, 0
      6: 4a fe 01         NewClosure r1, c1
      9: 10 ff fe fe 00   Call r0, r1, r1, 0
     14: 18 ff            Ret r0
@@ -109,11 +109,11 @@
 
 [BytecodeFunction: <anonymous>] {
   Parameters: 0, Registers: 2
-     0: 68 00               PushFunctionScope c0
-     2: 6d 07 00 00         StoreToScope <this>, 0, 0
-     6: 6d ff 02 00         StoreToScope r0, 2, 0
+     0: 69 00               PushFunctionScope c0
+     2: 6e 07 00 00         StoreToScope <this>, 0, 0
+     6: 6e ff 02 00         StoreToScope r0, 2, 0
     10: 52 ff               NewUnmappedArguments r0
-    12: 6d ff 01 00         StoreToScope r0, 1, 0
+    12: 6e ff 01 00         StoreToScope r0, 1, 0
     16: 0d ff 01            LoadDynamic r0, c1
     19: 04 fe 02            LoadConstant r1, c2
     22: 13 ff ff fe 01 01   CallMaybeEval r0, r0, r1, 1, 1

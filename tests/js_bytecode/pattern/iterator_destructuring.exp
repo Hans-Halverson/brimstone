@@ -596,7 +596,7 @@
 }
 
 [BytecodeFunction: withYield] {
-  Parameters: 1, Registers: 10
+  Parameters: 1, Registers: 11
       0: GeneratorStart r1
       2: Mov r6, <scope>
       5: GetIterator r2, r7, a0
@@ -604,49 +604,56 @@
      14: JumpFalse r3, 5 (.L0)
      17: LoadUndefined r8
   .L0:
-     19: JumpNotUndefined r8, 26 (.L2)
+     19: JumpNotUndefined r8, 38 (.L2)
      22: LoadUndefined r9
-     24: Yield r8, r9, r1, r9
-     29: JumpNotNullish r9, 16 (.L2)
-     32: JumpNotUndefined r9, 11 (.L1)
-     35: LoadImmediate r4, 1
-     38: Mov r5, r8
-     41: Jump 18 (.L3)
+     24: NewObject r10
+     26: SetNamedProperty r10, c0, r9
+     30: LoadFalse r9
+     32: SetNamedProperty r10, c1, r9
+     36: Yield r8, r9, r1, r10
+     41: JumpNotNullish r9, 16 (.L2)
+     44: JumpNotUndefined r9, 11 (.L1)
+     47: LoadImmediate r4, 1
+     50: Mov r5, r8
+     53: Jump 18 (.L3)
   .L1:
-     43: Throw r8
+     55: Throw r8
   .L2:
-     45: Mov r0, r8
-     48: JumpTrue r3, 62 (.L8)
-     51: LoadImmediate r4, 2
-     54: Jump 5 (.L3)
-     56: LoadImmediate r4, 0
+     57: Mov r0, r8
+     60: JumpTrue r3, 62 (.L8)
+     63: LoadImmediate r4, 2
+     66: Jump 5 (.L3)
+     68: LoadImmediate r4, 0
   .L3:
-     59: Mov <scope>, r6
-     62: JumpTrue r3, 22 (.L5)
-     65: IteratorClose r2
-     67: Jump 17 (.L5)
-     69: LoadImmediate r7, 0
-     72: StrictNotEqual r7, r7, r4
-     76: JumpTrue r7, 6 (.L4)
-     79: Mov r6, r5
+     71: Mov <scope>, r6
+     74: JumpTrue r3, 22 (.L5)
+     77: IteratorClose r2
+     79: Jump 17 (.L5)
+     81: LoadImmediate r7, 0
+     84: StrictNotEqual r7, r7, r4
+     88: JumpTrue r7, 6 (.L4)
+     91: Mov r6, r5
   .L4:
-     82: Throw r6
+     94: Throw r6
   .L5:
-     84: LoadImmediate r6, 0
-     87: StrictEqual r6, r4, r6
-     91: JumpFalse r6, 5 (.L6)
-     94: Throw r5
-  .L6:
-     96: LoadImmediate r6, 2
+     96: LoadImmediate r6, 0
      99: StrictEqual r6, r4, r6
-    103: JumpFalse r6, 5 (.L7)
-    106: Jump 4 (.L8)
+    103: JumpFalse r6, 5 (.L6)
+    106: Throw r5
+  .L6:
+    108: LoadImmediate r6, 2
+    111: StrictEqual r6, r4, r6
+    115: JumpFalse r6, 5 (.L7)
+    118: Jump 4 (.L8)
   .L7:
-    108: Ret r5
+    120: Ret r5
   .L8:
-    110: LoadUndefined r2
-    112: Ret r2
+    122: LoadUndefined r2
+    124: Ret r2
+  Constant Table:
+    0: [String: value]
+    1: [String: done]
   Exception Handlers:
-    19-48 -> 56 (r5)
-    65-67 -> 69 (r6)
+    19-60 -> 68 (r5)
+    77-79 -> 81 (r6)
 }

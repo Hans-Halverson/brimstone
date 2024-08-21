@@ -140,6 +140,50 @@ pub struct VM {
 }
 
 impl VM {
+    #[inline]
+    fn cx(&self) -> Context {
+        self.cx
+    }
+
+    #[inline]
+    fn pc(&self) -> *const u8 {
+        // Volatile read needed since PC could be have been changed during a GC
+        unsafe { std::ptr::read_volatile(&self.pc as *const *const u8) }
+    }
+
+    #[inline]
+    fn set_pc(&mut self, pc: *const u8) {
+        // Volatile write needed since PC could be have been changed during a GC
+        unsafe { std::ptr::write_volatile(&mut self.pc as *mut *const u8, pc) }
+    }
+
+    #[inline]
+    fn sp(&self) -> *mut StackSlotValue {
+        self.sp
+    }
+
+    #[inline]
+    fn set_sp(&mut self, sp: *mut StackSlotValue) {
+        self.sp = sp;
+    }
+
+    #[inline]
+    fn fp(&self) -> *mut StackSlotValue {
+        self.fp
+    }
+
+    #[inline]
+    fn set_fp(&mut self, fp: *mut StackSlotValue) {
+        self.fp = fp;
+    }
+
+    #[inline]
+    fn stack_ptr_range(&self) -> std::ops::Range<*const StackSlotValue> {
+        self.stack.as_ptr_range()
+    }
+}
+
+impl VM {
     pub fn new(cx: Context) -> Self {
         // Allocate uninitialized memory for stack
         let mut stack = Vec::<StackSlotValue>::with_capacity(NUM_STACK_SLOTS);
@@ -187,11 +231,11 @@ impl VM {
 
         // Then create global scope and add lexical names to realm, since GDI would have errored
         // if there were any conflicts.
-        let global_scope = realm.new_global_scope(self.cx, global_names.scope_names());
+        let global_scope = realm.new_global_scope(self.cx(), global_names.scope_names());
 
         // Create program closure and execute in VM
         let program_closure =
-            Closure::new_in_realm(self.cx, bytecode_program.script_function, global_scope, realm);
+            Closure::new_in_realm(self.cx(), bytecode_program.script_function, global_scope, realm);
 
         self.execute(program_closure, &[])
     }
@@ -228,22 +272,22 @@ impl VM {
         let stack_frame_size = saved_stack_frame.len();
 
         // Save the PC that should be used as the return address
-        let return_address = self.pc;
-        let parent_fp = self.fp;
+        let return_address = self.pc();
+        let parent_fp = self.fp();
 
         // Push the saved stack frame stored in generator onto the stack
         unsafe {
-            self.sp = self.sp.sub(stack_frame_size);
-            std::ptr::copy_nonoverlapping(saved_stack_frame.as_ptr(), self.sp, stack_frame_size);
+            self.set_sp(self.sp().sub(stack_frame_size));
+            std::ptr::copy_nonoverlapping(saved_stack_frame.as_ptr(), self.sp(), stack_frame_size);
         }
 
         // Restore the frame pointer
-        self.fp = unsafe { self.sp.add(generator.fp_index()) };
+        self.set_fp(unsafe { self.sp().add(generator.fp_index()) });
 
         let mut stack_frame = self.stack_frame();
 
         // Patch the saved frame pointer in the stack frame
-        unsafe { *self.fp = parent_fp as StackSlotValue };
+        unsafe { *self.fp() = parent_fp as StackSlotValue };
 
         // Patch the return address in the stack frame
         let encoded_return_address = StackFrame::return_address_from_rust(return_address);
@@ -270,29 +314,29 @@ impl VM {
         // Restore the PC, which was stored as an offset into the BytecodeFunction
         let func_start = self.closure().function_ptr().as_ptr().cast::<u8>();
         let pc_to_resume = unsafe { func_start.add(generator.pc_to_resume_offset()) };
-        self.pc = pc_to_resume;
+        self.set_pc(pc_to_resume);
 
         // Start executing the dispatch loop from where the generator was suspended, returning out
         // of dispatch loop when the marked return address is encountered.
         let completion = self.dispatch_loop();
 
         if let Err(error_value) = completion {
-            return EvalResult::Throw(error_value.to_handle(self.cx));
+            return EvalResult::Throw(error_value.to_handle(self.cx()));
         }
 
-        return_value.to_handle(self.cx).into()
+        return_value.to_handle(self.cx()).into()
     }
 
     fn reset_stack(&mut self) {
         // Reset stack
-        self.sp = self.stack.as_ptr_range().end as *mut StackSlotValue;
-        self.fp = std::ptr::null_mut();
+        self.set_sp(self.stack_ptr_range().end as *mut StackSlotValue);
+        self.set_fp(std::ptr::null_mut());
     }
 
     /// An empty frame pointer indicates that the stack is empty, no bytecode is currently
     /// executing, and the VM stack does not need to be walked for GC roots.
     fn is_executing(&self) -> bool {
-        self.fp != std::ptr::null_mut()
+        self.fp() != std::ptr::null_mut()
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
@@ -400,10 +444,10 @@ impl VM {
 
                         let mut async_generator =
                             generator_object.cast::<AsyncGeneratorObject>().to_handle();
-                        let yield_value = yield_value.to_handle(self.cx);
+                        let yield_value = yield_value.to_handle(self.cx());
 
                         async_generator_complete_step(
-                            self.cx,
+                            self.cx(),
                             async_generator,
                             EvalResult::Ok(yield_value),
                             /* is_done */ false,
@@ -451,16 +495,16 @@ impl VM {
                     let pc_to_resume_offset = self.get_pc_offset();
 
                     // Find the index of the FP in the stack frame
-                    let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
+                    let fp_index = unsafe { self.fp().offset_from(self.sp()) as usize };
 
                     // May allocate
                     let mut argument_promise =
-                        maybe_throw!(coerce_to_ordinary_promise(self.cx, argument_promise));
+                        maybe_throw!(coerce_to_ordinary_promise(self.cx(), argument_promise));
 
                     if return_promise_or_generator.as_object().is_promise() {
                         // Create a new generator object that holds the stack frame's state
                         let generator = GeneratorObject::new_for_async_function(
-                            self.cx,
+                            self.cx(),
                             pc_to_resume_offset,
                             fp_index,
                             (completion_value_index, completion_type_index),
@@ -468,7 +512,7 @@ impl VM {
                         )
                         .to_handle();
 
-                        argument_promise.add_await_reaction(self.cx, generator.into());
+                        argument_promise.add_await_reaction(self.cx(), generator.into());
 
                         // Return the promise to the caller
                         return_!(return_promise_or_generator.get())
@@ -483,7 +527,7 @@ impl VM {
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
                         );
-                        argument_promise.add_await_reaction(self.cx, async_generator.into());
+                        argument_promise.add_await_reaction(self.cx(), async_generator.into());
 
                         // Return empty value to signal that the async generator has suspended
                         return_!(Value::empty())
@@ -503,7 +547,7 @@ impl VM {
                     let pc_to_resume_offset = self.get_pc_offset();
 
                     // Find the index of the FP in the stack frame
-                    let fp_index = unsafe { self.fp.offset_from(self.sp) as usize };
+                    let fp_index = unsafe { self.fp().offset_from(self.sp()) as usize };
 
                     let current_closure = self.closure().to_handle();
 
@@ -511,7 +555,7 @@ impl VM {
                     // and PC to resume.
                     let generator_value = if current_closure.function_ptr().is_async() {
                         let mut async_generator = maybe_throw!(AsyncGeneratorObject::new(
-                            self.cx,
+                            self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
@@ -525,7 +569,7 @@ impl VM {
                         generator_value
                     } else {
                         let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
-                            self.cx,
+                            self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
@@ -551,7 +595,8 @@ impl VM {
                     // Walk the stack, looking for an exception handler that covers the current
                     // address.
                     let mut stack_frame = self.stack_frame();
-                    if self.visit_frame_for_exception_unwinding(stack_frame, self.pc, error_value) {
+                    if self.visit_frame_for_exception_unwinding(stack_frame, self.pc(), error_value)
+                    {
                         continue 'dispatch;
                     }
 
@@ -559,9 +604,9 @@ impl VM {
                         // If the caller is the Rust runtime then return the thrown error
                         if stack_frame.is_rust_caller() {
                             // Unwind the stack to the caller's frame
-                            self.pc = stack_frame.return_address();
-                            self.fp = caller_stack_frame.fp();
-                            self.sp = caller_stack_frame.sp();
+                            self.set_pc(stack_frame.return_address());
+                            self.set_fp(caller_stack_frame.fp());
+                            self.set_sp(caller_stack_frame.sp());
 
                             return Err(error_value);
                         }
@@ -1057,17 +1102,17 @@ impl VM {
             }
 
             // PC starts pointing to the next opcode to execute
-            let opcode_pc = self.pc;
-            let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
+            let prefix_or_opcode_pc = self.pc();
+            let prefix_or_opcode = unsafe { *prefix_or_opcode_pc.cast::<OpCode>() };
 
-            match opcode {
+            match prefix_or_opcode {
                 // Handle wide instructions
                 OpCode::WidePrefix => {
                     // PC is pointing to the wide prefix. This is followed by optional padding, the
                     // opcode, then the operands. The operands must be aligned to the next possible
                     // two byte boundary so we can skip the padding and find the opcode location.
                     let opcode_pc =
-                        wide_prefix_index_to_opcode_index(self.pc as usize) as *const u8;
+                        wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize) as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
                     create_dispatch_table!(Wide, opcode, opcode_pc);
@@ -1080,14 +1125,15 @@ impl VM {
                     // next possible four byte boundary so we can skip the padding and find the
                     // opcode location.
                     let opcode_pc =
-                        extra_wide_prefix_index_to_opcode_index(self.pc as usize) as *const u8;
+                        extra_wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
+                            as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
                     create_dispatch_table!(ExtraWide, opcode, opcode_pc);
                 }
-                // Handle all other instructions, which must be narrow
+                // Handle all other instructions, which must be narrow and have no prefix
                 _ => {
-                    create_dispatch_table!(Narrow, opcode, opcode_pc);
+                    create_dispatch_table!(Narrow, prefix_or_opcode, prefix_or_opcode_pc);
                 }
             }
         }
@@ -1103,35 +1149,35 @@ impl VM {
     /// Set the PC to the first byte after an instruction.
     #[inline]
     fn set_pc_after<I: Instruction>(&mut self, instr: &I) {
-        self.pc = self.get_pc_after(instr);
+        self.set_pc(self.get_pc_after(instr));
     }
 
     /// Calculate the offset of the current PC in the current BytecodeFunction.
     #[inline]
     fn get_pc_offset(&self) -> usize {
         let func_start_ptr = self.closure().function_ptr().as_ptr().cast::<u8>();
-        unsafe { self.pc.offset_from(func_start_ptr) as usize }
+        unsafe { self.pc().offset_from(func_start_ptr) as usize }
     }
 
     /// Push a value onto the stack. Note that the stack grows downwards.
     #[inline]
     fn push(&mut self, value: StackSlotValue) {
         unsafe {
-            self.sp = self.sp.sub(1);
-            *self.sp = value;
+            self.set_sp(self.sp().sub(1));
+            *self.sp() = value;
         }
     }
 
     /// Push FP onto the stack and set FP to SP.
     #[inline]
     fn push_fp(&mut self) {
-        self.push(self.fp as StackSlotValue);
-        self.fp = self.sp;
+        self.push(self.fp() as StackSlotValue);
+        self.set_fp(self.sp());
     }
 
     #[inline]
     fn fp_offset(&self, slot_index: isize) -> *mut StackSlotValue {
-        unsafe { self.fp.offset(slot_index as isize) }
+        unsafe { self.fp().offset(slot_index as isize) }
     }
 
     #[inline]
@@ -1146,7 +1192,7 @@ impl VM {
 
     #[inline]
     pub fn stack_frame(&self) -> StackFrame {
-        StackFrame::for_fp(self.fp)
+        StackFrame::for_fp(self.fp())
     }
 
     #[inline]
@@ -1191,7 +1237,7 @@ impl VM {
 
     #[inline]
     fn read_register_to_handle<W: Width>(&mut self, reg: Register<W>) -> Handle<Value> {
-        self.read_register(reg).to_handle(self.cx)
+        self.read_register(reg).to_handle(self.cx())
     }
 
     #[inline]
@@ -1209,14 +1255,14 @@ impl VM {
     /// Set the PC to the jump target, specified as a relative offset immediate.
     #[inline]
     fn jump_immediate<W: Width>(&mut self, offset: SInt<W>) {
-        self.pc = unsafe { self.pc.offset(offset.value().to_isize()) };
+        self.set_pc(unsafe { self.pc().offset(offset.value().to_isize()) });
     }
 
     // Set the PC to the jump target, specified as a relative offset in the constant table.
     #[inline]
     fn jump_constant<W: Width>(&mut self, constant_index: ConstantIndex<W>) {
         let offset = self.get_constant_offset(constant_index);
-        self.pc = unsafe { self.pc.offset(offset) };
+        self.set_pc(unsafe { self.pc().offset(offset) });
     }
 
     /// Execute an unconditional jump instruction
@@ -1343,7 +1389,7 @@ impl VM {
         let closure_handle = match maybe!(self.check_value_is_callable(function.get())) {
             CallableObject::Closure(closure) => closure.to_handle(),
             CallableObject::Proxy(proxy) => {
-                return proxy.to_handle().call(self.cx, receiver, arguments)
+                return proxy.to_handle().call(self.cx(), receiver, arguments)
             }
             CallableObject::Error(error) => return EvalResult::Throw(error),
         };
@@ -1360,7 +1406,7 @@ impl VM {
             receiver_handle.replace(receiver);
 
             // Call rust runtime function directly in its own handle scope
-            HandleScope::new(self.cx, |_| {
+            HandleScope::new(self.cx(), |_| {
                 self.call_rust_runtime(closure_ptr, function_id, receiver_handle, arguments, None)
             })
         } else {
@@ -1386,10 +1432,10 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx));
+                return EvalResult::Throw(error_value.to_handle(self.cx()));
             }
 
-            return_value.to_handle(self.cx).into()
+            return_value.to_handle(self.cx()).into()
         }
     }
 
@@ -1408,7 +1454,9 @@ impl VM {
             CallableObject::Closure(closure) => closure.to_handle(),
             // Proxy constructors call directly into the rust runtime
             CallableObject::Proxy(proxy) => {
-                return proxy.to_handle().construct(self.cx, arguments, new_target);
+                return proxy
+                    .to_handle()
+                    .construct(self.cx(), arguments, new_target);
             }
             CallableObject::Error(error) => return EvalResult::Throw(error),
         };
@@ -1420,10 +1468,10 @@ impl VM {
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
             // Calling builtin functions does not pass a receiver - pass empty as the uninitialized
             // value.
-            let receiver = self.cx.empty();
+            let receiver = self.cx().empty();
 
             // Call rust runtime function directly in its own handle scope
-            let return_value = maybe!(HandleScope::new(self.cx, |_| {
+            let return_value = maybe!(HandleScope::new(self.cx(), |_| {
                 self.call_rust_runtime(
                     closure_ptr,
                     function_id,
@@ -1470,10 +1518,10 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered. May allocate.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx));
+                return EvalResult::Throw(error_value.to_handle(self.cx()));
             }
 
-            let return_value = return_value.to_handle(self.cx);
+            let return_value = return_value.to_handle(self.cx());
 
             // Use the function's return value if it is an object
             if return_value.is_object() {
@@ -1502,9 +1550,9 @@ impl VM {
             // Proxy constructors call into the rust runtime
             CallableObject::Proxy(proxy) => {
                 // Can default to undefined receiver, which will be eventually coerced by callee
-                let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx);
+                let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx());
                 let arguments = self.prepare_rust_runtime_args(args);
-                let return_value = maybe!(proxy.to_handle().call(self.cx, receiver, &arguments));
+                let return_value = maybe!(proxy.to_handle().call(self.cx(), receiver, &arguments));
                 unsafe { *return_value_address = return_value.get() };
                 return ().into();
             }
@@ -1515,7 +1563,7 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            let return_value = maybe!(HandleScope::new(self.cx, |_| {
+            let return_value = maybe!(HandleScope::new(self.cx(), |_| {
                 // Get the receiver to use. May allocate.
                 let closure_handle = closure_ptr.to_handle();
                 let receiver = maybe!(self.generate_receiver(receiver, function_ptr));
@@ -1588,7 +1636,7 @@ impl VM {
         // TODO: Check if this cast is safe
         let new_target = self
             .read_register(instr.new_target())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast();
 
         // Check whether the value is a constructor, potentially deferring to proxy.
@@ -1598,7 +1646,7 @@ impl VM {
             CallableObject::Proxy(proxy) => {
                 let proxy = proxy.to_handle();
                 let arguments = self.prepare_rust_runtime_args(args);
-                let return_value = maybe!(proxy.construct(self.cx, &arguments, new_target));
+                let return_value = maybe!(proxy.construct(self.cx(), &arguments, new_target));
 
                 // Can directly return value as proxy constructor is guaranteed to return an object
                 unsafe { *return_value_address = return_value.get_().into() };
@@ -1612,10 +1660,10 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx, |_| {
+            let return_value: Handle<ObjectValue> = maybe!(HandleScope::new(self.cx(), |_| {
                 // Calling builtin functions does not pass a receiver - pass empty as the
                 // uninitialized value.
-                let receiver = self.cx.empty();
+                let receiver = self.cx().empty();
 
                 // Prepare arguments for the runtime call
                 let arguments = self.prepare_rust_runtime_args(args);
@@ -1681,7 +1729,7 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx));
+                return EvalResult::Throw(error_value.to_handle(self.cx()));
             }
 
             // Use the function's return value if it is an object
@@ -1711,7 +1759,7 @@ impl VM {
                 if closure.function_ptr().is_class_constructor() {
                     let function_realm = closure.function_ptr().realm_ptr();
                     let error_value = maybe!(TypeError::new_with_message_in_realm(
-                        self.cx,
+                        self.cx(),
                         function_realm,
                         "cannot call class constructor",
                     ));
@@ -1730,7 +1778,7 @@ impl VM {
             }
         }
 
-        CallableObject::Error(type_error_value(self.cx, "value is not a function")).into()
+        CallableObject::Error(type_error_value(self.cx(), "value is not a function")).into()
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the
@@ -1754,7 +1802,7 @@ impl VM {
             }
         }
 
-        CallableObject::Error(type_error_value(self.cx, "value is not a constructor"))
+        CallableObject::Error(type_error_value(self.cx(), "value is not a constructor"))
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -1798,9 +1846,9 @@ impl VM {
 
         // Push the address of the next instruction as the return address
         let return_address_slot = if return_to_rust_runtime {
-            StackFrame::return_address_from_rust(self.pc)
+            StackFrame::return_address_from_rust(self.pc())
         } else {
-            StackFrame::return_address_from_vm(self.pc)
+            StackFrame::return_address_from_vm(self.pc())
         };
         self.push(return_address_slot as StackSlotValue);
 
@@ -1811,7 +1859,7 @@ impl VM {
         self.allocate_local_registers(bytecode_function.num_registers());
 
         // Start executing from the first instruction of the function
-        self.pc = bytecode_function.bytecode().as_ptr();
+        self.set_pc(bytecode_function.bytecode().as_ptr());
     }
 
     /// Pop the current stack frame, restoring the previous frame pointer and PC.
@@ -1823,9 +1871,9 @@ impl VM {
             let argc = self.argc();
             let num_arguments = argc.max(num_formal_parameters);
 
-            self.pc = self.get_return_address();
-            self.sp = self.fp.add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments);
-            self.fp = *self.fp as *mut StackSlotValue;
+            self.set_pc(self.get_return_address());
+            self.set_sp(self.fp().add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments));
+            self.set_fp(*self.fp() as *mut StackSlotValue);
         }
     }
 
@@ -1921,12 +1969,12 @@ impl VM {
         match self.get_args_slice(args) {
             ArgsSlice::Forward(slice) => {
                 for arg in slice {
-                    arguments.push(arg.to_handle(self.cx));
+                    arguments.push(arg.to_handle(self.cx()));
                 }
             }
             ArgsSlice::Reverse(slice) => {
                 for arg in slice.iter().rev() {
-                    arguments.push(arg.to_handle(self.cx));
+                    arguments.push(arg.to_handle(self.cx()));
                 }
             }
         }
@@ -1945,7 +1993,7 @@ impl VM {
         args_rev_iter: I,
         argc: usize,
     ) {
-        let mut sp = self.sp;
+        let mut sp = self.sp();
 
         // Handle under application of arguments, pushing undefined for missing arguments. This
         // guarantees that the number of pushed arguments equals max(argc, func.num_parameters).
@@ -1967,7 +2015,7 @@ impl VM {
             }
         }
 
-        self.sp = sp;
+        self.set_sp(sp);
     }
 
     /// Generate the receiver to be used given an optional explicit receiver value and the called
@@ -2005,7 +2053,7 @@ impl VM {
     ) -> EvalResult<Value> {
         if is_base {
             let new_object: Value = maybe!(object_create_from_constructor::<ObjectValue>(
-                self.cx,
+                self.cx(),
                 new_target,
                 ObjectKind::OrdinaryObject,
                 Intrinsic::ObjectPrototype,
@@ -2035,7 +2083,7 @@ impl VM {
             // Derived constructors can either return an object or undefined. The derived
             // constructor implementation will return `this` if the code syntactically returns
             // undefined, so if the return value wasn't an object we should error.
-            type_error(self.cx, "derived constructor must return object or undefined")
+            type_error(self.cx(), "derived constructor must return object or undefined")
         }
     }
 
@@ -2054,8 +2102,8 @@ impl VM {
             // Global object is used if receiver is nullish
             function.realm_ptr().global_object_ptr().into()
         } else {
-            let receiver = receiver.to_handle(self.cx);
-            let receiver_object = maybe!(to_object(self.cx, receiver));
+            let receiver = receiver.to_handle(self.cx());
+            let receiver_object = maybe!(to_object(self.cx(), receiver));
             receiver_object.get_().into()
         };
 
@@ -2065,8 +2113,9 @@ impl VM {
     /// Allocate space for local registers, initializing to undefined
     fn allocate_local_registers(&mut self, num_registers: u32) {
         let num_registers = num_registers as usize;
-        self.sp = unsafe { self.sp.sub(num_registers) };
-        let slice = unsafe { std::slice::from_raw_parts_mut(self.sp as *mut Value, num_registers) };
+        self.set_sp(unsafe { self.sp().sub(num_registers) });
+        let slice =
+            unsafe { std::slice::from_raw_parts_mut(self.sp() as *mut Value, num_registers) };
         slice.fill(Value::undefined());
     }
 
@@ -2094,8 +2143,8 @@ impl VM {
         );
 
         // Perform the runtime call. May allocate.
-        let rust_function = self.cx.rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx, receiver, &arguments, new_target);
+        let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
+        let result = rust_function(self.cx(), receiver, &arguments, new_target);
 
         // Clean up the stack frame
         self.pop_stack_frame();
@@ -2111,7 +2160,7 @@ impl VM {
         let callee = self.read_register(instr.function());
 
         // Check if the callee is the eval function, if so this is a direct eval
-        let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
+        let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
         if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
             let argc = instr.argc().value().to_usize();
             let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
@@ -2140,7 +2189,7 @@ impl VM {
         let callee = self.read_register(instr.function());
 
         // Check if the callee is the eval function, if so this is a direct eval
-        let eval_function_ptr = self.cx.get_intrinsic_ptr(Intrinsic::Eval);
+        let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
         if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
             let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
             let dest = instr.dest();
@@ -2152,7 +2201,7 @@ impl VM {
                 return ().into();
             }
 
-            let arg = args_slice[0].to_handle(self.cx);
+            let arg = args_slice[0].to_handle(self.cx());
 
             self.direct_eval(arg, dest, flags)
         } else {
@@ -2171,7 +2220,7 @@ impl VM {
         let scope = self.scope().to_handle();
 
         // Allocates
-        let result = maybe!(perform_eval(self.cx, arg, is_strict_caller, Some(scope), flags));
+        let result = maybe!(perform_eval(self.cx(), arg, is_strict_caller, Some(scope), flags));
         self.write_register(dest, result.get());
 
         ().into()
@@ -2186,10 +2235,10 @@ impl VM {
             .closure()
             .to_handle()
             .object()
-            .get_prototype_of(self.cx));
+            .get_prototype_of(self.cx()));
 
         if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
-            return type_error(self.cx, "super must be a constructor");
+            return type_error(self.cx(), "super must be a constructor");
         }
         let super_constructor = super_constructor.unwrap();
 
@@ -2198,7 +2247,7 @@ impl VM {
             .stack_frame()
             .args()
             .iter()
-            .map(|arg| arg.to_handle(self.cx))
+            .map(|arg| arg.to_handle(self.cx()))
             .collect::<Vec<_>>();
 
         // New target is in the first local register
@@ -2290,7 +2339,7 @@ impl VM {
         name_constant_index: ConstantIndex<W>,
         error_on_unresolved: bool,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx, |cx| {
+        HandleScope::new(self.cx(), |cx| {
             let name = self.get_constant(name_constant_index);
             let name = name.as_string().to_handle();
 
@@ -2330,7 +2379,7 @@ impl VM {
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx, |cx| {
+        HandleScope::new(self.cx(), |cx| {
             let value = self.read_register_to_handle(instr.value());
 
             let name = self.get_constant(instr.constant_index());
@@ -2347,7 +2396,7 @@ impl VM {
                 // global object.
                 maybe!(global_object.set(cx, name_key, value, global_object.into()))
             } else if maybe!(self.closure().realm().set_lexical_name(
-                self.cx,
+                self.cx(),
                 name.as_flat().get_(),
                 value.get(),
             )) {
@@ -2402,7 +2451,7 @@ impl VM {
         name_constant_index: ConstantIndex<W>,
         error_on_unresolved: bool,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx, |cx| {
+        HandleScope::new(self.cx(), |cx| {
             let name = self.get_constant(name_constant_index);
             let name = name.as_string().to_handle();
 
@@ -2429,7 +2478,7 @@ impl VM {
         &mut self,
         instr: &StoreDynamicInstruction<W>,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx, |cx| {
+        HandleScope::new(self.cx(), |cx| {
             let value = self.read_register(instr.value()).to_handle(cx);
 
             let name = self.get_constant(instr.name_index());
@@ -2466,7 +2515,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_add(self.cx, left_value, right_value));
+        let result = maybe!(eval_add(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2480,7 +2529,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_subtract(self.cx, left_value, right_value));
+        let result = maybe!(eval_subtract(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2494,7 +2543,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_multiply(self.cx, left_value, right_value));
+        let result = maybe!(eval_multiply(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2508,7 +2557,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_divide(self.cx, left_value, right_value));
+        let result = maybe!(eval_divide(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2522,7 +2571,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_remainder(self.cx, left_value, right_value));
+        let result = maybe!(eval_remainder(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2536,7 +2585,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_exponentiation(self.cx, left_value, right_value));
+        let result = maybe!(eval_exponentiation(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2550,7 +2599,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_and(self.cx, left_value, right_value));
+        let result = maybe!(eval_bitwise_and(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2564,7 +2613,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_or(self.cx, left_value, right_value));
+        let result = maybe!(eval_bitwise_or(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2578,7 +2627,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_xor(self.cx, left_value, right_value));
+        let result = maybe!(eval_bitwise_xor(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2592,7 +2641,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_left(self.cx, left_value, right_value));
+        let result = maybe!(eval_shift_left(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2609,7 +2658,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_right_arithmetic(self.cx, left_value, right_value));
+        let result = maybe!(eval_shift_right_arithmetic(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2626,7 +2675,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_shift_right_logical(self.cx, left_value, right_value));
+        let result = maybe!(eval_shift_right_logical(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2643,7 +2692,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(is_loosely_equal(self.cx, left_value, right_value));
+        let result = maybe!(is_loosely_equal(self.cx(), left_value, right_value));
 
         self.write_register(dest, Value::bool(result));
 
@@ -2660,7 +2709,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(is_loosely_equal(self.cx, left_value, right_value));
+        let result = maybe!(is_loosely_equal(self.cx(), left_value, right_value));
 
         self.write_register(dest, Value::bool(!result));
 
@@ -2698,7 +2747,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_less_than(self.cx, left_value, right_value));
+        let result = maybe!(eval_less_than(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2715,7 +2764,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_less_than_or_equal(self.cx, left_value, right_value));
+        let result = maybe!(eval_less_than_or_equal(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2732,7 +2781,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_greater_than(self.cx, left_value, right_value));
+        let result = maybe!(eval_greater_than(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2749,7 +2798,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_greater_than_or_equal(self.cx, left_value, right_value));
+        let result = maybe!(eval_greater_than_or_equal(self.cx(), left_value, right_value));
 
         self.write_register(dest, result.get());
 
@@ -2762,7 +2811,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_negate(self.cx, value));
+        let result = maybe!(eval_negate(self.cx(), value));
 
         self.write_register(dest, result.get());
 
@@ -2789,7 +2838,7 @@ impl VM {
             Value::number(value.as_number() + 1.0)
         } else {
             let inc_value = value.as_bigint().bigint() + 1;
-            BigIntValue::new_ptr(self.cx, inc_value).into()
+            BigIntValue::new_ptr(self.cx(), inc_value).into()
         };
 
         self.write_register(dest, new_value);
@@ -2815,7 +2864,7 @@ impl VM {
             Value::number(value.as_number() - 1.0)
         } else {
             let inc_value = value.as_bigint().bigint() - 1;
-            BigIntValue::new_ptr(self.cx, inc_value).into()
+            BigIntValue::new_ptr(self.cx(), inc_value).into()
         };
 
         self.write_register(dest, new_value);
@@ -2834,7 +2883,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_bitwise_not(self.cx, value));
+        let result = maybe!(eval_bitwise_not(self.cx(), value));
 
         self.write_register(dest, result.get());
 
@@ -2847,7 +2896,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = eval_typeof(self.cx, value);
+        let result = eval_typeof(self.cx(), value);
 
         self.write_register(dest, result.cast::<Value>().get());
     }
@@ -2859,7 +2908,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_in_expression(self.cx, key, object));
+        let result = maybe!(eval_in_expression(self.cx(), key, object));
 
         self.write_register(dest, Value::bool(result));
 
@@ -2876,7 +2925,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(eval_instanceof_expression(self.cx, object, constructor));
+        let result = maybe!(eval_instanceof_expression(self.cx(), object, constructor));
 
         self.write_register(dest, Value::bool(result));
 
@@ -2889,7 +2938,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_number(self.cx, value));
+        let result = maybe!(to_number(self.cx(), value));
 
         self.write_register(dest, result.get());
 
@@ -2902,7 +2951,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_numeric(self.cx, value));
+        let result = maybe!(to_numeric(self.cx(), value));
 
         self.write_register(dest, result.get());
 
@@ -2915,7 +2964,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_string(self.cx, value));
+        let result = maybe!(to_string(self.cx(), value));
 
         self.write_register(dest, result.get_().into());
 
@@ -2931,7 +2980,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_property_key(self.cx, value));
+        let result = maybe!(to_property_key(self.cx(), value));
 
         self.write_register(dest, result.cast::<Value>().get());
 
@@ -2944,7 +2993,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(to_object(self.cx, value));
+        let result = maybe!(to_object(self.cx(), value));
 
         self.write_register(dest, result.get_().into());
 
@@ -2954,13 +3003,13 @@ impl VM {
     #[inline]
     fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
         let func = self.get_constant(instr.function_index());
-        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+        let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
 
         // Allocates
-        let closure = Closure::new(self.cx, func, scope);
+        let closure = Closure::new(self.cx(), func, scope);
 
         self.write_register(dest, Value::object(closure.get_().cast()));
     }
@@ -2968,14 +3017,14 @@ impl VM {
     #[inline]
     fn execute_new_async_closure<W: Width>(&mut self, instr: &NewAsyncClosureInstruction<W>) {
         let func = self.get_constant(instr.function_index());
-        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+        let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
 
         // Allocates
-        let proto = self.cx.get_intrinsic(Intrinsic::AsyncFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx, func, scope, proto);
+        let proto = self.cx().get_intrinsic(Intrinsic::AsyncFunctionPrototype);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, proto);
 
         self.write_register(dest, Value::object(closure.get_().cast()));
     }
@@ -2986,16 +3035,18 @@ impl VM {
         instr: &NewGeneratorInstruction<W>,
     ) -> EvalResult<()> {
         let func = self.get_constant(instr.function_index());
-        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+        let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
 
         // Allocates
-        let func_proto = self.cx.get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
+        let func_proto = self
+            .cx()
+            .get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
 
-        maybe!(GeneratorPrototype::install_on_generator_function(self.cx, closure));
+        maybe!(GeneratorPrototype::install_on_generator_function(self.cx(), closure));
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 
@@ -3008,7 +3059,7 @@ impl VM {
         instr: &NewAsyncGeneratorInstruction<W>,
     ) -> EvalResult<()> {
         let func = self.get_constant(instr.function_index());
-        let func = func.to_handle(self.cx).cast::<BytecodeFunction>();
+        let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
         let dest = instr.dest();
         let scope = self.scope().to_handle();
@@ -3017,9 +3068,9 @@ impl VM {
         let func_proto = self
             .cx
             .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx, func, scope, func_proto);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
 
-        maybe!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx, closure));
+        maybe!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure));
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 
@@ -3031,7 +3082,7 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let object = ordinary_object_create(self.cx);
+        let object = ordinary_object_create(self.cx());
 
         self.write_register(dest, object.cast::<Value>().get());
     }
@@ -3041,7 +3092,7 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let array = must!(array_create(self.cx, 0, None));
+        let array = must!(array_create(self.cx(), 0, None));
 
         self.write_register(dest, array.cast::<Value>().get());
     }
@@ -3050,13 +3101,13 @@ impl VM {
     fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) -> EvalResult<()> {
         let compiled_regexp = self.get_constant(instr.regexp_index());
         let compiled_regexp = compiled_regexp
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<CompiledRegExpObject>();
 
         let dest = instr.dest();
 
         // Allocates
-        let regexp = maybe!(RegExpObject::new_from_compiled_regexp(self.cx, compiled_regexp));
+        let regexp = maybe!(RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp));
 
         self.write_register(dest, Value::object(regexp.get_().cast()));
 
@@ -3075,12 +3126,12 @@ impl VM {
             .stack_frame()
             .args()
             .iter()
-            .map(|arg| arg.to_handle(self.cx))
+            .map(|arg| arg.to_handle(self.cx()))
             .collect::<Vec<_>>();
 
         // Allocates
         let arguments_object =
-            MappedArgumentsObject::new(self.cx, closure, &arguments, scope, num_parameters);
+            MappedArgumentsObject::new(self.cx(), closure, &arguments, scope, num_parameters);
 
         self.write_register(dest, arguments_object.cast::<Value>().get());
     }
@@ -3097,11 +3148,11 @@ impl VM {
             .stack_frame()
             .args()
             .iter()
-            .map(|arg| arg.to_handle(self.cx))
+            .map(|arg| arg.to_handle(self.cx()))
             .collect::<Vec<_>>();
 
         // Allocates
-        let arguments_object = create_unmapped_arguments_object(self.cx, &arguments);
+        let arguments_object = create_unmapped_arguments_object(self.cx(), &arguments);
 
         self.write_register(dest, arguments_object.get());
     }
@@ -3112,11 +3163,11 @@ impl VM {
 
         let class_names = self
             .get_constant(instr.class_names_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<ClassNames>();
         let constructor_function = self
             .get_constant(instr.constructor_function_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<BytecodeFunction>();
 
         let super_class = self.read_register_to_handle(instr.super_class());
@@ -3130,12 +3181,12 @@ impl VM {
             .get_reg_rev_slice(instr.methods(), class_names.num_arguments())
             .iter()
             .rev()
-            .map(|value| value.to_handle(self.cx))
+            .map(|value| value.to_handle(self.cx()))
             .collect::<Vec<_>>();
 
         // Allocates
         let constructor = maybe!(new_class(
-            self.cx,
+            self.cx(),
             class_names,
             constructor_function,
             super_class,
@@ -3154,7 +3205,7 @@ impl VM {
         let setter = self.read_register_to_handle(instr.setter()).as_object();
 
         // Allocates
-        let accessor = AccessorValue::new(self.cx, Some(getter), Some(setter));
+        let accessor = AccessorValue::new(self.cx(), Some(getter), Some(setter));
 
         self.write_register(dest, accessor.get_().into());
     }
@@ -3168,7 +3219,7 @@ impl VM {
             .to_handle();
 
         // Allocates
-        let private_symbol = SymbolValue::new(self.cx, Some(name), /* is_private */ true);
+        let private_symbol = SymbolValue::new(self.cx(), Some(name), /* is_private */ true);
 
         self.write_register(dest, private_symbol.get_().into());
     }
@@ -3184,8 +3235,8 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let coerced_object = maybe!(to_object(self.cx, object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
+        let coerced_object = maybe!(to_object(self.cx(), object));
 
         // Result of ToObject is used as receiver in sloppy mode
         let receiver = if is_strict {
@@ -3194,7 +3245,7 @@ impl VM {
             coerced_object.into()
         };
 
-        let result = maybe!(coerced_object.get(self.cx, property_key, receiver));
+        let result = maybe!(coerced_object.get(self.cx(), property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -3212,16 +3263,16 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let mut coerced_object = maybe!(to_object(self.cx, object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
+        let mut coerced_object = maybe!(to_object(self.cx(), object));
 
         if is_strict {
-            let success = maybe!(coerced_object.set(self.cx, property_key, value, object));
+            let success = maybe!(coerced_object.set(self.cx(), property_key, value, object));
             if !success {
-                return err_cannot_set_property(self.cx, property_key);
+                return err_cannot_set_property(self.cx(), property_key);
             }
         } else {
-            maybe!(coerced_object.set(self.cx, property_key, value, coerced_object.into()));
+            maybe!(coerced_object.set(self.cx(), property_key, value, coerced_object.into()));
         }
 
         ().into()
@@ -3238,8 +3289,8 @@ impl VM {
         let flags = DefinePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let object = maybe!(to_object(self.cx, object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
+        let object = maybe!(to_object(self.cx(), object));
 
         // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
         if !flags.is_empty() {
@@ -3260,21 +3311,21 @@ impl VM {
                     None
                 };
 
-                let name = build_function_name(self.cx, property_key, prefix);
-                closure.set_lazy_function_name(self.cx, name);
+                let name = build_function_name(self.cx(), property_key, prefix);
+                closure.set_lazy_function_name(self.cx(), name);
             }
 
             // Create special property descriptors for accessors
             if flags.contains(DefinePropertyFlags::GETTER) {
                 let desc = PropertyDescriptor::get_only(Some(closure.into()), true, true);
-                return define_property_or_throw(self.cx, object, property_key, desc);
+                return define_property_or_throw(self.cx(), object, property_key, desc);
             } else if flags.contains(DefinePropertyFlags::SETTER) {
                 let desc = PropertyDescriptor::set_only(Some(closure.into()), true, true);
-                return define_property_or_throw(self.cx, object, property_key, desc);
+                return define_property_or_throw(self.cx(), object, property_key, desc);
             }
         }
 
-        create_data_property_or_throw(self.cx, object, property_key, value)
+        create_data_property_or_throw(self.cx(), object, property_key, value)
     }
 
     #[inline]
@@ -3291,10 +3342,10 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate, replace handle
-        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = PropertyKey::string(self.cx(), key);
         let property_key = key.replace_into(property_key);
 
-        let coerced_object = maybe!(to_object(self.cx, object));
+        let coerced_object = maybe!(to_object(self.cx(), object));
 
         // Result of ToObject is used as receiver in sloppy mode
         let receiver = if is_strict {
@@ -3303,7 +3354,7 @@ impl VM {
             coerced_object.into()
         };
 
-        let result = maybe!(coerced_object.get(self.cx, property_key, receiver));
+        let result = maybe!(coerced_object.get(self.cx(), property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -3325,18 +3376,18 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let mut coerced_object = maybe!(to_object(self.cx, object));
+        let mut coerced_object = maybe!(to_object(self.cx(), object));
 
-        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = PropertyKey::string(self.cx(), key);
         let property_key = key.replace_into(property_key);
 
         if is_strict {
-            let success = maybe!(coerced_object.set(self.cx, property_key, value, object));
+            let success = maybe!(coerced_object.set(self.cx(), property_key, value, object));
             if !success {
-                return err_cannot_set_property(self.cx, property_key);
+                return err_cannot_set_property(self.cx(), property_key);
             }
         } else {
-            maybe!(coerced_object.set(self.cx, property_key, value, coerced_object.into()));
+            maybe!(coerced_object.set(self.cx(), property_key, value, coerced_object.into()));
         }
 
         ().into()
@@ -3355,12 +3406,12 @@ impl VM {
         let value = self.read_register_to_handle(instr.value());
 
         // May allocate
-        let object = maybe!(to_object(self.cx, object));
+        let object = maybe!(to_object(self.cx(), object));
 
-        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = PropertyKey::string(self.cx(), key);
         let property_key = key.replace_into(property_key);
 
-        create_data_property_or_throw(self.cx, object, property_key, value)
+        create_data_property_or_throw(self.cx(), object, property_key, value)
     }
 
     #[inline]
@@ -3376,13 +3427,13 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error(self.cx, "prototype is null"),
+        let property_key = maybe!(to_property_key(self.cx(), key));
+        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx())) {
+            None => return type_error(self.cx(), "prototype is null"),
             Some(prototype) => prototype,
         };
 
-        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
+        let result = maybe!(home_prototype.get(self.cx(), property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -3405,15 +3456,15 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate, replace handle
-        let property_key = PropertyKey::string(self.cx, key);
+        let property_key = PropertyKey::string(self.cx(), key);
         let property_key = key.replace_into(property_key);
 
-        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error(self.cx, "prototype is null"),
+        let home_prototype = match maybe!(home_object.get_prototype_of(self.cx())) {
+            None => return type_error(self.cx(), "prototype is null"),
             Some(prototype) => prototype,
         };
 
-        let result = maybe!(home_prototype.get(self.cx, property_key, receiver));
+        let result = maybe!(home_prototype.get(self.cx(), property_key, receiver));
 
         self.write_register(dest, result.get());
 
@@ -3434,19 +3485,19 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx, key));
-        let mut home_prototype = match maybe!(home_object.get_prototype_of(self.cx)) {
-            None => return type_error(self.cx, "prototype is null"),
+        let property_key = maybe!(to_property_key(self.cx(), key));
+        let mut home_prototype = match maybe!(home_object.get_prototype_of(self.cx())) {
+            None => return type_error(self.cx(), "prototype is null"),
             Some(prototype) => prototype,
         };
 
         if is_strict {
-            let success = maybe!(home_prototype.set(self.cx, property_key, value, receiver));
+            let success = maybe!(home_prototype.set(self.cx(), property_key, value, receiver));
             if !success {
-                return err_cannot_set_property(self.cx, property_key);
+                return err_cannot_set_property(self.cx(), property_key);
             }
         } else {
-            maybe!(home_prototype.set(self.cx, property_key, value, receiver));
+            maybe!(home_prototype.set(self.cx(), property_key, value, receiver));
         }
 
         ().into()
@@ -3463,8 +3514,8 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let key = maybe!(to_property_key(self.cx, key));
-        let delete_status = maybe!(eval_delete_property(self.cx, object, key, is_strict));
+        let key = maybe!(to_property_key(self.cx(), key));
+        let delete_status = maybe!(eval_delete_property(self.cx(), object, key, is_strict));
 
         self.write_register(dest, Value::bool(delete_status));
 
@@ -3479,12 +3530,12 @@ impl VM {
         let mut scope = self.scope().to_handle();
         let name = self
             .get_constant(instr.name_constant_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .as_string();
         let dest = instr.dest();
 
         // May allocate
-        let delete_status = maybe!(scope.lookup_delete(self.cx, name));
+        let delete_status = maybe!(scope.lookup_delete(self.cx(), name));
 
         self.write_register(dest, Value::bool(delete_status));
 
@@ -3501,8 +3552,8 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let coerced_object = maybe!(to_object(self.cx, object));
-        let result = maybe!(private_get(self.cx, coerced_object, key));
+        let coerced_object = maybe!(to_object(self.cx(), object));
+        let result = maybe!(private_get(self.cx(), coerced_object, key));
 
         self.write_register(dest, result.get());
 
@@ -3519,8 +3570,8 @@ impl VM {
         let value = self.read_register_to_handle(instr.value());
 
         // May allocate
-        let coerced_object = maybe!(to_object(self.cx, object));
-        maybe!(private_set(self.cx, coerced_object, key, value));
+        let coerced_object = maybe!(to_object(self.cx(), object));
+        maybe!(private_set(self.cx(), coerced_object, key, value));
 
         ().into()
     }
@@ -3545,13 +3596,13 @@ impl VM {
             if flags.contains(DefinePrivatePropertyFlags::SETTER) {
                 Property::private_accessor(value.as_accessor())
             } else {
-                Property::private_getter(self.cx, value.as_object())
+                Property::private_getter(self.cx(), value.as_object())
             }
         } else {
-            Property::private_setter(self.cx, value.as_object())
+            Property::private_setter(self.cx(), value.as_object())
         };
 
-        object.property_property_add(self.cx, key, property)
+        object.property_property_add(self.cx(), key, property)
     }
 
     #[inline]
@@ -3563,9 +3614,9 @@ impl VM {
         let value = self.read_register_to_handle(instr.value());
 
         // May allocate
-        let index = index.replace_into(must!(PropertyKey::from_value(self.cx, index)));
+        let index = index.replace_into(must!(PropertyKey::from_value(self.cx(), index)));
         let desc = Property::data(value, true, true, true);
-        array.object().set_property(self.cx, index, desc);
+        array.object().set_property(self.cx(), index, desc);
     }
 
     #[inline]
@@ -3575,9 +3626,9 @@ impl VM {
 
         // May allocate
         if prototype.is_object() {
-            must!(object.set_prototype_of(self.cx, Some(prototype.as_object())));
+            must!(object.set_prototype_of(self.cx(), Some(prototype.as_object())));
         } else if prototype.is_null() {
-            must!(object.set_prototype_of(self.cx, None));
+            must!(object.set_prototype_of(self.cx(), None));
         }
     }
 
@@ -3591,11 +3642,11 @@ impl VM {
         let excluded_property_keys = self
             .get_args_rev_slice(instr.argv(), instr.argc())
             .iter()
-            .map(|v| v.to_handle(self.cx).cast::<PropertyKey>())
+            .map(|v| v.to_handle(self.cx()).cast::<PropertyKey>())
             .collect::<HashSet<_>>();
 
         // May allocate
-        maybe!(copy_data_properties(self.cx, dest, source, &excluded_property_keys));
+        maybe!(copy_data_properties(self.cx(), dest, source, &excluded_property_keys));
 
         ().into()
     }
@@ -3606,14 +3657,14 @@ impl VM {
         let object = self.read_register_to_handle(instr.object());
         let key = self.get_constant(instr.name()).as_string().to_handle();
 
-        let key = PropertyKey::string(self.cx, key).to_handle(self.cx);
+        let key = PropertyKey::string(self.cx(), key).to_handle(self.cx());
 
-        let function = maybe!(get_v(self.cx, object, key));
+        let function = maybe!(get_v(self.cx(), object, key));
 
         if function.is_nullish() {
             self.write_register(dest, Value::undefined());
         } else if !is_callable(function) {
-            return type_error(self.cx, "value is not a function");
+            return type_error(self.cx(), "value is not a function");
         } else {
             self.write_register(dest, function.get());
         }
@@ -3626,11 +3677,11 @@ impl VM {
         let scope = self.scope().to_handle();
         let scope_names = self
             .get_constant(instr.scope_names_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<ScopeNames>();
 
         // Allocates
-        let lexical_scope = Scope::new_lexical(self.cx, scope, scope_names).get_();
+        let lexical_scope = Scope::new_lexical(self.cx(), scope, scope_names).get_();
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = lexical_scope;
@@ -3641,11 +3692,11 @@ impl VM {
         let scope = self.scope().to_handle();
         let scope_names = self
             .get_constant(instr.scope_names_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<ScopeNames>();
 
         // Allocates
-        let function_scope = Scope::new_function(self.cx, scope, scope_names).get_();
+        let function_scope = Scope::new_function(self.cx(), scope, scope_names).get_();
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = function_scope;
@@ -3661,12 +3712,12 @@ impl VM {
         let scope = self.scope().to_handle();
         let scope_names = self
             .get_constant(instr.scope_names_index())
-            .to_handle(self.cx)
+            .to_handle(self.cx())
             .cast::<ScopeNames>();
 
         // Allocates
-        let object = maybe!(to_object(self.cx, object));
-        let lexical_scope = Scope::new_with(self.cx, scope, scope_names, object).get_();
+        let object = maybe!(to_object(self.cx(), object));
+        let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object).get_();
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = lexical_scope;
@@ -3687,7 +3738,7 @@ impl VM {
         let scope = self.scope().to_handle();
 
         // Allocates
-        let dup_scope = scope.duplicate(self.cx);
+        let dup_scope = scope.duplicate(self.cx());
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = dup_scope;
@@ -3741,11 +3792,11 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let rest_array = must!(array_create(self.cx, 0, None));
+        let rest_array = must!(array_create(self.cx(), 0, None));
 
         // Handles are shared between iterations
-        let mut array_key = PropertyKey::uninit().to_handle(self.cx);
-        let mut value_handle = Value::uninit().to_handle(self.cx);
+        let mut array_key = PropertyKey::uninit().to_handle(self.cx());
+        let mut value_handle = Value::uninit().to_handle(self.cx());
 
         // The arguments between the number of formal parameters and the actual argc supplied will
         // all be added to the rest array.
@@ -3757,13 +3808,13 @@ impl VM {
                 .iter()
                 .enumerate()
             {
-                array_key.replace(PropertyKey::array_index(self.cx, i as u32));
+                array_key.replace(PropertyKey::array_index(self.cx(), i as u32));
                 value_handle.replace(*argument);
 
                 let array_property = Property::data(value_handle, true, true, true);
                 rest_array
                     .object()
-                    .set_property(self.cx, array_key, array_property);
+                    .set_property(self.cx(), array_key, array_property);
             }
         }
 
@@ -3781,7 +3832,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let super_constructor = must!(derived_constructor.get_prototype_of(self.cx));
+        let super_constructor = must!(derived_constructor.get_prototype_of(self.cx()));
 
         // Return null if there is no prototype
         let super_constructor = super_constructor
@@ -3804,7 +3855,7 @@ impl VM {
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
-        reference_error(self.cx, &format!("can't access `{}` before initialization", name))
+        reference_error(self.cx(), &format!("can't access `{}` before initialization", name))
     }
 
     #[inline]
@@ -3819,7 +3870,7 @@ impl VM {
             return ().into();
         }
 
-        reference_error(self.cx, "this is not initialized")
+        reference_error(self.cx(), "this is not initialized")
     }
 
     #[inline]
@@ -3834,7 +3885,7 @@ impl VM {
             return ().into();
         }
 
-        reference_error(self.cx, "super constructor called multiple times")
+        reference_error(self.cx(), "super constructor called multiple times")
     }
 
     #[inline]
@@ -3845,7 +3896,7 @@ impl VM {
         let value = self.read_register(instr.value());
 
         if !value.is_object() {
-            return type_error(self.cx, "iterator result must be an object");
+            return type_error(self.cx(), "iterator result must be an object");
         }
 
         ().into()
@@ -3861,7 +3912,7 @@ impl VM {
             .as_string()
             .as_flat();
 
-        err_assign_constant(self.cx, name)
+        err_assign_constant(self.cx(), name)
     }
 
     #[inline]
@@ -3869,7 +3920,7 @@ impl VM {
         &mut self,
         _: &ErrorDeleteSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        reference_error(self.cx, "cannot delete super property")
+        reference_error(self.cx(), "cannot delete super property")
     }
 
     #[inline]
@@ -3877,7 +3928,7 @@ impl VM {
         &mut self,
         _: &ErrorIteratorNoThrowMethodInstruction<W>,
     ) -> EvalResult<()> {
-        type_error(self.cx, "iterator does not have a throw method")
+        type_error(self.cx(), "iterator does not have a throw method")
     }
 
     #[inline]
@@ -3889,8 +3940,8 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let object = maybe!(to_object(self.cx, object));
-        let iterator = maybe!(ForInIterator::new_for_object(self.cx, object));
+        let object = maybe!(to_object(self.cx(), object));
+        let iterator = maybe!(ForInIterator::new_for_object(self.cx(), object));
 
         self.write_register(dest, iterator.cast::<ObjectValue>().into());
 
@@ -3905,7 +3956,7 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = maybe!(iterator.next(self.cx));
+        let result = maybe!(iterator.next(self.cx()));
 
         self.write_register(dest, result);
 
@@ -3922,7 +3973,7 @@ impl VM {
         let next_method_dest = instr.next_method();
 
         // May allocate
-        let iterator_result = maybe!(get_iterator(self.cx, iterable, IteratorHint::Sync, None));
+        let iterator_result = maybe!(get_iterator(self.cx(), iterable, IteratorHint::Sync, None));
 
         self.write_register(iterator_dest, iterator_result.iterator.get_().into());
         self.write_register(next_method_dest, iterator_result.next_method.get());
@@ -3940,7 +3991,7 @@ impl VM {
         let next_method_dest = instr.next_method();
 
         // May allocate
-        let iterator_result = maybe!(get_iterator(self.cx, iterable, IteratorHint::Async, None));
+        let iterator_result = maybe!(get_iterator(self.cx(), iterable, IteratorHint::Async, None));
 
         self.write_register(iterator_dest, iterator_result.iterator.get_().into());
         self.write_register(next_method_dest, iterator_result.next_method.get());
@@ -3959,7 +4010,7 @@ impl VM {
         let is_done_dest = instr.is_done();
 
         // Call the iterator's next method. May allocate.
-        let iterator_result = maybe!(call(self.cx, next_method, iterator, &[]));
+        let iterator_result = maybe!(call(self.cx(), next_method, iterator, &[]));
 
         // Unpack iterator result and store value and is_done
         self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
@@ -3986,19 +4037,19 @@ impl VM {
     ) -> EvalResult<()> {
         // Iterator's function must return an object, otherwise error
         if !iterator_result.is_object() {
-            return type_error(self.cx, "iterator's next method must return an object");
+            return type_error(self.cx(), "iterator's next method must return an object");
         }
         let iterator_result = iterator_result.as_object();
 
         // Check if the iterator is done
-        let is_done = maybe!(iterator_complete(self.cx, iterator_result));
+        let is_done = maybe!(iterator_complete(self.cx(), iterator_result));
 
         if is_done {
             // If done then no need to write value register as it will be ignored
             self.write_register(is_done_dest, Value::bool(true));
         } else {
             // If not done then extract the value and write it to the value register
-            let value = maybe!(iterator_value(self.cx, iterator_result));
+            let value = maybe!(iterator_value(self.cx(), iterator_result));
 
             self.write_register(is_done_dest, Value::bool(false));
             self.write_register(value_dest, value.get());
@@ -4013,15 +4064,15 @@ impl VM {
         instr: &IteratorCloseInstruction<W>,
     ) -> EvalResult<()> {
         let iterator = self.read_register_to_handle(instr.iterator());
-        let return_method = maybe!(get_method(self.cx, iterator, self.cx.names.return_()));
+        let return_method = maybe!(get_method(self.cx(), iterator, self.cx().names.return_()));
 
         // Check if there is a return method and call it
         if let Some(return_method) = return_method {
-            let return_result = maybe!(call_object(self.cx, return_method, iterator, &[]));
+            let return_result = maybe!(call_object(self.cx(), return_method, iterator, &[]));
 
             // Return method must return an object otherwise error
             if !return_result.is_object() {
-                return type_error(self.cx, "iterator's return method must return an object");
+                return type_error(self.cx(), "iterator's return method must return an object");
             }
         }
 
@@ -4038,11 +4089,11 @@ impl VM {
         let iterator = self.read_register_to_handle(instr.iterator());
 
         // May allocate
-        let return_method = maybe!(get_method(self.cx, iterator, self.cx.names.return_()));
+        let return_method = maybe!(get_method(self.cx(), iterator, self.cx().names.return_()));
 
         // Check if there is a return method and call it
         if let Some(return_method) = return_method {
-            let return_result = maybe!(call_object(self.cx, return_method, iterator, &[]));
+            let return_result = maybe!(call_object(self.cx(), return_method, iterator, &[]));
             self.write_register(return_result_dest, return_result.get());
         }
 
@@ -4060,7 +4111,7 @@ impl VM {
 
         // Return method must return an object otherwise error.
         if !return_result.is_object() {
-            return type_error(self.cx, "iterator's return method must return an object");
+            return type_error(self.cx(), "iterator's return method must return an object");
         }
 
         ().into()
@@ -4071,7 +4122,7 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let promise: HeapPtr<ObjectValue> = PromiseObject::new_pending(self.cx).into();
+        let promise: HeapPtr<ObjectValue> = PromiseObject::new_pending(self.cx()).into();
 
         self.write_register(dest, promise.into());
     }
@@ -4084,7 +4135,7 @@ impl VM {
         debug_assert!(promise.is_object() && promise.as_object().is_promise());
         let promise = promise.as_object().cast::<PromiseObject>();
 
-        resolve(self.cx, promise, value);
+        resolve(self.cx(), promise, value);
     }
 
     #[inline]
@@ -4095,7 +4146,7 @@ impl VM {
         debug_assert!(promise.is_object() && promise.as_object().is_promise());
         let mut promise = promise.as_object().cast::<PromiseObject>();
 
-        promise.reject(self.cx, value);
+        promise.reject(self.cx(), value);
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.
@@ -4136,11 +4187,11 @@ impl VM {
             // Find the absolute address of the start of the handler block and start executing
             // instructions from this address.
             let handler_addr = unsafe { func.bytecode().as_ptr().add(handler.handler()) };
-            self.pc = handler_addr;
+            self.set_pc(handler_addr);
 
             // Unwind the stack to the frame that contains the exception handler
-            self.fp = stack_frame.fp();
-            self.sp = stack_frame.sp();
+            self.set_fp(stack_frame.fp());
+            self.set_sp(stack_frame.sp());
 
             // Write the error into the appropriate register in the new stack frame
             if let Some(error_register) = handler.error_register() {
@@ -4163,8 +4214,8 @@ impl VM {
         let mut stack_frame = self.stack_frame();
 
         // The current PC points into the current stack frame's BytecodeFunction. Rewrite both.
-        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, self.pc, |addr| {
-            self.pc = addr
+        Self::rewrite_bytecode_function_and_address(visitor, stack_frame, self.pc(), |addr| {
+            self.set_pc(addr)
         });
 
         // Walk the stack, visiting all pointers in each frame

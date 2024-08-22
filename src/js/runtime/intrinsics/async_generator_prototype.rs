@@ -85,10 +85,7 @@ impl AsyncGeneratorPrototype {
         {
             async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Normal);
         } else {
-            debug_assert!(
-                state == AsyncGeneratorState::Executing
-                    || state == AsyncGeneratorState::AwaitingReturn
-            );
+            debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
 
         capability.promise().into()
@@ -118,10 +115,7 @@ impl AsyncGeneratorPrototype {
             // Resume with a return completion if generator is suspended at a yield
             async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Return);
         } else {
-            debug_assert!(
-                state == AsyncGeneratorState::Executing
-                    || state == AsyncGeneratorState::AwaitingReturn
-            );
+            debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
 
         capability.promise().into()
@@ -161,10 +155,7 @@ impl AsyncGeneratorPrototype {
         if state == AsyncGeneratorState::SuspendedYield {
             async_generator_resume(cx, async_generator, error, GeneratorCompletionType::Throw);
         } else {
-            debug_assert!(
-                state == AsyncGeneratorState::Executing
-                    || state == AsyncGeneratorState::AwaitingReturn
-            );
+            debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
 
         capability.promise().into()

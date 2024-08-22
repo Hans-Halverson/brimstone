@@ -467,7 +467,7 @@ impl VM {
                         } else {
                             // Otherwise the stack frame and PC to resume in the generator object.
                             // Generator will be resumed with the completion set.
-                            async_generator.suspend(
+                            async_generator.suspend_yield(
                                 pc_to_resume_offset,
                                 (completion_value_index, completion_type_index),
                                 self.stack_frame().as_slice(),
@@ -522,7 +522,7 @@ impl VM {
                             return_promise_or_generator.cast::<AsyncGeneratorObject>();
 
                         // Save the stack frame's state in the async generator object
-                        async_generator.save_state(
+                        async_generator.suspend_await(
                             pc_to_resume_offset,
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
@@ -1111,8 +1111,8 @@ impl VM {
                     // PC is pointing to the wide prefix. This is followed by optional padding, the
                     // opcode, then the operands. The operands must be aligned to the next possible
                     // two byte boundary so we can skip the padding and find the opcode location.
-                    let opcode_pc =
-                        wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize) as *const u8;
+                    let opcode_pc = wide_prefix_index_to_opcode_index(prefix_or_opcode_pc as usize)
+                        as *const u8;
                     let opcode = unsafe { *opcode_pc.cast::<OpCode>() };
 
                     create_dispatch_table!(Wide, opcode, opcode_pc);

@@ -61,7 +61,7 @@ extend_object! {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AsyncGeneratorState {
     /// Generator has been created but has not started executing yet.
     SuspendedStart,
@@ -69,6 +69,8 @@ pub enum AsyncGeneratorState {
     SuspendedYield,
     /// Generator is currently executing.
     Executing,
+    /// Generator is suspended at an await expression.
+    SuspendedAwait,
     /// Generator has returned and is now waiting for queued requests to be processed.
     AwaitingReturn,
     /// Generator has completed. Once a generator is in the completed state it never leaves.
@@ -77,7 +79,11 @@ pub enum AsyncGeneratorState {
 
 impl AsyncGeneratorState {
     pub fn is_suspended(&self) -> bool {
-        matches!(self, Self::SuspendedStart | Self::SuspendedYield)
+        matches!(self, Self::SuspendedStart | Self::SuspendedYield | Self::SuspendedAwait)
+    }
+
+    pub fn is_executing(&self) -> bool {
+        matches!(self, Self::Executing | Self::SuspendedAwait)
     }
 }
 
@@ -153,7 +159,7 @@ impl AsyncGeneratorObject {
             .realm_ptr()
     }
 
-    pub fn suspend(
+    pub fn suspend_yield(
         &mut self,
         pc_to_resume_offset: usize,
         completion_indices: (u32, u32),
@@ -163,7 +169,17 @@ impl AsyncGeneratorObject {
         self.save_state(pc_to_resume_offset, completion_indices, stack_frame);
     }
 
-    pub fn save_state(
+    pub fn suspend_await(
+        &mut self,
+        pc_to_resume_offset: usize,
+        completion_indices: (u32, u32),
+        stack_frame: &[StackSlotValue],
+    ) {
+        self.state = AsyncGeneratorState::SuspendedAwait;
+        self.save_state(pc_to_resume_offset, completion_indices, stack_frame);
+    }
+
+    fn save_state(
         &mut self,
         pc_to_resume_offset: usize,
         completion_indices: (u32, u32),
@@ -318,6 +334,7 @@ pub fn async_generator_resume(
     // An empty normal completion signals that the generator was suspended at an await or yield
     if let EvalResult::Ok(value) = completion {
         if value.is_empty() {
+            debug_assert!(async_generator.state.is_suspended());
             return;
         }
     }

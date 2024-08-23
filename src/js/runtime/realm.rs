@@ -15,6 +15,7 @@ use super::{
     intrinsics::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
+        rust_runtime::return_undefined,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -262,21 +263,15 @@ impl Handle<Realm> {
         self.new_global_scope(cx, scope_names);
 
         let empty_function = BuiltinFunction::create_builtin_function_without_properties(
-            cx, empty, /* name */ None, *self, /* prototype */ None,
+            cx,
+            return_undefined,
+            /* name */ None,
+            *self,
+            /* prototype */ None,
             /* is_constructor */ false,
         );
         self.empty_function = empty_function.get_();
     }
-}
-
-/// An empty function.
-pub fn empty(
-    cx: Context,
-    _: Handle<Value>,
-    _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
-) -> EvalResult<Handle<Value>> {
-    cx.undefined().into()
 }
 
 // 9.6 InitializeHostDefinedRealm

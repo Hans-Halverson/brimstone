@@ -8,7 +8,7 @@ use crate::{
     maybe,
 };
 
-use super::{intrinsics::Intrinsic, map_object::MapObject};
+use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_this};
 
 pub struct MapConstructor;
 
@@ -31,7 +31,7 @@ impl MapConstructor {
         );
 
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
@@ -66,16 +66,6 @@ impl MapConstructor {
             maybe!(call_object(cx, adder.as_object(), map_object.into(), &[key, value]));
             ().into()
         })
-    }
-
-    // 24.1.2.2 get Map [ @@species ]
-    pub fn get_species(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }
 

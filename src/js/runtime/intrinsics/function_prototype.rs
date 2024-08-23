@@ -23,7 +23,7 @@ use crate::{
     maybe, must,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, rust_runtime::return_undefined};
 
 pub struct FunctionPrototype {}
 
@@ -49,11 +49,11 @@ impl FunctionPrototype {
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
         object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
 
-        // The prototype object is itself a function with special behavior, implemented as a
-        // builtin function.
+        // The prototype object is a function which accepts any arguments and returns undefined
+        // when invoked.
         let function = BytecodeFunction::new_rust_runtime_function(
             cx,
-            Self::prototype_call,
+            return_undefined,
             realm,
             /* is_constructor */ false,
             /* name */ None,
@@ -253,18 +253,5 @@ impl FunctionPrototype {
         let argument = get_argument(cx, arguments, 0);
         let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
         cx.bool(has_instance).into()
-    }
-
-    /// 20.2.3 Properties of the Function Prototype Object
-    ///
-    /// Runtime function which is called when the function prototype object is called. Accepts any
-    /// arguments and returns undefined when invoked.
-    pub fn prototype_call(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        cx.undefined().into()
     }
 }

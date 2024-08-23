@@ -21,7 +21,7 @@ use crate::{
     maybe, must,
 };
 
-use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
+use super::{intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::return_this};
 
 /// 27.2.1.1.1 IfAbruptRejectPromise
 #[macro_export]
@@ -68,8 +68,9 @@ impl PromiseConstructor {
         func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm);
         func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm);
 
+        // 27.2.4.9 get Promise [ @@species ]
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
@@ -759,16 +760,6 @@ impl PromiseConstructor {
         ));
 
         object.into()
-    }
-
-    /// 27.2.4.9 get Promise [ @@species ]
-    pub fn get_species(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }
 

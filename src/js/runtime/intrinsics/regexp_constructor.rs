@@ -35,7 +35,7 @@ use crate::{
     maybe, must, set_uninit,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
 // 22.2 RegExp (Regular Expression) Objects
 extend_object! {
@@ -140,7 +140,7 @@ impl RegExpConstructor {
 
         // 22.2.5.2 get RegExp [ @@species ]
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
@@ -206,16 +206,6 @@ impl RegExpConstructor {
         };
 
         regexp_create(cx, regexp_source, new_target)
-    }
-
-    // 22.2.5.2 get RegExp [ @@species ]
-    pub fn get_species(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }
 

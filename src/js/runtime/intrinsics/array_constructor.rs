@@ -20,7 +20,7 @@ use crate::{
     maybe, must,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
 pub struct ArrayConstructor;
 
@@ -48,7 +48,7 @@ impl ArrayConstructor {
 
         // 23.1.2.5 get Array [ @@species ]
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
@@ -253,15 +253,5 @@ impl ArrayConstructor {
         maybe!(set(cx, array.into(), cx.names.length(), length_value, true));
 
         array.into()
-    }
-
-    // 23.1.2.5 get Array [ @@species ]
-    pub fn get_species(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }

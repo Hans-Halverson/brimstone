@@ -4,8 +4,8 @@ use crate::{
     js::runtime::{
         async_generator_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
         gc_object::GcObject, global_names, object_value::ObjectValue,
-        promise_object::PromiseCapability, realm, test_262_object::Test262Object, Context,
-        EvalResult, Handle, Value,
+        promise_object::PromiseCapability, test_262_object::Test262Object, Context, EvalResult,
+        Handle, Value,
     },
     static_assert,
 };
@@ -21,7 +21,6 @@ use super::{
     async_function_constructor::AsyncFunctionConstructor,
     async_generator_function_constructor::AsyncGeneratorFunctionConstructor,
     async_generator_prototype::AsyncGeneratorPrototype,
-    async_iterator_prototype::AsyncIteratorPrototype,
     bigint_constructor::BigIntConstructor,
     bigint_prototype::BigIntPrototype,
     boolean_constructor::BooleanConstructor,
@@ -39,7 +38,6 @@ use super::{
     generator_function_constructor::GeneratorFunctionConstructor,
     generator_prototype::GeneratorPrototype,
     global_object, intrinsics,
-    iterator_prototype::IteratorPrototype,
     json_object::JSONObject,
     map_constructor::MapConstructor,
     map_iterator::MapIteratorPrototype,
@@ -154,14 +152,12 @@ rust_runtime_functions!(
     AggregateErrorConstructor::construct,
     ArrayBufferConstructor::construct,
     ArrayBufferConstructor::is_view,
-    ArrayBufferConstructor::get_species,
     ArrayBufferPrototype::get_byte_length,
     ArrayBufferPrototype::slice,
     ArrayConstructor::construct,
     ArrayConstructor::from,
     ArrayConstructor::is_array,
     ArrayConstructor::of,
-    ArrayConstructor::get_species,
     ArrayIteratorPrototype::next,
     ArrayPrototype::at,
     ArrayPrototype::concat,
@@ -213,7 +209,6 @@ rust_runtime_functions!(
     AsyncGeneratorPrototype::next,
     AsyncGeneratorPrototype::return_,
     AsyncGeneratorPrototype::throw,
-    AsyncIteratorPrototype::async_iterator,
     BigInt64ArrayConstructor::construct,
     BigIntConstructor::construct,
     BigIntConstructor::as_int_n,
@@ -310,7 +305,6 @@ rust_runtime_functions!(
     FunctionPrototype::bind,
     FunctionPrototype::call_intrinsic,
     FunctionPrototype::has_instance,
-    FunctionPrototype::prototype_call,
     FunctionPrototype::to_string,
     GeneratorFunctionConstructor::construct,
     GeneratorPrototype::next,
@@ -329,12 +323,10 @@ rust_runtime_functions!(
     Int8ArrayConstructor::construct,
     Int16ArrayConstructor::construct,
     Int32ArrayConstructor::construct,
-    IteratorPrototype::iterator,
     intrinsics::throw_type_error,
     JSONObject::parse,
     JSONObject::stringify,
     MapConstructor::construct,
-    MapConstructor::get_species,
     MapIteratorPrototype::next,
     MapPrototype::clear,
     MapPrototype::delete,
@@ -421,7 +413,6 @@ rust_runtime_functions!(
     PromiseConstructor::all_settled,
     PromiseConstructor::any,
     PromiseConstructor::construct,
-    PromiseConstructor::get_species,
     PromiseConstructor::promise_all_resolve,
     PromiseConstructor::promise_all_settled_reject,
     PromiseConstructor::promise_all_settled_resolve,
@@ -454,7 +445,6 @@ rust_runtime_functions!(
     NumberPrototype::to_string,
     NumberPrototype::value_of,
     RangeErrorConstructor::construct,
-    realm::empty,
     ReferenceErrorConstructor::construct,
     ReflectObject::apply,
     ReflectObject::construct,
@@ -470,7 +460,6 @@ rust_runtime_functions!(
     ReflectObject::set,
     ReflectObject::set_prototype_of,
     RegExpConstructor::construct,
-    RegExpConstructor::get_species,
     RegExpPrototype::dot_all,
     RegExpPrototype::exec,
     RegExpPrototype::flags,
@@ -491,7 +480,6 @@ rust_runtime_functions!(
     RegExpPrototype::unicode_sets,
     RegExpStringIteratorPrototype::next,
     SetConstructor::construct,
-    SetConstructor::get_species,
     SetIteratorPrototype::next,
     SetPrototype::add,
     SetPrototype::clear,
@@ -553,7 +541,6 @@ rust_runtime_functions!(
     TypedArrayConstructor::construct,
     TypedArrayConstructor::from,
     TypedArrayConstructor::of,
-    TypedArrayConstructor::get_species,
     TypedArrayPrototype::at,
     TypedArrayPrototype::buffer,
     TypedArrayPrototype::byte_length,
@@ -612,4 +599,29 @@ rust_runtime_functions!(
     Test262Object::detach_array_buffer,
     Test262Object::eval_script,
     Test262Object::print,
+    // Shared runtime functions
+    return_this,
+    return_undefined,
 );
+
+/// Rust runtime function that simply returns the `this` argument.
+#[no_mangle]
+pub fn return_this(
+    _: Context,
+    this_value: Handle<Value>,
+    _: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    this_value.into()
+}
+
+/// Rust runtime function that simply returns `undefined`.
+#[no_mangle]
+pub fn return_undefined(
+    cx: Context,
+    _: Handle<Value>,
+    _: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    cx.undefined().into()
+}

@@ -1,8 +1,6 @@
-use crate::js::runtime::{
-    completion::EvalResult, object_value::ObjectValue, realm::Realm, Context, Handle, Value,
-};
+use crate::js::runtime::{object_value::ObjectValue, realm::Realm, Context, Handle};
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
 /// 27.1.3 The %AsyncIteratorPrototype% Object
 pub struct AsyncIteratorPrototype;
@@ -12,19 +10,10 @@ impl AsyncIteratorPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
+        // 27.1.3.1 %AsyncIteratorPrototype% [ @@asyncIterator ]
         let async_iterator_key = cx.well_known_symbols.async_iterator();
-        object.intrinsic_func(cx, async_iterator_key, Self::async_iterator, 0, realm);
+        object.intrinsic_func(cx, async_iterator_key, return_this, 0, realm);
 
         object
-    }
-
-    // 27.1.3.1 %AsyncIteratorPrototype% [ @@asyncIterator ]
-    pub fn async_iterator(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }

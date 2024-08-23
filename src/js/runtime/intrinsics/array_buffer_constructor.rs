@@ -19,7 +19,7 @@ use crate::{
     maybe, set_uninit,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
 // 4GB max array buffer size
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
@@ -114,8 +114,9 @@ impl ArrayBufferConstructor {
 
         func.intrinsic_func(cx, cx.names.is_view(), Self::is_view, 1, realm);
 
+        // 25.1.4.3 get ArrayBuffer [ @@species ]
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, Self::get_species, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
@@ -155,16 +156,6 @@ impl ArrayBufferConstructor {
         let is_view = object.is_data_view() || object.is_typed_array();
 
         cx.bool(is_view).into()
-    }
-
-    // 25.1.4.3 get ArrayBuffer [ @@species ]
-    pub fn get_species(
-        _: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_value.into()
     }
 }
 

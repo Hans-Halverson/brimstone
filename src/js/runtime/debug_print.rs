@@ -31,6 +31,7 @@ pub trait DebugPrint {
         printer.finish()
     }
 
+    #[allow(unused)]
     fn debug_print_short(&self) -> String {
         self.debug_print(DebugPrintMode::Short)
     }

@@ -14,6 +14,7 @@ use super::{
 use crate::{count, js::runtime::debug_print::DebugPrinter, replace_expr};
 
 /// Generic properties of instructions.
+#[allow(dead_code)]
 pub trait Instruction: fmt::Display {
     fn opcode(&self) -> OpCode;
     fn num_operands(&self) -> usize;
@@ -47,7 +48,7 @@ macro_rules! define_instructions {
                     }
                 )*
 
-                const OPERAND_TYPES: &[OperandType] = &[
+                const OPERAND_TYPES: &'static [OperandType] = &[
                     $(
                         OperandType::$operand_type,
                     )*

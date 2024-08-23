@@ -347,6 +347,7 @@ macro_rules! write_opcode_with_u24_operand {
 
 macro_rules! regexp_bytecode_instruction {
     ($name:ident, $opcode:expr, $size:expr, impl TInstruction { $($regexp_impl_item:item)* } ) => {
+        #[allow(dead_code)]
         pub struct $name([u32; $size]);
 
         impl TInstruction for $name {

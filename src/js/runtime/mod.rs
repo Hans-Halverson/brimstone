@@ -50,6 +50,7 @@ mod value;
 
 pub use abstract_operations::get;
 pub use completion::EvalResult;
+#[allow(unused_imports)]
 pub use console::to_console_string;
 pub use context::Context;
 pub use gc::{Handle, HeapPtr};

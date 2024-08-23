@@ -110,7 +110,7 @@ impl AsyncGeneratorPrototype {
 
         let state = async_generator.state();
         if state == AsyncGeneratorState::SuspendedStart || state == AsyncGeneratorState::Completed {
-            must!(async_generator_await_return(cx, async_generator));
+            async_generator_await_return(cx, async_generator);
         } else if state == AsyncGeneratorState::SuspendedYield {
             // Resume with a return completion if generator is suspended at a yield
             async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Return);

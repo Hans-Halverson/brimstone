@@ -350,13 +350,27 @@ pub fn async_generator_resume(
 pub fn async_generator_await_return(
     cx: Context,
     mut async_generator: Handle<AsyncGeneratorObject>,
-) -> EvalResult<()> {
+) {
     async_generator.state = AsyncGeneratorState::AwaitingReturn;
 
     let request = async_generator.peek_request_ptr().unwrap();
     let completion_value = request.completion_value().to_handle(cx);
 
-    let promise = maybe!(coerce_to_ordinary_promise(cx, completion_value));
+    let promise_completion = coerce_to_ordinary_promise(cx, completion_value);
+
+    let promise = match promise_completion {
+        EvalResult::Ok(promise) => promise,
+        EvalResult::Throw(error) => {
+            async_generator_complete_step(
+                cx,
+                async_generator,
+                EvalResult::Throw(error),
+                /* is_done */ true,
+            );
+            async_generator_drain_queue(cx, async_generator);
+            return;
+        }
+    };
 
     // Create a resolve function and attach async generator
     let on_resolve = BuiltinFunction::create(
@@ -383,8 +397,6 @@ pub fn async_generator_await_return(
     set_async_generator(cx, on_resolve, async_generator);
 
     perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None);
-
-    ().into()
 }
 
 pub fn await_return_resolve(
@@ -467,7 +479,7 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
 
         match request.completion_type() {
             GeneratorCompletionType::Return => {
-                must!(async_generator_await_return(cx, async_generator));
+                async_generator_await_return(cx, async_generator);
                 return;
             }
             GeneratorCompletionType::Normal => {

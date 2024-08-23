@@ -8,3 +8,11 @@ where
 {
     ((a % b) + b) % b
 }
+
+/// Round a value up to the nearest multiple of a given number, where given number must be a power
+/// of two.
+#[inline]
+pub fn round_to_power_of_two(value: usize, power_of_two: usize) -> usize {
+    let mask = power_of_two - 1;
+    (value + mask) & !mask
+}

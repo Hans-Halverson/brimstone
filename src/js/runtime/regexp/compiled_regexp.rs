@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     field_offset,
     js::{
+        common::math::round_to_power_of_two,
         parser::regexp::{RegExp, RegExpFlags},
         runtime::{
             collections::InlineArray,
@@ -90,9 +91,18 @@ impl CompiledRegExpObject {
         object.to_handle()
     }
 
+    #[inline]
+    fn capture_groups_byte_offset(num_instructions: usize) -> usize {
+        // Pad to 8 bytes to ensure that next field is properly aligned
+        let instructions_field_size = InlineArray::<u32>::calculate_size_in_bytes(num_instructions);
+        let instructions_field_with_padding = round_to_power_of_two(instructions_field_size, 8);
+
+        INSTRUCTIONS_BYTE_OFFSET + instructions_field_with_padding
+    }
+
+    #[inline]
     fn calculate_size_in_bytes(num_instructions: usize, num_capture_groups: u32) -> usize {
-        INSTRUCTIONS_BYTE_OFFSET
-            + InlineArray::<u32>::calculate_size_in_bytes(num_instructions)
+        Self::capture_groups_byte_offset(num_instructions)
             + size_of::<Option<HeapPtr<StringValue>>>() * num_capture_groups as usize
     }
 
@@ -110,14 +120,8 @@ impl CompiledRegExpObject {
 
     #[inline]
     fn capture_groups_as_ptr(&self) -> *const Option<HeapPtr<StringValue>> {
-        let byte_offset = self.capture_groups_byte_offset();
+        let byte_offset = Self::capture_groups_byte_offset(self.instructions.len());
         unsafe { (self as *const _ as *const u8).add(byte_offset).cast() }
-    }
-
-    #[inline]
-    fn capture_groups_byte_offset(&self) -> usize {
-        INSTRUCTIONS_BYTE_OFFSET
-            + InlineArray::<u32>::calculate_size_in_bytes(self.instructions.len())
     }
 
     #[inline]

@@ -1,4 +1,4 @@
-use icu_casemapping::CaseMapping;
+use icu_casemap::CaseMapper;
 use icu_collator::{Collator, CollatorOptions};
 use icu_locid::{locale, Locale};
 use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
@@ -9,10 +9,11 @@ use icu_properties::{
     sets::{self, CodePointSetData, CodePointSetDataBorrowed},
     GeneralCategoryGroup, Script,
 };
+use icu_provider::DataLocale;
 use icu_provider_adapters::fallback::LocaleFallbackProvider;
 use once_cell::sync::Lazy;
 
-include!("../../../icu/data/mod.rs");
+use super::icu_data::BakedDataProvider;
 
 const DEFAULT_LOCALE: Locale = locale!("en");
 
@@ -22,7 +23,7 @@ pub struct ICU {
     pub properties: Properties,
     pub normalizers: Normalizers,
     pub collator: Collator,
-    pub case_mapping: CaseMapping,
+    pub case_mapper: CaseMapper,
 }
 
 pub struct GeneralCategories {
@@ -454,6 +455,6 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
             CollatorOptions::new(),
         )
         .unwrap(),
-        case_mapping: CaseMapping::try_new(&BakedDataProvider).unwrap(),
+        case_mapper: CaseMapper::try_new_unstable(&BakedDataProvider).unwrap(),
     }
 });

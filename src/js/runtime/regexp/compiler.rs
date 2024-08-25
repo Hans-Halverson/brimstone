@@ -870,20 +870,20 @@ impl CompiledRegExpBuilder {
                 // Accumulate single and range char ranges
                 ClassRange::Single(code_point) => {
                     if is_case_insensitive {
-                        set_builder.add_u32(self.canonicalize(*code_point));
+                        set_builder.add32(self.canonicalize(*code_point));
                     } else {
-                        set_builder.add_u32(*code_point)
+                        set_builder.add32(*code_point)
                     }
                 }
                 ClassRange::Range(start, end) => {
                     if is_case_insensitive {
                         // Canonicalize each element of range and add to set
                         for code_point in *start..=*end {
-                            set_builder.add_u32(self.canonicalize(code_point));
+                            set_builder.add32(self.canonicalize(code_point));
                         }
                     } else {
                         // Otherwise can add the range directly
-                        set_builder.add_range_u32(&(*start..=*end));
+                        set_builder.add_range32(&(*start..=*end));
                     }
                 }
                 // Shorthand char ranges have own instructions

@@ -1,4 +1,5 @@
 pub mod icu;
+mod icu_data;
 pub mod macros;
 pub mod math;
 pub mod memory;

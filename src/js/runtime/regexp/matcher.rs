@@ -793,14 +793,14 @@ pub fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint 
         // Use simple case folding for Unicode-aware case-insensitive matching
         match char::from_u32(code_point) {
             None => code_point,
-            Some(c) => ICU.case_mapping.fold(c) as CodePoint,
+            Some(c) => ICU.case_mapper.simple_fold(c) as CodePoint,
         }
     } else {
         match char::from_u32(code_point) {
             None => code_point,
             Some(c) => {
                 // Use simple uppercase for non-Unicode-aware case-insensitive matching
-                let uppercase_code_point = ICU.case_mapping.to_uppercase(c) as CodePoint;
+                let uppercase_code_point = ICU.case_mapper.simple_uppercase(c) as CodePoint;
 
                 // Do not allow mapping non-ASCII code points to ASCII code points
                 if uppercase_code_point < 128 && code_point >= 128 {

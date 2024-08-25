@@ -2,6 +2,8 @@
   // Tests which are always ignored
   "always": {
     "tests": [
+      // Using more recent version of Unicode that test262 - fixed in newer test262
+      "built-ins/RegExp/unicode_full_case_folding.js",
       // ECMA-402 Internationalization API is not implemented
       "intl402/*",
       // Incorrect tests due to changed base/property evaluation order

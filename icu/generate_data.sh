@@ -8,7 +8,7 @@ CURRENT_DIR=$(cd "$(dirname "$0")" && pwd)
 DATA_DIR="$CURRENT_DIR/data"
 
 # This version must match the version of icu in Cargo.toml
-ICU_VERSION="1.2.0"
+ICU_VERSION="1.5.0"
 
 cargo install --version "$ICU_VERSION" icu_datagen
 

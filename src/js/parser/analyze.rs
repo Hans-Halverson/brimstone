@@ -1103,7 +1103,7 @@ impl Analyzer<'_> {
                     if private_names.contains_key(&private_id.name) {
                         self.emit_error(
                             private_id.loc,
-                            ParseError::DuplicatePrivateName(private_id.name.clone()),
+                            ParseError::new_duplicate_private_name(private_id.name.clone()),
                         );
                     } else {
                         // Create a complete usage that does not allow any other uses of this name
@@ -1165,7 +1165,7 @@ impl Analyzer<'_> {
                             if is_duplicate {
                                 self.emit_error(
                                     private_id.loc,
-                                    ParseError::DuplicatePrivateName(private_id.name.clone()),
+                                    ParseError::new_duplicate_private_name(private_id.name.clone()),
                                 );
                             }
                         }
@@ -1473,7 +1473,7 @@ impl Analyzer<'_> {
             self.resolve_private_identifier_use(id);
 
             if !is_defined {
-                self.emit_error(id.loc, ParseError::PrivateNameNotDefined(id.name.clone()));
+                self.emit_error(id.loc, ParseError::new_private_name_not_defined(id.name.clone()));
             }
         }
     }

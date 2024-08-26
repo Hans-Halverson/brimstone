@@ -12,9 +12,9 @@ use super::{
 #[derive(Debug)]
 pub enum ParseError {
     Io(io::Error),
-    UnknownToken(String),
-    UnexpectedToken(Token),
-    ExpectedToken(Token, Token),
+    UnknownToken(Box<String>),
+    UnexpectedToken(Box<Token>),
+    ExpectedToken(Box<(Token, Token)>),
     InvalidUnicode,
     UnterminatedStringLiteral,
     UnterminatedRegExpLiteral,
@@ -40,7 +40,7 @@ pub enum ParseError {
     NullishCoalesceMixedWithLogical,
     HashNotFollowedByIdentifier,
     ForEachInitInvalidVarDecl,
-    NameRedeclaration(String, BindingKind),
+    NameRedeclaration(Box<(String, BindingKind)>),
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -63,9 +63,9 @@ pub enum ParseError {
     NonSimpleConstructor,
     ClassStaticPrototype,
     InvalidPatternInitializer,
-    DuplicatePrivateName(String),
+    DuplicatePrivateName(Box<String>),
     PrivateNameOutsideClass,
-    PrivateNameNotDefined(String),
+    PrivateNameNotDefined(Box<String>),
     PrivateNameConstructor,
     ArgumentsInClassInitializer,
     NewTargetOutsideFunction,
@@ -105,6 +105,32 @@ pub enum InvalidDuplicateParametersReason {
     NonSimpleParameters,
 }
 
+impl ParseError {
+    pub fn new_unknown_token(token: String) -> ParseError {
+        ParseError::UnknownToken(Box::new(token))
+    }
+
+    pub fn new_unexpected_token(token: Token) -> ParseError {
+        ParseError::UnexpectedToken(Box::new(token))
+    }
+
+    pub fn new_expected_token(actual: Token, expected: Token) -> ParseError {
+        ParseError::ExpectedToken(Box::new((actual, expected)))
+    }
+
+    pub fn new_name_redeclaration(name: String, kind: BindingKind) -> ParseError {
+        ParseError::NameRedeclaration(Box::new((name, kind)))
+    }
+
+    pub fn new_duplicate_private_name(name: String) -> ParseError {
+        ParseError::DuplicatePrivateName(Box::new(name))
+    }
+
+    pub fn new_private_name_not_defined(name: String) -> ParseError {
+        ParseError::PrivateNameNotDefined(Box::new(name))
+    }
+}
+
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -114,7 +140,8 @@ impl fmt::Display for ParseError {
             }
             ParseError::UnknownToken(token) => write!(f, "Unknown token {}", token),
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),
-            ParseError::ExpectedToken(actual, expected) => {
+            ParseError::ExpectedToken(payload) => {
+                let (actual, expected) = payload.as_ref();
                 write!(f, "Unexpected token {}, expected {}", actual, expected)
             }
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
@@ -186,7 +213,8 @@ impl fmt::Display for ParseError {
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
             }
-            ParseError::NameRedeclaration(name, kind) => {
+            ParseError::NameRedeclaration(payload) => {
+                let (name, kind) = payload.as_ref();
                 let kind_string = match kind {
                     BindingKind::Var => "var",
                     BindingKind::Const { .. } => "const",

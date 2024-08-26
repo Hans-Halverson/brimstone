@@ -234,7 +234,7 @@ impl<'a> Parser<'a> {
 
     fn expect(&mut self, token: Token) -> ParseResult<()> {
         if self.token != token {
-            return self.error(self.loc, ParseError::ExpectedToken(self.token.clone(), token));
+            return self.error(self.loc, ParseError::new_expected_token(self.token.clone(), token));
         }
 
         self.advance()?;
@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error_unexpected_token<T>(&self, loc: Loc, token: &Token) -> ParseResult<T> {
-        self.error(loc, ParseError::UnexpectedToken(token.clone()))
+        self.error(loc, ParseError::new_unexpected_token(token.clone()))
     }
 
     fn error_expected_token<T>(
@@ -251,7 +251,7 @@ impl<'a> Parser<'a> {
         actual: &Token,
         expected: &Token,
     ) -> ParseResult<T> {
-        self.error(loc, ParseError::ExpectedToken(actual.clone(), expected.clone()))
+        self.error(loc, ParseError::new_expected_token(actual.clone(), expected.clone()))
     }
 
     #[inline]
@@ -298,7 +298,10 @@ impl<'a> Parser<'a> {
                 if self.lexer.is_new_line_before_current() {
                     Ok(())
                 } else {
-                    self.error(self.loc, ParseError::ExpectedToken(other.clone(), Token::Semicolon))
+                    self.error(
+                        self.loc,
+                        ParseError::new_expected_token(other.clone(), Token::Semicolon),
+                    )
                 }
             }
         }

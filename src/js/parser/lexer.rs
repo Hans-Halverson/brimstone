@@ -522,14 +522,17 @@ impl<'a> Lexer<'a> {
                     } else {
                         let loc = self.mark_loc(start_pos);
                         let code_point_string = to_string_or_unicode_escape_sequence(code_point);
-                        return self.error(loc, ParseError::UnknownToken(code_point_string));
+                        return self.error(loc, ParseError::new_unknown_token(code_point_string));
                     }
                 }
                 other => {
                     if is_ascii(other) {
                         self.advance();
                         let loc = self.mark_loc(start_pos);
-                        self.error(loc, ParseError::UnknownToken(((other as u8) as char).into()))
+                        self.error(
+                            loc,
+                            ParseError::new_unknown_token(((other as u8) as char).into()),
+                        )
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
                         if let Some(char) = as_id_start_unicode(code_point) {
@@ -544,7 +547,7 @@ impl<'a> Lexer<'a> {
                             let loc = self.mark_loc(start_pos);
                             let code_point_string =
                                 to_string_or_unicode_escape_sequence(code_point);
-                            self.error(loc, ParseError::UnknownToken(code_point_string))
+                            self.error(loc, ParseError::new_unknown_token(code_point_string))
                         }
                     }
                 }
@@ -587,7 +590,7 @@ impl<'a> Lexer<'a> {
                     EOF_CHAR => {
                         let loc = self.mark_loc(self.pos + 1);
                         return self
-                            .error(loc, ParseError::ExpectedToken(Token::Eof, Token::Divide));
+                            .error(loc, ParseError::new_expected_token(Token::Eof, Token::Divide));
                     }
                     _ => self.advance(),
                 }),
@@ -597,7 +600,8 @@ impl<'a> Lexer<'a> {
                 }
                 EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
-                    return self.error(loc, ParseError::ExpectedToken(Token::Eof, Token::Multiply));
+                    return self
+                        .error(loc, ParseError::new_expected_token(Token::Eof, Token::Multiply));
                 }
                 other => {
                     if is_ascii(other) {
@@ -1472,7 +1476,7 @@ impl<'a> Lexer<'a> {
                     } else {
                         let loc = self.mark_loc(self.pos);
                         let code_point_string = to_string_or_unicode_escape_sequence(code_point);
-                        return self.error(loc, ParseError::UnknownToken(code_point_string));
+                        return self.error(loc, ParseError::new_unknown_token(code_point_string));
                     }
                 } else {
                     break;

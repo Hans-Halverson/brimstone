@@ -217,7 +217,7 @@ impl ScopeTree {
             // scoped bindings with the same name are allowed.
             if let Some(binding) = node.bindings.get(name) {
                 if binding.kind.is_lexically_scoped() {
-                    return Err(ParseError::NameRedeclaration(
+                    return Err(ParseError::new_name_redeclaration(
                         name.to_owned(),
                         binding.kind.clone(),
                     ));
@@ -875,13 +875,16 @@ impl AstScopeNode {
         if let Some(binding) = self.bindings.get(name) {
             // Function expression name bindings can always be overriden
             if !binding.kind().is_function_expression_name() {
-                return Some(ParseError::NameRedeclaration(name.to_owned(), binding.kind.clone()));
+                return Some(ParseError::new_name_redeclaration(
+                    name.to_owned(),
+                    binding.kind.clone(),
+                ));
             }
         }
 
         // Then check for other conflicting var scoped bindings, e.g. in child scopes
         if self.extra_var_names.contains(name) {
-            return Some(ParseError::NameRedeclaration(
+            return Some(ParseError::new_name_redeclaration(
                 name.to_owned(),
                 // Guaranteed to conflict with a `var` binding, as the other var scoped names -
                 // var scoped functions and function parameters - cannot appear in child scopes.

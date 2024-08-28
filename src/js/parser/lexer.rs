@@ -42,14 +42,14 @@ const EOF_CHAR: u32 = 0x110000;
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
         let buf = source.contents.as_bytes();
-        let current = if buf.len() == 0 {
+        let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0].into()
         };
 
         Lexer {
-            source: &source,
+            source,
             buf,
             current,
             pos: 0,
@@ -1310,7 +1310,7 @@ impl<'a> Lexer<'a> {
             Some(loc) => Err(loc),
         };
 
-        return self.emit(Token::TemplatePart { raw, cooked, is_head, is_tail }, start_pos);
+        self.emit(Token::TemplatePart { raw, cooked, is_head, is_tail }, start_pos)
     }
 
     /// Lex any valid codepoint whether it is ASCII or unicode
@@ -1332,7 +1332,7 @@ impl<'a> Lexer<'a> {
         match decode_wtf8_codepoint(buf) {
             Ok((code_point, byte_length)) => {
                 self.advance_n(byte_length);
-                Ok(code_point as u32)
+                Ok(code_point)
             }
             Err(byte_length) => {
                 println!("bl is {byte_length}");

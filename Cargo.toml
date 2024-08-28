@@ -34,3 +34,12 @@ gc_stress_test = []
 
 [lib]
 doctest = false
+
+[lints.clippy]
+collapsible_else_if = "allow"
+collapsible_if = "allow"
+comparison_chain = "allow"
+len_without_is_empty = "allow"
+new_ret_no_self = "allow"
+new_without_default = "allow"
+too_many_arguments = "allow"

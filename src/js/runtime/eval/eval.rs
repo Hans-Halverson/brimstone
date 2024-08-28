@@ -209,7 +209,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     let mut eval_var_names = vec![];
     let mut eval_func_names = vec![];
     for (name, binding) in program.scope.as_ref().iter_var_decls() {
-        let name = InternedStrings::get_str(cx, &name).as_flat();
+        let name = InternedStrings::get_str(cx, name).as_flat();
         match binding.kind() {
             BindingKind::Var => eval_var_names.push(name),
             BindingKind::Function { .. } => eval_func_names.push(name),
@@ -221,7 +221,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     let eval_scope = program.scope.as_ref();
     let eval_var_names = eval_scope
         .iter_var_decls()
-        .map(|(name, _)| InternedStrings::get_str(cx, &name).as_flat())
+        .map(|(name, _)| InternedStrings::get_str(cx, name).as_flat())
         .collect::<Vec<_>>();
 
     maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names));

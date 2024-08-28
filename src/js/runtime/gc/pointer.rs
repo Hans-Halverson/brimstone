@@ -18,6 +18,7 @@ impl<T> HeapPtr<T> {
     }
 
     #[inline]
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub const fn from_ptr(ptr: *mut T) -> HeapPtr<T> {
         unsafe { HeapPtr { ptr: NonNull::new_unchecked(ptr) } }
     }
@@ -47,14 +48,14 @@ impl<T: IsHeapObject> ToHandleContents for T {
     type Impl = HeapPtr<T>;
 
     #[inline]
-    fn to_handle_contents(heap_ptr: &HeapPtr<T>) -> HandleContents {
+    fn to_handle_contents(heap_ptr: HeapPtr<T>) -> HandleContents {
         heap_ptr.ptr.as_ptr() as usize
     }
 }
 
 impl<T> Clone for HeapPtr<T> {
     fn clone(&self) -> Self {
-        HeapPtr { ptr: self.ptr }
+        *self
     }
 }
 

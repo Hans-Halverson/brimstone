@@ -5,6 +5,7 @@ mod lexer;
 pub mod lexer_stream;
 pub mod loc;
 mod parse_error;
+#[allow(clippy::module_inception)]
 pub mod parser;
 mod printer;
 pub mod regexp;

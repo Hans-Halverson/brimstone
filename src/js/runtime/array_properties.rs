@@ -204,11 +204,11 @@ impl ArrayProperties {
                 if new_length >= array_length + SPARSE_ARRAY_THRESHOLD {
                     // First try falling back to sparse properties if this is an expanded dense array
                     Self::transition_to_sparse_properties(cx, object);
-                    return Self::set_len(cx, object, new_length);
+                    Self::set_len(cx, object, new_length)
                 } else {
                     // Otherwise stay dense but resize array with new empty elements
                     Self::grow_dense_properties(cx, object, new_length);
-                    return true;
+                    true
                 }
             } else if new_length < array_length {
                 // All properties are configurable so can always shrink directly to new length
@@ -234,7 +234,7 @@ impl ArrayProperties {
             // Can use stored property directly since loop does not allocate.
             let mut last_non_configurable_index = None;
             for (index, stored_property) in sparse_properties.sparse_map.iter_gc_unsafe() {
-                if (index as u32) < new_length {
+                if index < new_length {
                     continue;
                 }
                 if !stored_property.is_configurable() {
@@ -519,7 +519,7 @@ impl HeapPtr<SparseArrayProperties> {
 struct SparseMapField(Handle<ObjectValue>);
 
 impl BsHashMapField<u32, HeapProperty> for SparseMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<SparseMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<SparseMap> {
         let array_length = self.0.array_properties_length();
         SparseArrayProperties::new(cx, capacity, array_length).cast()
     }

@@ -70,10 +70,7 @@ impl StringLexer {
     /// Is the current code unit equal to the given character. Only valid for char in the u16 range.
     #[inline]
     pub fn current_equals(&self, expected: char) -> bool {
-        match self.current {
-            Some(current) if current == expected as u16 => true,
-            _ => false,
-        }
+        matches!(self.current, Some(current) if current == expected as u16)
     }
 
     /// Peek the next char by looking at the next byte. Can only be used for ASCII chars.
@@ -94,10 +91,7 @@ impl StringLexer {
     }
 
     pub fn current_is_decimal_digit(&self) -> bool {
-        match self.current {
-            Some(current) if '0' as u16 <= current && current <= '9' as u16 => true,
-            _ => false,
-        }
+        matches!(self.current, Some(current) if '0' as u16 <= current && current <= '9' as u16)
     }
 
     pub fn current_is_whitespace_or_newline(&self) -> bool {
@@ -244,9 +238,8 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
     // Parse optional leading sign
     let is_negative = if lexer.eat('-') {
         true
-    } else if lexer.eat('+') {
-        false
     } else {
+        lexer.eat('+');
         false
     };
 
@@ -419,7 +412,7 @@ pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
     let start_ptr = lexer.current_ptr();
     let end_ptr = parse_unsigned_decimal_literal(lexer)?;
 
-    let number = parse_between_ptrs_to_f64(&lexer, start_ptr, end_ptr);
+    let number = parse_between_ptrs_to_f64(lexer, start_ptr, end_ptr);
 
     if is_negative {
         Some(-number)
@@ -679,7 +672,7 @@ fn parse_string_to_iso_date(string: Handle<StringValue>) -> Option<f64> {
     };
 
     // Validate that month is in range
-    if months < 1 || months > 12 {
+    if !(1..=12).contains(&months) {
         return None;
     }
 
@@ -692,7 +685,7 @@ fn parse_string_to_iso_date(string: Handle<StringValue>) -> Option<f64> {
     };
 
     // Validate that days is in range
-    if days < 1 || days > 31 {
+    if !(0..=31).contains(&days) {
         return None;
     }
 
@@ -751,13 +744,11 @@ fn parse_string_to_iso_date(string: Handle<StringValue>) -> Option<f64> {
         }
 
         sign * (timezone_hour * MS_PER_HOUR as i64 + timezone_minute * MS_PER_MINUTE as i64)
+    } else if has_time {
+        // TODO: Use current time zone offset
+        0
     } else {
-        if has_time {
-            // TODO: Use current time zone offset
-            0
-        } else {
-            0
-        }
+        0
     };
 
     // Make sure we are at the end of the string
@@ -831,7 +822,7 @@ fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f6
     }
 
     // Validate range of day
-    if day < 1 || day > 31 {
+    if !(1..=31).contains(&day) {
         return None;
     }
 

@@ -135,24 +135,15 @@ impl PropertyDescriptor {
     }
 
     pub fn is_writable(&self) -> bool {
-        match self.is_writable {
-            None => false,
-            Some(is_writable) => is_writable,
-        }
+        self.is_writable.unwrap_or(false)
     }
 
     pub fn is_enumerable(&self) -> bool {
-        match self.is_enumerable {
-            None => false,
-            Some(is_enumerable) => is_enumerable,
-        }
+        self.is_enumerable.unwrap_or(false)
     }
 
     pub fn is_configurable(&self) -> bool {
-        match self.is_configurable {
-            None => false,
-            Some(is_configurable) => is_configurable,
-        }
+        self.is_configurable.unwrap_or(false)
     }
 
     pub fn has_no_fields(&self) -> bool {
@@ -208,14 +199,14 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
     let object = ordinary_object_create(cx);
 
     if let Some(value) = desc.value {
-        must!(create_data_property_or_throw(cx, object.into(), cx.names.value(), value,));
+        must!(create_data_property_or_throw(cx, object, cx.names.value(), value,));
     }
 
     if let Some(is_writable) = desc.is_writable {
         let is_writable_value = cx.bool(is_writable);
         must!(create_data_property_or_throw(
             cx,
-            object.into(),
+            object,
             cx.names.writable(),
             is_writable_value,
         ));
@@ -228,7 +219,7 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
             cx.undefined()
         };
 
-        must!(create_data_property_or_throw(cx, object.into(), cx.names.get(), get_value));
+        must!(create_data_property_or_throw(cx, object, cx.names.get(), get_value));
     }
 
     if desc.has_set {
@@ -238,14 +229,14 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
             cx.undefined()
         };
 
-        must!(create_data_property_or_throw(cx, object.into(), cx.names.set_(), set_value));
+        must!(create_data_property_or_throw(cx, object, cx.names.set_(), set_value));
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {
         let is_enumerable_value = cx.bool(is_enumerable);
         must!(create_data_property_or_throw(
             cx,
-            object.into(),
+            object,
             cx.names.enumerable(),
             is_enumerable_value,
         ));
@@ -255,7 +246,7 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
         let is_configurable_value = cx.bool(is_configurable);
         must!(create_data_property_or_throw(
             cx,
-            object.into(),
+            object,
             cx.names.configurable(),
             is_configurable_value,
         ));

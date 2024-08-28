@@ -121,7 +121,7 @@ pub struct Utf8LexerStream<'a> {
 
 impl<'a> Utf8LexerStream<'a> {
     pub fn new(buf_start_pos: Pos, source: Rc<Source>, buf: &'a [u8]) -> Self {
-        let current = if buf.len() == 0 {
+        let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0].into()
@@ -215,7 +215,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
             match decode_wtf8_codepoint(buf) {
                 Ok((code_point, byte_length)) => {
                     self.advance_n(byte_length);
-                    Ok(code_point as u32)
+                    Ok(code_point)
                 }
                 Err(byte_length) => {
                     let start_pos = self.pos;
@@ -262,7 +262,7 @@ pub struct HeapOneByteLexerStream<'a> {
 
 impl<'a> HeapOneByteLexerStream<'a> {
     pub fn new(buf: &'a [u8]) -> Self {
-        let current = if buf.len() == 0 {
+        let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0].into()
@@ -415,7 +415,7 @@ pub struct HeapTwoByteCodeUnitLexerStream<'a> {
 
 impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
     pub fn new(buf: &'a [u16]) -> Self {
-        let current = if buf.len() == 0 {
+        let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0] as u32
@@ -571,7 +571,7 @@ pub struct HeapTwoByteCodePointLexerStream<'a> {
 
 impl<'a> HeapTwoByteCodePointLexerStream<'a> {
     pub fn new(buf: &'a [u16]) -> Self {
-        let current = if buf.len() == 0 {
+        let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0] as u32

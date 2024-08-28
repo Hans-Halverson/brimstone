@@ -49,7 +49,7 @@ pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
                 None => String::from("Symbol()"),
                 Some(description) => format!("Symbol({})", description),
             },
-            ObjectKind::BigInt => format!("{}n", value.as_bigint().bigint().to_string()),
+            ObjectKind::BigInt => format!("{}n", value.as_bigint().bigint()),
             // Otherwise must be an object
             _ => {
                 let object = value.as_object();

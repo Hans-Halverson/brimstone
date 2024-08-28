@@ -14,7 +14,7 @@ pub enum EvalResult<T> {
 }
 
 impl<T> EvalResult<T> {
-    pub fn to_rust_result(self) -> Result<T, Handle<Value>> {
+    pub fn into_rust_result(self) -> Result<T, Handle<Value>> {
         match self {
             EvalResult::Ok(value) => Ok(value),
             EvalResult::Throw(value) => Err(value),
@@ -26,7 +26,7 @@ impl<T: Clone> Clone for EvalResult<T> {
     fn clone(&self) -> Self {
         match self {
             EvalResult::Ok(ok) => EvalResult::Ok(ok.clone()),
-            EvalResult::Throw(throw) => EvalResult::Throw(throw.clone()),
+            EvalResult::Throw(throw) => EvalResult::Throw(*throw),
         }
     }
 }

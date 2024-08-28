@@ -84,12 +84,13 @@ pub trait TypedArray {
 heap_trait_object!(TypedArray, DynTypedArray, HeapDynTypedArray, into_dyn_typed_array);
 
 impl DynTypedArray {
-    pub fn into_object_value(&self) -> Handle<ObjectValue> {
+    pub fn into_object_value(self) -> Handle<ObjectValue> {
         self.data.cast()
     }
 }
 
 #[derive(PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum TypedArrayKind {
     Int8Array,
     UInt8Array,

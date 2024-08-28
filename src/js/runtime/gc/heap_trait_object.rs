@@ -26,7 +26,7 @@ macro_rules! heap_trait_object {
             $crate::js::runtime::Handle<T>: $trait,
         {
             #[inline]
-            pub fn $into_dyn(&self) -> $stack_object
+            pub fn $into_dyn(self) -> $stack_object
             where
                 Self: Sized,
             {
@@ -61,7 +61,7 @@ macro_rules! heap_trait_object {
 
             #[allow(dead_code)]
             #[inline]
-            pub fn to_heap(&self) -> $heap_object {
+            pub fn to_heap(self) -> $heap_object {
                 $heap_object { data: self.data.get_(), vtable: self.vtable }
             }
 

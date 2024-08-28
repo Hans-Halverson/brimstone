@@ -298,7 +298,7 @@ pub fn test_integrity_level(
 // 7.3.19 LengthOfArrayLike
 pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
     let length_value = maybe!(get(cx, object, cx.names.length()));
-    to_length(cx, length_value).into()
+    to_length(cx, length_value)
 }
 
 // 7.3.20 CreateListFromArrayLike
@@ -546,7 +546,7 @@ pub fn private_get(
 
     let accessor = property.value().as_accessor();
     match accessor.get {
-        None => return type_error(cx, "cannot access private field or method"),
+        None => type_error(cx, "cannot access private field or method"),
         Some(getter) => {
             let getter_handle = getter.to_handle();
             call_object(cx, getter_handle, object.into(), &[])

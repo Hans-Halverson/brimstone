@@ -972,8 +972,7 @@ impl Analyzer<'_> {
 
         self.in_parameters_stack.pop();
 
-        let mut param_index = 0;
-        for param in &mut func.params {
+        for (param_index, param) in &mut func.params.iter_mut().enumerate() {
             // Check if this is a top level id pattern, optionally with a default
             let toplevel_id = match param {
                 FunctionParam::Pattern { pattern: Pattern::Id(id), .. } => Some(id),
@@ -1003,8 +1002,6 @@ impl Analyzer<'_> {
                     binding.set_vm_location(VMLocation::Argument(param_index));
                 }
             }
-
-            param_index += 1;
         }
 
         // Functions with an explicit "use strict" in their body must have a simple parameter list
@@ -1371,14 +1368,14 @@ impl Analyzer<'_> {
         }
 
         // Only some statements can be a continue target
-        let is_continue_target = match inner_stmt {
+        let is_continue_target = matches!(
+            inner_stmt,
             Statement::While(_)
-            | Statement::DoWhile(_)
-            | Statement::For(_)
-            | Statement::ForEach(_)
-            | Statement::Switch(_) => true,
-            _ => false,
-        };
+                | Statement::DoWhile(_)
+                | Statement::For(_)
+                | Statement::ForEach(_)
+                | Statement::Switch(_)
+        );
 
         if is_continue_target {
             for (label, _) in &labels {

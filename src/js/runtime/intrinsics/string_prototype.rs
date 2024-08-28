@@ -106,7 +106,7 @@ impl StringPrototype {
         let iterator_key = cx.well_known_symbols.iterator();
         object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
-        object.into()
+        object
     }
 
     // 22.1.3.1 String.prototype.at
@@ -405,7 +405,7 @@ impl StringPrototype {
         if !regexp_arg.is_nullish() {
             let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_()));
             if let Some(matcher) = matcher {
-                return call_object(cx, matcher, regexp_arg, &[this_object.into()]);
+                return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
         }
 
@@ -454,7 +454,7 @@ impl StringPrototype {
 
             let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_all()));
             if let Some(matcher) = matcher {
-                return call_object(cx, matcher, regexp_arg, &[this_object.into()]);
+                return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
         }
 
@@ -611,7 +611,7 @@ impl StringPrototype {
 
         let n_arg = get_argument(cx, arguments, 0);
         let n = maybe!(to_integer_or_infinity(cx, n_arg));
-        if n < 0.0 || n > MAX_U32_AS_F64 {
+        if !(0.0..=MAX_U32_AS_F64).contains(&n) {
             return range_error(cx, "count must be a finite, positive number that does not exceed the maximum string size");
         } else if n == 0.0 {
             return cx.names.empty_string().as_string().into();
@@ -636,7 +636,7 @@ impl StringPrototype {
         if !search_arg.is_nullish() {
             let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
             if let Some(replacer) = replacer {
-                return call_object(cx, replacer, search_arg, &[object.into(), replace_arg]);
+                return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
         }
 
@@ -732,7 +732,7 @@ impl StringPrototype {
 
             let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
             if let Some(replacer) = replacer {
-                return call_object(cx, replacer, search_arg, &[object.into(), replace_arg]);
+                return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
         }
 
@@ -828,7 +828,7 @@ impl StringPrototype {
         if !regexp_arg.is_nullish() {
             let searcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.search()));
             if let Some(searcher) = searcher {
-                return call_object(cx, searcher, regexp_arg, &[object.into()]);
+                return call_object(cx, searcher, regexp_arg, &[object]);
             }
         }
 
@@ -1224,6 +1224,7 @@ fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
     type_error(cx, "value cannot be converted to string")
 }
 
+#[allow(clippy::upper_case_acronyms)]
 enum NormalizationForm {
     NFC,
     NFD,

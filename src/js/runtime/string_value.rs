@@ -161,44 +161,6 @@ impl Handle<StringValue> {
         self.cast()
     }
 
-    pub fn eq(&self, other: &Self) -> bool {
-        // Fast path if lengths differ
-        if self.len() != other.len() {
-            return false;
-        }
-
-        // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten();
-        let flat_string_2 = other.flatten();
-
-        flat_string_1 == flat_string_2
-    }
-
-    pub fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten();
-        let flat_string_2 = other.flatten();
-
-        // Cannot allocate while iterating
-        let mut iter1 = flat_string_1.iter_code_units();
-        let mut iter2 = flat_string_2.iter_code_units();
-
-        loop {
-            match (iter1.next(), iter2.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, Some(_)) => return Ordering::Less,
-                (Some(_), None) => return Ordering::Greater,
-                (Some(code_unit_1), Some(code_unit_2)) => {
-                    if code_unit_1 < code_unit_2 {
-                        return Ordering::Less;
-                    } else if code_unit_1 > code_unit_2 {
-                        return Ordering::Greater;
-                    }
-                }
-            }
-        }
-    }
-
     /// Return the 16-bit code unit at the given index. This may be a surrogate pair that must be
     /// combined with an adjacent code unit to form a full unicode code point.
     ///
@@ -352,7 +314,7 @@ impl Handle<StringValue> {
 
         if concat_string.width == StringWidth::OneByte {
             let mut buf: Vec<u8> = Vec::with_capacity(string_index_to_usize(length));
-            unsafe { buf.set_len(string_index_to_usize(length)) };
+            let uninit_buf = buf.spare_capacity_mut();
 
             let mut stack = vec![concat_string.as_string()];
 
@@ -368,7 +330,7 @@ impl Handle<StringValue> {
                     match str.width() {
                         StringWidth::OneByte => {
                             for code_unit in CodeUnitIterator::from_one_byte(str) {
-                                buf[index] = code_unit as u8;
+                                uninit_buf[index].write(code_unit as u8);
                                 index += 1;
                             }
                         }
@@ -381,6 +343,8 @@ impl Handle<StringValue> {
                 }
             }
 
+            unsafe { buf.set_len(string_index_to_usize(length)) };
+
             let cx = self.cx();
             let flat_string = FlatString::new_one_byte(cx, &buf);
 
@@ -390,7 +354,7 @@ impl Handle<StringValue> {
             flat_string.to_handle()
         } else {
             let mut buf: Vec<u16> = Vec::with_capacity(string_index_to_usize(length));
-            unsafe { buf.set_len(string_index_to_usize(length)) };
+            let uninit_buf = buf.spare_capacity_mut();
 
             let mut stack = vec![concat_string.as_string()];
 
@@ -406,19 +370,21 @@ impl Handle<StringValue> {
                     match str.width() {
                         StringWidth::OneByte => {
                             for code_unit in CodeUnitIterator::from_one_byte(str) {
-                                buf[index] = code_unit;
+                                uninit_buf[index].write(code_unit);
                                 index += 1;
                             }
                         }
                         StringWidth::TwoByte => {
                             for code_unit in CodeUnitIterator::from_two_byte(str) {
-                                buf[index] = code_unit;
+                                uninit_buf[index].write(code_unit);
                                 index += 1;
                             }
                         }
                     }
                 }
             }
+
+            unsafe { buf.set_len(string_index_to_usize(length)) };
 
             let cx = self.cx();
             let flat_string = FlatString::new_two_byte(cx, &buf);
@@ -509,7 +475,7 @@ impl Handle<StringValue> {
         slice_code_units.consume_equals(&mut search_code_units)
     }
 
-    pub fn to_lower_case(&self, cx: Context) -> Handle<FlatString> {
+    pub fn to_lower_case(self, cx: Context) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         match flat_string.width() {
@@ -521,10 +487,10 @@ impl Handle<StringValue> {
                 for latin1_byte in flat_string.as_one_byte_slice() {
                     let set_lowercase = if *latin1_byte < 0x80 {
                         // ASCII lowercase
-                        *latin1_byte >= ('A' as u8) && *latin1_byte <= ('Z' as u8)
+                        *latin1_byte >= b'A' && *latin1_byte <= b'Z'
                     } else {
                         // Latin1 lowercase
-                        *latin1_byte >= ('À' as u8) && *latin1_byte <= ('Þ' as u8)
+                        *latin1_byte >= b'\xC0' && *latin1_byte <= b'\xDE'
                     };
 
                     if set_lowercase {
@@ -546,7 +512,7 @@ impl Handle<StringValue> {
         }
     }
 
-    pub fn to_upper_case(&self, cx: Context) -> Handle<FlatString> {
+    pub fn to_upper_case(self, cx: Context) -> Handle<FlatString> {
         let flat_string = self.flatten();
 
         let code_point_iter = match flat_string.width() {
@@ -557,7 +523,7 @@ impl Handle<StringValue> {
                     let mut uppercased = Vec::with_capacity(string_index_to_usize(flat_string.len));
 
                     for ascii_byte in flat_string.as_one_byte_slice() {
-                        if *ascii_byte >= ('a' as u8) && *ascii_byte <= ('z' as u8) {
+                        if *ascii_byte >= b'a' && *ascii_byte <= b'z' {
                             uppercased.push(*ascii_byte ^ 0x20);
                         } else {
                             uppercased.push(*ascii_byte);
@@ -578,7 +544,7 @@ impl Handle<StringValue> {
         FlatString::from_wtf8(cx, uppercased.as_bytes()).to_handle()
     }
 
-    pub fn to_wtf8_string(&self) -> Wtf8String {
+    pub fn to_wtf8_string(self) -> Wtf8String {
         let flat_string = self.flatten();
         flat_string.to_wtf8_string()
     }
@@ -588,7 +554,7 @@ impl Handle<StringValue> {
         flat_string.is_well_formed()
     }
 
-    pub fn to_well_formed(&self, cx: Context) -> HeapPtr<FlatString> {
+    pub fn to_well_formed(self, cx: Context) -> HeapPtr<FlatString> {
         let flat_string = self.flatten();
         flat_string.to_well_formed(cx)
     }
@@ -631,6 +597,56 @@ impl Handle<StringValue> {
     pub fn iter_code_points(&self) -> CodePointIterator {
         let flat_string = self.flatten();
         flat_string.iter_code_points()
+    }
+}
+
+impl PartialEq for Handle<StringValue> {
+    fn eq(&self, other: &Self) -> bool {
+        // Fast path if lengths differ
+        if self.len() != other.len() {
+            return false;
+        }
+
+        // First flatten so that we do not allocate while iterating
+        let flat_string_1 = self.flatten();
+        let flat_string_2 = other.flatten();
+
+        flat_string_1 == flat_string_2
+    }
+}
+
+impl Eq for Handle<StringValue> {}
+
+impl PartialOrd for Handle<StringValue> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Handle<StringValue> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // First flatten so that we do not allocate while iterating
+        let flat_string_1 = self.flatten();
+        let flat_string_2 = other.flatten();
+
+        // Cannot allocate while iterating
+        let mut iter1 = flat_string_1.iter_code_units();
+        let mut iter2 = flat_string_2.iter_code_units();
+
+        loop {
+            match (iter1.next(), iter2.next()) {
+                (None, None) => return Ordering::Equal,
+                (None, Some(_)) => return Ordering::Less,
+                (Some(_), None) => return Ordering::Greater,
+                (Some(code_unit_1), Some(code_unit_2)) => {
+                    if code_unit_1 < code_unit_2 {
+                        return Ordering::Less;
+                    } else if code_unit_1 > code_unit_2 {
+                        return Ordering::Greater;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -778,22 +794,24 @@ impl FlatString {
             // Two byte strings are copied into buffer one character at a time, checking if character
             // must be encoded as a surrogate pair.
             let mut buf: Vec<u16> = Vec::with_capacity(length);
-            unsafe { buf.set_len(length) };
+            let uninit_buf = buf.spare_capacity_mut();
 
             let mut index = 0;
             for code_point in Wtf8CodePointsIterator::new(bytes) {
                 match try_encode_surrogate_pair(code_point) {
                     None => {
-                        buf[index] = code_point as u16;
+                        uninit_buf[index].write(code_point as u16);
                         index += 1;
                     }
                     Some((high, low)) => {
-                        buf[index] = high;
-                        buf[index + 1] = low;
+                        uninit_buf[index].write(high);
+                        uninit_buf[index + 1].write(low);
                         index += 2;
                     }
                 }
             }
+
+            unsafe { buf.set_len(length) };
 
             FlatString::new_two_byte(cx, &buf)
         } else if !has_non_ascii_one_byte_chars {
@@ -802,14 +820,14 @@ impl FlatString {
         } else {
             // Otherwise we must copy each character into a new buffer, converting from UTF-8 to Latin1
             let mut buf: Vec<u8> = Vec::with_capacity(length);
-            unsafe { buf.set_len(length) };
+            let uninit_buf = buf.spare_capacity_mut();
 
             // Copy each character into the buffer
-            let mut index = 0;
-            for code_point in Wtf8CodePointsIterator::new(bytes) {
-                buf[index] = code_point as u8;
-                index += 1;
+            for (index, code_point) in Wtf8CodePointsIterator::new(bytes).enumerate() {
+                uninit_buf[index].write(code_point as u8);
             }
+
+            unsafe { buf.set_len(length) };
 
             FlatString::new_one_byte(cx, &buf)
         }
@@ -985,12 +1003,12 @@ impl FlatString {
             StringWidth::OneByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_one_byte_slice()[start..end].to_owned();
-                FlatString::new_one_byte(cx, &substring_buf).to_handle()
+                FlatString::new_one_byte(cx, substring_buf).to_handle()
             }
             StringWidth::TwoByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_two_byte_slice()[start..end].to_owned();
-                FlatString::new_two_byte(cx, &substring_buf).to_handle()
+                FlatString::new_two_byte(cx, substring_buf).to_handle()
             }
         }
     }
@@ -1025,7 +1043,7 @@ impl HeapPtr<FlatString> {
         }
     }
 
-    pub fn to_wtf8_string(&self) -> Wtf8String {
+    pub fn to_wtf8_string(self) -> Wtf8String {
         let mut wtf8_string = Wtf8String::new();
         for code_point in self.iter_code_points() {
             wtf8_string.push(code_point);
@@ -1051,14 +1069,14 @@ impl HeapPtr<FlatString> {
         }
     }
 
-    pub fn to_well_formed(&self, cx: Context) -> HeapPtr<FlatString> {
+    pub fn to_well_formed(self, cx: Context) -> HeapPtr<FlatString> {
         match self.width() {
             // One byte strings are always well-formed so never allocate new string
-            StringWidth::OneByte => *self,
+            StringWidth::OneByte => self,
             // Two byte strings are well-formed if they do not contain any unpaired surrogates
             StringWidth::TwoByte => {
                 if self.is_well_formed() {
-                    return *self;
+                    return self;
                 }
 
                 // Copy all code points to new string, replacing unpaired surrogates with the

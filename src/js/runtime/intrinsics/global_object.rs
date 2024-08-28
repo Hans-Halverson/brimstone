@@ -268,7 +268,7 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     let mut strip_prefix = true;
 
     if radix != 0 {
-        if radix < 2 || radix > 36 {
+        if !(2..=36).contains(&radix) {
             return None;
         } else if radix != 16 {
             strip_prefix = false;

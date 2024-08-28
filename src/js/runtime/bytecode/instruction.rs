@@ -144,7 +144,7 @@ macro_rules! define_instructions {
         /// Instruction writing with minimum width in bytecode builder.
         impl BytecodeWriter {
             $(
-                #[allow(unused_mut)]
+                #[allow(unused_mut, clippy::wrong_self_convention)]
                 pub fn $instr_name_snake(
                     &mut self,
                     $($operand_name: $operand_type<ExtraWide>,)*
@@ -178,7 +178,7 @@ macro_rules! define_instructions {
             match opcode {
                 $(OpCode::$short_name => {
                     let instr: &$instr_name_camel<Narrow> = unsafe {
-                        std::mem::transmute(instruction_stream.as_ptr())
+                        &*instruction_stream.as_ptr().cast()
                     };
                     instr
                 })*
@@ -191,7 +191,7 @@ macro_rules! define_instructions {
             match opcode {
                 $(OpCode::$short_name => {
                     let instr: &$instr_name_camel<Wide> = unsafe {
-                        std::mem::transmute(instruction_stream.as_ptr())
+                       &*instruction_stream.as_ptr().cast()
                     };
                     instr
                 })*
@@ -204,7 +204,7 @@ macro_rules! define_instructions {
             match opcode {
                 $(OpCode::$short_name => {
                     let instr: &$instr_name_camel<ExtraWide> = unsafe {
-                        std::mem::transmute(instruction_stream.as_ptr())
+                        &*instruction_stream.as_ptr().cast()
                     };
                     instr
                 })*

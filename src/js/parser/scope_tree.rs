@@ -9,6 +9,7 @@ use super::{
 };
 
 pub struct ScopeTree {
+    #[allow(clippy::vec_box)]
     ast_nodes: Vec<Box<AstScopeNode>>,
     vm_nodes: Vec<VMScopeNode>,
     current_node_id: ScopeNodeId,
@@ -859,12 +860,12 @@ impl AstScopeNode {
     /// function parameters or implicit function bindings, which are var scoped but do not count as
     /// VarScopedDeclarations.
     pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&String, &Binding)> {
-        self.bindings
-            .iter()
-            .filter(|(_, binding)| match binding.kind {
-                BindingKind::Var | BindingKind::Function { is_lexical: false, .. } => true,
-                _ => false,
-            })
+        self.bindings.iter().filter(|(_, binding)| {
+            matches!(
+                binding.kind,
+                BindingKind::Var | BindingKind::Function { is_lexical: false, .. }
+            )
+        })
     }
 
     /// Error if the provided lexical name is already declared in this scope.

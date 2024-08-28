@@ -80,7 +80,7 @@ impl GeneratorCompletionType {
     ///
     /// The abormal completions are nullish so we can check them with a single JumpNotNullish
     /// instruction.
-    pub fn to_value(&self) -> Value {
+    pub fn to_value(self) -> Value {
         match self {
             Self::Normal => Value::bool(true),
             Self::Return => Value::undefined(),

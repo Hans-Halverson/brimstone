@@ -20,7 +20,7 @@ pub type HandleContents = usize;
 pub trait ToHandleContents {
     type Impl;
 
-    fn to_handle_contents(value: &Self::Impl) -> HandleContents;
+    fn to_handle_contents(value: Self::Impl) -> HandleContents;
 }
 
 /// Handles hold a value or heap pointer behind a pointer. Handles are safe to store on the stack
@@ -54,7 +54,7 @@ impl<T: ToHandleContents> Handle<T> {
     #[inline]
     pub fn empty(cx: Context) -> Handle<T> {
         let handle_context = cx.heap.info().handle_context();
-        Handle::new(handle_context, Value::to_handle_contents(&Value::empty()))
+        Handle::new(handle_context, Value::to_handle_contents(Value::empty()))
     }
 
     #[inline]
@@ -71,11 +71,7 @@ impl<T: ToHandleContents> Handle<T> {
     /// handle will also be changed.
     #[inline]
     pub fn replace(&mut self, new_contents: T::Impl) {
-        unsafe {
-            self.ptr
-                .as_ptr()
-                .write(T::to_handle_contents(&new_contents))
-        }
+        unsafe { self.ptr.as_ptr().write(T::to_handle_contents(new_contents)) }
     }
 
     pub fn replace_into<U: ToHandleContents>(self, new_contents: U::Impl) -> Handle<U> {
@@ -240,7 +236,7 @@ impl HandleContext {
             }
             Some(free_blocks) => {
                 // Pull the top free block off of the free list
-                let rest_free_blocks = std::mem::replace(&mut free_blocks.prev_block, None);
+                let rest_free_blocks = free_blocks.prev_block.take();
                 let free_block = std::mem::replace(&mut self.free_blocks, rest_free_blocks);
 
                 // Push free block as the current block
@@ -256,7 +252,7 @@ impl HandleContext {
 
     fn pop_block(&mut self) -> *mut HandleContents {
         // Current block is replaced by its previous block
-        let old_prev_block = std::mem::replace(&mut self.current_block.prev_block, None);
+        let old_prev_block = self.current_block.prev_block.take();
 
         let new_current_block = old_prev_block.unwrap();
         let new_end_ptr = new_current_block.end_ptr;
@@ -389,7 +385,7 @@ impl<T: IsHeapObject> Handle<T> {
 
 impl Value {
     #[inline]
-    pub fn to_handle(&self, cx: Context) -> Handle<Value> {
+    pub fn to_handle(self, cx: Context) -> Handle<Value> {
         let handle_context = cx.heap.info().handle_context();
         Handle::new(handle_context, Value::to_handle_contents(self))
     }
@@ -397,8 +393,8 @@ impl Value {
 
 impl<T: IsHeapObject> HeapPtr<T> {
     #[inline]
-    pub fn to_handle(&self) -> Handle<T> {
-        let handle_context = HeapInfo::from_heap_ptr(*self).handle_context();
+    pub fn to_handle(self) -> Handle<T> {
+        let handle_context = HeapInfo::from_heap_ptr(self).handle_context();
         Handle::new(handle_context, T::to_handle_contents(self))
     }
 }
@@ -425,9 +421,7 @@ pub trait Escapable {
 
 impl Escapable for () {
     #[inline]
-    fn escape(&self, _: Context) -> Self {
-        ()
-    }
+    fn escape(&self, _: Context) -> Self {}
 }
 
 impl Escapable for Handle<Value> {

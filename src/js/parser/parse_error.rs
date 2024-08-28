@@ -12,6 +12,7 @@ use super::{
 #[derive(Debug)]
 pub enum ParseError {
     Io(io::Error),
+    #[allow(clippy::box_collection)]
     UnknownToken(Box<String>),
     UnexpectedToken(Box<Token>),
     ExpectedToken(Box<(Token, Token)>),
@@ -63,8 +64,10 @@ pub enum ParseError {
     NonSimpleConstructor,
     ClassStaticPrototype,
     InvalidPatternInitializer,
+    #[allow(clippy::box_collection)]
     DuplicatePrivateName(Box<String>),
     PrivateNameOutsideClass,
+    #[allow(clippy::box_collection)]
     PrivateNameNotDefined(Box<String>),
     PrivateNameConstructor,
     ArgumentsInClassInitializer,
@@ -136,7 +139,7 @@ impl fmt::Display for ParseError {
         match self {
             ParseError::Io(io_error) => {
                 f.write_str("Error: ")?;
-                return io_error.fmt(f);
+                io_error.fmt(f)
             }
             ParseError::UnknownToken(token) => write!(f, "Unknown token {}", token),
             ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),

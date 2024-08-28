@@ -1416,7 +1416,7 @@ impl ArrayPrototype {
 
         // If there were holes then delete that number of holes from the end of the array
         for i in (sorted_values.len() as u64)..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i));
             maybe!(delete_property_or_throw(cx, object, index_key));
         }
 
@@ -1447,7 +1447,7 @@ impl ArrayPrototype {
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
 
-        let actual_delete_count = if arguments.len() == 0 {
+        let actual_delete_count = if arguments.is_empty() {
             0
         } else if arguments.len() == 1 {
             length - start_index
@@ -1650,7 +1650,7 @@ impl ArrayPrototype {
         let insert_count = (arguments.len() as u64).saturating_sub(2);
 
         // Determine the skip count from the optional argument
-        let actual_skip_count = if arguments.len() == 0 {
+        let actual_skip_count = if arguments.is_empty() {
             0
         } else if arguments.len() == 1 {
             length - actual_start_index

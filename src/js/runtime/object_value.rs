@@ -105,15 +105,15 @@ macro_rules! extend_object {
             }
         }
 
-        impl $(<$($generics),*>)? Into<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>> for $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
-            fn into(self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
-                self.cast()
+        impl $(<$($generics),*>)? From<$crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?>> for $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
+            fn from(value: $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?>) -> Self {
+                value.cast()
             }
         }
 
-        impl $(<$($generics),*>)? Into<$crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue>> for $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
-            fn into(self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
-                self.cast::<$crate::js::runtime::object_value::ObjectValue>()
+        impl $(<$($generics),*>)? From<$crate::js::runtime::Handle<$name $(<$($generics),*>)?>> for $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
+            fn from(value: $crate::js::runtime::Handle<$name $(<$($generics),*>)?>) -> Self {
+                value.cast::<$crate::js::runtime::object_value::ObjectValue>()
             }
         }
     }
@@ -185,7 +185,7 @@ impl ObjectValue {
     #[inline]
     pub fn iter_named_property_keys_gc_unsafe<F: FnMut(PropertyKey)>(&self, mut f: F) {
         for property_key in self.named_properties.keys_gc_unsafe() {
-            f(property_key.clone());
+            f(property_key);
         }
     }
 
@@ -194,7 +194,7 @@ impl ObjectValue {
     #[inline]
     pub fn iter_named_properties_gc_unsafe<F: FnMut(PropertyKey, HeapProperty)>(&self, mut f: F) {
         for (property_key, property) in self.named_properties.iter_gc_unsafe() {
-            f(property_key.clone(), property);
+            f(property_key, property);
         }
     }
 }
@@ -325,10 +325,10 @@ impl ObjectValue {
     }
 
     pub fn is_arguments_object(&self) -> bool {
-        match self.descriptor_kind() {
-            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject => true,
-            _ => false,
-        }
+        matches!(
+            self.descriptor_kind(),
+            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject
+        )
     }
 
     pub fn is_proxy(&self) -> bool {
@@ -372,15 +372,23 @@ impl Handle<ObjectValue> {
     /// Cast as a virtual object, allowing virtual methods to be called. Manually constructs a
     /// trait object using the vtable stored in the object descriptor.
     #[inline]
-    fn virtual_object(&self) -> &mut dyn VirtualObject {
-        unsafe {
-            let data = self as *const Handle<ObjectValue>;
-            let vtable = self.descriptor().vtable();
+    fn as_trait_object(&self) -> ObjectTraitObject {
+        let data = self as *const Handle<ObjectValue>;
+        let vtable = self.descriptor().vtable();
 
-            let trait_object = ObjectTraitObject { data, vtable };
+        ObjectTraitObject { data, vtable }
+    }
 
-            transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object)
-        }
+    #[inline]
+    fn virtual_object(&self) -> &dyn VirtualObject {
+        let trait_object = self.as_trait_object();
+        unsafe { transmute_copy::<ObjectTraitObject, &dyn VirtualObject>(&trait_object) }
+    }
+
+    #[inline]
+    fn virtual_object_mut(&mut self) -> &mut dyn VirtualObject {
+        let trait_object = self.as_trait_object();
+        unsafe { transmute_copy::<ObjectTraitObject, &mut dyn VirtualObject>(&trait_object) }
     }
 
     fn named_properties_field(&self) -> NamedPropertiesMapField {
@@ -480,7 +488,7 @@ impl Handle<ObjectValue> {
         realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
-        let accessor_value = AccessorValue::new(cx, Some(getter.into()), None);
+        let accessor_value = AccessorValue::new(cx, Some(getter), None);
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 
@@ -494,7 +502,7 @@ impl Handle<ObjectValue> {
     ) {
         let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, realm, None, Some("set"));
-        let accessor_value = AccessorValue::new(cx, Some(getter.into()), Some(setter.into()));
+        let accessor_value = AccessorValue::new(cx, Some(getter), Some(setter));
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 
@@ -586,7 +594,7 @@ impl Handle<ObjectValue> {
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        self.virtual_object().define_own_property(cx, key, desc)
+        self.virtual_object_mut().define_own_property(cx, key, desc)
     }
 
     #[inline]
@@ -612,12 +620,12 @@ impl Handle<ObjectValue> {
         value: Handle<Value>,
         receiver: Handle<Value>,
     ) -> EvalResult<bool> {
-        self.virtual_object().set(cx, key, value, receiver)
+        self.virtual_object_mut().set(cx, key, value, receiver)
     }
 
     #[inline]
     pub fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-        self.virtual_object().delete(cx, key)
+        self.virtual_object_mut().delete(cx, key)
     }
 
     #[inline]
@@ -712,7 +720,7 @@ pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
 pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
 impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
         NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, capacity)
     }
 

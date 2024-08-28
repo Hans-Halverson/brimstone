@@ -124,7 +124,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
                 self.cx,
                 program,
-                &self.scope_tree,
+                self.scope_tree,
                 "<global>",
                 self.source_file,
                 self.realm,
@@ -208,7 +208,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
                 self.cx,
                 eval_program,
-                &self.scope_tree,
+                self.scope_tree,
                 "<eval>",
                 self.source_file,
                 self.realm,
@@ -290,7 +290,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         let generator = BytecodeFunctionGenerator::new_for_function(
             self.cx,
             function,
-            &self.scope_tree,
+            self.scope_tree,
             scope,
             self.realm,
             None,
@@ -338,7 +338,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             {
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
-                    &self.scope_tree,
+                    self.scope_tree,
                     scope,
                     self.realm,
                     &name,
@@ -357,7 +357,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let init_func_scope = init_func_scope.as_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
-                    &self.scope_tree,
+                    self.scope_tree,
                     scope,
                     self.realm,
                     "fieldsInitializer",
@@ -375,7 +375,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let init_func_scope = init_func_scope.as_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
-                    &self.scope_tree,
+                    self.scope_tree,
                     scope,
                     self.realm,
                     "staticInitializer",
@@ -421,7 +421,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
                     func,
-                    &self.scope_tree,
+                    self.scope_tree,
                     scope,
                     self.realm,
                     default_name,
@@ -675,11 +675,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Validate that the number of arguments and local registers are within the limits of the
         // bytecode format.
-        if num_parameters > GenRegister::MAX_ARGUMENT_INDEX as usize {
+        if num_parameters > GenRegister::MAX_ARGUMENT_INDEX {
             return Err(EmitError::TooManyFunctionParameters);
         }
 
-        if num_local_registers > GenRegister::MAX_LOCAL_INDEX as usize {
+        if num_local_registers > GenRegister::MAX_LOCAL_INDEX {
             return Err(EmitError::TooManyRegisters);
         }
 
@@ -687,7 +687,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .id
             .as_ref()
             .map(|id| Wtf8String::from_str(&id.name))
-            .or_else(|| default_name.map(|name| name.clone()));
+            .or_else(|| default_name.cloned());
 
         Ok(Self::new(
             cx,
@@ -721,7 +721,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let num_local_registers = program.scope.as_ref().num_local_registers();
 
         // Validate that the number of local registers is within the limits of the bytecode format
-        if num_local_registers > GenRegister::MAX_LOCAL_INDEX as usize {
+        if num_local_registers > GenRegister::MAX_LOCAL_INDEX {
             return Err(EmitError::TooManyRegisters);
         }
 
@@ -800,7 +800,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let num_local_registers = init_func_scope.num_local_registers();
 
         // Validate that the number of local registers is within the limits of the bytecode format.
-        if num_local_registers > GenRegister::MAX_ARGUMENT_INDEX as usize {
+        if num_local_registers > GenRegister::MAX_ARGUMENT_INDEX {
             return Err(EmitError::TooManyRegisters);
         }
 
@@ -1026,7 +1026,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         condition: GenRegister,
         target_block: BlockId,
     ) -> EmitResult<()> {
-        if self.evaluates_to_boolean(condition_expr) {
+        if Self::evaluates_to_boolean(condition_expr) {
             self.write_jump_true_instruction(condition, target_block)
         } else {
             self.write_jump_to_boolean_true_instruction(condition, target_block)
@@ -1124,7 +1124,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         condition: GenRegister,
         target_block: BlockId,
     ) -> EmitResult<()> {
-        if self.evaluates_to_boolean(condition_expr) {
+        if Self::evaluates_to_boolean(condition_expr) {
             self.write_jump_false_instruction(condition, target_block)
         } else {
             self.write_jump_to_boolean_false_instruction(condition, target_block)
@@ -1496,7 +1496,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Private methods and accessors are initialized first
         for field in &class_fields {
             if matches!(field, ClassField::PrivateMethodOrAccessor { .. }) {
-                self.gen_class_field(&field, Register::this())?;
+                self.gen_class_field(field, Register::this())?;
             }
         }
 
@@ -1774,7 +1774,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         mut dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
-            let name_constant_index = self.add_string_constant(&name)?;
+            let name_constant_index = self.add_string_constant(name)?;
             self.writer
                 .check_tdz_instruction(fixed_reg, name_constant_index);
         }
@@ -2607,7 +2607,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::BinaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let key = self.gen_load_private_symbol(&expr.left.to_id())?;
+        let key = self.gen_load_private_symbol(expr.left.to_id())?;
         let object = self.gen_expression(&expr.right)?;
 
         self.register_allocator.release(object);
@@ -2616,7 +2616,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.writer.in_instruction(dest, object, key);
 
-        return Ok(dest);
+        Ok(dest)
     }
 
     fn gen_logical_expression(
@@ -3026,7 +3026,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         arguments: &[ast::CallArgument],
         default_argv: GenRegister,
     ) -> EmitResult<CallArgs> {
-        if Self::is_call_with_spread(&self, arguments) {
+        if Self::is_call_with_spread(self, arguments) {
             // Any new expression with a spread generates a varargs call. This means all arguments
             // are first placed into an array.
             let args = self.gen_call_varargs_array(arguments)?;
@@ -3268,7 +3268,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Determine method name from the property
                 let mut name = match &key {
-                    Property::Named { name, .. } => Some(name.to_owned()),
+                    Property::Named { name, .. } => Some(name.to_wtf8_string()),
                     Property::Computed(_) => {
                         flags |= DefinePropertyFlags::NEEDS_NAME;
                         None
@@ -3292,7 +3292,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         } else {
                             Wtf8String::from_str("set ")
                         };
-                        prefixed_name.push_wtf8_str(&known_name);
+                        prefixed_name.push_wtf8_str(known_name);
                         name = Some(prefixed_name);
                     }
 
@@ -3479,7 +3479,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             Ok(dest)
         } else if expr.is_private {
-            let key = self.gen_load_private_symbol(&expr.property.to_id())?;
+            let key = self.gen_load_private_symbol(expr.property.to_id())?;
 
             self.register_allocator.release(key);
             if release_object {
@@ -3683,14 +3683,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(old_value);
 
                     // If evaluating right side, evaluate directly into dest register
-                    let stored_value = self.gen_named_expression_if(
+                    self.gen_named_expression_if(
                         AnyStr::from_id(id),
                         &expr.right,
                         stored_value_dest,
                         is_non_parenthesized_id_predicate,
-                    )?;
-
-                    stored_value
+                    )?
                 };
 
                 self.gen_store_identifier(id, stored_value, store_flags)?;
@@ -3753,7 +3751,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     if member.is_computed {
                         Property::Computed(self.gen_expression(&member.property)?)
                     } else if member.is_private {
-                        Property::Private(self.gen_load_private_symbol(&member.property.to_id())?)
+                        Property::Private(self.gen_load_private_symbol(member.property.to_id())?)
                     } else {
                         // Must be a named access
                         let name = member.property.to_id();
@@ -3972,7 +3970,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     Property::Computed(key)
                 } else if member.is_private {
-                    let key = self.gen_load_private_symbol(&member.property.to_id())?;
+                    let key = self.gen_load_private_symbol(member.property.to_id())?;
                     self.writer
                         .get_private_property_instruction(temp, object, key);
 
@@ -4152,13 +4150,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match expr {
             ast::Expression::Function(func) if func.id.is_none() => {
-                self.gen_function_expression(func, Some(name.to_owned()), dest)
+                self.gen_function_expression(func, Some(name.to_wtf8_string()), dest)
             }
             ast::Expression::ArrowFunction(func) => {
-                self.gen_arrow_function_expression(func, Some(name.to_owned()), dest)
+                self.gen_arrow_function_expression(func, Some(name.to_wtf8_string()), dest)
             }
             ast::Expression::Class(class) if class.id.is_none() => {
-                self.gen_class_expression(class, Some(name.to_owned()), dest)
+                self.gen_class_expression(class, Some(name.to_wtf8_string()), dest)
             }
             _ => self.gen_expression_with_dest(expr, dest),
         }
@@ -5014,12 +5012,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.enter_has_assign_expr_context(decl.id_has_assign_expr);
 
                 // Elide TDZ check when storing at declarations
-                let result = self.gen_store_to_pattern(&decl.id, init_value, store_flags)?;
+                self.gen_store_to_pattern(&decl.id, init_value, store_flags)?;
                 self.register_allocator.release(init_value);
 
                 self.exit_has_assign_expr_context();
-
-                result
             } else if var_decl.kind == ast::VarKind::Let {
                 // Let declarations without an initializer are initialized to undefined
                 let id = decl.id.to_id();
@@ -5090,7 +5086,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let property = self.gen_expression(&member.property)?;
             Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
         } else if member.is_private {
-            let property = self.gen_load_private_symbol(&member.property.to_id())?;
+            let property = self.gen_load_private_symbol(member.property.to_id())?;
             Ok(Reference::new(ReferenceKind::PrivateProperty { object, property }))
         } else {
             // Must be a named access
@@ -5136,7 +5132,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         // Generate an assignment pattern, placing the right hand side in the `value` register if
         // it would otherwise be undefined.
-        if let Some(init) = reference.init.as_deref() {
+        if let Some(init) = reference.init {
             let join_block = self.new_block();
             self.write_jump_not_undefined_instruction(value, join_block)?;
 
@@ -5533,7 +5529,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // already done.
             self.write_jump_true_instruction(is_done, finally_footer_block)?;
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
-                Ok(this.writer.iterator_close_instruction(iterator))
+                this.writer.iterator_close_instruction(iterator);
+                Ok(())
             })?;
 
             self.write_jump_instruction(finally_footer_block)?;
@@ -6027,10 +6024,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Prefix name with `#` if private
                 let name = if method.is_private {
                     let mut prefixed_name = Wtf8String::from_str("#");
-                    prefixed_name.push_wtf8_str(&name.to_owned());
+                    prefixed_name.push_wtf8_str(&name.to_wtf8_string());
                     prefixed_name
                 } else {
-                    name.to_owned()
+                    name.to_wtf8_string()
                 };
 
                 // Add accessor prefix to the name if name is known
@@ -6076,7 +6073,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         let method_name = if let Name::Named(name) = key {
-            Some(InternedStrings::get_wtf8_str(self.cx, &name.to_owned()).as_flat())
+            Some(InternedStrings::get_wtf8_str(self.cx, &name.to_wtf8_string()).as_flat())
         } else {
             None
         };
@@ -6142,11 +6139,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Evaluate the initializer, otherwise field is set to undefined
         let value = if let Some(initializer) = field_node.value.as_deref() {
             match field {
-                ClassField::Named { name, .. } => self.gen_named_outer_expression(
-                    AnyStr::Wtf8(&name),
-                    initializer,
-                    ExprDest::Any,
-                )?,
+                ClassField::Named { name, .. } => {
+                    self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
+                }
                 ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
                 ClassField::PrivateField { field } => {
                     let name = format!("#{}", field.as_ref().key.expr.to_id().name);
@@ -6162,7 +6157,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match field {
             ClassField::Named { name, .. } => {
-                let name_constant_index = self.add_wtf8_string_constant(&name)?;
+                let name_constant_index = self.add_wtf8_string_constant(name)?;
                 self.writer
                     .define_named_property_instruction(target, name_constant_index, value);
             }
@@ -6506,7 +6501,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             self.start_block(altern_block);
-            let altern_completion = self.gen_statement(&stmt.altern.as_ref().unwrap())?;
+            let altern_completion = self.gen_statement(stmt.altern.as_ref().unwrap())?;
 
             self.start_block(join_block);
 
@@ -6516,25 +6511,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Return whether this expression is guaranteed to evaluate to a boolean. Used to elide
     /// unnecessary ToBoolean conversions.
-    fn evaluates_to_boolean(&mut self, expr: &ast::Expression) -> bool {
+    fn evaluates_to_boolean(expr: &ast::Expression) -> bool {
         match expr {
             ast::Expression::Boolean(_) => true,
             ast::Expression::Unary(unary) => unary.operator == ast::UnaryOperator::LogicalNot,
-            ast::Expression::Binary(binary) => match binary.operator {
+            ast::Expression::Binary(binary) => matches!(
+                binary.operator,
                 ast::BinaryOperator::EqEq
-                | ast::BinaryOperator::NotEq
-                | ast::BinaryOperator::EqEqEq
-                | ast::BinaryOperator::NotEqEq
-                | ast::BinaryOperator::LessThan
-                | ast::BinaryOperator::LessThanOrEqual
-                | ast::BinaryOperator::GreaterThan
-                | ast::BinaryOperator::GreaterThanOrEqual => true,
-                _ => false,
-            },
+                    | ast::BinaryOperator::NotEq
+                    | ast::BinaryOperator::EqEqEq
+                    | ast::BinaryOperator::NotEqEq
+                    | ast::BinaryOperator::LessThan
+                    | ast::BinaryOperator::LessThanOrEqual
+                    | ast::BinaryOperator::GreaterThan
+                    | ast::BinaryOperator::GreaterThanOrEqual
+            ),
             ast::Expression::Logical(logical) => match logical.operator {
                 ast::LogicalOperator::And | ast::LogicalOperator::Or => {
-                    self.evaluates_to_boolean(&logical.left)
-                        && self.evaluates_to_boolean(&logical.right)
+                    Self::evaluates_to_boolean(&logical.left)
+                        && Self::evaluates_to_boolean(&logical.right)
                 }
                 ast::LogicalOperator::NullishCoalesce => false,
             },
@@ -6826,7 +6821,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 if stmt.is_await {
                     this.gen_async_iterator_close(iterator)
                 } else {
-                    Ok(this.writer.iterator_close_instruction(iterator))
+                    this.writer.iterator_close_instruction(iterator);
+                    Ok(())
                 }
             })?;
 
@@ -7417,7 +7413,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.gen_finally_footer(finally_scope, saved_normal_completion)?;
         }
 
-        saved_normal_completion.map(|reg| self.register_allocator.release(reg));
+        if let Some(reg) = saved_normal_completion {
+            self.register_allocator.release(reg);
+        }
 
         self.register_allocator
             .release(finally_scope.result_register);
@@ -8176,7 +8174,7 @@ impl PendingFunctionNode {
             PendingFunctionNode::Expression { name, .. }
             | PendingFunctionNode::Arrow { name, .. }
             | PendingFunctionNode::Method { name, .. } => name.as_ref(),
-            PendingFunctionNode::Constructor { name, .. } => Some(&name),
+            PendingFunctionNode::Constructor { name, .. } => Some(name),
         }
     }
 }
@@ -8518,7 +8516,7 @@ impl AnyStr<'_> {
         AnyStr::Str(id.name.as_str())
     }
 
-    fn to_owned(&self) -> Wtf8String {
+    fn to_wtf8_string(self) -> Wtf8String {
         match self {
             AnyStr::Wtf8(wtf8) => (*wtf8).clone(),
             AnyStr::Str(str) => Wtf8String::from_str(str),

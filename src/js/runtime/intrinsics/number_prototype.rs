@@ -54,7 +54,7 @@ impl NumberPrototype {
             return maybe!(to_string(cx, number_value.to_handle(cx))).into();
         }
 
-        if num_fraction_digits < 0.0 || num_fraction_digits > 100.0 {
+        if !(0.0..=100.0).contains(&num_fraction_digits) {
             return range_error(cx, "number of fraction digits must between 0 and 100");
         }
 
@@ -129,10 +129,7 @@ impl NumberPrototype {
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
         let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
-        if !num_fraction_digits.is_finite()
-            || num_fraction_digits < 0.0
-            || num_fraction_digits > 100.0
-        {
+        if !num_fraction_digits.is_finite() || !(0.0..=100.0).contains(&num_fraction_digits) {
             return range_error(cx, "number of fraction digits must between 0 and 100");
         }
 
@@ -196,7 +193,7 @@ impl NumberPrototype {
         }
 
         let precision = precision as i64;
-        if precision < 1 || precision > 100 {
+        if !(1..=100).contains(&precision) {
             return range_error(
                 cx,
                 "Number.prototype.toPrecision requires precision between 1 and 100",
@@ -249,7 +246,7 @@ impl NumberPrototype {
             result.push_str(&mantissa);
         } else if exponent >= 0 {
             let period_index = usize::min((exponent + 1) as usize, mantissa.len());
-            result.push_str(&mantissa[..period_index as usize]);
+            result.push_str(&mantissa[..period_index]);
             result.push('.');
             result.push_str(&mantissa[period_index..]);
         } else {
@@ -278,7 +275,7 @@ impl NumberPrototype {
             if radix.is_smi() {
                 let radix = radix.as_smi();
 
-                if radix < 2 || radix > 36 {
+                if !(2..=36).contains(&radix) {
                     return range_error(cx, "radix must be between 2 and 36");
                 }
 
@@ -286,7 +283,7 @@ impl NumberPrototype {
             } else {
                 let radix = maybe!(to_integer_or_infinity(cx, radix));
 
-                if radix < 2.0 || radix > 36.0 {
+                if !(2.0..=36.0).contains(&radix) {
                     return range_error(cx, "radix must be between 2 and 36");
                 }
 
@@ -331,7 +328,7 @@ impl NumberPrototype {
         let mut result_int_part_bytes_rev = vec![];
 
         if int_part == 0.0 {
-            result_int_part_bytes_rev.push('0' as u8);
+            result_int_part_bytes_rev.push(b'0');
         } else {
             while int_part > 0.0 {
                 let digit = (int_part % radix as f64).floor() as usize;
@@ -344,14 +341,14 @@ impl NumberPrototype {
         let mut result_bytes = vec![];
 
         if is_negative {
-            result_bytes.push('-' as u8);
+            result_bytes.push(b'-');
         }
 
         result_bytes.extend(result_int_part_bytes_rev.into_iter().rev());
 
         // Add decimal point and decimal part
         if dec_part != 0.0 {
-            result_bytes.push('.' as u8);
+            result_bytes.push(b'.');
 
             // Only calculate decimal digits up to precision
             for _ in 0..RADIX_TO_PRECISION[radix as usize] {

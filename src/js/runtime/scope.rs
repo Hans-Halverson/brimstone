@@ -299,7 +299,7 @@ impl Handle<Scope> {
 
                 // If the property is found, delete it
                 if maybe!(has_own_property(cx, object_handle, key)) {
-                    return object_handle.delete(cx, key).into();
+                    return object_handle.delete(cx, key);
                 }
             }
 

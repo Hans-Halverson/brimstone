@@ -21,6 +21,7 @@ impl Wtf8String {
     }
 
     #[inline]
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(string: &str) -> Self {
         Self::from_bytes_unchecked(string.as_bytes())
     }
@@ -90,7 +91,7 @@ impl Wtf8String {
     }
 
     #[inline]
-    pub fn iter_code_points<'a>(&'a self) -> Wtf8CodePointsIterator<'a> {
+    pub fn iter_code_points(&self) -> Wtf8CodePointsIterator<'_> {
         Wtf8CodePointsIterator::new(&self.buf)
     }
 }

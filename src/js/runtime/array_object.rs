@@ -232,7 +232,7 @@ fn array_set_length(
         array.is_length_writable = false;
     }
 
-    return has_delete_succeeded.into();
+    has_delete_succeeded.into()
 }
 
 // 7.3.18 CreateArrayFromList

@@ -133,7 +133,7 @@ impl StackFrame {
     #[inline]
     pub fn return_address(&self) -> *const u8 {
         let encoded_value = unsafe { *self.fp.add(RETURN_ADDRESS_SLOT_INDEX) };
-        ((encoded_value as usize) & !Self::IS_RUST_CALLER_TAG) as *const u8
+        (encoded_value & !Self::IS_RUST_CALLER_TAG) as *const u8
     }
 
     /// Set the return address, preserving the Rust caller flag.
@@ -228,7 +228,7 @@ impl StackFrame {
     /// Mutable slice over args and receiver portion of frame, starting at receiver followed by
     /// the first argument. Includes default args and undefined args added due to underapplication.
     #[inline]
-    pub fn all_args_with_receiver_mut(&self) -> &mut [Value] {
+    pub fn all_args_with_receiver_mut(&mut self) -> &mut [Value] {
         unsafe {
             // Must round up to number of formal parameters to handle default args and
             // underapplication.
@@ -243,7 +243,7 @@ impl StackFrame {
     /// Mutable slice over registers portion of frame. Registers are in reverse order on stack, so
     /// starts at the last register.
     #[inline]
-    pub fn registers_mut(&self) -> &mut [Value] {
+    pub fn registers_mut(&mut self) -> &mut [Value] {
         unsafe {
             let num_registers = self.closure().function_ptr().num_registers() as usize;
             let last_register_ptr = self.fp.sub(num_registers) as *mut Value;

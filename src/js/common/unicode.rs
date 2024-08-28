@@ -36,12 +36,12 @@ pub fn is_surrogate_code_point(code_point: CodePoint) -> bool {
 
 #[inline]
 pub fn is_high_surrogate_code_unit(code_unit: CodeUnit) -> bool {
-    code_unit >= HIGH_SURROGATE_START && code_unit <= HIGH_SURROGATE_END
+    (HIGH_SURROGATE_START..=HIGH_SURROGATE_END).contains(&code_unit)
 }
 
 #[inline]
 pub fn is_low_surrogate_code_unit(code_unit: CodeUnit) -> bool {
-    code_unit >= LOW_SURROGATE_START && code_unit <= LOW_SURROGATE_END
+    (LOW_SURROGATE_START..=LOW_SURROGATE_END).contains(&code_unit)
 }
 
 pub fn needs_surrogate_pair(code_point: CodePoint) -> bool {
@@ -53,10 +53,10 @@ pub fn try_encode_surrogate_pair(code_point: CodePoint) -> Option<(CodeUnit, Cod
         return None;
     }
 
-    let offset_code_point = code_point as u32 - 0x10000;
+    let offset_code_point = code_point - 0x10000;
 
-    let high_bits = ((offset_code_point as u32) >> 10) as u16;
-    let low_bits = (offset_code_point as u32 & 0x3FF) as u16;
+    let high_bits = ((offset_code_point) >> 10) as u16;
+    let low_bits = (offset_code_point & 0x3FF) as u16;
 
     Some((high_bits + HIGH_SURROGATE_START, low_bits + LOW_SURROGATE_START))
 }
@@ -278,7 +278,7 @@ pub fn as_id_part_unicode(code_point: CodePoint) -> Option<char> {
 ///
 /// Return the number of bytes for the encoded code point.
 pub fn encode_utf8_codepoint(buf: &mut [u8], code_point: CodePoint) -> usize {
-    if code_point < 0x80 && buf.len() >= 1 {
+    if code_point < 0x80 && !buf.is_empty() {
         buf[0] = code_point as u8;
         1
     } else if code_point <= 0x7FF && buf.len() >= 2 {

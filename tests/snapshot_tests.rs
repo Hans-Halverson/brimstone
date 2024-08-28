@@ -146,12 +146,11 @@ fn visit_directory(
         if path.is_dir() {
             visit_directory(env, &path, test_fn)?
         } else if path.is_file() {
-            match path.extension() {
-                Some(extension) => match extension.to_str() {
+            if let Some(extension) = path.extension() {
+                match extension.to_str() {
                     Some("js") => process_snapshot_test_file(env, &path, test_fn)?,
                     _ => (),
-                },
-                _ => (),
+                }
             }
         }
     }
@@ -181,8 +180,7 @@ fn process_snapshot_test_file(
             fs::write(&exp_path, &actual)?;
         }
 
-        env.errors
-            .push(find_diff_snippet(&path, &actual, &expected))
+        env.errors.push(find_diff_snippet(path, &actual, &expected))
     }
 
     Ok(())

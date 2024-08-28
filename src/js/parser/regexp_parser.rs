@@ -273,7 +273,7 @@ impl<T: LexerStream> RegExpParser<T> {
             match (&term, terms.last_mut()) {
                 // Coalesce adjacent string literals
                 (Term::Literal(new_string), Some(Term::Literal(prev_string))) => {
-                    prev_string.push_wtf8_str(&new_string);
+                    prev_string.push_wtf8_str(new_string);
                 }
                 _ => terms.push(term),
             }

@@ -150,6 +150,7 @@ pub enum Intrinsic {
     Int32ArrayConstructor,
     Int32ArrayPrototype,
     IteratorPrototype,
+    #[allow(clippy::upper_case_acronyms)]
     JSON,
     MapConstructor,
     MapIteratorPrototype,
@@ -507,12 +508,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     // Is anonymous function so name is empty
     let name = cx.names.empty_string().as_string().into();
     let name_desc = PropertyDescriptor::data(name, false, false, false);
-    must!(define_property_or_throw(
-        cx,
-        throw_type_error_func.into(),
-        cx.names.name(),
-        name_desc,
-    ));
+    must!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
 
     must!(throw_type_error_func
         .cast::<ObjectValue>()

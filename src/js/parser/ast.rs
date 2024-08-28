@@ -42,19 +42,23 @@ impl<T> AstPtr<T> {
         let ptr = unsafe { NonNull::new_unchecked(value as *const _ as *mut T) };
         AstPtr { ptr }
     }
+}
 
-    pub fn as_ref(&self) -> &T {
+impl<T> std::convert::AsRef<T> for AstPtr<T> {
+    fn as_ref(&self) -> &T {
         unsafe { self.ptr.as_ref() }
     }
+}
 
-    pub fn as_mut(&mut self) -> &mut T {
+impl<T> std::convert::AsMut<T> for AstPtr<T> {
+    fn as_mut(&mut self) -> &mut T {
         unsafe { self.ptr.as_mut() }
     }
 }
 
 impl<T> Clone for AstPtr<T> {
     fn clone(&self) -> AstPtr<T> {
-        AstPtr { ptr: self.ptr }
+        *self
     }
 }
 
@@ -968,12 +972,12 @@ pub enum AssignmentOperator {
 
 impl AssignmentOperator {
     pub fn is_logical(&self) -> bool {
-        match self {
+        matches!(
+            self,
             AssignmentOperator::LogicalAnd
-            | AssignmentOperator::LogicalOr
-            | AssignmentOperator::NullishCoalesce => true,
-            _ => false,
-        }
+                | AssignmentOperator::LogicalOr
+                | AssignmentOperator::NullishCoalesce
+        )
     }
 }
 
@@ -1296,10 +1300,7 @@ impl Pattern {
     }
 
     pub fn is_id(&self) -> bool {
-        match self {
-            Pattern::Id(_) => true,
-            _ => false,
-        }
+        matches!(self, Pattern::Id(_))
     }
 
     pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {

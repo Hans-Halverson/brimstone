@@ -62,7 +62,7 @@ impl StringIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        object.into()
+        object
     }
 
     // 22.1.5.1.1 %StringIteratorPrototype%.next

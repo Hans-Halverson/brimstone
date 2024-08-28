@@ -85,7 +85,7 @@ impl PropertyKey {
         let value = value_handle.get();
         if is_integral_number(value) {
             let number = value.as_double();
-            if number >= 0.0 && number < MAX_U32_AS_F64 {
+            if (0.0..MAX_U32_AS_F64).contains(&number) {
                 return PropertyKey::array_index(cx, number as u32).into();
             }
         }
@@ -144,7 +144,7 @@ impl Handle<PropertyKey> {
     /// Convert this property key to a string or symbol value as defined in the spec. All array
     /// index keys will be converted to strings.
     #[inline]
-    pub fn to_value(&self, mut cx: Context) -> Handle<Value> {
+    pub fn to_value(self, mut cx: Context) -> Handle<Value> {
         if self.value.is_smi() {
             let array_index_string = self.as_array_index().to_string();
             cx.alloc_string(&array_index_string).into()
@@ -231,14 +231,14 @@ impl ToHandleContents for PropertyKey {
     type Impl = PropertyKey;
 
     #[inline]
-    fn to_handle_contents(key: &PropertyKey) -> HandleContents {
-        Value::to_handle_contents(&key.value)
+    fn to_handle_contents(key: PropertyKey) -> HandleContents {
+        Value::to_handle_contents(key.value)
     }
 }
 
 impl PropertyKey {
     #[inline]
-    pub fn to_handle(&self, cx: Context) -> Handle<PropertyKey> {
+    pub fn to_handle(self, cx: Context) -> Handle<PropertyKey> {
         self.value.to_handle(cx).cast()
     }
 }

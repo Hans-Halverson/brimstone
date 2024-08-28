@@ -135,7 +135,7 @@ impl CompiledRegExpObject {
     }
 
     #[inline]
-    pub fn capture_groups_as_slice_mut(&self) -> &mut [Option<HeapPtr<StringValue>>] {
+    pub fn capture_groups_as_slice_mut(&mut self) -> &mut [Option<HeapPtr<StringValue>>] {
         unsafe {
             std::slice::from_raw_parts_mut(
                 self.capture_groups_as_ptr().cast_mut(),

@@ -262,7 +262,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 /// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
 /// new map.
 pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
 
     fn get(&self, cx: Context) -> HeapPtr<BsHashMap<K, V>>;
 
@@ -286,7 +286,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
         // Double size leaving map 1/4 full after growing
         let new_capacity = capacity * 2;
-        let mut new_map = self.new(cx, new_capacity);
+        let mut new_map = self.new_map(cx, new_capacity);
 
         // Update parent reference from old child to new child map
         self.set(cx, new_map);

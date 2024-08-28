@@ -24,14 +24,14 @@ enum ConstantTableEntry {
 impl ConstantTableEntry {
     /// Convert this entry to a value that is stored in the constant table. Return the value that
     /// is stored, along with whether the entry represents an actual value (e.g. vs raw offset).
-    fn to_value(&self, cx: Context) -> ToValueResult {
+    fn to_value(self, cx: Context) -> ToValueResult {
         match self {
             ConstantTableEntry::String(string) => ToValueResult::Value(string.cast()),
             ConstantTableEntry::HeapObject { object, .. } => ToValueResult::Value(object.cast()),
             ConstantTableEntry::Double(double) => ToValueResult::Value(double.to_handle(cx)),
             // Bytecode offsets are stored directly, not encoded as a value
             ConstantTableEntry::BytecodeOffset(offset) => {
-                ToValueResult::Raw(Value::from_raw_bits(*offset as u64))
+                ToValueResult::Raw(Value::from_raw_bits(offset as u64))
             }
         }
     }
@@ -375,7 +375,7 @@ impl ConstantTableBuilder {
         Some(ConstantTable::new(cx, constants, metadata))
     }
 
-    fn set_metadata(metadata: &mut Vec<u8>, index: usize, is_value: bool) {
+    fn set_metadata(metadata: &mut [u8], index: usize, is_value: bool) {
         if is_value {
             return;
         }

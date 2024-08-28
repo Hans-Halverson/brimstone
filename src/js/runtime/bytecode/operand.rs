@@ -80,12 +80,12 @@ macro_rules! operand_type {
 
         impl $name<ExtraWide> {
             #[inline]
-            pub fn to_narrow(&self) -> $name<Narrow> {
+            pub fn to_narrow(self) -> $name<Narrow> {
                 $name::from_unsigned(self.unsigned() as <Narrow as Width>::UInt)
             }
 
             #[inline]
-            pub fn to_wide(&self) -> $name<Wide> {
+            pub fn to_wide(self) -> $name<Wide> {
                 $name::from_unsigned(self.unsigned() as <Wide as Width>::UInt)
             }
         }
@@ -93,7 +93,7 @@ macro_rules! operand_type {
         impl<W: Width> Clone for $name<W> {
             #[inline]
             fn clone(&self) -> Self {
-                Self(self.0)
+                *self
             }
         }
 
@@ -313,9 +313,9 @@ impl<W: Width> fmt::Display for ConstantIndex<W> {
 
 /// Return the minimum width needed to fit the given signed value.
 pub fn min_width_for_signed(value: isize) -> WidthEnum {
-    if value <= Narrow::SIGNED_MAX && value >= Narrow::SIGNED_MIN {
+    if (Narrow::SIGNED_MIN..=Narrow::SIGNED_MAX).contains(&value) {
         WidthEnum::Narrow
-    } else if value <= Wide::SIGNED_MAX && value >= Wide::SIGNED_MIN {
+    } else if (Wide::SIGNED_MIN..=Wide::SIGNED_MAX).contains(&value) {
         WidthEnum::Wide
     } else {
         WidthEnum::ExtraWide

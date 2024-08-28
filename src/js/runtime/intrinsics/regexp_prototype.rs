@@ -359,7 +359,7 @@ impl RegExpPrototype {
 
         loop {
             // Search target string, finding all matches if global
-            let exec_result = maybe!(regexp_exec(cx, regexp_object, target_string.into()));
+            let exec_result = maybe!(regexp_exec(cx, regexp_object, target_string));
             if exec_result.is_null() {
                 break;
             }

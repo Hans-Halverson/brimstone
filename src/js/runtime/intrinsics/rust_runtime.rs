@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem::size_of};
+use std::collections::HashMap;
 
 use crate::{
     js::runtime::{
@@ -94,7 +94,7 @@ pub struct RustRuntimeFunctionRegistry {
 pub type RustRuntimeFunctionId = u16;
 
 // Check that the number of runtime functions fits in the RustRuntimeFunctionId type.
-static_assert!(NUM_RUST_RUNTIME_FUNCTIONS <= (1 << (8 * size_of::<RustRuntimeFunctionId>())));
+static_assert!(NUM_RUST_RUNTIME_FUNCTIONS <= (1 << (RustRuntimeFunctionId::BITS as usize)));
 
 type RustRuntimeFunction = fn(
     cx: Context,

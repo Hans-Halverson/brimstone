@@ -47,7 +47,7 @@ impl TypedArrayConstructor {
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
-        func.into()
+        func
     }
 
     // 23.2.1.1 %TypedArray%

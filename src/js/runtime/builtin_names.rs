@@ -19,8 +19,8 @@ macro_rules! builtin_names {
             }
 
             $(
-                #[allow(dead_code)]
                 #[inline]
+                #[allow(dead_code, clippy::wrong_self_convention)]
                 pub fn $rust_name(&self) -> Handle<PropertyKey> {
                     Handle::<PropertyKey>::from_fixed_non_heap_ptr(&self.$rust_name)
                 }

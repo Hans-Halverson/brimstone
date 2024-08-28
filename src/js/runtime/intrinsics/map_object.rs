@@ -59,7 +59,7 @@ impl Handle<MapObject> {
 pub struct MapObjectMapField(Handle<MapObject>);
 
 impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<ValueMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ValueMap> {
         ValueMap::new(cx, ObjectKind::MapObjectValueMap, capacity)
     }
 

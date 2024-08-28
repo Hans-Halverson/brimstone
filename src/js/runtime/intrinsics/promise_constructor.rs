@@ -125,7 +125,7 @@ impl PromiseConstructor {
 
         if let EvalResult::Throw(_) = completion {
             if !iterator.is_done {
-                completion = iterator_close(cx, &mut iterator, completion);
+                completion = iterator_close(cx, &iterator, completion);
             }
 
             if_abrupt_reject_promise!(cx, completion.clone(), capability);

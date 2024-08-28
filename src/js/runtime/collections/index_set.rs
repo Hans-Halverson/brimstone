@@ -96,7 +96,7 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
 struct IndexMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsIndexSetField<T>> BsIndexMapField<T, ()> for IndexMapField<S> {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<T, ()>> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<T, ()>> {
         S::new(cx, capacity).cast()
     }
 

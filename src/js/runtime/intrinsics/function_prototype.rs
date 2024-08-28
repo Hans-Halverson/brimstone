@@ -150,7 +150,7 @@ impl FunctionPrototype {
                 } else {
                     let target_len_as_int =
                         must!(to_integer_or_infinity(cx, target_length_value)) as usize;
-                    length = Some(target_len_as_int.saturating_sub(num_bound_args) as usize);
+                    length = Some(target_len_as_int.saturating_sub(num_bound_args));
                 }
             }
         }

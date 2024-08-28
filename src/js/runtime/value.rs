@@ -337,8 +337,7 @@ impl Value {
     pub fn number(value: f64) -> Value {
         // Check if this number should be converted into a smi
         if value.trunc() == value
-            && value >= SMI_MIN
-            && value <= SMI_MAX
+            && (SMI_MIN..=SMI_MAX).contains(&value)
             && f64::to_bits(value) != f64::to_bits(-0.0)
         {
             return Value::smi(value as i32);
@@ -423,7 +422,7 @@ impl ToHandleContents for Value {
     type Impl = Value;
 
     #[inline]
-    fn to_handle_contents(value: &Value) -> HandleContents {
+    fn to_handle_contents(value: Value) -> HandleContents {
         value.as_raw_bits() as usize
     }
 }

@@ -145,7 +145,7 @@ impl AsyncGeneratorPrototype {
 
         // Throw on a completed generator rejects the promise
         if state == AsyncGeneratorState::Completed {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.into()]));
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             return capability.promise().into();
         }
 

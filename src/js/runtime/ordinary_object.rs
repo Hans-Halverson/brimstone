@@ -23,9 +23,9 @@ extend_object! {
     pub struct OrdinaryObject {}
 }
 
-impl Into<ObjectValue> for OrdinaryObject {
-    fn into(self) -> ObjectValue {
-        unsafe { std::mem::transmute::<OrdinaryObject, ObjectValue>(self) }
+impl From<OrdinaryObject> for ObjectValue {
+    fn from(value: OrdinaryObject) -> Self {
+        unsafe { std::mem::transmute::<OrdinaryObject, ObjectValue>(value) }
     }
 }
 
@@ -92,7 +92,7 @@ impl Handle<ObjectValue> {
 
         self.set_prototype(new_prototype.map(|p| p.get_()));
 
-        return true.into();
+        true.into()
     }
 }
 
@@ -445,9 +445,8 @@ pub fn ordinary_set(
     };
 
     if own_desc.is_data_descriptor() {
-        match own_desc.is_writable {
-            Some(false) => return false.into(),
-            _ => {}
+        if let Some(false) = own_desc.is_writable {
+            return false.into();
         }
 
         if !receiver.is_object() {
@@ -520,11 +519,9 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     if let Some(dense_properties) = array_properties.as_dense_opt() {
         let dense_properties = dense_properties.to_handle();
         for (index, value) in dense_properties.iter().enumerate() {
-            if filter(index) {
-                if !value.is_empty() {
-                    let index_string = cx.alloc_string(&index.to_string());
-                    keys.push(index_string.into());
-                }
+            if filter(index) && !value.is_empty() {
+                let index_string = cx.alloc_string(&index.to_string());
+                keys.push(index_string.into());
             }
         }
     } else {

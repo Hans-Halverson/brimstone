@@ -181,7 +181,7 @@ impl VirtualObject for Handle<StringObject> {
             keys.push(index_string.into());
         }
 
-        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, &|index| {
+        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, |index| {
             index >= (length as usize)
         });
 

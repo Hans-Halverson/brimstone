@@ -52,7 +52,7 @@ impl BigIntPrototype {
             10
         } else {
             let radix_int = maybe!(to_integer_or_infinity(cx, radix));
-            if radix_int < 2.0 || radix_int > 36.0 {
+            if !(2.0..=36.0).contains(&radix_int) {
                 return range_error(cx, "radix must be an integer between 2 and 36");
             }
 

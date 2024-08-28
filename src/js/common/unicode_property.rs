@@ -24,6 +24,7 @@ impl UnicodeProperty {
 
 /// All binary unicode properties listed in the spec
 #[derive(Clone, Copy, Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum BinaryUnicodeProperty {
     ASCII,
     ASCIIHexDigit,

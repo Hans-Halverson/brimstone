@@ -1,4 +1,8 @@
-use std::{collections::HashSet, ops::Deref};
+use std::{
+    collections::HashSet,
+    mem::{transmute, MaybeUninit},
+    ops::Deref,
+};
 
 use crate::{
     js::runtime::{
@@ -186,8 +190,11 @@ impl VM {
 impl VM {
     pub fn new(cx: Context) -> Self {
         // Allocate uninitialized memory for stack
-        let mut stack = Vec::<StackSlotValue>::with_capacity(NUM_STACK_SLOTS);
-        unsafe { stack.set_len(NUM_STACK_SLOTS) };
+        let stack = unsafe {
+            let mut stack = Vec::<MaybeUninit<StackSlotValue>>::with_capacity(NUM_STACK_SLOTS);
+            stack.set_len(NUM_STACK_SLOTS);
+            transmute::<Vec<MaybeUninit<StackSlotValue>>, Vec<StackSlotValue>>(stack)
+        };
 
         let mut vm = VM {
             cx,
@@ -227,7 +234,7 @@ impl VM {
             &[global_names.cast()],
             None,
         )
-        .to_rust_result()?;
+        .into_rust_result()?;
 
         // Then create global scope and add lexical names to realm, since GDI would have errored
         // if there were any conflicts.
@@ -252,7 +259,7 @@ impl VM {
         // Evaluate the provided function
         let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
 
-        eval_result.to_rust_result()
+        eval_result.into_rust_result()
     }
 
     /// Resume a suspended generator, executing it until it suspends or completes.
@@ -336,7 +343,7 @@ impl VM {
     /// An empty frame pointer indicates that the stack is empty, no bytecode is currently
     /// executing, and the VM stack does not need to be walked for GC roots.
     fn is_executing(&self) -> bool {
-        self.fp() != std::ptr::null_mut()
+        !self.fp().is_null()
     }
 
     /// Dispatch instructions, one after another, until there are no more instructions to execute.
@@ -1177,7 +1184,7 @@ impl VM {
 
     #[inline]
     fn fp_offset(&self, slot_index: isize) -> *mut StackSlotValue {
-        unsafe { self.fp().offset(slot_index as isize) }
+        unsafe { self.fp().offset(slot_index) }
     }
 
     #[inline]
@@ -1595,7 +1602,7 @@ impl VM {
                 ArgsSlice::Forward(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
-                        receiver.into(),
+                        receiver,
                         slice.iter().rev(),
                         slice.len(),
                         /* return_to_rust_runtime */ false,
@@ -1605,7 +1612,7 @@ impl VM {
                 ArgsSlice::Reverse(slice) => {
                     self.push_stack_frame(
                         closure_ptr,
-                        receiver.into(),
+                        receiver,
                         slice.iter(),
                         slice.len(),
                         /* return_to_rust_runtime */ false,
@@ -1835,7 +1842,11 @@ impl VM {
         self.push(closure.as_ptr() as StackSlotValue);
 
         // Push the constant table
-        let constant_table = unsafe { std::mem::transmute(bytecode_function.constant_table_ptr()) };
+        let constant_table = unsafe {
+            std::mem::transmute::<Option<HeapPtr<ConstantTable>>, usize>(
+                bytecode_function.constant_table_ptr(),
+            )
+        };
         self.push(constant_table);
 
         // Push the current scope
@@ -1908,21 +1919,13 @@ impl VM {
 
     /// Find slice over the arguments given argv and argc, starting with last argument.
     #[inline]
-    fn get_args_rev_slice<'a, 'b, W: Width>(
-        &'a self,
-        argv: Register<W>,
-        argc: UInt<W>,
-    ) -> &'b [Value] {
+    fn get_args_rev_slice<'a, W: Width>(&self, argv: Register<W>, argc: UInt<W>) -> &'a [Value] {
         self.get_reg_rev_slice(argv, argc.value().to_usize())
     }
 
     /// Find slice over a slice of registers given argv and argc, starting with last argument.
     #[inline]
-    fn get_reg_rev_slice<'a, 'b, W: Width>(
-        &'a self,
-        argv: Register<W>,
-        argc: usize,
-    ) -> &'b [Value] {
+    fn get_reg_rev_slice<'a, W: Width>(&self, argv: Register<W>, argc: usize) -> &'a [Value] {
         let argv = self.register_address(argv);
 
         unsafe {
@@ -1932,7 +1935,7 @@ impl VM {
 
     /// Find slice over the arguments passed in the given array object.
     #[inline]
-    fn get_varargs_slice<'a, 'b, W: Width>(&'a mut self, array: Register<W>) -> &'b [Value] {
+    fn get_varargs_slice<'a, W: Width>(&mut self, array: Register<W>) -> &'a [Value] {
         // Return slice directly over the dense properties of the array
         let array_properties = self.read_register(array).as_object().array_properties();
 
@@ -1947,7 +1950,7 @@ impl VM {
 
     /// Find slice over the argument values given the generic call arguments.
     #[inline]
-    fn get_args_slice<'a, 'b, W: Width>(&'a mut self, args: GenericCallArgs<W>) -> ArgsSlice<'b> {
+    fn get_args_slice<'a, W: Width>(&mut self, args: GenericCallArgs<W>) -> ArgsSlice<'a> {
         match args {
             // Find slice over the arguments, starting with last argument
             GenericCallArgs::Stack { argv, argc } => {
@@ -2144,7 +2147,7 @@ impl VM {
 
         // Perform the runtime call. May allocate.
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx(), receiver, &arguments, new_target);
+        let result = rust_function(self.cx, receiver, arguments, new_target);
 
         // Clean up the stack frame
         self.pop_stack_frame();

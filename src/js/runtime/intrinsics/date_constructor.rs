@@ -132,7 +132,7 @@ impl DateConstructor {
             // Two digit years are treated as 19XX
             if !year.is_nan() {
                 let year_int = to_integer_or_infinity_f64(year);
-                if 0.0 <= year_int && year_int <= 99.0 {
+                if (0.0..=99.0).contains(&year_int) {
                     year = 1900.0 + year_int;
                 }
             }
@@ -233,7 +233,7 @@ impl DateConstructor {
         // Two digit years are treated as 19XX
         if !year.is_nan() {
             let year_int = to_integer_or_infinity_f64(year);
-            if 0.0 <= year_int && year_int <= 99.0 {
+            if (0.0..=99.0).contains(&year_int) {
                 year = 1900.0 + year_int;
             }
         }

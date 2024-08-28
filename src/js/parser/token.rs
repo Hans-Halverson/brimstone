@@ -144,7 +144,7 @@ impl fmt::Display for Token {
             Token::Identifier(name) => name,
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::StringLiteral(lit) => return f.write_str(&lit.to_string()),
-            Token::BigIntLiteral(lit) => return write!(f, "{}n", lit.to_string()),
+            Token::BigIntLiteral(lit) => return write!(f, "{}n", lit),
             Token::RegExpLiteral { raw, .. } => return write!(f, "{}", raw),
             Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {
                 return write!(f, "`{}`", raw)

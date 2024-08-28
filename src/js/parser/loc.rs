@@ -11,7 +11,7 @@ pub struct Loc {
 }
 
 impl Loc {
-    pub fn to_range(&self) -> Range<Pos> {
+    pub fn to_range(self) -> Range<Pos> {
         self.start..self.end
     }
 }
@@ -38,7 +38,7 @@ pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
         }
     }
 
-    return line_offsets;
+    line_offsets
 }
 
 /// Return the 1-indexed line and 0-indexed column number for a Pos, given the set of line start offsets.
@@ -66,5 +66,5 @@ fn find_largest_offset_less_than_or_equal(target: Pos, line_offsets: &[usize]) -
         }
     }
 
-    return lo - 1;
+    lo - 1
 }

@@ -147,7 +147,7 @@ impl PromiseObject {
         value: Value,
     ) {
         let mut next_reaction = if let PromiseState::Pending { reactions, .. } = &mut self.state {
-            reactions.clone()
+            *reactions
         } else {
             unreachable!("only called when promise is pending");
         };
@@ -368,7 +368,7 @@ pub fn promise_resolve(
     // If result is already a promise, return it if it was constructed with the same constructor.
     if is_promise(result.get()) {
         let result = result.as_object();
-        let value_constructor = maybe!(get(cx, result.into(), cx.names.constructor()));
+        let value_constructor = maybe!(get(cx, result, cx.names.constructor()));
         if same_value(value_constructor, constructor) {
             return result.into();
         }

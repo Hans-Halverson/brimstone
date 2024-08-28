@@ -91,7 +91,7 @@ impl RegExpStringIteratorPrototype {
             Property::data(to_string_tag_value, false, false, true),
         );
 
-        object.into()
+        object
     }
 
     // 22.2.9.2.1 %RegExpStringIteratorPrototype%.next

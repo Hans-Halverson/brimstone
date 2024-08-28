@@ -49,7 +49,7 @@ impl ProxyObject {
         set_uninit!(object.is_callable, is_callable);
         set_uninit!(object.is_constructor, is_constructor);
 
-        object.to_handle().into()
+        object.to_handle()
     }
 
     #[inline]
@@ -319,10 +319,11 @@ impl VirtualObject for Handle<ProxyObject> {
                             return type_error(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key));
                         }
                     }
-                } else if target_desc.is_accessor_descriptor() {
-                    if target_desc.get.is_none() && !trap_result.is_undefined() {
-                        return type_error(cx, &format!("proxy must report undefined for a non-configurable accessor property '{}' without a getter", key));
-                    }
+                } else if target_desc.is_accessor_descriptor()
+                    && target_desc.get.is_none()
+                    && !trap_result.is_undefined()
+                {
+                    return type_error(cx, &format!("proxy must report undefined for a non-configurable accessor property '{}' without a getter", key));
                 }
             }
         }
@@ -456,9 +457,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if !next.is_string() && !next.is_symbol() {
                 return type_error(
                     cx,
-                    &format!(
-                        "proxy ownKeys must return an array with only string and symbol objects"
-                    ),
+                    "proxy ownKeys must return an array with only string and symbol objects",
                 );
             }
 
@@ -725,10 +724,8 @@ impl ProxyObject {
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
         let trap_result = to_boolean(trap_result.get());
 
-        if trap_result {
-            if maybe!(is_extensible_(cx, target)) {
-                return type_error(cx, "proxy can't report an extensible object as non-extensible");
-            }
+        if trap_result && maybe!(is_extensible_(cx, target)) {
+            return type_error(cx, "proxy can't report an extensible object as non-extensible");
         }
 
         trap_result.into()

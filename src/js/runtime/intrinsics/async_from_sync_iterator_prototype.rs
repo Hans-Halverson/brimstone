@@ -82,7 +82,7 @@ impl AsyncFromSyncIteratorPrototype {
         object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm);
         object.intrinsic_func(cx, cx.names.throw(), Self::throw, 0, realm);
 
-        object.into()
+        object
     }
 
     // 27.1.4.2.1 %AsyncFromSyncIteratorPrototype%.next
@@ -148,7 +148,7 @@ impl AsyncFromSyncIteratorPrototype {
         let return_result = if_abrupt_reject_promise!(cx, return_result_completion, capability);
         if !return_result.is_object() {
             let error = type_error_value(cx, "return method must return an object");
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.into()]));
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return capability.promise().into();
         }
@@ -175,7 +175,7 @@ impl AsyncFromSyncIteratorPrototype {
         // If there is no throw method the promise can immediately be rejected
         if throw_method.is_none() {
             let error = get_argument(cx, arguments, 0);
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.into()]));
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return capability.promise().into();
         }
@@ -193,7 +193,7 @@ impl AsyncFromSyncIteratorPrototype {
         let throw_result = if_abrupt_reject_promise!(cx, throw_result_completion, capability);
         if !throw_result.is_object() {
             let error = type_error_value(cx, "throw method must return an object");
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.into()]));
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return capability.promise().into();
         }

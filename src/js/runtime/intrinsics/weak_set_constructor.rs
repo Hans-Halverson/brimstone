@@ -77,7 +77,7 @@ impl WeakSetConstructor {
                         call_object(cx, adder.as_object(), weak_set.into(), &[next_value]);
 
                     if let EvalResult::Throw(_) = add_result {
-                        return iterator_close(cx, &iterator, add_result.into());
+                        return iterator_close(cx, &iterator, add_result);
                     }
                 }
             }

@@ -97,7 +97,7 @@ pub fn iterator_next(
         return type_error(cx, "iterator's next method must return an object");
     }
 
-    return result.as_object().into();
+    result.as_object().into()
 }
 
 // 7.4.4 IteratorComplete

@@ -363,7 +363,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 /// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
 /// new map.
 pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
 
     fn get(&self) -> HeapPtr<BsIndexMap<K, V>>;
 
@@ -396,7 +396,7 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
             new_capacity = capacity * 2;
         }
 
-        let mut new_map = self.new(cx, new_capacity);
+        let mut new_map = self.new_map(cx, new_capacity);
 
         // Update parent reference from old child to new child map
         self.set(new_map);

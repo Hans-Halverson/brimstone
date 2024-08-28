@@ -73,7 +73,7 @@ impl Handle<WeakMapObject> {
 pub struct WeakMapObjectMapField(Handle<WeakMapObject>);
 
 impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<WeakValueMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<WeakValueMap> {
         WeakValueMap::new(cx, ObjectKind::WeakMapObjectWeakValueMap, capacity)
     }
 

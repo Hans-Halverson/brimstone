@@ -195,7 +195,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
         let scope_index = self.get_mapped_scope_index_for_key(key);
-        let mut new_arg_desc = desc.clone();
+        let mut new_arg_desc = desc;
 
         if let Some(scope_index) = scope_index {
             if desc.is_data_descriptor() {
@@ -277,7 +277,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 
 // 10.4.4.6 CreateUnmappedArgumentsObject
 pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]) -> Handle<Value> {
-    let object = UnmappedArgumentsObject::new(cx).into();
+    let object = UnmappedArgumentsObject::new(cx);
 
     // Set length property
     let length_value = Value::smi(arguments.len() as i32).to_handle(cx);

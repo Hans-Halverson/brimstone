@@ -199,11 +199,11 @@ pub fn to_integer_or_infinity(cx: Context, value: Handle<Value>) -> EvalResult<f
 
 pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
     if number_f64.is_nan() || number_f64 == 0.0 {
-        return 0.0.into();
+        return 0.0;
     }
 
     if number_f64.is_infinite() {
-        return number_f64.into();
+        return number_f64;
     }
 
     let mut integer_f64 = number_f64.abs().floor();
@@ -212,7 +212,7 @@ pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
         integer_f64 = -integer_f64;
     }
 
-    integer_f64.into()
+    integer_f64
 }
 
 // 7.1.6 ToInt32
@@ -452,9 +452,9 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
 
     // Round ties to even
     if floor % 2.0 == 1.0 {
-        return ((floor + 1.0) as u8).into();
+        ((floor + 1.0) as u8).into()
     } else {
-        return (floor as u8).into();
+        (floor as u8).into()
     }
 }
 
@@ -746,7 +746,7 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
         0.into()
     } else {
         let integer = maybe!(to_integer_or_infinity(cx, value_handle));
-        if integer < 0.0 || integer > MAX_SAFE_INTEGER_F64 {
+        if !(0.0..=MAX_SAFE_INTEGER_F64).contains(&integer) {
             range_error(cx, &format!("{} is out of range for an array index", integer))
         } else {
             (integer as usize).into()
@@ -787,7 +787,7 @@ pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         return is_array(cx, proxy.target().unwrap().into());
     }
 
-    return false.into();
+    false.into()
 }
 
 // 7.2.3 IsCallable
@@ -834,9 +834,7 @@ pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
 pub fn is_integral_number(value: Value) -> bool {
     if value.is_smi() {
         return true;
-    } else if !value.is_double() {
-        return false;
-    } else if value.is_nan() || value.is_infinity() {
+    } else if !value.is_double() || value.is_nan() || value.is_infinity() {
         return false;
     }
 
@@ -958,7 +956,7 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
         }
     }
 
-    false.into()
+    false
 }
 
 // Same as same_value_non_numeric but cannot allocate. Callers must ensure that all string values
@@ -993,7 +991,7 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
         }
     }
 
-    false.into()
+    false
 }
 
 // 7.1.14 StringToBigInt
@@ -1084,11 +1082,11 @@ pub fn is_less_than(
     let y_is_bigint = num_y.is_bigint();
     if x_is_bigint == y_is_bigint {
         if x_is_bigint {
-            return num_x
+            num_x
                 .as_bigint()
                 .bigint()
                 .lt(&num_y.as_bigint().bigint())
-                .into();
+                .into()
         } else {
             // Both are numbers
             if num_x.is_nan() || num_y.is_nan() {
@@ -1215,13 +1213,11 @@ pub fn is_loosely_equal(
                     is_loosely_equal(cx, v1_handle, primitive_v2)
                 }
             }
+        } else if v2.is_bool() {
+            let v2_number = maybe!(to_number(cx, v2_handle));
+            is_loosely_equal(cx, v1_handle, v2_number)
         } else {
-            if v2.is_bool() {
-                let v2_number = maybe!(to_number(cx, v2_handle));
-                is_loosely_equal(cx, v1_handle, v2_number)
-            } else {
-                false.into()
-            }
+            false.into()
         };
     }
 

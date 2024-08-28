@@ -102,7 +102,7 @@ impl TypedArrayPrototype {
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm);
 
-        object.into()
+        object
     }
 
     // 23.2.3.1 %TypedArray%.prototype.at
@@ -1471,7 +1471,7 @@ impl TypedArrayPrototype {
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(set(cx, sorted_array.into(), index_key, *value, true));
+            maybe!(set(cx, sorted_array, index_key, *value, true));
         }
 
         sorted_array.into()
@@ -1540,7 +1540,7 @@ impl TypedArrayPrototype {
                 must!(get(cx, object, key))
             };
 
-            must!(set(cx, array.into(), key, value, true));
+            must!(set(cx, array, key, value, true));
         }
 
         array.into()

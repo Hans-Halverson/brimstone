@@ -104,7 +104,7 @@ pub fn add_entries_from_iterable(
         let result = adder(cx, key, value);
         match result {
             EvalResult::Ok(_) => None,
-            EvalResult::Throw(thrown_value) => return Some(EvalResult::Throw(thrown_value)),
+            EvalResult::Throw(thrown_value) => Some(EvalResult::Throw(thrown_value)),
         }
     }));
 

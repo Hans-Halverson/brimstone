@@ -210,7 +210,7 @@ pub fn new_class(
     let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent);
 
     // Define a `constructor` property on the prototype
-    create_method_property(cx, prototype.into(), cx.names.constructor(), constructor.into());
+    create_method_property(cx, prototype, cx.names.constructor(), constructor.into());
 
     // Define a `prototype` property on the constructor
     let desc = PropertyDescriptor::data(prototype.into(), false, false, false);

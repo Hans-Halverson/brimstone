@@ -344,7 +344,7 @@ impl ObjectConstructor {
 
         let keys = maybe!(object.own_property_keys(cx));
 
-        let descriptors = ordinary_object_create(cx).into();
+        let descriptors = ordinary_object_create(cx);
 
         // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);

@@ -17,6 +17,7 @@ use super::icu_data::BakedDataProvider;
 
 const DEFAULT_LOCALE: Locale = locale!("en");
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct ICU {
     pub general_categories: GeneralCategories,
     pub scripts: Scripts,

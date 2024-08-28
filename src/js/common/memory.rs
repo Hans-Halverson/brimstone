@@ -19,6 +19,9 @@ macro_rules! field_offset {
 #[macro_export]
 macro_rules! set_uninit {
     ($field:expr, $value:expr) => {
-        unsafe { std::ptr::addr_of_mut!($field).write($value) }
+        #[allow(clippy::macro_metavars_in_unsafe)]
+        unsafe {
+            std::ptr::addr_of_mut!($field).write($value)
+        }
     };
 }

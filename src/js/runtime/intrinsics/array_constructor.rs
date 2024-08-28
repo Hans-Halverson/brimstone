@@ -65,7 +65,7 @@ impl ArrayConstructor {
             maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype));
 
         if arguments.is_empty() {
-            return must!(array_create(cx, 0, Some(proto))).into();
+            must!(array_create(cx, 0, Some(proto))).into()
         } else if arguments.len() == 1 {
             let length = get_argument(cx, arguments, 0);
             let array = must!(array_create(cx, 0, Some(proto)));
@@ -87,7 +87,7 @@ impl ArrayConstructor {
             let int_len_value = Value::from(int_len).to_handle(cx);
             must!(set(cx, array.into(), cx.names.length(), int_len_value, true));
 
-            return array.into();
+            array.into()
         } else {
             let array = maybe!(array_create(cx, arguments.len() as u64, Some(proto)));
 
@@ -101,7 +101,7 @@ impl ArrayConstructor {
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
             }
 
-            return array.into();
+            array.into()
         }
     }
 
@@ -153,7 +153,7 @@ impl ArrayConstructor {
                     let result = call_object(cx, map_function, this_arg, &[value, index_value]);
                     match result {
                         EvalResult::Ok(mapped_value) => mapped_value,
-                        EvalResult::Throw(_) => return Some(result.into()),
+                        EvalResult::Throw(_) => return Some(result),
                     }
                 } else {
                     value
@@ -247,10 +247,10 @@ impl ArrayConstructor {
             key.replace(PropertyKey::array_index(cx, index as u32));
             let value = get_argument(cx, arguments, index);
 
-            maybe!(create_data_property_or_throw(cx, array.into(), key, value));
+            maybe!(create_data_property_or_throw(cx, array, key, value));
         }
 
-        maybe!(set(cx, array.into(), cx.names.length(), length_value, true));
+        maybe!(set(cx, array, cx.names.length(), length_value, true));
 
         array.into()
     }

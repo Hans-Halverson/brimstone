@@ -396,47 +396,44 @@ impl GarbageCollector {
         let mut found_new_live_unregister_token = false;
 
         while let Some(finalization_registry) = next_finalization_registry {
-            for cell in finalization_registry.cells().iter_mut_gc_unsafe() {
-                if let Some(cell) = cell {
-                    let target_value = cell.target;
+            for cell in finalization_registry.cells().iter_mut_gc_unsafe().flatten() {
+                let target_value = cell.target;
 
-                    debug_assert!(target_value.is_pointer());
-                    let target_ptr = target_value.as_pointer().as_ptr().cast();
+                debug_assert!(target_value.is_pointer());
+                let target_ptr = target_value.as_pointer().as_ptr().cast();
 
-                    // Check if key has not yet been visited and moved to the to-space
-                    if self.is_in_from_space(target_ptr) {
-                        let target_descriptor = target_value.as_pointer().descriptor();
+                // Check if key has not yet been visited and moved to the to-space
+                if self.is_in_from_space(target_ptr) {
+                    let target_descriptor = target_value.as_pointer().descriptor();
 
-                        // Target is known to be live if it has already moved and left a forwarding
-                        // pointer. Visit the unregister key associated with the target since we now
-                        // know it is live. Also update target to point to to-space so we can tell it
-                        // is visited.
-                        if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
-                            cell.target = forwarding_ptr.cast::<ObjectValue>().into();
+                    // Target is known to be live if it has already moved and left a forwarding
+                    // pointer. Visit the unregister key associated with the target since we now
+                    // know it is live. Also update target to point to to-space so we can tell it
+                    // is visited.
+                    if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                        cell.target = forwarding_ptr.cast::<ObjectValue>().into();
 
-                            if let Some(ref mut unregister_token) = cell.unregister_token {
-                                found_new_live_unregister_token = true;
-                                self.visit_value(unregister_token);
-                            }
-                        }
-                    } else if self.is_in_permanent_space(target_ptr) {
-                        // Check if target was in the permanent space. If so its unregister token is
-                        // live and will always be visited.
-                        //
-                        // Note that we only need to visit the token if it is a pointer. Make sure
-                        // to only count this as a new live token if it was not already moved.
                         if let Some(ref mut unregister_token) = cell.unregister_token {
-                            if unregister_token.is_pointer()
-                                && self
-                                    .is_in_from_space(unregister_token.as_pointer().as_ptr().cast())
-                            {
-                                let token_descriptor = unregister_token.as_pointer().descriptor();
-                                if decode_forwarding_pointer(token_descriptor).is_none() {
-                                    found_new_live_unregister_token = true;
-                                }
-
-                                self.visit_value(unregister_token);
+                            found_new_live_unregister_token = true;
+                            self.visit_value(unregister_token);
+                        }
+                    }
+                } else if self.is_in_permanent_space(target_ptr) {
+                    // Check if target was in the permanent space. If so its unregister token is
+                    // live and will always be visited.
+                    //
+                    // Note that we only need to visit the token if it is a pointer. Make sure
+                    // to only count this as a new live token if it was not already moved.
+                    if let Some(ref mut unregister_token) = cell.unregister_token {
+                        if unregister_token.is_pointer()
+                            && self.is_in_from_space(unregister_token.as_pointer().as_ptr().cast())
+                        {
+                            let token_descriptor = unregister_token.as_pointer().descriptor();
+                            if decode_forwarding_pointer(token_descriptor).is_none() {
+                                found_new_live_unregister_token = true;
                             }
+
+                            self.visit_value(unregister_token);
                         }
                     }
                 }
@@ -489,7 +486,7 @@ impl GarbageCollector {
             if self.is_in_from_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
-                    *string_ref = forwarding_ptr.cast::<FlatString>().into();
+                    *string_ref = forwarding_ptr.cast::<FlatString>();
                 } else {
                     // Otherwise string was garbage collected so remove string from set.
                     // It is safe to remove during iteration for a BsHashSet.
@@ -506,7 +503,7 @@ impl GarbageCollector {
             if self.is_in_from_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
-                    *string_ref = forwarding_ptr.cast::<FlatString>().into();
+                    *string_ref = forwarding_ptr.cast::<FlatString>();
                 } else {
                     // Otherwise string was garbage collected so remove string from map.
                     // It is safe to remove during iteration for a BsHashMap.

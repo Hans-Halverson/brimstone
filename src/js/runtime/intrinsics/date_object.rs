@@ -113,7 +113,7 @@ pub fn month_from_time(time: f64) -> f64 {
 
     let day_within_year = day_within_year(time);
 
-    if 0.0 <= day_within_year && day_within_year < 31.0 {
+    if (0.0..31.0).contains(&day_within_year) {
         0.0
     } else if 31.0 <= day_within_year && day_within_year < 59.0 + leap_year {
         1.0
@@ -257,7 +257,7 @@ fn year_to_days_since_unix_epoch(year: i64) -> i64 {
 
 // Months and days are 1-indexed. Month must be between 1 and 12, day is not not constrained.
 fn year_month_day_to_days_since_year_start(year: i64, month: i64, day: i64) -> i64 {
-    assert!(month >= 1 && month <= 12);
+    assert!((1..=12).contains(&month));
 
     // Table to lookup one less than the number of days until the start of each month, excluding
     // leap days.

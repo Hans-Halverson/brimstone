@@ -85,7 +85,7 @@ impl Heap {
     }
 
     #[inline]
-    pub fn info<'a, 'b>(&'a self) -> &'b mut HeapInfo {
+    pub fn info<'a>(&self) -> &'a mut HeapInfo {
         unsafe { &mut *(self.heap_info as *const _ as *mut HeapInfo) }
     }
 

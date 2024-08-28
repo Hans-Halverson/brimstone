@@ -56,7 +56,7 @@ impl StringConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let string_value = if arguments.is_empty() {
-            cx.names.empty_string().as_string().into()
+            cx.names.empty_string().as_string()
         } else {
             let value = get_argument(cx, arguments, 0);
             if new_target.is_none() && value.is_symbol() {
@@ -122,7 +122,7 @@ impl StringConstructor {
 
                 let code_point = code_point.as_smi();
 
-                if code_point < 0 || code_point > 0x10FFFF {
+                if !(0..=0x10FFFF).contains(&code_point) {
                     return range_error(cx, &format!("invalid code point {}", code_point));
                 }
 
@@ -168,7 +168,7 @@ impl StringConstructor {
             return cx.names.empty_string.as_string().to_handle().into();
         }
 
-        let mut result = cx.names.empty_string.as_string().to_handle().into();
+        let mut result = cx.names.empty_string.as_string().to_handle();
         let mut next_index = 0;
 
         // Key is shared between iterations

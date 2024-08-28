@@ -91,7 +91,7 @@ fn print_eval_error_and_exit(cx: Context, error: Handle<Value>) {
 }
 
 /// Wrapper to pretty print errors
-fn main() -> () {
+fn main() {
     match main_impl() {
         Ok(_) => (),
         Err(err) => print_error_message_and_exit(&err.to_string()),

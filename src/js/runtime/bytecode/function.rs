@@ -477,7 +477,7 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
 
     if let Some(mut dump_buffer) = cx.options.dump_buffer() {
         dump_buffer.push_str(&bytecode_string);
-        dump_buffer.push_str("\n");
+        dump_buffer.push('\n');
     } else {
         println!("{}", func.debug_print_recursive(false));
     }

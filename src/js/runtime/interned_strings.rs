@@ -150,7 +150,7 @@ impl InternedStringsSetField {
 pub struct InternedStringsMapField;
 
 impl BsHashMapField<Wtf8String, HeapPtr<FlatString>> for InternedStringsMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<InternedStringsMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<InternedStringsMap> {
         InternedStringsMap::new(cx, ObjectKind::InternedStringsMap, capacity)
     }
 

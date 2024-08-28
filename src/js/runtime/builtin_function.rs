@@ -77,7 +77,7 @@ impl BuiltinFunction {
         prefix: Option<&str>,
     ) {
         set_function_length(cx, func, length);
-        set_function_name(cx.into(), func, name, prefix);
+        set_function_name(cx, func, name, prefix);
     }
 
     pub fn create_builtin_function_without_properties(

@@ -232,7 +232,7 @@ impl DebugPrint for HeapPtr<ExceptionHandlers> {
             ));
 
             if let Some(register) = handler.error_register() {
-                printer.write(&format!(" ({})", register.to_string()));
+                printer.write(&format!(" ({})", register));
             }
 
             printer.write("\n");

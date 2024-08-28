@@ -55,11 +55,10 @@ impl Options {
     }
 
     #[allow(unused)]
-    pub fn dump_buffer<'a>(&'a self) -> Option<MutexGuard<'a, String>> {
-        match self.dump_buffer.as_ref() {
-            Some(buffer) => Some(buffer.lock().unwrap()),
-            None => None,
-        }
+    pub fn dump_buffer(&self) -> Option<MutexGuard<'_, String>> {
+        self.dump_buffer
+            .as_ref()
+            .map(|buffer| buffer.lock().unwrap())
     }
 }
 

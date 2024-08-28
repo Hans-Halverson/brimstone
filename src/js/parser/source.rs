@@ -16,7 +16,7 @@ pub struct Source {
 impl Source {
     pub fn new_from_file(file_path: &str) -> ParseResult<Source> {
         // Read file to string
-        let file = File::open(&file_path)?;
+        let file = File::open(file_path)?;
         let mut reader = BufReader::new(file);
 
         let mut contents = String::new();

@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
     fn try_parse<T>(&mut self, try_fn: fn(&mut Self) -> ParseResult<T>) -> ParseResult<T> {
         let save_state = self.save();
         let result = try_fn(self);
-        if let Err(_) = result {
+        if result.is_err() {
             self.restore(save_state);
         }
         result
@@ -637,7 +637,7 @@ impl<'a> Parser<'a> {
             let init = match self.token {
                 Token::Equals => {
                     self.advance()?;
-                    Some(self.parse_assignment_expression()?.to_outer())
+                    Some(self.parse_assignment_expression()?.into_outer())
                 }
                 _ => None,
             };
@@ -1212,7 +1212,7 @@ impl<'a> Parser<'a> {
                         loc,
                         kind: ForEachKind::In,
                         left,
-                        right: right.to_outer(),
+                        right: right.into_outer(),
                         body,
                         is_await: false,
                         scope,
@@ -1280,7 +1280,7 @@ impl<'a> Parser<'a> {
 
         let right = match kind {
             ForEachKind::In => self.parse_outer_expression()?,
-            ForEachKind::Of => self.parse_assignment_expression()?.to_outer(),
+            ForEachKind::Of => self.parse_assignment_expression()?.into_outer(),
         };
 
         // Mark the end of the right hand side now that it is known, in order to check for TDZ uses
@@ -1490,7 +1490,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_outer_expression(&mut self) -> ParseResult<P<OuterExpression>> {
-        Ok(self.parse_expression()?.to_outer())
+        Ok(self.parse_expression()?.into_outer())
     }
 
     /// 13.16 Expression
@@ -1719,15 +1719,15 @@ impl<'a> Parser<'a> {
             return Ok(YieldExpression { loc, argument: None, is_delegate: false });
         }
 
-        let is_assignment_expression_end = match self.token {
+        let is_assignment_expression_end = matches!(
+            self.token,
             Token::RightParen
-            | Token::RightBracket
-            | Token::Comma
-            | Token::Colon
-            | Token::In
-            | Token::Of => true,
-            _ => false,
-        };
+                | Token::RightBracket
+                | Token::Comma
+                | Token::Colon
+                | Token::In
+                | Token::Of
+        );
         if is_assignment_expression_end {
             let loc = self.mark_loc(start_pos);
             return Ok(YieldExpression { loc, argument: None, is_delegate: false });
@@ -1741,7 +1741,7 @@ impl<'a> Parser<'a> {
         let argument = Some(self.parse_assignment_expression()?);
         let loc = self.mark_loc(start_pos);
 
-        return Ok(YieldExpression { loc, argument, is_delegate });
+        Ok(YieldExpression { loc, argument, is_delegate })
     }
 
     /// 13.14 ConditionalExpression
@@ -2467,7 +2467,7 @@ impl<'a> Parser<'a> {
             // Parse import.meta meta property
             Token::Period => {
                 self.advance()?;
-                return if self.token == Token::Meta {
+                if self.token == Token::Meta {
                     self.advance()?;
                     let loc = self.mark_loc(start_pos);
 
@@ -2477,7 +2477,7 @@ impl<'a> Parser<'a> {
                     })))
                 } else {
                     self.error(self.loc, ParseError::ExpectedImportMeta)
-                };
+                }
             }
             _ => {
                 self.expect(Token::LeftParen)?;
@@ -2530,7 +2530,7 @@ impl<'a> Parser<'a> {
             }
             Token::NumberLiteral(value) => {
                 let loc = self.loc;
-                let value = value.clone();
+                let value = *value;
                 self.advance()?;
                 Ok(p(Expression::Number(NumberLiteral { loc, value })))
             }
@@ -2609,7 +2609,7 @@ impl<'a> Parser<'a> {
                     // If followed by an identifier this is `async id`
                     let id_token = self.token.clone();
                     let id_loc = self.loc;
-                    if let Ok(_) = self.parse_binding_identifier(None) {
+                    if self.parse_binding_identifier(None).is_ok() {
                         // Start of an async arrow function. This can only occur if we are trying
                         // to parse a non-arrow function first, so fail the try parse.
                         if self.token == Token::Arrow {
@@ -3454,7 +3454,7 @@ impl<'a> Parser<'a> {
 
         let super_class = if self.token == Token::Extends {
             self.advance()?;
-            Some(self.parse_left_hand_side_expression()?.to_outer())
+            Some(self.parse_left_hand_side_expression()?.into_outer())
         } else {
             None
         };
@@ -3534,7 +3534,7 @@ impl<'a> Parser<'a> {
 
         match self.parse_identifier_name()? {
             Some(id) => Ok(id),
-            None => return self.error_unexpected_token(self.loc, &self.token),
+            None => self.error_unexpected_token(self.loc, &self.token),
         }
     }
 
@@ -3586,7 +3586,7 @@ impl<'a> Parser<'a> {
                 // the kind and the function's block body are ignored, so put in placeholders.
                 return Ok(ClassElement::Method(ClassMethod::new(
                     loc,
-                    /* key */ Expression::Null(loc).to_outer(),
+                    /* key */ Expression::Null(loc).into_outer(),
                     /* value */
                     p(Function::new(
                         loc,
@@ -3746,7 +3746,7 @@ impl<'a> Parser<'a> {
 
         Ok(ClassMethod::new(
             loc,
-            key.to_outer(),
+            key.into_outer(),
             func_value,
             kind,
             is_computed,
@@ -3772,8 +3772,8 @@ impl<'a> Parser<'a> {
     ) -> ClassProperty {
         let Property { key, value, is_computed, .. } = property;
 
-        let key = key.to_outer();
-        let value = value.map(|v| v.to_outer());
+        let key = key.into_outer();
+        let value = value.map(|v| v.into_outer());
 
         ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
@@ -4000,7 +4000,7 @@ impl<'a> Parser<'a> {
             let loc = self.mark_loc(start_pos);
 
             let expr_stmt =
-                Statement::Expr(ExpressionStatement { loc, expr: full_expr.to_outer() });
+                Statement::Expr(ExpressionStatement { loc, expr: full_expr.into_outer() });
 
             return Ok(Toplevel::Statement(expr_stmt));
         }
@@ -4054,7 +4054,7 @@ impl<'a> Parser<'a> {
                 self.parse_named_specifiers(specifiers)?;
                 Ok(())
             }
-            _ => return self.error_unexpected_token(self.loc, &self.token),
+            _ => self.error_unexpected_token(self.loc, &self.token),
         }
     }
 
@@ -4239,7 +4239,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // Otherwise default export is an expression
                     let expr_start_pos = self.current_start_pos();
-                    let expr = self.parse_assignment_expression()?.to_outer();
+                    let expr = self.parse_assignment_expression()?.into_outer();
 
                     self.expect_semicolon()?;
                     let loc = self.mark_loc(start_pos);
@@ -4489,10 +4489,7 @@ impl<'a> Parser<'a> {
             Expression::Id(id) => {
                 // Cannot assign to arguments or eval in strict mode
                 if self.in_strict_mode {
-                    match id.name.as_str() {
-                        "arguments" | "eval" => false,
-                        _ => true,
-                    }
+                    !matches!(id.name.as_str(), "arguments" | "eval")
                 } else {
                     true
                 }
@@ -4509,7 +4506,7 @@ fn wrap_outer(expr: Expression) -> OuterExpression {
 }
 
 impl Expression {
-    fn to_outer(self) -> P<OuterExpression> {
+    fn into_outer(self) -> P<OuterExpression> {
         p(wrap_outer(self))
     }
 }
@@ -4533,7 +4530,7 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     let initial_state = parser.save();
     parser.advance()?;
 
-    Ok(parser.parse_script(initial_state)?)
+    parser.parse_script(initial_state)
 }
 
 pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
@@ -4542,7 +4539,7 @@ pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     let mut parser = Parser::new(lexer, ScopeTree::new_global());
     parser.advance()?;
 
-    Ok(parser.parse_module()?)
+    parser.parse_module()
 }
 
 pub fn parse_script_for_eval(
@@ -4560,7 +4557,7 @@ pub fn parse_script_for_eval(
     let initial_state = parser.save();
     parser.advance()?;
 
-    Ok(parser.parse_script(initial_state)?)
+    parser.parse_script(initial_state)
 }
 
 pub fn parse_function_params_for_function_constructor(

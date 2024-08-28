@@ -427,7 +427,7 @@ pub type LexicalNamesMap = BsHashMap<HeapPtr<FlatString>, LexicalNameLocation>;
 pub struct LexicalNamesMapField(Handle<Realm>);
 
 impl BsHashMapField<HeapPtr<FlatString>, LexicalNameLocation> for LexicalNamesMapField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<LexicalNamesMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<LexicalNamesMap> {
         LexicalNamesMap::new(cx, ObjectKind::LexicalNamesMap, capacity)
     }
 

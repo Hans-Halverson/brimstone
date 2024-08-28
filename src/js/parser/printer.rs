@@ -40,12 +40,6 @@ impl<'a> Printer<'a> {
         self.buf.push_str(str);
     }
 
-    fn print_string(&mut self, string: &String) {
-        self.buf.push('\"');
-        self.buf.push_str(string);
-        self.buf.push('\"');
-    }
-
     fn print_wtf8_string(&mut self, string: &Wtf8String) {
         self.buf.push('\"');
         self.buf.push_str(&string.to_string());
@@ -239,7 +233,7 @@ impl<'a> Printer<'a> {
     fn print_function_body(&mut self, body: &FunctionBody) {
         match body {
             FunctionBody::Block(block) => self.print_function_block_body(block),
-            FunctionBody::Expression(expr) => self.print_outer_expression(&expr),
+            FunctionBody::Expression(expr) => self.print_outer_expression(expr),
         }
     }
 
@@ -379,8 +373,8 @@ impl<'a> Printer<'a> {
         match init {
             None => self.print_null(),
             Some(init) => match init.as_ref() {
-                ForInit::Expression(expr) => self.print_outer_expression(&expr),
-                ForInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+                ForInit::Expression(expr) => self.print_outer_expression(expr),
+                ForInit::VarDecl(decl) => self.print_variable_declaration(decl),
             },
         }
     }
@@ -404,8 +398,8 @@ impl<'a> Printer<'a> {
 
     fn print_for_each_init(&mut self, init: &ForEachInit) {
         match init {
-            ForEachInit::Pattern { pattern, .. } => self.print_pattern(&pattern),
-            ForEachInit::VarDecl(decl) => self.print_variable_declaration(&decl),
+            ForEachInit::Pattern { pattern, .. } => self.print_pattern(pattern),
+            ForEachInit::VarDecl(decl) => self.print_variable_declaration(decl),
         }
     }
 
@@ -433,12 +427,12 @@ impl<'a> Printer<'a> {
     fn print_try_statement(&mut self, stmt: &TryStatement) {
         self.start_node("TryStatement", &stmt.loc);
         self.property("block", stmt.block.as_ref(), Printer::print_block);
-        self.property("handler", stmt.handler.as_ref(), Printer::print_try_handler);
+        self.property("handler", stmt.handler.as_deref(), Printer::print_try_handler);
         self.property("finalizer", stmt.finalizer.as_ref(), Printer::print_optional_block);
         self.end_node();
     }
 
-    fn print_try_handler(&mut self, handler: Option<&Box<CatchClause>>) {
+    fn print_try_handler(&mut self, handler: Option<&CatchClause>) {
         if let Some(handler) = handler {
             self.start_node("CatchClause", &handler.loc);
             self.property("param", handler.param.as_ref(), Printer::print_optional_pattern);
@@ -578,7 +572,7 @@ impl<'a> Printer<'a> {
     fn print_bigint_literal(&mut self, lit: &BigIntLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", (), Printer::print_null_in_property);
-        self.property("bigint", &lit.value.to_string(), Printer::print_string);
+        self.property("bigint", lit.value.to_string().as_str(), Printer::print_str);
         self.end_node();
     }
 
@@ -752,7 +746,7 @@ impl<'a> Printer<'a> {
         let id = expr.to_id();
 
         self.start_node("PrivateIdentifier", &id.loc);
-        self.property("name", &id.name, Printer::print_string);
+        self.property("name", id.name.as_str(), Printer::print_str);
         self.end_node();
     }
 
@@ -965,9 +959,9 @@ impl<'a> Printer<'a> {
         self.print_identifier_parts(&id.loc, &id.name);
     }
 
-    fn print_identifier_parts(&mut self, loc: &Loc, name: &String) {
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &str) {
         self.start_node("Identifier", loc);
-        self.property("name", name, Printer::print_string);
+        self.property("name", name, Printer::print_str);
         self.end_node();
     }
 
@@ -1173,7 +1167,7 @@ impl<'a> Printer<'a> {
     fn print_optional_string(&mut self, string: Option<&String>) {
         match string {
             None => self.print_null(),
-            Some(string) => self.print_string(string),
+            Some(string) => self.print_str(string),
         }
     }
 
@@ -1290,14 +1284,12 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_character_class_range(&mut self, range: &ClassRange) {
         match range {
-            ClassRange::Single(single) => self.print_string(&format!(
-                "Single({})",
-                to_string_or_unicode_escape_sequence(*single)
-            )),
+            ClassRange::Single(single) => self
+                .print_str(&format!("Single({})", to_string_or_unicode_escape_sequence(*single))),
             ClassRange::Range(start, end) => {
                 let start_string = to_string_or_unicode_escape_sequence(*start);
                 let end_string = to_string_or_unicode_escape_sequence(*end);
-                self.print_string(&format!("Range({}, {})", start_string, end_string))
+                self.print_str(&format!("Range({}, {})", start_string, end_string))
             }
             ClassRange::Digit => self.print_str("\\d"),
             ClassRange::NotDigit => self.print_str("\\D"),
@@ -1306,10 +1298,10 @@ impl<'a> Printer<'a> {
             ClassRange::Whitespace => self.print_str("\\s"),
             ClassRange::NotWhitespace => self.print_str("\\S"),
             ClassRange::UnicodeProperty(property) => {
-                self.print_string(&format!("UnicodeProperty({:?})", property))
+                self.print_str(&format!("UnicodeProperty({:?})", property))
             }
             ClassRange::NotUnicodeProperty(property) => {
-                self.print_string(&format!("NotUnicodeProperty({:?})", property))
+                self.print_str(&format!("NotUnicodeProperty({:?})", property))
             }
         }
     }

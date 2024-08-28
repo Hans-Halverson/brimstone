@@ -166,7 +166,7 @@ impl Context {
     /// Execute a program, running until the task queue is empty.
     pub fn run_program(&mut self, bytecode_program: BytecodeProgram) -> Result<(), Handle<Value>> {
         self.vm().execute_program(bytecode_program)?;
-        self.run_all_tasks().to_rust_result()?;
+        self.run_all_tasks().into_rust_result()?;
 
         Ok(())
     }
@@ -313,7 +313,7 @@ impl DerefMut for Context {
 pub struct GlobalSymbolRegistryField;
 
 impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
-    fn new(&self, cx: Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
         GlobalSymbolRegistry::new(cx, ObjectKind::GlobalSymbolRegistryMap, capacity)
     }
 

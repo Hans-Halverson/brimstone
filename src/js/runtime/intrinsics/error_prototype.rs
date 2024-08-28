@@ -44,14 +44,14 @@ impl ErrorPrototype {
 
         let name_value = maybe!(get(cx, this_object, cx.names.name()));
         let name_string = if name_value.is_undefined() {
-            cx.names.error().as_string().into()
+            cx.names.error().as_string()
         } else {
             maybe!(to_string(cx, name_value))
         };
 
         let message_value = maybe!(get(cx, this_object, cx.names.message()));
         let message_string = if message_value.is_undefined() {
-            cx.names.empty_string().as_string().into()
+            cx.names.empty_string().as_string()
         } else {
             maybe!(to_string(cx, message_value))
         };

@@ -1291,7 +1291,7 @@ impl DatePrototype {
         }
 
         let year = year_from_time(date_value) as i64;
-        let year_string = if year >= 0 && year <= 9999 {
+        let year_string = if (0..=9999).contains(&year) {
             format!("{:04}", year)
         } else {
             let year_sign = if year.is_positive() { '+' } else { '-' };
@@ -1522,7 +1522,7 @@ impl DatePrototype {
             }
         }
 
-        return type_error(cx, "Invalid hint to Date.prototype[@@toPrimitive]");
+        type_error(cx, "Invalid hint to Date.prototype[@@toPrimitive]")
     }
 }
 

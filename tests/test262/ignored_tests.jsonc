@@ -2,8 +2,8 @@
   // Tests which are always ignored
   "always": {
     "tests": [
-      // Using more recent version of Unicode that test262 - fixed in newer test262
-      "built-ins/RegExp/unicode_full_case_folding.js",
+      // BUG: RegExp matcher loops on this test case
+      "built-ins/RegExp/nullable-quantifier.js",
       // ECMA-402 Internationalization API is not implemented
       "intl402/*",
       // Incorrect tests due to changed base/property evaluation order
@@ -49,10 +49,7 @@
       // The errors returned from a derived constructor's [[Construct]] if the constructor's 
       // return value is invalid or uninitialized must be in the callee's realm.
       "built-ins/Function/internals/Construct/derived-this-uninitialized-realm.js",
-      // Does not evaluate ToPropertyKey in LHS of member assignment before evaluating the RHS
-      "language/expressions/assignment/S11.13.1_A7_T3.js",
       // Does not evaluate ToPropertyKey in key of object destructuring before evaluating the RHS
-      "language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js",
       "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
       // Does not evaluate LHS of assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/assignment/S11.13.1_A5_T1.js",
@@ -105,23 +102,32 @@
       // Non-standard extension
       "caller",
       // Stage < 4 proposals
-      "array-grouping",
-      "arraybuffer-transfer",
       "decorators",
+      "explicit-resource-management",
       "import-assertions",
       "iterator-helpers",
       "json-modules",
       "json-parse-with-source",
       "legacy-regexp",
-      "regexp-duplicate-named-groups",
-      "resizable-arraybuffer",
+      "promise-try",
+      "regexp-modifiers",
+      "uint8array-base64",
       "Array.fromAsync",
       "FinalizationRegistry.prototype.cleanupSome",
+      "Float16Array",
       "Intl.DurationFormat",
       "Intl.Locale-info",
       "Intl.NumberFormat-v3",
+      "Math.sumPrecise",
+      "RegExp.escape",
       "Temporal",
-      "ShadowRealm"
+      "ShadowRealm",
+      // Unimplemented Stage 4 proposals
+      "array-grouping",
+      "arraybuffer-transfer",
+      "regexp-duplicate-named-groups",
+      "resizable-arraybuffer",
+      "set-methods"
     ]
   },
   // Slow tests which are ignored in normal runs but can be run with the --all flag

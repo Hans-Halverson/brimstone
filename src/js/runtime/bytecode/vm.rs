@@ -3238,8 +3238,8 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx(), key));
         let coerced_object = maybe!(to_object(self.cx(), object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
 
         // Result of ToObject is used as receiver in sloppy mode
         let receiver = if is_strict {
@@ -3266,8 +3266,8 @@ impl VM {
         let is_strict = self.closure().function_ptr().is_strict();
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx(), key));
         let mut coerced_object = maybe!(to_object(self.cx(), object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
 
         if is_strict {
             let success = maybe!(coerced_object.set(self.cx(), property_key, value, object));
@@ -3292,8 +3292,8 @@ impl VM {
         let flags = DefinePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
 
         // May allocate
-        let property_key = maybe!(to_property_key(self.cx(), key));
         let object = maybe!(to_object(self.cx(), object));
+        let property_key = maybe!(to_property_key(self.cx(), key));
 
         // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
         if !flags.is_empty() {

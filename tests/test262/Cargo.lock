@@ -48,7 +48,6 @@ dependencies = [
  "match_u32",
  "num-bigint",
  "num-traits",
- "once_cell",
  "rand",
  "ryu-js",
  "wrap_ordinary_object",

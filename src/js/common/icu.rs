@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use icu_casemap::CaseMapper;
 use icu_collator::{Collator, CollatorOptions};
 use icu_locid::{locale, Locale};
@@ -11,7 +13,6 @@ use icu_properties::{
 };
 use icu_provider::DataLocale;
 use icu_provider_adapters::fallback::LocaleFallbackProvider;
-use once_cell::sync::Lazy;
 
 use super::icu_data::BakedDataProvider;
 
@@ -227,11 +228,11 @@ pub struct Normalizers {
     pub nfkd: DecomposingNormalizer,
 }
 
-pub static ICU: Lazy<ICU> = Lazy::new(|| {
+pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     // General category sets
     macro_rules! general_category_static {
         ($static_name:ident, $category_name:ident) => {
-            static $static_name: Lazy<CodePointSetData> = Lazy::new(|| {
+            static $static_name: LazyLock<CodePointSetData> = LazyLock::new(|| {
                 sets::load_for_general_category_group(
                     &BakedDataProvider,
                     GeneralCategoryGroup::$category_name,
@@ -283,8 +284,8 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
     // Binary property sets
     macro_rules! binary_property_static {
         ($static_name:ident, $load_fn:ident) => {
-            static $static_name: Lazy<CodePointSetData> =
-                Lazy::new(|| sets::$load_fn(&BakedDataProvider).unwrap());
+            static $static_name: LazyLock<CodePointSetData> =
+                LazyLock::new(|| sets::$load_fn(&BakedDataProvider).unwrap());
         };
     }
 
@@ -340,10 +341,10 @@ pub static ICU: Lazy<ICU> = Lazy::new(|| {
     binary_property_static!(XID_START_SET, load_xid_start);
 
     // Scripts
-    static SCRIPT_CLASSIFIER: Lazy<ScriptWithExtensions> =
-        Lazy::new(|| script::load_script_with_extensions_unstable(&BakedDataProvider).unwrap());
-    static SCRIPT_NAMES: Lazy<PropertyValueNameToEnumMapper<Script>> =
-        Lazy::new(|| Script::get_name_to_enum_mapper(&BakedDataProvider).unwrap());
+    static SCRIPT_CLASSIFIER: LazyLock<ScriptWithExtensions> =
+        LazyLock::new(|| script::load_script_with_extensions_unstable(&BakedDataProvider).unwrap());
+    static SCRIPT_NAMES: LazyLock<PropertyValueNameToEnumMapper<Script>> =
+        LazyLock::new(|| Script::get_name_to_enum_mapper(&BakedDataProvider).unwrap());
 
     let locale_provider = LocaleFallbackProvider::try_new_unstable(BakedDataProvider).unwrap();
 

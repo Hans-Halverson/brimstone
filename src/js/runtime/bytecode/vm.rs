@@ -2352,18 +2352,18 @@ impl VM {
 
             let global_object = self.closure().global_object();
 
-            let value = if maybe!(has_property(cx, global_object, name_key)) {
-                // Get the property from the global object
-                maybe!(get(cx, global_object, name_key)).get()
-            } else if let Some(value) = self
+            // Must first check if it is a lexical name in one of the realm's global scopes
+            let value = if let Some(value) = self
                 .closure()
                 .realm()
                 .get_lexical_name(name.as_flat().get_())
             {
-                // Otherwise might be a lexical name in one of realm's global scopes
                 value
+            } else if maybe!(has_property(cx, global_object, name_key)) {
+                // Otherwise might be a property in the global object
+                maybe!(get(cx, global_object, name_key)).get()
             } else if error_on_unresolved {
-                // Error if property is not found on the global object
+                // Error if property is not found
                 return err_not_defined(cx, name);
             } else {
                 // If not erroring, return undefined for unresolved names
@@ -2394,17 +2394,17 @@ impl VM {
 
             let mut global_object = self.closure().global_object();
 
-            let success = if maybe!(has_property(cx, global_object, name_key)) {
-                // Check if there is a global var with the given name then set the property on the
-                // global object.
-                maybe!(global_object.set(cx, name_key, value, global_object.into()))
-            } else if maybe!(self.closure().realm().set_lexical_name(
+            // First set the global lexical binding with the given name if it exists
+            let success = if maybe!(self.closure().realm().set_lexical_name(
                 self.cx(),
                 name.as_flat().get_(),
                 value.get(),
             )) {
-                // Set the global lexical binding with the given name if it exists
                 true
+            } else if maybe!(has_property(cx, global_object, name_key)) {
+                // Otherwise if there is a global var with the given name then set the property on
+                // the global object.
+                maybe!(global_object.set(cx, name_key, value, global_object.into()))
             } else if self.closure().function_ptr().is_strict() {
                 // Otherwise if in strict mode, error on unresolved name
                 return err_not_defined(cx, name);

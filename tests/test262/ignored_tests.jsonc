@@ -46,6 +46,10 @@
       // Calls to properties of the target object of a `with` statements must use the target object
       // as the receiver.
       "language/expressions/call/with-base-obj.js",
+      // Does not evaluate unscopables when first resolving to reference then get/put the value for
+      // the reference, when evaluating unscopables could modify reference.
+      "language/statements/with/get-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
+      "language/statements/with/set-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
       // The errors returned from a derived constructor's [[Construct]] if the constructor's 
       // return value is invalid or uninitialized must be in the callee's realm.
       "built-ins/Function/internals/Construct/derived-this-uninitialized-realm.js",
@@ -60,6 +64,7 @@
       "language/expressions/assignment/S11.13.1_A6_T3.js",
       "language/identifier-resolution/assign-to-global-undefined.js",
       "language/statements/variable/binding-resolution.js",
+      "language/statements/with/set-mutable-binding-binding-deleted-with-typed-array-in-proto-chain-strict-mode.js",
       // Does not evaluate LHS of compound assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/compound-assignment/S11.13.2_A5.*",
       "language/expressions/compound-assignment/S11.13.2_A6.*",

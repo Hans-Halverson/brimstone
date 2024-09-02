@@ -39,18 +39,31 @@ impl SetPrototype {
         object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm);
         object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm);
         object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
+        object.intrinsic_func(cx, cx.names.difference(), Self::difference, 1, realm);
         object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
+        object.intrinsic_func(cx, cx.names.intersection(), Self::intersection, 1, realm);
+        object.intrinsic_func(cx, cx.names.is_disjoint_from(), Self::is_disjoint_from, 1, realm);
+        object.intrinsic_func(cx, cx.names.is_subset_of(), Self::is_subset_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.is_superset_of(), Self::is_superset_of, 1, realm);
         object.intrinsic_data_prop(cx, cx.names.keys(), values_function);
         object.intrinsic_getter(cx, cx.names.size(), Self::size, realm);
+        object.intrinsic_func(
+            cx,
+            cx.names.symmetric_difference(),
+            Self::symmetric_difference,
+            1,
+            realm,
+        );
+        object.intrinsic_func(cx, cx.names.union(), Self::union, 1, realm);
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
-        // 24.2.3.11 Set.prototype [ @@iterator ]
+        // 24.2.3.18 Set.prototype [ @@iterator ]
         let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
-        // 24.2.3.12 Set.prototype [ @@toStringTag ]
+        // 24.2.3.19 Set.prototype [ @@toStringTag ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -124,7 +137,17 @@ impl SetPrototype {
         cx.bool(existed).into()
     }
 
-    // 24.2.3.5 Set.prototype.entries
+    // 24.2.4.5 Set.prototype.difference
+    pub fn difference(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.3.6 Set.prototype.entries
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
@@ -140,7 +163,7 @@ impl SetPrototype {
         SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).into()
     }
 
-    // 24.2.3.6 Set.prototype.forEach
+    // 24.2.3.7 Set.prototype.forEach
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
@@ -176,7 +199,7 @@ impl SetPrototype {
         cx.undefined().into()
     }
 
-    // 24.2.3.7 Set.prototype.has
+    // 24.2.3.8 Set.prototype.has
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
@@ -195,7 +218,47 @@ impl SetPrototype {
             .into()
     }
 
-    // 24.2.3.9 get Set.prototype.size
+    // 24.2.4.9 Set.prototype.intersection
+    pub fn intersection(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.4.10 Set.prototype.isDisjointFrom
+    pub fn is_disjoint_from(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.4.11 Set.prototype.isSubsetOf
+    pub fn is_subset_of(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.4.12 Set.prototype.isSupersetOf
+    pub fn is_superset_of(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.3.14 get Set.prototype.size
     pub fn size(
         cx: Context,
         this_value: Handle<Value>,
@@ -213,7 +276,27 @@ impl SetPrototype {
             .into()
     }
 
-    // 24.2.3.10 Set.prototype.values
+    // 24.2.4.15 Set.prototype.symmetricDifference
+    pub fn symmetric_difference(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.4.16 Set.prototype.union
+    pub fn union(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        unimplemented!()
+    }
+
+    // 24.2.3.17 Set.prototype.values
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,

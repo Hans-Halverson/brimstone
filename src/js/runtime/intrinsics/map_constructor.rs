@@ -1,11 +1,22 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object, builtin_function::BuiltinFunction,
-        completion::EvalResult, error::type_error, function::get_argument, get,
-        iterator::iter_iterator_values, object_value::ObjectValue, property_key::PropertyKey,
-        realm::Realm, type_utilities::is_callable, value::Value, Context, Handle,
+        abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
+        array_object::create_array_from_list,
+        builtin_function::BuiltinFunction,
+        collections::BsIndexMapField,
+        completion::EvalResult,
+        error::type_error,
+        function::get_argument,
+        get,
+        iterator::iter_iterator_values,
+        object_value::ObjectValue,
+        property_key::PropertyKey,
+        realm::Realm,
+        type_utilities::is_callable,
+        value::{Value, ValueCollectionKey},
+        Context, Handle,
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_this};
@@ -30,6 +41,9 @@ impl MapConstructor {
             realm.get_intrinsic(Intrinsic::MapPrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm);
+
+        // 24.1.2.3 get Map [ %Symbol.species% ]
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
@@ -66,6 +80,33 @@ impl MapConstructor {
             maybe!(call_object(cx, adder.as_object(), map_object.into(), &[key, value]));
             ().into()
         })
+    }
+
+    // 24.1.2.1 Map.groupBy
+    pub fn group_by(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let items = get_argument(cx, arguments, 0);
+        let callback = get_argument(cx, arguments, 1);
+
+        let groups = maybe!(group_by(cx, items, callback, GroupByKeyCoercion::Collection));
+
+        let map_constructor = cx.get_intrinsic(Intrinsic::MapConstructor);
+        let map = must!(construct(cx, map_constructor, &[], None));
+
+        for group in groups {
+            let items: Handle<Value> = create_array_from_list(cx, &group.items).into();
+
+            map.cast::<MapObject>()
+                .map_data_field()
+                .maybe_grow_for_insertion(cx)
+                .insert_without_growing(ValueCollectionKey::from(group.key), items.get());
+        }
+
+        map.into()
     }
 }
 

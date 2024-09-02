@@ -1,6 +1,13 @@
 use std::collections::HashSet;
 
-use crate::{maybe, must};
+use crate::{
+    js::runtime::{
+        iterator::iter_iterator_values,
+        numeric_constants::MAX_SAFE_INTEGER_U64,
+        type_utilities::{same_value_zero, to_property_key},
+    },
+    maybe, must,
+};
 
 use super::{
     array_object::create_array_from_list,
@@ -18,7 +25,8 @@ use super::{
     proxy_object::ProxyObject,
     realm::Realm,
     type_utilities::{
-        is_callable, is_constructor_value, same_object_value_handles, to_length, to_object,
+        is_callable, is_constructor_value, require_object_coercible, same_object_value_handles,
+        to_length, to_object,
     },
     value::SymbolValue,
     Context, Value,
@@ -583,4 +591,91 @@ pub fn private_set(
             }
         }
     }
+}
+
+pub struct Group {
+    pub key: Handle<Value>,
+    pub items: Vec<Handle<Value>>,
+}
+
+pub enum GroupByKeyCoercion {
+    /// Ensure that each item is a property key (can be cast directly to PropertyKey)
+    Property,
+    Collection,
+}
+
+// 7.3.35 GroupBy
+pub fn group_by(
+    cx: Context,
+    items: Handle<Value>,
+    callback: Handle<Value>,
+    key_coercion: GroupByKeyCoercion,
+) -> EvalResult<Vec<Group>> {
+    maybe!(require_object_coercible(cx, items));
+
+    if !is_callable(callback) {
+        return type_error(cx, "callback must be a function");
+    }
+
+    let callback = callback.as_object();
+
+    let mut groups: Vec<Group> = vec![];
+    let mut k = 0;
+
+    // Handle is shared between iterations
+    let mut k_handle: Handle<Value> = Handle::empty(cx);
+
+    maybe!(iter_iterator_values(cx, items, &mut |cx, item| {
+        k_handle.replace(Value::from(k));
+
+        let key = match call_object(cx, callback, cx.undefined(), &[item, k_handle]) {
+            EvalResult::Ok(key) => key,
+            EvalResult::Throw(error) => return Some(EvalResult::Throw(error)),
+        };
+
+        let key = match key_coercion {
+            GroupByKeyCoercion::Property => match to_property_key(cx, key) {
+                EvalResult::Ok(key) => key.cast::<Value>(),
+                EvalResult::Throw(error) => return Some(EvalResult::Throw(error)),
+            },
+            // Do not canonicalize negative zero to positive zero. Instead use zero-unaware
+            // comparisons and convert to positive zero when necessary.
+            GroupByKeyCoercion::Collection => key,
+        };
+
+        // Inlined 7.3.34 AddValueToKeyedGroup
+
+        // Add to an existing group if one was found
+        let mut found_group = false;
+        for group in &mut groups {
+            // Use zero-unaware comparisons because keys are not canonicalized
+            if same_value_zero(key, group.key) {
+                group.items.push(item);
+                found_group = true;
+                break;
+            }
+        }
+
+        // Otherwise add a new group
+        if !found_group {
+            // Canonicalize key
+            let key = if key.is_negative_zero() {
+                Value::from(0).to_handle(cx)
+            } else {
+                key
+            };
+
+            groups.push(Group { key, items: vec![item] });
+        }
+
+        k += 1;
+
+        if k >= MAX_SAFE_INTEGER_U64 {
+            return Some(type_error(cx, "index is too large"));
+        }
+
+        None
+    }));
+
+    groups.into()
 }

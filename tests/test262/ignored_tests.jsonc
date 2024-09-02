@@ -128,7 +128,6 @@
       "Temporal",
       "ShadowRealm",
       // Unimplemented Stage 4 proposals
-      "array-grouping",
       "arraybuffer-transfer",
       "regexp-duplicate-named-groups",
       "resizable-arraybuffer",

@@ -894,7 +894,7 @@ pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bo
     let v1 = v1_handle.get();
     let v2 = v2_handle.get();
 
-    // Same as same)value, but treats differently signed zeros as equal
+    // Same as same_value, but treats differently signed zeros as equal
     if v1.is_number() {
         if v2.is_number() {
             if v1.is_nan() && v2.is_nan() {

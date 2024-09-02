@@ -240,6 +240,7 @@ builtin_names!(
     (global, "global"),
     (global_this, "globalThis"),
     (groups, "groups"),
+    (group_by, "groupBy"),
     (has, "has"),
     (has_indices, "hasIndices"),
     (has_instance, "hasInstance"),

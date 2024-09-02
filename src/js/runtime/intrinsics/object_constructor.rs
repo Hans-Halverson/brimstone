@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{
             create_data_property_or_throw, define_property_or_throw, enumerable_own_property_names,
-            get, has_own_property, is_extensible, set, set_integrity_level, test_integrity_level,
-            IntegrityLevel, KeyOrValue,
+            get, group_by, has_own_property, is_extensible, set, set_integrity_level,
+            test_integrity_level, GroupByKeyCoercion, IntegrityLevel, KeyOrValue,
         },
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
@@ -83,6 +83,7 @@ impl ObjectConstructor {
             realm,
         );
         func.intrinsic_func(cx, cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm);
+        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm);
         func.intrinsic_func(cx, cx.names.has_own(), Self::has_own, 2, realm);
         func.intrinsic_func(cx, cx.names.is(), Self::is, 2, realm);
         func.intrinsic_func(cx, cx.names.is_extensible(), Self::is_extensible, 1, realm);
@@ -425,7 +426,32 @@ impl ObjectConstructor {
         }
     }
 
-    // 20.1.2.13 Object.hasOwn
+    // 20.1.2.13 Object.groupBy
+    pub fn group_by(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let items = get_argument(cx, arguments, 0);
+        let callback = get_argument(cx, arguments, 1);
+
+        let groups = maybe!(group_by(cx, items, callback, GroupByKeyCoercion::Property));
+
+        let object =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+                .to_handle();
+
+        for group in groups {
+            let property_key = group.key.cast::<PropertyKey>();
+            let items = create_array_from_list(cx, &group.items);
+            must!(create_data_property_or_throw(cx, object, property_key, items.into()));
+        }
+
+        object.into()
+    }
+
+    // 20.1.2.14 Object.hasOwn
     pub fn has_own(
         cx: Context,
         _: Handle<Value>,
@@ -442,7 +468,7 @@ impl ObjectConstructor {
         cx.bool(has_own).into()
     }
 
-    // 20.1.2.14 Object.is
+    // 20.1.2.15 Object.is
     pub fn is(
         cx: Context,
         _: Handle<Value>,
@@ -453,7 +479,7 @@ impl ObjectConstructor {
         cx.bool(is_same).into()
     }
 
-    // 20.1.2.15 Object.isExtensible
+    // 20.1.2.16 Object.isExtensible
     pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
@@ -469,7 +495,7 @@ impl ObjectConstructor {
         cx.bool(is_extensible).into()
     }
 
-    // 20.1.2.16 Object.isFrozen
+    // 20.1.2.17 Object.isFrozen
     pub fn is_frozen(
         cx: Context,
         _: Handle<Value>,
@@ -485,7 +511,7 @@ impl ObjectConstructor {
         cx.bool(is_frozen).into()
     }
 
-    // 20.1.2.17 Object.isSealed
+    // 20.1.2.18 Object.isSealed
     pub fn is_sealed(
         cx: Context,
         _: Handle<Value>,
@@ -501,7 +527,7 @@ impl ObjectConstructor {
         cx.bool(is_sealed).into()
     }
 
-    // 20.1.2.18 Object.keys
+    // 20.1.2.19 Object.keys
     pub fn keys(
         cx: Context,
         _: Handle<Value>,
@@ -514,7 +540,7 @@ impl ObjectConstructor {
         create_array_from_list(cx, &name_list).into()
     }
 
-    // 20.1.2.19 Object.preventExtensions
+    // 20.1.2.20 Object.preventExtensions
     pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
@@ -533,7 +559,7 @@ impl ObjectConstructor {
         value.into()
     }
 
-    // 20.1.2.21 Object.seal
+    // 20.1.2.22 Object.seal
     pub fn seal(
         cx: Context,
         _: Handle<Value>,
@@ -552,7 +578,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    // 20.1.2.22 Object.setPrototypeOf
+    // 20.1.2.23 Object.setPrototypeOf
     pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,
@@ -583,7 +609,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    // 20.1.2.23 Object.values
+    // 20.1.2.24 Object.values
     pub fn values(
         cx: Context,
         _: Handle<Value>,

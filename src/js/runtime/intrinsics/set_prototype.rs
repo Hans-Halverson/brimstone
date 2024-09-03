@@ -1,19 +1,22 @@
 use crate::{
     js::runtime::{
-        abstract_operations::call_object,
+        abstract_operations::{call_object, canonicalize_keyed_collection_key},
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
         completion::EvalResult,
         error::type_error,
         function::get_argument,
+        get,
+        intrinsics::set_object::ValueSet,
+        iterator::iter_iterator_method_values,
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
-        type_utilities::is_callable,
+        type_utilities::{is_callable, to_integer_or_infinity, to_number},
         value::{Value, ValueCollectionKey},
         Context, Handle,
     },
-    maybe,
+    maybe, must,
 };
 
 use super::{
@@ -88,10 +91,8 @@ impl SetPrototype {
         };
 
         // Convert negative zero to positive zero in set
-        let mut value = get_argument(cx, arguments, 0);
-        if value.is_negative_zero() {
-            value = Value::smi(0).to_handle(cx);
-        }
+        let value = get_argument(cx, arguments, 0);
+        let value = canonicalize_keyed_collection_key(cx, value);
 
         set.set_data_field()
             .maybe_grow_for_insertion(cx)
@@ -289,11 +290,41 @@ impl SetPrototype {
     // 24.2.4.16 Set.prototype.union
     pub fn union(
         cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!()
+        let this_set = if let Some(set) = this_set_value(this_value) {
+            set
+        } else {
+            return type_error(cx, "union method must be called on set");
+        };
+
+        let other = get_argument(cx, arguments, 0);
+        let other_set_record = maybe!(get_set_record(cx, other));
+
+        // Create a copy of this set
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+
+        // Iterate through keys of other set and add them to the new set
+        maybe!(iter_iterator_method_values(
+            cx,
+            other_set_record.set_object.into(),
+            other_set_record.keys_method,
+            &mut |cx, key| {
+                let key = canonicalize_keyed_collection_key(cx, key);
+
+                new_set
+                    .set_data_field()
+                    .maybe_grow_for_insertion(cx)
+                    .insert_without_growing(ValueCollectionKey::from(key));
+
+                None
+            }
+        ));
+
+        new_set.into()
     }
 
     // 24.2.3.17 Set.prototype.values
@@ -324,4 +355,49 @@ fn this_set_value(value: Handle<Value>) -> Option<Handle<SetObject>> {
     }
 
     Some(object.cast::<SetObject>())
+}
+
+struct SetRecord {
+    set_object: Handle<ObjectValue>,
+    size: f64,
+    has_method: Handle<ObjectValue>,
+    keys_method: Handle<ObjectValue>,
+}
+
+// 24.2.1.2 GetSetRecord
+fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
+    if !value.is_object() {
+        return type_error(cx, "value is not an object");
+    }
+
+    let object = value.as_object();
+
+    let raw_size = maybe!(get(cx, object, cx.names.size()));
+    let num_size = maybe!(to_number(cx, raw_size));
+    if num_size.is_nan() {
+        return type_error(cx, "size is not a number");
+    }
+
+    let int_size = must!(to_integer_or_infinity(cx, num_size));
+    if int_size < 0.0 {
+        return type_error(cx, "size is negative");
+    }
+
+    let has_method = maybe!(get(cx, object, cx.names.has()));
+    if !is_callable(has_method) {
+        return type_error(cx, "has method is not callable");
+    }
+
+    let keys_method = maybe!(get(cx, object, cx.names.keys()));
+    if !is_callable(keys_method) {
+        return type_error(cx, "keys method is not callable");
+    }
+
+    SetRecord {
+        set_object: object,
+        size: int_size,
+        has_method: has_method.as_object(),
+        keys_method: keys_method.as_object(),
+    }
+    .into()
 }

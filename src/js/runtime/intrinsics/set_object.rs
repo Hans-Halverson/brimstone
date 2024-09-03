@@ -8,7 +8,7 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::object_create_from_constructor,
+        ordinary_object::{object_create, object_create_from_constructor},
         value::ValueCollectionKey,
         Context, EvalResult, Handle, HeapPtr,
     },
@@ -22,7 +22,7 @@ extend_object! {
     }
 }
 
-type ValueSet = BsIndexSet<ValueCollectionKey>;
+pub type ValueSet = BsIndexSet<ValueCollectionKey>;
 
 impl SetObject {
     pub fn new_from_constructor(
@@ -43,6 +43,16 @@ impl SetObject {
         set_uninit!(object.set_data, set_data.get_());
 
         object.to_handle().into()
+    }
+
+    /// Create a new SetObject with the provided set data.
+    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> HeapPtr<SetObject> {
+        let mut object =
+            object_create::<SetObject>(cx, ObjectKind::SetObject, Intrinsic::SetPrototype);
+
+        set_uninit!(object.set_data, set_data.get_());
+
+        object
     }
 
     pub fn set_data(&self) -> HeapPtr<ValueSet> {

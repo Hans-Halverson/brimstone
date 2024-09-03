@@ -280,11 +280,48 @@ impl SetPrototype {
     // 24.2.4.15 Set.prototype.symmetricDifference
     pub fn symmetric_difference(
         cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!()
+        let this_set = if let Some(set) = this_set_value(this_value) {
+            set
+        } else {
+            return type_error(cx, "symmetricDifference method must be called on set");
+        };
+
+        let other = get_argument(cx, arguments, 0);
+        let other_set_record = maybe!(get_set_record(cx, other));
+
+        // Create a copy of this set
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+
+        // Iterate through keys of other set and add or remove them from the new set to ensure that
+        // the new set contains only the keys that are in one set but not both.
+        maybe!(iter_iterator_method_values(
+            cx,
+            other_set_record.set_object.into(),
+            other_set_record.keys_method,
+            &mut |cx, key| {
+                let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
+
+                if this_set.set_data().contains(&key) {
+                    // Both sets contain the key so remove it from the new set
+                    new_set.set_data().remove(&key);
+                } else {
+                    // Key is in the other set but not in this set so add it to the new set
+                    new_set
+                        .set_data_field()
+                        .maybe_grow_for_insertion(cx)
+                        .insert_without_growing(key);
+                }
+
+                None
+            }
+        ));
+
+        new_set.into()
     }
 
     // 24.2.4.16 Set.prototype.union

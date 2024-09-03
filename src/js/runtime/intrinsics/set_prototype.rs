@@ -141,11 +141,61 @@ impl SetPrototype {
     // 24.2.4.5 Set.prototype.difference
     pub fn difference(
         cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!()
+        let this_set = if let Some(set) = this_set_value(this_value) {
+            set
+        } else {
+            return type_error(cx, "symmetricDifference method must be called on set");
+        };
+
+        let other = get_argument(cx, arguments, 0);
+        let other_set_record = maybe!(get_set_record(cx, other));
+
+        // Create a copy of this set
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+
+        if this_set.set_data().num_entries_occupied() as f64 <= other_set_record.size {
+            // If this set is smaller or equal to the other set, iterate through this set's keys and
+            // determine if they are in the other set by calling the other set's `has` method. Then
+            // remove the key from the new set if it is in the other set.
+
+            // Handle is shared between iterations
+            let mut item_handle = Handle::<Value>::empty(cx);
+
+            for item in new_set.set_data().iter_mut_gc_unsafe() {
+                item_handle.replace(*item.value_mut());
+
+                let in_other = maybe!(call_object(
+                    cx,
+                    other_set_record.has_method,
+                    other_set_record.set_object.into(),
+                    &[item_handle]
+                ));
+
+                if in_other.is_true() {
+                    new_set.set_data().remove(item);
+                }
+            }
+        } else {
+            // Otherwise iterate through other set's keys and remove them from the new set
+            maybe!(iter_iterator_method_values(
+                cx,
+                other_set_record.set_object.into(),
+                other_set_record.keys_method,
+                &mut |cx, key| {
+                    let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
+                    new_set.set_data().remove(&key);
+
+                    None
+                }
+            ));
+        }
+
+        new_set.into()
     }
 
     // 24.2.3.6 Set.prototype.entries

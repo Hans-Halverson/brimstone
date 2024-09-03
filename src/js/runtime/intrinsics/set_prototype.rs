@@ -346,11 +346,46 @@ impl SetPrototype {
     // 24.2.4.11 Set.prototype.isSubsetOf
     pub fn is_subset_of(
         cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!()
+        let this_set = if let Some(set) = this_set_value(this_value) {
+            set
+        } else {
+            return type_error(cx, "isSubsetOf method must be called on set");
+        };
+
+        let other = get_argument(cx, arguments, 0);
+        let other_set_record = maybe!(get_set_record(cx, other));
+
+        // We can return early if this set is larger than the other set
+        if (this_set.set_data().num_entries_occupied() as f64) > other_set_record.size {
+            return cx.bool(false).into();
+        }
+
+        // If this set is smaller or equal to the other set, iterate through this set's keys and
+        // determine if they are in the other set by calling the other set's `has` method.
+
+        // Handle is shared between iterations
+        let mut item_handle = Handle::<Value>::empty(cx);
+
+        for (item, _) in this_set.set_data().to_handle().iter_gc_safe() {
+            item_handle.replace(item.get());
+
+            let in_other = maybe!(call_object(
+                cx,
+                other_set_record.has_method,
+                other_set_record.set_object.into(),
+                &[item_handle]
+            ));
+
+            if !in_other.is_true() {
+                return cx.bool(false).into();
+            }
+        }
+
+        cx.bool(true).into()
     }
 
     // 24.2.4.12 Set.prototype.isSupersetOf

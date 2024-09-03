@@ -30,8 +30,7 @@ impl SetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<SetObject>> {
         // Allocate and place behind handle before allocating object
-        let set_data =
-            ValueSet::new(cx, ObjectKind::SetObjectValueSet, ValueSet::MIN_CAPACITY).to_handle();
+        let set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
 
         let mut object = maybe!(object_create_from_constructor::<SetObject>(
             cx,

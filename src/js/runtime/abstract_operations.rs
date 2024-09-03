@@ -679,3 +679,11 @@ pub fn group_by(
 
     groups.into()
 }
+
+pub fn canonicalize_keyed_collection_key(cx: Context, key: Handle<Value>) -> Handle<Value> {
+    if key.is_negative_zero() {
+        Value::from(0).to_handle(cx)
+    } else {
+        key
+    }
+}

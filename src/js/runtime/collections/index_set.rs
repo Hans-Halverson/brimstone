@@ -26,6 +26,11 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
         BsIndexMap::<T, ()>::calculate_size_in_bytes(capacity)
     }
 
+    /// Create a new set whose entries are copied from the provided set.
+    pub fn new_from_set(cx: Context, set: Handle<Self>) -> HeapPtr<Self> {
+        BsIndexMap::<T, ()>::new_from_map(cx, set.cast()).cast()
+    }
+
     /// Number of elements inserted in the set.
     pub fn num_entries_occupied(&self) -> usize {
         self.0.num_entries_occupied()

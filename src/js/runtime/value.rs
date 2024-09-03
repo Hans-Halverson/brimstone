@@ -796,6 +796,10 @@ impl ValueCollectionKey {
         ValueCollectionKey(value.get())
     }
 
+    pub fn get(&self) -> Value {
+        self.0
+    }
+
     pub fn value_mut(&mut self) -> &mut Value {
         &mut self.0
     }

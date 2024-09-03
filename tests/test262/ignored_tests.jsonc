@@ -130,8 +130,7 @@
       // Unimplemented Stage 4 proposals
       "arraybuffer-transfer",
       "regexp-duplicate-named-groups",
-      "resizable-arraybuffer",
-      "set-methods"
+      "resizable-arraybuffer"
     ]
   },
   // Slow tests which are ignored in normal runs but can be run with the --all flag

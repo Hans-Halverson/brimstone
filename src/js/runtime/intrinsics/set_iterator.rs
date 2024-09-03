@@ -46,7 +46,7 @@ impl SetIterator {
             Intrinsic::SetIteratorPrototype,
         );
 
-        set_uninit!(object.set, set.set_data().cast());
+        set_uninit!(object.set, set.set_data_ptr().cast());
         set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
         set_uninit!(object.is_done, false);

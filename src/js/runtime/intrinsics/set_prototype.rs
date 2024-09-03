@@ -114,7 +114,7 @@ impl SetPrototype {
             return type_error(cx, "clear method must be called on set");
         };
 
-        set.set_data().clear();
+        set.set_data_ptr().clear();
 
         cx.undefined().into()
     }
@@ -133,7 +133,7 @@ impl SetPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = set.set_data().remove(&ValueCollectionKey::from(key));
+        let existed = set.set_data_ptr().remove(&ValueCollectionKey::from(key));
 
         cx.bool(existed).into()
     }
@@ -156,9 +156,9 @@ impl SetPrototype {
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data);
 
-        if this_set.set_data().num_entries_occupied() as f64 <= other_set_record.size {
+        if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
             // determine if they are in the other set by calling the other set's `has` method. Then
             // remove the key from the new set if it is in the other set.
@@ -166,7 +166,7 @@ impl SetPrototype {
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in new_set.set_data().to_handle().iter_gc_safe() {
+            for (item, _) in new_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = maybe!(call_object(
@@ -177,7 +177,7 @@ impl SetPrototype {
                 ));
 
                 if in_other.is_true() {
-                    new_set.set_data().remove(&item);
+                    new_set.set_data_ptr().remove(&item);
                 }
             }
         } else {
@@ -188,7 +188,7 @@ impl SetPrototype {
                 other_set_record.keys_method,
                 &mut |cx, key| {
                     let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
-                    new_set.set_data().remove(&key);
+                    new_set.set_data_ptr().remove(&key);
 
                     None
                 }
@@ -240,7 +240,7 @@ impl SetPrototype {
 
         // Must use gc and invalidation safe iteration since arbitrary code can be executed between
         // iterations.
-        for (value, _) in set.set_data().to_handle().iter_gc_safe() {
+        for (value, _) in set.set_data().iter_gc_safe() {
             value_handle.replace(value.into());
 
             let arguments = [value_handle, value_handle, this_value];
@@ -265,8 +265,11 @@ impl SetPrototype {
 
         let value = get_argument(cx, arguments, 0);
 
-        cx.bool(set.set_data().contains(&ValueCollectionKey::from(value)))
-            .into()
+        cx.bool(
+            set.set_data_ptr()
+                .contains(&ValueCollectionKey::from(value)),
+        )
+        .into()
     }
 
     // 24.2.4.9 Set.prototype.intersection
@@ -287,9 +290,9 @@ impl SetPrototype {
 
         // Create an empty set
         let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data);
 
-        if this_set.set_data().num_entries_occupied() as f64 <= other_set_record.size {
+        if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
             // determine if they are in the other set by calling the other set's `has` method. Then
             // add the key to the new set if it is in the other set.
@@ -297,7 +300,7 @@ impl SetPrototype {
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in this_set.set_data().to_handle().iter_gc_safe() {
+            for (item, _) in this_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = maybe!(call_object(
@@ -321,7 +324,7 @@ impl SetPrototype {
                 &mut |cx, key| {
                     let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
 
-                    if this_set.set_data().contains(&key) {
+                    if this_set.set_data_ptr().contains(&key) {
                         new_set.insert(cx, key);
                     }
 
@@ -349,14 +352,14 @@ impl SetPrototype {
         let other = get_argument(cx, arguments, 0);
         let other_set_record = maybe!(get_set_record(cx, other));
 
-        if this_set.set_data().num_entries_occupied() as f64 <= other_set_record.size {
+        if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
             // determine if they are in the other set by calling the other set's `has` method.
 
             // Handle is shared between iterations
             let mut item_handle = Handle::<Value>::empty(cx);
 
-            for (item, _) in this_set.set_data().to_handle().iter_gc_safe() {
+            for (item, _) in this_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
                 let in_other = maybe!(call_object(
@@ -385,7 +388,7 @@ impl SetPrototype {
 
                 // Return as soon as we find an element of the other set that is in this set
                 if this_set
-                    .set_data()
+                    .set_data_ptr()
                     .contains(&ValueCollectionKey::from(item))
                 {
                     return cx.bool(false).into();
@@ -413,7 +416,7 @@ impl SetPrototype {
         let other_set_record = maybe!(get_set_record(cx, other));
 
         // We can return early if this set is larger than the other set
-        if (this_set.set_data().num_entries_occupied() as f64) > other_set_record.size {
+        if (this_set.set_data_ptr().num_entries_occupied() as f64) > other_set_record.size {
             return cx.bool(false).into();
         }
 
@@ -423,7 +426,7 @@ impl SetPrototype {
         // Handle is shared between iterations
         let mut item_handle = Handle::<Value>::empty(cx);
 
-        for (item, _) in this_set.set_data().to_handle().iter_gc_safe() {
+        for (item, _) in this_set.set_data().iter_gc_safe() {
             item_handle.replace(item.get());
 
             let in_other = maybe!(call_object(
@@ -458,7 +461,7 @@ impl SetPrototype {
         let other_set_record = maybe!(get_set_record(cx, other));
 
         // We can return early if this set is smaller than the other set
-        if (this_set.set_data().num_entries_occupied() as f64) < other_set_record.size {
+        if (this_set.set_data_ptr().num_entries_occupied() as f64) < other_set_record.size {
             return cx.bool(false).into();
         }
 
@@ -475,7 +478,7 @@ impl SetPrototype {
 
             // Return as soon as we find an element of the other set that is not in this set
             if !this_set
-                .set_data()
+                .set_data_ptr()
                 .contains(&ValueCollectionKey::from(item))
             {
                 return cx.bool(false).into();
@@ -498,7 +501,7 @@ impl SetPrototype {
             return type_error(cx, "size accessor must be called on set");
         };
 
-        Value::from(set.set_data().num_entries_occupied())
+        Value::from(set.set_data_ptr().num_entries_occupied())
             .to_handle(cx)
             .into()
     }
@@ -521,7 +524,7 @@ impl SetPrototype {
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data);
 
         // Iterate through keys of other set and add or remove them from the new set to ensure that
         // the new set contains only the keys that are in one set but not both.
@@ -532,9 +535,9 @@ impl SetPrototype {
             &mut |cx, key| {
                 let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
 
-                if this_set.set_data().contains(&key) {
+                if this_set.set_data_ptr().contains(&key) {
                     // Both sets contain the key so remove it from the new set
-                    new_set.set_data().remove(&key);
+                    new_set.set_data_ptr().remove(&key);
                 } else {
                     // Key is in the other set but not in this set so add it to the new set
                     new_set.insert(cx, key);
@@ -565,7 +568,7 @@ impl SetPrototype {
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data).to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data);
 
         // Iterate through keys of other set and add them to the new set
         maybe!(iter_iterator_method_values(

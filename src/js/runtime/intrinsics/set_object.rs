@@ -45,17 +45,23 @@ impl SetObject {
     }
 
     /// Create a new SetObject with the provided set data.
-    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> HeapPtr<SetObject> {
+    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> Handle<SetObject> {
         let mut object =
             object_create::<SetObject>(cx, ObjectKind::SetObject, Intrinsic::SetPrototype);
 
         set_uninit!(object.set_data, set_data.get_());
 
-        object
+        object.to_handle()
     }
 
-    pub fn set_data(&self) -> HeapPtr<ValueSet> {
+    #[inline]
+    pub fn set_data_ptr(&self) -> HeapPtr<ValueSet> {
         self.set_data
+    }
+
+    #[inline]
+    pub fn set_data(&self) -> Handle<ValueSet> {
+        self.set_data_ptr().to_handle()
     }
 }
 

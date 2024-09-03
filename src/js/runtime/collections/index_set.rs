@@ -27,7 +27,7 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     }
 
     /// Create a new set whose entries are copied from the provided set.
-    pub fn new_from_set(cx: Context, set: HeapPtr<Self>) -> HeapPtr<Self> {
+    pub fn new_from_set(cx: Context, set: Handle<Self>) -> HeapPtr<Self> {
         BsIndexMap::<T, ()>::new_from_map(cx, set.cast()).cast()
     }
 

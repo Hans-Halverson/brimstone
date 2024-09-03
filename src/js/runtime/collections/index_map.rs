@@ -77,11 +77,11 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     }
 
     /// Create a new map whose entries are copied from the provided map.
-    pub fn new_from_map(cx: Context, map: HeapPtr<Self>) -> HeapPtr<Self> {
+    pub fn new_from_map(cx: Context, map: Handle<Self>) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(map.capacity());
 
         let copied_map = cx.alloc_uninit_with_size::<Self>(size);
-        unsafe { std::ptr::copy_nonoverlapping(map.as_ptr(), copied_map.as_ptr(), size) };
+        unsafe { std::ptr::copy(map.as_ptr(), copied_map.as_ptr(), size) };
 
         copied_map
     }

@@ -60,8 +60,14 @@ impl SetObject {
 }
 
 impl Handle<SetObject> {
-    pub fn set_data_field(&self) -> SetObjectSetField {
+    fn set_data_field(&self) -> SetObjectSetField {
         SetObjectSetField(*self)
+    }
+
+    pub fn insert(&self, cx: Context, item: ValueCollectionKey) -> bool {
+        self.set_data_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(item)
     }
 }
 

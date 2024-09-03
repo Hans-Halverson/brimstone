@@ -8,7 +8,9 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::set_object::ValueSet,
-        iterator::iter_iterator_method_values,
+        iterator::{
+            get_iterator, iter_iterator_method_values, iterator_step, iterator_value, IteratorHint,
+        },
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
@@ -94,9 +96,7 @@ impl SetPrototype {
         let value = get_argument(cx, arguments, 0);
         let value = canonicalize_keyed_collection_key(cx, value);
 
-        set.set_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(ValueCollectionKey::from(value));
+        set.insert(cx, ValueCollectionKey::from(value));
 
         this_value.into()
     }
@@ -148,7 +148,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "symmetricDifference method must be called on set");
+            return type_error(cx, "difference method must be called on set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -279,7 +279,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "symmetricDifference method must be called on set");
+            return type_error(cx, "intersection method must be called on set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -308,10 +308,7 @@ impl SetPrototype {
                 ));
 
                 if in_other.is_true() {
-                    new_set
-                        .set_data_field()
-                        .maybe_grow_for_insertion(cx)
-                        .insert_without_growing(item);
+                    new_set.insert(cx, item);
                 }
             }
         } else {
@@ -325,10 +322,7 @@ impl SetPrototype {
                     let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
 
                     if this_set.set_data().contains(&key) {
-                        new_set
-                            .set_data_field()
-                            .maybe_grow_for_insertion(cx)
-                            .insert_without_growing(key);
+                        new_set.insert(cx, key);
                     }
 
                     None
@@ -362,11 +356,45 @@ impl SetPrototype {
     // 24.2.4.12 Set.prototype.isSupersetOf
     pub fn is_superset_of(
         cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        unimplemented!()
+        let this_set = if let Some(set) = this_set_value(this_value) {
+            set
+        } else {
+            return type_error(cx, "isSupersetOf method must be called on set");
+        };
+
+        let other = get_argument(cx, arguments, 0);
+        let other_set_record = maybe!(get_set_record(cx, other));
+
+        // We can return early if this set is smaller than the other set
+        if (this_set.set_data().num_entries_occupied() as f64) < other_set_record.size {
+            return cx.bool(false).into();
+        }
+
+        // Otherwise iterate through other set's keys and check if they are in this set
+        let iterator = maybe!(get_iterator(
+            cx,
+            other_set_record.set_object.into(),
+            IteratorHint::Sync,
+            Some(other_set_record.keys_method)
+        ));
+
+        while let Some(iter_result) = maybe!(iterator_step(cx, &iterator)) {
+            let item = maybe!(iterator_value(cx, iter_result));
+
+            // Return as soon as we find an element of the other set that is not in this set
+            if !this_set
+                .set_data()
+                .contains(&ValueCollectionKey::from(item))
+            {
+                return cx.bool(false).into();
+            }
+        }
+
+        cx.bool(true).into()
     }
 
     // 24.2.3.14 get Set.prototype.size
@@ -421,10 +449,7 @@ impl SetPrototype {
                     new_set.set_data().remove(&key);
                 } else {
                     // Key is in the other set but not in this set so add it to the new set
-                    new_set
-                        .set_data_field()
-                        .maybe_grow_for_insertion(cx)
-                        .insert_without_growing(key);
+                    new_set.insert(cx, key);
                 }
 
                 None
@@ -461,11 +486,7 @@ impl SetPrototype {
             other_set_record.keys_method,
             &mut |cx, key| {
                 let key = canonicalize_keyed_collection_key(cx, key);
-
-                new_set
-                    .set_data_field()
-                    .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(ValueCollectionKey::from(key));
+                new_set.insert(cx, ValueCollectionKey::from(key));
 
                 None
             }

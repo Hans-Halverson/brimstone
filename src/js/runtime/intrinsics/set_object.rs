@@ -10,7 +10,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         value::ValueCollectionKey,
-        Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -70,10 +70,10 @@ impl Handle<SetObject> {
         SetObjectSetField(*self)
     }
 
-    pub fn insert(&self, cx: Context, item: ValueCollectionKey) -> bool {
+    pub fn insert(&self, cx: Context, item: Handle<Value>) -> bool {
         self.set_data_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(item)
+            .insert_without_growing(ValueCollectionKey::from(item))
     }
 }
 

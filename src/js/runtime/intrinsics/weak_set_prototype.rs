@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    collections::BsHashSetField, completion::EvalResult, error::type_error, function::get_argument,
+    completion::EvalResult, error::type_error, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
@@ -48,10 +48,7 @@ impl WeakSetPrototype {
             return type_error(cx, "WeakSet only holds objects and symbols");
         }
 
-        weak_set_object
-            .weak_set_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(ValueCollectionKey::from(value));
+        weak_set_object.insert(cx, value);
 
         this_value.into()
     }

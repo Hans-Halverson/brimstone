@@ -107,6 +107,15 @@ impl SetIteratorPrototype {
             return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 
+        // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
+        // objects and we need to fix up the iterator at each step.
+        while set_iterator.set.is_tombstone() {
+            set_iterator.set = BsIndexMap::fix_iterator_for_resized_map(
+                set_iterator.set,
+                &mut set_iterator.next_entry_index,
+            );
+        }
+
         // Perform a single iteration, mutating iterator object
         let mut iter = set_iterator.get_iter();
         let iter_result = iter.next();

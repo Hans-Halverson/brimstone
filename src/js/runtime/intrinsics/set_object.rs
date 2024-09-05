@@ -9,7 +9,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
-        value::ValueCollectionKey,
+        value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, EvalResult, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
@@ -71,9 +71,11 @@ impl Handle<SetObject> {
     }
 
     pub fn insert(&self, cx: Context, item: Handle<Value>) -> bool {
+        let item_handle = ValueCollectionKeyHandle::new(item);
+
         self.set_data_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(ValueCollectionKey::from(item))
+            .insert_without_growing(item_handle.get())
     }
 }
 
@@ -111,10 +113,10 @@ impl SetObjectSetField {
     }
 
     pub fn visit_pointers(set: &mut HeapPtr<ValueSet>, visitor: &mut impl HeapVisitor) {
-        set.visit_pointers(visitor);
-
-        for element in set.iter_mut_gc_unsafe() {
-            element.visit_pointers(visitor);
-        }
+        set.visit_pointers_impl(visitor, |set, visitor| {
+            for element in set.iter_mut_gc_unsafe() {
+                element.visit_pointers(visitor);
+            }
+        });
     }
 }

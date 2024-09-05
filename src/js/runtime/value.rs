@@ -857,3 +857,22 @@ impl hash::Hash for ValueCollectionKey {
         self.0.as_raw_bits().hash(state);
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct ValueCollectionKeyHandle(Handle<Value>);
+
+impl ValueCollectionKeyHandle {
+    /// Identical to ValueCollectionKey::from but stores a handle instead.
+    pub fn new(value: Handle<Value>) -> Self {
+        if value.is_string() {
+            let flat_string = value.as_string().flatten();
+            return ValueCollectionKeyHandle(flat_string.as_string().into());
+        }
+
+        ValueCollectionKeyHandle(value)
+    }
+
+    pub fn get(&self) -> ValueCollectionKey {
+        ValueCollectionKey(self.0.get())
+    }
+}

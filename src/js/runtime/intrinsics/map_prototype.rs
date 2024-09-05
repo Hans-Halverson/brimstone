@@ -2,7 +2,6 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::BuiltinFunction,
-        collections::BsIndexMapField,
         completion::EvalResult,
         error::type_error,
         function::get_argument,
@@ -230,9 +229,7 @@ impl MapPrototype {
             key = Value::number(0.0).to_handle(cx);
         }
 
-        map.map_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(ValueCollectionKey::from(key), value.get());
+        map.insert(cx, key, value);
 
         this_value.into()
     }

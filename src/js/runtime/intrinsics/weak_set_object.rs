@@ -9,8 +9,8 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        value::ValueCollectionKey,
-        Context, Handle, HeapPtr,
+        value::{ValueCollectionKey, ValueCollectionKeyHandle},
+        Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
 };
@@ -66,6 +66,14 @@ impl WeakSetObject {
 impl Handle<WeakSetObject> {
     pub fn weak_set_data_field(&self) -> WeakSetObjectSetField {
         WeakSetObjectSetField(*self)
+    }
+
+    pub fn insert(&self, cx: Context, item: Handle<Value>) -> bool {
+        let item_handle = ValueCollectionKeyHandle::new(item);
+
+        self.weak_set_data_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(item_handle.get())
     }
 }
 

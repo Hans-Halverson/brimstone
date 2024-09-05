@@ -96,7 +96,7 @@ impl SetPrototype {
         let value = get_argument(cx, arguments, 0);
         let value = canonicalize_keyed_collection_key(cx, value);
 
-        set.insert(cx, ValueCollectionKey::from(value));
+        set.insert(cx, value);
 
         this_value.into()
     }
@@ -311,7 +311,7 @@ impl SetPrototype {
                 ));
 
                 if in_other.is_true() {
-                    new_set.insert(cx, item);
+                    new_set.insert(cx, item_handle);
                 }
             }
         } else {
@@ -322,9 +322,12 @@ impl SetPrototype {
                 other_set_record.set_object.into(),
                 other_set_record.keys_method,
                 &mut |cx, key| {
-                    let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
+                    let key = canonicalize_keyed_collection_key(cx, key);
 
-                    if this_set.set_data_ptr().contains(&key) {
+                    if this_set
+                        .set_data_ptr()
+                        .contains(&ValueCollectionKey::from(key))
+                    {
                         new_set.insert(cx, key);
                     }
 
@@ -533,11 +536,12 @@ impl SetPrototype {
             other_set_record.set_object.into(),
             other_set_record.keys_method,
             &mut |cx, key| {
-                let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
+                let key = canonicalize_keyed_collection_key(cx, key);
+                let collection_key = ValueCollectionKey::from(key);
 
-                if this_set.set_data_ptr().contains(&key) {
+                if this_set.set_data_ptr().contains(&collection_key) {
                     // Both sets contain the key so remove it from the new set
-                    new_set.set_data_ptr().remove(&key);
+                    new_set.set_data_ptr().remove(&collection_key);
                 } else {
                     // Key is in the other set but not in this set so add it to the new set
                     new_set.insert(cx, key);
@@ -577,7 +581,7 @@ impl SetPrototype {
             other_set_record.keys_method,
             &mut |cx, key| {
                 let key = canonicalize_keyed_collection_key(cx, key);
-                new_set.insert(cx, ValueCollectionKey::from(key));
+                new_set.insert(cx, key);
 
                 None
             }

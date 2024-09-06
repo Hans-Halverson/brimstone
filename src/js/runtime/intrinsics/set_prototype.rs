@@ -177,7 +177,9 @@ impl SetPrototype {
                 ));
 
                 if in_other.is_true() {
-                    new_set.set_data_ptr().remove(&item);
+                    new_set
+                        .set_data_ptr()
+                        .remove(&ValueCollectionKey::from(item_handle));
                 }
             }
         } else {

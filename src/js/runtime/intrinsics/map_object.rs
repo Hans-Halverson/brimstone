@@ -9,7 +9,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        value::ValueCollectionKey,
+        value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, EvalResult, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
@@ -54,6 +54,14 @@ impl Handle<MapObject> {
     pub fn map_data_field(&self) -> MapObjectMapField {
         MapObjectMapField(*self)
     }
+
+    pub fn insert(&self, cx: Context, key: Handle<Value>, value: Handle<Value>) -> bool {
+        let key_handle = ValueCollectionKeyHandle::new(key);
+
+        self.map_data_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(key_handle.get(), value.get())
+    }
 }
 
 pub struct MapObjectMapField(Handle<MapObject>);
@@ -89,11 +97,11 @@ impl MapObjectMapField {
     }
 
     pub fn visit_pointers(map: &mut HeapPtr<ValueMap>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
-
-        for (key, value) in map.iter_mut_gc_unsafe() {
-            key.visit_pointers(visitor);
-            visitor.visit_value(value);
-        }
+        map.visit_pointers_impl(visitor, |map, visitor| {
+            for (key, value) in map.iter_mut_gc_unsafe() {
+                key.visit_pointers(visitor);
+                visitor.visit_value(value);
+            }
+        });
     }
 }

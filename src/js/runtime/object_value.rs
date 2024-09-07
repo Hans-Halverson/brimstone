@@ -773,11 +773,11 @@ impl NamedPropertiesMapField {
     }
 
     pub fn visit_pointers(map: &mut HeapPtr<NamedPropertiesMap>, visitor: &mut impl HeapVisitor) {
-        map.visit_pointers(visitor);
-
-        for (property_key, property) in map.iter_mut_gc_unsafe() {
-            visitor.visit_property_key(property_key);
-            property.visit_pointers(visitor);
-        }
+        map.visit_pointers_impl(visitor, |map, visitor| {
+            for (property_key, property) in map.iter_mut_gc_unsafe() {
+                visitor.visit_property_key(property_key);
+                property.visit_pointers(visitor);
+            }
+        });
     }
 }

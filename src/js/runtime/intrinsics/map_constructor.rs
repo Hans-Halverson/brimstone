@@ -3,7 +3,6 @@ use crate::{
         abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
-        collections::BsIndexMapField,
         completion::EvalResult,
         error::type_error,
         function::get_argument,
@@ -13,7 +12,7 @@ use crate::{
         property_key::PropertyKey,
         realm::Realm,
         type_utilities::is_callable,
-        value::{Value, ValueCollectionKey},
+        value::Value,
         Context, Handle,
     },
     maybe, must,
@@ -100,10 +99,7 @@ impl MapConstructor {
         for group in groups {
             let items: Handle<Value> = create_array_from_list(cx, &group.items).into();
 
-            map.cast::<MapObject>()
-                .map_data_field()
-                .maybe_grow_for_insertion(cx)
-                .insert_without_growing(ValueCollectionKey::from(group.key), items.get());
+            map.cast::<MapObject>().insert(cx, group.key, items);
         }
 
         map.into()

@@ -121,6 +121,19 @@ impl<T: Eq + Hash + Clone> HeapObject for HeapPtr<BsIndexSet<T>> {
 
     /// Visit pointers intrinsic to all IndexSets. Do not visit entries as they could be of any type.
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast_mut::<BsIndexMap<T, ()>>().visit_pointers(visitor)
+        self.cast_mut::<BsIndexMap<T, ()>>()
+            .visit_pointers_impl(visitor, |_, _| ())
+    }
+}
+
+impl<T: Eq + Hash + Clone> HeapPtr<BsIndexSet<T>> {
+    #[inline]
+    pub fn visit_pointers_impl<H: HeapVisitor>(
+        &mut self,
+        visitor: &mut H,
+        mut entries_visitor: impl FnMut(&mut Self, &mut H),
+    ) {
+        self.cast_mut::<BsIndexMap<T, ()>>()
+            .visit_pointers_impl(visitor, |map, visitor| entries_visitor(&mut map.cast(), visitor))
     }
 }

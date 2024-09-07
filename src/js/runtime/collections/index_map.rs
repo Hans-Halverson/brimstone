@@ -24,6 +24,10 @@ use super::InlineArray;
 #[repr(C)]
 pub struct BsIndexMap<K, V> {
     descriptor: HeapPtr<ObjectDescriptor>,
+    // Whether this is a tombstone object. Tombstone objects point to the new map that this map was
+    // moved to during a resize. Tombstone objects are used to update iterators that point to the
+    // tombstone.
+    is_tombstone: bool,
     // Number of entries currently inserted, excluding deleted entries
     num_occupied: usize,
     // Number of deleted entries
@@ -32,6 +36,9 @@ pub struct BsIndexMap<K, V> {
     // an empty index slot.
     //
     // Total capacity must be a power of 2.
+    //
+    // If this is a tombstone object then a pointer to the new map is stored at the first index.
+    // This requires that the map is non-empty, so we must not create any empty maps.
     indices: InlineArray<usize>,
     // Array of entries in insertion order. Must have the same capacity as the indices array.
     _entries: [Entry<K, V>; 1],
@@ -65,6 +72,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size);
 
         set_uninit!(hash_map.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(hash_map.is_tombstone, false);
         set_uninit!(hash_map.num_occupied, 0);
         set_uninit!(hash_map.num_deleted, 0);
 
@@ -102,6 +110,13 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     #[inline]
     pub fn capacity(&self) -> usize {
         self.indices.len()
+    }
+
+    /// Whether this is a tombstone object that points to the new map that this map was moved to
+    /// during a resize.
+    #[inline]
+    pub fn is_tombstone(&self) -> bool {
+        self.is_tombstone
     }
 
     #[inline]
@@ -196,6 +211,23 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
     #[inline]
     fn set_index_unchecked(&mut self, hash_index: usize, entry_index: usize) {
         *self.get_index_unchecked_mut(hash_index) = entry_index;
+    }
+
+    #[inline]
+    fn get_new_map_ptr(&self) -> HeapPtr<Self> {
+        HeapPtr::from_ptr(self.get_index_unchecked(0) as *mut Self)
+    }
+
+    #[inline]
+    fn get_new_map_ptr_mut(&mut self) -> &mut HeapPtr<Self> {
+        unsafe {
+            std::mem::transmute::<&mut usize, &mut HeapPtr<Self>>(self.get_index_unchecked_mut(0))
+        }
+    }
+
+    #[inline]
+    fn set_new_map_ptr(&mut self, new_map_ptr: HeapPtr<Self>) {
+        *self.get_index_unchecked_mut(0) = new_map_ptr.as_ptr() as usize;
     }
 
     // Entries accessors
@@ -360,6 +392,25 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         // Did not overwrite an entry
         false
     }
+
+    /// Given a tombstone and a next index for that tombstone, return the new map and the new next
+    /// index.
+    pub fn fix_iterator_for_resized_map(
+        tombstone_map: HeapPtr<Self>,
+        next_entry_index: &mut usize,
+    ) -> HeapPtr<Self> {
+        // Count the number of occupied entries in the tombstone map up to the next index. This is
+        // the next index in the new map, since only occupied entries were kept.
+        *next_entry_index = tombstone_map
+            .entries_as_slice()
+            .iter()
+            .filter(|entry| matches!(entry, Entry::Occupied(_)))
+            .take(*next_entry_index)
+            .count();
+
+        // Each tombstone contains a pointer to the new map
+        tombstone_map.get_new_map_ptr()
+    }
 }
 
 impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
@@ -392,7 +443,7 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
         }
 
         // Save old map behind handle before allocating
-        let old_map = old_map.to_handle();
+        let mut old_map = old_map.to_handle();
 
         // Capacity jumps from 0 to min capacity
         let new_capacity;
@@ -414,6 +465,15 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
         // Copy all values into new map. We have already guaranteed that there is enough room in map.
         for (key, value) in old_map.iter_gc_unsafe() {
             new_map.insert_without_growing(key, value);
+        }
+
+        // Empty maps should not become tombstones since there is nowhere to put the new map pointer
+        // debug_assert!(capacity != 0);
+
+        // Mark the old map as a tombstone object that points to the new map
+        if capacity != 0 {
+            old_map.is_tombstone = true;
+            old_map.set_new_map_ptr(new_map);
         }
 
         new_map
@@ -579,6 +639,26 @@ impl<K: Eq + Hash + Clone, V: Clone> HeapObject for HeapPtr<BsIndexMap<K, V>> {
 
     /// Visit pointers intrinsic to all IndexMaps. Do not visit entries as they could be of any type.
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        Self::visit_pointers_impl(self, visitor, |_, _| ());
+    }
+}
+
+impl<K: Eq + Hash + Clone, V: Clone> HeapPtr<BsIndexMap<K, V>> {
+    #[inline]
+    pub fn visit_pointers_impl<H: HeapVisitor>(
+        &mut self,
+        visitor: &mut H,
+        mut entries_visitor: impl FnMut(&mut Self, &mut H),
+    ) {
         visitor.visit_pointer(&mut self.descriptor);
+
+        if self.is_tombstone() {
+            // Tombstones contain the new map but entries are not still live - we only need to know
+            // if the entries are occupied.
+            visitor.visit_pointer(self.get_new_map_ptr_mut());
+        } else {
+            // Otherwise visit entries since they are still live.
+            entries_visitor(self, visitor);
+        }
     }
 }

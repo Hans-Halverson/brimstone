@@ -9,7 +9,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
-        value::ValueCollectionKey,
+        value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, Handle, HeapPtr, Value,
     },
     maybe, set_uninit,
@@ -66,6 +66,14 @@ impl WeakMapObject {
 impl Handle<WeakMapObject> {
     pub fn weak_map_data_field(&self) -> WeakMapObjectMapField {
         WeakMapObjectMapField(*self)
+    }
+
+    pub fn insert(&self, cx: Context, key: Handle<Value>, value: Handle<Value>) -> bool {
+        let key_handle = ValueCollectionKeyHandle::new(key);
+
+        self.weak_map_data_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(key_handle.get(), value.get())
     }
 }
 

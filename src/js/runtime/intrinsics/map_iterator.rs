@@ -111,6 +111,15 @@ impl MapIteratorPrototype {
             return create_iter_result_object(cx, cx.undefined(), true).into();
         }
 
+        // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
+        // objects and we need to fix up the iterator at each step.
+        while map_iterator.map.is_tombstone() {
+            map_iterator.map = ValueMap::fix_iterator_for_resized_map(
+                map_iterator.map,
+                &mut map_iterator.next_entry_index,
+            );
+        }
+
         // Perform a single iteration, mutating iterator object
         let mut iter = map_iterator.get_iter();
         let iter_result = iter.next();

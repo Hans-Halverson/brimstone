@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    collections::BsHashMapField, completion::EvalResult, error::type_error, function::get_argument,
+    completion::EvalResult, error::type_error, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
@@ -122,10 +122,7 @@ impl WeakMapPrototype {
             return type_error(cx, "WeakMap keys must be objects or symbols");
         }
 
-        weak_map_object
-            .weak_map_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(ValueCollectionKey::from(key), value.get());
+        weak_map_object.insert(cx, key, value);
 
         this_value.into()
     }

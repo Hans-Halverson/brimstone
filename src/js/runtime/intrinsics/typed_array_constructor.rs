@@ -604,8 +604,12 @@ macro_rules! create_typed_array_constructor {
                 let byte_length = element_size!() * length;
 
                 let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                let array_buffer =
-                    maybe!(ArrayBufferObject::new(cx, array_buffer_constructor, byte_length));
+                let array_buffer = maybe!(ArrayBufferObject::new(
+                    cx,
+                    array_buffer_constructor,
+                    byte_length,
+                    /* max_byte_length */ None
+                ));
 
                 $typed_array::new_with_proto(cx, proto, array_buffer, byte_length, 0, length).into()
             }
@@ -649,7 +653,12 @@ macro_rules! create_typed_array_constructor {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
                     let buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                    let data = maybe!(ArrayBufferObject::new(cx, buffer_constructor, byte_length));
+                    let data = maybe!(ArrayBufferObject::new(
+                        cx,
+                        buffer_constructor,
+                        byte_length,
+                        /* max_byte_length */ None
+                    ));
 
                     if source_data.is_detached() {
                         return type_error(

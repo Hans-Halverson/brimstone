@@ -1,12 +1,14 @@
 use crate::{
     js::runtime::{
         abstract_operations::{construct, species_constructor},
+        collections::BsArray,
         error::type_error,
         function::get_argument,
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
-        type_utilities::to_integer_or_infinity,
+        type_utilities::{to_index, to_integer_or_infinity},
         Context, EvalResult, Handle, Value,
     },
     maybe,
@@ -17,16 +19,19 @@ use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
 pub struct ArrayBufferPrototype;
 
 impl ArrayBufferPrototype {
-    // 25.1.5 Properties of the ArrayBuffer Prototype Object
+    // 25.1.6 Properties of the ArrayBuffer Prototype Object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Constructor property is added once ArrayBufferConstructor has been created
         object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
+        object.intrinsic_getter(cx, cx.names.max_byte_length(), Self::get_max_byte_length, realm);
+        object.intrinsic_func(cx, cx.names.resize(), Self::resize, 1, realm);
+        object.intrinsic_getter(cx, cx.names.resizable(), Self::get_resizable, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
 
-        // 25.1.5.4 ArrayBuffer.prototype [ @@toStringTag ]
+        // 25.1.6.10 ArrayBuffer.prototype [ %Symbol.toStringTag% ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -37,22 +42,111 @@ impl ArrayBufferPrototype {
         object
     }
 
-    // 25.1.5.3 ArrayBuffer.prototype.slice
+    // 25.1.6.1 get ArrayBuffer.prototype.byteLength
+    pub fn get_byte_length(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "byteLength"));
+
+        // Detached array buffers have byte length set to 0
+        Value::from(array_buffer.byte_length()).to_handle(cx).into()
+    }
+
+    // 25.1.6.4 get ArrayBuffer.prototype.maxByteLength
+    pub fn get_max_byte_length(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "maxByteLength"));
+
+        // Detached array buffers have max byte length set to 0
+        let max_byte_length = array_buffer
+            .max_byte_length()
+            .unwrap_or(array_buffer.byte_length());
+
+        Value::from(max_byte_length).to_handle(cx).into()
+    }
+
+    // 25.1.6.5 get ArrayBuffer.prototype.resizable
+    pub fn get_resizable(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "resizable"));
+        cx.bool(array_buffer.max_byte_length().is_some()).into()
+    }
+
+    // 25.1.6.6 ArrayBuffer.prototype.resize
+    pub fn resize(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let mut array_buffer = maybe!(require_array_buffer(cx, this_value, "resize"));
+
+        let max_byte_length = if let Some(max_byte_length) = array_buffer.max_byte_length() {
+            max_byte_length
+        } else {
+            return type_error(cx, "array buffer is not resizable");
+        };
+
+        let new_length_arg = get_argument(cx, arguments, 0);
+        let new_byte_length = maybe!(to_index(cx, new_length_arg));
+
+        if array_buffer.is_detached() {
+            return type_error(cx, "array buffer is detached");
+        }
+
+        if new_byte_length > max_byte_length {
+            return type_error(cx, "new length exceeds max byte length");
+        }
+
+        // Create new data block with copy of old data at start
+        let mut new_data =
+            BsArray::<u8>::new_uninit(cx, ObjectKind::ArrayBufferDataArray, new_byte_length);
+        let old_byte_length = array_buffer.byte_length();
+
+        unsafe {
+            std::ptr::copy(
+                array_buffer.data().as_ptr(),
+                new_data.as_mut_slice().as_mut_ptr(),
+                old_byte_length.min(new_byte_length),
+            )
+        }
+
+        // Initialize rest of array to all zeros
+        if new_byte_length > old_byte_length {
+            unsafe {
+                std::ptr::write_bytes(
+                    new_data.as_mut_slice().as_mut_ptr().add(old_byte_length),
+                    0,
+                    new_byte_length - old_byte_length,
+                )
+            }
+        }
+
+        array_buffer.set_data(new_data);
+        array_buffer.set_byte_length(new_byte_length);
+
+        cx.undefined().into()
+    }
+
+    // 25.1.6.7 ArrayBuffer.prototype.slice
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        // Check type of array buffer argument
-        let mut array_buffer = if this_value.is_object() && this_value.as_object().is_array_buffer()
-        {
-            this_value.as_object().cast::<ArrayBufferObject>()
-        } else if this_value.is_object() && this_value.as_object().is_shared_array_buffer() {
-            return type_error(cx, "cannot slice SharedArrayBuffer");
-        } else {
-            return type_error(cx, "expected array buffer");
-        };
+        let mut array_buffer = maybe!(require_array_buffer(cx, this_value, "slice"));
 
         if array_buffer.is_detached() {
             return type_error(cx, "array buffer is detached");
@@ -131,25 +225,19 @@ impl ArrayBufferPrototype {
 
         new_array_buffer.into()
     }
+}
 
-    // 25.1.5.1 get ArrayBuffer.prototype.byteLength
-    pub fn get_byte_length(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        if this_value.is_object() {
-            let this_object = this_value.as_object();
-            if this_object.is_array_buffer() {
-                let array_buffer = this_object.cast::<ArrayBufferObject>();
-
-                return Value::from(array_buffer.byte_length()).to_handle(cx).into();
-            } else if this_object.is_shared_array_buffer() {
-                return type_error(cx, "cannot access byteLength of SharedArrayBuffer");
-            }
+fn require_array_buffer(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<ArrayBufferObject>> {
+    if value.is_object() {
+        let object = value.as_object();
+        if object.is_array_buffer() {
+            return object.cast::<ArrayBufferObject>().into();
         }
-
-        type_error(cx, "expected array buffer")
     }
+
+    type_error(cx, &format!("ArrayBuffer.prototype.{} expected ArrayBuffer", method_name))
 }

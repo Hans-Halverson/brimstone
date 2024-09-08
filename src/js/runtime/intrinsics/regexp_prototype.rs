@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     js::{
         common::unicode::{needs_surrogate_pair, CodePoint},
@@ -928,6 +930,8 @@ fn regexp_builtin_exec(
         named_groups_object
     ));
 
+    let mut matched_group_names = HashSet::new();
+
     // Set up indices array to collect capture group indices, if flag is set
     let indices_result = if has_indices {
         let indices_array: Handle<ObjectValue> =
@@ -987,24 +991,37 @@ fn regexp_builtin_exec(
         if i != 0 {
             if let Some(group_name) = compiled_regexp.capture_groups_as_slice()[i - 1] {
                 let group_name = group_name.to_handle();
-                let group_name_key = PropertyKey::string(cx, group_name).to_handle(cx);
+                let group_name_key = PropertyKey::string(cx, group_name.as_string()).to_handle(cx);
 
                 // Group names object is guaranteed to be an object value
                 let groups = named_groups_object.as_object();
 
-                must!(create_data_property_or_throw(cx, groups, group_name_key, captured_value));
-
-                // Add capture indices to the group names object in the indices array if necessary
-                if let Some((match_index_pair, indices_groups)) = match_index_pair {
-                    // Group names object is guaranteed to be an object value
-                    let groups = indices_groups.as_object();
-
+                // If this name has not yet been matched then add it
+                if !matched_group_names.contains(&group_name) {
                     must!(create_data_property_or_throw(
                         cx,
                         groups,
                         group_name_key,
-                        match_index_pair
+                        captured_value
                     ));
+
+                    // Add capture indices to the group names object in the indices array if necessary
+                    if let Some((match_index_pair, indices_groups)) = match_index_pair {
+                        // Group names object is guaranteed to be an object value
+                        let groups = indices_groups.as_object();
+
+                        must!(create_data_property_or_throw(
+                            cx,
+                            groups,
+                            group_name_key,
+                            match_index_pair
+                        ));
+                    }
+                }
+
+                // Mark as matched if there was not capture
+                if !captured_value.is_undefined() {
+                    matched_group_names.insert(group_name);
                 }
             }
         }

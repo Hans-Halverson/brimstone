@@ -10,7 +10,7 @@ use crate::{
             debug_print::{DebugPrint, DebugPrinter},
             gc::{HeapObject, HeapVisitor},
             object_descriptor::{ObjectDescriptor, ObjectKind},
-            string_value::StringValue,
+            string_value::{FlatString, StringValue},
             Context, Handle, HeapPtr,
         },
     },
@@ -28,6 +28,8 @@ pub struct CompiledRegExpObject {
     pub flags: RegExpFlags,
     // Whether this regexp has any named capture groups
     pub has_named_capture_groups: bool,
+    // Whether this regexp has any duplicate named capture groups
+    pub has_duplicate_named_capture_groups: bool,
     // Number of capture groups, not counting the implicit 0'th capture group for the entire match.
     pub num_capture_groups: u32,
     pub num_progress_points: u32,
@@ -36,7 +38,7 @@ pub struct CompiledRegExpObject {
     instructions: InlineArray<u32>,
     // Array of capture groups, optionally containing capture group name. Field should not be
     // accessed directly since instructions array is variable sized.
-    _capture_groups: [Option<HeapPtr<StringValue>>; 1],
+    _capture_groups: [Option<HeapPtr<FlatString>>; 1],
 }
 
 const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, instructions);
@@ -59,7 +61,7 @@ impl CompiledRegExpObject {
             .map(|capture_group| {
                 if let Some(name_string) = capture_group {
                     has_named_capture_groups = true;
-                    Some(cx.alloc_string(name_string))
+                    Some(cx.alloc_string_ptr(name_string).to_handle())
                 } else {
                     None
                 }
@@ -73,6 +75,10 @@ impl CompiledRegExpObject {
         set_uninit!(object.escaped_pattern_source, escaped_pattern_source.get_());
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
+        set_uninit!(
+            object.has_duplicate_named_capture_groups,
+            regexp.has_duplicate_named_capture_groups
+        );
         set_uninit!(object.num_capture_groups, num_capture_groups);
         set_uninit!(object.num_progress_points, num_progress_points);
         set_uninit!(object.num_loop_registers, num_loop_registers);
@@ -103,7 +109,7 @@ impl CompiledRegExpObject {
     #[inline]
     fn calculate_size_in_bytes(num_instructions: usize, num_capture_groups: u32) -> usize {
         Self::capture_groups_byte_offset(num_instructions)
-            + size_of::<Option<HeapPtr<StringValue>>>() * num_capture_groups as usize
+            + size_of::<Option<HeapPtr<FlatString>>>() * num_capture_groups as usize
     }
 
     #[inline]
@@ -119,13 +125,13 @@ impl CompiledRegExpObject {
     // Capture groups accessors
 
     #[inline]
-    fn capture_groups_as_ptr(&self) -> *const Option<HeapPtr<StringValue>> {
+    fn capture_groups_as_ptr(&self) -> *const Option<HeapPtr<FlatString>> {
         let byte_offset = Self::capture_groups_byte_offset(self.instructions.len());
         unsafe { (self as *const _ as *const u8).add(byte_offset).cast() }
     }
 
     #[inline]
-    pub fn capture_groups_as_slice(&self) -> &[Option<HeapPtr<StringValue>>] {
+    pub fn capture_groups_as_slice(&self) -> &[Option<HeapPtr<FlatString>>] {
         unsafe {
             std::slice::from_raw_parts(
                 self.capture_groups_as_ptr(),
@@ -135,7 +141,7 @@ impl CompiledRegExpObject {
     }
 
     #[inline]
-    pub fn capture_groups_as_slice_mut(&mut self) -> &mut [Option<HeapPtr<StringValue>>] {
+    pub fn capture_groups_as_slice_mut(&mut self) -> &mut [Option<HeapPtr<FlatString>>] {
         unsafe {
             std::slice::from_raw_parts_mut(
                 self.capture_groups_as_ptr().cast_mut(),

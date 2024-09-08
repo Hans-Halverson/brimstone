@@ -594,11 +594,12 @@ impl<T: LexerStream> RegExpParser<T> {
                             let name_start_pos = self.pos();
                             let name = self.parse_identifier()?;
                             self.expect('>')?;
-                            let disjunction = self.parse_disjunction()?;
-                            self.expect(')')?;
 
                             // Add to list of all capture groups with name
                             self.capture_groups.push(Some(name.clone()));
+
+                            let disjunction = self.parse_disjunction()?;
+                            self.expect(')')?;
 
                             // Check for duplicate capture group names
                             if self
@@ -621,13 +622,12 @@ impl<T: LexerStream> RegExpParser<T> {
                 _ => self.error_unexpected_token(self.pos()),
             })
         } else {
+            // Add to list of all capture groups without name
             let index = self.next_capture_group_index(left_paren_pos)?;
+            self.capture_groups.push(None);
 
             let disjunction = self.parse_disjunction()?;
             self.expect(')')?;
-
-            // Add to list of all capture groups without name
-            self.capture_groups.push(None);
 
             Ok(Term::CaptureGroup(CaptureGroup { name: None, index, disjunction }))
         }

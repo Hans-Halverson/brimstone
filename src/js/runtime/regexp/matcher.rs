@@ -617,8 +617,28 @@ impl<T: LexerStream> MatchEngine<T> {
 
     fn execute_backreference<const DIRECTION: bool>(
         &mut self,
-        capture_group_index: u32,
+        mut capture_group_index: u32,
     ) -> Result<(), ()> {
+        if self.regexp.has_duplicate_named_capture_groups {
+            // If this could be a named capture group with duplicates we want to find the most
+            // recent non-empty capture group with the given name.
+            if let Some(name) =
+                self.regexp.capture_groups_as_slice()[capture_group_index as usize - 1]
+            {
+                // Iterate backwards to find the most recent group with the same name.
+                for i in (1..=capture_group_index).rev() {
+                    let this_name = self.regexp.capture_groups_as_slice()[i as usize - 1];
+                    if this_name == Some(name) {
+                        // Look for the first non-empty capture
+                        if self.get_valid_capture_bounds(i).is_some() {
+                            capture_group_index = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         match self.get_valid_capture_bounds(capture_group_index) {
             None => self.advance_instruction::<BackreferenceInstruction>(),
             Some((start_index, end_index)) => {

@@ -1,4 +1,7 @@
-use std::{collections::HashMap, convert::TryFrom};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 
 use match_u32::match_u32;
 
@@ -36,8 +39,15 @@ pub struct RegExpParser<T: LexerStream> {
     num_capture_groups: usize,
     // All capture groups seen so far, with name if a name was specified
     capture_groups: Vec<Option<String>>,
-    // Map of capture group names that have been encountered so far to their capture group index
+    // Map of capture group names that have been encountered so far to the index of their last
+    // occurrence in the RegExp.
     capture_group_names: HashMap<String, CaptureGroupIndex>,
+    // Set of all capture group names that are currently in scope
+    current_capture_group_names: HashSet<String>,
+    // List of the capture group names that are in the current scope on the implicit scope stack
+    current_capture_group_name_scope: Vec<String>,
+    // Whether the RegExp has any duplicate named capture groups.
+    has_duplicate_named_capture_groups: bool,
     // All named backreferences encountered. Saves the name, source position, and a reference to the
     // backreference node itself.
     named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
@@ -55,6 +65,9 @@ impl<T: LexerStream> RegExpParser<T> {
             num_capture_groups: 0,
             capture_groups: vec![],
             capture_group_names: HashMap::new(),
+            current_capture_group_names: HashSet::new(),
+            current_capture_group_name_scope: vec![],
+            has_duplicate_named_capture_groups: false,
             named_backreferences: vec![],
             indexed_backreferences: vec![],
             group_depth: 0,
@@ -179,6 +192,7 @@ impl<T: LexerStream> RegExpParser<T> {
             disjunction,
             flags,
             capture_groups: parser.capture_groups.clone(),
+            has_duplicate_named_capture_groups: parser.has_duplicate_named_capture_groups,
         };
 
         parser.resolve_backreferences()?;
@@ -228,7 +242,20 @@ impl<T: LexerStream> RegExpParser<T> {
 
         // There is always at least one alternative, even if the alternative is empty
         loop {
+            // Set up new empty capture group name scope. Old scope is saved on the stack, forming
+            // an implicit scope stack.
+            let mut previous_scope = vec![];
+            std::mem::swap(&mut self.current_capture_group_name_scope, &mut previous_scope);
+
+            // Parse the alternative inside the scope
             alternatives.push(self.parse_alternative()?);
+
+            // Tear down capture group scope by removing all names added in the current scope then
+            // restoring the previous scope.
+            for name in &self.current_capture_group_name_scope {
+                self.current_capture_group_names.remove(name);
+            }
+            self.current_capture_group_name_scope = previous_scope;
 
             if !self.eat('|') {
                 break;
@@ -589,27 +616,38 @@ impl<T: LexerStream> RegExpParser<T> {
                             }))
                         }
                         _ => {
-                            let index = self.next_capture_group_index(left_paren_pos)?;
-
+                            // First parse the name
                             let name_start_pos = self.pos();
                             let name = self.parse_identifier()?;
                             self.expect('>')?;
 
-                            // Add to list of all capture groups with name
+                            // Generate the next capture group index and add name to list of all
+                            // capture groups.
+                            let index = self.next_capture_group_index(left_paren_pos)?;
                             self.capture_groups.push(Some(name.clone()));
 
-                            let disjunction = self.parse_disjunction()?;
-                            self.expect(')')?;
-
-                            // Check for duplicate capture group names
+                            // Add index to `capture_group_names`, overwriting earlier index
                             if self
                                 .capture_group_names
                                 .insert(name.clone(), index)
                                 .is_some()
                             {
+                                self.has_duplicate_named_capture_groups = true;
+                            }
+
+                            // If name is currently in scope then error
+                            if self.current_capture_group_names.contains(&name) {
                                 return self
                                     .error(name_start_pos, ParseError::DuplicateCaptureGroupName);
                             }
+
+                            // Add to set of all capture groups in scope, and to the current
+                            // scope.
+                            self.current_capture_group_names.insert(name.clone());
+                            self.current_capture_group_name_scope.push(name.clone());
+
+                            let disjunction = self.parse_disjunction()?;
+                            self.expect(')')?;
 
                             Ok(Term::CaptureGroup(CaptureGroup {
                                 name: Some(name),

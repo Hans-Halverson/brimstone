@@ -129,7 +129,6 @@
       "ShadowRealm",
       // Unimplemented Stage 4 proposals
       "arraybuffer-transfer",
-      "regexp-duplicate-named-groups",
       "resizable-arraybuffer"
     ]
   },

@@ -48,6 +48,12 @@ impl ArrayBufferObject {
         byte_length: usize,
         max_byte_length: Option<usize>,
     ) -> EvalResult<Handle<ArrayBufferObject>> {
+        if let Some(max_byte_length) = max_byte_length {
+            if byte_length > max_byte_length {
+                return range_error(cx, "byte length exceeds max byte length");
+            }
+        }
+
         let mut object = maybe!(object_create_from_constructor::<ArrayBufferObject>(
             cx,
             constructor,
@@ -68,10 +74,6 @@ impl ArrayBufferObject {
         }
 
         if let Some(max_byte_length) = max_byte_length {
-            if byte_length > max_byte_length {
-                return range_error(cx, "byte length exceeds max byte length");
-            }
-
             if max_byte_length > MAX_ARRAY_BUFFER_SIZE {
                 return range_error(cx, "max byte length exceeds maximum array buffer size");
             }
@@ -97,6 +99,10 @@ impl ArrayBufferObject {
 
     pub fn max_byte_length(&self) -> Option<usize> {
         self.max_byte_length
+    }
+
+    pub fn is_fixed_length(&self) -> bool {
+        self.max_byte_length.is_none()
     }
 
     pub fn data(&mut self) -> &mut [u8] {
@@ -207,10 +213,6 @@ pub fn clone_array_buffer(
         source_length,
         /* max_byte_length */ None
     ));
-
-    if source_buffer.is_detached() {
-        return type_error(cx, "detached array buffer cannot be cloned");
-    }
 
     // Copy a portion of the source buffer after the given offset to the target buffer
     let source_buffer_view =

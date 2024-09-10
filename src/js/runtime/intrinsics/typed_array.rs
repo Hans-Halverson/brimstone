@@ -25,18 +25,23 @@ use crate::{
         realm::Realm,
         string_value::StringValue,
         type_utilities::{
-            canonical_numeric_index_string, to_big_int64, to_big_uint64, to_index, to_int16,
-            to_int32, to_int8, to_number, to_uint16, to_uint32, to_uint8, to_uint8_clamp,
+            to_big_int64, to_big_uint64, to_index, to_int16, to_int32, to_int8, to_number,
+            to_uint16, to_uint32, to_uint8, to_uint8_clamp,
         },
         value::{BigIntValue, Value},
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    maybe, must, set_uninit,
 };
 
 use super::{
     array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
     intrinsics::Intrinsic,
+    typed_array_constructor::canonical_numeric_index_string,
+    typed_array_prototype::{
+        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+        typed_array_length,
+    },
 };
 
 #[derive(PartialEq)]
@@ -47,9 +52,11 @@ pub enum ContentType {
 
 /// Abstraction over typed arrays, allowing for generic access of properties.
 pub trait TypedArray {
-    fn array_length(&self) -> usize;
+    /// Length of the array. None represents a value of AUTO.
+    fn array_length(&self) -> Option<usize>;
 
-    fn byte_length(&self) -> usize;
+    /// Byte length of the array. None represents a value of AUTO.
+    fn byte_length(&self) -> Option<usize>;
 
     fn byte_offset(&self) -> usize;
 
@@ -64,6 +71,10 @@ pub trait TypedArray {
     fn kind(&self) -> TypedArrayKind;
 
     fn element_size(&self) -> usize;
+
+    fn read_element_ptr(&self, cx: Context, ptr: *const u8) -> Handle<Value>;
+
+    fn write_element_ptr(&self, cx: Context, ptr: *mut u8, value: Handle<Value>);
 
     fn read_element_value(
         &self,

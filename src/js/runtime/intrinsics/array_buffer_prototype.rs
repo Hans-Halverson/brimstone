@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{construct, species_constructor},
         collections::BsArray,
-        error::type_error,
+        error::{range_error, type_error},
         function::get_argument,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -80,7 +80,7 @@ impl ArrayBufferPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = maybe!(require_array_buffer(cx, this_value, "resizable"));
-        cx.bool(array_buffer.max_byte_length().is_some()).into()
+        cx.bool(!array_buffer.is_fixed_length()).into()
     }
 
     // 25.1.6.6 ArrayBuffer.prototype.resize
@@ -106,7 +106,7 @@ impl ArrayBufferPrototype {
         }
 
         if new_byte_length > max_byte_length {
-            return type_error(cx, "new length exceeds max byte length");
+            return range_error(cx, "new length exceeds max byte length");
         }
 
         // Create new data block with copy of old data at start

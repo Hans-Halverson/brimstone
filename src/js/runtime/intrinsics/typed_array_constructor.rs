@@ -6,10 +6,12 @@ use crate::{
         error::type_error,
         function::get_argument,
         get,
-        intrinsics::typed_array_prototype::typed_array_create_object,
         iterator::iter_iterator_method_values,
         object_value::ObjectValue,
-        type_utilities::{is_callable, is_constructor_value, to_object},
+        to_string,
+        type_utilities::{
+            is_callable, is_constructor_value, is_integral_number, to_number, to_object,
+        },
         value::Value,
         Context, Handle, PropertyKey, Realm,
     },
@@ -17,7 +19,14 @@ use crate::{
 };
 
 use super::{
-    intrinsics::Intrinsic, rust_runtime::return_this, typed_array_prototype::typed_array_create,
+    intrinsics::Intrinsic,
+    rust_runtime::return_this,
+    typed_array::DynTypedArray,
+    typed_array_prototype::{
+        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+        typed_array_create_from_constructor, typed_array_create_from_constructor_object,
+        typed_array_length,
+    },
 };
 
 // 23.2.1 The %TypedArray% Intrinsic Object
@@ -102,11 +111,10 @@ impl TypedArrayConstructor {
             let length = values.len();
 
             let length_value = Value::from(length).to_handle(cx);
-            let target_object = maybe!(typed_array_create_object(
+            let target_object = maybe!(typed_array_create_from_constructor_object(
                 cx,
                 this_constructor,
                 &[length_value],
-                Some(length)
             ));
 
             // Shared between iterations
@@ -134,8 +142,11 @@ impl TypedArrayConstructor {
         let length = maybe!(length_of_array_like(cx, array_like)) as usize;
 
         let length_value = Value::from(length).to_handle(cx);
-        let target_object =
-            maybe!(typed_array_create_object(cx, this_constructor, &[length_value], Some(length)));
+        let target_object = maybe!(typed_array_create_from_constructor_object(
+            cx,
+            this_constructor,
+            &[length_value],
+        ));
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -175,7 +186,7 @@ impl TypedArrayConstructor {
         let length_value = Value::from(length).to_handle(cx);
 
         let typed_array =
-            maybe!(typed_array_create(cx, this_constructor, &[length_value], Some(length)));
+            maybe!(typed_array_create_from_constructor(cx, this_constructor, &[length_value],));
         let object = typed_array.into_object_value();
 
         // Shared between iterations
@@ -202,9 +213,9 @@ macro_rules! create_typed_array_constructor {
         extend_object! {
             pub struct $typed_array {
                 viewed_array_buffer: HeapPtr<ArrayBufferObject>,
-                byte_length: usize,
+                byte_length: Option<usize>,
+                array_length: Option<usize>,
                 byte_offset: usize,
-                array_length: usize,
             }
         }
 
@@ -213,17 +224,17 @@ macro_rules! create_typed_array_constructor {
                 cx: Context,
                 proto: Handle<ObjectValue>,
                 viewed_array_buffer: Handle<ArrayBufferObject>,
-                byte_length: usize,
+                byte_length: Option<usize>,
                 byte_offset: usize,
-                array_length: usize,
+                array_length: Option<usize>,
             ) -> Handle<ObjectValue> {
                 let mut object =
                     object_create_with_proto::<$typed_array>(cx, ObjectKind::$typed_array, proto);
 
                 set_uninit!(object.viewed_array_buffer, viewed_array_buffer.get_());
                 set_uninit!(object.byte_length, byte_length);
-                set_uninit!(object.byte_offset, byte_offset);
                 set_uninit!(object.array_length, array_length);
+                set_uninit!(object.byte_offset, byte_offset);
 
                 object.to_handle().into()
             }
@@ -241,6 +252,13 @@ macro_rules! create_typed_array_constructor {
                     element_ptr.write(value)
                 }
             }
+
+            #[inline]
+            fn write_element_ptr(cx: Context, ptr: *mut u8, value: Handle<Value>) {
+                // Assumes value is guaranteed to not invoke user code
+                let element_value = must!($to_element(cx, value));
+                unsafe { ptr.cast::<$element_type>().write(element_value) }
+            }
         }
 
         #[wrap_ordinary_object]
@@ -251,14 +269,14 @@ macro_rules! create_typed_array_constructor {
                 cx: Context,
                 key: Handle<PropertyKey>,
             ) -> EvalResult<Option<PropertyDescriptor>> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_get_own_property(cx, self.object(), key).into(),
                     Some(index) => {
-                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || index.is_none() {
+                        if index.is_none() {
                             return None.into();
                         }
 
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index.unwrap() * element_size!() + self.byte_offset;
 
                         let value = self.read_element_value(cx, array_buffer_ptr, byte_index);
@@ -272,12 +290,10 @@ macro_rules! create_typed_array_constructor {
 
             // 10.4.5.2 [[HasProperty]]
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_has_property(cx, self.object(), key),
                     Some(index) => {
-                        let is_valid_index =
-                            !self.viewed_array_buffer_ptr().is_detached() && index.is_some();
-
+                        let is_valid_index = index.is_some();
                         is_valid_index.into()
                     }
                 }
@@ -290,10 +306,10 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_define_own_property(cx, self.object(), key, desc),
                     Some(index) => {
-                        if self.viewed_array_buffer_ptr().is_detached() || index.is_none() {
+                        if index.is_none() {
                             return false.into();
                         }
 
@@ -307,24 +323,39 @@ macro_rules! create_typed_array_constructor {
                             return false.into();
                         }
 
-                        if let Some(value) = desc.value {
-                            // May allocate, so array buffer must be refetched after this point
-                            let element_value = maybe!($to_element(cx, value));
+                        let value = if let Some(value) = desc.value {
+                            value
+                        } else {
+                            return true.into();
+                        };
 
-                            // The element conversion could have detached the array buffer as a side
-                            // effect, so check again.
-                            let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                            if !array_buffer_ptr.is_detached() {
-                                let byte_index =
-                                    index.unwrap() * element_size!() + self.byte_offset;
+                        // May allocate and invoke arbitrary user code
+                        let element_value = maybe!($to_element(cx, value));
 
-                                $typed_array::write_element(
-                                    array_buffer_ptr,
-                                    byte_index,
-                                    element_value,
-                                );
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+
+                        // Fast path - if typed array has known size and underlying ArrayBuffer is
+                        // fixed then the bounds checks in `canonical_numeric_index_string` could
+                        // not have been invalidated by the call to `$to_element`.
+                        //
+                        // The only additional case we need to check is if the ArrayBuffer was
+                        // detached by the call to `$to_element`.
+                        if array_buffer_ptr.is_fixed_length() && self.array_length().is_some() {
+                            if array_buffer_ptr.is_detached() {
+                                return true.into();
+                            }
+                        } else {
+                            // Slow path - all bets are off and we must redo all bounds checks.
+                            let index_result =
+                                canonical_numeric_index_string(cx, key, self.as_typed_array());
+                            if !matches!(index_result, Some(Some(_))) {
+                                return true.into();
                             }
                         }
+
+                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
+
+                        $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
                         true.into()
                     }
@@ -338,14 +369,14 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 receiver: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_get(cx, self.object(), key, receiver),
                     Some(index) => {
-                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || index.is_none() {
+                        if index.is_none() {
                             return cx.undefined().into();
                         }
 
+                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index.unwrap() * element_size!() + self.byte_offset;
 
                         self.read_element_value(cx, array_buffer_ptr, byte_index)
@@ -362,15 +393,42 @@ macro_rules! create_typed_array_constructor {
                 value: Handle<Value>,
                 receiver: Handle<Value>,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_set(cx, self.object(), key, value, receiver),
                     Some(index) => {
-                        // May allocate, so call before accessing array buffer
+                        // Check if this is not the same object as the specified receiver
+                        if !receiver.is_object()
+                            || !receiver.as_object().get_().ptr_eq(&self.object().get_())
+                        {
+                            if index.is_some() {
+                                return ordinary_set(cx, self.object(), key, value, receiver);
+                            } else {
+                                return true.into();
+                            }
+                        }
+
+                        // May allocate and invoke arbitrary user code
                         let element_value = maybe!($to_element(cx, value));
 
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        if array_buffer_ptr.is_detached() || index.is_none() {
-                            return true.into();
+
+                        // Fast path - if typed array has known size and underlying ArrayBuffer is
+                        // fixed then the bounds checks in `canonical_numeric_index_string` could
+                        // not have been invalidated by the call to `$to_element`.
+                        //
+                        // The only additional case we need to check is if the ArrayBuffer was
+                        // detached by the call to `$to_element`.
+                        if array_buffer_ptr.is_fixed_length() && self.array_length().is_some() {
+                            if array_buffer_ptr.is_detached() || index.is_none() {
+                                return true.into();
+                            }
+                        } else {
+                            // Slow path - all bets are off and we must redo all bounds checks.
+                            let index_result =
+                                canonical_numeric_index_string(cx, key, self.as_typed_array());
+                            if !matches!(index_result, Some(Some(_))) {
+                                return true.into();
+                            }
                         }
 
                         let byte_index = index.unwrap() * element_size!() + self.byte_offset;
@@ -384,12 +442,10 @@ macro_rules! create_typed_array_constructor {
 
             // 10.4.5.6 [[Delete]]
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.array_length) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     None => ordinary_delete(cx, self.object(), key),
                     Some(index) => {
-                        let is_invalid_index =
-                            self.viewed_array_buffer_ptr().is_detached() || index.is_none();
-
+                        let is_invalid_index = index.is_none();
                         is_invalid_index.into()
                     }
                 }
@@ -397,10 +453,14 @@ macro_rules! create_typed_array_constructor {
 
             // 10.4.5.7 [[OwnPropertyKeys]]
             fn own_property_keys(&self, mut cx: Context) -> EvalResult<Vec<Handle<Value>>> {
+                let typed_array_record =
+                    make_typed_array_with_buffer_witness_record(self.as_typed_array());
+
                 let mut keys = vec![];
 
-                if !self.viewed_array_buffer_ptr().is_detached() {
-                    for i in 0..self.array_length {
+                if !is_typed_array_out_of_bounds(&typed_array_record) {
+                    let length = typed_array_length(&typed_array_record);
+                    for i in 0..length {
                         let index_string = cx.alloc_string(&i.to_string());
                         keys.push(index_string.into());
                     }
@@ -417,11 +477,11 @@ macro_rules! create_typed_array_constructor {
         }
 
         impl TypedArray for Handle<$typed_array> {
-            fn array_length(&self) -> usize {
+            fn array_length(&self) -> Option<usize> {
                 self.array_length
             }
 
-            fn byte_length(&self) -> usize {
+            fn byte_length(&self) -> Option<usize> {
                 self.byte_length
             }
 
@@ -453,6 +513,17 @@ macro_rules! create_typed_array_constructor {
                 element_size!()
             }
 
+            fn read_element_ptr(&self, cx: Context, ptr: *const u8) -> Handle<Value> {
+                let element = unsafe { ptr.cast::<$element_type>().read() };
+                $from_element(cx, element)
+            }
+
+            fn write_element_ptr(&self, cx: Context, ptr: *mut u8, value: Handle<Value>) {
+                // Assumes value is guaranteed to not invoke user code
+                let element_value = must!($to_element(cx, value));
+                unsafe { ptr.cast::<$element_type>().write(element_value) }
+            }
+
             #[inline]
             fn read_element_value(
                 &self,
@@ -479,11 +550,13 @@ macro_rules! create_typed_array_constructor {
                 // May allocate, so call before accessing array buffer
                 let element_value = maybe!($to_element(cx, value));
 
-                let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                if array_buffer_ptr.is_detached() {
+                let typed_array_record =
+                    make_typed_array_with_buffer_witness_record(self.as_typed_array());
+                if is_typed_array_out_of_bounds(&typed_array_record) {
                     return ().into();
                 }
 
+                let array_buffer_ptr = self.viewed_array_buffer_ptr();
                 let byte_index = (index as usize) * element_size!() + self.byte_offset;
 
                 $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
@@ -611,7 +684,15 @@ macro_rules! create_typed_array_constructor {
                     /* max_byte_length */ None
                 ));
 
-                $typed_array::new_with_proto(cx, proto, array_buffer, byte_length, 0, length).into()
+                $typed_array::new_with_proto(
+                    cx,
+                    proto,
+                    array_buffer,
+                    Some(byte_length),
+                    0,
+                    Some(length),
+                )
+                .into()
             }
 
             // 23.2.5.1.2 InitializeTypedArrayFromTypedArray
@@ -620,15 +701,18 @@ macro_rules! create_typed_array_constructor {
                 proto: Handle<ObjectValue>,
                 source_typed_array: DynTypedArray,
             ) -> EvalResult<Handle<Value>> {
-                let source_data = source_typed_array.viewed_array_buffer();
-                if source_data.is_detached() {
-                    return type_error(cx, "cannot create typed array from detached array buffer");
+                let mut source_data = source_typed_array.viewed_array_buffer();
+                let source_element_size = source_typed_array.element_size();
+                let source_byte_offset = source_typed_array.byte_offset();
+
+                let target_element_size = element_size!();
+
+                let source_record = make_typed_array_with_buffer_witness_record(source_typed_array);
+                if is_typed_array_out_of_bounds(&source_record) {
+                    return type_error(cx, "typed array is out of bounds");
                 }
 
-                // TODO: Handle SharedArrayBuffers
-
-                let source_byte_offset = source_typed_array.byte_offset();
-                let source_array_length = source_typed_array.array_length();
+                let source_array_length = typed_array_length(&source_record);
                 let byte_length = source_array_length * element_size!();
 
                 if source_typed_array.kind() == TypedArrayKind::$typed_array {
@@ -644,28 +728,21 @@ macro_rules! create_typed_array_constructor {
                         cx,
                         proto,
                         data,
-                        byte_length,
+                        Some(byte_length),
                         0,
-                        source_array_length,
+                        Some(source_array_length),
                     )
                     .into()
                 } else {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
                     let buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                    let data = maybe!(ArrayBufferObject::new(
+                    let mut data = maybe!(ArrayBufferObject::new(
                         cx,
                         buffer_constructor,
                         byte_length,
                         /* max_byte_length */ None
                     ));
-
-                    if source_data.is_detached() {
-                        return type_error(
-                            cx,
-                            "cannot create typed array from detached array buffer",
-                        );
-                    }
 
                     if source_typed_array.content_type() != $content_type {
                         return type_error(
@@ -675,38 +752,26 @@ macro_rules! create_typed_array_constructor {
                     }
 
                     // Copy elements one at a time from source to target array, converting types
-                    let mut source_byte_index = source_byte_offset;
-                    let mut target_byte_index = 0;
+                    unsafe {
+                        let mut source_ptr = source_data.data().as_ptr().add(source_byte_offset);
+                        let mut target_ptr = data.data().as_mut_ptr();
 
-                    for _ in 0..source_array_length {
-                        // Read element from source array
-                        let value = source_typed_array.read_element_value(
-                            cx,
-                            source_data.get_(),
-                            source_byte_index,
-                        );
+                        for _ in 0..source_array_length {
+                            let value = source_typed_array.read_element_ptr(cx, source_ptr);
+                            $typed_array::write_element_ptr(cx, target_ptr, value);
 
-                        // Convert element to target type
-                        let target_element_value = maybe!($to_element(cx, value));
-
-                        // Write element to target array
-                        $typed_array::write_element(
-                            data.get_(),
-                            target_byte_index,
-                            target_element_value,
-                        );
-
-                        source_byte_index += element_size!();
-                        target_byte_index += element_size!();
+                            source_ptr = source_ptr.add(source_element_size);
+                            target_ptr = target_ptr.add(target_element_size);
+                        }
                     }
 
                     $typed_array::new_with_proto(
                         cx,
                         proto,
                         data,
-                        byte_length,
+                        Some(byte_length),
                         0,
-                        source_array_length,
+                        Some(source_array_length),
                     )
                     .into()
                 }
@@ -732,6 +797,8 @@ macro_rules! create_typed_array_constructor {
                     );
                 }
 
+                let buffer_is_fixed_length = array_buffer.is_fixed_length();
+
                 let mut new_length = 0;
                 if !length.is_undefined() {
                     new_length = maybe!(to_index(cx, length));
@@ -742,9 +809,17 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 let byte_length = array_buffer.byte_length();
-                let new_byte_length;
+                let result_new_byte_length;
+                let result_new_array_length;
 
-                if length.is_undefined() {
+                if length.is_undefined() && !buffer_is_fixed_length {
+                    if offset > byte_length {
+                        return range_error(cx, "byte offset larger than array buffer length");
+                    }
+
+                    result_new_byte_length = None;
+                    result_new_array_length = None;
+                } else if length.is_undefined() {
                     if byte_length % element_size!() != 0 {
                         return range_error(
                             cx,
@@ -762,22 +837,28 @@ macro_rules! create_typed_array_constructor {
                         return range_error(cx, "byte offset larger than array buffer length");
                     }
 
-                    new_byte_length = maybe_negative_new_byte_length as usize;
+                    let new_byte_length = maybe_negative_new_byte_length as usize;
+
+                    result_new_byte_length = Some(new_byte_length);
+                    result_new_array_length = Some(new_byte_length / element_size!());
                 } else {
-                    new_byte_length = new_length * element_size!();
+                    let new_byte_length = new_length * element_size!();
 
                     if offset + new_byte_length as usize > byte_length {
                         return range_error(cx, "byte offset larger than array buffer length");
                     }
+
+                    result_new_byte_length = Some(new_byte_length);
+                    result_new_array_length = Some(new_length);
                 };
 
                 $typed_array::new_with_proto(
                     cx,
                     proto,
                     array_buffer,
-                    new_byte_length,
+                    result_new_byte_length,
                     offset,
-                    new_byte_length / element_size!(),
+                    result_new_array_length,
                 )
                 .into()
             }
@@ -849,4 +930,76 @@ macro_rules! create_typed_array_constructor {
             }
         }
     };
+}
+
+// 7.1.21 CanonicalNumericIndexString
+// Determines if the given key is a canonical numeric index string, and validates that it can be
+// used as the index into a typed array with a particular length.
+//
+// - Returns Some(Some(index)) if the key is a canonical numeric index that is an integer and in
+//   range (greater than or equal to 0 and below the given array length).
+// - Returns Some(None) if the key is a canonical numeric index but not an integer or not in range
+// - Returns None if the key is not a canonical numeric index
+pub fn canonical_numeric_index_string(
+    cx: Context,
+    key: Handle<PropertyKey>,
+    typed_array: DynTypedArray,
+) -> Option<Option<usize>> {
+    if key.is_array_index() {
+        // Fast path for array indices
+        let array_index = key.as_array_index() as usize;
+
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return Some(None);
+        }
+        let array_length = typed_array_length(&typed_array_record);
+
+        if array_index < array_length {
+            Some(Some(array_index))
+        } else {
+            Some(None)
+        }
+    } else if key.is_string() {
+        // Otherwise must convert to number then back to string
+        let key_string = key.as_string();
+        let number_value = must!(to_number(cx, key_string.into()));
+
+        // If string representations are equal, must be canonical numeric index
+        let number_string = must!(to_string(cx, number_value));
+        if key_string.eq(&number_string) {
+            if !is_integral_number(number_value.get()) {
+                return Some(None);
+            }
+
+            let number = number_value.as_number();
+            if number.is_sign_negative() {
+                return Some(None);
+            }
+
+            let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+            if is_typed_array_out_of_bounds(&typed_array_record) {
+                return Some(None);
+            }
+            let array_length = typed_array_length(&typed_array_record);
+
+            let number = number as usize;
+            if number >= array_length {
+                return Some(None);
+            }
+
+            Some(Some(number))
+        } else if key_string
+            .get_()
+            .as_flat()
+            .eq(&cx.names.negative_zero.as_string().as_flat())
+        {
+            // The string "-0" is a canonical numeric index but is never valid as an index
+            Some(None)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }

@@ -21,7 +21,13 @@ use crate::{
     maybe, set_uninit,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{
+    intrinsics::Intrinsic,
+    typed_array_prototype::{
+        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+        typed_array_length,
+    },
+};
 
 // 23.1.5 Array Iterator Objects
 extend_object! {
@@ -75,11 +81,13 @@ impl ArrayIterator {
 
     fn get_typed_array_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
         let typed_array = array.as_typed_array();
-        if typed_array.viewed_array_buffer().is_detached() {
-            return type_error(cx, "array buffer is detached");
+
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return type_error(cx, "typed array is out of bounds");
         }
 
-        (typed_array.array_length() as u64).into()
+        (typed_array_length(&typed_array_record) as u64).into()
     }
 
     fn get_array_like_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {

@@ -128,8 +128,7 @@
       "Temporal",
       "ShadowRealm",
       // Unimplemented Stage 4 proposals
-      "arraybuffer-transfer",
-      "resizable-arraybuffer"
+      "arraybuffer-transfer"
     ]
   },
   // Slow tests which are ignored in normal runs but can be run with the --all flag

@@ -1536,7 +1536,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         let mut result = cx.names.empty_string().as_string();
-        let separator = InternedStrings::get_str(cx, ", ");
+        let separator = InternedStrings::get_str(cx, ",");
 
         // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);

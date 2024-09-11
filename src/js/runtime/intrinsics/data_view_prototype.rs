@@ -87,12 +87,15 @@ impl DataViewPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let data_view = maybe!(require_is_data_view(cx, this_value));
+        let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
-        if data_view.viewed_array_buffer_ptr().is_detached() {
-            return type_error(cx, "array buffer is detached");
+        if is_view_out_of_bounds(&data_view_record) {
+            return type_error(cx, "DataView is out of bounds");
         }
 
-        Value::from(data_view.byte_length()).to_handle(cx).into()
+        let byte_length = get_view_byte_length(&data_view_record);
+
+        Value::from(byte_length).to_handle(cx).into()
     }
 
     // 25.3.4.3 get DataView.prototype.byteOffset
@@ -103,9 +106,10 @@ impl DataViewPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let data_view = maybe!(require_is_data_view(cx, this_value));
+        let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
-        if data_view.viewed_array_buffer_ptr().is_detached() {
-            return type_error(cx, "array buffer is detached");
+        if is_view_out_of_bounds(&data_view_record) {
+            return type_error(cx, "DataView is out of bounds");
         }
 
         Value::from(data_view.byte_offset()).to_handle(cx).into()
@@ -418,24 +422,24 @@ fn get_view_value<T>(
     let get_index = maybe!(to_index(cx, get_index_arg));
     let is_little_endian = to_boolean(get_argument(cx, arguments, 1).get());
 
-    // Does not allocate past this point, so safe to keep pointer to array buffer
-    let mut buffer = data_view.viewed_array_buffer_ptr();
-
-    if buffer.is_detached() {
-        return type_error(cx, "array buffer is detached");
+    let data_view_record = make_data_view_with_buffer_witness_record(data_view);
+    if is_view_out_of_bounds(&data_view_record) {
+        return type_error(cx, "DataView is out of bounds");
     }
 
+    let view_size = get_view_byte_length(&data_view_record);
     let view_offset = data_view.byte_offset();
 
     let element_size = std::mem::size_of::<T>();
 
-    if get_index + element_size > data_view.byte_length() {
+    if get_index + element_size > view_size {
         return range_error(cx, "byte offset is too large");
     }
 
     let buffer_index = get_index + view_offset;
 
     // Read element bytes with correct endianness
+    let mut buffer = data_view.viewed_array_buffer_ptr();
     let element_bytes = unsafe { buffer.data().as_ptr().add(buffer_index).cast::<T>().read() };
 
     let element = if cfg!(target_endian = "little") {
@@ -478,17 +482,16 @@ fn set_view_value<T>(
         maybe!(to_number(cx, value_arg))
     };
 
-    // Does not allocate past this point, so safe to keep pointer to array buffer
-    let mut buffer = data_view.viewed_array_buffer_ptr();
-
-    if buffer.is_detached() {
-        return type_error(cx, "array buffer is detached");
+    let data_view_record = make_data_view_with_buffer_witness_record(data_view);
+    if is_view_out_of_bounds(&data_view_record) {
+        return type_error(cx, "DataView is out of bounds");
     }
 
+    let view_size = get_view_byte_length(&data_view_record);
     let view_offset = data_view.byte_offset();
 
     let element_size = std::mem::size_of::<T>();
-    if get_index + element_size > data_view.byte_length() {
+    if get_index + element_size > view_size {
         return range_error(cx, "byte offset is too large");
     }
 
@@ -511,6 +514,7 @@ fn set_view_value<T>(
 
     // Write bytes back into buffer
     let buffer_index = get_index + view_offset;
+    let mut buffer = data_view.viewed_array_buffer_ptr();
 
     unsafe {
         let element_ptr = buffer.data().as_mut_ptr().add(buffer_index).cast::<T>();
@@ -518,4 +522,56 @@ fn set_view_value<T>(
     }
 
     cx.undefined().into()
+}
+
+pub struct DataViewWithBufferWitnessRecord {
+    pub data_view: Handle<DataViewObject>,
+    pub cached_buffer_byte_length: Option<usize>,
+}
+
+// 25.3.1.2 MakeDataViewWithBufferWitnessRecord
+fn make_data_view_with_buffer_witness_record(
+    data_view: Handle<DataViewObject>,
+) -> DataViewWithBufferWitnessRecord {
+    let array_buffer = data_view.viewed_array_buffer_ptr();
+
+    let byte_length = if array_buffer.is_detached() {
+        None
+    } else {
+        Some(array_buffer.byte_length())
+    };
+
+    DataViewWithBufferWitnessRecord { data_view, cached_buffer_byte_length: byte_length }
+}
+
+// 25.3.1.3 GetViewByteLength
+fn get_view_byte_length(data_view_record: &DataViewWithBufferWitnessRecord) -> usize {
+    let data_view = data_view_record.data_view;
+
+    if let Some(byte_length) = data_view.byte_length() {
+        byte_length
+    } else {
+        let buffer_byte_length = data_view_record.cached_buffer_byte_length.unwrap();
+        buffer_byte_length - data_view.byte_offset()
+    }
+}
+
+// 25.3.1.4 IsViewOutOfBounds
+fn is_view_out_of_bounds(data_view_record: &DataViewWithBufferWitnessRecord) -> bool {
+    let data_view = data_view_record.data_view;
+    let buffer_byte_length = data_view_record.cached_buffer_byte_length;
+
+    if buffer_byte_length.is_none() {
+        return true;
+    }
+    let buffer_byte_length = buffer_byte_length.unwrap();
+
+    let byte_offset_start = data_view.byte_offset();
+
+    let byte_offset_end = match data_view.byte_length() {
+        None => buffer_byte_length,
+        Some(byte_length) => byte_offset_start + byte_length,
+    };
+
+    byte_offset_start > buffer_byte_length || byte_offset_end > buffer_byte_length
 }

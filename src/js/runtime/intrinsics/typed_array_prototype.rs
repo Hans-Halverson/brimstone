@@ -353,7 +353,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i));
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -639,7 +639,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i));
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));

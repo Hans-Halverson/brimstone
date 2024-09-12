@@ -41,12 +41,13 @@ extend_object! {
 type DataArray = BsArray<u8>;
 
 impl ArrayBufferObject {
-    // 25.1.2.1 AllocateArrayBuffer
+    // 25.1.3.1 AllocateArrayBuffer
     pub fn new(
         cx: Context,
         constructor: Handle<ObjectValue>,
         byte_length: usize,
         max_byte_length: Option<usize>,
+        data: Option<Handle<DataArray>>,
     ) -> EvalResult<Handle<ArrayBufferObject>> {
         if let Some(max_byte_length) = max_byte_length {
             if byte_length > max_byte_length {
@@ -83,8 +84,11 @@ impl ArrayBufferObject {
         let mut object = object.to_handle();
 
         // Initialize data block to all zeros
-        object.data =
-            Some(BsArray::<u8>::new(cx, ObjectKind::ArrayBufferDataArray, byte_length, 0));
+        object.data = if let Some(data) = data {
+            Some(data.get_())
+        } else {
+            Some(BsArray::<u8>::new(cx, ObjectKind::ArrayBufferDataArray, byte_length, 0))
+        };
 
         object.into()
     }
@@ -109,6 +113,10 @@ impl ArrayBufferObject {
         self.data.as_mut().unwrap().as_mut_slice()
     }
 
+    pub fn data_opt(&self) -> Option<Handle<DataArray>> {
+        self.data.map(|data| data.to_handle())
+    }
+
     pub fn set_data(&mut self, data: HeapPtr<DataArray>) {
         self.data = Some(data);
     }
@@ -117,7 +125,7 @@ impl ArrayBufferObject {
         self.data.is_none()
     }
 
-    // 25.1.2.3 DetachArrayBuffer
+    // 25.1.3.5 DetachArrayBuffer
     #[allow(dead_code)]
     pub fn detach(&mut self) {
         self.data = None;
@@ -177,7 +185,14 @@ impl ArrayBufferConstructor {
         let options_arg = get_argument(cx, arguments, 1);
         let max_byte_length = maybe!(get_array_buffer_max_byte_length_option(cx, options_arg));
 
-        maybe!(ArrayBufferObject::new(cx, new_target, byte_length, max_byte_length)).into()
+        maybe!(ArrayBufferObject::new(
+            cx,
+            new_target,
+            byte_length,
+            max_byte_length,
+            /* data */ None
+        ))
+        .into()
     }
 
     // 25.1.4.1 ArrayBuffer.isView
@@ -199,7 +214,48 @@ impl ArrayBufferConstructor {
     }
 }
 
-// 25.1.2.4 CloneArrayBuffer
+// 25.1.3.3 ArrayBufferCopyAndDetach
+pub fn array_buffer_copy_and_detach(
+    cx: Context,
+    mut array_buffer: Handle<ArrayBufferObject>,
+    new_length: Handle<Value>,
+    to_fixed: bool,
+) -> EvalResult<Handle<ArrayBufferObject>> {
+    let new_byte_length = if new_length.is_undefined() {
+        array_buffer.byte_length()
+    } else {
+        maybe!(to_index(cx, new_length))
+    };
+
+    if array_buffer.is_detached() {
+        return type_error(cx, "array buffer is detached");
+    }
+
+    // Can only remain auto-resizable if ArrayBuffer was already resizable and we are not forced
+    // to fix the length.
+    let new_max_byte_length = if !to_fixed && !array_buffer.is_fixed_length() {
+        array_buffer.max_byte_length()
+    } else {
+        None
+    };
+
+    // Create a new ArrayBuffer with the new length and a direct reference to the old buffer's data
+    let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
+    let new_buffer = maybe!(ArrayBufferObject::new(
+        cx,
+        array_buffer_constructor,
+        new_byte_length,
+        new_max_byte_length,
+        array_buffer.data_opt(),
+    ));
+
+    // Finally detach the original buffer
+    array_buffer.detach();
+
+    new_buffer.into()
+}
+
+// 25.1.3.6 CloneArrayBuffer
 pub fn clone_array_buffer(
     cx: Context,
     mut source_buffer: Handle<ArrayBufferObject>,
@@ -211,7 +267,8 @@ pub fn clone_array_buffer(
         cx,
         array_buffer_constructor,
         source_length,
-        /* max_byte_length */ None
+        /* max_byte_length */ None,
+        /* data */ None,
     ));
 
     // Copy a portion of the source buffer after the given offset to the target buffer

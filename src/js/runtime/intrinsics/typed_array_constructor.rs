@@ -699,7 +699,8 @@ macro_rules! create_typed_array_constructor {
                     cx,
                     array_buffer_constructor,
                     byte_length,
-                    /* max_byte_length */ None
+                    /* max_byte_length */ None,
+                    /* data */ None,
                 ));
 
                 $typed_array::new_with_proto(
@@ -759,7 +760,8 @@ macro_rules! create_typed_array_constructor {
                         cx,
                         buffer_constructor,
                         byte_length,
-                        /* max_byte_length */ None
+                        /* max_byte_length */ None,
+                        /* data */ None,
                     ));
 
                     if source_typed_array.content_type() != $content_type {

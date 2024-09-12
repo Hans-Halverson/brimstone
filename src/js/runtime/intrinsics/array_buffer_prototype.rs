@@ -14,7 +14,10 @@ use crate::{
     maybe,
 };
 
-use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
+use super::{
+    array_buffer_constructor::{array_buffer_copy_and_detach, ArrayBufferObject},
+    intrinsics::Intrinsic,
+};
 
 pub struct ArrayBufferPrototype;
 
@@ -26,10 +29,19 @@ impl ArrayBufferPrototype {
 
         // Constructor property is added once ArrayBufferConstructor has been created
         object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
+        object.intrinsic_getter(cx, cx.names.detached(), Self::get_detached, realm);
         object.intrinsic_getter(cx, cx.names.max_byte_length(), Self::get_max_byte_length, realm);
         object.intrinsic_func(cx, cx.names.resize(), Self::resize, 1, realm);
         object.intrinsic_getter(cx, cx.names.resizable(), Self::get_resizable, realm);
         object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
+        object.intrinsic_func(cx, cx.names.transfer(), Self::transfer, 0, realm);
+        object.intrinsic_func(
+            cx,
+            cx.names.transfer_to_fixed_length(),
+            Self::transfer_to_fixed_length,
+            0,
+            realm,
+        );
 
         // 25.1.6.10 ArrayBuffer.prototype [ %Symbol.toStringTag% ]
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -53,6 +65,17 @@ impl ArrayBufferPrototype {
 
         // Detached array buffers have byte length set to 0
         Value::from(array_buffer.byte_length()).to_handle(cx).into()
+    }
+
+    // 25.1.6.3 get ArrayBuffer.prototype.detached
+    pub fn get_detached(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "detached"));
+        cx.bool(array_buffer.is_detached()).into()
     }
 
     // 25.1.6.4 get ArrayBuffer.prototype.maxByteLength
@@ -222,6 +245,46 @@ impl ArrayBufferPrototype {
 
             std::ptr::copy_nonoverlapping(source, target, new_length as usize)
         }
+
+        new_array_buffer.into()
+    }
+
+    // 25.1.6.8 ArrayBuffer.prototype.transfer
+    pub fn transfer(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "transfer"));
+        let new_length = get_argument(cx, arguments, 0);
+
+        let new_array_buffer = maybe!(array_buffer_copy_and_detach(
+            cx,
+            array_buffer,
+            new_length,
+            /* to_fixed */ false
+        ));
+
+        new_array_buffer.into()
+    }
+
+    // 25.1.6.9 ArrayBuffer.prototype.transferToFixedLength
+    pub fn transfer_to_fixed_length(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let array_buffer = maybe!(require_array_buffer(cx, this_value, "transferToFixedLength"));
+        let new_length = get_argument(cx, arguments, 0);
+
+        let new_array_buffer = maybe!(array_buffer_copy_and_detach(
+            cx,
+            array_buffer,
+            new_length,
+            /* to_fixed */ true
+        ));
 
         new_array_buffer.into()
     }

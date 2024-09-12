@@ -333,20 +333,26 @@ macro_rules! create_typed_array_constructor {
                         //
                         // The only additional case we need to check is if the ArrayBuffer was
                         // detached by the call to `$to_element`.
-                        if array_buffer_ptr.is_fixed_length() && self.array_length().is_some() {
+                        let index = if array_buffer_ptr.is_fixed_length()
+                            && self.array_length().is_some()
+                        {
                             if array_buffer_ptr.is_detached() {
                                 return true.into();
                             }
+
+                            index.unwrap()
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            let index_result =
+                            let new_index =
                                 canonical_numeric_index_string(cx, key, self.as_typed_array());
-                            if !matches!(index_result, Some(Some(_))) {
+                            if !matches!(new_index, Some(Some(_))) {
                                 return true.into();
                             }
-                        }
 
-                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
+                            new_index.unwrap().unwrap()
+                        };
+
+                        let byte_index = index * element_size!() + self.byte_offset;
 
                         $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
@@ -411,20 +417,26 @@ macro_rules! create_typed_array_constructor {
                         //
                         // The only additional case we need to check is if the ArrayBuffer was
                         // detached by the call to `$to_element`.
-                        if array_buffer_ptr.is_fixed_length() && self.array_length().is_some() {
+                        let index = if array_buffer_ptr.is_fixed_length()
+                            && self.array_length().is_some()
+                        {
                             if array_buffer_ptr.is_detached() || index.is_none() {
                                 return true.into();
                             }
+
+                            index.unwrap()
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            let index_result =
+                            let new_index =
                                 canonical_numeric_index_string(cx, key, self.as_typed_array());
-                            if !matches!(index_result, Some(Some(_))) {
+                            if !matches!(new_index, Some(Some(_))) {
                                 return true.into();
                             }
-                        }
 
-                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
+                            new_index.unwrap().unwrap()
+                        };
+
+                        let byte_index = index * element_size!() + self.byte_offset;
 
                         $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 

@@ -130,6 +130,11 @@ impl ArrayIteratorPrototype {
         let mut array_iterator = maybe!(ArrayIterator::cast_from_value(cx, this_value));
         let array = array_iterator.array();
 
+        // Early return if iterator is already done, before potential failure during `get_length`
+        if array_iterator.is_done {
+            return create_iter_result_object(cx, cx.undefined(), true).into();
+        }
+
         // Dispatches based on whether this is array or typed array
         let length = maybe!((array_iterator.get_length)(cx, array));
 

@@ -1596,18 +1596,9 @@ impl TypedArrayPrototype {
 
         // Convert from relative to actual index, making sure index is in range
         let actual_index = if relative_index >= 0.0 {
-            if relative_index >= length as f64 {
-                return range_error(cx, "TypedArray.prototype.with index is out of range");
-            }
-
-            relative_index as u64
+            relative_index
         } else {
-            let actual_index = relative_index + length as f64;
-            if actual_index < 0.0 {
-                return range_error(cx, "TypedArray.prototype.with index is out of range");
-            }
-
-            actual_index as u64
+            relative_index + length as f64
         };
 
         // Convert new value to correct typed
@@ -1616,6 +1607,28 @@ impl TypedArrayPrototype {
             ContentType::BigInt => maybe!(to_bigint(cx, new_value)).into(),
             ContentType::Number => maybe!(to_number(cx, new_value)),
         };
+
+        // User code may have been invoked during conversions before this point, which may resize
+        // the underlying ArrayBuffer. Now we can check bounds.
+        let is_valid_integer_index = {
+            // Refetch typed array length in case it has changed, but only use the updated length
+            // for bounds checks.
+            let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+
+            if actual_index.is_infinite() || is_typed_array_out_of_bounds(&typed_array_record) {
+                false
+            } else {
+                let actual_index = actual_index as i64;
+                let new_length = typed_array_length(&typed_array_record);
+
+                (actual_index >= 0) && ((actual_index as usize) < new_length)
+            }
+        };
+
+        if !is_valid_integer_index {
+            return range_error(cx, "TypedArray.prototype.with index is out of range");
+        }
+        let actual_index = actual_index as u64;
 
         let array = maybe!(typed_array_create_same_type(cx, typed_array, length as u64));
 

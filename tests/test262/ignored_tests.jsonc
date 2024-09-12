@@ -126,9 +126,7 @@
       "Math.sumPrecise",
       "RegExp.escape",
       "Temporal",
-      "ShadowRealm",
-      // Unimplemented Stage 4 proposals
-      "arraybuffer-transfer"
+      "ShadowRealm"
     ]
   },
   // Slow tests which are ignored in normal runs but can be run with the --all flag

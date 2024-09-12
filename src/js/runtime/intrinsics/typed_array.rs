@@ -31,7 +31,7 @@ use crate::{
         value::{BigIntValue, Value},
         Context, Handle, HeapPtr,
     },
-    maybe, must, set_uninit,
+    maybe, set_uninit,
 };
 
 use super::{
@@ -72,10 +72,6 @@ pub trait TypedArray {
 
     fn element_size(&self) -> usize;
 
-    fn read_element_ptr(&self, cx: Context, ptr: *const u8) -> Handle<Value>;
-
-    fn write_element_ptr(&self, cx: Context, ptr: *mut u8, value: Handle<Value>);
-
     fn read_element_value(
         &self,
         cx: Context,
@@ -83,7 +79,17 @@ pub trait TypedArray {
         byte_index: usize,
     ) -> Handle<Value>;
 
-    /// Write the value at a particular index. Do not check that the index is in bounds.
+    /// Write the value at a particular byte index. Only valid to use on a value that will not
+    /// invoke user code when converted to an array element (such as values read directly from
+    /// another array).
+    fn write_element_value(
+        &mut self,
+        cx: Context,
+        byte_index: usize,
+        value: Handle<Value>,
+    ) -> EvalResult<()>;
+
+    /// Write the value at a particular array index. Do not check that the index is in bounds.
     fn write_element_value_unchecked(
         &mut self,
         cx: Context,

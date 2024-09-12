@@ -1090,7 +1090,7 @@ impl TypedArrayPrototype {
     // 23.2.3.26.1 SetTypedArrayFromTypedArray
     pub fn set_typed_array_from_typed_array(
         cx: Context,
-        target: DynTypedArray,
+        mut target: DynTypedArray,
         target_offset: f64,
         source: DynTypedArray,
     ) -> EvalResult<()> {
@@ -1144,14 +1144,20 @@ impl TypedArrayPrototype {
             let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
             let limit_ptr = target_buffer.data().as_mut_ptr().add(limit);
 
+            let mut from_byte_index = source_byte_index;
+            let mut to_byte_index = target_byte_index;
+
             if source.kind() != target.kind() {
                 // If types are different then can access bytes directly but must convert
-                while to_ptr < limit_ptr {
-                    let value = source.read_element_ptr(cx, from_ptr);
-                    target.write_element_ptr(cx, to_ptr, value);
+                while to_byte_index < limit {
+                    // Convert between types. May allocate but does not invoke user code.
+                    let element_value =
+                        source.read_element_value(cx, source_buffer.get_(), from_byte_index);
 
-                    from_ptr = from_ptr.add(source_element_size);
-                    to_ptr = to_ptr.add(target_element_size);
+                    maybe!(target.write_element_value(cx, to_byte_index, element_value));
+
+                    from_byte_index += source_element_size;
+                    to_byte_index += target_element_size;
                 }
             } else {
                 // Otherwse copy bytes directly instead of performing any conversions

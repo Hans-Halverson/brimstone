@@ -252,13 +252,6 @@ macro_rules! create_typed_array_constructor {
                     element_ptr.write(value)
                 }
             }
-
-            #[inline]
-            fn write_element_ptr(cx: Context, ptr: *mut u8, value: Handle<Value>) {
-                // Assumes value is guaranteed to not invoke user code
-                let element_value = must!($to_element(cx, value));
-                unsafe { ptr.cast::<$element_type>().write(element_value) }
-            }
         }
 
         #[wrap_ordinary_object]
@@ -513,17 +506,6 @@ macro_rules! create_typed_array_constructor {
                 element_size!()
             }
 
-            fn read_element_ptr(&self, cx: Context, ptr: *const u8) -> Handle<Value> {
-                let element = unsafe { ptr.cast::<$element_type>().read() };
-                $from_element(cx, element)
-            }
-
-            fn write_element_ptr(&self, cx: Context, ptr: *mut u8, value: Handle<Value>) {
-                // Assumes value is guaranteed to not invoke user code
-                let element_value = must!($to_element(cx, value));
-                unsafe { ptr.cast::<$element_type>().write(element_value) }
-            }
-
             #[inline]
             fn read_element_value(
                 &self,
@@ -541,10 +523,34 @@ macro_rules! create_typed_array_constructor {
             }
 
             #[inline]
+            fn write_element_value(
+                &mut self,
+                cx: Context,
+                byte_index: usize,
+                value: Handle<Value>,
+            ) -> EvalResult<()> {
+                // May allocate, so call before accessing array buffer
+                let element_value = maybe!($to_element(cx, value));
+
+                unsafe {
+                    let byte_ptr = self
+                        .viewed_array_buffer_ptr()
+                        .data()
+                        .as_mut_ptr()
+                        .add(byte_index);
+                    let element_ptr = byte_ptr.cast::<$element_type>();
+
+                    element_ptr.write(element_value)
+                }
+
+                ().into()
+            }
+
+            #[inline]
             fn write_element_value_unchecked(
                 &mut self,
                 cx: Context,
-                index: u64,
+                array_index: u64,
                 value: Handle<Value>,
             ) -> EvalResult<()> {
                 // May allocate, so call before accessing array buffer
@@ -557,7 +563,7 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                let byte_index = (index as usize) * element_size!() + self.byte_offset;
+                let byte_index = (array_index as usize) * element_size!() + self.byte_offset;
 
                 $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
@@ -701,7 +707,7 @@ macro_rules! create_typed_array_constructor {
                 proto: Handle<ObjectValue>,
                 source_typed_array: DynTypedArray,
             ) -> EvalResult<Handle<Value>> {
-                let mut source_data = source_typed_array.viewed_array_buffer();
+                let source_data = source_typed_array.viewed_array_buffer();
                 let source_element_size = source_typed_array.element_size();
                 let source_byte_offset = source_typed_array.byte_offset();
 
@@ -737,7 +743,7 @@ macro_rules! create_typed_array_constructor {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
                     let buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                    let mut data = maybe!(ArrayBufferObject::new(
+                    let data = maybe!(ArrayBufferObject::new(
                         cx,
                         buffer_constructor,
                         byte_length,
@@ -752,17 +758,24 @@ macro_rules! create_typed_array_constructor {
                     }
 
                     // Copy elements one at a time from source to target array, converting types
-                    unsafe {
-                        let mut source_ptr = source_data.data().as_ptr().add(source_byte_offset);
-                        let mut target_ptr = data.data().as_mut_ptr();
+                    let mut source_byte_index = source_byte_offset;
+                    let mut target_byte_index = 0;
 
-                        for _ in 0..source_array_length {
-                            let value = source_typed_array.read_element_ptr(cx, source_ptr);
-                            $typed_array::write_element_ptr(cx, target_ptr, value);
+                    for _ in 0..source_array_length {
+                        let value = source_typed_array.read_element_value(
+                            cx,
+                            source_data.get_(),
+                            source_byte_index,
+                        );
 
-                            source_ptr = source_ptr.add(source_element_size);
-                            target_ptr = target_ptr.add(target_element_size);
-                        }
+                        // Convert element to target type. May allocate but may does not invoke
+                        // user code.
+                        let element_value = maybe!($to_element(cx, value));
+
+                        $typed_array::write_element(data.get_(), target_byte_index, element_value);
+
+                        source_byte_index += source_element_size;
+                        target_byte_index += target_element_size;
                     }
 
                     $typed_array::new_with_proto(

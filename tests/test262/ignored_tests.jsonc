@@ -221,7 +221,8 @@
       "built-ins/encodeURI/S15.1.3.3_A1.3_T1.js",
       "built-ins/encodeURI/S15.1.3.3_A2.2_T1.js",
       "built-ins/encodeURIComponent/S15.1.3.4_A1.3_T1.js",
-      "built-ins/encodeURIComponent/S15.1.3.4_A2.2_T1.js"
+      "built-ins/encodeURIComponent/S15.1.3.4_A2.2_T1.js",
+      "staging/ArrayBuffer/resizable/set-with-resizable-source.js"
     ]
   }
 }

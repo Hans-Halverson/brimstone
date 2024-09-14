@@ -263,14 +263,13 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_get_own_property(cx, self.object(), key).into(),
-                    Some(index) => {
-                        if index.is_none() {
-                            return None.into();
-                        }
-
+                    CanonicalIndexType::NotAnIndex => {
+                        ordinary_get_own_property(cx, self.object(), key).into()
+                    }
+                    CanonicalIndexType::Invalid => None.into(),
+                    CanonicalIndexType::Valid(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
+                        let byte_index = index * element_size!() + self.byte_offset;
 
                         let value = self.read_element_value(cx, array_buffer_ptr, byte_index);
 
@@ -284,11 +283,9 @@ macro_rules! create_typed_array_constructor {
             // 10.4.5.2 [[HasProperty]]
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_has_property(cx, self.object(), key),
-                    Some(index) => {
-                        let is_valid_index = index.is_some();
-                        is_valid_index.into()
-                    }
+                    CanonicalIndexType::NotAnIndex => ordinary_has_property(cx, self.object(), key),
+                    CanonicalIndexType::Invalid => false.into(),
+                    CanonicalIndexType::Valid(_) => true.into(),
                 }
             }
 
@@ -300,12 +297,11 @@ macro_rules! create_typed_array_constructor {
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_define_own_property(cx, self.object(), key, desc),
-                    Some(index) => {
-                        if index.is_none() {
-                            return false.into();
-                        }
-
+                    CanonicalIndexType::NotAnIndex => {
+                        ordinary_define_own_property(cx, self.object(), key, desc)
+                    }
+                    CanonicalIndexType::Invalid => false.into(),
+                    CanonicalIndexType::Valid(index) => {
                         if let Some(false) = desc.is_configurable {
                             return false.into();
                         } else if let Some(false) = desc.is_enumerable {
@@ -340,16 +336,13 @@ macro_rules! create_typed_array_constructor {
                                 return true.into();
                             }
 
-                            index.unwrap()
+                            index
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            let new_index =
-                                canonical_numeric_index_string(cx, key, self.as_typed_array());
-                            if !matches!(new_index, Some(Some(_))) {
-                                return true.into();
+                            match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                                CanonicalIndexType::Valid(index) => index,
+                                _ => return true.into(),
                             }
-
-                            new_index.unwrap().unwrap()
                         };
 
                         let byte_index = index * element_size!() + self.byte_offset;
@@ -369,14 +362,13 @@ macro_rules! create_typed_array_constructor {
                 receiver: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_get(cx, self.object(), key, receiver),
-                    Some(index) => {
-                        if index.is_none() {
-                            return cx.undefined().into();
-                        }
-
+                    CanonicalIndexType::NotAnIndex => {
+                        ordinary_get(cx, self.object(), key, receiver)
+                    }
+                    CanonicalIndexType::Invalid => cx.undefined().into(),
+                    CanonicalIndexType::Valid(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
-                        let byte_index = index.unwrap() * element_size!() + self.byte_offset;
+                        let byte_index = index * element_size!() + self.byte_offset;
 
                         self.read_element_value(cx, array_buffer_ptr, byte_index)
                             .into()
@@ -393,13 +385,15 @@ macro_rules! create_typed_array_constructor {
                 receiver: Handle<Value>,
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_set(cx, self.object(), key, value, receiver),
-                    Some(index) => {
+                    CanonicalIndexType::NotAnIndex => {
+                        ordinary_set(cx, self.object(), key, value, receiver)
+                    }
+                    result @ (CanonicalIndexType::Invalid | CanonicalIndexType::Valid(_)) => {
                         // Check if this is not the same object as the specified receiver
                         if !receiver.is_object()
                             || !receiver.as_object().get_().ptr_eq(&self.object().get_())
                         {
-                            if index.is_some() {
+                            if matches!(result, CanonicalIndexType::Valid(_)) {
                                 return ordinary_set(cx, self.object(), key, value, receiver);
                             } else {
                                 return true.into();
@@ -420,20 +414,20 @@ macro_rules! create_typed_array_constructor {
                         let index = if array_buffer_ptr.is_fixed_length()
                             && self.array_length().is_some()
                         {
-                            if array_buffer_ptr.is_detached() || index.is_none() {
+                            if array_buffer_ptr.is_detached() {
                                 return true.into();
                             }
 
-                            index.unwrap()
+                            match result {
+                                CanonicalIndexType::Valid(index) => index,
+                                _ => return true.into(),
+                            }
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            let new_index =
-                                canonical_numeric_index_string(cx, key, self.as_typed_array());
-                            if !matches!(new_index, Some(Some(_))) {
-                                return true.into();
+                            match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                                CanonicalIndexType::Valid(index) => index,
+                                _ => return true.into(),
                             }
-
-                            new_index.unwrap().unwrap()
                         };
 
                         let byte_index = index * element_size!() + self.byte_offset;
@@ -448,11 +442,9 @@ macro_rules! create_typed_array_constructor {
             // 10.4.5.6 [[Delete]]
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    None => ordinary_delete(cx, self.object(), key),
-                    Some(index) => {
-                        let is_invalid_index = index.is_none();
-                        is_invalid_index.into()
-                    }
+                    CanonicalIndexType::NotAnIndex => ordinary_delete(cx, self.object(), key),
+                    CanonicalIndexType::Invalid => true.into(),
+                    CanonicalIndexType::Valid(_) => false.into(),
                 }
             }
 
@@ -959,33 +951,38 @@ macro_rules! create_typed_array_constructor {
     };
 }
 
-// 7.1.21 CanonicalNumericIndexString
-// Determines if the given key is a canonical numeric index string, and validates that it can be
-// used as the index into a typed array with a particular length.
-//
-// - Returns Some(Some(index)) if the key is a canonical numeric index that is an integer and in
-//   range (greater than or equal to 0 and below the given array length).
-// - Returns Some(None) if the key is a canonical numeric index but not an integer or not in range
-// - Returns None if the key is not a canonical numeric index
+pub enum CanonicalIndexType {
+    /// Key is not a canonical numeric index
+    NotAnIndex,
+    /// Key is a canonical numeric index but not valid for some reason.
+    Invalid,
+    /// Key is a valid canonical numeric index, which is an int
+    Valid(usize),
+}
+
+/// 7.1.21 CanonicalNumericIndexString
+///
+/// Determines if the given key is a canonical numeric index string, and validates that it can be
+/// used as the index into a typed array with a particular length.
 pub fn canonical_numeric_index_string(
     cx: Context,
     key: Handle<PropertyKey>,
     typed_array: DynTypedArray,
-) -> Option<Option<usize>> {
+) -> CanonicalIndexType {
     if key.is_array_index() {
         // Fast path for array indices
         let array_index = key.as_array_index() as usize;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Some(None);
+            return CanonicalIndexType::Invalid;
         }
         let array_length = typed_array_length(&typed_array_record);
 
         if array_index < array_length {
-            Some(Some(array_index))
+            CanonicalIndexType::Valid(array_index)
         } else {
-            Some(None)
+            CanonicalIndexType::Invalid
         }
     } else if key.is_string() {
         // Otherwise must convert to number then back to string
@@ -996,37 +993,37 @@ pub fn canonical_numeric_index_string(
         let number_string = must!(to_string(cx, number_value));
         if key_string.eq(&number_string) {
             if !is_integral_number(number_value.get()) {
-                return Some(None);
+                return CanonicalIndexType::Invalid;
             }
 
             let number = number_value.as_number();
             if number.is_sign_negative() {
-                return Some(None);
+                return CanonicalIndexType::Invalid;
             }
 
             let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
             if is_typed_array_out_of_bounds(&typed_array_record) {
-                return Some(None);
+                return CanonicalIndexType::Invalid;
             }
             let array_length = typed_array_length(&typed_array_record);
 
             let number = number as usize;
             if number >= array_length {
-                return Some(None);
+                return CanonicalIndexType::Invalid;
             }
 
-            Some(Some(number))
+            CanonicalIndexType::Valid(number)
         } else if key_string
             .get_()
             .as_flat()
             .eq(&cx.names.negative_zero.as_string().as_flat())
         {
             // The string "-0" is a canonical numeric index but is never valid as an index
-            Some(None)
+            CanonicalIndexType::Invalid
         } else {
-            None
+            CanonicalIndexType::NotAnIndex
         }
     } else {
-        None
+        CanonicalIndexType::NotAnIndex
     }
 }

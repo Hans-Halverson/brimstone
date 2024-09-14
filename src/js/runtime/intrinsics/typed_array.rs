@@ -37,7 +37,7 @@ use crate::{
 use super::{
     array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
     intrinsics::Intrinsic,
-    typed_array_constructor::canonical_numeric_index_string,
+    typed_array_constructor::{canonical_numeric_index_string, CanonicalIndexType},
     typed_array_prototype::{
         is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
         typed_array_length,

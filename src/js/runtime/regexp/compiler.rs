@@ -169,11 +169,14 @@ impl CompiledRegExpBuilder {
         ClearCaptureInstruction::write(self.current_block_buf(), capture_group_index)
     }
 
-    fn emit_progress_instruction(&mut self) {
+    fn new_progress_point(&mut self) -> u32 {
         let index = self.num_progress_points;
         self.num_progress_points += 1;
+        index
+    }
 
-        ProgressInstruction::write(self.current_block_buf(), index);
+    fn emit_progress_instruction(&mut self, progress_index: u32) {
+        ProgressInstruction::write(self.current_block_buf(), progress_index);
     }
 
     fn emit_loop_instruction(
@@ -667,6 +670,8 @@ impl CompiledRegExpBuilder {
 
             // Can inline a small number of optional repititions otherwise use a loop
             if num_remaining_repititions <= MAX_INLINED_REPITITIONS {
+                let mut progress_index = None;
+
                 // Emit term blocks max - min times, each is optional and is preceded by a branch to
                 // the join block.
                 for i in quantifier.min..max {
@@ -676,6 +681,17 @@ impl CompiledRegExpBuilder {
                     let term_block_id = self.new_block();
                     self.set_current_block(term_block_id);
                     let info = self.emit_term(&quantifier.term);
+
+                    // Each optional iteration of quantifier must consume at least one character.
+                    // We can ensure this by emitting a progress instruction which checks that
+                    // progress has been made since the last execution of the progress instruction.
+                    if !info.always_consumes {
+                        // Lazily create the shared progress point, shared between the inlined
+                        // term blocks.
+                        let progress_index =
+                            progress_index.get_or_insert_with(|| self.new_progress_point());
+                        self.emit_progress_instruction(*progress_index);
+                    }
 
                     // Emit branch between term block and join block in predecessor
                     self.in_block(pred_block_id, |this| {
@@ -719,6 +735,14 @@ impl CompiledRegExpBuilder {
                     );
 
                     let info = this.emit_term(&quantifier.term);
+
+                    // Each optional iteration of quantifier must consume at least one character.
+                    // We can ensure this by emitting a progress instruction which checks that
+                    // progress has been made since the last execution of the progress instruction.
+                    if !info.always_consumes {
+                        let progress_index = this.new_progress_point();
+                        this.emit_progress_instruction(progress_index);
+                    }
 
                     this.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
 
@@ -775,21 +799,16 @@ impl CompiledRegExpBuilder {
 
             quantifier_info.captures = info.captures;
 
-            // Term block loops back to itself to allow any number of repititions. If the term block
-            // always consumes then we can directly loop back to the term block
-            if info.always_consumes {
-                self.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
-            } else {
-                // When term block does not always consume the back edge first goes through a
-                // progress block that ensures that progress has been made since the last entry to
-                // the progress block. This prevents infinite epsilon loops.
-                let progress_block_id = self.new_block();
-                self.emit_quantifier_branch(quantifier, progress_block_id, join_block_id);
-
-                self.set_current_block(progress_block_id);
-                self.emit_progress_instruction();
-                self.emit_jump_instruction(term_block_id);
+            // Each optional iteration of quantifier must consume at least one character. We can
+            // ensure this by emitting a progress instruction which checks that progress has been
+            // made since the last execution of the progress instruction.
+            if !info.always_consumes {
+                let progress_index = self.new_progress_point();
+                self.emit_progress_instruction(progress_index);
             }
+
+            // Term block optionally loops back to itself
+            self.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
 
             // Quantifier ends at start of join block
             self.set_current_block(join_block_id);

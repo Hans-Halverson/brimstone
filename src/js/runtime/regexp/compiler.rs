@@ -630,7 +630,7 @@ impl CompiledRegExpBuilder {
             // Each repitition must consume at least one character, so we know this quantifier will
             // fail to match.
             self.emit_fail_instruction();
-        } else {
+        } else if quantifier.min != 0 {
             // Jump to a new loop block for the minimum repititions
             let loop_block_id = self.new_block();
             let loop_end_block_id = self.new_block();

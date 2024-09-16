@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["hanshalverson <hansghalverson@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "bs"
+path = "src/main.rs"
+
 [dependencies]
 bitflags = "2.1.0"
 clap = { version = "4.0.29", features = ["derive"] }

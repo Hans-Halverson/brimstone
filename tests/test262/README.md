@@ -2,7 +2,7 @@
 
 Brimstone test runner for the official test262 test suite.
 
-# Installation
+## Installation
 
 The test runner requires the https://github.com/tc39/test262 repo. For consistency the test runner uses the test262 repo pinned to a specific commit. The current commit hash is:
 
@@ -14,7 +14,7 @@ Install the test262 repo at the pinned commit by running the following script:
 ./install_test262.sh
 ```
 
-# Running the tests
+## Running the tests
 
 The test runner is run with `cargo run` in this directory. Run `cargo run -- --help` to see the full set of options for the test runner.
 
@@ -39,7 +39,7 @@ Other important options include:
 - `--ignore-unimplemented` ignore tests for features that are not yet implemented
 - `-t, --threads` specify the number of threads to use for running tests, defaults to 8
 
-# Ignored Tests
+## Ignored Tests
 
 The file `ignored_tests.jsonc` contains sets of test which should be ignored by the test runner. These sets of tests are specified by regexp patterns and by feature.
 

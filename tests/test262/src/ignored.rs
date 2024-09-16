@@ -9,9 +9,19 @@ use crate::{
 };
 
 pub struct IgnoredIndex {
-    ignored_tests_regex: Regex,
-    ignored_features: HashSet<String>,
-    ignore_module: bool,
+    /// Matcher for tests which should be ignored
+    ignore: Matcher,
+    /// Matcher for tests that should count as failures
+    fail: Option<Matcher>,
+}
+
+struct Matcher {
+    /// Regexp that matches tests
+    tests_regex: Regex,
+    /// Features to match
+    features: HashSet<String>,
+    /// Whether all module tests should match
+    module: bool,
 }
 
 impl IgnoredIndex {
@@ -19,6 +29,7 @@ impl IgnoredIndex {
         ignored_path: &Path,
         run_all_tests: bool,
         ignore_unimplemented: bool,
+        report_test_262_progress: bool,
     ) -> Result<IgnoredIndex, GenericError> {
         let ignored_string = fs::read_to_string(ignored_path)?;
 
@@ -30,75 +41,138 @@ impl IgnoredIndex {
 
         let mut builder = IgnoredIndexBuilder::new();
 
+        // Known failures are ignored, but treated as failures when reporting test262 progress
         let known_failures = &ignored_json["known_failures"];
-        builder.add_config(known_failures);
+        if report_test_262_progress {
+            builder.add_fail_config(known_failures);
+        } else {
+            builder.add_ignore_config(known_failures);
+        }
 
+        let unimplemented = &ignored_json["unimplemented"];
+        if ignore_unimplemented {
+            // By default unimplemented tests are run but can be ignored with a flag
+            builder.add_ignore_config(unimplemented);
+            builder.set_ignore_module(true);
+        } else if report_test_262_progress {
+            // Unimplemented features are treated as failures when reporting test262 progress
+            builder.add_fail_config(unimplemented);
+            builder.set_fail_module(true);
+        }
+
+        // By default slow tests and non-standard tests are ignored
         if !run_all_tests {
             let slow_ignored = &ignored_json["slow"];
-            builder.add_config(slow_ignored);
+            builder.add_ignore_config(slow_ignored);
 
             let non_standard = &ignored_json["non_standard"];
-            builder.add_config(non_standard);
+            builder.add_ignore_config(non_standard);
         }
 
-        if ignore_unimplemented {
-            let unimplemented = &ignored_json["unimplemented"];
-            builder.add_config(unimplemented);
-        }
-
+        // Ignore some additional tests when in GC stress test mode
         if cfg!(feature = "gc_stress_test") {
             let gc_stress_test_ignored = &ignored_json["gc_stress_test"];
-            builder.add_config(gc_stress_test_ignored);
+            builder.add_ignore_config(gc_stress_test_ignored);
         }
 
-        let ignore_module = ignore_unimplemented;
-
-        builder.finish(ignore_module)
+        builder.finish()
     }
 
     pub fn should_ignore(&self, test: &Test) -> bool {
-        if self.ignored_tests_regex.is_match(&test.path) {
+        self.ignore.matches(test)
+    }
+
+    pub fn should_fail(&self, test: &Test) -> bool {
+        self.fail
+            .as_ref()
+            .map(|matcher| matcher.matches(test))
+            .unwrap_or(false)
+    }
+}
+
+impl Matcher {
+    fn matches(&self, test: &Test) -> bool {
+        if self.tests_regex.is_match(&test.path) {
             return true;
         }
 
-        if self.ignore_module && test.mode == TestMode::Module {
+        if self.module && test.mode == TestMode::Module {
             return true;
         }
 
         for feature in &test.features {
-            if self.ignored_features.contains(feature) {
+            if self.features.contains(feature) {
                 return true;
             }
         }
 
-        return false;
+        false
+    }
+}
+
+struct MatcherBuilder {
+    test_strings: Vec<String>,
+    features: HashSet<String>,
+    module: bool,
+}
+
+impl MatcherBuilder {
+    fn new() -> Self {
+        Self {
+            test_strings: vec![],
+            features: HashSet::new(),
+            module: false,
+        }
+    }
+
+    fn finish(self) -> Result<Matcher, GenericError> {
+        let tests_regex = Self::build_regexp(&self.test_strings)?;
+        Ok(Matcher { tests_regex, features: self.features, module: self.module })
+    }
+
+    fn build_regexp(strings: &[String]) -> Result<Regex, GenericError> {
+        let regex_string = format!("^({})$", strings.join("|"));
+        let regex = Regex::new(&regex_string)?;
+        Ok(regex)
     }
 }
 
 struct IgnoredIndexBuilder {
-    ignored_tests_strings: Vec<String>,
-    ignored_features: HashSet<String>,
+    ignore: MatcherBuilder,
+    fail: MatcherBuilder,
+    has_fail_matcher: bool,
 }
 
 impl IgnoredIndexBuilder {
     fn new() -> Self {
         Self {
-            ignored_tests_strings: vec![],
-            ignored_features: HashSet::new(),
+            ignore: MatcherBuilder::new(),
+            fail: MatcherBuilder::new(),
+            has_fail_matcher: false,
         }
     }
 
-    fn finish(self, ignore_module: bool) -> Result<IgnoredIndex, GenericError> {
-        let ignored_tests_regex =
-            Regex::new(&format!("^({})$", self.ignored_tests_strings.join("|")))?;
+    fn finish(self) -> Result<IgnoredIndex, GenericError> {
         Ok(IgnoredIndex {
-            ignored_tests_regex,
-            ignored_features: self.ignored_features,
-            ignore_module,
+            ignore: self.ignore.finish()?,
+            fail: if self.has_fail_matcher {
+                Some(self.fail.finish()?)
+            } else {
+                None
+            },
         })
     }
 
-    fn add_config(&mut self, config_value: &serde_json::Value) {
+    fn add_ignore_config(&mut self, config_value: &serde_json::Value) {
+        Self::add_config(&mut self.ignore, config_value);
+    }
+
+    fn add_fail_config(&mut self, config_value: &serde_json::Value) {
+        self.has_fail_matcher = true;
+        Self::add_config(&mut self.fail, config_value);
+    }
+
+    fn add_config(match_builder: &mut MatcherBuilder, config_value: &serde_json::Value) {
         if let Some(tests) = config_value["tests"].as_array() {
             for test in tests {
                 // Convert from glob pattern to regex
@@ -108,15 +182,24 @@ impl IgnoredIndexBuilder {
                     // Convert glob wildcard to regex
                     .replace("*", ".*");
 
-                self.ignored_tests_strings.push(ignored_test_string);
+                match_builder.test_strings.push(ignored_test_string);
             }
         }
 
         if let Some(features) = config_value["features"].as_array() {
             for feature in features {
-                self.ignored_features
+                match_builder
+                    .features
                     .insert(String::from(feature.as_str().unwrap()));
             }
         }
+    }
+
+    fn set_ignore_module(&mut self, ignore_module: bool) {
+        self.ignore.module = ignore_module;
+    }
+
+    fn set_fail_module(&mut self, fail_module: bool) {
+        self.fail.module = fail_module;
     }
 }

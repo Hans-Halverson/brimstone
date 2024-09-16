@@ -5,7 +5,7 @@ set -e
 CURRENT_DIR=$(cd "$(dirname "$0")" && pwd)
 TEST262_REPO_DIR="$CURRENT_DIR/test262"
 
-# Pinned commit hash of test262 repo that we test off of
+# Pinned commit hash of test262 repo that we test off of. Be sure to also update README.md.
 # Last updated on 2024-08-27
 TEST262_COMMIT_SHA="b69e9d5e722291dcb6ada5582c71887133626c63"
 

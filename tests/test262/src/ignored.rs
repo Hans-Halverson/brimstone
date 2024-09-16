@@ -60,13 +60,16 @@ impl IgnoredIndex {
             builder.set_fail_module(true);
         }
 
-        // By default slow tests and non-standard tests are ignored
+        // By default non-standard tests are ignored
         if !run_all_tests {
-            let slow_ignored = &ignored_json["slow"];
-            builder.add_ignore_config(slow_ignored);
-
             let non_standard = &ignored_json["non_standard"];
             builder.add_ignore_config(non_standard);
+        }
+
+        // Slow tests are ignored by default, but always run when reporting test262 progress
+        if !run_all_tests && !report_test_262_progress {
+            let slow_ignored = &ignored_json["slow"];
+            builder.add_ignore_config(slow_ignored);
         }
 
         // Ignore some additional tests when in GC stress test mode

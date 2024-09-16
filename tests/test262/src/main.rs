@@ -9,7 +9,7 @@ use brimstone_test262::{
 #[derive(Parser)]
 #[command(about)]
 struct Args {
-    /// Run all tests, including slow tests
+    /// Run all tests, including non-standard and slow tests
     #[arg(long, default_value_t = false)]
     all: bool,
 
@@ -25,13 +25,9 @@ struct Args {
     #[arg(long, default_value_t = String::from("ignored_tests.jsonc"))]
     ignored_path: String,
 
-    /// Ignore module tests
+    /// Ignore tests for unimplemented features
     #[arg(long, default_value_t = false)]
-    ignore_module: bool,
-
-    /// Ignore Annex B tests
-    #[arg(long, default_value_t = false)]
-    ignore_annex_b: bool,
+    ignore_unimplemented: bool,
 
     /// Reindex the test262 test suite
     #[arg(long, default_value_t = false)]
@@ -80,12 +76,7 @@ fn main_impl() -> GenericResult {
     }
 
     let index = TestIndex::load_from_file(index_path)?;
-    let ignored = IgnoredIndex::load_from_file(
-        ignored_path,
-        args.all,
-        args.ignore_module,
-        args.ignore_annex_b,
-    )?;
+    let ignored = IgnoredIndex::load_from_file(ignored_path, args.all, args.ignore_unimplemented)?;
 
     let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);

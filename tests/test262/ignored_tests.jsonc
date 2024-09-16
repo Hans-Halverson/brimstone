@@ -1,9 +1,7 @@
 {
-  // Tests which are always ignored
-  "always": {
+  // Tests that are known to fail but should count against test262 progress.
+  "known_failures": {
     "tests": [
-      // ECMA-402 Internationalization API is not implemented
-      "intl402/*",
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
       "language/expressions/assignment/target-member-computed-reference-null.js",
@@ -101,21 +99,55 @@
     ],
     "features": [
       // Always skip tail-call-optimization tests as they cause stack overflow
-      "tail-call-optimization",
-      // Non-standard extension
+      "tail-call-optimization"
+    ]
+  },
+  // Tests for unimplemented features. Counts against test262 progress.
+  "unimplemented": {
+    "features": [
+      // Features requiring modules to be implemented
+      "import.meta",
+      "top-level-await",
+      "dynamic-import",
+      // Other unimplemented features
+      "regexp-v-flag",
+      "SharedArrayBuffer",
+      "Atomics"
+    ]
+  },
+  // Tests for features that are not part of the standard. These tests are always ignored, and do
+  // not count against test262 progress.
+  //
+  // This includes tests for:
+  // - Stage < 4 proposals
+  // - Annex B (Additional ECMAScript Features for Web Browsers)
+  // - Non-standard extensions to the language
+  // - Standards other than ECMA-262
+  "non_standard": {
+    "tests": [
+      // Annex B
+      "annexB/*",
+      // The ECMA-402 Internationalization API is not part of ECMA-262
+      "intl402/*"
+    ],
+    "features": [
+      // Non-standard extensions
       "caller",
       // Stage < 4 proposals
       "decorators",
       "explicit-resource-management",
       "import-assertions",
+      "import-attributes",
       "iterator-helpers",
       "json-modules",
       "json-parse-with-source",
       "legacy-regexp",
       "promise-try",
       "regexp-modifiers",
+      "source-phase-imports",
       "uint8array-base64",
       "Array.fromAsync",
+      "Atomics.pause",
       "FinalizationRegistry.prototype.cleanupSome",
       "Float16Array",
       "Intl.DurationFormat",

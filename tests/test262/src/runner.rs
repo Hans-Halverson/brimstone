@@ -56,11 +56,35 @@ impl TestRunner {
         let (sender, receiver) = channel::<TestResult>();
         let mut num_jobs = 0;
         let mut num_skipped = 0;
+        let mut ignored_failures = vec![];
 
         let all_tests_start_timestamp = SystemTime::now();
 
         for (i, test) in self.index.tests.values().enumerate() {
-            if !self.should_run_test(test) {
+            // If a filter was provided then skip all tests that do not match the filter
+            if let Some(filter) = &self.filter {
+                if !test.path.contains(filter) {
+                    num_skipped += 1;
+                    continue;
+                }
+            }
+
+            // If a feature was specified then skip all tests that do not have that feature
+            if let Some(feature) = &self.feature {
+                if !test.features.contains(feature) {
+                    num_skipped += 1;
+                    continue;
+                }
+            }
+
+            if self.ignored.should_fail(test) {
+                ignored_failures.push(TestResult::failure(
+                    test,
+                    "Ignored test counted as failure".to_owned(),
+                    Duration::ZERO,
+                ));
+                continue;
+            } else if self.ignored.should_ignore(test) {
                 num_skipped += 1;
                 continue;
             }
@@ -106,25 +130,13 @@ impl TestRunner {
             });
         }
 
-        let results: Vec<TestResult> = receiver.iter().take(num_jobs).collect();
+        let mut results: Vec<TestResult> = receiver.iter().take(num_jobs).collect();
+
+        if !ignored_failures.is_empty() {
+            results.extend(ignored_failures);
+        }
 
         TestResults::collate(results, num_skipped, all_tests_start_timestamp.elapsed().unwrap())
-    }
-
-    fn should_run_test(&self, test: &Test) -> bool {
-        if let Some(filter) = &self.filter {
-            if !test.path.contains(filter) {
-                return false;
-            }
-        }
-
-        if let Some(feature) = &self.feature {
-            if !test.features.contains(feature) {
-                return false;
-            }
-        }
-
-        !self.ignored.should_ignore(test)
     }
 }
 
@@ -581,6 +593,16 @@ impl TestResults {
             self.num_skipped,
             RESET
         );
+    }
+
+    pub fn print_test262_progress(&self) {
+        let succeeded = self.succeeded.len();
+        let failed = self.failed.len();
+        let total = succeeded + failed;
+        let percent = (succeeded as f64 / total as f64) * 100.0;
+
+        println!("\n{}Test262 progress: {:.2}%{}", BOLD, percent, RESET);
+        println!("{}/{} tests passed", succeeded, total);
     }
 
     pub fn save_to_result_files(&self, result_files_path: String) -> GenericResult {

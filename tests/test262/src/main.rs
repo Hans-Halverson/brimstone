@@ -50,6 +50,11 @@ struct Args {
     #[arg(long)]
     save_time_file: Option<String>,
 
+    /// Report numbers in terms of progress against the test262 suite. All failed standard test262
+    /// tests are counted as failures, even if tests are ignored.
+    #[arg(long, default_value_t = false)]
+    report_test262_progress: bool,
+
     /// Only run tests that match this feature
     #[arg(long)]
     feature: Option<String>,
@@ -76,12 +81,21 @@ fn main_impl() -> GenericResult {
     }
 
     let index = TestIndex::load_from_file(index_path)?;
-    let ignored = IgnoredIndex::load_from_file(ignored_path, args.all, args.ignore_unimplemented)?;
+    let ignored = IgnoredIndex::load_from_file(
+        ignored_path,
+        args.all,
+        args.ignore_unimplemented,
+        args.report_test262_progress,
+    )?;
 
     let mut runner = TestRunner::new(index, ignored, args.threads, args.filter, args.feature);
     let results = runner.run(args.verbose);
 
     results.print_to_console(&test262_root);
+
+    if args.report_test262_progress {
+        results.print_test262_progress();
+    }
 
     if let Some(result_files_path) = args.save_result_files {
         results.save_to_result_files(result_files_path)?;

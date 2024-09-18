@@ -82,6 +82,7 @@ pub enum ParseError {
     AwaitInStaticInitializer,
     AwaitInParameters,
     YieldInParameters,
+    ModuleNameNotWellFormed,
     // RegExpr parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
@@ -352,6 +353,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::YieldInParameters => {
                 write!(f, "Yield expression not allowed in function parameters")
+            }
+            ParseError::ModuleNameNotWellFormed => {
+                write!(f, "Module name is not well formed")
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

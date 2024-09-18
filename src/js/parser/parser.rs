@@ -4079,8 +4079,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported =
-                    ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
+                let imported = self.create_export_module_name_string(self.loc, value.clone())?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4094,11 +4093,11 @@ impl<'a> Parser<'a> {
                 if self.token == Token::As {
                     self.advance()?;
 
-                    let id = ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name });
+                    let imported = self.create_export_module_name_identifier(id);
                     let local = p(self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
-                    ImportNamedSpecifier { loc, imported: Some(p(id)), local }
+                    ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
@@ -4257,15 +4256,32 @@ impl<'a> Parser<'a> {
 
     fn parse_export_module_name(&mut self) -> ParseResult<ModuleName> {
         if let Token::StringLiteral(value) = &self.token {
-            let imported =
-                ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
+            let value = value.clone();
             self.advance()?;
-            Ok(imported)
+            Ok(self.create_export_module_name_string(self.loc, value)?)
         } else if let Some(id) = self.parse_identifier_name()? {
-            Ok(ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name }))
+            Ok(self.create_export_module_name_identifier(id))
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }
+    }
+
+    fn create_export_module_name_string(
+        &mut self,
+        loc: Loc,
+        value: Wtf8String,
+    ) -> ParseResult<ModuleName> {
+        if !value.is_well_formed() {
+            return self.error(loc, ParseError::ModuleNameNotWellFormed);
+        }
+
+        Ok(ModuleName::String(StringLiteral { loc, value }))
+    }
+
+    fn create_export_module_name_identifier(&mut self, id: Identifier) -> ModuleName {
+        // Do not need to check for IsStringWellFormedUnicode since Rust strings are guaranteed
+        // to be valid UTF-8 and cannot have any unpaired surrogates.
+        ModuleName::Id(Identifier::new(id.loc, id.name))
     }
 
     fn parse_source(&mut self) -> ParseResult<StringLiteral> {

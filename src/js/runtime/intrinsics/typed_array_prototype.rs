@@ -39,7 +39,7 @@ use super::{
 pub struct TypedArrayPrototype;
 
 impl TypedArrayPrototype {
-    // 23.2.3 Properties of the %TypedArray% Prototype Object
+    /// Properties of the %TypedArray% Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-%typedarrayprototype%-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -94,18 +94,18 @@ impl TypedArrayPrototype {
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
         object.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
 
-        // 23.2.3.37 %TypedArray%.prototype [ @@iterator ]
+        // %TypedArray%.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-%typedarray%.prototype-%symbol.iterator%
         let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
-        // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]
+        // get %TypedArray%.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm);
 
         object
     }
 
-    // 23.2.3.1 %TypedArray%.prototype.at
+    /// %TypedArray%.prototype.at, https://tc39.es/ecma262/#sec-%typedarray%.prototype.at
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
@@ -138,7 +138,7 @@ impl TypedArrayPrototype {
         get(cx, object, key)
     }
 
-    // 23.2.3.2 get %TypedArray%.prototype.buffer
+    /// get %TypedArray%.prototype.buffer, https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.buffer
     pub fn buffer(
         cx: Context,
         this_value: Handle<Value>,
@@ -149,7 +149,7 @@ impl TypedArrayPrototype {
         typed_array.viewed_array_buffer().into()
     }
 
-    // 23.2.3.3 get %TypedArray%.prototype.byteLength
+    /// get %TypedArray%.prototype.byteLength, https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.bytelength
     pub fn byte_length(
         cx: Context,
         this_value: Handle<Value>,
@@ -168,7 +168,7 @@ impl TypedArrayPrototype {
         Value::from(byte_length).to_handle(cx).into()
     }
 
-    // 23.2.3.4 get %TypedArray%.prototype.byteOffset
+    /// get %TypedArray%.prototype.byteOffset, https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.byteoffset
     pub fn byte_offset(
         cx: Context,
         this_value: Handle<Value>,
@@ -185,7 +185,7 @@ impl TypedArrayPrototype {
         Value::from(typed_array.byte_offset()).to_handle(cx).into()
     }
 
-    // 23.2.3.6 %TypedArray%.prototype.copyWithin
+    /// %TypedArray%.prototype.copyWithin, https://tc39.es/ecma262/#sec-%typedarray%.prototype.copywithin
     pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
@@ -314,7 +314,7 @@ impl TypedArrayPrototype {
         object.into()
     }
 
-    // 23.2.3.7 %TypedArray%.prototype.entries
+    /// %TypedArray%.prototype.entries, https://tc39.es/ecma262/#sec-%typedarray%.prototype.entries
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
@@ -327,7 +327,7 @@ impl TypedArrayPrototype {
         ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue).into()
     }
 
-    // 23.2.3.8 %TypedArray%.prototype.every
+    /// %TypedArray%.prototype.every, https://tc39.es/ecma262/#sec-%typedarray%.prototype.every
     pub fn every(
         cx: Context,
         this_value: Handle<Value>,
@@ -368,7 +368,7 @@ impl TypedArrayPrototype {
         cx.bool(true).into()
     }
 
-    // 23.2.3.9 %TypedArray%.prototype.fill
+    /// %TypedArray%.prototype.fill, https://tc39.es/ecma262/#sec-%typedarray%.prototype.fill
     pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
@@ -434,7 +434,7 @@ impl TypedArrayPrototype {
         object.into()
     }
 
-    // 23.2.3.10 %TypedArray%.prototype.filter
+    /// %TypedArray%.prototype.filter, https://tc39.es/ecma262/#sec-%typedarray%.prototype.filter
     pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
@@ -493,7 +493,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.11 %TypedArray%.prototype.find
+    /// %TypedArray%.prototype.find, https://tc39.es/ecma262/#sec-%typedarray%.prototype.find
     pub fn find(
         cx: Context,
         this_value: Handle<Value>,
@@ -523,7 +523,7 @@ impl TypedArrayPrototype {
         }
     }
 
-    // 23.2.3.12 %TypedArray%.prototype.findIndex
+    /// %TypedArray%.prototype.findIndex, https://tc39.es/ecma262/#sec-%typedarray%.prototype.findindex
     pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
@@ -553,7 +553,7 @@ impl TypedArrayPrototype {
         }
     }
 
-    // 23.2.3.13 %TypedArray%.prototype.findLast
+    /// %TypedArray%.prototype.findLast, https://tc39.es/ecma262/#sec-%typedarray%.prototype.findlast
     pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
@@ -583,7 +583,7 @@ impl TypedArrayPrototype {
         }
     }
 
-    // 23.2.3.14 %TypedArray%.prototype.findLastIndex
+    /// %TypedArray%.prototype.findLastIndex, https://tc39.es/ecma262/#sec-%typedarray%.prototype.findlastindex
     pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
@@ -613,7 +613,7 @@ impl TypedArrayPrototype {
         }
     }
 
-    // 23.2.3.15 %TypedArray%.prototype.forEach
+    /// %TypedArray%.prototype.forEach, https://tc39.es/ecma262/#sec-%typedarray%.prototype.foreach
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
@@ -651,7 +651,7 @@ impl TypedArrayPrototype {
         cx.undefined().into()
     }
 
-    // 23.2.3.16 %TypedArray%.prototype.includes
+    /// %TypedArray%.prototype.includes, https://tc39.es/ecma262/#sec-%typedarray%.prototype.includes
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
@@ -699,7 +699,7 @@ impl TypedArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.2.3.17 %TypedArray%.prototype.indexOf
+    /// %TypedArray%.prototype.indexOf, https://tc39.es/ecma262/#sec-%typedarray%.prototype.indexof
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -748,7 +748,7 @@ impl TypedArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.2.3.18 %TypedArray%.prototype.join
+    /// %TypedArray%.prototype.join, https://tc39.es/ecma262/#sec-%typedarray%.prototype.join
     pub fn join(
         cx: Context,
         this_value: Handle<Value>,
@@ -790,7 +790,7 @@ impl TypedArrayPrototype {
         joined.into()
     }
 
-    // 23.2.3.19 %TypedArray%.prototype.keys
+    /// %TypedArray%.prototype.keys, https://tc39.es/ecma262/#sec-%typedarray%.prototype.keys
     pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
@@ -803,7 +803,7 @@ impl TypedArrayPrototype {
         ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key).into()
     }
 
-    // 23.2.3.20 %TypedArray%.prototype.lastIndexOf
+    /// %TypedArray%.prototype.lastIndexOf, https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -860,7 +860,7 @@ impl TypedArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.2.3.21 get %TypedArray%.prototype.length
+    /// get %TypedArray%.prototype.length, https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.length
     pub fn length(
         cx: Context,
         this_value: Handle<Value>,
@@ -879,7 +879,7 @@ impl TypedArrayPrototype {
         Value::from(length).to_handle(cx).into()
     }
 
-    // 23.2.3.22 %TypedArray%.prototype.map
+    /// %TypedArray%.prototype.map, https://tc39.es/ecma262/#sec-%typedarray%.prototype.map
     pub fn map(
         cx: Context,
         this_value: Handle<Value>,
@@ -921,7 +921,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.23 %TypedArray%.prototype.reduce
+    /// %TypedArray%.prototype.reduce, https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduce
     pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
@@ -969,7 +969,7 @@ impl TypedArrayPrototype {
         accumulator.into()
     }
 
-    // 23.2.3.24 %TypedArray%.prototype.reduceRight
+    /// %TypedArray%.prototype.reduceRight, https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduceright
     pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
@@ -1017,7 +1017,7 @@ impl TypedArrayPrototype {
         accumulator.into()
     }
 
-    // 23.2.3.25 %TypedArray%.prototype.reverse
+    /// %TypedArray%.prototype.reverse, https://tc39.es/ecma262/#sec-%typedarray%.prototype.reverse
     pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
@@ -1056,7 +1056,7 @@ impl TypedArrayPrototype {
         object.into()
     }
 
-    // 23.2.3.26 %TypedArray%.prototype.set
+    /// %TypedArray%.prototype.set, https://tc39.es/ecma262/#sec-%typedarray%.prototype.set
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,
@@ -1087,7 +1087,7 @@ impl TypedArrayPrototype {
         cx.undefined().into()
     }
 
-    // 23.2.3.26.1 SetTypedArrayFromTypedArray
+    /// SetTypedArrayFromTypedArray, https://tc39.es/ecma262/#sec-settypedarrayfromtypedarray
     pub fn set_typed_array_from_typed_array(
         cx: Context,
         mut target: DynTypedArray,
@@ -1210,7 +1210,7 @@ impl TypedArrayPrototype {
         ().into()
     }
 
-    // 23.2.3.27 %TypedArray%.prototype.slice
+    /// %TypedArray%.prototype.slice, https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
@@ -1312,7 +1312,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.28 %TypedArray%.prototype.some
+    /// %TypedArray%.prototype.some, https://tc39.es/ecma262/#sec-%typedarray%.prototype.some
     pub fn some(
         cx: Context,
         this_value: Handle<Value>,
@@ -1353,7 +1353,7 @@ impl TypedArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.2.3.29 %TypedArray%.prototype.sort
+    /// %TypedArray%.prototype.sort, https://tc39.es/ecma262/#sec-%typedarray%.prototype.sort
     pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
@@ -1390,7 +1390,7 @@ impl TypedArrayPrototype {
         object.into()
     }
 
-    // 23.2.3.30 %TypedArray%.prototype.subarray
+    /// %TypedArray%.prototype.subarray, https://tc39.es/ecma262/#sec-%typedarray%.prototype.subarray
     pub fn subarray(
         cx: Context,
         this_value: Handle<Value>,
@@ -1461,7 +1461,7 @@ impl TypedArrayPrototype {
         subarray.into()
     }
 
-    // 23.2.3.31 %TypedArray%.prototype.toLocaleString
+    /// %TypedArray%.prototype.toLocaleString, https://tc39.es/ecma262/#sec-%typedarray%.prototype.tolocalestring
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1496,7 +1496,7 @@ impl TypedArrayPrototype {
         result.into()
     }
 
-    // 23.2.3.32 %TypedArray%.prototype.toReversed
+    /// %TypedArray%.prototype.toReversed, https://tc39.es/ecma262/#sec-%typedarray%.prototype.toreversed
     pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
@@ -1526,7 +1526,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.33 %TypedArray%.prototype.toSorted
+    /// %TypedArray%.prototype.toSorted, https://tc39.es/ecma262/#sec-%typedarray%.prototype.tosorted
     pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
@@ -1565,7 +1565,7 @@ impl TypedArrayPrototype {
         sorted_array.into()
     }
 
-    // 23.2.3.35 %TypedArray%.prototype.values
+    /// %TypedArray%.prototype.values, https://tc39.es/ecma262/#sec-%typedarray%.prototype.values
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
@@ -1578,7 +1578,7 @@ impl TypedArrayPrototype {
         ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value).into()
     }
 
-    // 23.2.3.36 %TypedArray%.prototype.with
+    /// %TypedArray%.prototype.with, https://tc39.es/ecma262/#sec-%typedarray%.prototype.with
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
@@ -1651,7 +1651,7 @@ impl TypedArrayPrototype {
         array.into()
     }
 
-    // 23.2.3.38 get %TypedArray%.prototype [ @@toStringTag ]
+    /// get %TypedArray%.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%
     pub fn get_to_string_tag(
         cx: Context,
         this_value: Handle<Value>,
@@ -1677,7 +1677,7 @@ macro_rules! create_typed_array_prototype {
         pub struct $prototype;
 
         impl $prototype {
-            // 23.2.7 Properties of the TypedArray Prototype Objects
+            /// Properties of the TypedArray Prototype Objects, https://tc39.es/ecma262/#sec-properties-of-typedarray-prototype-objects
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let mut object = ObjectValue::new(
                     cx,
@@ -1714,7 +1714,7 @@ fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTyped
     object.as_typed_array().into()
 }
 
-// 23.2.4.1 TypedArraySpeciesCreate
+/// TypedArraySpeciesCreate, https://tc39.es/ecma262/#typedarray-species-create
 fn typed_array_species_create_object(
     cx: Context,
     exemplar: DynTypedArray,
@@ -1754,7 +1754,7 @@ fn typed_array_species_create(
     result.into()
 }
 
-// 23.2.4.2 TypedArrayCreateFromConstructor
+/// TypedArrayCreateFromConstructor, https://tc39.es/ecma262/#sec-typedarraycreatefromconstructor
 pub fn typed_array_create_from_constructor_object(
     cx: Context,
     constructor: Handle<ObjectValue>,
@@ -1788,7 +1788,7 @@ pub fn typed_array_create_from_constructor(
     new_typed_array_record.typed_array.into()
 }
 
-// 23.2.4.3 TypedArrayCreateSameType
+/// TypedArrayCreateSameType, https://tc39.es/ecma262/#sec-typedarray-create-same-type
 fn typed_array_create_same_type(
     cx: Context,
     exemplar: DynTypedArray,
@@ -1814,7 +1814,7 @@ fn typed_array_create_same_type(
     typed_array_create_from_constructor_object(cx, constructor, &[length_value])
 }
 
-// 23.2.4.4 ValidateTypedArray
+/// ValidateTypedArray, https://tc39.es/ecma262/#sec-validatetypedarray
 #[inline]
 fn validate_typed_array(
     cx: Context,
@@ -1835,7 +1835,7 @@ pub struct TypedArrayWithBufferWitnessRecord {
     pub cached_buffer_byte_length: Option<usize>,
 }
 
-// 10.4.5.9 MakeTypedArrayWithBufferWitnessRecord
+/// MakeTypedArrayWithBufferWitnessRecord, https://tc39.es/ecma262/#sec-maketypedarraywithbufferwitnessrecord
 pub fn make_typed_array_with_buffer_witness_record(
     typed_array: DynTypedArray,
 ) -> TypedArrayWithBufferWitnessRecord {
@@ -1850,7 +1850,7 @@ pub fn make_typed_array_with_buffer_witness_record(
     TypedArrayWithBufferWitnessRecord { typed_array, cached_buffer_byte_length: byte_length }
 }
 
-// 10.4.5.11 TypedArrayByteLength
+/// TypedArrayByteLength, https://tc39.es/ecma262/#sec-typedarraybytelength
 fn typed_array_byte_length(typed_array_record: &TypedArrayWithBufferWitnessRecord) -> usize {
     if is_typed_array_out_of_bounds(typed_array_record) {
         return 0;
@@ -1871,7 +1871,7 @@ fn typed_array_byte_length(typed_array_record: &TypedArrayWithBufferWitnessRecor
     length * typed_array.element_size()
 }
 
-// 10.4.5.12 TypedArrayLength
+/// TypedArrayLength, https://tc39.es/ecma262/#sec-typedarraylength
 pub fn typed_array_length(typed_array_record: &TypedArrayWithBufferWitnessRecord) -> usize {
     // Fixed length typed arrays return known array length
     let typed_array = typed_array_record.typed_array;
@@ -1887,7 +1887,7 @@ pub fn typed_array_length(typed_array_record: &TypedArrayWithBufferWitnessRecord
     (byte_length - byte_offset) / element_size
 }
 
-// 10.4.5.13 IsTypedArrayOutOfBounds
+/// IsTypedArrayOutOfBounds, https://tc39.es/ecma262/#sec-istypedarrayoutofbounds
 pub fn is_typed_array_out_of_bounds(
     typed_array_record: &TypedArrayWithBufferWitnessRecord,
 ) -> bool {
@@ -1909,9 +1909,9 @@ pub fn is_typed_array_out_of_bounds(
     byte_offset_start > buffer_byte_length || byte_offset_end > buffer_byte_length
 }
 
-// 23.2.4.7 CompareTypedArrayElements
-//
-// Will only be called on numbers and BigInts.
+/// CompareTypedArrayElements, https://tc39.es/ecma262/#sec-comparetypedarrayelements
+///
+/// Will only be called on numbers and BigInts.
 pub fn compare_typed_array_elements(
     cx: Context,
     v1: Handle<Value>,

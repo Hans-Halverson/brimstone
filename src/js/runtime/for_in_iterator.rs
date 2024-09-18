@@ -19,7 +19,8 @@ use super::{
 ///
 /// This is a simple strategy but leaves much room for optimization.
 ///
-/// Follows the guidance of 14.7.5.9 EnumerateObjectProperties, 14.7.5.10 For-In Iterator Objects
+/// Follows the guidance of EnumerateObjectProperties, https://tc39.es/ecma262/#sec-enumerate-object-properties
+/// and For-In Iterator Objects, https://tc39.es/ecma262/#sec-for-in-iterator-objects
 #[repr(C)]
 pub struct ForInIterator {
     descriptor: HeapPtr<ObjectDescriptor>,

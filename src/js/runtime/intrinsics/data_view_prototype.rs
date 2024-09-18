@@ -27,7 +27,7 @@ use super::{
 pub struct DataViewPrototype;
 
 impl DataViewPrototype {
-    // 25.3.4 Properties of the DataView Prototype Object
+    /// Properties of the DataView Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-dataview-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -57,7 +57,7 @@ impl DataViewPrototype {
         object.intrinsic_func(cx, cx.names.set_uint16(), Self::set_uint16, 2, realm);
         object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm);
 
-        // 25.3.4.25 DataView.prototype [ @@toStringTag ]
+        // DataView.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-dataview.prototype-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -68,7 +68,7 @@ impl DataViewPrototype {
         object
     }
 
-    // 25.3.4.1 get DataView.prototype.buffer
+    /// get DataView.prototype.buffer, https://tc39.es/ecma262/#sec-get-dataview.prototype.buffer
     pub fn get_buffer(
         cx: Context,
         this_value: Handle<Value>,
@@ -79,7 +79,7 @@ impl DataViewPrototype {
         data_view.viewed_array_buffer().into()
     }
 
-    // 25.3.4.2 get DataView.prototype.byteLength
+    /// get DataView.prototype.byteLength, https://tc39.es/ecma262/#sec-get-dataview.prototype.bytelength
     pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
@@ -98,7 +98,7 @@ impl DataViewPrototype {
         Value::from(byte_length).to_handle(cx).into()
     }
 
-    // 25.3.4.3 get DataView.prototype.byteOffset
+    /// get DataView.prototype.byteOffset, https://tc39.es/ecma262/#sec-get-dataview.prototype.byteoffset
     pub fn get_byte_offset(
         cx: Context,
         this_value: Handle<Value>,
@@ -115,7 +115,7 @@ impl DataViewPrototype {
         Value::from(data_view.byte_offset()).to_handle(cx).into()
     }
 
-    // 25.3.4.5 DataView.prototype.getBigInt64
+    /// DataView.prototype.getBigInt64, https://tc39.es/ecma262/#sec-dataview.prototype.getbigint64
     pub fn get_big_int64(
         cx: Context,
         this_value: Handle<Value>,
@@ -125,7 +125,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_big_int64_element, i64::swap_bytes)
     }
 
-    // 25.3.4.6 DataView.prototype.getBigUint64
+    /// DataView.prototype.getBigUint64, https://tc39.es/ecma262/#sec-dataview.prototype.getbiguint64
     pub fn get_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
@@ -135,7 +135,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_big_uint64_element, u64::swap_bytes)
     }
 
-    // 25.3.4.7 DataView.prototype.getFloat32
+    /// DataView.prototype.getFloat32, https://tc39.es/ecma262/#sec-dataview.prototype.getfloat32
     pub fn get_float32(
         cx: Context,
         this_value: Handle<Value>,
@@ -148,7 +148,7 @@ impl DataViewPrototype {
         })
     }
 
-    // 25.3.4.8 DataView.prototype.getFloat64
+    /// DataView.prototype.getFloat64, https://tc39.es/ecma262/#sec-dataview.prototype.getfloat64
     pub fn get_float64(
         cx: Context,
         this_value: Handle<Value>,
@@ -161,7 +161,7 @@ impl DataViewPrototype {
         })
     }
 
-    // 25.3.4.9 DataView.prototype.getInt8
+    /// DataView.prototype.getInt8, https://tc39.es/ecma262/#sec-dataview.prototype.getint8
     pub fn get_int8(
         cx: Context,
         this_value: Handle<Value>,
@@ -171,7 +171,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_int8_element, |element| element)
     }
 
-    // 25.3.4.10 DataView.prototype.getInt16
+    /// DataView.prototype.getInt16, https://tc39.es/ecma262/#sec-dataview.prototype.getint16
     pub fn get_int16(
         cx: Context,
         this_value: Handle<Value>,
@@ -181,7 +181,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_int16_element, i16::swap_bytes)
     }
 
-    // 25.3.4.11 DataView.prototype.getInt32
+    /// DataView.prototype.getInt32, https://tc39.es/ecma262/#sec-dataview.prototype.getint32
     pub fn get_int32(
         cx: Context,
         this_value: Handle<Value>,
@@ -191,7 +191,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_int32_element, i32::swap_bytes)
     }
 
-    // 25.3.4.12 DataView.prototype.getUint8
+    /// DataView.prototype.getUint8, https://tc39.es/ecma262/#sec-dataview.prototype.getuint8
     pub fn get_uint8(
         cx: Context,
         this_value: Handle<Value>,
@@ -201,7 +201,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_uint8_element, |element| element)
     }
 
-    // 25.3.4.13 DataView.prototype.getUint16
+    /// DataView.prototype.getUint16, https://tc39.es/ecma262/#sec-dataview.prototype.getuint16
     pub fn get_uint16(
         cx: Context,
         this_value: Handle<Value>,
@@ -211,7 +211,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_uint16_element, u16::swap_bytes)
     }
 
-    // 25.3.4.14 DataView.prototype.getUint32
+    /// DataView.prototype.getUint32, https://tc39.es/ecma262/#sec-dataview.prototype.getuint32
     pub fn get_uint32(
         cx: Context,
         this_value: Handle<Value>,
@@ -221,7 +221,7 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_uint32_element, u32::swap_bytes)
     }
 
-    // 25.3.4.15 DataView.prototype.setBigInt64
+    /// DataView.prototype.setBigInt64, https://tc39.es/ecma262/#sec-dataview.prototype.setbigint64
     pub fn set_big_int64(
         cx: Context,
         this_value: Handle<Value>,
@@ -238,7 +238,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.16 DataView.prototype.setBigUint64
+    /// DataView.prototype.setBigUint64, https://tc39.es/ecma262/#sec-dataview.prototype.setbiguint64
     pub fn set_big_uint64(
         cx: Context,
         this_value: Handle<Value>,
@@ -255,7 +255,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.17 DataView.prototype.setFloat32
+    /// DataView.prototype.setFloat32, https://tc39.es/ecma262/#sec-dataview.prototype.setfloat32
     pub fn set_float32(
         cx: Context,
         this_value: Handle<Value>,
@@ -275,7 +275,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.18 DataView.prototype.setFloat64
+    /// DataView.prototype.setFloat64, https://tc39.es/ecma262/#sec-dataview.prototype.setfloat64
     pub fn set_float64(
         cx: Context,
         this_value: Handle<Value>,
@@ -295,7 +295,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.19 DataView.prototype.setInt8
+    /// DataView.prototype.setInt8, https://tc39.es/ecma262/#sec-dataview.prototype.setint8
     pub fn set_int8(
         cx: Context,
         this_value: Handle<Value>,
@@ -307,7 +307,7 @@ impl DataViewPrototype {
         })
     }
 
-    // 25.3.4.20 DataView.prototype.setInt16
+    /// DataView.prototype.setInt16, https://tc39.es/ecma262/#sec-dataview.prototype.setint16
     pub fn set_int16(
         cx: Context,
         this_value: Handle<Value>,
@@ -324,7 +324,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.21 DataView.prototype.setInt32
+    /// DataView.prototype.setInt32, https://tc39.es/ecma262/#sec-dataview.prototype.setint32
     pub fn set_int32(
         cx: Context,
         this_value: Handle<Value>,
@@ -341,7 +341,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.22 DataView.prototype.setUint8
+    /// DataView.prototype.setUint8, https://tc39.es/ecma262/#sec-dataview.prototype.setuint8
     pub fn set_uint8(
         cx: Context,
         this_value: Handle<Value>,
@@ -358,7 +358,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.23 DataView.prototype.setUint16
+    /// DataView.prototype.setUint16, https://tc39.es/ecma262/#sec-dataview.prototype.setuint16
     pub fn set_uint16(
         cx: Context,
         this_value: Handle<Value>,
@@ -375,7 +375,7 @@ impl DataViewPrototype {
         )
     }
 
-    // 25.3.4.24 DataView.prototype.setUint32
+    /// DataView.prototype.setUint32, https://tc39.es/ecma262/#sec-dataview.prototype.setuint32
     pub fn set_uint32(
         cx: Context,
         this_value: Handle<Value>,
@@ -407,7 +407,7 @@ fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
     object.cast::<DataViewObject>().into()
 }
 
-// 25.3.1.1 GetViewValue
+/// GetViewValue, https://tc39.es/ecma262/#sec-getviewvalue
 #[inline]
 fn get_view_value<T>(
     cx: Context,
@@ -459,7 +459,7 @@ fn get_view_value<T>(
     from_element_fn(cx, element).into()
 }
 
-// 25.3.1.2 SetViewValue
+/// SetViewValue, https://tc39.es/ecma262/#sec-setviewvalue
 #[inline]
 fn set_view_value<T>(
     cx: Context,
@@ -529,7 +529,7 @@ pub struct DataViewWithBufferWitnessRecord {
     pub cached_buffer_byte_length: Option<usize>,
 }
 
-// 25.3.1.2 MakeDataViewWithBufferWitnessRecord
+/// MakeDataViewWithBufferWitnessRecord, https://tc39.es/ecma262/#sec-makedataviewwithbufferwitnessrecord
 fn make_data_view_with_buffer_witness_record(
     data_view: Handle<DataViewObject>,
 ) -> DataViewWithBufferWitnessRecord {
@@ -544,7 +544,7 @@ fn make_data_view_with_buffer_witness_record(
     DataViewWithBufferWitnessRecord { data_view, cached_buffer_byte_length: byte_length }
 }
 
-// 25.3.1.3 GetViewByteLength
+/// GetViewByteLength, https://tc39.es/ecma262/#sec-getviewbytelength
 fn get_view_byte_length(data_view_record: &DataViewWithBufferWitnessRecord) -> usize {
     let data_view = data_view_record.data_view;
 
@@ -556,7 +556,7 @@ fn get_view_byte_length(data_view_record: &DataViewWithBufferWitnessRecord) -> u
     }
 }
 
-// 25.3.1.4 IsViewOutOfBounds
+/// IsViewOutOfBounds, https://tc39.es/ecma262/#sec-isviewoutofbounds
 fn is_view_out_of_bounds(data_view_record: &DataViewWithBufferWitnessRecord) -> bool {
     let data_view = data_view_record.data_view;
     let buffer_byte_length = data_view_record.cached_buffer_byte_length;

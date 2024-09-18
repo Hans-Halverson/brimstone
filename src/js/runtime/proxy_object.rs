@@ -23,7 +23,7 @@ use super::{
     Context, EvalResult, Realm, Value,
 };
 
-// 10.5 Proxy Object
+// Proxy Object, https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots
 extend_object! {
     pub struct ProxyObject {
         proxy_handler: Option<HeapPtr<ObjectValue>>,
@@ -83,7 +83,7 @@ impl ProxyObject {
 }
 
 impl VirtualObject for Handle<ProxyObject> {
-    // 10.5.5 [[GetOwnProperty]]
+    /// [[GetOwnProperty]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-getownproperty-p
     fn get_own_property(
         &self,
         cx: Context,
@@ -160,7 +160,7 @@ impl VirtualObject for Handle<ProxyObject> {
         Some(result_desc).into()
     }
 
-    // 10.5.6 [[DefineOwnProperty]]
+    /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-defineownproperty-p-desc
     fn define_own_property(
         &mut self,
         cx: Context,
@@ -246,7 +246,7 @@ impl VirtualObject for Handle<ProxyObject> {
         true.into()
     }
 
-    // 10.5.7 [[HasProperty]]
+    /// [[HasProperty]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-hasproperty-p
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -287,7 +287,7 @@ impl VirtualObject for Handle<ProxyObject> {
         trap_result.into()
     }
 
-    // 10.5.8 [[Get]]
+    /// [[Get]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-get-p-receiver
     fn get(
         &self,
         cx: Context,
@@ -331,7 +331,7 @@ impl VirtualObject for Handle<ProxyObject> {
         trap_result.into()
     }
 
-    // 10.5.9 [[Set]]
+    /// [[Set]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-set-p-v-receiver
     fn set(
         &mut self,
         cx: Context,
@@ -377,7 +377,7 @@ impl VirtualObject for Handle<ProxyObject> {
         true.into()
     }
 
-    // 10.5.10 [[Delete]]
+    /// [[Delete]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-delete-p
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -421,7 +421,7 @@ impl VirtualObject for Handle<ProxyObject> {
         true.into()
     }
 
-    // 10.5.11 [[OwnPropertyKeys]]
+    /// [[OwnPropertyKeys]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -521,7 +521,7 @@ impl VirtualObject for Handle<ProxyObject> {
         trap_result_keys.into()
     }
 
-    // 10.5.12 [[Call]]
+    /// [[Call]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-call-thisargument-argumentslist
     fn call(
         &self,
         cx: Context,
@@ -546,7 +546,7 @@ impl VirtualObject for Handle<ProxyObject> {
         call_object(cx, trap.unwrap(), handler, &trap_arguments)
     }
 
-    // 10.5.13 [[Construct]]
+    /// [[Construct]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-construct-argumentslist-newtarget
     fn construct(
         &self,
         cx: Context,
@@ -587,7 +587,7 @@ impl VirtualObject for Handle<ProxyObject> {
 }
 
 impl ProxyObject {
-    // 10.5.1 [[GetPrototypeOf]]
+    /// [[GetPrototypeOf]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-getprototypeof
     pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -629,7 +629,7 @@ impl ProxyObject {
         handler_proto.into()
     }
 
-    // 10.5.2 [[SetPrototypeOf]]
+    /// [[SetPrototypeOf]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-setprototypeof-v
     pub fn set_prototype_of(
         &mut self,
         cx: Context,
@@ -675,7 +675,7 @@ impl ProxyObject {
         true.into()
     }
 
-    // 10.5.3 [[IsExtensible]]
+    /// [[IsExtensible]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-isextensible
     pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -704,7 +704,7 @@ impl ProxyObject {
         trap_result.into()
     }
 
-    // 10.5.4 [[PreventExtensions]]
+    /// [[PreventExtensions]], https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-preventextensions
     pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
         if self.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
@@ -732,7 +732,7 @@ impl ProxyObject {
     }
 }
 
-// 10.5.14 ProxyCreate
+/// ProxyCreate, https://tc39.es/ecma262/#sec-proxycreate
 pub fn proxy_create(
     cx: Context,
     target: Handle<Value>,

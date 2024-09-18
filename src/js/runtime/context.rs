@@ -32,7 +32,7 @@ use super::{
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
 /// Must never be moved, as there may be internal pointers held.
 ///
-/// Includes properties from section 8.6 Agent.
+/// Includes properties from section Agent, https://tc39.es/ecma262/#sec-agents
 ///
 /// Contexts are always represented by a pointer to the Context itself. A mutable reference to a
 /// Context can be obtained from any reference to the heap. To avoid breaking Rust's mutable

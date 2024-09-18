@@ -14,7 +14,7 @@ use super::{
 pub struct FinalizationRegistryPrototype;
 
 impl FinalizationRegistryPrototype {
-    // 26.2.3 Properties of the FinalizationRegistry Prototype Object
+    /// Properties of the FinalizationRegistry Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -34,7 +34,7 @@ impl FinalizationRegistryPrototype {
         object
     }
 
-    // 26.2.3.2 FinalizationRegistry.prototype.register
+    /// FinalizationRegistry.prototype.register, https://tc39.es/ecma262/#sec-finalization-registry.prototype.register
     pub fn register(
         cx: Context,
         this_value: Handle<Value>,
@@ -84,7 +84,7 @@ impl FinalizationRegistryPrototype {
         cx.undefined().into()
     }
 
-    // 26.2.3.3 FinalizationRegistry.prototype.unregister
+    /// FinalizationRegistry.prototype.unregister, https://tc39.es/ecma262/#sec-finalization-registry.prototype.unregister
     pub fn unregister(
         cx: Context,
         this_value: Handle<Value>,

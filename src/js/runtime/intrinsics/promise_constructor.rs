@@ -23,7 +23,7 @@ use crate::{
 
 use super::{intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::return_this};
 
-/// 27.2.1.1.1 IfAbruptRejectPromise
+/// IfAbruptRejectPromise, https://tc39.es/ecma262/#sec-ifabruptrejectpromise
 #[macro_export]
 macro_rules! if_abrupt_reject_promise {
     ($cx:expr, $completion:expr, $capability:expr) => {{
@@ -43,7 +43,7 @@ macro_rules! if_abrupt_reject_promise {
 pub struct PromiseConstructor;
 
 impl PromiseConstructor {
-    /// 27.2.4 Properties of the Promise Constructor
+    /// Properties of the Promise Constructor, https://tc39.es/ecma262/#sec-properties-of-the-promise-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -68,14 +68,14 @@ impl PromiseConstructor {
         func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm);
         func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm);
 
-        // 27.2.4.9 get Promise [ @@species ]
+        // get Promise [ @@species ], https://tc39.es/ecma262/#sec-get-promise-%symbol.species%
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    /// 27.2.3.1 Promise
+    //// Promise, https://tc39.es/ecma262/#sec-promise-executor
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -221,7 +221,7 @@ impl PromiseConstructor {
         );
     }
 
-    /// 27.2.4.1 Promise.all
+    /// Promise.all, https://tc39.es/ecma262/#sec-promise.all
     pub fn all(
         cx: Context,
         this_value: Handle<Value>,
@@ -232,7 +232,7 @@ impl PromiseConstructor {
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all)
     }
 
-    /// 27.2.4.1.2 PerformPromiseAll
+    /// PerformPromiseAll, https://tc39.es/ecma262/#sec-performpromiseall
     fn perform_promise_all(
         cx: Context,
         iterator: &mut Iterator,
@@ -298,7 +298,7 @@ impl PromiseConstructor {
         }
     }
 
-    /// 27.2.4.1.3 Promise.all Resolve
+    /// Promise.all Resolve, https://tc39.es/ecma262/#sec-promise.all-resolve-element-functions
     pub fn promise_all_resolve(
         mut cx: Context,
         _: Handle<Value>,
@@ -336,7 +336,7 @@ impl PromiseConstructor {
         cx.undefined().into()
     }
 
-    /// 27.2.4.2 Promise.allSettled
+    /// Promise.allSettled, https://tc39.es/ecma262/#sec-promise.allsettled
     pub fn all_settled(
         cx: Context,
         this_value: Handle<Value>,
@@ -347,7 +347,7 @@ impl PromiseConstructor {
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all_settled)
     }
 
-    /// 27.2.4.2 Promise.allSettled
+    /// Promise.allSettled, https://tc39.es/ecma262/#sec-performpromiseallsettled
     fn perform_promise_all_settled(
         cx: Context,
         iterator: &mut Iterator,
@@ -438,7 +438,7 @@ impl PromiseConstructor {
         }
     }
 
-    /// 27.2.4.2.2 Promise.allSettled Resolve
+    /// Promise.allSettled Resolve, https://tc39.es/ecma262/#sec-promise.allsettled-resolve-element-functions
     pub fn promise_all_settled_resolve(
         mut cx: Context,
         _: Handle<Value>,
@@ -492,7 +492,7 @@ impl PromiseConstructor {
         cx.undefined().into()
     }
 
-    /// 27.2.4.2.3 Promise.allSettled Reject
+    /// Promise.allSettled Reject, https://tc39.es/ecma262/#sec-promise.allsettled-reject-element-functions
     pub fn promise_all_settled_reject(
         mut cx: Context,
         _: Handle<Value>,
@@ -546,7 +546,7 @@ impl PromiseConstructor {
         cx.undefined().into()
     }
 
-    /// 27.2.4.3 Promise.any
+    /// Promise.any, https://tc39.es/ecma262/#sec-promise.any
     pub fn any(
         cx: Context,
         this_value: Handle<Value>,
@@ -557,7 +557,7 @@ impl PromiseConstructor {
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_any)
     }
 
-    /// 27.2.4.3.1 PerformPromiseAny
+    /// PerformPromiseAny, https://tc39.es/ecma262/#sec-performpromiseany
     fn perform_promise_any(
         cx: Context,
         iterator: &mut Iterator,
@@ -625,7 +625,7 @@ impl PromiseConstructor {
         }
     }
 
-    /// 27.2.4.3.2 Promise.any Reject
+    /// Promise.any Reject, https://tc39.es/ecma262/#sec-promise.any-reject-element-functions
     pub fn promise_any_reject(
         mut cx: Context,
         _: Handle<Value>,
@@ -664,7 +664,7 @@ impl PromiseConstructor {
         cx.undefined().into()
     }
 
-    /// 27.2.4.5 Promise.race
+    /// Promise.race, https://tc39.es/ecma262/#sec-promise.race
     pub fn race(
         cx: Context,
         this_value: Handle<Value>,
@@ -675,7 +675,7 @@ impl PromiseConstructor {
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_race)
     }
 
-    /// 27.2.4.5.1 PerformPromiseRace
+    /// PerformPromiseRace, https://tc39.es/ecma262/#sec-performpromiserace
     fn perform_promise_race(
         cx: Context,
         iterator: &mut Iterator,
@@ -698,7 +698,7 @@ impl PromiseConstructor {
         }
     }
 
-    /// 27.2.4.6 Promise.reject
+    /// Promise.reject, https://tc39.es/ecma262/#sec-promise.reject
     pub fn reject(
         cx: Context,
         this_value: Handle<Value>,
@@ -714,7 +714,7 @@ impl PromiseConstructor {
         capability.promise().into()
     }
 
-    /// 27.2.4.7 Promise.resolve
+    /// Promise.resolve, https://tc39.es/ecma262/#sec-promise.resolve
     pub fn resolve(
         cx: Context,
         this_value: Handle<Value>,
@@ -729,7 +729,7 @@ impl PromiseConstructor {
         maybe!(promise_resolve(cx, this_value, result)).into()
     }
 
-    /// 27.2.4.8 Promise.withResolvers
+    /// Promise.withResolvers, https://tc39.es/ecma262/#sec-promise.withResolvers
     pub fn with_resolvers(
         cx: Context,
         this_value: Handle<Value>,
@@ -823,7 +823,7 @@ fn get_promise(cx: Context, settle_function: Handle<ObjectValue>) -> Handle<Prom
         .cast::<PromiseObject>()
 }
 
-/// 27.2.1.3.2 Promise Resolve Functions
+/// Promise Resolve Functions, https://tc39.es/ecma262/#sec-promise-resolve-functions
 pub fn resolve_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
@@ -840,7 +840,7 @@ pub fn resolve_builtin_function(
     cx.undefined().into()
 }
 
-/// 27.2.1.3.1 Promise Reject Functions
+/// Promise Reject Functions, https://tc39.es/ecma262/#sec-promise-reject-functions
 pub fn reject_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
@@ -860,7 +860,7 @@ pub fn reject_builtin_function(
     cx.undefined().into()
 }
 
-/// 27.2.4.1.1 GetPromiseResolve
+/// GetPromiseResolve, https://tc39.es/ecma262/#sec-getpromiseresolve
 fn get_promise_resolve(
     cx: Context,
     constructor: Handle<ObjectValue>,

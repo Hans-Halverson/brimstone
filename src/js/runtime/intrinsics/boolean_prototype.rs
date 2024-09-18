@@ -11,7 +11,7 @@ use super::{boolean_constructor::BooleanObject, intrinsics::Intrinsic};
 pub struct BooleanPrototype;
 
 impl BooleanPrototype {
-    // 20.3.3 Properties of the Boolean Prototype Object
+    /// Properties of the Boolean Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-boolean-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let object = BooleanObject::new_with_proto(cx, object_proto, false);
@@ -27,7 +27,7 @@ impl BooleanPrototype {
         object.into()
     }
 
-    // 20.3.3.2 Boolean.prototype.toString
+    /// Boolean.prototype.toString, https://tc39.es/ecma262/#sec-boolean.prototype.tostring
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -40,7 +40,7 @@ impl BooleanPrototype {
         cx.alloc_string(string_value).into()
     }
 
-    // 20.3.3.3 Boolean.prototype.valueOf
+    /// Boolean.prototype.valueOf, https://tc39.es/ecma262/#sec-boolean.prototype.valueof
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,

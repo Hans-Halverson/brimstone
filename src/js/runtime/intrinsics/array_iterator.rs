@@ -29,7 +29,7 @@ use super::{
     },
 };
 
-// 23.1.5 Array Iterator Objects
+// Array Iterator Objects, https://tc39.es/ecma262/#sec-array-iterator-objects
 extend_object! {
     pub struct ArrayIterator {
         array: HeapPtr<ObjectValue>,
@@ -97,7 +97,7 @@ impl ArrayIterator {
     cast_from_value_fn!(ArrayIterator, "Array Iterator");
 }
 
-// 23.1.5.2 The %ArrayIteratorPrototype% Object
+/// The %ArrayIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%arrayiteratorprototype%-object
 pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
@@ -107,7 +107,7 @@ impl ArrayIteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
-        // 23.1.5.2.2 %ArrayIteratorPrototype% [ @@toStringTag ]
+        // %ArrayIteratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-%arrayiteratorprototype%-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string("Array Iterator").into();
         object.set_property(
@@ -119,8 +119,8 @@ impl ArrayIteratorPrototype {
         object
     }
 
-    // 23.1.5.2.1 %ArrayIteratorPrototype%.next
-    // Adapted from the abstract closure in 23.1.5.1 CreateArrayIterator
+    /// %ArrayIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next
+    /// Adapted from the abstract closure in CreateArrayIterator, https://tc39.es/ecma262/#sec-createarrayiterator
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,

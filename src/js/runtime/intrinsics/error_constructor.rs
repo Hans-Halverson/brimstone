@@ -44,7 +44,7 @@ impl ErrorObject {
 pub struct ErrorConstructor;
 
 impl ErrorConstructor {
-    // 20.5.2 Properties of the Error Constructor
+    /// Properties of the Error Constructor, https://tc39.es/ecma262/#sec-properties-of-the-error-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -64,7 +64,7 @@ impl ErrorConstructor {
         func
     }
 
-    // 20.5.1.1 Error
+    /// Error, https://tc39.es/ecma262/#sec-error-message
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
@@ -99,7 +99,7 @@ impl ErrorConstructor {
     }
 }
 
-// 20.5.8.1 InstallErrorCause
+/// InstallErrorCause, https://tc39.es/ecma262/#sec-installerrorcause
 pub fn install_error_cause(
     cx: Context,
     object: Handle<ErrorObject>,

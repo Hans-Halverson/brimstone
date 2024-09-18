@@ -9,7 +9,7 @@ use super::{intrinsics::Intrinsic, weak_map_object::WeakMapObject};
 pub struct WeakMapPrototype;
 
 impl WeakMapPrototype {
-    // 24.3.3 Properties of the WeakMap Prototype Object
+    /// Properties of the WeakMap Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-weakmap-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -31,7 +31,7 @@ impl WeakMapPrototype {
         object
     }
 
-    // 24.3.3.2 WeakMap.prototype.delete
+    /// WeakMap.prototype.delete, https://tc39.es/ecma262/#sec-weakmap.prototype.delete
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
@@ -54,7 +54,7 @@ impl WeakMapPrototype {
         cx.bool(removed_value).into()
     }
 
-    // 24.3.3.3 WeakMap.prototype.get
+    /// WeakMap.prototype.get, https://tc39.es/ecma262/#sec-weakmap.prototype.get
     pub fn get(
         cx: Context,
         this_value: Handle<Value>,
@@ -79,7 +79,7 @@ impl WeakMapPrototype {
         }
     }
 
-    // 24.3.3.4 WeakMap.prototype.has
+    /// WeakMap.prototype.has, https://tc39.es/ecma262/#sec-weakmap.prototype.has
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
@@ -102,7 +102,7 @@ impl WeakMapPrototype {
         cx.bool(has_key).into()
     }
 
-    // 24.3.3.5 WeakMap.prototype.set
+    /// WeakMap.prototype.set, https://tc39.es/ecma262/#sec-weakmap.prototype.set
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,

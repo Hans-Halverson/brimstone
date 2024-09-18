@@ -25,7 +25,7 @@ use super::{
     map_object::{MapObject, ValueMap},
 };
 
-// 24.1.5 Map Iterator Objects
+// Map Iterator Objects, https://tc39.es/ecma262/#sec-map-iterator-objects
 extend_object! {
     pub struct MapIterator {
         // Component parts of an index_map::GcSafeEntriesIter
@@ -74,7 +74,7 @@ impl MapIterator {
     }
 }
 
-// 24.1.5.2 The %MapIteratorPrototype% Object
+/// The %MapIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%mapiteratorprototype%-object
 pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
@@ -84,7 +84,7 @@ impl MapIteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
-        // 24.1.5.2.2 %MapIteratorPrototype% [ @@toStringTag ]
+        // %MapIteratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-%mapiteratorprototype%-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string("Map Iterator").into();
         object.set_property(
@@ -96,8 +96,8 @@ impl MapIteratorPrototype {
         object
     }
 
-    // 24.1.5.2.1 %MapIteratorPrototype%.next
-    // Adapted from the abstract closure in 24.1.5.1 CreateMapIterator
+    /// %MapIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%mapiteratorprototype%.next
+    /// Adapted from the abstract closure in CreateMapIterator, https://tc39.es/ecma262/#sec-createmapiterator
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,

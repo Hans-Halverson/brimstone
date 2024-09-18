@@ -439,7 +439,7 @@ builtin_names!(
     (writable, "writable")
 );
 
-// 6.1.5.1 Well-Known Symbols
+/// Well-Known Symbols, https://tc39.es/ecma262/#sec-well-known-symbols
 macro_rules! builtin_symbols {
     ( $( ($rust_name:ident, $description:expr) ),* ) => {
         pub struct BuiltinSymbols {

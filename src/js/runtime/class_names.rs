@@ -1,19 +1,13 @@
 use crate::{
     field_offset,
     js::runtime::{
-        abstract_operations::{create_method_property, define_property_or_throw},
-        bytecode::function::Closure,
-        error::type_error,
-        function::build_function_name,
-        get,
-        intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto,
-        type_utilities::is_constructor_value,
+        abstract_operations::define_property_or_throw, bytecode::function::Closure,
+        error::type_error, function::build_function_name, get, intrinsics::intrinsics::Intrinsic,
+        object_descriptor::ObjectKind, object_value::ObjectValue,
+        ordinary_object::object_create_with_optional_proto, type_utilities::is_constructor_value,
         PropertyDescriptor, PropertyKey,
     },
-    maybe, set_uninit,
+    maybe, must, set_uninit,
 };
 
 use super::{
@@ -166,7 +160,7 @@ impl Method {
     }
 }
 
-/// 15.7.14 ClassDefinitionEvaluation
+/// ClassDefinitionEvaluation, https://tc39.es/ecma262/#sec-runtime-semantics-classdefinitionevaluation
 pub fn new_class(
     mut cx: Context,
     class_names: Handle<ClassNames>,
@@ -210,7 +204,8 @@ pub fn new_class(
     let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent);
 
     // Define a `constructor` property on the prototype
-    create_method_property(cx, prototype, cx.names.constructor(), constructor.into());
+    let desc = PropertyDescriptor::data(constructor.into(), true, false, true);
+    must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
 
     // Define a `prototype` property on the constructor
     let desc = PropertyDescriptor::data(prototype.into(), false, false, false);

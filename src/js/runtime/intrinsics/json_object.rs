@@ -30,7 +30,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 25.5 The JSON Object
+/// The JSON Object, https://tc39.es/ecma262/#sec-json-object
 pub struct JSONObject;
 
 impl JSONObject {
@@ -41,7 +41,7 @@ impl JSONObject {
         object.intrinsic_func(cx, cx.names.parse(), Self::parse, 2, realm);
         object.intrinsic_func(cx, cx.names.stringify(), Self::stringify, 3, realm);
 
-        // 25.5.3 JSON [ @@toStringTag ]
+        // JSON [ @@toStringTag ], https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let math_name_value = cx.names.json().as_string().into();
         object.set_property(
@@ -53,7 +53,7 @@ impl JSONObject {
         object
     }
 
-    // 25.5.1 JSON.parse
+    /// JSON.parse, https://tc39.es/ecma262/#sec-json.parse
     pub fn parse(
         cx: Context,
         _: Handle<Value>,
@@ -89,7 +89,7 @@ impl JSONObject {
         value.into()
     }
 
-    // 25.5.1.1 InternalizeJSONProperty
+    /// InternalizeJSONProperty, https://tc39.es/ecma262/#sec-internalizejsonproperty
     fn internalize_json_property(
         cx: Context,
         holder: Handle<ObjectValue>,
@@ -141,7 +141,7 @@ impl JSONObject {
         call_object(cx, reviver, holder.into(), &[holder_key_value, value])
     }
 
-    // 25.5.2 JSON.stringify
+    /// JSON.stringify, https://tc39.es/ecma262/#sec-json.stringify
     pub fn stringify(
         cx: Context,
         _: Handle<Value>,
@@ -540,9 +540,10 @@ impl JSONSerializer {
         cx.alloc_wtf8_string(&self.builder)
     }
 
-    // 25.5.2.2 SerializeJSONProperty
-    // Returns whether the property was successfully serialized. False is equivalent to returning
-    // undefined in the spec.
+    /// SerializeJSONProperty, https://tc39.es/ecma262/#sec-serializejsonproperty
+    ///
+    /// Returns whether the property was successfully serialized. False is equivalent to returning
+    /// undefined in the spec.
     fn serialize_json_property(
         &mut self,
         cx: Context,
@@ -614,7 +615,7 @@ impl JSONSerializer {
         true.into()
     }
 
-    // 25.5.2.3 QuoteJSONString
+    /// QuoteJSONString, https://tc39.es/ecma262/#sec-quotejsonstring
     fn serialize_json_string(&mut self, string: Handle<StringValue>) {
         self.builder.push_char('"');
 
@@ -665,7 +666,7 @@ impl JSONSerializer {
         }
     }
 
-    // 25.5.2.5 SerializeJSONObject
+    /// SerializeJSONObject, https://tc39.es/ecma262/#sec-serializejsonobject
     fn serialize_json_object(
         &mut self,
         cx: Context,
@@ -743,7 +744,7 @@ impl JSONSerializer {
         ().into()
     }
 
-    // 25.5.2.6 SerializeJSONArray
+    /// SerializeJSONArray, https://tc39.es/ecma262/#sec-serializejsonarray
     fn serialize_json_array(&mut self, cx: Context, array: Handle<ObjectValue>) -> EvalResult<()> {
         maybe!(self.check_for_cycle(cx, array));
 

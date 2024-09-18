@@ -23,7 +23,7 @@ use super::{
     Context, EvalResult, Handle, HeapPtr, Realm, Value,
 };
 
-// 10.4.2 Array Exotic Objects
+// Array Exotic Objects, https://tc39.es/ecma262/#sec-array-exotic-objects
 extend_object! {
     pub struct ArrayObject {
         // Length property is backed by length of object's ArrayProperties. There is no explicit
@@ -44,7 +44,7 @@ impl ArrayObject {
 
 #[wrap_ordinary_object]
 impl VirtualObject for Handle<ArrayObject> {
-    // 10.4.2.1 [[DefineOwnProperty]]
+    /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-array-exotic-objects-defineownproperty-p-desc
     fn define_own_property(
         &mut self,
         cx: Context,
@@ -113,7 +113,7 @@ impl VirtualObject for Handle<ArrayObject> {
     }
 }
 
-// 10.4.2.2 ArrayCreate
+/// ArrayCreate, https://tc39.es/ecma262/#sec-arraycreate
 pub fn array_create(
     cx: Context,
     length: u64,
@@ -144,7 +144,7 @@ pub fn array_create_in_realm(
     array_object.into()
 }
 
-// 10.4.2.3 ArraySpeciesCreate
+/// ArraySpeciesCreate, https://tc39.es/ecma262/#sec-arrayspeciescreate
 pub fn array_species_create(
     cx: Context,
     original_array: Handle<ObjectValue>,
@@ -192,7 +192,7 @@ pub fn array_species_create(
     construct(cx, constructor.as_object(), &[length_value], None)
 }
 
-// 10.4.2.4 ArraySetLength
+/// ArraySetLength, https://tc39.es/ecma262/#sec-arraysetlength
 // Modified from spec to use custom length property.
 fn array_set_length(
     cx: Context,
@@ -235,7 +235,7 @@ fn array_set_length(
     has_delete_succeeded.into()
 }
 
-// 7.3.18 CreateArrayFromList
+/// CreateArrayFromList, https://tc39.es/ecma262/#sec-createarrayfromlist
 pub fn create_array_from_list(cx: Context, elements: &[Handle<Value>]) -> Handle<ArrayObject> {
     let array = must!(array_create(cx, 0, None));
 

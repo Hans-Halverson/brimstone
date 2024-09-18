@@ -17,7 +17,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 24.4 WeakSet Objects
+// WeakSet Objects, https://tc39.es/ecma262/#sec-weakset-objects
 extend_object! {
     pub struct WeakSetObject {
         // Set of weakly held references to values. Can only hold object and symbols.

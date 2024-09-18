@@ -22,7 +22,7 @@ use super::{
 pub struct ArrayBufferPrototype;
 
 impl ArrayBufferPrototype {
-    // 25.1.6 Properties of the ArrayBuffer Prototype Object
+    /// Properties of the ArrayBuffer Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -43,7 +43,7 @@ impl ArrayBufferPrototype {
             realm,
         );
 
-        // 25.1.6.10 ArrayBuffer.prototype [ %Symbol.toStringTag% ]
+        // ArrayBuffer.prototype [ %Symbol.toStringTag% ], https://tc39.es/ecma262/#sec-arraybuffer.prototype-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -54,7 +54,7 @@ impl ArrayBufferPrototype {
         object
     }
 
-    // 25.1.6.1 get ArrayBuffer.prototype.byteLength
+    /// get ArrayBuffer.prototype.byteLength, https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.bytelength
     pub fn get_byte_length(
         cx: Context,
         this_value: Handle<Value>,
@@ -67,7 +67,7 @@ impl ArrayBufferPrototype {
         Value::from(array_buffer.byte_length()).to_handle(cx).into()
     }
 
-    // 25.1.6.3 get ArrayBuffer.prototype.detached
+    /// get ArrayBuffer.prototype.detached, https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.detached
     pub fn get_detached(
         cx: Context,
         this_value: Handle<Value>,
@@ -78,7 +78,7 @@ impl ArrayBufferPrototype {
         cx.bool(array_buffer.is_detached()).into()
     }
 
-    // 25.1.6.4 get ArrayBuffer.prototype.maxByteLength
+    /// get ArrayBuffer.prototype.maxByteLength, https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.maxbytelength
     pub fn get_max_byte_length(
         cx: Context,
         this_value: Handle<Value>,
@@ -95,7 +95,7 @@ impl ArrayBufferPrototype {
         Value::from(max_byte_length).to_handle(cx).into()
     }
 
-    // 25.1.6.5 get ArrayBuffer.prototype.resizable
+    /// get ArrayBuffer.prototype.resizable, https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable
     pub fn get_resizable(
         cx: Context,
         this_value: Handle<Value>,
@@ -106,7 +106,7 @@ impl ArrayBufferPrototype {
         cx.bool(!array_buffer.is_fixed_length()).into()
     }
 
-    // 25.1.6.6 ArrayBuffer.prototype.resize
+    /// ArrayBuffer.prototype.resize, https://tc39.es/ecma262/#sec-arraybuffer.prototype.resize
     pub fn resize(
         cx: Context,
         this_value: Handle<Value>,
@@ -162,7 +162,7 @@ impl ArrayBufferPrototype {
         cx.undefined().into()
     }
 
-    // 25.1.6.7 ArrayBuffer.prototype.slice
+    /// ArrayBuffer.prototype.slice, https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
@@ -249,7 +249,7 @@ impl ArrayBufferPrototype {
         new_array_buffer.into()
     }
 
-    // 25.1.6.8 ArrayBuffer.prototype.transfer
+    /// ArrayBuffer.prototype.transfer, https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfer
     pub fn transfer(
         cx: Context,
         this_value: Handle<Value>,
@@ -269,7 +269,7 @@ impl ArrayBufferPrototype {
         new_array_buffer.into()
     }
 
-    // 25.1.6.9 ArrayBuffer.prototype.transferToFixedLength
+    /// ArrayBuffer.prototype.transferToFixedLength, https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfertofixedlength
     pub fn transfer_to_fixed_length(
         cx: Context,
         this_value: Handle<Value>,

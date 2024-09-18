@@ -37,7 +37,7 @@ use crate::{
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
-// 22.2 RegExp (Regular Expression) Objects
+// RegExp (Regular Expression) Objects, https://tc39.es/ecma262/#sec-regexp-regular-expression-objects
 extend_object! {
     pub struct RegExpObject {
         compiled_regexp: HeapPtr<CompiledRegExpObject>,
@@ -121,7 +121,7 @@ impl RegExpObject {
 pub struct RegExpConstructor;
 
 impl RegExpConstructor {
-    // 22.2.5 Properties of the RegExp Constructor
+    /// Properties of the RegExp Constructor, https://tc39.es/ecma262/#sec-properties-of-the-regexp-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -138,14 +138,14 @@ impl RegExpConstructor {
             realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
         );
 
-        // 22.2.5.2 get RegExp [ @@species ]
+        // get RegExp [ @@species ], https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    // 22.2.4.1 RegExp
+    /// RegExp, https://tc39.es/ecma262/#sec-regexp-pattern-flags
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
@@ -224,7 +224,7 @@ pub enum FlagsSource {
     Value(Handle<Value>),
 }
 
-// 22.2.3.1 RegExpCreate
+/// RegExpCreate, https://tc39.es/ecma262/#sec-regexpcreate
 pub fn regexp_create(
     cx: Context,
     regexp_source: RegExpSource,

@@ -39,7 +39,7 @@ use super::{
 pub struct ArrayPrototype;
 
 impl ArrayPrototype {
-    // 23.1.3 Properties of the Array Prototype Object
+    /// Properties of the Array Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-array-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let mut array: Handle<ObjectValue> = ArrayObject::new(cx, object_proto).into();
@@ -89,11 +89,11 @@ impl ArrayPrototype {
         array.intrinsic_data_prop(cx, cx.names.values(), values_function);
         array.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
 
-        // 23.1.3.40 Array.prototype [ @@iterator ]
+        // Array.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-array.prototype-%symbol.iterator%
         let iterator_key = cx.well_known_symbols.iterator();
         array.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
-        // 23.1.3.41 Array.prototype [ @@unscopables ]
+        // Array.prototype [ @@unscopables ], https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%
         let unscopables_key = cx.well_known_symbols.unscopables();
         let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
         array.set_property(cx, unscopables_key, unscopables);
@@ -101,7 +101,7 @@ impl ArrayPrototype {
         array
     }
 
-    // 23.1.3.1 Array.prototype.at
+    /// Array.prototype.at, https://tc39.es/ecma262/#sec-array.prototype.at
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
@@ -131,7 +131,7 @@ impl ArrayPrototype {
         get(cx, object, key)
     }
 
-    // 23.1.3.2 Array.prototype.concat
+    /// Array.prototype.concat, https://tc39.es/ecma262/#sec-array.prototype.concat
     pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
@@ -155,7 +155,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.2.1 IsConcatSpreadable
+    /// IsConcatSpreadable, https://tc39.es/ecma262/#sec-isconcatspreadable
     pub fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
             return false.into();
@@ -218,7 +218,7 @@ impl ArrayPrototype {
         ().into()
     }
 
-    // 23.1.3.4 Array.prototype.copyWithin
+    /// Array.prototype.copyWithin, https://tc39.es/ecma262/#sec-array.prototype.copywithin
     pub fn copy_within(
         cx: Context,
         this_value: Handle<Value>,
@@ -324,7 +324,7 @@ impl ArrayPrototype {
         object.into()
     }
 
-    // 23.1.3.5 Array.prototype.entries
+    /// Array.prototype.entries, https://tc39.es/ecma262/#sec-array.prototype.entries
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
@@ -335,7 +335,7 @@ impl ArrayPrototype {
         ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).into()
     }
 
-    // 23.1.3.6 Array.prototype.every
+    /// Array.prototype.every, https://tc39.es/ecma262/#sec-array.prototype.every
     pub fn every(
         cx: Context,
         this_value: Handle<Value>,
@@ -375,7 +375,7 @@ impl ArrayPrototype {
         cx.bool(true).into()
     }
 
-    // 23.1.3.7 Array.prototype.fill
+    /// Array.prototype.fill, https://tc39.es/ecma262/#sec-array.prototype.fill
     pub fn fill(
         cx: Context,
         this_value: Handle<Value>,
@@ -427,7 +427,7 @@ impl ArrayPrototype {
         object.into()
     }
 
-    // 23.1.3.8 Array.prototype.filter
+    /// Array.prototype.filter, https://tc39.es/ecma262/#sec-array.prototype.filter
     pub fn filter(
         cx: Context,
         this_value: Handle<Value>,
@@ -478,7 +478,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.9 Array.prototype.find
+    /// Array.prototype.find, https://tc39.es/ecma262/#sec-array.prototype.find
     pub fn find(
         cx: Context,
         this_value: Handle<Value>,
@@ -505,7 +505,7 @@ impl ArrayPrototype {
         }
     }
 
-    // 23.1.3.10 Array.prototype.findIndex
+    /// Array.prototype.findIndex, https://tc39.es/ecma262/#sec-array.prototype.findindex
     pub fn find_index(
         cx: Context,
         this_value: Handle<Value>,
@@ -532,7 +532,7 @@ impl ArrayPrototype {
         }
     }
 
-    // 23.1.3.11 Array.prototype.findLast
+    /// Array.prototype.findLast, https://tc39.es/ecma262/#sec-array.prototype.findlast
     pub fn find_last(
         cx: Context,
         this_value: Handle<Value>,
@@ -559,7 +559,7 @@ impl ArrayPrototype {
         }
     }
 
-    // 23.1.3.12 Array.prototype.findLastIndex
+    /// Array.prototype.findLastIndex, https://tc39.es/ecma262/#sec-array.prototype.findlastindex
     pub fn find_last_index(
         cx: Context,
         this_value: Handle<Value>,
@@ -586,7 +586,7 @@ impl ArrayPrototype {
         }
     }
 
-    // 23.1.3.13 Array.prototype.flat
+    /// Array.prototype.flat, https://tc39.es/ecma262/#sec-array.prototype.flat
     pub fn flat(
         cx: Context,
         this_value: Handle<Value>,
@@ -620,7 +620,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.13.1 FlattenIntoArray
+    /// FlattenIntoArray, https://tc39.es/ecma262/#sec-flattenintoarray
     pub fn flatten_into_array(
         cx: Context,
         target: Handle<ObjectValue>,
@@ -690,7 +690,7 @@ impl ArrayPrototype {
         target_index.into()
     }
 
-    // 23.1.3.14 Array.prototype.flatMap
+    /// Array.prototype.flatMap, https://tc39.es/ecma262/#sec-array.prototype.flatmap
     pub fn flat_map(
         cx: Context,
         this_value: Handle<Value>,
@@ -723,7 +723,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.15 Array.prototype.forEach
+    /// Array.prototype.forEach, https://tc39.es/ecma262/#sec-array.prototype.foreach
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
@@ -760,7 +760,7 @@ impl ArrayPrototype {
         cx.undefined().into()
     }
 
-    // 23.1.3.16 Array.prototype.includes
+    /// Array.prototype.includes, https://tc39.es/ecma262/#sec-array.prototype.includes
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
@@ -805,7 +805,7 @@ impl ArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.1.3.17 Array.prototype.indexOf
+    /// Array.prototype.indexOf, https://tc39.es/ecma262/#sec-array.prototype.indexof
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -851,7 +851,7 @@ impl ArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.1.3.18 Array.prototype.join
+    /// Array.prototype.join, https://tc39.es/ecma262/#sec-array.prototype.join
     pub fn join(
         cx: Context,
         this_value: Handle<Value>,
@@ -890,7 +890,7 @@ impl ArrayPrototype {
         joined.into()
     }
 
-    // 23.1.3.19 Array.prototype.keys
+    /// Array.prototype.keys, https://tc39.es/ecma262/#sec-array.prototype.keys
     pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
@@ -901,7 +901,7 @@ impl ArrayPrototype {
         ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
     }
 
-    // 23.1.3.20 Array.prototype.lastIndexOf
+    /// Array.prototype.lastIndexOf, https://tc39.es/ecma262/#sec-array.prototype.lastindexof
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -955,7 +955,7 @@ impl ArrayPrototype {
         Value::smi(-1).to_handle(cx).into()
     }
 
-    // 23.1.3.21 Array.prototype.map
+    /// Array.prototype.map, https://tc39.es/ecma262/#sec-array.prototype.map
     pub fn map(
         cx: Context,
         this_value: Handle<Value>,
@@ -995,7 +995,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.22 Array.prototype.pop
+    /// Array.prototype.pop, https://tc39.es/ecma262/#sec-array.prototype.pop
     pub fn pop(
         cx: Context,
         this_value: Handle<Value>,
@@ -1023,7 +1023,7 @@ impl ArrayPrototype {
         element.into()
     }
 
-    // 23.1.3.23 Array.prototype.push
+    /// Array.prototype.push, https://tc39.es/ecma262/#sec-array.prototype.push
     pub fn push(
         cx: Context,
         this_value: Handle<Value>,
@@ -1052,7 +1052,7 @@ impl ArrayPrototype {
         new_length_value.into()
     }
 
-    // 23.1.3.24 Array.prototype.reduce
+    /// Array.prototype.reduce, https://tc39.es/ecma262/#sec-array.prototype.reduce
     pub fn reduce(
         cx: Context,
         this_value: Handle<Value>,
@@ -1113,7 +1113,7 @@ impl ArrayPrototype {
         accumulator.into()
     }
 
-    // 23.1.3.25 Array.prototype.reduceRight
+    /// Array.prototype.reduceRight, https://tc39.es/ecma262/#sec-array.prototype.reduceright
     pub fn reduce_right(
         cx: Context,
         this_value: Handle<Value>,
@@ -1173,7 +1173,7 @@ impl ArrayPrototype {
         accumulator.into()
     }
 
-    // 23.1.3.26 Array.prototype.reverse
+    /// Array.prototype.reverse, https://tc39.es/ecma262/#sec-array.prototype.reverse
     pub fn reverse(
         cx: Context,
         this_value: Handle<Value>,
@@ -1231,7 +1231,7 @@ impl ArrayPrototype {
         object.into()
     }
 
-    // 23.1.3.27 Array.prototype.shift
+    /// Array.prototype.shift, https://tc39.es/ecma262/#sec-array.prototype.shift
     pub fn shift(
         cx: Context,
         this_value: Handle<Value>,
@@ -1275,7 +1275,7 @@ impl ArrayPrototype {
         first.into()
     }
 
-    // 23.1.3.28 Array.prototype.slice
+    /// Array.prototype.slice, https://tc39.es/ecma262/#sec-array.prototype.slice
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
@@ -1343,7 +1343,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.29 Array.prototype.some
+    /// Array.prototype.some, https://tc39.es/ecma262/#sec-array.prototype.some
     pub fn some(
         cx: Context,
         this_value: Handle<Value>,
@@ -1383,7 +1383,7 @@ impl ArrayPrototype {
         cx.bool(false).into()
     }
 
-    // 23.1.3.30 Array.prototype.sort
+    /// Array.prototype.sort, https://tc39.es/ecma262/#sec-array.prototype.sort
     pub fn sort(
         cx: Context,
         this_value: Handle<Value>,
@@ -1423,7 +1423,7 @@ impl ArrayPrototype {
         object.into()
     }
 
-    // 23.1.3.31 Array.prototype.splice
+    /// Array.prototype.splice, https://tc39.es/ecma262/#sec-array.prototype.splice
     pub fn splice(
         cx: Context,
         this_value: Handle<Value>,
@@ -1525,7 +1525,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.32 Array.prototype.toLocaleString
+    /// Array.prototype.toLocaleString, https://tc39.es/ecma262/#sec-array.prototype.tolocalestring
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1561,7 +1561,7 @@ impl ArrayPrototype {
         result.into()
     }
 
-    // 23.1.3.33 Array.prototype.toReversed
+    /// Array.prototype.toReversed, https://tc39.es/ecma262/#sec-array.prototype.toreversed
     pub fn to_reversed(
         cx: Context,
         this_value: Handle<Value>,
@@ -1588,7 +1588,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.34 Array.prototype.toSorted
+    /// Array.prototype.toSorted, https://tc39.es/ecma262/#sec-array.prototype.tosorted
     pub fn to_sorted(
         cx: Context,
         this_value: Handle<Value>,
@@ -1624,7 +1624,7 @@ impl ArrayPrototype {
         sorted_array.into()
     }
 
-    // 23.1.3.35 Array.prototype.toSpliced
+    /// Array.prototype.toSpliced, https://tc39.es/ecma262/#sec-array.prototype.tospliced
     pub fn to_spliced(
         cx: Context,
         this_value: Handle<Value>,
@@ -1697,7 +1697,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.36 Array.prototype.toString
+    /// Array.prototype.toString, https://tc39.es/ecma262/#sec-array.prototype.tostring
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1716,7 +1716,7 @@ impl ArrayPrototype {
         call_object(cx, func, array.into(), &[])
     }
 
-    // 23.1.3.37 Array.prototype.unshift
+    /// Array.prototype.unshift, https://tc39.es/ecma262/#sec-array.prototype.unshift
     pub fn unshift(
         cx: Context,
         this_value: Handle<Value>,
@@ -1760,7 +1760,7 @@ impl ArrayPrototype {
         new_length.into()
     }
 
-    // 23.1.3.38 Array.prototype.values
+    /// Array.prototype.values, https://tc39.es/ecma262/#sec-array.prototype.values
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
@@ -1771,7 +1771,7 @@ impl ArrayPrototype {
         ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
     }
 
-    // 23.1.3.39 Array.prototype.with
+    /// Array.prototype.with, https://tc39.es/ecma262/#sec-array.prototype.with
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
@@ -1822,7 +1822,7 @@ impl ArrayPrototype {
         array.into()
     }
 
-    // 23.1.3.41 Array.prototype [ @@unscopables ]
+    /// Array.prototype [ @@unscopables ], https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%
     fn create_unscopables(cx: Context) -> Handle<ObjectValue> {
         let list =
             object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
@@ -1851,7 +1851,7 @@ impl ArrayPrototype {
     }
 }
 
-// 23.1.3.12.1 FindViaPredicate
+/// FindViaPredicate, https://tc39.es/ecma262/#sec-findviapredicate
 #[inline]
 pub fn find_via_predicate(
     cx: Context,
@@ -1888,7 +1888,7 @@ pub const INCLUDE_HOLES: bool = false;
 pub const TYPED_ARRAY: bool = true;
 pub const REGULAR_ARRAY: bool = false;
 
-// 23.1.3.30.1 SortIndexedProperties
+/// SortIndexedProperties, https://tc39.es/ecma262/#sec-sortindexedproperties
 pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: bool>(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -1918,7 +1918,7 @@ pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: b
     })
 }
 
-// 23.1.3.30.2 CompareArrayElements
+/// CompareArrayElements, https://tc39.es/ecma262/#sec-comparearrayelements
 fn compare_array_elements(
     cx: Context,
     v1: Handle<Value>,

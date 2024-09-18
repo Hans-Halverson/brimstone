@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use super::{type_utilities::is_integral_number, Value};
 
-// 6.1.6.1.3 Number::exponentiate
+/// Number::exponentiate, https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate
 pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
     if exponent.is_nan() {
         return f64::NAN;

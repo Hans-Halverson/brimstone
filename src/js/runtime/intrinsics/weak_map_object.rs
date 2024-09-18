@@ -17,7 +17,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 24.3 WeakMap Objects
+// WeakMap Objects, https://tc39.es/ecma262/#sec-weakmap-objects
 extend_object! {
     pub struct WeakMapObject {
         // Map of weakly held keys to values. Can only hold object and symbols as keys.

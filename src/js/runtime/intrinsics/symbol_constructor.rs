@@ -22,7 +22,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 20.4 Symbol Objects
+// Symbol Objects, https://tc39.es/ecma262/#sec-symbol-objects
 extend_object! {
     pub struct SymbolObject {
         // The symbol value wrapped by this object
@@ -48,7 +48,7 @@ impl SymbolObject {
 pub struct SymbolConstructor;
 
 impl SymbolConstructor {
-    // 20.4.2 Properties of the Symbol Constructor
+    /// Properties of the Symbol Constructor, https://tc39.es/ecma262/#sec-properties-of-the-symbol-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -115,7 +115,7 @@ impl SymbolConstructor {
         func
     }
 
-    // 20.4.1.1 Symbol
+    /// Symbol, https://tc39.es/ecma262/#sec-symbol-description
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -136,7 +136,7 @@ impl SymbolConstructor {
         SymbolValue::new(cx, description_value, /* is_private */ false).into()
     }
 
-    // 20.4.2.2 Symbol.for
+    /// Symbol.for, https://tc39.es/ecma262/#sec-symbol.for
     pub fn for_(
         mut cx: Context,
         _: Handle<Value>,
@@ -158,7 +158,7 @@ impl SymbolConstructor {
         new_symbol.into()
     }
 
-    // 20.4.2.6 Symbol.keyFor
+    /// Symbol.keyFor, https://tc39.es/ecma262/#sec-symbol.keyfor
     pub fn key_for(
         cx: Context,
         _: Handle<Value>,

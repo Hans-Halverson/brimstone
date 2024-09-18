@@ -23,7 +23,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 27.1.4 Async-from-Sync Iterator Objects
+// Async-from-Sync Iterator Objects, https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects
 extend_object! {
     pub struct AsyncFromSyncIterator {
         iterator: HeapPtr<ObjectValue>,
@@ -70,7 +70,7 @@ impl HeapObject for HeapPtr<AsyncFromSyncIterator> {
 pub struct AsyncFromSyncIteratorPrototype;
 
 impl AsyncFromSyncIteratorPrototype {
-    // 27.1.4.2 The %AsyncFromSyncIteratorPrototype% Object
+    /// The %AsyncFromSyncIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object = ObjectValue::new(
             cx,
@@ -85,7 +85,7 @@ impl AsyncFromSyncIteratorPrototype {
         object
     }
 
-    // 27.1.4.2.1 %AsyncFromSyncIteratorPrototype%.next
+    /// %AsyncFromSyncIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.next
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
@@ -110,7 +110,7 @@ impl AsyncFromSyncIteratorPrototype {
         async_from_sync_iterator_continuation(cx, iter_result, capability)
     }
 
-    // 27.1.4.2.2 %AsyncFromSyncIteratorPrototype%.return
+    /// %AsyncFromSyncIteratorPrototype%.return, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.return
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
@@ -156,7 +156,7 @@ impl AsyncFromSyncIteratorPrototype {
         async_from_sync_iterator_continuation(cx, return_result.as_object(), capability)
     }
 
-    // 27.1.4.2.3 %AsyncFromSyncIteratorPrototype%.throw
+    /// %AsyncFromSyncIteratorPrototype%.throw, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.throw
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,
@@ -202,7 +202,7 @@ impl AsyncFromSyncIteratorPrototype {
     }
 }
 
-/// 27.1.4.4 AsyncFromSyncIteratorContinuation
+/// AsyncFromSyncIteratorContinuation, https://tc39.es/ecma262/#sec-asyncfromsynciteratorcontinuation
 fn async_from_sync_iterator_continuation(
     cx: Context,
     iter_result: Handle<ObjectValue>,

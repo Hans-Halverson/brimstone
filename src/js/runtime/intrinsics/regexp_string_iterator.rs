@@ -25,7 +25,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 22.2.9 RegExp String Iterator Objects
+// RegExp String Iterator Objects, https://tc39.es/ecma262/#sec-regexp-string-iterator-objects
 extend_object! {
     pub struct RegExpStringIterator {
         regexp_object: HeapPtr<ObjectValue>,
@@ -72,7 +72,7 @@ impl RegExpStringIterator {
     cast_from_value_fn!(RegExpStringIterator, "RegExp String Iterator");
 }
 
-// 22.2.9.2 The %RegExpStringIteratorPrototype% Object
+/// The %RegExpStringIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%-object
 pub struct RegExpStringIteratorPrototype;
 
 impl RegExpStringIteratorPrototype {
@@ -82,7 +82,7 @@ impl RegExpStringIteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
-        // 22.2.9.2.2 %RegExpStringIteratorPrototype% [ @@toStringTag ]
+        // %RegExpStringIteratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string("RegExp String Iterator").into();
         object.set_property(
@@ -94,7 +94,7 @@ impl RegExpStringIteratorPrototype {
         object
     }
 
-    // 22.2.9.2.1 %RegExpStringIteratorPrototype%.next
+    /// %RegExpStringIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%.next
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,

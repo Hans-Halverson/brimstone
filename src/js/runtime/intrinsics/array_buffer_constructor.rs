@@ -25,7 +25,7 @@ use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 // 4GB max array buffer size
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;
 
-// 25.1 ArrayBuffer Objects
+// ArrayBuffer Objects, https://tc39.es/ecma262/#sec-arraybuffer-objects
 extend_object! {
     pub struct ArrayBufferObject {
         // Byte length of the array buffer. Stored separately from data as data might be detached
@@ -41,7 +41,7 @@ extend_object! {
 type DataArray = BsArray<u8>;
 
 impl ArrayBufferObject {
-    // 25.1.3.1 AllocateArrayBuffer
+    /// AllocateArrayBuffer, https://tc39.es/ecma262/#sec-allocatearraybuffer
     pub fn new(
         cx: Context,
         constructor: Handle<ObjectValue>,
@@ -125,7 +125,7 @@ impl ArrayBufferObject {
         self.data.is_none()
     }
 
-    // 25.1.3.5 DetachArrayBuffer
+    /// DetachArrayBuffer, https://tc39.es/ecma262/#sec-detacharraybuffer
     #[allow(dead_code)]
     pub fn detach(&mut self) {
         self.data = None;
@@ -140,7 +140,7 @@ impl ArrayBufferObject {
 pub struct ArrayBufferConstructor;
 
 impl ArrayBufferConstructor {
-    // 25.1.4 Properties of the ArrayBuffer Constructor
+    /// Properties of the ArrayBuffer Constructor, https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -159,14 +159,14 @@ impl ArrayBufferConstructor {
 
         func.intrinsic_func(cx, cx.names.is_view(), Self::is_view, 1, realm);
 
-        // 25.1.4.3 get ArrayBuffer [ @@species ]
+        // get ArrayBuffer [ @@species ], https://tc39.es/ecma262/#sec-get-arraybuffer-%symbol.species%
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    // 25.1.3.1 ArrayBuffer
+    /// ArrayBuffer, https://tc39.es/ecma262/#sec-arraybuffer-length
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -195,7 +195,7 @@ impl ArrayBufferConstructor {
         .into()
     }
 
-    // 25.1.4.1 ArrayBuffer.isView
+    /// ArrayBuffer.isView, https://tc39.es/ecma262/#sec-arraybuffer.isview
     pub fn is_view(
         cx: Context,
         _: Handle<Value>,
@@ -214,7 +214,7 @@ impl ArrayBufferConstructor {
     }
 }
 
-// 25.1.3.3 ArrayBufferCopyAndDetach
+/// ArrayBufferCopyAndDetach, https://tc39.es/ecma262/#sec-arraybuffercopyanddetach
 pub fn array_buffer_copy_and_detach(
     cx: Context,
     mut array_buffer: Handle<ArrayBufferObject>,
@@ -255,7 +255,7 @@ pub fn array_buffer_copy_and_detach(
     new_buffer.into()
 }
 
-// 25.1.3.6 CloneArrayBuffer
+/// CloneArrayBuffer, https://tc39.es/ecma262/#sec-clonearraybuffer
 pub fn clone_array_buffer(
     cx: Context,
     mut source_buffer: Handle<ArrayBufferObject>,
@@ -280,7 +280,7 @@ pub fn clone_array_buffer(
     target_buffer.into()
 }
 
-// 25.1.3.7 GetArrayBufferMaxByteLengthOption
+/// GetArrayBufferMaxByteLengthOption, https://tc39.es/ecma262/#sec-getarraybuffermaxbytelengthoption
 fn get_array_buffer_max_byte_length_option(
     cx: Context,
     options: Handle<Value>,

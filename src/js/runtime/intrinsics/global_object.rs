@@ -29,7 +29,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 9.3.4 SetDefaultGlobalBindings
+/// SetDefaultGlobalBindings, https://tc39.es/ecma262/#sec-setdefaultglobalbindings
 pub fn set_default_global_bindings(
     cx: Context,
     realm: Handle<Realm>,
@@ -74,7 +74,7 @@ pub fn set_default_global_bindings(
             };
         }
 
-        // 19.1 Value Properties of the Global Object
+        // Value Properties of the Global Object, https://tc39.es/ecma262/#sec-value-properties-of-the-global-object
         let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
         let nan_value = Value::nan().to_handle(cx);
 
@@ -83,7 +83,7 @@ pub fn set_default_global_bindings(
         value_prop!(cx.names.nan(), nan_value, false, false, false);
         value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
-        // 19.2 Function Properties of the Global Object
+        // Function Properties of the Global Object, https://tc39.es/ecma262/#sec-function-properties-of-the-global-object
         func_prop!(cx.names.decode_uri(), decode_uri, 1);
         func_prop!(cx.names.decode_uri_component(), decode_uri_component, 1);
         func_prop!(cx.names.encode_uri(), encode_uri, 1);
@@ -94,7 +94,7 @@ pub fn set_default_global_bindings(
         intrinsic_prop!(cx.names.parse_float(), ParseFloat);
         intrinsic_prop!(cx.names.parse_int(), ParseInt);
 
-        // 19.3 Constructor Properties of the Global Object
+        // Constructor Properties of the Global Object, https://tc39.es/ecma262/#sec-constructor-properties-of-the-global-object
         intrinsic_prop!(cx.names.aggregate_error(), AggregateErrorConstructor);
         intrinsic_prop!(cx.names.array_buffer(), ArrayBufferConstructor);
         intrinsic_prop!(cx.names.array(), ArrayConstructor);
@@ -135,7 +135,7 @@ pub fn set_default_global_bindings(
         intrinsic_prop!(cx.names.weak_ref(), WeakRefConstructor);
         intrinsic_prop!(cx.names.weak_set(), WeakSetConstructor);
 
-        // 19.4 Other Properties of the Global Object
+        // Other Properties of the Global Object, https://tc39.es/ecma262/#sec-other-properties-of-the-global-object
         intrinsic_prop!(cx.names.json(), JSON);
         intrinsic_prop!(cx.names.math(), Math);
         intrinsic_prop!(cx.names.reflect(), Reflect);
@@ -170,7 +170,7 @@ pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
     BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), realm, None, None).into()
 }
 
-// 19.2.1 eval
+/// eval, https://tc39.es/ecma262/#sec-eval-x
 pub fn eval(
     cx: Context,
     _: Handle<Value>,
@@ -182,7 +182,7 @@ pub fn eval(
     perform_eval(cx, code_arg, /* is_strict_caller */ false, None, EvalFlags::empty())
 }
 
-// 19.2.2 isFinite
+/// isFinite, https://tc39.es/ecma262/#sec-isfinite-number
 pub fn is_finite(
     cx: Context,
     _: Handle<Value>,
@@ -194,7 +194,7 @@ pub fn is_finite(
     cx.bool(!num.is_nan() && !num.is_infinity()).into()
 }
 
-// 19.2.3 isNaN
+/// isNaN, https://tc39.es/ecma262/#sec-isnan-number
 pub fn is_nan(
     cx: Context,
     _: Handle<Value>,
@@ -206,7 +206,7 @@ pub fn is_nan(
     cx.bool(num.is_nan()).into()
 }
 
-// 19.2.4 parseFloat
+/// parseFloat, https://tc39.es/ecma262/#sec-parsefloat-string
 pub fn parse_float(
     cx: Context,
     _: Handle<Value>,
@@ -229,7 +229,7 @@ fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
     parse_signed_decimal_literal(&mut lexer)
 }
 
-// 19.2.5 parseInt
+/// parseInt, https://tc39.es/ecma262/#sec-parseint-string-radix
 pub fn parse_int(
     cx: Context,
     _: Handle<Value>,
@@ -343,7 +343,7 @@ fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
     }
 }
 
-// 19.2.6.1 decodeURI
+/// decodeURI, https://tc39.es/ecma262/#sec-decodeuri-encodeduri
 pub fn decode_uri(
     cx: Context,
     _: Handle<Value>,
@@ -356,7 +356,7 @@ pub fn decode_uri(
     decode::<true>(cx, uri_string)
 }
 
-// 19.2.6.2 decodeURIComponent
+/// decodeURIComponent, https://tc39.es/ecma262/#sec-decodeuricomponent-encodeduricomponent
 pub fn decode_uri_component(
     cx: Context,
     _: Handle<Value>,
@@ -369,7 +369,7 @@ pub fn decode_uri_component(
     decode::<false>(cx, uri_component_string)
 }
 
-// 19.2.6.6 Decode
+/// Decode, https://tc39.es/ecma262/#sec-decode
 fn decode<const INCLUDE_URI_UNESCAPED: bool>(
     cx: Context,
     string: Handle<StringValue>,
@@ -473,7 +473,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
         .into()
 }
 
-// 19.2.6.3 encodeURI
+/// encodeURI, https://tc39.es/ecma262/#sec-encodeuri-uri
 pub fn encode_uri(
     cx: Context,
     _: Handle<Value>,
@@ -486,7 +486,7 @@ pub fn encode_uri(
     encode::<true>(cx, uri_string)
 }
 
-// 19.2.6.4 encodeURIComponent
+/// encodeURIComponent, https://tc39.es/ecma262/#sec-encodeuricomponent-uricomponent
 pub fn encode_uri_component(
     cx: Context,
     _: Handle<Value>,
@@ -499,7 +499,7 @@ pub fn encode_uri_component(
     encode::<false>(cx, uri_component_string)
 }
 
-// 19.2.6.5 Encode
+/// Encode, https://tc39.es/ecma262/#sec-encode
 fn encode<const INCLUDE_URI_UNESCAPED: bool>(
     cx: Context,
     string: Handle<StringValue>,

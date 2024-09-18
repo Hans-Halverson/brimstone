@@ -20,7 +20,7 @@ use crate::{
 
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
 
-// 25.3 DataView Objects
+// DataView Objects, https://tc39.es/ecma262/#sec-dataview-objects
 extend_object! {
     pub struct DataViewObject {
         viewed_array_buffer: HeapPtr<ArrayBufferObject>,
@@ -74,7 +74,7 @@ impl DataViewObject {
 pub struct DataViewConstructor;
 
 impl DataViewConstructor {
-    // 25.3.3 Properties of the DataView Constructor
+    /// Properties of the DataView Constructor, https://tc39.es/ecma262/#sec-properties-of-the-dataview-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -94,7 +94,7 @@ impl DataViewConstructor {
         func
     }
 
-    // 25.3.2.1 DataView
+    /// DataView, https://tc39.es/ecma262/#sec-dataview-buffer-byteoffset-bytelength
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

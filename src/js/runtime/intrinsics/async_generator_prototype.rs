@@ -28,7 +28,7 @@ use super::intrinsics::Intrinsic;
 pub struct AsyncGeneratorPrototype;
 
 impl AsyncGeneratorPrototype {
-    // 27.6.1 The %AsyncGeneratorPrototype% Object
+    /// The %AsyncGeneratorPrototype% Object, https://tc39.es/ecma262/#sec-properties-of-asyncgenerator-prototype
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object = ObjectValue::new(
             cx,
@@ -42,7 +42,7 @@ impl AsyncGeneratorPrototype {
         object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm);
         object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm);
 
-        // 27.6.1.5 %AsyncGeneratorPrototype% [ @@toStringTag ]
+        // %AsyncGeneratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-asyncgenerator-prototype-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -53,7 +53,7 @@ impl AsyncGeneratorPrototype {
         object
     }
 
-    // 27.6.1.2 %AsyncGeneratorPrototype%.next
+    /// %AsyncGeneratorPrototype%.next, https://tc39.es/ecma262/#sec-asyncgenerator-prototype-next
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
@@ -91,7 +91,7 @@ impl AsyncGeneratorPrototype {
         capability.promise().into()
     }
 
-    // 27.6.1.3 %AsyncGeneratorPrototype%.return
+    /// %AsyncGeneratorPrototype%.return, https://tc39.es/ecma262/#sec-asyncgenerator-prototype-return
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
@@ -121,7 +121,7 @@ impl AsyncGeneratorPrototype {
         capability.promise().into()
     }
 
-    // 27.6.1.4 %AsyncGeneratorPrototype%.throw
+    /// %AsyncGeneratorPrototype%.throw, https://tc39.es/ecma262/#sec-asyncgenerator-prototype-throw
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,

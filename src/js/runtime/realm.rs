@@ -25,7 +25,7 @@ use super::{
     Context, EvalResult, PropertyKey, Value,
 };
 
-// 9.3 Realm Record
+/// Realms, https://tc39.es/ecma262/#sec-code-realms
 #[repr(C)]
 pub struct Realm {
     descriptor: HeapPtr<ObjectDescriptor>,
@@ -45,8 +45,8 @@ pub struct Realm {
 const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 
 impl Realm {
-    // 9.3.1 CreateRealm. Realm initializes intrinsics but leaves other properties uninitialized.
-    // Must call `initialize` before using.
+    /// Realm initializes intrinsics but leaves other properties uninitialized. Must call
+    /// `initialize` before using.
     pub fn new_uninit(cx: Context) -> Handle<Realm> {
         HandleScope::new(cx, |cx| {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
@@ -274,7 +274,7 @@ impl Handle<Realm> {
     }
 }
 
-// 9.6 InitializeHostDefinedRealm
+/// InitializeHostDefinedRealm, https://tc39.es/ecma262/#sec-initializehostdefinedrealm
 pub fn initialize_host_defined_realm(
     cx: Context,
     expose_gc: bool,

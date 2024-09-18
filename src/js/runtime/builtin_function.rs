@@ -11,7 +11,7 @@ use super::{
     Context, Handle, Value,
 };
 
-// 10.3 Built-in Function Object
+/// Built-in Function Object, https://tc39.es/ecma262/#sec-built-in-function-objects
 pub struct BuiltinFunction {}
 
 // Function pointer to a builtin function

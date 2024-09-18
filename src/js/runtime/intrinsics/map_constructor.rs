@@ -23,7 +23,7 @@ use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_t
 pub struct MapConstructor;
 
 impl MapConstructor {
-    // 24.1.1 The Map Constructor
+    /// The Map Constructor, https://tc39.es/ecma262/#sec-map-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -42,14 +42,14 @@ impl MapConstructor {
 
         func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm);
 
-        // 24.1.2.3 get Map [ %Symbol.species% ]
+        // get Map [ %Symbol.species% ], https://tc39.es/ecma262/#sec-get-map-%symbol.species%
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    // 24.1.1.1 Map
+    /// Map, https://tc39.es/ecma262/#sec-map-iterable
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -81,7 +81,7 @@ impl MapConstructor {
         })
     }
 
-    // 24.1.2.1 Map.groupBy
+    /// Map.groupBy, https://tc39.es/ecma262/#sec-map.groupby
     pub fn group_by(
         cx: Context,
         _: Handle<Value>,
@@ -106,7 +106,7 @@ impl MapConstructor {
     }
 }
 
-// 24.1.1.2 AddEntriesFromIterable
+/// AddEntriesFromIterable, https://tc39.es/ecma262/#sec-add-entries-from-iterable
 pub fn add_entries_from_iterable(
     cx: Context,
     target: Handle<Value>,

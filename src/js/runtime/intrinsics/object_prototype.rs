@@ -35,7 +35,7 @@ impl ObjectPrototype {
         ObjectValue::new(cx, None, false).cast()
     }
 
-    // 20.1.3 Properties of the Object Prototype Object
+    /// Properties of the Object Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-object-prototype-object
     pub fn initialize(cx: Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
         let mut object = object.object();
 
@@ -70,7 +70,7 @@ impl ObjectPrototype {
         object.intrinsic_func(cx, cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm);
     }
 
-    // 20.1.3.2 Object.prototype.hasOwnProperty
+    /// Object.prototype.hasOwnProperty, https://tc39.es/ecma262/#sec-object.prototype.hasownproperty
     pub fn has_own_property(
         cx: Context,
         this_value: Handle<Value>,
@@ -85,7 +85,7 @@ impl ObjectPrototype {
         cx.bool(has_own_property).into()
     }
 
-    // 20.1.3.3 Object.prototype.isPrototypeOf
+    /// Object.prototype.isPrototypeOf, https://tc39.es/ecma262/#sec-object.prototype.isprototypeof
     pub fn is_prototype_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -115,7 +115,7 @@ impl ObjectPrototype {
         }
     }
 
-    // 20.1.3.4 Object.prototype.propertyIsEnumerable
+    /// Object.prototype.propertyIsEnumerable, https://tc39.es/ecma262/#sec-object.prototype.propertyisenumerable
     pub fn property_is_enumerable(
         cx: Context,
         this_value: Handle<Value>,
@@ -132,7 +132,7 @@ impl ObjectPrototype {
         }
     }
 
-    // 20.1.3.5 Object.prototype.toLocaleString
+    /// Object.prototype.toLocaleString, https://tc39.es/ecma262/#sec-object.prototype.tolocalestring
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -142,7 +142,7 @@ impl ObjectPrototype {
         invoke(cx, this_value, cx.names.to_string(), &[])
     }
 
-    // 20.1.3.6 Object.prototype.toString
+    /// Object.prototype.toString, https://tc39.es/ecma262/#sec-object.prototype.tostring
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -193,7 +193,7 @@ impl ObjectPrototype {
         cx.alloc_string(&format!("[object {}]", tag_string)).into()
     }
 
-    // 20.1.3.7 Object.prototype.valueOf
+    /// Object.prototype.valueOf, https://tc39.es/ecma262/#sec-object.prototype.valueof
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -203,7 +203,7 @@ impl ObjectPrototype {
         maybe!(to_object(cx, this_value)).into()
     }
 
-    // 20.1.3.8.1 get Object.prototype.__proto__
+    /// get Object.prototype.__proto__, https://tc39.es/ecma262/#sec-get-object.prototype.__proto__
     pub fn get_proto(
         cx: Context,
         this_value: Handle<Value>,
@@ -217,7 +217,7 @@ impl ObjectPrototype {
         }
     }
 
-    // 20.1.3.8.2 set Object.prototype.__proto__
+    /// set Object.prototype.__proto__, https://tc39.es/ecma262/#sec-set-object.prototype.__proto__
     pub fn set_proto(
         cx: Context,
         this_value: Handle<Value>,
@@ -246,7 +246,7 @@ impl ObjectPrototype {
         cx.undefined().into()
     }
 
-    // 20.1.3.9.1 Object.prototype.__defineGetter__
+    /// Object.prototype.__defineGetter__, https://tc39.es/ecma262/#sec-object.prototype.__defineGetter__
     pub fn define_getter(
         cx: Context,
         this_value: Handle<Value>,
@@ -269,7 +269,7 @@ impl ObjectPrototype {
         cx.undefined().into()
     }
 
-    // 20.1.3.9.2 Object.prototype.__defineSetter__
+    /// Object.prototype.__defineSetter__, https://tc39.es/ecma262/#sec-object.prototype.__defineSetter__
     pub fn define_setter(
         cx: Context,
         this_value: Handle<Value>,
@@ -292,7 +292,7 @@ impl ObjectPrototype {
         cx.undefined().into()
     }
 
-    // 20.1.3.9.3 Object.prototype.__lookupGetter__
+    /// Object.prototype.__lookupGetter__, https://tc39.es/ecma262/#sec-object.prototype.__lookupGetter__
     pub fn lookup_getter(
         cx: Context,
         this_value: Handle<Value>,
@@ -325,7 +325,7 @@ impl ObjectPrototype {
         }
     }
 
-    // 20.1.3.9.4 Object.prototype.__lookupSetter__
+    /// Object.prototype.__lookupSetter__, https://tc39.es/ecma262/#sec-object.prototype.__lookupSetter__
     pub fn lookup_setter(
         cx: Context,
         this_value: Handle<Value>,

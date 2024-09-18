@@ -16,7 +16,7 @@ use super::{
     Context, EvalResult, Handle, Value,
 };
 
-// 7.4.1 Iterator Records
+/// Iterator Records, https://tc39.es/ecma262/#sec-iterator-records
 pub struct Iterator {
     pub iterator: Handle<ObjectValue>,
     pub next_method: Handle<Value>,
@@ -29,7 +29,7 @@ pub enum IteratorHint {
     Async,
 }
 
-// 7.4.2 GetIterator
+/// GetIterator, https://tc39.es/ecma262/#sec-getiterator
 pub fn get_iterator(
     cx: Context,
     object: Handle<Value>,
@@ -80,7 +80,7 @@ pub fn get_iterator(
     iterator_record.into()
 }
 
-// 7.4.3 IteratorNext
+/// IteratorNext, https://tc39.es/ecma262/#sec-iteratornext
 pub fn iterator_next(
     cx: Context,
     iterator: Handle<ObjectValue>,
@@ -100,18 +100,18 @@ pub fn iterator_next(
     result.as_object().into()
 }
 
-// 7.4.4 IteratorComplete
+/// IteratorComplete, https://tc39.es/ecma262/#sec-iteratorcomplete
 pub fn iterator_complete(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = maybe!(get(cx, iter_result, cx.names.done()));
     to_boolean(is_done.get()).into()
 }
 
-// 7.4.5 IteratorValue
+/// IteratorValue, https://tc39.es/ecma262/#sec-iteratorvalue
 pub fn iterator_value(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<Handle<Value>> {
     get(cx, iter_result, cx.names.value())
 }
 
-// 7.4.6 IteratorStep
+/// IteratorStep, https://tc39.es/ecma262/#sec-iteratorstep
 pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Handle<ObjectValue>>> {
     let iter_result = maybe!(iterator_next(cx, iterator.iterator, iterator.next_method, None));
     let is_done = maybe!(iterator_complete(cx, iter_result));
@@ -123,7 +123,7 @@ pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Hand
     }
 }
 
-// 7.4.7 IteratorClose
+/// IteratorClose, https://tc39.es/ecma262/#sec-iteratorclose
 pub fn iterator_close(
     cx: Context,
     iterator: &Iterator,
@@ -148,7 +148,7 @@ pub fn iterator_close(
     completion
 }
 
-/// 7.4.8 IteratorStepValue
+/// IteratorStepValue, https://tc39.es/ecma262/#sec-iteratorstepvalue
 ///
 /// Returns the value from the next iteration of the iterator, unless the iterator is done, in which
 /// case it returns None.
@@ -191,7 +191,7 @@ pub fn iterator_step_value(
     }
 }
 
-// 7.4.10 CreateIterResultObject
+/// CreateIteratorResultObject, https://tc39.es/ecma262/#sec-createiterresultobject
 pub fn create_iter_result_object(
     cx: Context,
     value: Handle<Value>,
@@ -262,7 +262,7 @@ pub fn iter_iterator_method_values<
     }
 }
 
-// 27.1.4.1 CreateAsyncFromSyncIterator
+/// CreateAsyncFromSyncIterator, https://tc39.es/ecma262/#sec-createasyncfromsynciterator
 fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> Iterator {
     let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator).into();
     let next_method = must!(get(cx, async_iterator, cx.names.next()));

@@ -283,7 +283,7 @@ impl AsyncGeneratorRequest {
     }
 }
 
-/// 27.6.3.5 AsyncGeneratorCompleteStep
+/// AsyncGeneratorCompleteStep, https://tc39.es/ecma262/#sec-asyncgeneratorcompletestep
 pub fn async_generator_complete_step(
     cx: Context,
     mut async_generator: Handle<AsyncGeneratorObject>,
@@ -306,7 +306,7 @@ pub fn async_generator_complete_step(
     }
 }
 
-/// 27.6.3.3 AsyncGeneratorValidate
+/// AsyncGeneratorValidate, https://tc39.es/ecma262/#sec-asyncgeneratorvalidate
 pub fn async_generator_validate(
     cx: Context,
     generator: Handle<Value>,
@@ -318,7 +318,7 @@ pub fn async_generator_validate(
     generator.as_object().cast::<AsyncGeneratorObject>().into()
 }
 
-/// 27.6.3.6 AsyncGeneratorResume
+/// AsyncGeneratorResume, https://tc39.es/ecma262/#sec-asyncgeneratorresume
 pub fn async_generator_resume(
     mut cx: Context,
     mut async_generator: Handle<AsyncGeneratorObject>,
@@ -346,7 +346,7 @@ pub fn async_generator_resume(
     async_generator_drain_queue(cx, async_generator);
 }
 
-/// 27.6.3.9 AsyncGeneratorAwaitReturn
+/// AsyncGeneratorAwaitReturn, https://tc39.es/ecma262/#sec-asyncgeneratorawaitreturn
 pub fn async_generator_await_return(
     cx: Context,
     mut async_generator: Handle<AsyncGeneratorObject>,
@@ -469,7 +469,7 @@ fn set_async_generator(
     );
 }
 
-/// 27.6.3.10 AsyncGeneratorDrainQueue
+/// AsyncGeneratorDrainQueue, https://tc39.es/ecma262/#sec-asyncgeneratordrainqueue
 pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGeneratorObject>) {
     loop {
         let request = match async_generator.peek_request() {

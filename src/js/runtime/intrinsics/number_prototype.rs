@@ -20,7 +20,7 @@ use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
 pub struct NumberPrototype;
 
 impl NumberPrototype {
-    // 21.1.3 Properties of the Number Prototype Object
+    /// Properties of the Number Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-number-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let mut object: Handle<ObjectValue> =
@@ -37,7 +37,7 @@ impl NumberPrototype {
         object
     }
 
-    // 21.1.3.2 Number.prototype.toExponential
+    /// Number.prototype.toExponential, https://tc39.es/ecma262/#sec-number.prototype.toexponential
     pub fn to_exponential(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -117,7 +117,7 @@ impl NumberPrototype {
         cx.alloc_string(&result).into()
     }
 
-    // 21.1.3.3 Number.prototype.toFixed
+    /// Number.prototype.toFixed, https://tc39.es/ecma262/#sec-number.prototype.tofixed
     pub fn to_fixed(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -163,7 +163,7 @@ impl NumberPrototype {
         cx.alloc_string(&m).into()
     }
 
-    // 21.1.3.4 Number.prototype.toLocaleString
+    /// Number.prototype.toLocaleString, https://tc39.es/ecma262/#sec-number.prototype.tolocalestring
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -173,7 +173,7 @@ impl NumberPrototype {
         Self::to_string(cx, this_value, &[], None)
     }
 
-    // 21.1.3.5 Number.prototype.toPrecision
+    /// Number.prototype.toPrecision, https://tc39.es/ecma262/#sec-number.prototype.toprecision
     pub fn to_precision(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -258,7 +258,7 @@ impl NumberPrototype {
         cx.alloc_string(&result).into()
     }
 
-    // 21.1.3.6 Number.prototype.toString
+    /// Number.prototype.toString, https://tc39.es/ecma262/#sec-number.prototype.tostring
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -365,7 +365,7 @@ impl NumberPrototype {
             .into()
     }
 
-    // 21.1.3.7 Number.prototype.valueOf
+    /// Number.prototype.valueOf, https://tc39.es/ecma262/#sec-number.prototype.valueof
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,

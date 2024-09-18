@@ -2,7 +2,7 @@ use crate::js::runtime::{object_value::ObjectValue, realm::Realm, Context, Handl
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
-/// 27.1.3 The %AsyncIteratorPrototype% Object
+/// The %AsyncIteratorPrototype% Object, https://tc39.es/ecma262/#sec-asynciteratorprototype
 pub struct AsyncIteratorPrototype;
 
 impl AsyncIteratorPrototype {
@@ -10,7 +10,7 @@ impl AsyncIteratorPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        // 27.1.3.1 %AsyncIteratorPrototype% [ @@asyncIterator ]
+        // %AsyncIteratorPrototype% [ @@asyncIterator ], https://tc39.es/ecma262/#sec-%asynciteratorprototype%-%symbol.asynciterator%
         let async_iterator_key = cx.well_known_symbols.async_iterator();
         object.intrinsic_func(cx, async_iterator_key, return_this, 0, realm);
 

@@ -7,12 +7,13 @@ use super::{
     Context,
 };
 
-// A property value. If a data property then the value is the value itself. If an accessor property
-// then the value is an accessor property, which is a pointer to the get and set function pair.
-//
-// Property structs contain handles and can only be stored on the stack.
-//
-// 6.2.9 PrivateElements are represented as properties, with bitflags noting the private property kind.
+/// A property value. If a data property then the value is the value itself. If an accessor property
+/// then the value is an accessor property, which is a pointer to the get and set function pair.
+///
+/// Property structs contain handles and can only be stored on the stack.
+///
+/// PrivateElements (https://tc39.es/ecma262/#sec-privateelement-specification-type) are represented
+/// as properties, with bitflags noting the private property kind.
 #[derive(Clone)]
 pub struct Property {
     value: Handle<Value>,

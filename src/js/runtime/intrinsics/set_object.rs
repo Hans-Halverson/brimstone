@@ -15,7 +15,7 @@ use crate::{
     maybe, set_uninit,
 };
 
-// 24.2 Set Objects
+// Set Objects, https://tc39.es/ecma262/#sec-set-objects
 extend_object! {
     pub struct SetObject {
         set_data: HeapPtr<ValueSet>,

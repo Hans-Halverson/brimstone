@@ -12,7 +12,7 @@ use super::intrinsics::Intrinsic;
 pub struct FunctionConstructor;
 
 impl FunctionConstructor {
-    // 20.2.2 Properties of the Function Constructor
+    /// Properties of the Function Constructor, https://tc39.es/ecma262/#sec-properties-of-the-function-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -32,7 +32,7 @@ impl FunctionConstructor {
         func
     }
 
-    // 20.2.1.1 Function
+    /// Function, https://tc39.es/ecma262/#sec-function-p1-p2-pn-body
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,

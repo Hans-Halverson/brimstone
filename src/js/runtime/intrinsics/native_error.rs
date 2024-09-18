@@ -75,7 +75,7 @@ macro_rules! create_native_error {
         pub struct $constructor;
 
         impl $constructor {
-            // 20.5.6.2 Properties of the NativeError Constructors
+            /// Properties of the NativeError Constructors, https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-constructors
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
                 let mut func = BuiltinFunction::intrinsic_constructor(
@@ -96,7 +96,7 @@ macro_rules! create_native_error {
                 func
             }
 
-            // 20.5.6.1.1 NativeError
+            /// NativeError, https://tc39.es/ecma262/#sec-nativeerror
             pub fn construct(
                 mut cx: Context,
                 _: Handle<Value>,
@@ -134,7 +134,7 @@ macro_rules! create_native_error {
         pub struct $prototype;
 
         impl $prototype {
-            // 20.5.6.3 Properties of the NativeError Prototype Objects
+            /// Properties of the NativeError Prototype Objects, https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-prototype-objects
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let proto = realm.get_intrinsic(Intrinsic::ErrorPrototype);
                 let mut object = ObjectValue::new(cx, Some(proto), true);

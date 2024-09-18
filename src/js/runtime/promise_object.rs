@@ -27,7 +27,7 @@ use super::{
     EvalResult, Handle,
 };
 
-// 27.2.6 Properties of Promise Instances
+// Properties of Promise Instances, https://tc39.es/ecma262/#sec-properties-of-promise-instances
 extend_object! {
     pub struct PromiseObject {
         state: PromiseState,
@@ -128,13 +128,13 @@ impl PromiseObject {
         }
     }
 
-    /// 27.2.1.4 FulfillPromise
+    /// FulfillPromise, https://tc39.es/ecma262/#sec-fulfillpromise
     pub fn resolve(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Fulfill, value);
         self.state = PromiseState::Fulfilled { result: value };
     }
 
-    /// 27.2.1.7 RejectPromise
+    /// RejectPromise, https://tc39.es/ecma262/#sec-rejectpromise
     pub fn reject(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Reject, value);
         self.state = PromiseState::Rejected { result: value };
@@ -180,7 +180,7 @@ impl PromiseObject {
     }
 }
 
-/// 27.2.1.3.2 Promise Resolve Functions
+/// Promise Resolve Functions, https://tc39.es/ecma262/#sec-promise-resolve-functions
 pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: Handle<Value>) {
     // Resolving an already settled promise has no effect. Immediately mark promise as
     // "already resolved" to prevent further settlement, since fulfill or reject may not be called
@@ -326,7 +326,7 @@ impl Handle<PromiseObject> {
     }
 }
 
-/// 27.2.1.6 IsPromise
+/// IsPromise, https://tc39.es/ecma262/#sec-ispromise
 pub fn is_promise(value: Value) -> bool {
     value.is_object() && value.as_object().is_promise()
 }
@@ -334,7 +334,8 @@ pub fn is_promise(value: Value) -> bool {
 /// Coerce a value to an ordinary promise (aka the Promise constructor). An ordinary promise is
 /// returned as-is, otherwise value is wrapped in a resolved promise.
 ///
-/// 27.2.4.7.1 PromiseResolve specialized for the promise constructor.
+/// PromiseResolve, https://tc39.es/ecma262/#sec-promise-resolve specialized for the promise
+/// constructor.
 pub fn coerce_to_ordinary_promise(
     cx: Context,
     value: Handle<Value>,
@@ -359,7 +360,7 @@ pub fn coerce_to_ordinary_promise(
 
 /// Creates a new promise with the provided constructor and immediately resolves it with a result.
 ///
-/// 27.2.4.7.1 PromiseResolve
+/// PromiseResolve, https://tc39.es/ecma262/#sec-promise-resolve
 pub fn promise_resolve(
     cx: Context,
     constructor: Handle<Value>,
@@ -457,7 +458,7 @@ pub struct PromiseCapability {
 }
 
 impl PromiseCapability {
-    /// 27.2.1.5 NewPromiseCapability
+    /// NewPromiseCapability, https://tc39.es/ecma262/#sec-newpromisecapability
     pub fn new(cx: Context, constructor: Handle<Value>) -> EvalResult<Handle<PromiseCapability>> {
         if !is_constructor_value(constructor) {
             return type_error(cx, "expected constructor");

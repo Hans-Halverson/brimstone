@@ -806,7 +806,7 @@ fn is_word_code_point(code_point: CodePoint) -> bool {
     is_ascii_alphabetic(code_point) || is_decimal_digit(code_point) || code_point == '_' as u32
 }
 
-// 22.2.2.7.3 Canonicalize
+/// Canonicalize, https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch
 #[inline]
 pub fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint {
     if is_unicode_aware {

@@ -201,7 +201,7 @@ impl TGeneratorObject for Handle<GeneratorObject> {
     }
 }
 
-/// 27.5.3.2 GeneratorValidate
+/// GeneratorValidate, https://tc39.es/ecma262/#sec-generatorvalidate
 fn generator_validate(
     cx: Context,
     generator: Handle<Value>,
@@ -219,7 +219,7 @@ fn generator_validate(
     generator.into()
 }
 
-/// 27.5.3.3 GeneratorResume
+/// GeneratorResume, https://tc39.es/ecma262/#sec-generatorresume
 pub fn generator_resume(
     cx: Context,
     generator: Handle<Value>,
@@ -265,7 +265,7 @@ fn generate_resume_impl(
     create_iter_result_object(cx, next_value, is_done).into()
 }
 
-/// 27.5.3.4 GeneratorResumeAbrupt
+/// GeneratorResumeAbrupt, https://tc39.es/ecma262/#sec-generatorresumeabrupt
 pub fn generator_resume_abrupt(
     cx: Context,
     generator: Handle<Value>,

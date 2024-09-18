@@ -39,7 +39,7 @@ impl FunctionPrototype {
         object.to_handle().into()
     }
 
-    /// 20.2.3 Properties of the Function Prototype Object
+    /// Properties of the Function Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-function-prototype-object
     pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
@@ -90,7 +90,7 @@ impl FunctionPrototype {
         );
     }
 
-    // 20.2.3.1 Function.prototype.apply
+    /// Function.prototype.apply, https://tc39.es/ecma262/#sec-function.prototype.apply
     pub fn apply(
         cx: Context,
         this_value: Handle<Value>,
@@ -112,7 +112,7 @@ impl FunctionPrototype {
         }
     }
 
-    // 20.2.3.2 Function.prototype.bind
+    /// Function.prototype.bind, https://tc39.es/ecma262/#sec-function.prototype.bind
     pub fn bind(
         cx: Context,
         this_value: Handle<Value>,
@@ -170,7 +170,7 @@ impl FunctionPrototype {
         bound_func.into()
     }
 
-    // 20.2.3.3 Function.prototype.call
+    /// Function.prototype.call, https://tc39.es/ecma262/#sec-function.prototype.call
     pub fn call_intrinsic(
         cx: Context,
         this_value: Handle<Value>,
@@ -189,7 +189,7 @@ impl FunctionPrototype {
         }
     }
 
-    // 20.2.3.5 Function.prototype.toString
+    /// Function.prototype.toString, https://tc39.es/ecma262/#sec-function.prototype.tostring
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -243,7 +243,7 @@ impl FunctionPrototype {
         type_error(cx, "Function.prototype.toString expected a function")
     }
 
-    // 20.2.3.6 Function.prototype [ @@hasInstance ]
+    /// Function.prototype [ @@hasInstance ], https://tc39.es/ecma262/#sec-function.prototype-%symbol.hasinstance%
     pub fn has_instance(
         cx: Context,
         this_value: Handle<Value>,

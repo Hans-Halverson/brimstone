@@ -17,7 +17,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 28.1 The Reflect Object
+/// The Reflect Object, https://tc39.es/ecma262/#sec-reflect-object
 pub struct ReflectObject;
 
 impl ReflectObject {
@@ -51,7 +51,7 @@ impl ReflectObject {
         object.intrinsic_func(cx, cx.names.set_(), Self::set, 3, realm);
         object.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm);
 
-        // 28.1.14 Reflect [ @@toStringTag ]
+        // Reflect [ @@toStringTag ], https://tc39.es/ecma262/#sec-reflect-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let reflect_name_value = cx.names.reflect().as_string().into();
         object.set_property(
@@ -63,7 +63,7 @@ impl ReflectObject {
         object
     }
 
-    // 28.1.1 Reflect.apply
+    /// Reflect.apply, https://tc39.es/ecma262/#sec-reflect.apply
     pub fn apply(
         cx: Context,
         _: Handle<Value>,
@@ -82,7 +82,7 @@ impl ReflectObject {
         call_object(cx, target.as_object(), this_argument, &arguments_list)
     }
 
-    // 28.1.2 Reflect.construct
+    /// Reflect.construct, https://tc39.es/ecma262/#sec-reflect.construct
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -113,7 +113,7 @@ impl ReflectObject {
         maybe!(construct(cx, target, &arguments_list, Some(new_target))).into()
     }
 
-    // 28.1.3 Reflect.defineProperty
+    /// Reflect.defineProperty, https://tc39.es/ecma262/#sec-reflect.defineproperty
     pub fn define_property(
         cx: Context,
         _: Handle<Value>,
@@ -137,7 +137,7 @@ impl ReflectObject {
         cx.bool(result).into()
     }
 
-    // 28.1.4 Reflect.deleteProperty
+    /// Reflect.deleteProperty, https://tc39.es/ecma262/#sec-reflect.deleteproperty
     pub fn delete_property(
         cx: Context,
         _: Handle<Value>,
@@ -157,7 +157,7 @@ impl ReflectObject {
         cx.bool(result).into()
     }
 
-    // 28.1.5 Reflect.get
+    /// Reflect.get, https://tc39.es/ecma262/#sec-reflect.get
     pub fn get(
         cx: Context,
         _: Handle<Value>,
@@ -181,7 +181,7 @@ impl ReflectObject {
         maybe!(target.as_object().get(cx, key, receiver)).into()
     }
 
-    // 28.1.6 Reflect.getOwnPropertyDescriptor
+    /// Reflect.getOwnPropertyDescriptor, https://tc39.es/ecma262/#sec-reflect.getownpropertydescriptor
     pub fn get_own_property_descriptor(
         cx: Context,
         _: Handle<Value>,
@@ -204,7 +204,7 @@ impl ReflectObject {
             .into()
     }
 
-    // 28.1.7 Reflect.getPrototypeOf
+    /// Reflect.getPrototypeOf, https://tc39.es/ecma262/#sec-reflect.getprototypeof
     pub fn get_prototype_of(
         cx: Context,
         _: Handle<Value>,
@@ -224,7 +224,7 @@ impl ReflectObject {
             .into()
     }
 
-    // 28.1.8 Reflect.has
+    /// Reflect.has, https://tc39.es/ecma262/#sec-reflect.has
     pub fn has(
         cx: Context,
         _: Handle<Value>,
@@ -244,7 +244,7 @@ impl ReflectObject {
         cx.bool(has_property).into()
     }
 
-    // 28.1.9 Reflect.isExtensible
+    /// Reflect.isExtensible, https://tc39.es/ecma262/#sec-reflect.isextensible
     pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
@@ -260,7 +260,7 @@ impl ReflectObject {
         cx.bool(is_extensible).into()
     }
 
-    // 28.1.10 Reflect.ownKeys
+    /// Reflect.ownKeys, https://tc39.es/ecma262/#sec-reflect.ownkeys
     pub fn own_keys(
         cx: Context,
         _: Handle<Value>,
@@ -277,7 +277,7 @@ impl ReflectObject {
         create_array_from_list(cx, &own_keys).into()
     }
 
-    // 28.1.11 Reflect.preventExtensions
+    /// Reflect.preventExtensions, https://tc39.es/ecma262/#sec-reflect.preventextensions
     pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
@@ -293,7 +293,7 @@ impl ReflectObject {
         cx.bool(result).into()
     }
 
-    // 28.1.12 Reflect.set
+    /// Reflect.set, https://tc39.es/ecma262/#sec-reflect.set
     pub fn set(
         cx: Context,
         _: Handle<Value>,
@@ -319,7 +319,7 @@ impl ReflectObject {
         cx.bool(result).into()
     }
 
-    // 28.1.13 Reflect.setPrototypeOf
+    /// Reflect.setPrototypeOf, https://tc39.es/ecma262/#sec-reflect.setprototypeof
     pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,

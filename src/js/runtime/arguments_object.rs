@@ -54,7 +54,7 @@ impl UnmappedArgumentsObject {
 // Only some parameters are mapped, and this can change dynamically due to user action. Keep an
 // inline array of booleans noting which parameters are mapped to the scope.
 //
-// 10.4.4 Arguments Exotic Objects
+// Arguments Exotic Objects, https://tc39.es/ecma262/#sec-arguments-exotic-objects
 extend_object! {
     pub struct MappedArgumentsObject {
         // Scope where the arguments are stored.
@@ -169,7 +169,7 @@ impl MappedArgumentsObject {
 
 #[wrap_ordinary_object]
 impl VirtualObject for Handle<MappedArgumentsObject> {
-    // 10.4.4.1 [[GetOwnProperty]]
+    /// [[GetOwnProperty]], https://tc39.es/ecma262/#sec-arguments-exotic-objects-getownproperty-p
     fn get_own_property(
         &self,
         cx: Context,
@@ -187,7 +187,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         desc.into()
     }
 
-    // 10.4.4.2 [[DefineOwnProperty]]
+    /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-arguments-exotic-objects-defineownproperty-p-desc
     fn define_own_property(
         &mut self,
         cx: Context,
@@ -228,7 +228,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         true.into()
     }
 
-    // 10.4.4.3 [[Get]]
+    /// [[Get]], https://tc39.es/ecma262/#sec-arguments-exotic-objects-get-p-receiver
     fn get(
         &self,
         cx: Context,
@@ -242,7 +242,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         }
     }
 
-    // 10.4.4.4 [[Set]]
+    /// [[Set]], https://tc39.es/ecma262/#sec-arguments-exotic-objects-set-p-v-receiver
     fn set(
         &mut self,
         cx: Context,
@@ -259,7 +259,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         ordinary_set(cx, self.object(), key, value, receiver)
     }
 
-    // 10.4.4.5 [[Delete]]
+    /// [[Delete]], https://tc39.es/ecma262/#sec-arguments-exotic-objects-delete-p
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         let scope_index = self.get_mapped_scope_index_for_key(key);
 
@@ -275,7 +275,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     }
 }
 
-// 10.4.4.6 CreateUnmappedArgumentsObject
+/// CreateUnmappedArgumentsObject, https://tc39.es/ecma262/#sec-createunmappedargumentsobject
 pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]) -> Handle<Value> {
     let object = UnmappedArgumentsObject::new(cx);
 

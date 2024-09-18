@@ -32,13 +32,13 @@ use super::{
     Context, Value,
 };
 
-// 7.2.5 IsExtensible
+/// IsExtensible, https://tc39.es/ecma262/#sec-isextensible-o
 #[inline]
 pub fn is_extensible(cx: Context, object: Handle<ObjectValue>) -> EvalResult<bool> {
     object.is_extensible(cx)
 }
 
-// 7.3.2 Get
+/// Get, https://tc39.es/ecma262/#sec-get-o-p
 pub fn get(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -47,7 +47,7 @@ pub fn get(
     object.get(cx, key, object.into())
 }
 
-// 7.3.3 GetV
+/// GetV, https://tc39.es/ecma262/#sec-getv
 pub fn get_v(
     cx: Context,
     value: Handle<Value>,
@@ -57,7 +57,7 @@ pub fn get_v(
     object.get(cx, key, value)
 }
 
-// 7.3.4 Set
+/// Set, https://tc39.es/ecma262/#sec-set-o-p-v-throw
 pub fn set(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -73,18 +73,7 @@ pub fn set(
     ().into()
 }
 
-// 7.3.6 CreateMethodProperty
-pub fn create_method_property(
-    cx: Context,
-    mut object: Handle<ObjectValue>,
-    key: Handle<PropertyKey>,
-    value: Handle<Value>,
-) {
-    let new_desc = PropertyDescriptor::data(value, true, false, true);
-    must!(object.define_own_property(cx, key, new_desc));
-}
-
-// 7.3.5 CreateDataProperty
+/// CreateDataProperty, https://tc39.es/ecma262/#sec-createdataproperty
 pub fn create_data_property(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -95,7 +84,7 @@ pub fn create_data_property(
     object.define_own_property(cx, key, new_desc)
 }
 
-// 7.3.7 CreateDataPropertyOrThrow
+/// CreateDataPropertyOrThrow, https://tc39.es/ecma262/#sec-createdatapropertyorthrow
 pub fn create_data_property_or_throw(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -110,7 +99,7 @@ pub fn create_data_property_or_throw(
     ().into()
 }
 
-// 7.3.8 CreateNonEnumerableDataPropertyOrThrow
+/// CreateNonEnumerableDataPropertyOrThrow, https://tc39.es/ecma262/#sec-createnonenumerabledatapropertyorthrow
 pub fn create_non_enumerable_data_property_or_throw(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -121,7 +110,7 @@ pub fn create_non_enumerable_data_property_or_throw(
     must!(define_property_or_throw(cx, object, key, new_desc));
 }
 
-// 7.3.8 DefinePropertyOrThrow
+/// DefinePropertyOrThrow, https://tc39.es/ecma262/#sec-definepropertyorthrow
 pub fn define_property_or_throw(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -136,7 +125,7 @@ pub fn define_property_or_throw(
     ().into()
 }
 
-// 7.3.10 DeletePropertyOrThrow
+/// DeletePropertyOrThrow, https://tc39.es/ecma262/#sec-deletepropertyorthrow
 pub fn delete_property_or_throw(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -149,7 +138,7 @@ pub fn delete_property_or_throw(
     ().into()
 }
 
-// 7.3.11 GetMethod
+/// GetMethod, https://tc39.es/ecma262/#sec-getmethod
 pub fn get_method(
     cx: Context,
     value: Handle<Value>,
@@ -167,7 +156,7 @@ pub fn get_method(
     (Some(func.as_object())).into()
 }
 
-// 7.3.12 HasProperty
+/// HasProperty, https://tc39.es/ecma262/#sec-hasproperty
 pub fn has_property(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -176,7 +165,7 @@ pub fn has_property(
     object.has_property(cx, key)
 }
 
-// 7.3.13 HasOwnProperty
+/// HasOwnProperty, https://tc39.es/ecma262/#sec-hasownproperty
 pub fn has_own_property(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -186,7 +175,7 @@ pub fn has_own_property(
     desc.is_some().into()
 }
 
-// 7.3.14 Call
+/// Call, https://tc39.es/ecma262/#sec-call
 pub fn call(
     mut cx: Context,
     func: Handle<Value>,
@@ -205,7 +194,7 @@ pub fn call_object(
     cx.vm().call_from_rust(func.into(), receiver, arguments)
 }
 
-// 7.3.15 Construct
+/// Construct, https://tc39.es/ecma262/#sec-construct
 pub fn construct(
     mut cx: Context,
     func: Handle<ObjectValue>,
@@ -223,7 +212,7 @@ pub enum IntegrityLevel {
     Frozen,
 }
 
-// 7.3.16 SetIntegrityLevel
+/// SetIntegrityLevel, https://tc39.es/ecma262/#sec-setintegritylevel
 pub fn set_integrity_level(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -269,7 +258,7 @@ pub fn set_integrity_level(
     true.into()
 }
 
-// 7.3.17 TestIntegrityLevel
+/// TestIntegrityLevel, https://tc39.es/ecma262/#sec-testintegritylevel
 pub fn test_integrity_level(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -303,13 +292,13 @@ pub fn test_integrity_level(
     true.into()
 }
 
-// 7.3.19 LengthOfArrayLike
+/// LengthOfArrayLike, https://tc39.es/ecma262/#sec-lengthofarraylike
 pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
     let length_value = maybe!(get(cx, object, cx.names.length()));
     to_length(cx, length_value)
 }
 
-// 7.3.20 CreateListFromArrayLike
+/// CreateListFromArrayLike, https://tc39.es/ecma262/#sec-createlistfromarraylike
 pub fn create_list_from_array_like(
     cx: Context,
     object: Handle<Value>,
@@ -335,7 +324,7 @@ pub fn create_list_from_array_like(
     vec.into()
 }
 
-// 7.3.21 Invoke
+/// Invoke, https://tc39.es/ecma262/#sec-invoke
 pub fn invoke(
     cx: Context,
     value: Handle<Value>,
@@ -346,7 +335,7 @@ pub fn invoke(
     call(cx, func, value, arguments)
 }
 
-// 7.3.22 OrdinaryHasInstance
+/// OrdinaryHasInstance, https://tc39.es/ecma262/#sec-ordinaryhasinstance
 pub fn ordinary_has_instance(
     cx: Context,
     func: Handle<Value>,
@@ -388,7 +377,7 @@ pub fn ordinary_has_instance(
     }
 }
 
-// 7.3.23 SpeciesConstructor
+/// SpeciesConstructor, https://tc39.es/ecma262/#sec-speciesconstructor
 pub fn species_constructor(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -424,7 +413,7 @@ pub enum KeyOrValue {
     KeyAndValue,
 }
 
-// 7.3.24 EnumerableOwnPropertyNames
+/// EnumerableOwnProperties, https://tc39.es/ecma262/#sec-enumerableownproperties
 pub fn enumerable_own_property_names(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -467,7 +456,7 @@ pub fn enumerable_own_property_names(
     properties.into()
 }
 
-/// 7.3.25 GetFunctionRealm
+/// GetFunctionRealm, https://tc39.es/ecma262/#sec-getfunctionrealm
 pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<HeapPtr<Realm>> {
     match get_function_realm_no_error(cx, func) {
         Some(realm) => realm.into(),
@@ -475,7 +464,8 @@ pub fn get_function_realm(cx: Context, func: Handle<ObjectValue>) -> EvalResult<
     }
 }
 
-/// 7.3.25 GetFunctionRealm but does not allocate an error on the error path.
+/// GetFunctionRealm, https://tc39.es/ecma262/#sec-getfunctionrealm
+/// but does not allocate an error on the error path.
 pub fn get_function_realm_no_error(
     cx: Context,
     func: Handle<ObjectValue>,
@@ -502,7 +492,7 @@ pub fn get_function_realm_no_error(
     }
 }
 
-// 7.3.26 CopyDataProperties
+/// CopyDataProperties, https://tc39.es/ecma262/#sec-copydataproperties
 pub fn copy_data_properties(
     cx: Context,
     target: Handle<ObjectValue>,
@@ -537,7 +527,7 @@ pub fn copy_data_properties(
     ().into()
 }
 
-// 7.3.30 PrivateGet
+/// PrivateGet, https://tc39.es/ecma262/#sec-privateget
 pub fn private_get(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -562,7 +552,7 @@ pub fn private_get(
     }
 }
 
-// 7.3.31 PrivateSet
+/// PrivateSet, https://tc39.es/ecma262/#sec-privateset
 pub fn private_set(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -604,7 +594,7 @@ pub enum GroupByKeyCoercion {
     Collection,
 }
 
-// 7.3.35 GroupBy
+/// GroupBy, https://tc39.es/ecma262/#sec-groupby
 pub fn group_by(
     cx: Context,
     items: Handle<Value>,
@@ -643,7 +633,7 @@ pub fn group_by(
             GroupByKeyCoercion::Collection => key,
         };
 
-        // Inlined 7.3.34 AddValueToKeyedGroup
+        // Inlined AddValueToKeyedGroup, https://tc39.es/ecma262/#sec-add-value-to-keyed-group
 
         // Add to an existing group if one was found
         let mut found_group = false;

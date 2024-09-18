@@ -20,7 +20,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 22.1.5 String Iterator Objects
+// String Iterator Objects, https://tc39.es/ecma262/#sec-string-iterator-objects
 extend_object! {
     pub struct StringIterator {
         iter: SafeCodePointIterator,
@@ -43,7 +43,7 @@ impl StringIterator {
     cast_from_value_fn!(StringIterator, "String Iterator");
 }
 
-// 22.1.5.1 The %StringIteratorPrototype% Object
+/// The %StringIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%stringiteratorprototype%-object
 pub struct StringIteratorPrototype;
 
 impl StringIteratorPrototype {
@@ -53,7 +53,7 @@ impl StringIteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
-        // 22.1.5.1.2 %StringIteratorPrototype% [ @@toStringTag ]
+        // %StringIteratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-%stringiteratorprototype%-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string("String Iterator").into();
         object.set_property(
@@ -65,7 +65,7 @@ impl StringIteratorPrototype {
         object
     }
 
-    // 22.1.5.1.1 %StringIteratorPrototype%.next
+    /// %StringIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%stringiteratorprototype%.next
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,

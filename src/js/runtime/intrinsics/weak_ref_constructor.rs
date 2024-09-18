@@ -19,7 +19,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 26.1 WeakRef Objects
+// WeakRef Objects, https://tc39.es/ecma262/#sec-weak-ref-objects
 extend_object! {
     pub struct WeakRefObject {
         // Weakly held reference to a value. Can only be an object, symbol, or undefined.
@@ -68,7 +68,7 @@ impl WeakRefObject {
 pub struct WeakRefConstructor;
 
 impl WeakRefConstructor {
-    // 26.1.2 Properties of the WeakRef Constructor
+    /// Properties of the WeakRef Constructor, https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -88,7 +88,7 @@ impl WeakRefConstructor {
         func
     }
 
-    // 26.1.1.1 WeakRef
+    /// WeakRef, https://tc39.es/ecma262/#sec-weak-ref-target
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -110,7 +110,7 @@ impl WeakRefConstructor {
     }
 }
 
-// 9.14 CanBeHeldWeakly
+/// CanBeHeldWeakly, https://tc39.es/ecma262/#sec-canbeheldweakly
 pub fn can_be_held_weakly(cx: Context, value: Value) -> bool {
     if value.is_object() {
         true

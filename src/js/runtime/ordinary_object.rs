@@ -30,20 +30,17 @@ impl From<OrdinaryObject> for ObjectValue {
 }
 
 impl ObjectValue {
-    // 10.1.1 [[GetPrototypeOf]]
-    // 10.1.1.1 OrdinaryGetPrototypeOf
+    /// OrdinaryGetPrototypeOf, https://tc39.es/ecma262/#sec-ordinarygetprototypeof
     pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Handle<ObjectValue>>> {
         self.prototype().map(|p| p.to_handle()).into()
     }
 
-    // 10.1.3 [[IsExtensible]]
-    // 10.1.3.1 OrdinaryIsExtensible
+    /// OrdinaryIsExtensible, https://tc39.es/ecma262/#sec-ordinaryisextensible
     pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
         self.is_extensible_field().into()
     }
 
-    // 10.1.4 [[PreventExtensions]]
-    // 10.1.4.1 OrdinaryPreventExtensions
+    /// OrdinaryPreventExtensions, https://tc39.es/ecma262/#sec-ordinarypreventextensions
     pub fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
         self.set_is_extensible_field(false);
         true.into()
@@ -51,8 +48,7 @@ impl ObjectValue {
 }
 
 impl Handle<ObjectValue> {
-    // 10.1.2 [[SetPrototypeOf]]
-    // 10.1.2.1 OrdinarySetPrototypeOf
+    /// OrdinarySetPrototypeOf, https://tc39.es/ecma262/#sec-ordinarysetprototypeof
     pub fn ordinary_set_prototype_of(
         &mut self,
         cx: Context,
@@ -62,8 +58,9 @@ impl Handle<ObjectValue> {
             return true.into();
         }
 
-        // Inlined 10.4.7.2 SetImmutablePrototype, currently only applies to object prototypes.
-        // If the prototypes differ, then a set immutable prototype always fails.
+        // Inlined SetImmutablePrototype, https://tc39.es/ecma262/#sec-set-immutable-prototype,
+        // currently only applies to object prototypes. If the prototypes differ, then a set
+        // immutable prototype always fails.
         if self.is_object_prototype() {
             return false.into();
         }
@@ -97,7 +94,7 @@ impl Handle<ObjectValue> {
 }
 
 impl VirtualObject for Handle<OrdinaryObject> {
-    // 10.1.5 [[GetOwnProperty]]
+    /// [[GetOwnProperty]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-getownproperty-p
     fn get_own_property(
         &self,
         cx: Context,
@@ -106,7 +103,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
         ordinary_get_own_property(cx, self.object(), key).into()
     }
 
-    // 10.1.6 [[DefineOwnProperty]]
+    /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc
     fn define_own_property(
         &mut self,
         cx: Context,
@@ -116,12 +113,12 @@ impl VirtualObject for Handle<OrdinaryObject> {
         ordinary_define_own_property(cx, self.object(), key, desc)
     }
 
-    // 10.1.7 [[HasProperty]]
+    /// [[HasProperty]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-hasproperty-p
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_has_property(cx, self.object(), key)
     }
 
-    // 10.1.8 [[Get]]
+    /// [[Get]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-get-p-receiver
     fn get(
         &self,
         cx: Context,
@@ -131,7 +128,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
         ordinary_get(cx, self.object(), key, receiver)
     }
 
-    // 10.1.9 [[Set]]
+    /// [[Set]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-set-p-v-receiver
     fn set(
         &mut self,
         cx: Context,
@@ -142,18 +139,18 @@ impl VirtualObject for Handle<OrdinaryObject> {
         ordinary_set(cx, self.object(), key, value, receiver)
     }
 
-    // 10.1.10 [[Delete]]
+    /// [[Delete]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-delete-p
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         ordinary_delete(cx, self.object(), key)
     }
 
-    // 10.1.11 [[OwnPropertyKeys]]
+    /// [[OwnPropertyKeys]], https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-ownpropertykeys
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         ordinary_own_property_keys(cx, self.object()).into()
     }
 }
 
-// 10.1.5.1 OrdinaryGetOwnProperty
+/// OrdinaryGetOwnProperty, https://tc39.es/ecma262/#sec-ordinarygetownproperty
 pub fn ordinary_get_own_property(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -182,7 +179,7 @@ pub fn ordinary_get_own_property(
     }
 }
 
-// 10.1.6.1 OrdinaryDefineOwnProperty
+/// OrdinaryDefineOwnProperty, https://tc39.es/ecma262/#sec-ordinarydefineownproperty
 pub fn ordinary_define_own_property(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -196,7 +193,7 @@ pub fn ordinary_define_own_property(
         .into()
 }
 
-// 10.1.6.2 IsCompatiblePropertyDescriptor
+/// IsCompatiblePropertyDescriptor, https://tc39.es/ecma262/#sec-iscompatiblepropertydescriptor
 pub fn is_compatible_property_descriptor(
     cx: Context,
     is_extensible: bool,
@@ -213,7 +210,7 @@ pub fn is_compatible_property_descriptor(
     )
 }
 
-// 10.1.6.3 ValidateAndApplyPropertyDescriptor
+/// ValidateAndApplyPropertyDescriptor, https://tc39.es/ecma262/#sec-validateandapplypropertydescriptor
 pub fn validate_and_apply_property_descriptor(
     cx: Context,
     mut object: Option<Handle<ObjectValue>>,
@@ -381,7 +378,7 @@ pub fn validate_and_apply_property_descriptor(
     true
 }
 
-// 10.1.7.1 OrdinaryHasProperty
+/// OrdinaryHasProperty, https://tc39.es/ecma262/#sec-ordinaryhasproperty
 pub fn ordinary_has_property(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -399,7 +396,7 @@ pub fn ordinary_has_property(
     }
 }
 
-// 10.1.8.1 OrdinaryGet
+/// OrdinaryGet, https://tc39.es/ecma262/#sec-ordinaryget
 pub fn ordinary_get(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -423,8 +420,8 @@ pub fn ordinary_get(
     }
 }
 
-// 10.1.9.1 OrdinarySet
-// 10.1.9.2 OrdinarySetWithOwnDescriptor
+/// OrdinarySet, https://tc39.es/ecma262/#sec-ordinaryset
+/// OrdinarySetWithOwnDescriptor, https://tc39.es/ecma262/#sec-ordinarysetwithowndescriptor
 pub fn ordinary_set(
     cx: Context,
     object: Handle<ObjectValue>,
@@ -477,7 +474,7 @@ pub fn ordinary_set(
     }
 }
 
-// 10.1.10.1 OrdinaryDelete
+/// OrdinaryDelete, https://tc39.es/ecma262/#sec-ordinarydelete
 pub fn ordinary_delete(
     cx: Context,
     mut object: Handle<ObjectValue>,
@@ -497,7 +494,7 @@ pub fn ordinary_delete(
     }
 }
 
-// 10.1.11.1 OrdinaryOwnPropertyKeys
+/// OrdinaryOwnPropertyKeys, https://tc39.es/ecma262/#sec-ordinaryownpropertykeys
 pub fn ordinary_own_property_keys(cx: Context, object: Handle<ObjectValue>) -> Vec<Handle<Value>> {
     let mut keys: Vec<Handle<Value>> = vec![];
 
@@ -649,8 +646,8 @@ pub fn object_ordinary_init(
     object.set_uninit_hash_code();
 }
 
-// 10.1.13 OrdinaryCreateFromConstructor
-// Creates an object of type T, and initializes the standard object fields.
+/// OrdinaryCreateFromConstructor, https://tc39.es/ecma262/#sec-ordinarycreatefromconstructor
+/// Creates an object of type T, and initializes the standard object fields.
 pub fn object_create_from_constructor<T>(
     cx: Context,
     constructor: Handle<ObjectValue>,
@@ -671,8 +668,8 @@ where
     EvalResult::Ok(object)
 }
 
-// 10.1.14 GetPrototypeFromConstructor
-// May allocate.
+/// GetPrototypeFromConstructor, https://tc39.es/ecma262/#sec-getprototypefromconstructor
+/// May allocate.
 pub fn get_prototype_from_constructor(
     cx: Context,
     constructor: Handle<ObjectValue>,

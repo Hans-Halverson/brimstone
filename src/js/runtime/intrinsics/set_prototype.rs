@@ -30,7 +30,7 @@ use super::{
 pub struct SetPrototype;
 
 impl SetPrototype {
-    // 24.2.3 Properties of the Set Prototype Object
+    /// Properties of the Set Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-set-prototype-object
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -64,11 +64,11 @@ impl SetPrototype {
         object.intrinsic_func(cx, cx.names.union(), Self::union, 1, realm);
         object.intrinsic_data_prop(cx, cx.names.values(), values_function);
 
-        // 24.2.3.18 Set.prototype [ @@iterator ]
+        // Set.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-set.prototype-%symbol.iterator%
         let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
 
-        // 24.2.3.19 Set.prototype [ @@toStringTag ]
+        // Set.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-set.prototype-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -79,7 +79,7 @@ impl SetPrototype {
         object
     }
 
-    // 24.2.3.1 Set.prototype.add
+    /// Set.prototype.add, https://tc39.es/ecma262/#sec-set.prototype.add
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
@@ -101,7 +101,7 @@ impl SetPrototype {
         this_value.into()
     }
 
-    // 24.2.3.2 Set.prototype.clear
+    /// Set.prototype.clear, https://tc39.es/ecma262/#sec-set.prototype.clear
     pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
@@ -119,7 +119,7 @@ impl SetPrototype {
         cx.undefined().into()
     }
 
-    // 24.2.3.4 Set.prototype.delete
+    /// Set.prototype.delete, https://tc39.es/ecma262/#sec-set.prototype.delete
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
@@ -138,7 +138,7 @@ impl SetPrototype {
         cx.bool(existed).into()
     }
 
-    // 24.2.4.5 Set.prototype.difference
+    /// Set.prototype.difference, https://tc39.es/ecma262/#sec-set.prototype.difference
     pub fn difference(
         cx: Context,
         this_value: Handle<Value>,
@@ -200,7 +200,7 @@ impl SetPrototype {
         new_set.into()
     }
 
-    // 24.2.3.6 Set.prototype.entries
+    /// Set.prototype.entries, https://tc39.es/ecma262/#sec-set.prototype.entries
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
@@ -216,7 +216,7 @@ impl SetPrototype {
         SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).into()
     }
 
-    // 24.2.3.7 Set.prototype.forEach
+    /// Set.prototype.forEach, https://tc39.es/ecma262/#sec-set.prototype.foreach
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
@@ -252,7 +252,7 @@ impl SetPrototype {
         cx.undefined().into()
     }
 
-    // 24.2.3.8 Set.prototype.has
+    /// Set.prototype.has, https://tc39.es/ecma262/#sec-set.prototype.has
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
@@ -274,7 +274,7 @@ impl SetPrototype {
         .into()
     }
 
-    // 24.2.4.9 Set.prototype.intersection
+    /// Set.prototype.intersection, https://tc39.es/ecma262/#sec-set.prototype.intersection
     pub fn intersection(
         cx: Context,
         this_value: Handle<Value>,
@@ -341,7 +341,7 @@ impl SetPrototype {
         new_set.into()
     }
 
-    // 24.2.4.10 Set.prototype.isDisjointFrom
+    /// Set.prototype.isDisjointFrom, https://tc39.es/ecma262/#sec-set.prototype.isdisjointfrom
     pub fn is_disjoint_from(
         cx: Context,
         this_value: Handle<Value>,
@@ -404,7 +404,7 @@ impl SetPrototype {
         cx.bool(true).into()
     }
 
-    // 24.2.4.11 Set.prototype.isSubsetOf
+    /// Set.prototype.isSubsetOf, https://tc39.es/ecma262/#sec-set.prototype.issubsetof
     pub fn is_subset_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -449,7 +449,7 @@ impl SetPrototype {
         cx.bool(true).into()
     }
 
-    // 24.2.4.12 Set.prototype.isSupersetOf
+    /// Set.prototype.isSupersetOf, https://tc39.es/ecma262/#sec-set.prototype.issupersetof
     pub fn is_superset_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -493,7 +493,7 @@ impl SetPrototype {
         cx.bool(true).into()
     }
 
-    // 24.2.3.14 get Set.prototype.size
+    /// get Set.prototype.size, https://tc39.es/ecma262/#sec-get-set.prototype.size
     pub fn size(
         cx: Context,
         this_value: Handle<Value>,
@@ -511,7 +511,7 @@ impl SetPrototype {
             .into()
     }
 
-    // 24.2.4.15 Set.prototype.symmetricDifference
+    /// Set.prototype.symmetricDifference, https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference
     pub fn symmetric_difference(
         cx: Context,
         this_value: Handle<Value>,
@@ -556,7 +556,7 @@ impl SetPrototype {
         new_set.into()
     }
 
-    // 24.2.4.16 Set.prototype.union
+    /// Set.prototype.union, https://tc39.es/ecma262/#sec-set.prototype.union
     pub fn union(
         cx: Context,
         this_value: Handle<Value>,
@@ -592,7 +592,7 @@ impl SetPrototype {
         new_set.into()
     }
 
-    // 24.2.3.17 Set.prototype.values
+    /// Set.prototype.values, https://tc39.es/ecma262/#sec-set.prototype.values
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,
@@ -629,7 +629,7 @@ struct SetRecord {
     keys_method: Handle<ObjectValue>,
 }
 
-// 24.2.1.2 GetSetRecord
+/// GetSetRecord, https://tc39.es/ecma262/#sec-getsetrecord
 fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
     if !value.is_object() {
         return type_error(cx, "value is not an object");

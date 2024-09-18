@@ -22,7 +22,7 @@ use crate::{
 
 use super::{intrinsics::Intrinsic, set_object::SetObject};
 
-// 24.2.5 Set Iterator Objects
+// Set Iterator Objects, https://tc39.es/ecma262/#sec-set-iterator-objects
 extend_object! {
     pub struct SetIterator {
         // Component parts of an index_map::GcSafeEntriesIter
@@ -70,7 +70,7 @@ impl SetIterator {
     }
 }
 
-// 24.2.5.2 The %SetIteratorPrototype% Object
+/// The %SetIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%setiteratorprototype%-object
 pub struct SetIteratorPrototype;
 
 impl SetIteratorPrototype {
@@ -80,7 +80,7 @@ impl SetIteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
 
-        // 24.2.5.2.2 %SetIteratorPrototype% [ @@toStringTag ]
+        // %SetIteratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-%setiteratorprototype%-%symbol.tostringtag%
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let to_string_tag_value = cx.alloc_string("Set Iterator").into();
         object.set_property(
@@ -92,8 +92,9 @@ impl SetIteratorPrototype {
         object
     }
 
-    // 24.2.5.2.1 %SetIteratorPrototype%.next
-    // Adapted from the abstract closure in 24.2.5.1 CreateSetIterator
+    /// %SetIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%setiteratorprototype%.next
+    ///
+    /// Adapted from the abstract closure in CreateSetIterator, https://tc39.es/ecma262/#sec-createsetiterator
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,

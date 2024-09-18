@@ -220,7 +220,7 @@ pub struct Intrinsics {
 }
 
 impl Intrinsics {
-    // 9.3.2 CreateIntrinsics
+    /// CreateIntrinsics, https://tc39.es/ecma262/#sec-createintrinsics
     pub fn initialize(cx: Context, mut realm: Handle<Realm>) {
         // Initialize all pointers to valid pointer outside heap in case a GC is triggered before
         // they are set to real intrinsic object.
@@ -484,7 +484,7 @@ pub fn throw_type_error(
     type_error(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
-// 10.2.4.1 %ThrowTypeError%
+/// %ThrowTypeError%, https://tc39.es/ecma262/#sec-%throwtypeerror%
 fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
     let throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
         cx,
@@ -517,7 +517,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     throw_type_error_func.into()
 }
 
-// 10.2.4 AddRestrictedFunctionProperties
+/// AddRestrictedFunctionProperties, https://tc39.es/ecma262/#sec-addrestrictedfunctionproperties
 fn add_restricted_function_properties(
     cx: Context,
     func: Handle<ObjectValue>,

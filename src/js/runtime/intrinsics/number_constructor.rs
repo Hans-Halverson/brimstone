@@ -27,7 +27,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// 21.1 Number Objects
+// Number Objects, https://tc39.es/ecma262/#sec-number-objects
 extend_object! {
     pub struct NumberObject {
         // The number value wrapped by this object
@@ -87,7 +87,7 @@ impl NumberObject {
 pub struct NumberConstructor;
 
 impl NumberConstructor {
-    // 21.1.2 Properties of the Number Constructor
+    /// Properties of the Number Constructor, https://tc39.es/ecma262/#sec-properties-of-the-number-constructor
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -142,7 +142,7 @@ impl NumberConstructor {
         func
     }
 
-    // 21.1.1.1 Number
+    /// Number, https://tc39.es/ecma262/#sec-number-constructor-number-value
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -170,7 +170,7 @@ impl NumberConstructor {
         }
     }
 
-    // 21.1.2.2 Number.isFinite
+    /// Number.isFinite, https://tc39.es/ecma262/#sec-number.isfinite
     pub fn is_finite(
         cx: Context,
         _: Handle<Value>,
@@ -185,7 +185,7 @@ impl NumberConstructor {
         cx.bool(!value.is_nan() && !value.is_infinity()).into()
     }
 
-    // 21.1.2.3 Number.isInteger
+    /// Number.isInteger, https://tc39.es/ecma262/#sec-number.isinteger
     pub fn is_integer(
         cx: Context,
         _: Handle<Value>,
@@ -196,7 +196,7 @@ impl NumberConstructor {
         cx.bool(is_integral_number(value.get())).into()
     }
 
-    // 21.1.2.4 Number.isNaN
+    /// Number.isNaN, https://tc39.es/ecma262/#sec-number.isnan
     pub fn is_nan(
         cx: Context,
         _: Handle<Value>,
@@ -211,7 +211,7 @@ impl NumberConstructor {
         cx.bool(value.is_nan()).into()
     }
 
-    // 21.1.2.5 Number.isSafeInteger
+    /// Number.isSafeInteger, https://tc39.es/ecma262/#sec-number.issafeinteger
     pub fn is_safe_integer(
         cx: Context,
         _: Handle<Value>,

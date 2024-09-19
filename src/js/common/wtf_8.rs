@@ -1,6 +1,9 @@
 use std::{borrow::Borrow, fmt, hash};
 
-use super::unicode::{decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii};
+use super::unicode::{
+    decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
+    is_low_surrogate_code_point, is_surrogate_code_point,
+};
 
 /// A string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
 /// Identical to UTf-8 but also allows unpaired surrogate code points.
@@ -88,6 +91,37 @@ impl Wtf8String {
 
     pub fn repeat(&self, num_times: usize) -> Wtf8String {
         Wtf8String { buf: self.buf.repeat(num_times) }
+    }
+
+    /// Returns true if the string does not have any unpaired surrogates.
+    ///
+    /// IsWellFormedUnicode, https://tc39.es/ecma262/#sec-isstringwellformedunicode
+    pub fn is_well_formed(&self) -> bool {
+        let mut iter = self.iter_code_points();
+
+        let mut is_well_formed = true;
+
+        while let Some(code_point) = iter.next() {
+            if is_surrogate_code_point(code_point) {
+                // Only way to be well formed at this point is to be a high surrogate followed by
+                // a low surrogate.
+                if is_high_surrogate_code_point(code_point) {
+                    if let Some(next_code_point) = iter.next() {
+                        if is_low_surrogate_code_point(next_code_point) {
+                            // A surrogate pair is well formed so proceed to next code point
+                            continue;
+                        }
+                    }
+                }
+
+                is_well_formed = false;
+                break;
+            }
+
+            // Not a surrogate, proceed to next code point
+        }
+
+        is_well_formed
     }
 
     #[inline]

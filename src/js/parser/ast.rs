@@ -1473,11 +1473,6 @@ pub struct ExportAllDeclaration {
 }
 
 pub enum ModuleName {
-    Id(ModuleNameIdentifier),
+    Id(Identifier),
     String(StringLiteral),
-}
-
-pub struct ModuleNameIdentifier {
-    pub loc: Loc,
-    pub name: String,
 }

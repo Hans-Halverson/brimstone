@@ -2687,7 +2687,7 @@ impl<'a> Parser<'a> {
         match token {
             // Identifier's value cannot be a reserved word (e.g. due to escape characters)
             Token::Identifier(name) => {
-                !Self::is_reserved_word(name, in_strict_mode, allow_await, allow_yield)
+                !Self::is_reserved_word(name.as_bytes(), in_strict_mode, allow_await, allow_yield)
             }
             // Tokens that are always allowed as identifiers
             Token::Async
@@ -2777,31 +2777,38 @@ impl<'a> Parser<'a> {
     }
 
     fn is_reserved_word_in_current_context(&self, str: &str) -> bool {
-        Self::is_reserved_word(str, self.in_strict_mode, self.allow_await, self.allow_yield)
+        Self::is_reserved_word(
+            str.as_bytes(),
+            self.in_strict_mode,
+            self.allow_await,
+            self.allow_yield,
+        )
     }
 
     fn is_reserved_word(
-        str: &str,
+        str: &[u8],
         in_strict_mode: bool,
         allow_await: bool,
         allow_yield: bool,
     ) -> bool {
         match str {
             // Names that are always reserved
-            "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger"
-            | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false"
-            | "finally" | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new"
-            | "null" | "return" | "super" | "switch" | "this" | "throw" | "true" | "try"
-            | "typeof" | "var" | "void" | "while" | "with" => true,
+            b"break" | b"case" | b"catch" | b"class" | b"const" | b"continue" | b"debugger"
+            | b"default" | b"delete" | b"do" | b"else" | b"enum" | b"export" | b"extends"
+            | b"false" | b"finally" | b"for" | b"function" | b"if" | b"import" | b"in"
+            | b"instanceof" | b"new" | b"null" | b"return" | b"super" | b"switch" | b"this"
+            | b"throw" | b"true" | b"try" | b"typeof" | b"var" | b"void" | b"while" | b"with" => {
+                true
+            }
             // Names that are only reserved in strict mode
-            "let" | "static" | "implements" | "interface" | "package" | "private" | "protected"
-            | "public"
+            b"let" | b"static" | b"implements" | b"interface" | b"package" | b"private"
+            | b"protected" | b"public"
                 if in_strict_mode =>
             {
                 true
             }
-            "await" => allow_await,
-            "yield" => in_strict_mode || allow_yield,
+            b"await" => allow_await,
+            b"yield" => in_strict_mode || allow_yield,
             _ => false,
         }
     }
@@ -4079,8 +4086,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported =
-                    ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
+                let imported = self.create_export_module_name_string(self.loc, value.clone())?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4094,11 +4100,11 @@ impl<'a> Parser<'a> {
                 if self.token == Token::As {
                     self.advance()?;
 
-                    let id = ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name });
+                    let imported = self.create_export_module_name_identifier(id);
                     let local = p(self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
-                    ImportNamedSpecifier { loc, imported: Some(p(id)), local }
+                    ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
@@ -4257,15 +4263,48 @@ impl<'a> Parser<'a> {
 
     fn parse_export_module_name(&mut self) -> ParseResult<ModuleName> {
         if let Token::StringLiteral(value) = &self.token {
-            let imported =
-                ModuleName::String(StringLiteral { loc: self.loc, value: value.clone() });
+            // Verify that exported module name is not a reserved word
+            if Self::is_reserved_word(
+                value.as_bytes(),
+                self.in_strict_mode,
+                self.allow_await,
+                self.allow_yield,
+            ) {
+                return self.error(self.loc, ParseError::ModuleNameIsReservedWord);
+            }
+
+            let module_name = self.create_export_module_name_string(self.loc, value.clone())?;
             self.advance()?;
-            Ok(imported)
+
+            Ok(module_name)
         } else if let Some(id) = self.parse_identifier_name()? {
-            Ok(ModuleName::Id(ModuleNameIdentifier { loc: id.loc, name: id.name }))
+            // Verify that exported module name is not a reserved word
+            if self.is_reserved_word_in_current_context(&id.name) {
+                return self.error(id.loc, ParseError::ModuleNameIsReservedWord);
+            }
+
+            Ok(self.create_export_module_name_identifier(id))
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }
+    }
+
+    fn create_export_module_name_string(
+        &mut self,
+        loc: Loc,
+        value: Wtf8String,
+    ) -> ParseResult<ModuleName> {
+        if !value.is_well_formed() {
+            return self.error(loc, ParseError::ModuleNameNotWellFormed);
+        }
+
+        Ok(ModuleName::String(StringLiteral { loc, value }))
+    }
+
+    fn create_export_module_name_identifier(&mut self, id: Identifier) -> ModuleName {
+        // Do not need to check for IsStringWellFormedUnicode since Rust strings are guaranteed
+        // to be valid UTF-8 and cannot have any unpaired surrogates.
+        ModuleName::Id(Identifier::new(id.loc, id.name))
     }
 
     fn parse_source(&mut self) -> ParseResult<StringLiteral> {

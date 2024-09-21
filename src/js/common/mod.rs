@@ -1,3 +1,4 @@
+pub mod error;
 pub mod icu;
 mod icu_data;
 pub mod macros;

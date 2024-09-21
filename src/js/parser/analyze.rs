@@ -1520,10 +1520,8 @@ impl Analyzer<'_> {
     }
 }
 
-pub fn analyze(
-    parse_result: &mut ParseProgramResult,
-    source: Rc<Source>,
-) -> Result<(), LocalizedParseErrors> {
+pub fn analyze(parse_result: &mut ParseProgramResult) -> Result<(), LocalizedParseErrors> {
+    let source = parse_result.program.source.clone();
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
     analyzer.visit_program(&mut parse_result.program);
 

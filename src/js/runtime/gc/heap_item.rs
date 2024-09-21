@@ -9,6 +9,7 @@ use crate::js::runtime::{
         function::{BytecodeFunction, Closure},
     },
     class_names::ClassNames,
+    collections::array::{value_array_byte_size, value_array_visit_pointers},
     context::GlobalSymbolRegistryField,
     for_in_iterator::ForInIterator,
     generator_object::GeneratorObject,
@@ -42,6 +43,7 @@ use crate::js::runtime::{
         weak_ref_constructor::WeakRefObject,
         weak_set_object::{WeakSetObject, WeakSetObjectSetField},
     },
+    module::source_text_module::SourceTextModule,
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
     promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
@@ -141,6 +143,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().byte_size(),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
+            ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().byte_size(),
             ObjectKind::Generator => self.cast::<GeneratorObject>().byte_size(),
             ObjectKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
             ObjectKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
@@ -160,6 +163,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsMap => InternedStringsMapField::byte_size(&self.cast()),
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
+            ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ArrayBufferDataArray => ArrayBufferDataField::byte_size(&self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
@@ -247,6 +251,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ScopeNames => self.cast::<ScopeNames>().visit_pointers(visitor),
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
+            ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().visit_pointers(visitor),
             ObjectKind::Generator => self.cast::<GeneratorObject>().visit_pointers(visitor),
             ObjectKind::AsyncGenerator => {
                 self.cast::<AsyncGeneratorObject>().visit_pointers(visitor)
@@ -290,6 +295,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::LexicalNamesMap => {
                 LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
             }
+            ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ArrayBufferDataArray => {
                 ArrayBufferDataField::visit_pointers(self.cast_mut(), visitor)
             }

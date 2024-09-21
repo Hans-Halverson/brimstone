@@ -1,4 +1,4 @@
-mod aggregate_error_constructor;
+pub mod aggregate_error_constructor;
 mod aggregate_error_prototype;
 pub mod array_buffer_constructor;
 mod array_buffer_prototype;

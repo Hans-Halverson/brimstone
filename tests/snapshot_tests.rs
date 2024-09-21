@@ -1,9 +1,14 @@
 use brimstone::js::{
     common::options::Options,
-    parser,
+    parser::{self, ast},
     runtime::{
-        bytecode::generator::{BytecodeProgram, BytecodeProgramGenerator},
-        initialize_host_defined_realm, Context, Handle, Realm,
+        bytecode::{
+            function::BytecodeFunction,
+            generator::{BytecodeProgramGenerator, BytecodeScript},
+        },
+        initialize_host_defined_realm,
+        module::{execute::ExecuteOnReject, source_text_module::SourceTextModule},
+        Context, Handle, Realm,
     },
 };
 
@@ -25,7 +30,7 @@ fn js_parser_snapshot_tests() -> GenericResult<()> {
 
 fn print_ast(path: &str) -> GenericResult<String> {
     let parse_result = parse_script_or_module(path)?;
-    Ok(parser::print_program(&parse_result.program, &parse_result.program.source))
+    Ok(parser::print_program(&parse_result.program))
 }
 
 #[test]
@@ -56,25 +61,47 @@ fn print_bytecode(cx: Context, realm: Handle<Realm>, path: &str) -> GenericResul
     // Otherwise only need to generate bytecode
     let bytecode_program = generate_bytecode(cx, realm, path)?;
 
-    Ok(bytecode_program.script_function.debug_print_recursive(true))
+    Ok(bytecode_program.bytecode().debug_print_recursive(true))
+}
+
+enum BytecodeResult {
+    Script(BytecodeScript),
+    Module(Handle<SourceTextModule>),
+}
+
+impl BytecodeResult {
+    fn bytecode(&self) -> Handle<BytecodeFunction> {
+        match self {
+            BytecodeResult::Script(script) => script.script_function,
+            BytecodeResult::Module(module) => module.program_function(),
+        }
+    }
 }
 
 fn generate_bytecode(
     cx: Context,
     realm: Handle<Realm>,
     path: &str,
-) -> GenericResult<BytecodeProgram> {
+) -> GenericResult<BytecodeResult> {
     let mut parse_result = parse_script_or_module(path)?;
-    let source = parse_result.program.source.clone();
-    parser::analyze::analyze(&mut parse_result, source)?;
+    parser::analyze::analyze(&mut parse_result)?;
 
-    let bytecode_program = BytecodeProgramGenerator::generate_from_program_parse_result(
-        cx,
-        &Rc::new(parse_result),
-        realm,
-    )?;
-
-    Ok(bytecode_program)
+    match parse_result.program.kind {
+        ast::ProgramKind::Script => Ok(BytecodeResult::Script(
+            BytecodeProgramGenerator::generate_from_parse_script_result(
+                cx,
+                &Rc::new(parse_result),
+                realm,
+            )?,
+        )),
+        ast::ProgramKind::Module => Ok(BytecodeResult::Module(
+            BytecodeProgramGenerator::generate_from_parse_module_result(
+                cx,
+                &Rc::new(parse_result),
+                realm,
+            )?,
+        )),
+    }
 }
 
 fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
@@ -91,14 +118,17 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     // Generate program and prepend to dump buffer
     let bytecode_program = generate_bytecode(cx, realm, path)?;
 
-    let bytecode_string = bytecode_program.script_function.debug_print_recursive(true);
+    let bytecode_string = bytecode_program.bytecode().debug_print_recursive(true);
     options
         .dump_buffer()
         .unwrap()
-        .push_str(&format!("{bytecode_string}\n"));
+        .push_str(&format!("{}\n", bytecode_string));
 
     // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
-    let _ = cx.execute_then_drop(|mut cx| cx.run_program(bytecode_program));
+    let _ = cx.execute_then_drop(|mut cx| match bytecode_program {
+        BytecodeResult::Script(script) => cx.run_script(script),
+        BytecodeResult::Module(module) => cx.run_module(module, ExecuteOnReject::Panic),
+    });
 
     // Return a copy of the dump buffer
     let dump_buffer = options.dump_buffer().unwrap();

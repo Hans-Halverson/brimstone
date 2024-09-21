@@ -7,11 +7,12 @@ use std::{
 };
 
 use bitflags::bitflags;
+use indexmap::IndexSet;
 
 use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
-        ast::{self, AstPtr, LabelId, ResolvedScope, TaggedResolvedScope},
+        ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
         loc::Pos,
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
@@ -28,9 +29,15 @@ use crate::js::{
         gc::{Escapable, HandleScope},
         global_names::GlobalNames,
         interned_strings::InternedStrings,
+        module::source_text_module::{
+            DirectReExportEntry, ImportEntry, LocalExportEntry, NamedReExportEntry,
+            SourceTextModule,
+        },
         regexp::compiler::compile_regexp,
+        scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         source_file::SourceFile,
+        string_value::FlatString,
         value::BigIntValue,
         Context, Handle, Realm, Value,
     },
@@ -61,14 +68,14 @@ pub struct BytecodeProgramGenerator<'a> {
     pending_functions_queue: VecDeque<PatchablePendingFunction>,
 }
 
-pub struct BytecodeProgram {
+pub struct BytecodeScript {
     pub script_function: Handle<BytecodeFunction>,
     pub global_names: Handle<GlobalNames>,
 }
 
-impl Escapable for BytecodeProgram {
+impl Escapable for BytecodeScript {
     fn escape(&self, cx: Context) -> Self {
-        BytecodeProgram {
+        BytecodeScript {
             script_function: self.script_function.escape(cx),
             global_names: self.global_names.escape(cx),
         }
@@ -93,21 +100,29 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
     }
 
-    /// Generate an entire program from a program parse result. Return the toplevel program function
+    /// Generate bytecode from the result of `parse_script`. Return the toplevel script function
     /// used to execute the program.
-    pub fn generate_from_program_parse_result(
+    pub fn generate_from_parse_script_result(
         cx: Context,
         parse_result: &'a ParseProgramResult,
         realm: Handle<Realm>,
-    ) -> EmitResult<BytecodeProgram> {
+    ) -> EmitResult<BytecodeScript> {
+        debug_assert!(parse_result.program.kind == ProgramKind::Script);
+
         HandleScope::new(cx, |_| {
             let source = parse_result.program.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
-            generator.generate_program(&parse_result.program)
+            let script = generator.generate_script_program(&parse_result.program)?;
+
+            if cx.options.print_bytecode {
+                println!("{}", script.script_function.debug_print_recursive(false));
+            }
+
+            Ok(script)
         })
     }
 
-    fn generate_program(&mut self, program: &ast::Program) -> EmitResult<BytecodeProgram> {
+    fn generate_script_program(&mut self, program: &ast::Program) -> EmitResult<BytecodeScript> {
         let program_function = self.gen_script_function(program)?;
 
         while let Some(pending_function) = self.pending_functions_queue.pop_front() {
@@ -117,7 +132,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(program_function)
     }
 
-    fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<BytecodeProgram> {
+    fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<BytecodeScript> {
         let mut emit_result = EmitFunctionResult::empty();
 
         let global_names = HandleScope::new(self.cx, |_| {
@@ -130,35 +145,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 self.realm,
             )?;
 
-            let program_scope = program.scope.as_ref();
+            let global_names = generator.gen_global_names(program.scope.as_ref())?;
 
-            // Start the script's global scope
-            let global_scope_names = generator.gen_global_names(program_scope);
-            generator.gen_start_global_scope(program_scope)?;
-
-            // Heuristic to ignore the use strict directive in common cases. Safe since there must
-            // be a directive prologue which can be ignored if there is a use strict directive.
-            let toplevels = if program.has_use_strict_directive {
-                &program.toplevels[1..]
-            } else {
-                &program.toplevels
-            };
-
-            // Script function consists of toplevel statements
-            for toplevel in toplevels {
-                generator.gen_toplevel(toplevel)?;
-            }
-
-            // Scope end not needed since the script function returns
-
-            // Implicitly return undefined at end of script function
-            generator.gen_return(
-                /* return_arg */ None, /* derived_constructor_scope */ None,
-            )?;
-
+            generator.gen_program_body(program)?;
             emit_result = generator.finish();
 
-            global_scope_names
+            Ok(global_names)
         })?;
 
         // Escape emit result into current handle scope immediately, before allocation occurs
@@ -169,7 +161,231 @@ impl<'a> BytecodeProgramGenerator<'a> {
             emit_result.pending_functions,
         );
 
-        Ok(BytecodeProgram { script_function: emit_result.bytecode_function, global_names })
+        Ok(BytecodeScript { script_function: emit_result.bytecode_function, global_names })
+    }
+
+    /// Generate bytecode from the result of `parse_module`. Return the SourceTextModule which is
+    /// used to execute the program.
+    pub fn generate_from_parse_module_result(
+        cx: Context,
+        parse_result: &'a ParseProgramResult,
+        realm: Handle<Realm>,
+    ) -> EmitResult<Handle<SourceTextModule>> {
+        debug_assert!(parse_result.program.kind == ProgramKind::Module);
+
+        HandleScope::new(cx, |cx| {
+            let source = parse_result.program.source.clone();
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
+            let module = generator.generate_module_program(&parse_result.program)?;
+
+            if cx.options.print_bytecode {
+                println!("{}", module.program_function_ptr().debug_print_recursive(false));
+            }
+
+            Ok(module)
+        })
+    }
+
+    fn generate_module_program(
+        &mut self,
+        program: &ast::Program,
+    ) -> EmitResult<Handle<SourceTextModule>> {
+        let program_function = self.gen_module_function(program)?;
+        let source_text_module = self.gen_source_text_module(program, program_function);
+
+        while let Some(pending_function) = self.pending_functions_queue.pop_front() {
+            self.gen_enqueued_function(pending_function)?;
+        }
+
+        Ok(source_text_module)
+    }
+
+    fn gen_module_function(
+        &mut self,
+        program: &ast::Program,
+    ) -> EmitResult<Handle<BytecodeFunction>> {
+        let mut emit_result = EmitFunctionResult::empty();
+
+        HandleScope::new(self.cx, |_| {
+            let mut generator = BytecodeFunctionGenerator::new_for_program(
+                self.cx,
+                program,
+                self.scope_tree,
+                "<module>",
+                self.source_file,
+                self.realm,
+            )?;
+
+            generator.gen_program_body(program)?;
+            emit_result = generator.finish();
+
+            Ok(())
+        })?;
+
+        // Escape emit result into current handle scope immediately, before allocation occurs
+        self.escape_emit_function_result(&mut emit_result);
+
+        self.enqueue_pending_functions(
+            emit_result.bytecode_function,
+            emit_result.pending_functions,
+        );
+
+        Ok(emit_result.bytecode_function)
+    }
+
+    fn gen_source_text_module(
+        &mut self,
+        program: &ast::Program,
+        program_function: Handle<BytecodeFunction>,
+    ) -> Handle<SourceTextModule> {
+        let mut module_specifiers = IndexSet::new();
+
+        let mut imports = vec![];
+        let mut local_exports = vec![];
+        let mut named_re_exports = vec![];
+        let mut direct_re_exports = vec![];
+
+        let default = self.cx.names.default().as_string().as_flat();
+
+        // Inlined import and export entry creation logic from:
+        // ParseModule (https://tc39.es/ecma262/#sec-parsemodule)
+
+        for toplevel in &program.toplevels {
+            match toplevel {
+                ast::Toplevel::Import(import) => {
+                    let module_specifier =
+                        self.cx.alloc_wtf8_string(&import.source.value).as_flat();
+                    module_specifiers.insert(module_specifier);
+
+                    // Each specifier will generate an import entry
+                    for specifier in &import.specifiers {
+                        let (local_name, import_name) = match specifier {
+                            ast::ImportSpecifier::Default(import) => {
+                                let local = self.cx.alloc_string(&import.local.name).as_flat();
+                                (local, Some(default))
+                            }
+                            ast::ImportSpecifier::Namespace(import) => {
+                                let local = self.cx.alloc_string(&import.local.name).as_flat();
+                                (local, None)
+                            }
+                            ast::ImportSpecifier::Named(import) => {
+                                let local = self.cx.alloc_string(&import.local.name).as_flat();
+                                let imported = import.imported.as_ref().map_or(local, |imported| {
+                                    self.alloc_module_name_string(imported)
+                                });
+                                (local, Some(imported))
+                            }
+                        };
+
+                        imports.push(ImportEntry {
+                            module_request: module_specifier,
+                            local_name,
+                            import_name,
+                        });
+                    }
+                }
+                ast::Toplevel::ExportDefault(export) => {
+                    // Default specifiers are always local exports
+                    let export_name = self.cx.names.default().as_string().as_flat();
+                    let local_name = BytecodeFunctionGenerator::gen_default_export_name(
+                        self.cx,
+                        &export.declaration,
+                    );
+
+                    local_exports.push(LocalExportEntry { export_name, local_name })
+                }
+                ast::Toplevel::ExportNamed(export) => {
+                    let module_specifier = export.source.as_ref().map(|source| {
+                        let module_specifier = self.cx.alloc_wtf8_string(&source.value).as_flat();
+                        module_specifiers.insert(module_specifier);
+                        module_specifier
+                    });
+
+                    // TODO: Check if we are exporting an import and this should be treated as a
+                    // named re-export.
+
+                    // Each specifier will generate an export entry of some form
+                    for specifier in &export.specifiers {
+                        let local_name = self.cx.alloc_string(&specifier.local.name).as_flat();
+                        let export_name = specifier
+                            .exported
+                            .as_ref()
+                            .map_or(local_name, |exported| self.alloc_module_name_string(exported));
+
+                        if let Some(module_specifier) = module_specifier {
+                            // If there is a from source specifier this is a named re-export
+                            named_re_exports.push(NamedReExportEntry {
+                                module_request: module_specifier,
+                                export_name,
+                                import_name: Some(local_name),
+                            })
+                        } else {
+                            // Otherwise this is a regular local export
+                            local_exports.push(LocalExportEntry { export_name, local_name })
+                        }
+                    }
+                }
+                ast::Toplevel::ExportAll(export) => {
+                    let module_specifier =
+                        self.cx.alloc_wtf8_string(&export.source.value).as_flat();
+                    module_specifiers.insert(module_specifier);
+
+                    if let Some(exported_name) = export.exported.as_ref() {
+                        // If there is an exported name this is a namespace re-export, which counts
+                        // as a named re-export.
+                        let export_name = self.alloc_module_name_string(exported_name);
+
+                        named_re_exports.push(NamedReExportEntry {
+                            module_request: module_specifier,
+                            export_name,
+                            import_name: None,
+                        });
+                    } else {
+                        // Otherwise this is a direct re-export
+                        direct_re_exports
+                            .push(DirectReExportEntry { module_request: module_specifier });
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Flatten set of specifiers into list, preserving insertion order
+        let module_specifiers = module_specifiers.into_iter().collect::<Vec<_>>();
+
+        // TODO: Properly create the module scope
+        let vm_scope_id = program.scope.as_ref().vm_scope_id().unwrap();
+        let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
+        let names = vm_node
+            .bindings()
+            .iter()
+            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
+            .collect::<Vec<_>>();
+
+        let name_flags = BytecodeFunctionGenerator::gen_scope_name_flags(
+            program.scope.as_ref(),
+            self.scope_tree,
+        );
+        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags);
+        let module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object());
+
+        SourceTextModule::new(
+            self.cx,
+            program_function,
+            module_scope,
+            &module_specifiers,
+            &imports,
+            &local_exports,
+            &named_re_exports,
+            &direct_re_exports,
+        )
+    }
+
+    fn alloc_module_name_string(&mut self, module_name: &ast::ModuleName) -> Handle<FlatString> {
+        match module_name {
+            ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name).as_flat(),
+            ast::ModuleName::String(lit) => self.cx.alloc_wtf8_string(&lit.value).as_flat(),
+        }
     }
 
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
@@ -1568,6 +1784,31 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
+    fn gen_program_body(&mut self, program: &ast::Program) -> EmitResult<()> {
+        // Start the program's global scope
+        self.gen_start_global_scope(program.scope.as_ref())?;
+
+        // Heuristic to ignore the use strict directive in common cases. Safe since there must
+        // be a directive prologue which can be ignored if there is a use strict directive.
+        let toplevels = if program.has_use_strict_directive {
+            &program.toplevels[1..]
+        } else {
+            &program.toplevels
+        };
+
+        // Program function consists of toplevel statements
+        for toplevel in toplevels {
+            self.gen_toplevel(toplevel)?;
+        }
+
+        // Scope end not needed since the function returns
+
+        // Implicitly return undefined at end of program function
+        self.gen_return(/* return_arg */ None, /* derived_constructor_scope */ None)?;
+
+        Ok(())
+    }
+
     fn gen_toplevel(&mut self, toplevel: &ast::Toplevel) -> EmitResult<()> {
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
@@ -1575,7 +1816,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let _ = self.gen_statement(stmt)?;
                 Ok(())
             }
-            ast::Toplevel::Import(_) => unimplemented!("bytecode for import declarations"),
+            ast::Toplevel::Import(import) => {
+                // No evaluation action is needed for `import "module"` declarations. These only
+                // have side effects due to loading the module during load/link/eval time.
+                if import.specifiers.is_empty() {
+                    return Ok(());
+                }
+
+                unimplemented!("bytecode for import declarations")
+            }
             ast::Toplevel::ExportDefault(_)
             | ast::Toplevel::ExportNamed(_)
             | ast::Toplevel::ExportAll(_) => unimplemented!("bytecode for export declarations"),
@@ -6266,7 +6515,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Function scopes are considered var hoist targets
             ScopeNodeKind::Function { .. } | ScopeNodeKind::FunctionBody => {
                 if let Some(vm_node_id) = scope.vm_scope_id() {
-                    let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
+                    let scope_names_index = self.gen_scope_names(scope, flags)?;
                     self.writer
                         .push_function_scope_instruction(scope_names_index);
                     self.push_scope_stack_node(vm_node_id);
@@ -6281,7 +6530,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ScopeNodeKind::Eval { .. }
             | ScopeNodeKind::StaticInitializer => {
                 if let Some(vm_node_id) = scope.vm_scope_id() {
-                    let scope_names_index = self.gen_scope_names(scope, vm_node_id, flags)?;
+                    let scope_names_index = self.gen_scope_names(scope, flags)?;
                     self.writer
                         .push_lexical_scope_instruction(scope_names_index);
                     self.push_scope_stack_node(vm_node_id);
@@ -6348,9 +6597,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_scope_names(
         &mut self,
         scope: &AstScopeNode,
-        vm_scope_id: ScopeNodeId,
         flags: ScopeFlags,
     ) -> EmitResult<GenConstantIndex> {
+        let vm_scope_id = scope.vm_scope_id().unwrap();
+
         // Check if scope was already created and cached
         if let Some(constant_index) = self.scope_names_cache.get(&vm_scope_id) {
             return Ok(*constant_index);
@@ -6363,7 +6613,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
             .collect::<Vec<_>>();
 
-        let name_flags = self.gen_scope_name_flags(scope);
+        let name_flags = Self::gen_scope_name_flags(scope, self.scope_tree);
         let scope_names = ScopeNames::new(self.cx, flags, &names, &name_flags);
 
         let scope_names_index = self
@@ -6405,9 +6655,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Must only be called on AST scope node with a corresponding VM scope node.
-    fn gen_scope_name_flags(&self, scope: &AstScopeNode) -> Vec<ScopeNameFlags> {
+    fn gen_scope_name_flags(scope: &AstScopeNode, scope_tree: &ScopeTree) -> Vec<ScopeNameFlags> {
         let vm_scope_id = scope.vm_scope_id().unwrap();
-        let vm_scope = self.scope_tree.get_vm_node(vm_scope_id);
+        let vm_scope = scope_tree.get_vm_node(vm_scope_id);
 
         let mut all_flags = vec![];
         for name in vm_scope.bindings() {
@@ -7121,8 +7371,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start with scope
         let vm_scope_id = with_scope.vm_scope_id().unwrap();
-        let scope_names_index =
-            self.gen_scope_names(with_scope, vm_scope_id, ScopeFlags::empty())?;
+        let scope_names_index = self.gen_scope_names(with_scope, ScopeFlags::empty())?;
         self.writer
             .push_with_scope_instruction(object, scope_names_index);
         self.push_scope_stack_node(vm_scope_id);
@@ -8036,7 +8285,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Create a ScopeNames object containing all lexical names in scope.
         let binding_names = vm_node.bindings();
-        let binding_flags = self.gen_scope_name_flags(global_scope);
+        let binding_flags = Self::gen_scope_name_flags(global_scope, self.scope_tree);
 
         let names = binding_names
             .iter()
@@ -8048,6 +8297,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Add all var and lex names to the GlobalNames object, which will be used later when
         // instantiating the global scope.
         Ok(GlobalNames::new(self.cx, global_vars, global_funcs, scope_names))
+    }
+
+    /// Generate the name of a declaration that is part of a default export declaration, defaulting
+    /// to "*default*" if the declaration has no name.
+    fn gen_default_export_name(mut cx: Context, decl: &ast::Statement) -> Handle<FlatString> {
+        let id = match decl {
+            ast::Statement::FuncDecl(func) => &func.id,
+            ast::Statement::ClassDecl(class) => &class.id,
+            _ => &None,
+        };
+
+        if let Some(id) = id {
+            cx.alloc_string(&id.name).as_flat()
+        } else {
+            cx.names.default_name().as_string().as_flat()
+        }
     }
 }
 

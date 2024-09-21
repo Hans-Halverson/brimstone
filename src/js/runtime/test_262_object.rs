@@ -159,7 +159,7 @@ impl Test262Object {
             Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
-        let analyze_result = analyze(&mut parse_result, source);
+        let analyze_result = analyze(&mut parse_result);
         if let Err(errors) = analyze_result {
             // Choose an arbitrary syntax error to return
             let error = &errors.errors[0];
@@ -168,13 +168,13 @@ impl Test262Object {
 
         let realm = cx.current_realm();
         let gen_result =
-            BytecodeProgramGenerator::generate_from_program_parse_result(cx, &parse_result, realm);
-        let bytecode_program = match gen_result {
-            Ok(bytecode_program) => bytecode_program,
+            BytecodeProgramGenerator::generate_from_parse_script_result(cx, &parse_result, realm);
+        let bytecode_script = match gen_result {
+            Ok(bytecode_script) => bytecode_script,
             Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
-        match cx.vm().execute_program(bytecode_program) {
+        match cx.vm().execute_script(bytecode_script) {
             Ok(value) => EvalResult::Ok(value),
             Err(error) => EvalResult::Throw(error),
         }

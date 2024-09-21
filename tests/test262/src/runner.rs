@@ -21,8 +21,9 @@ use brimstone::js::{
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
-        object_value::ObjectValue, test_262_object::Test262Object, to_console_string, to_string,
-        Context, EvalResult, Handle, Realm, Value,
+        module::execute::ExecuteOnReject, object_value::ObjectValue,
+        test_262_object::Test262Object, to_console_string, to_string, Context, EvalResult, Handle,
+        Realm, Value,
     },
 };
 
@@ -200,8 +201,8 @@ fn run_single_test(
 
         // Try to parse file
         let parse_result = parse_file(&test.path, Some(test), test262_root, force_strict_mode);
-        let mut ast_and_source = match parse_result {
-            Ok(ast_and_source) => ast_and_source,
+        let mut ast = match parse_result {
+            Ok(ast) => ast,
             // An error during parse may be a success or failure depending on the expected result of
             // the test.
             Err(err) => {
@@ -227,7 +228,7 @@ fn run_single_test(
         };
 
         // Perform static analysis on file
-        let analyze_result = js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1);
+        let analyze_result = js::parser::analyze::analyze(&mut ast);
         match analyze_result {
             Ok(_) => {}
             // An error during analysis may be a success or failure depending on the expected result
@@ -249,9 +250,9 @@ fn run_single_test(
         }
 
         let completion = if test.mode == TestMode::Module {
-            unimplemented!("module evaluation")
+            execute_module_as_bytecode(cx, realm, &ast)
         } else {
-            execute_as_bytecode(cx, realm, &ast_and_source.0)
+            execute_script_as_bytecode(cx, realm, &ast)
         };
 
         let duration = start_timestamp.elapsed().unwrap();
@@ -273,17 +274,16 @@ fn parse_file(
     test: Option<&Test>,
     test262_root: &str,
     force_strict_mode: bool,
-) -> js::parser::ParseResult<(js::parser::parser::ParseProgramResult, Rc<js::parser::source::Source>)>
-{
+) -> js::parser::ParseResult<js::parser::parser::ParseProgramResult> {
     let full_path = Path::new(test262_root).join("test").join(file);
 
     let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
     if let Some(Test { mode: TestMode::Module, .. }) = test {
         let source = Rc::new(source);
-        let parese_result = js::parser::parse_module(&source)?;
+        let parse_result = js::parser::parse_module(&source)?;
 
-        Ok((parese_result, source))
+        Ok(parse_result)
     } else {
         // Manually insert use strict directive when forcing strict mode
         if force_strict_mode {
@@ -296,42 +296,64 @@ fn parse_file(
         let source = Rc::new(source);
         let parse_result = js::parser::parse_script(&source)?;
 
-        Ok((parse_result, source))
+        Ok(parse_result)
     }
 }
 
 fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let mut ast_and_source = parse_file(full_path.to_str().unwrap(), None, test262_root, false)
+    let mut ast = parse_file(full_path.to_str().unwrap(), None, test262_root, false)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
-    js::parser::analyze::analyze(&mut ast_and_source.0, ast_and_source.1)
+    js::parser::analyze::analyze(&mut ast)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
-    let eval_result = execute_as_bytecode(cx, realm, &ast_and_source.0);
+    let eval_result = execute_script_as_bytecode(cx, realm, &ast);
 
     if let EvalResult::Throw(_) = eval_result {
         panic!("Failed to evaluate test harness file {}", full_path.display())
     }
 }
 
-fn execute_as_bytecode(
+fn execute_script_as_bytecode(
     mut cx: Context,
     realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
 ) -> EvalResult<()> {
     let generate_result =
-        BytecodeProgramGenerator::generate_from_program_parse_result(cx, parse_result, realm);
-    let bytecode_program = match generate_result {
-        Ok(bytecode_program) => bytecode_program,
+        BytecodeProgramGenerator::generate_from_parse_script_result(cx, parse_result, realm);
+    let bytecode_script = match generate_result {
+        Ok(bytecode_script) => bytecode_script,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
             return EvalResult::Throw(err_string.into());
         }
     };
 
-    match cx.run_program(bytecode_program) {
+    match cx.run_script(bytecode_script) {
+        Ok(_) => EvalResult::Ok(()),
+        Err(error_value) => EvalResult::Throw(error_value),
+    }
+}
+
+fn execute_module_as_bytecode(
+    mut cx: Context,
+    realm: Handle<Realm>,
+    parse_result: &js::parser::parser::ParseProgramResult,
+) -> EvalResult<()> {
+    let generate_result =
+        BytecodeProgramGenerator::generate_from_parse_module_result(cx, parse_result, realm);
+    let module = match generate_result {
+        Ok(module) => module,
+        Err(err) => {
+            let err_string = cx.alloc_string(&err.to_string());
+            return EvalResult::Throw(err_string.into());
+        }
+    };
+
+    // Panic on rejection, which will be caught by the test runner
+    match cx.run_module(module, ExecuteOnReject::Panic) {
         Ok(_) => EvalResult::Ok(()),
         Err(error_value) => EvalResult::Throw(error_value),
     }

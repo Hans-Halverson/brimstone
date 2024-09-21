@@ -114,6 +114,8 @@ pub enum ObjectKind {
     GlobalNames,
     ClassNames,
 
+    SourceTextModule,
+
     Generator,
     AsyncGenerator,
     AsyncGeneratorRequest,
@@ -135,6 +137,7 @@ pub enum ObjectKind {
     LexicalNamesMap,
 
     // Arrays
+    ValueArray,
     ArrayBufferDataArray,
     FinalizationRegistryCells,
     GlobalScopes,
@@ -317,6 +320,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::GlobalNames);
         other_heap_object_descriptor!(ObjectKind::ClassNames);
 
+        other_heap_object_descriptor!(ObjectKind::SourceTextModule);
+
         ordinary_object_descriptor!(ObjectKind::Generator);
         ordinary_object_descriptor!(ObjectKind::AsyncGenerator);
         other_heap_object_descriptor!(ObjectKind::AsyncGeneratorRequest);
@@ -336,6 +341,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
 
+        other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);

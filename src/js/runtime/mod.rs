@@ -24,6 +24,7 @@ pub mod global_names;
 mod interned_strings;
 pub mod intrinsics;
 mod iterator;
+pub mod module;
 mod numeric_constants;
 mod numeric_operations;
 mod object_descriptor;

@@ -71,6 +71,14 @@ impl Scope {
         Self::new(cx, ScopeKind::Global, None, scope_names, Some(global_object))
     }
 
+    pub fn new_module(
+        cx: Context,
+        scope_names: Handle<ScopeNames>,
+        global_object: Handle<ObjectValue>,
+    ) -> Handle<Scope> {
+        Self::new(cx, ScopeKind::Lexical, None, scope_names, Some(global_object))
+    }
+
     pub fn new_lexical(
         cx: Context,
         parent: Handle<Scope>,

@@ -3,7 +3,7 @@ use crate::{
     js::runtime::{
         gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
-        Context, HeapPtr,
+        Context, HeapPtr, Value,
     },
     set_uninit,
 };
@@ -50,6 +50,11 @@ impl<T: Clone> BsArray<T> {
     }
 
     #[inline]
+    pub fn as_slice(&self) -> &[T] {
+        self.array.as_slice()
+    }
+
+    #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.array.as_mut_slice()
     }
@@ -63,5 +68,23 @@ impl<T: Clone> HeapObject for HeapPtr<BsArray<T>> {
     /// Visit pointers intrinsic to all BsArrays. Do not visit elements as they could be of any type.
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
+    }
+}
+
+/// A generic array of values. Corresponds to ObjectKind::ValueArray.
+pub type ValueArray = BsArray<Value>;
+
+pub fn value_array_byte_size(value_array: HeapPtr<ValueArray>) -> usize {
+    BsArray::<Value>::calculate_size_in_bytes(value_array.len())
+}
+
+pub fn value_array_visit_pointers(
+    value_array: &mut HeapPtr<ValueArray>,
+    visitor: &mut impl HeapVisitor,
+) {
+    value_array.visit_pointers(visitor);
+
+    for value in value_array.as_mut_slice() {
+        visitor.visit_value(value);
     }
 }

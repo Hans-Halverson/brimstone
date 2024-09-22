@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     ops::{Deref, DerefMut},
     ptr::NonNull,
     rc::Rc,
@@ -12,13 +13,18 @@ use crate::js::{
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_names::{BuiltinNames, BuiltinSymbols},
-    bytecode::{generator::BytecodeProgram, vm::VM},
+    bytecode::{generator::BytecodeScript, vm::VM},
     collections::{BsHashMap, BsHashMapField},
+    error::{panic_if_rejects, print_error_and_exit_if_rejects},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic,
         rust_runtime::RustRuntimeFunctionRegistry,
+    },
+    module::{
+        execute::{execute_module, ExecuteOnReject},
+        source_text_module::SourceTextModule,
     },
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
@@ -68,17 +74,20 @@ pub struct ContextCell {
     true_: Value,
     false_: Value,
 
-    // Canonical string values for strings that appear in the AST
+    /// Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
 
-    // An empty named properties map to use as the initial value for named properties
+    /// Cache modules by their canonical absolute path
+    pub modules: HashMap<String, HeapPtr<SourceTextModule>>,
+
+    /// An empty named properties map to use as the initial value for named properties
     pub default_named_properties: HeapPtr<NamedPropertiesMap>,
 
-    // An empty, dense array properties object to use as the initial value for array properties
+    /// An empty, dense array properties object to use as the initial value for array properties
     pub default_array_properties: HeapPtr<ArrayProperties>,
 
-    // All pending finalizer callbacks for garbage collected values.
-    // TODO: Call finalizer callbacks
+    /// All pending finalizer callbacks for garbage collected values.
+    /// TODO: Call finalizer callbacks
     finalizer_callbacks: Vec<FinalizerCallback>,
 
     /// Options passed to this program.
@@ -106,6 +115,7 @@ impl Context {
             true_: Value::bool(true),
             false_: Value::bool(false),
             interned_strings: InternedStrings::uninit(),
+            modules: HashMap::new(),
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             finalizer_callbacks: vec![],
@@ -164,9 +174,37 @@ impl Context {
     }
 
     /// Execute a program, running until the task queue is empty.
-    pub fn run_program(&mut self, bytecode_program: BytecodeProgram) -> Result<(), Handle<Value>> {
-        self.vm().execute_program(bytecode_program)?;
+    pub fn run_script(&mut self, bytecode_script: BytecodeScript) -> Result<(), Handle<Value>> {
+        self.vm().execute_script(bytecode_script)?;
         self.run_all_tasks().into_rust_result()?;
+
+        Ok(())
+    }
+
+    /// Execute a module, loading and executing all dependencies. Run until the task queue is empty.
+    ///
+    /// Must provide the action to take if the promise for the module execution rejects.
+    pub fn run_module(
+        &mut self,
+        module: Handle<SourceTextModule>,
+        on_reject: ExecuteOnReject,
+    ) -> Result<(), Handle<Value>> {
+        // Loading, linking, and evaluation should all have a current realm set as some objects
+        // needing a realm will be created.
+        let realm = module.program_function_ptr().realm_ptr();
+        self.vm().push_initial_realm_stack_frame(realm);
+
+        let promise = execute_module(*self, module);
+
+        // Set up action taken if the module execution rejects.
+        match on_reject {
+            ExecuteOnReject::PrintAndExit => print_error_and_exit_if_rejects(*self, promise),
+            ExecuteOnReject::Panic => panic_if_rejects(*self, promise),
+        }
+
+        self.run_all_tasks().into_rust_result()?;
+
+        self.vm().pop_initial_realm_stack_frame();
 
         Ok(())
     }
@@ -271,6 +309,10 @@ impl Context {
         visitor.visit_pointer(&mut self.global_symbol_registry);
         self.task_queue.visit_roots(visitor);
         self.interned_strings.visit_roots(visitor);
+
+        for module in self.modules.values_mut() {
+            visitor.visit_pointer(module);
+        }
 
         for finalizer_callback in self.finalizer_callbacks.iter_mut() {
             visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);

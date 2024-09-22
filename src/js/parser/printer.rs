@@ -1321,8 +1321,8 @@ impl<'a> Printer<'a> {
 }
 
 // Prints JSON in ESTree format
-pub fn print_program(program: &Program, source: &Source) -> String {
-    let mut printer = Printer::new(source);
+pub fn print_program(program: &Program) -> String {
+    let mut printer = Printer::new(&program.source);
     printer.print_program(program);
     printer.finish()
 }

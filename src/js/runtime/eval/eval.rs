@@ -66,11 +66,10 @@ pub fn perform_eval(
         flags.contains(EvalFlags::IN_STATIC_INITIALIZER),
         flags.contains(EvalFlags::IN_CLASS_FIELD_INITIALIZER),
     );
+
+    // Return the first syntax error
     if let Err(errors) = analyze_result {
-        // TODO: Return an aggregate error with all syntax errors
-        // Choose an arbitrary syntax error to return
-        let error = &errors.errors[0];
-        return syntax_error(cx, &error.to_string());
+        return syntax_error(cx, &errors.errors[0].to_string());
     }
 
     // Sloppy direct evals must perform EvalDeclarationInstantiation as var scoped bindings will

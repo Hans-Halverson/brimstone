@@ -65,7 +65,7 @@ use crate::{
 use super::{
     constant_table::ConstantTable,
     function::{BytecodeFunction, Closure},
-    generator::BytecodeProgram,
+    generator::BytecodeScript,
     instruction::{
         extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index, AddInstruction,
         AsyncIteratorCloseFinishInstruction, AsyncIteratorCloseStartInstruction, AwaitInstruction,
@@ -209,14 +209,14 @@ impl VM {
         vm
     }
 
-    /// Execute an entire bytecode program, first instantiating the global declarations then
+    /// Execute an entire bytecode script, first instantiating the global declarations then
     /// running the script function.
-    pub fn execute_program(
+    pub fn execute_script(
         &mut self,
-        bytecode_program: BytecodeProgram,
+        bytecode_script: BytecodeScript,
     ) -> Result<Handle<Value>, Handle<Value>> {
-        let mut realm = bytecode_program.script_function.realm();
-        let global_names = bytecode_program.global_names;
+        let mut realm = bytecode_script.script_function.realm();
+        let global_names = bytecode_script.global_names;
 
         // Call the GlobalDeclarationInstantiation function in the rust runtime
         let init_closure = realm
@@ -242,7 +242,7 @@ impl VM {
 
         // Create program closure and execute in VM
         let program_closure =
-            Closure::new_in_realm(self.cx(), bytecode_program.script_function, global_scope, realm);
+            Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm);
 
         self.execute(program_closure, &[])
     }

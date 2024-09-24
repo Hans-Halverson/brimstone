@@ -60,6 +60,7 @@ impl BigIntPrototype {
         };
 
         cx.alloc_string(&bigint_value.bigint().to_str_radix(radix))
+            .as_string()
             .into()
     }
 

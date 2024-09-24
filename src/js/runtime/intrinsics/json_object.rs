@@ -537,7 +537,7 @@ impl JSONSerializer {
     }
 
     fn build(self, mut cx: Context) -> Handle<StringValue> {
-        cx.alloc_wtf8_string(&self.builder)
+        cx.alloc_wtf8_string(&self.builder).as_string()
     }
 
     /// SerializeJSONProperty (https://tc39.es/ecma262/#sec-serializejsonproperty)

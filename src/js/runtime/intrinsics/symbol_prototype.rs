@@ -118,10 +118,10 @@ pub fn symbol_descriptive_string(
     symbol: Handle<SymbolValue>,
 ) -> Handle<StringValue> {
     match symbol.description() {
-        None => cx.alloc_string("Symbol()"),
+        None => cx.alloc_string("Symbol()").as_string(),
         Some(description) => {
-            let symbol_prefix = cx.alloc_string("Symbol(");
-            let symbol_suffix = cx.alloc_string(")");
+            let symbol_prefix = cx.alloc_string("Symbol(").as_string();
+            let symbol_suffix = cx.alloc_string(")").as_string();
 
             StringValue::concat_all(cx, &[symbol_prefix, description.as_string(), symbol_suffix])
         }

@@ -533,7 +533,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
             match value.as_pointer().descriptor().kind() {
                 ObjectKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
-                    cx.alloc_string(&bigint_string).into()
+                    cx.alloc_string(&bigint_string).as_string().into()
                 }
                 ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
@@ -541,20 +541,20 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => cx.alloc_string("null").into(),
-            UNDEFINED_TAG => cx.alloc_string("undefined").into(),
+            NULL_TAG => cx.alloc_string("null").as_string().into(),
+            UNDEFINED_TAG => cx.alloc_string("undefined").as_string().into(),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
-                cx.alloc_string(str).into()
+                cx.alloc_string(str).as_string().into()
             }
             SMI_TAG => {
                 let smi_string = value.as_smi().to_string();
-                cx.alloc_string(&smi_string).into()
+                cx.alloc_string(&smi_string).as_string().into()
             }
             // Otherwise must be double
             _ => {
                 let double_string = number_to_string(value.as_double());
-                cx.alloc_string(&double_string).into()
+                cx.alloc_string(&double_string).as_string().into()
             }
         }
     }

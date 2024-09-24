@@ -369,7 +369,7 @@ fn escape_pattern_string(
         }
     }
 
-    cx.alloc_wtf8_string(&escaped_string)
+    cx.alloc_wtf8_string(&escaped_string).as_string()
 }
 
 impl HeapObject for HeapPtr<RegExpObject> {

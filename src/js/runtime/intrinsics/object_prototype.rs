@@ -150,9 +150,9 @@ impl ObjectPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
-            return cx.alloc_string("[object Undefined]").into();
+            return cx.alloc_string("[object Undefined]").as_string().into();
         } else if this_value.is_null() {
-            return cx.alloc_string("[object Null]").into();
+            return cx.alloc_string("[object Null]").as_string().into();
         }
 
         let object = maybe!(to_object(cx, this_value));
@@ -163,8 +163,8 @@ impl ObjectPrototype {
         let tag = maybe!(get(cx, object, to_string_tag_key));
 
         let tag_string = if tag.is_string() {
-            let string_prefix = cx.alloc_string("[object ");
-            let string_suffix = cx.alloc_string("]");
+            let string_prefix = cx.alloc_string("[object ").as_string();
+            let string_suffix = cx.alloc_string("]").as_string();
 
             return StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])
                 .into();
@@ -190,7 +190,9 @@ impl ObjectPrototype {
             "Object"
         };
 
-        cx.alloc_string(&format!("[object {}]", tag_string)).into()
+        cx.alloc_string(&format!("[object {}]", tag_string))
+            .as_string()
+            .into()
     }
 
     /// Object.prototype.valueOf (https://tc39.es/ecma262/#sec-object.prototype.valueof)

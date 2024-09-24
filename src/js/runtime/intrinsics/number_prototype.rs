@@ -70,7 +70,7 @@ impl NumberPrototype {
                 formatted.insert(exponent_index + 1, '+');
             }
 
-            return cx.alloc_string(&formatted).into();
+            return cx.alloc_string(&formatted).as_string().into();
         }
 
         // Otherwise format string ourselves so that we control rounding to precision. We cannot
@@ -114,7 +114,7 @@ impl NumberPrototype {
 
         result.push_str(&exponent.to_string());
 
-        cx.alloc_string(&result).into()
+        cx.alloc_string(&result).as_string().into()
     }
 
     /// Number.prototype.toFixed (https://tc39.es/ecma262/#sec-number.prototype.tofixed)
@@ -136,7 +136,10 @@ impl NumberPrototype {
         let num_fraction_digits = num_fraction_digits as u8;
 
         if !number.is_finite() {
-            return cx.alloc_string(&number_to_string(number)).into();
+            return cx
+                .alloc_string(&number_to_string(number))
+                .as_string()
+                .into();
         }
 
         let is_negative = number < 0.0;
@@ -160,7 +163,7 @@ impl NumberPrototype {
             m = format!("-{}", m);
         }
 
-        cx.alloc_string(&m).into()
+        cx.alloc_string(&m).as_string().into()
     }
 
     /// Number.prototype.toLocaleString (https://tc39.es/ecma262/#sec-number.prototype.tolocalestring)
@@ -238,7 +241,7 @@ impl NumberPrototype {
                 result.push(sign);
                 result.push_str(&exponent.to_string());
 
-                return cx.alloc_string(&result).into();
+                return cx.alloc_string(&result).as_string().into();
             }
         }
 
@@ -255,7 +258,7 @@ impl NumberPrototype {
             result.push_str(&mantissa);
         }
 
-        cx.alloc_string(&result).into()
+        cx.alloc_string(&result).as_string().into()
     }
 
     /// Number.prototype.toString (https://tc39.es/ecma262/#sec-number.prototype.tostring)
@@ -310,7 +313,7 @@ impl NumberPrototype {
                 number_value.as_double().to_string()
             };
 
-            return cx.alloc_string(&str).into();
+            return cx.alloc_string(&str).as_string().into();
         }
 
         // Float to string conversion based on SerenityOS's LibJS

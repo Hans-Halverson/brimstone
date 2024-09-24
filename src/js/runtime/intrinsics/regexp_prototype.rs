@@ -158,7 +158,7 @@ impl RegExpPrototype {
         let flags_string = if flags_string.is_empty() {
             cx.names.empty_string().as_string()
         } else {
-            cx.alloc_string(&flags_string)
+            cx.alloc_string(&flags_string).as_string()
         };
 
         flags_string.into()
@@ -560,7 +560,7 @@ impl RegExpPrototype {
                 this_object.get_(),
                 cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
             ) {
-                return cx.alloc_string("(?:)").into();
+                return cx.alloc_string("(?:)").as_string().into();
             }
         }
 

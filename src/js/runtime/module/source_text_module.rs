@@ -441,7 +441,7 @@ pub enum ModuleEntry {
     DirectReExport(HeapDirectReExportEntry),
 }
 
-/// ImportEntry, https://tc39.es/ecma262/#table-importentry-record-fields
+/// ImportEntry (https://tc39.es/ecma262/#table-importentry-record-fields)
 pub struct HeapImportEntry {
     /// Name of the module that binding is being imported from.
     pub module_request: HeapPtr<FlatString>,

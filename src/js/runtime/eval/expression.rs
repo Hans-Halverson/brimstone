@@ -31,7 +31,7 @@ use crate::{
     maybe, must,
 };
 
-/// GetTemplateObject, https://tc39.es/ecma262/#sec-gettemplateobject
+/// GetTemplateObject (https://tc39.es/ecma262/#sec-gettemplateobject)
 pub fn generate_template_object(
     cx: Context,
     realm: Handle<Realm>,
@@ -509,7 +509,7 @@ pub fn eval_shift_right_arithmetic(
     }
 }
 
-/// BigInt::leftShift, https://tc39.es/ecma262/#sec-numeric-types-bigint-leftShift
+/// BigInt::leftShift (https://tc39.es/ecma262/#sec-numeric-types-bigint-leftShift)
 fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalResult<BigInt> {
     let bigint_2: BigInt = 2.into();
 
@@ -566,7 +566,7 @@ pub fn eval_shift_right_logical(
     Value::from(left_smi >> shift).to_handle(cx).into()
 }
 
-/// InstanceofOperator, https://tc39.es/ecma262/#sec-instanceofoperator
+/// InstanceofOperator (https://tc39.es/ecma262/#sec-instanceofoperator)
 pub fn eval_instanceof_expression(
     cx: Context,
     value: Handle<Value>,

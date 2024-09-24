@@ -1493,7 +1493,7 @@ impl<'a> Parser<'a> {
         Ok(self.parse_expression()?.into_outer())
     }
 
-    /// Expression, https://tc39.es/ecma262/#sec-comma-operator
+    /// Expression (https://tc39.es/ecma262/#sec-comma-operator)
     fn parse_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         let expr = self.parse_assignment_expression()?;
@@ -1513,7 +1513,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// AssignmentExpression, https://tc39.es/ecma262/#sec-assignment-operators
+    /// AssignmentExpression (https://tc39.es/ecma262/#sec-assignment-operators)
     fn parse_assignment_expression(&mut self) -> ParseResult<P<Expression>> {
         // First try parsing as a non-arrow assignment
         match self.try_parse(Parser::parse_non_arrow_assignment_expression) {
@@ -1744,7 +1744,7 @@ impl<'a> Parser<'a> {
         Ok(YieldExpression { loc, argument, is_delegate })
     }
 
-    /// ConditionalExpression, https://tc39.es/ecma262/#sec-conditional-operator
+    /// ConditionalExpression (https://tc39.es/ecma262/#sec-conditional-operator)
     fn parse_conditional_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         let expr = self.parse_expression_with_precedence(Precedence::Conditional)?;
@@ -1773,7 +1773,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Precedence parsing for all binary operations and below.
-    /// Corresponds to ShortCircuitExpression, https://tc39.es/ecma262/#sec-binary-logical-operators
+    /// Corresponds to ShortCircuitExpression (https://tc39.es/ecma262/#sec-binary-logical-operators)
     fn parse_expression_with_precedence(
         &mut self,
         precedence: Precedence,
@@ -2160,7 +2160,7 @@ impl<'a> Parser<'a> {
         Ok(p(Expression::Await(AwaitExpression { loc, argument })))
     }
 
-    /// LeftHandSideExpression, https://tc39.es/ecma262/#sec-left-hand-side-expressions
+    /// LeftHandSideExpression (https://tc39.es/ecma262/#sec-left-hand-side-expressions)
     fn parse_left_hand_side_expression(&mut self) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         let expr = match &self.token {
@@ -2514,7 +2514,7 @@ impl<'a> Parser<'a> {
         Ok(arguments)
     }
 
-    /// PrimaryExpression, https://tc39.es/ecma262/#sec-primary-expression
+    /// PrimaryExpression (https://tc39.es/ecma262/#sec-primary-expression)
     fn parse_primary_expression(&mut self) -> ParseResult<P<Expression>> {
         match &self.token {
             Token::Null => {
@@ -4534,7 +4534,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// AssignmentTargetType, https://tc39.es/ecma262/#sec-static-semantics-assignmenttargettype
+    /// AssignmentTargetType (https://tc39.es/ecma262/#sec-static-semantics-assignmenttargettype)
     fn is_valid_assignment_target(&self, expr: &Expression) -> bool {
         match expr {
             Expression::Id(id) => {

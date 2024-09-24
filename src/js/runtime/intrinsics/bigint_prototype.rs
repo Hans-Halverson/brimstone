@@ -18,7 +18,7 @@ use super::{bigint_constructor::BigIntObject, intrinsics::Intrinsic};
 pub struct BigIntPrototype;
 
 impl BigIntPrototype {
-    /// Properties of the BigInt Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-bigint-prototype-object
+    /// Properties of the BigInt Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-bigint-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -27,7 +27,7 @@ impl BigIntPrototype {
         object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
-        // BigInt.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-bigint.prototype-%symbol.tostringtag%
+        // BigInt.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-bigint.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -38,7 +38,7 @@ impl BigIntPrototype {
         object
     }
 
-    /// BigInt.prototype.toString, https://tc39.es/ecma262/#sec-bigint.prototype.tostring
+    /// BigInt.prototype.toString (https://tc39.es/ecma262/#sec-bigint.prototype.tostring)
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -63,7 +63,7 @@ impl BigIntPrototype {
             .into()
     }
 
-    /// BigInt.prototype.valueOf, https://tc39.es/ecma262/#sec-bigint.prototype.valueof
+    /// BigInt.prototype.valueOf (https://tc39.es/ecma262/#sec-bigint.prototype.valueof)
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,

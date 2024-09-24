@@ -434,7 +434,7 @@ impl VM {
                     let pc_to_resume_offset = self.get_pc_offset();
 
                     if generator_object.is_generator() {
-                        // GeneratorYield, https://tc39.es/ecma262/#sec-generatoryield
+                        // GeneratorYield (https://tc39.es/ecma262/#sec-generatoryield)
                         let mut generator = generator_object.cast::<GeneratorObject>();
 
                         // Save the stack frame and PC to resume in the generator object
@@ -447,7 +447,7 @@ impl VM {
                         // Return the yielded value to the caller
                         return_!(yield_value)
                     } else {
-                        // AsyncGeneratorYield, https://tc39.es/ecma262/#sec-asyncgeneratoryield
+                        // AsyncGeneratorYield (https://tc39.es/ecma262/#sec-asyncgeneratoryield)
                         debug_assert!(generator_object.is_async_generator());
 
                         let mut async_generator =

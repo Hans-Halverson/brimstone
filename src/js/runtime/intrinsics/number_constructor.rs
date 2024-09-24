@@ -27,7 +27,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// Number Objects, https://tc39.es/ecma262/#sec-number-objects
+// Number Objects (https://tc39.es/ecma262/#sec-number-objects)
 extend_object! {
     pub struct NumberObject {
         // The number value wrapped by this object
@@ -87,7 +87,7 @@ impl NumberObject {
 pub struct NumberConstructor;
 
 impl NumberConstructor {
-    /// Properties of the Number Constructor, https://tc39.es/ecma262/#sec-properties-of-the-number-constructor
+    /// Properties of the Number Constructor (https://tc39.es/ecma262/#sec-properties-of-the-number-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -142,7 +142,7 @@ impl NumberConstructor {
         func
     }
 
-    /// Number, https://tc39.es/ecma262/#sec-number-constructor-number-value
+    /// Number (https://tc39.es/ecma262/#sec-number-constructor-number-value)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -170,7 +170,7 @@ impl NumberConstructor {
         }
     }
 
-    /// Number.isFinite, https://tc39.es/ecma262/#sec-number.isfinite
+    /// Number.isFinite (https://tc39.es/ecma262/#sec-number.isfinite)
     pub fn is_finite(
         cx: Context,
         _: Handle<Value>,
@@ -185,7 +185,7 @@ impl NumberConstructor {
         cx.bool(!value.is_nan() && !value.is_infinity()).into()
     }
 
-    /// Number.isInteger, https://tc39.es/ecma262/#sec-number.isinteger
+    /// Number.isInteger (https://tc39.es/ecma262/#sec-number.isinteger)
     pub fn is_integer(
         cx: Context,
         _: Handle<Value>,
@@ -196,7 +196,7 @@ impl NumberConstructor {
         cx.bool(is_integral_number(value.get())).into()
     }
 
-    /// Number.isNaN, https://tc39.es/ecma262/#sec-number.isnan
+    /// Number.isNaN (https://tc39.es/ecma262/#sec-number.isnan)
     pub fn is_nan(
         cx: Context,
         _: Handle<Value>,
@@ -211,7 +211,7 @@ impl NumberConstructor {
         cx.bool(value.is_nan()).into()
     }
 
-    /// Number.isSafeInteger, https://tc39.es/ecma262/#sec-number.issafeinteger
+    /// Number.isSafeInteger (https://tc39.es/ecma262/#sec-number.issafeinteger)
     pub fn is_safe_integer(
         cx: Context,
         _: Handle<Value>,

@@ -13,7 +13,7 @@ use crate::{
     maybe, set_uninit,
 };
 
-// Date Objects, https://tc39.es/ecma262/#sec-date-objects
+// Date Objects (https://tc39.es/ecma262/#sec-date-objects)
 extend_object! {
     pub struct DateObject {
         // The instant in time (as milliseconds since the Unix epoch). May also be NaN to represent
@@ -61,7 +61,7 @@ pub const MS_PER_MINUTE: f64 = MS_PER_SECOND * SECONDS_PER_MINUTE;
 pub const MS_PER_HOUR: f64 = MS_PER_MINUTE * MINUTES_PER_HOUR;
 pub const MS_PER_DAY: f64 = MS_PER_HOUR * HOURS_PER_DAY;
 
-/// Day Number, https://tc39.es/ecma262/#sec-day
+/// Day Number (https://tc39.es/ecma262/#sec-day)
 pub fn day(time: f64) -> f64 {
     f64::floor(time / MS_PER_DAY)
 }
@@ -70,7 +70,7 @@ pub fn time_within_day(time: f64) -> f64 {
     modulo(time, MS_PER_DAY)
 }
 
-/// DaysInYear, https://tc39.es/ecma262/#sec-daysinyear
+/// DaysInYear (https://tc39.es/ecma262/#sec-daysinyear)
 fn days_in_year(year: i64) -> f64 {
     if is_leap_year(year) {
         366.0
@@ -106,7 +106,7 @@ pub fn year_from_time(time: f64) -> f64 {
     }
 }
 
-/// MonthFromTime, https://tc39.es/ecma262/#sec-monthfromtime
+/// MonthFromTime (https://tc39.es/ecma262/#sec-monthfromtime)
 pub fn month_from_time(time: f64) -> f64 {
     let year = year_from_time(time);
     let leap_year = if is_leap_year(year as i64) { 1.0 } else { 0.0 };
@@ -146,7 +146,7 @@ fn day_within_year(time: f64) -> f64 {
     day(time) - day_from_year(year_from_time(time))
 }
 
-/// DateFromTime, https://tc39.es/ecma262/#sec-datefromtime
+/// DateFromTime (https://tc39.es/ecma262/#sec-datefromtime)
 pub fn date_from_time(time: f64) -> f64 {
     let month_from_time = month_from_time(time);
 
@@ -175,18 +175,18 @@ pub fn date_from_time(time: f64) -> f64 {
     day_within_year(time) - MONTHS_TABLE[month_from_time as usize] - leap_year_day
 }
 
-/// WeekDay, https://tc39.es/ecma262/#sec-weekday
+/// WeekDay (https://tc39.es/ecma262/#sec-weekday)
 pub fn week_day(time: f64) -> f64 {
     modulo(day(time) + 4.0, 7.0)
 }
 
-/// LocalTime, https://tc39.es/ecma262/#sec-localtime
+/// LocalTime (https://tc39.es/ecma262/#sec-localtime)
 pub fn local_time(time: f64) -> f64 {
     // TODO: Handle time zones
     time
 }
 
-/// UTC, https://tc39.es/ecma262/#sec-utc-t
+/// UTC (https://tc39.es/ecma262/#sec-utc-t)
 pub fn utc(time: f64) -> f64 {
     // TODO: Handle time zones
     time
@@ -208,7 +208,7 @@ pub fn millisecond_from_time(time: f64) -> f64 {
     modulo(time, MS_PER_SECOND)
 }
 
-/// MakeTime, https://tc39.es/ecma262/#sec-maketime
+/// MakeTime (https://tc39.es/ecma262/#sec-maketime)
 pub fn make_time(hour: f64, minute: f64, second: f64, millisecond: f64) -> f64 {
     if !hour.is_finite() || !minute.is_finite() || !second.is_finite() || !millisecond.is_finite() {
         return f64::NAN;
@@ -291,7 +291,7 @@ pub fn year_month_day_to_days_since_unix_epoch(year: i64, month: i64, day: i64) 
     year_to_days_since_unix_epoch(year) + year_month_day_to_days_since_year_start(year, month, day)
 }
 
-/// MakeDay, https://tc39.es/ecma262/#sec-makeday
+/// MakeDay (https://tc39.es/ecma262/#sec-makeday)
 pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
     if !year.is_finite() || !month.is_finite() || !date.is_finite() {
         return f64::NAN;
@@ -320,7 +320,7 @@ pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
     num_days_until_month_start + date - 1.0
 }
 
-/// MakeDate, https://tc39.es/ecma262/#sec-makedate
+/// MakeDate (https://tc39.es/ecma262/#sec-makedate)
 pub fn make_date(day: f64, time: f64) -> f64 {
     if !day.is_finite() || !time.is_finite() {
         return f64::NAN;
@@ -334,7 +334,7 @@ pub fn make_date(day: f64, time: f64) -> f64 {
     result
 }
 
-/// TimeClip, https://tc39.es/ecma262/#sec-timeclip
+/// TimeClip (https://tc39.es/ecma262/#sec-timeclip)
 pub fn time_clip(time: f64) -> f64 {
     if !time.is_finite() {
         return f64::NAN;

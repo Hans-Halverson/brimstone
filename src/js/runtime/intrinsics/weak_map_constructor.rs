@@ -21,7 +21,7 @@ use super::{
 pub struct WeakMapConstructor;
 
 impl WeakMapConstructor {
-    /// Properties of the WeakMap Constructor, https://tc39.es/ecma262/#sec-properties-of-the-weakmap-constructor
+    /// Properties of the WeakMap Constructor (https://tc39.es/ecma262/#sec-properties-of-the-weakmap-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -41,7 +41,7 @@ impl WeakMapConstructor {
         func
     }
 
-    /// WeakMap, https://tc39.es/ecma262/#sec-weakmap-iterable
+    /// WeakMap (https://tc39.es/ecma262/#sec-weakmap-iterable)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

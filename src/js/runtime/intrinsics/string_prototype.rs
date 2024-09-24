@@ -47,7 +47,7 @@ use super::regexp_constructor::{FlagsSource, RegExpObject};
 pub struct StringPrototype;
 
 impl StringPrototype {
-    /// Properties of the String Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object
+    /// Properties of the String Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
@@ -102,14 +102,14 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
         object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
-        // String.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%
+        // String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
         object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
         object
     }
 
-    /// String.prototype.at, https://tc39.es/ecma262/#sec-string.prototype.at
+    /// String.prototype.at (https://tc39.es/ecma262/#sec-string.prototype.at)
     pub fn at(
         cx: Context,
         this_value: Handle<Value>,
@@ -142,7 +142,7 @@ impl StringPrototype {
             .into()
     }
 
-    /// String.prototype.charAt, https://tc39.es/ecma262/#sec-string.prototype.charat
+    /// String.prototype.charAt (https://tc39.es/ecma262/#sec-string.prototype.charat)
     pub fn char_at(
         cx: Context,
         this_value: Handle<Value>,
@@ -164,7 +164,7 @@ impl StringPrototype {
             .into()
     }
 
-    /// String.prototype.charCodeAt, https://tc39.es/ecma262/#sec-string.prototype.charcodeat
+    /// String.prototype.charCodeAt (https://tc39.es/ecma262/#sec-string.prototype.charcodeat)
     pub fn char_code_at(
         cx: Context,
         this_value: Handle<Value>,
@@ -185,7 +185,7 @@ impl StringPrototype {
         Value::smi(code_unit as i32).to_handle(cx).into()
     }
 
-    /// String.prototype.codePointAt, https://tc39.es/ecma262/#sec-string.prototype.codepointat
+    /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
     pub fn code_point_at(
         cx: Context,
         this_value: Handle<Value>,
@@ -206,7 +206,7 @@ impl StringPrototype {
         Value::smi(code_point as i32).to_handle(cx).into()
     }
 
-    /// String.prototype.concat, https://tc39.es/ecma262/#sec-string.prototype.concat
+    /// String.prototype.concat (https://tc39.es/ecma262/#sec-string.prototype.concat)
     pub fn concat(
         cx: Context,
         this_value: Handle<Value>,
@@ -224,7 +224,7 @@ impl StringPrototype {
         concat_string.into()
     }
 
-    /// String.prototype.endsWith, https://tc39.es/ecma262/#sec-string.prototype.endswith
+    /// String.prototype.endsWith (https://tc39.es/ecma262/#sec-string.prototype.endswith)
     pub fn ends_with(
         cx: Context,
         this_value: Handle<Value>,
@@ -265,7 +265,7 @@ impl StringPrototype {
         cx.bool(ends_with_string).into()
     }
 
-    /// String.prototype.includes, https://tc39.es/ecma262/#sec-string.prototype.includes
+    /// String.prototype.includes (https://tc39.es/ecma262/#sec-string.prototype.includes)
     pub fn includes(
         cx: Context,
         this_value: Handle<Value>,
@@ -294,7 +294,7 @@ impl StringPrototype {
         cx.bool(found_search_string).into()
     }
 
-    /// String.prototype.indexOf, https://tc39.es/ecma262/#sec-string.prototype.indexof
+    /// String.prototype.indexOf (https://tc39.es/ecma262/#sec-string.prototype.indexof)
     pub fn index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -321,7 +321,7 @@ impl StringPrototype {
         }
     }
 
-    /// String.prototype.isWellFormed, https://tc39.es/ecma262/#sec-string.prototype.iswellformed
+    /// String.prototype.isWellFormed (https://tc39.es/ecma262/#sec-string.prototype.iswellformed)
     pub fn is_well_formed(
         cx: Context,
         this_value: Handle<Value>,
@@ -334,7 +334,7 @@ impl StringPrototype {
         cx.bool(string.is_well_formed()).into()
     }
 
-    /// String.prototype.lastIndexOf, https://tc39.es/ecma262/#sec-string.prototype.lastindexof
+    /// String.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-string.prototype.lastindexof)
     pub fn last_index_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -364,7 +364,7 @@ impl StringPrototype {
         }
     }
 
-    /// String.prototype.localeCompare, https://tc39.es/ecma262/#sec-string.prototype.localecompare
+    /// String.prototype.localeCompare (https://tc39.es/ecma262/#sec-string.prototype.localecompare)
     pub fn locale_compare(
         cx: Context,
         this_value: Handle<Value>,
@@ -392,7 +392,7 @@ impl StringPrototype {
         Value::smi(comparison_number).to_handle(cx).into()
     }
 
-    /// String.prototype.match, https://tc39.es/ecma262/#sec-string.prototype.match
+    /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)
     pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
@@ -421,7 +421,7 @@ impl StringPrototype {
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
     }
 
-    /// String.prototype.matchAll, https://tc39.es/ecma262/#sec-string.prototype.matchall
+    /// String.prototype.matchAll (https://tc39.es/ecma262/#sec-string.prototype.matchall)
     pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
@@ -470,7 +470,7 @@ impl StringPrototype {
         invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
     }
 
-    /// String.prototype.normalize, https://tc39.es/ecma262/#sec-string.prototype.normalize
+    /// String.prototype.normalize (https://tc39.es/ecma262/#sec-string.prototype.normalize)
     pub fn normalize(
         cx: Context,
         this_value: Handle<Value>,
@@ -519,7 +519,7 @@ impl StringPrototype {
         normalized_string.into()
     }
 
-    /// String.prototype.padEnd, https://tc39.es/ecma262/#sec-string.prototype.padend
+    /// String.prototype.padEnd (https://tc39.es/ecma262/#sec-string.prototype.padend)
     pub fn pad_end(
         cx: Context,
         this_value: Handle<Value>,
@@ -532,7 +532,7 @@ impl StringPrototype {
         Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false)
     }
 
-    /// String.prototype.padStart, https://tc39.es/ecma262/#sec-string.prototype.padstart
+    /// String.prototype.padStart (https://tc39.es/ecma262/#sec-string.prototype.padstart)
     pub fn pad_start(
         cx: Context,
         this_value: Handle<Value>,
@@ -599,7 +599,7 @@ impl StringPrototype {
         }
     }
 
-    /// String.prototype.repeat, https://tc39.es/ecma262/#sec-string.prototype.repeat
+    /// String.prototype.repeat (https://tc39.es/ecma262/#sec-string.prototype.repeat)
     pub fn repeat(
         cx: Context,
         this_value: Handle<Value>,
@@ -620,7 +620,7 @@ impl StringPrototype {
         string.repeat(cx, n as u32).as_string().into()
     }
 
-    /// String.prototype.replace, https://tc39.es/ecma262/#sec-string.prototype.replace
+    /// String.prototype.replace (https://tc39.es/ecma262/#sec-string.prototype.replace)
     pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
@@ -699,7 +699,7 @@ impl StringPrototype {
             .into()
     }
 
-    /// String.prototype.replaceAll, https://tc39.es/ecma262/#sec-string.prototype.replaceall
+    /// String.prototype.replaceAll (https://tc39.es/ecma262/#sec-string.prototype.replaceall)
     pub fn replace_all(
         cx: Context,
         this_value: Handle<Value>,
@@ -814,7 +814,7 @@ impl StringPrototype {
         StringValue::concat_all(cx, &string_parts).into()
     }
 
-    /// String.prototype.search, https://tc39.es/ecma262/#sec-string.prototype.search
+    /// String.prototype.search (https://tc39.es/ecma262/#sec-string.prototype.search)
     pub fn search(
         cx: Context,
         this_value: Handle<Value>,
@@ -845,7 +845,7 @@ impl StringPrototype {
         invoke(cx, regexp_object, cx.well_known_symbols.search(), &[string.into()])
     }
 
-    /// String.prototype.slice, https://tc39.es/ecma262/#sec-string.prototype.slice
+    /// String.prototype.slice (https://tc39.es/ecma262/#sec-string.prototype.slice)
     pub fn slice(
         cx: Context,
         this_value: Handle<Value>,
@@ -894,7 +894,7 @@ impl StringPrototype {
         substring.into()
     }
 
-    /// String.prototype.split, https://tc39.es/ecma262/#sec-string.prototype.split
+    /// String.prototype.split (https://tc39.es/ecma262/#sec-string.prototype.split)
     pub fn split(
         cx: Context,
         this_value: Handle<Value>,
@@ -989,7 +989,7 @@ impl StringPrototype {
         create_array_from_list(cx, &substrings).into()
     }
 
-    /// String.prototype.startsWith, https://tc39.es/ecma262/#sec-string.prototype.startswith
+    /// String.prototype.startsWith (https://tc39.es/ecma262/#sec-string.prototype.startswith)
     pub fn starts_with(
         cx: Context,
         this_value: Handle<Value>,
@@ -1037,7 +1037,7 @@ impl StringPrototype {
         cx.bool(starts_with_string).into()
     }
 
-    /// String.prototype.substring, https://tc39.es/ecma262/#sec-string.prototype.substring
+    /// String.prototype.substring (https://tc39.es/ecma262/#sec-string.prototype.substring)
     pub fn substring(
         cx: Context,
         this_value: Handle<Value>,
@@ -1069,7 +1069,7 @@ impl StringPrototype {
         substring.into()
     }
 
-    /// String.prototype.toLocaleLowerCase, https://tc39.es/ecma262/#sec-string.prototype.tolocalelowercase
+    /// String.prototype.toLocaleLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolocalelowercase)
     pub fn to_locale_lower_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -1082,7 +1082,7 @@ impl StringPrototype {
         string.to_lower_case(cx).as_string().into()
     }
 
-    /// String.prototype.toLocaleUpperCase, https://tc39.es/ecma262/#sec-string.prototype.tolocaleuppercase
+    /// String.prototype.toLocaleUpperCase (https://tc39.es/ecma262/#sec-string.prototype.tolocaleuppercase)
     pub fn to_locale_upper_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -1095,7 +1095,7 @@ impl StringPrototype {
         string.to_upper_case(cx).as_string().into()
     }
 
-    /// String.prototype.toLowerCase, https://tc39.es/ecma262/#sec-string.prototype.tolowercase
+    /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
     pub fn to_lower_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -1108,7 +1108,7 @@ impl StringPrototype {
         string.to_lower_case(cx).as_string().into()
     }
 
-    /// String.prototype.toString, https://tc39.es/ecma262/#sec-string.prototype.tostring
+    /// String.prototype.toString (https://tc39.es/ecma262/#sec-string.prototype.tostring)
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1118,7 +1118,7 @@ impl StringPrototype {
         this_string_value(cx, this_value)
     }
 
-    /// String.prototype.toUpperCase, https://tc39.es/ecma262/#sec-string.prototype.touppercase
+    /// String.prototype.toUpperCase (https://tc39.es/ecma262/#sec-string.prototype.touppercase)
     pub fn to_upper_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -1131,7 +1131,7 @@ impl StringPrototype {
         string.to_upper_case(cx).as_string().into()
     }
 
-    /// String.prototype.toWellFormed, https://tc39.es/ecma262/#sec-string.prototype.towellformed
+    /// String.prototype.toWellFormed (https://tc39.es/ecma262/#sec-string.prototype.towellformed)
     pub fn to_well_formed(
         cx: Context,
         this_value: Handle<Value>,
@@ -1144,7 +1144,7 @@ impl StringPrototype {
         string.to_well_formed(cx).as_string().to_handle().into()
     }
 
-    /// String.prototype.trim, https://tc39.es/ecma262/#sec-string.prototype.trim
+    /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
     pub fn trim(
         cx: Context,
         this_value: Handle<Value>,
@@ -1157,7 +1157,7 @@ impl StringPrototype {
         string.trim(cx, true, true).into()
     }
 
-    /// String.prototype.trimEnd, https://tc39.es/ecma262/#sec-string.prototype.trimend
+    /// String.prototype.trimEnd (https://tc39.es/ecma262/#sec-string.prototype.trimend)
     pub fn trim_end(
         cx: Context,
         this_value: Handle<Value>,
@@ -1170,7 +1170,7 @@ impl StringPrototype {
         string.trim(cx, false, true).into()
     }
 
-    /// String.prototype.trimStart, https://tc39.es/ecma262/#sec-string.prototype.trimstart
+    /// String.prototype.trimStart (https://tc39.es/ecma262/#sec-string.prototype.trimstart)
     pub fn trim_start(
         cx: Context,
         this_value: Handle<Value>,
@@ -1183,7 +1183,7 @@ impl StringPrototype {
         string.trim(cx, true, false).into()
     }
 
-    /// String.prototype.valueOf, https://tc39.es/ecma262/#sec-string.prototype.valueof
+    /// String.prototype.valueOf (https://tc39.es/ecma262/#sec-string.prototype.valueof)
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -1193,7 +1193,7 @@ impl StringPrototype {
         this_string_value(cx, this_value)
     }
 
-    /// String.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%
+    /// String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
     pub fn iterator(
         cx: Context,
         this_value: Handle<Value>,
@@ -1493,7 +1493,7 @@ impl SubstitutionTemplateParser {
 }
 
 impl SubstitutionTemplate {
-    /// GetSubstitution, https://tc39.es/ecma262/#sec-getsubstitution
+    /// GetSubstitution (https://tc39.es/ecma262/#sec-getsubstitution)
     pub fn get_substitution(
         &self,
         cx: Context,

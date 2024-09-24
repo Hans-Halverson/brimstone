@@ -17,7 +17,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// FinalizationRegistry Objects, https://tc39.es/ecma262/#sec-finalization-registry-objects
+// FinalizationRegistry Objects (https://tc39.es/ecma262/#sec-finalization-registry-objects)
 extend_object! {
     pub struct FinalizationRegistryObject {
         // Cells in the finalization registry

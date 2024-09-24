@@ -147,7 +147,7 @@ impl ObjectValue {
         self.array_properties.array_length()
     }
 
-    /// PrivateElementFind, https://tc39.es/ecma262/#sec-privateelementfind
+    /// PrivateElementFind (https://tc39.es/ecma262/#sec-privateelementfind)
     pub fn private_element_find(
         &self,
         cx: Context,
@@ -436,8 +436,8 @@ impl Handle<ObjectValue> {
             .insert_without_growing(property_key.get(), property.to_heap());
     }
 
-    /// PrivateFieldAdd, https://tc39.es/ecma262/#sec-privatefieldadd
-    /// PrivateMethodOrAccessorAdd, https://tc39.es/ecma262/#sec-privatemethodoraccessoradd
+    /// PrivateFieldAdd (https://tc39.es/ecma262/#sec-privatefieldadd)
+    /// PrivateMethodOrAccessorAdd (https://tc39.es/ecma262/#sec-privatemethodoraccessoradd)
     pub fn property_property_add(
         &mut self,
         cx: Context,

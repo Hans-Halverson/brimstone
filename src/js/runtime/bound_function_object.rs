@@ -146,8 +146,8 @@ impl BoundFunctionObject {
     /// Call the bound function from the rust runtime. This is called when the bound function has
     /// been called (either normally or as a constructor).
     ///
-    /// Combination of [[Call]], https://tc39.es/ecma262/#sec-bound-function-exotic-objects-call-thisargument-argumentslist
-    /// and [[Construct]], https://tc39.es/ecma262/#sec-bound-function-exotic-objects-construct-argumentslist-newtarget
+    /// Combination of [[Call]] (https://tc39.es/ecma262/#sec-bound-function-exotic-objects-call-thisargument-argumentslist)
+    /// and [[Construct]] (https://tc39.es/ecma262/#sec-bound-function-exotic-objects-construct-argumentslist-newtarget)
     pub fn call(
         mut cx: Context,
         _: Handle<Value>,

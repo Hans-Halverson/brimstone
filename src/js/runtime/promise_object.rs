@@ -27,7 +27,7 @@ use super::{
     EvalResult, Handle,
 };
 
-// Properties of Promise Instances, https://tc39.es/ecma262/#sec-properties-of-promise-instances
+// Properties of Promise Instances (https://tc39.es/ecma262/#sec-properties-of-promise-instances)
 extend_object! {
     pub struct PromiseObject {
         state: PromiseState,
@@ -128,13 +128,13 @@ impl PromiseObject {
         }
     }
 
-    /// FulfillPromise, https://tc39.es/ecma262/#sec-fulfillpromise
+    /// FulfillPromise (https://tc39.es/ecma262/#sec-fulfillpromise)
     pub fn resolve(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Fulfill, value);
         self.state = PromiseState::Fulfilled { result: value };
     }
 
-    /// RejectPromise, https://tc39.es/ecma262/#sec-rejectpromise
+    /// RejectPromise (https://tc39.es/ecma262/#sec-rejectpromise)
     pub fn reject(&mut self, cx: Context, value: Value) {
         self.enqueue_tasks_for_reactions(cx, PromiseReactionKind::Reject, value);
         self.state = PromiseState::Rejected { result: value };
@@ -180,7 +180,7 @@ impl PromiseObject {
     }
 }
 
-/// Promise Resolve Functions, https://tc39.es/ecma262/#sec-promise-resolve-functions
+/// Promise Resolve Functions (https://tc39.es/ecma262/#sec-promise-resolve-functions)
 pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: Handle<Value>) {
     // Resolving an already settled promise has no effect. Immediately mark promise as
     // "already resolved" to prevent further settlement, since fulfill or reject may not be called
@@ -326,7 +326,7 @@ impl Handle<PromiseObject> {
     }
 }
 
-/// IsPromise, https://tc39.es/ecma262/#sec-ispromise
+/// IsPromise (https://tc39.es/ecma262/#sec-ispromise)
 pub fn is_promise(value: Value) -> bool {
     value.is_object() && value.as_object().is_promise()
 }
@@ -334,7 +334,7 @@ pub fn is_promise(value: Value) -> bool {
 /// Coerce a value to an ordinary promise (aka the Promise constructor). An ordinary promise is
 /// returned as-is, otherwise value is wrapped in a resolved promise.
 ///
-/// PromiseResolve, https://tc39.es/ecma262/#sec-promise-resolve specialized for the promise
+/// PromiseResolve (https://tc39.es/ecma262/#sec-promise-resolve) specialized for the promise
 /// constructor.
 pub fn coerce_to_ordinary_promise(
     cx: Context,
@@ -360,7 +360,7 @@ pub fn coerce_to_ordinary_promise(
 
 /// Creates a new promise with the provided constructor and immediately resolves it with a result.
 ///
-/// PromiseResolve, https://tc39.es/ecma262/#sec-promise-resolve
+/// PromiseResolve (https://tc39.es/ecma262/#sec-promise-resolve)
 pub fn promise_resolve(
     cx: Context,
     constructor: Handle<Value>,
@@ -458,7 +458,7 @@ pub struct PromiseCapability {
 }
 
 impl PromiseCapability {
-    /// NewPromiseCapability, https://tc39.es/ecma262/#sec-newpromisecapability
+    /// NewPromiseCapability (https://tc39.es/ecma262/#sec-newpromisecapability)
     pub fn new(cx: Context, constructor: Handle<Value>) -> EvalResult<Handle<PromiseCapability>> {
         if !is_constructor_value(constructor) {
             return type_error(cx, "expected constructor");

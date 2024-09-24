@@ -31,7 +31,7 @@ use crate::{
     maybe,
 };
 
-/// CreateDynamicFunction, https://tc39.es/ecma262/#sec-createdynamicfunction
+/// CreateDynamicFunction (https://tc39.es/ecma262/#sec-createdynamicfunction)
 pub fn create_dynamic_function(
     cx: Context,
     constructor: Handle<ObjectValue>,

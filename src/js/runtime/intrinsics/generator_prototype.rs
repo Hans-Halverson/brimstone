@@ -21,7 +21,7 @@ use super::intrinsics::Intrinsic;
 pub struct GeneratorPrototype;
 
 impl GeneratorPrototype {
-    /// The %GeneratorPrototype% Object, https://tc39.es/ecma262/#sec-properties-of-generator-prototype
+    /// The %GeneratorPrototype% Object (https://tc39.es/ecma262/#sec-properties-of-generator-prototype)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
@@ -32,7 +32,7 @@ impl GeneratorPrototype {
         object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm);
         object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm);
 
-        // %GeneratorPrototype% [ @@toStringTag ], https://tc39.es/ecma262/#sec-generator.prototype-%symbol.tostringtag%
+        // %GeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-generator.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -43,7 +43,7 @@ impl GeneratorPrototype {
         object
     }
 
-    /// %GeneratorPrototype%.next, https://tc39.es/ecma262/#sec-generator.prototype.next
+    /// %GeneratorPrototype%.next (https://tc39.es/ecma262/#sec-generator.prototype.next)
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
@@ -54,7 +54,7 @@ impl GeneratorPrototype {
         generator_resume(cx, this_value, value)
     }
 
-    /// %GeneratorPrototype%.return, https://tc39.es/ecma262/#sec-generator.prototype.return
+    /// %GeneratorPrototype%.return (https://tc39.es/ecma262/#sec-generator.prototype.return)
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
@@ -65,7 +65,7 @@ impl GeneratorPrototype {
         generator_resume_abrupt(cx, this_value, value, GeneratorCompletionType::Return)
     }
 
-    /// %GeneratorPrototype%.throw, https://tc39.es/ecma262/#sec-generator.prototype.throw
+    /// %GeneratorPrototype%.throw (https://tc39.es/ecma262/#sec-generator.prototype.throw)
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,

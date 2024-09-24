@@ -29,7 +29,7 @@ use super::{
 pub struct DatePrototype;
 
 impl DatePrototype {
-    /// Properties of the Date Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-date-prototype-object
+    /// Properties of the Date Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-date-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -130,7 +130,7 @@ impl DatePrototype {
         object
     }
 
-    /// Date.prototype.getDate, https://tc39.es/ecma262/#sec-date.prototype.getdate
+    /// Date.prototype.getDate (https://tc39.es/ecma262/#sec-date.prototype.getdate)
     pub fn get_date(
         cx: Context,
         this_value: Handle<Value>,
@@ -152,7 +152,7 @@ impl DatePrototype {
         Value::from(date).to_handle(cx).into()
     }
 
-    /// Date.prototype.getDay, https://tc39.es/ecma262/#sec-date.prototype.getday
+    /// Date.prototype.getDay (https://tc39.es/ecma262/#sec-date.prototype.getday)
     pub fn get_day(
         cx: Context,
         this_value: Handle<Value>,
@@ -174,7 +174,7 @@ impl DatePrototype {
         Value::from(day).to_handle(cx).into()
     }
 
-    /// Date.prototype.getFullYear, https://tc39.es/ecma262/#sec-date.prototype.getfullyear
+    /// Date.prototype.getFullYear (https://tc39.es/ecma262/#sec-date.prototype.getfullyear)
     pub fn get_full_year(
         cx: Context,
         this_value: Handle<Value>,
@@ -199,7 +199,7 @@ impl DatePrototype {
         Value::from(year).to_handle(cx).into()
     }
 
-    /// Date.prototype.getHours, https://tc39.es/ecma262/#sec-date.prototype.gethours
+    /// Date.prototype.getHours (https://tc39.es/ecma262/#sec-date.prototype.gethours)
     pub fn get_hours(
         cx: Context,
         this_value: Handle<Value>,
@@ -221,7 +221,7 @@ impl DatePrototype {
         Value::from(hour).to_handle(cx).into()
     }
 
-    /// Date.prototype.getMilliseconds, https://tc39.es/ecma262/#sec-date.prototype.getmilliseconds
+    /// Date.prototype.getMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getmilliseconds)
     pub fn get_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -246,7 +246,7 @@ impl DatePrototype {
         Value::from(millisecond).to_handle(cx).into()
     }
 
-    /// Date.prototype.getMinutes, https://tc39.es/ecma262/#sec-date.prototype.getminutes
+    /// Date.prototype.getMinutes (https://tc39.es/ecma262/#sec-date.prototype.getminutes)
     pub fn get_minutes(
         cx: Context,
         this_value: Handle<Value>,
@@ -271,7 +271,7 @@ impl DatePrototype {
         Value::from(minute).to_handle(cx).into()
     }
 
-    /// Date.prototype.getMonth, https://tc39.es/ecma262/#sec-date.prototype.getmonth
+    /// Date.prototype.getMonth (https://tc39.es/ecma262/#sec-date.prototype.getmonth)
     pub fn get_month(
         cx: Context,
         this_value: Handle<Value>,
@@ -293,7 +293,7 @@ impl DatePrototype {
         Value::from(month).to_handle(cx).into()
     }
 
-    /// Date.prototype.getSeconds, https://tc39.es/ecma262/#sec-date.prototype.getseconds
+    /// Date.prototype.getSeconds (https://tc39.es/ecma262/#sec-date.prototype.getseconds)
     pub fn get_seconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -318,7 +318,7 @@ impl DatePrototype {
         Value::from(second).to_handle(cx).into()
     }
 
-    /// Date.prototype.getTime, https://tc39.es/ecma262/#sec-date.prototype.gettime
+    /// Date.prototype.getTime (https://tc39.es/ecma262/#sec-date.prototype.gettime)
     pub fn get_time(
         cx: Context,
         this_value: Handle<Value>,
@@ -332,7 +332,7 @@ impl DatePrototype {
         }
     }
 
-    /// Date.prototype.getTimezoneOffset, https://tc39.es/ecma262/#sec-date.prototype.gettimezoneoffset
+    /// Date.prototype.getTimezoneOffset (https://tc39.es/ecma262/#sec-date.prototype.gettimezoneoffset)
     pub fn get_timezone_offset(
         cx: Context,
         this_value: Handle<Value>,
@@ -354,7 +354,7 @@ impl DatePrototype {
         Value::from(timezone_offset).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCDate, https://tc39.es/ecma262/#sec-date.prototype.getutcdate
+    /// Date.prototype.getUTCDate (https://tc39.es/ecma262/#sec-date.prototype.getutcdate)
     pub fn get_utc_date(
         cx: Context,
         this_value: Handle<Value>,
@@ -376,7 +376,7 @@ impl DatePrototype {
         Value::from(date).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCDay, https://tc39.es/ecma262/#sec-date.prototype.getutcday
+    /// Date.prototype.getUTCDay (https://tc39.es/ecma262/#sec-date.prototype.getutcday)
     pub fn get_utc_day(
         cx: Context,
         this_value: Handle<Value>,
@@ -398,7 +398,7 @@ impl DatePrototype {
         Value::from(hour).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCFullYear, https://tc39.es/ecma262/#sec-date.prototype.getutcfullyear
+    /// Date.prototype.getUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.getutcfullyear)
     pub fn get_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
@@ -420,7 +420,7 @@ impl DatePrototype {
         Value::from(year).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCHours, https://tc39.es/ecma262/#sec-date.prototype.getutchours
+    /// Date.prototype.getUTCHours (https://tc39.es/ecma262/#sec-date.prototype.getutchours)
     pub fn get_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
@@ -442,7 +442,7 @@ impl DatePrototype {
         Value::from(hour).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCMilliseconds, https://tc39.es/ecma262/#sec-date.prototype.getutcmilliseconds
+    /// Date.prototype.getUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getutcmilliseconds)
     pub fn get_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -467,7 +467,7 @@ impl DatePrototype {
         Value::from(millisecond).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCMinutes, https://tc39.es/ecma262/#sec-date.prototype.getutcminutes
+    /// Date.prototype.getUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.getutcminutes)
     pub fn get_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
@@ -492,7 +492,7 @@ impl DatePrototype {
         Value::from(minute).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCMonth, https://tc39.es/ecma262/#sec-date.prototype.getutcmonth
+    /// Date.prototype.getUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.getutcmonth)
     pub fn get_utc_month(
         cx: Context,
         this_value: Handle<Value>,
@@ -517,7 +517,7 @@ impl DatePrototype {
         Value::from(month).to_handle(cx).into()
     }
 
-    /// Date.prototype.getUTCSeconds, https://tc39.es/ecma262/#sec-date.prototype.getutcseconds
+    /// Date.prototype.getUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.getutcseconds)
     pub fn get_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -542,7 +542,7 @@ impl DatePrototype {
         Value::from(second).to_handle(cx).into()
     }
 
-    /// Date.prototype.setDate, https://tc39.es/ecma262/#sec-date.prototype.setdate
+    /// Date.prototype.setDate (https://tc39.es/ecma262/#sec-date.prototype.setdate)
     pub fn set_date(
         cx: Context,
         this_value: Handle<Value>,
@@ -574,7 +574,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setFullYear, https://tc39.es/ecma262/#sec-date.prototype.setfullyear
+    /// Date.prototype.setFullYear (https://tc39.es/ecma262/#sec-date.prototype.setfullyear)
     pub fn set_full_year(
         cx: Context,
         this_value: Handle<Value>,
@@ -621,7 +621,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setHours, https://tc39.es/ecma262/#sec-date.prototype.sethours
+    /// Date.prototype.setHours (https://tc39.es/ecma262/#sec-date.prototype.sethours)
     pub fn set_hours(
         cx: Context,
         this_value: Handle<Value>,
@@ -689,7 +689,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setMilliseconds, https://tc39.es/ecma262/#sec-date.prototype.setmilliseconds
+    /// Date.prototype.setMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setmilliseconds)
     pub fn set_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -729,7 +729,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setMinutes, https://tc39.es/ecma262/#sec-date.prototype.setminutes
+    /// Date.prototype.setMinutes (https://tc39.es/ecma262/#sec-date.prototype.setminutes)
     pub fn set_minutes(
         cx: Context,
         this_value: Handle<Value>,
@@ -788,7 +788,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setMonth, https://tc39.es/ecma262/#sec-date.prototype.setmonth
+    /// Date.prototype.setMonth (https://tc39.es/ecma262/#sec-date.prototype.setmonth)
     pub fn set_month(
         cx: Context,
         this_value: Handle<Value>,
@@ -832,7 +832,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setSeconds, https://tc39.es/ecma262/#sec-date.prototype.setseconds
+    /// Date.prototype.setSeconds (https://tc39.es/ecma262/#sec-date.prototype.setseconds)
     pub fn set_seconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -884,7 +884,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setTime, https://tc39.es/ecma262/#sec-date.prototype.settime
+    /// Date.prototype.setTime (https://tc39.es/ecma262/#sec-date.prototype.settime)
     pub fn set_time(
         cx: Context,
         this_value: Handle<Value>,
@@ -903,7 +903,7 @@ impl DatePrototype {
         Value::from(time_num).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCDate, https://tc39.es/ecma262/#sec-date.prototype.setutcdate
+    /// Date.prototype.setUTCDate (https://tc39.es/ecma262/#sec-date.prototype.setutcdate)
     pub fn set_utc_date(
         cx: Context,
         this_value: Handle<Value>,
@@ -936,7 +936,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCFullYear, https://tc39.es/ecma262/#sec-date.prototype.setutcfullyear
+    /// Date.prototype.setUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.setutcfullyear)
     pub fn set_utc_full_year(
         cx: Context,
         this_value: Handle<Value>,
@@ -981,7 +981,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCHours, https://tc39.es/ecma262/#sec-date.prototype.setutchours
+    /// Date.prototype.setUTCHours (https://tc39.es/ecma262/#sec-date.prototype.setutchours)
     pub fn set_utc_hours(
         cx: Context,
         this_value: Handle<Value>,
@@ -1048,7 +1048,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCMilliseconds, https://tc39.es/ecma262/#sec-date.prototype.setutcmilliseconds
+    /// Date.prototype.setUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setutcmilliseconds)
     pub fn set_utc_milliseconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -1086,7 +1086,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCMinutes, https://tc39.es/ecma262/#sec-date.prototype.setutcminutes
+    /// Date.prototype.setUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.setutcminutes)
     pub fn set_utc_minutes(
         cx: Context,
         this_value: Handle<Value>,
@@ -1143,7 +1143,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCMonth, https://tc39.es/ecma262/#sec-date.prototype.setutcmonth
+    /// Date.prototype.setUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.setutcmonth)
     pub fn set_utc_month(
         cx: Context,
         this_value: Handle<Value>,
@@ -1188,7 +1188,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.setUTCSeconds, https://tc39.es/ecma262/#sec-date.prototype.setutcseconds
+    /// Date.prototype.setUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.setutcseconds)
     pub fn set_utc_seconds(
         cx: Context,
         this_value: Handle<Value>,
@@ -1238,7 +1238,7 @@ impl DatePrototype {
         Value::from(new_date).to_handle(cx).into()
     }
 
-    /// Date.prototype.toDateString, https://tc39.es/ecma262/#sec-date.prototype.todatestring
+    /// Date.prototype.toDateString (https://tc39.es/ecma262/#sec-date.prototype.todatestring)
     pub fn to_date_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1270,7 +1270,7 @@ impl DatePrototype {
         cx.alloc_string(&string).into()
     }
 
-    /// Date.prototype.toISOString, https://tc39.es/ecma262/#sec-date.prototype.toisostring
+    /// Date.prototype.toISOString (https://tc39.es/ecma262/#sec-date.prototype.toisostring)
     pub fn to_iso_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -1313,7 +1313,7 @@ impl DatePrototype {
         cx.alloc_string(&string).into()
     }
 
-    /// Date.prototype.toJSON, https://tc39.es/ecma262/#sec-date.prototype.tojson
+    /// Date.prototype.toJSON (https://tc39.es/ecma262/#sec-date.prototype.tojson)
     pub fn to_json(
         cx: Context,
         this_value: Handle<Value>,
@@ -1331,7 +1331,7 @@ impl DatePrototype {
         invoke(cx, object.into(), cx.names.to_iso_string(), &[])
     }
 
-    /// Date.prototype.toLocaleDateString, https://tc39.es/ecma262/#sec-date.prototype.tolocaledatestring
+    /// Date.prototype.toLocaleDateString (https://tc39.es/ecma262/#sec-date.prototype.tolocaledatestring)
     pub fn to_locale_date_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1350,7 +1350,7 @@ impl DatePrototype {
         Self::to_date_string_shared(cx, date_value)
     }
 
-    /// Date.prototype.toLocaleString, https://tc39.es/ecma262/#sec-date.prototype.tolocalestring
+    /// Date.prototype.toLocaleString (https://tc39.es/ecma262/#sec-date.prototype.tolocalestring)
     pub fn to_locale_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1369,7 +1369,7 @@ impl DatePrototype {
         to_date_string(cx, date_value).into()
     }
 
-    /// Date.prototype.toLocaleTimeString, https://tc39.es/ecma262/#sec-date.prototype.tolocaletimestring
+    /// Date.prototype.toLocaleTimeString (https://tc39.es/ecma262/#sec-date.prototype.tolocaletimestring)
     pub fn to_locale_time_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1388,7 +1388,7 @@ impl DatePrototype {
         Self::to_time_string_shared(cx, date_value)
     }
 
-    /// Date.prototype.toString, https://tc39.es/ecma262/#sec-date.prototype.tostring
+    /// Date.prototype.toString (https://tc39.es/ecma262/#sec-date.prototype.tostring)
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1404,7 +1404,7 @@ impl DatePrototype {
         to_date_string(cx, date_value).into()
     }
 
-    /// Date.prototype.toTimeString, https://tc39.es/ecma262/#sec-date.prototype.totimestring
+    /// Date.prototype.toTimeString (https://tc39.es/ecma262/#sec-date.prototype.totimestring)
     pub fn to_time_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -1438,7 +1438,7 @@ impl DatePrototype {
         cx.alloc_string(&string).into()
     }
 
-    /// Date.prototype.toUTCString, https://tc39.es/ecma262/#sec-date.prototype.toutcstring
+    /// Date.prototype.toUTCString (https://tc39.es/ecma262/#sec-date.prototype.toutcstring)
     pub fn to_utc_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -1475,7 +1475,7 @@ impl DatePrototype {
         cx.alloc_string(&string).into()
     }
 
-    /// Date.prototype.valueOf, https://tc39.es/ecma262/#sec-date.prototype.valueof
+    /// Date.prototype.valueOf (https://tc39.es/ecma262/#sec-date.prototype.valueof)
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -1491,7 +1491,7 @@ impl DatePrototype {
         Value::from(date_value).to_handle(cx).into()
     }
 
-    /// Date.prototype [ @@toPrimitive ], https://tc39.es/ecma262/#sec-date.prototype-%symbol.toprimitive%
+    /// Date.prototype [ @@toPrimitive ] (https://tc39.es/ecma262/#sec-date.prototype-%symbol.toprimitive%)
     pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
@@ -1526,7 +1526,7 @@ impl DatePrototype {
     }
 }
 
-/// TimeString, https://tc39.es/ecma262/#sec-timestring
+/// TimeString (https://tc39.es/ecma262/#sec-timestring)
 fn time_string(string: &mut String, time_value: f64) {
     string.push_str(&format!(
         "{:02}:{:02}:{:02} GMT",
@@ -1536,7 +1536,7 @@ fn time_string(string: &mut String, time_value: f64) {
     ));
 }
 
-/// DateString, https://tc39.es/ecma262/#sec-datestring
+/// DateString (https://tc39.es/ecma262/#sec-datestring)
 fn date_string(string: &mut String, time_value: f64) {
     let year = year_from_time(time_value);
     let year_sign = if year.is_sign_negative() { "-" } else { "" };
@@ -1582,7 +1582,7 @@ fn month_string(time_value: f64) -> &'static str {
     }
 }
 
-/// TimeZoneString, https://tc39.es/ecma262/#sec-timezoneestring
+/// TimeZoneString (https://tc39.es/ecma262/#sec-timezoneestring)
 fn time_zone_string(string: &mut String, _time_value: f64) {
     // TODO: Handle time zones
     let offset: f64 = 0.0;
@@ -1597,7 +1597,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
     string.push_str(&format!("{:02}{:02}", hour, minute));
 }
 
-/// ToDateString, https://tc39.es/ecma262/#sec-todatestring
+/// ToDateString (https://tc39.es/ecma262/#sec-todatestring)
 pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
     if time_value.is_nan() {
         return InternedStrings::get_str(cx, "Invalid Date");

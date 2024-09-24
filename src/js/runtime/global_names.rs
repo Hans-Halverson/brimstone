@@ -188,7 +188,7 @@ fn global_declaration_instantiation(
     ().into()
 }
 
-/// HasRestrictedGlobalProperty, https://tc39.es/ecma262/#sec-hasrestrictedglobalproperty
+/// HasRestrictedGlobalProperty (https://tc39.es/ecma262/#sec-hasrestrictedglobalproperty)
 pub fn has_restricted_global_property(
     cx: Context,
     global_object: Handle<ObjectValue>,
@@ -202,7 +202,7 @@ pub fn has_restricted_global_property(
     }
 }
 
-/// CanDeclareGlobalVar, https://tc39.es/ecma262/#sec-candeclareglobalvar
+/// CanDeclareGlobalVar (https://tc39.es/ecma262/#sec-candeclareglobalvar)
 pub fn can_declare_global_var(
     cx: Context,
     global_object: Handle<ObjectValue>,
@@ -215,7 +215,7 @@ pub fn can_declare_global_var(
     is_extensible(cx, global_object)
 }
 
-/// CanDeclareGlobalFunction, https://tc39.es/ecma262/#sec-candeclareglobalfunction
+/// CanDeclareGlobalFunction (https://tc39.es/ecma262/#sec-candeclareglobalfunction)
 pub fn can_declare_global_function(
     cx: Context,
     global_object: Handle<ObjectValue>,
@@ -239,7 +239,7 @@ pub fn can_declare_global_function(
     }
 }
 
-/// CreateGlobalVarBinding, https://tc39.es/ecma262/#sec-createglobalvarbinding
+/// CreateGlobalVarBinding (https://tc39.es/ecma262/#sec-createglobalvarbinding)
 pub fn create_global_var_binding(
     cx: Context,
     global_object: Handle<ObjectValue>,
@@ -260,7 +260,7 @@ pub fn create_global_var_binding(
     ().into()
 }
 
-/// CreateGlobalFunctionBinding, https://tc39.es/ecma262/#sec-createglobalfunctionbinding
+/// CreateGlobalFunctionBinding (https://tc39.es/ecma262/#sec-createglobalfunctionbinding)
 pub fn create_global_function_binding(
     cx: Context,
     global_object: Handle<ObjectValue>,

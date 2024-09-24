@@ -30,7 +30,7 @@ use super::{
 
 /// Parser of the full RegExp grammar and static semantics
 ///
-/// Patterns, https://tc39.es/ecma262/#sec-patterns
+/// Patterns (https://tc39.es/ecma262/#sec-patterns)
 pub struct RegExpParser<T: LexerStream> {
     /// The stream of code points to parse
     lexer_stream: T,

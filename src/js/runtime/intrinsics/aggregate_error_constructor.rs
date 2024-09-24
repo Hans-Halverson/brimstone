@@ -28,7 +28,7 @@ use crate::{
 
 use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 
-/// AggregateError Objects, https://tc39.es/ecma262/#sec-aggregate-error-objects
+/// AggregateError Objects (https://tc39.es/ecma262/#sec-aggregate-error-objects)
 pub struct AggregateErrorObject;
 
 impl AggregateErrorObject {
@@ -80,7 +80,7 @@ impl AggregateErrorObject {
 pub struct AggregateErrorConstructor;
 
 impl AggregateErrorConstructor {
-    /// Properties of the AggregateError Constructor, https://tc39.es/ecma262/#sec-properties-of-the-aggregate-error-constructors
+    /// Properties of the AggregateError Constructor (https://tc39.es/ecma262/#sec-properties-of-the-aggregate-error-constructors)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
         let mut func = BuiltinFunction::intrinsic_constructor(
@@ -103,7 +103,7 @@ impl AggregateErrorConstructor {
         func
     }
 
-    /// AggregateError, https://tc39.es/ecma262/#sec-aggregate-error
+    /// AggregateError (https://tc39.es/ecma262/#sec-aggregate-error)
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,

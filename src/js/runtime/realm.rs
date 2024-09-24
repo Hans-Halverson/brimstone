@@ -25,7 +25,7 @@ use super::{
     Context, EvalResult, PropertyKey, Value,
 };
 
-/// Realms, https://tc39.es/ecma262/#sec-code-realms
+/// Realms (https://tc39.es/ecma262/#sec-code-realms)
 #[repr(C)]
 pub struct Realm {
     descriptor: HeapPtr<ObjectDescriptor>,
@@ -274,7 +274,7 @@ impl Handle<Realm> {
     }
 }
 
-/// InitializeHostDefinedRealm, https://tc39.es/ecma262/#sec-initializehostdefinedrealm
+/// InitializeHostDefinedRealm (https://tc39.es/ecma262/#sec-initializehostdefinedrealm)
 pub fn initialize_host_defined_realm(
     cx: Context,
     expose_gc: bool,

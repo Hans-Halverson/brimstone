@@ -30,7 +30,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-/// The JSON Object, https://tc39.es/ecma262/#sec-json-object
+/// The JSON Object (https://tc39.es/ecma262/#sec-json-object)
 pub struct JSONObject;
 
 impl JSONObject {
@@ -41,7 +41,7 @@ impl JSONObject {
         object.intrinsic_func(cx, cx.names.parse(), Self::parse, 2, realm);
         object.intrinsic_func(cx, cx.names.stringify(), Self::stringify, 3, realm);
 
-        // JSON [ @@toStringTag ], https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%
+        // JSON [ @@toStringTag ] (https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let math_name_value = cx.names.json().as_string().into();
         object.set_property(
@@ -53,7 +53,7 @@ impl JSONObject {
         object
     }
 
-    /// JSON.parse, https://tc39.es/ecma262/#sec-json.parse
+    /// JSON.parse (https://tc39.es/ecma262/#sec-json.parse)
     pub fn parse(
         cx: Context,
         _: Handle<Value>,
@@ -89,7 +89,7 @@ impl JSONObject {
         value.into()
     }
 
-    /// InternalizeJSONProperty, https://tc39.es/ecma262/#sec-internalizejsonproperty
+    /// InternalizeJSONProperty (https://tc39.es/ecma262/#sec-internalizejsonproperty)
     fn internalize_json_property(
         cx: Context,
         holder: Handle<ObjectValue>,
@@ -141,7 +141,7 @@ impl JSONObject {
         call_object(cx, reviver, holder.into(), &[holder_key_value, value])
     }
 
-    /// JSON.stringify, https://tc39.es/ecma262/#sec-json.stringify
+    /// JSON.stringify (https://tc39.es/ecma262/#sec-json.stringify)
     pub fn stringify(
         cx: Context,
         _: Handle<Value>,
@@ -540,7 +540,7 @@ impl JSONSerializer {
         cx.alloc_wtf8_string(&self.builder)
     }
 
-    /// SerializeJSONProperty, https://tc39.es/ecma262/#sec-serializejsonproperty
+    /// SerializeJSONProperty (https://tc39.es/ecma262/#sec-serializejsonproperty)
     ///
     /// Returns whether the property was successfully serialized. False is equivalent to returning
     /// undefined in the spec.
@@ -615,7 +615,7 @@ impl JSONSerializer {
         true.into()
     }
 
-    /// QuoteJSONString, https://tc39.es/ecma262/#sec-quotejsonstring
+    /// QuoteJSONString (https://tc39.es/ecma262/#sec-quotejsonstring)
     fn serialize_json_string(&mut self, string: Handle<StringValue>) {
         self.builder.push_char('"');
 
@@ -666,7 +666,7 @@ impl JSONSerializer {
         }
     }
 
-    /// SerializeJSONObject, https://tc39.es/ecma262/#sec-serializejsonobject
+    /// SerializeJSONObject (https://tc39.es/ecma262/#sec-serializejsonobject)
     fn serialize_json_object(
         &mut self,
         cx: Context,
@@ -744,7 +744,7 @@ impl JSONSerializer {
         ().into()
     }
 
-    /// SerializeJSONArray, https://tc39.es/ecma262/#sec-serializejsonarray
+    /// SerializeJSONArray (https://tc39.es/ecma262/#sec-serializejsonarray)
     fn serialize_json_array(&mut self, cx: Context, array: Handle<ObjectValue>) -> EvalResult<()> {
         maybe!(self.check_for_cycle(cx, array));
 

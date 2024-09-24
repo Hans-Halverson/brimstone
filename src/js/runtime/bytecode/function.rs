@@ -158,7 +158,7 @@ impl Closure {
         };
         set_function_name(cx, closure.into(), name, None);
 
-        // MakeConstructor, https://tc39.es/ecma262/#sec-makeconstructor
+        // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {
             let prototype = ordinary_object_create(cx);
 

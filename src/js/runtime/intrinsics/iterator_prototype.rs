@@ -2,7 +2,7 @@ use crate::js::runtime::{object_value::ObjectValue, realm::Realm, Context, Handl
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
-/// The %IteratorPrototype% Object, https://tc39.es/ecma262/#sec-%iteratorprototype%-object
+/// The %IteratorPrototype% Object (https://tc39.es/ecma262/#sec-%iteratorprototype%-object)
 pub struct IteratorPrototype;
 
 impl IteratorPrototype {

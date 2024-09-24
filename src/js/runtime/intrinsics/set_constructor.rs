@@ -14,7 +14,7 @@ use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 pub struct SetConstructor;
 
 impl SetConstructor {
-    /// The Set Constructor, https://tc39.es/ecma262/#sec-set-constructor
+    /// The Set Constructor (https://tc39.es/ecma262/#sec-set-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -31,14 +31,14 @@ impl SetConstructor {
             realm.get_intrinsic(Intrinsic::SetPrototype).into(),
         );
 
-        // get Set [ @@species ], https://tc39.es/ecma262/#sec-get-set-%symbol.species%
+        // get Set [ @@species ] (https://tc39.es/ecma262/#sec-get-set-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    /// Set, https://tc39.es/ecma262/#sec-set-iterable
+    /// Set (https://tc39.es/ecma262/#sec-set-iterable)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

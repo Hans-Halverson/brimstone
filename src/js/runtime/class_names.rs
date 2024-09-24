@@ -160,7 +160,7 @@ impl Method {
     }
 }
 
-/// ClassDefinitionEvaluation, https://tc39.es/ecma262/#sec-runtime-semantics-classdefinitionevaluation
+/// ClassDefinitionEvaluation (https://tc39.es/ecma262/#sec-runtime-semantics-classdefinitionevaluation)
 pub fn new_class(
     mut cx: Context,
     class_names: Handle<ClassNames>,

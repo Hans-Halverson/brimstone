@@ -28,7 +28,7 @@ use super::intrinsics::Intrinsic;
 pub struct DateConstructor;
 
 impl DateConstructor {
-    /// The Date Constructor, https://tc39.es/ecma262/#sec-date-constructor
+    /// The Date Constructor (https://tc39.es/ecma262/#sec-date-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -52,7 +52,7 @@ impl DateConstructor {
         func
     }
 
-    /// Date, https://tc39.es/ecma262/#sec-date
+    /// Date (https://tc39.es/ecma262/#sec-date)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -149,7 +149,7 @@ impl DateConstructor {
             .into()
     }
 
-    /// Date.now, https://tc39.es/ecma262/#sec-date.now
+    /// Date.now (https://tc39.es/ecma262/#sec-date.now)
     pub fn now(
         cx: Context,
         _: Handle<Value>,
@@ -159,7 +159,7 @@ impl DateConstructor {
         Value::from(get_current_unix_time()).to_handle(cx).into()
     }
 
-    /// Date.parse, https://tc39.es/ecma262/#sec-date.parse
+    /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)
     pub fn parse(
         cx: Context,
         _: Handle<Value>,
@@ -176,7 +176,7 @@ impl DateConstructor {
         }
     }
 
-    /// Date.UTC, https://tc39.es/ecma262/#sec-date.utc
+    /// Date.UTC (https://tc39.es/ecma262/#sec-date.utc)
     pub fn utc(
         cx: Context,
         _: Handle<Value>,

@@ -9,7 +9,7 @@ use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
 pub struct WeakSetPrototype;
 
 impl WeakSetPrototype {
-    /// Properties of the WeakSet Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-weakset-prototype-object
+    /// Properties of the WeakSet Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weakset-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -30,7 +30,7 @@ impl WeakSetPrototype {
         object
     }
 
-    /// WeakSet.prototype.add, https://tc39.es/ecma262/#sec-weakset.prototype.add
+    /// WeakSet.prototype.add (https://tc39.es/ecma262/#sec-weakset.prototype.add)
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
@@ -53,7 +53,7 @@ impl WeakSetPrototype {
         this_value.into()
     }
 
-    /// WeakSet.prototype.delete, https://tc39.es/ecma262/#sec-weakset.prototype.delete
+    /// WeakSet.prototype.delete (https://tc39.es/ecma262/#sec-weakset.prototype.delete)
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
@@ -76,7 +76,7 @@ impl WeakSetPrototype {
         cx.bool(removed_value).into()
     }
 
-    /// WeakSet.prototype.has, https://tc39.es/ecma262/#sec-weakset.prototype.has
+    /// WeakSet.prototype.has (https://tc39.es/ecma262/#sec-weakset.prototype.has)
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,

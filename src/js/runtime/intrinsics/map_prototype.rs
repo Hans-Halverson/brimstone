@@ -24,7 +24,7 @@ use super::{
 pub struct MapPrototype;
 
 impl MapPrototype {
-    /// Properties of the Map Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-map-prototype-object
+    /// Properties of the Map Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-map-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -46,11 +46,11 @@ impl MapPrototype {
         object.intrinsic_getter(cx, cx.names.size(), Self::size, realm);
         object.intrinsic_func(cx, cx.names.values(), Self::values, 0, realm);
 
-        // Map.prototype [ @@iterator ], https://tc39.es/ecma262/#sec-map.prototype-%symbol.iterator%
+        // Map.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
         object.set_property(cx, iterator_key, Property::data(entries_function, true, false, true));
 
-        // Map.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-map.prototype-%symbol.tostringtag%
+        // Map.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -61,7 +61,7 @@ impl MapPrototype {
         object
     }
 
-    /// Map.prototype.clear, https://tc39.es/ecma262/#sec-map.prototype.clear
+    /// Map.prototype.clear (https://tc39.es/ecma262/#sec-map.prototype.clear)
     pub fn clear(
         cx: Context,
         this_value: Handle<Value>,
@@ -79,7 +79,7 @@ impl MapPrototype {
         cx.undefined().into()
     }
 
-    /// Map.prototype.delete, https://tc39.es/ecma262/#sec-map.prototype.delete
+    /// Map.prototype.delete (https://tc39.es/ecma262/#sec-map.prototype.delete)
     pub fn delete(
         cx: Context,
         this_value: Handle<Value>,
@@ -98,7 +98,7 @@ impl MapPrototype {
         cx.bool(existed).into()
     }
 
-    /// Map.prototype.entries, https://tc39.es/ecma262/#sec-map.prototype.entries
+    /// Map.prototype.entries (https://tc39.es/ecma262/#sec-map.prototype.entries)
     pub fn entries(
         cx: Context,
         this_value: Handle<Value>,
@@ -114,7 +114,7 @@ impl MapPrototype {
         MapIterator::new(cx, map, MapIteratorKind::KeyAndValue).into()
     }
 
-    /// Map.prototype.forEach, https://tc39.es/ecma262/#sec-map.prototype.foreach
+    /// Map.prototype.forEach (https://tc39.es/ecma262/#sec-map.prototype.foreach)
     pub fn for_each(
         cx: Context,
         this_value: Handle<Value>,
@@ -152,7 +152,7 @@ impl MapPrototype {
         cx.undefined().into()
     }
 
-    /// Map.prototype.get, https://tc39.es/ecma262/#sec-map.prototype.get
+    /// Map.prototype.get (https://tc39.es/ecma262/#sec-map.prototype.get)
     pub fn get(
         cx: Context,
         this_value: Handle<Value>,
@@ -173,7 +173,7 @@ impl MapPrototype {
         }
     }
 
-    /// Map.prototype.has, https://tc39.es/ecma262/#sec-map.prototype.has
+    /// Map.prototype.has (https://tc39.es/ecma262/#sec-map.prototype.has)
     pub fn has(
         cx: Context,
         this_value: Handle<Value>,
@@ -192,7 +192,7 @@ impl MapPrototype {
             .into()
     }
 
-    /// Map.prototype.keys, https://tc39.es/ecma262/#sec-map.prototype.keys
+    /// Map.prototype.keys (https://tc39.es/ecma262/#sec-map.prototype.keys)
     pub fn keys(
         cx: Context,
         this_value: Handle<Value>,
@@ -208,7 +208,7 @@ impl MapPrototype {
         MapIterator::new(cx, map, MapIteratorKind::Key).into()
     }
 
-    /// Map.prototype.set, https://tc39.es/ecma262/#sec-map.prototype.set
+    /// Map.prototype.set (https://tc39.es/ecma262/#sec-map.prototype.set)
     pub fn set(
         cx: Context,
         this_value: Handle<Value>,
@@ -234,7 +234,7 @@ impl MapPrototype {
         this_value.into()
     }
 
-    /// get Map.prototype.size, https://tc39.es/ecma262/#sec-get-map.prototype.size
+    /// get Map.prototype.size (https://tc39.es/ecma262/#sec-get-map.prototype.size)
     pub fn size(
         cx: Context,
         this_value: Handle<Value>,
@@ -252,7 +252,7 @@ impl MapPrototype {
             .into()
     }
 
-    /// Map.prototype.values, https://tc39.es/ecma262/#sec-map.prototype.values
+    /// Map.prototype.values (https://tc39.es/ecma262/#sec-map.prototype.values)
     pub fn values(
         cx: Context,
         this_value: Handle<Value>,

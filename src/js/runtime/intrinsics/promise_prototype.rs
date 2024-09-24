@@ -19,7 +19,7 @@ use super::intrinsics::Intrinsic;
 pub struct PromisePrototype;
 
 impl PromisePrototype {
-    /// Properties of the Promise Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-promise-prototype-object
+    /// Properties of the Promise Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-promise-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -30,7 +30,7 @@ impl PromisePrototype {
         object.intrinsic_func(cx, cx.names.finally(), Self::finally, 1, realm);
         object.intrinsic_func(cx, cx.names.then(), Self::then, 2, realm);
 
-        // Promise.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%
+        // Promise.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,
@@ -41,7 +41,7 @@ impl PromisePrototype {
         object
     }
 
-    /// Promise.prototype.catch, https://tc39.es/ecma262/#sec-promise.prototype.catch
+    /// Promise.prototype.catch (https://tc39.es/ecma262/#sec-promise.prototype.catch)
     pub fn catch(
         cx: Context,
         this_value: Handle<Value>,
@@ -52,7 +52,7 @@ impl PromisePrototype {
         invoke(cx, this_value, cx.names.then(), &[cx.undefined(), on_rejected])
     }
 
-    /// Promise.prototype.finally, https://tc39.es/ecma262/#sec-promise.prototype.finally
+    /// Promise.prototype.finally (https://tc39.es/ecma262/#sec-promise.prototype.finally)
     pub fn finally(
         cx: Context,
         this_value: Handle<Value>,
@@ -233,7 +233,7 @@ impl PromisePrototype {
         EvalResult::Throw(value)
     }
 
-    /// Promise.prototype.then, https://tc39.es/ecma262/#sec-promise.prototype.then
+    /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)
     pub fn then(
         cx: Context,
         this_value: Handle<Value>,

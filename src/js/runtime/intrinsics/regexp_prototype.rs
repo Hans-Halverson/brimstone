@@ -43,7 +43,7 @@ use super::{
 pub struct RegExpPrototype;
 
 impl RegExpPrototype {
-    /// Properties of the RegExp Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-regexp-prototype-object
+    /// Properties of the RegExp Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-regexp-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -71,7 +71,7 @@ impl RegExpPrototype {
         object
     }
 
-    /// RegExp.prototype.exec, https://tc39.es/ecma262/#sec-regexp.prototype.exec
+    /// RegExp.prototype.exec (https://tc39.es/ecma262/#sec-regexp.prototype.exec)
     pub fn exec(
         cx: Context,
         this_value: Handle<Value>,
@@ -90,7 +90,7 @@ impl RegExpPrototype {
         regexp_builtin_exec(cx, regexp_object, string_value)
     }
 
-    /// get RegExp.prototype.dotAll, https://tc39.es/ecma262/#sec-get-regexp.prototype.dotAll
+    /// get RegExp.prototype.dotAll (https://tc39.es/ecma262/#sec-get-regexp.prototype.dotAll)
     pub fn dot_all(
         cx: Context,
         this_value: Handle<Value>,
@@ -100,7 +100,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::DOT_ALL)
     }
 
-    /// get RegExp.prototype.flags, https://tc39.es/ecma262/#sec-get-regexp.prototype.flags
+    /// get RegExp.prototype.flags (https://tc39.es/ecma262/#sec-get-regexp.prototype.flags)
     pub fn flags(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -164,7 +164,7 @@ impl RegExpPrototype {
         flags_string.into()
     }
 
-    /// get RegExp.prototype.global, https://tc39.es/ecma262/#sec-get-regexp.prototype.global
+    /// get RegExp.prototype.global (https://tc39.es/ecma262/#sec-get-regexp.prototype.global)
     pub fn global(
         cx: Context,
         this_value: Handle<Value>,
@@ -174,7 +174,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::GLOBAL)
     }
 
-    /// get RegExp.prototype.hasIndices, https://tc39.es/ecma262/#sec-get-regexp.prototype.hasIndices
+    /// get RegExp.prototype.hasIndices (https://tc39.es/ecma262/#sec-get-regexp.prototype.hasIndices)
     pub fn has_indices(
         cx: Context,
         this_value: Handle<Value>,
@@ -184,7 +184,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::HAS_INDICES)
     }
 
-    /// get RegExp.prototype.ignoreCase, https://tc39.es/ecma262/#sec-get-regexp.prototype.ignorecase
+    /// get RegExp.prototype.ignoreCase (https://tc39.es/ecma262/#sec-get-regexp.prototype.ignorecase)
     pub fn ignore_case(
         cx: Context,
         this_value: Handle<Value>,
@@ -194,7 +194,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::IGNORE_CASE)
     }
 
-    /// RegExp.prototype [ @@match ], https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.match%
+    /// RegExp.prototype [ @@match ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.match%)
     pub fn match_(
         cx: Context,
         this_value: Handle<Value>,
@@ -265,7 +265,7 @@ impl RegExpPrototype {
         }
     }
 
-    /// RegExp.prototype [ @@matchAll ], https://tc39.es/ecma262/#sec-regexp-prototype-%symbol.matchall%
+    /// RegExp.prototype [ @@matchAll ] (https://tc39.es/ecma262/#sec-regexp-prototype-%symbol.matchall%)
     pub fn match_all(
         cx: Context,
         this_value: Handle<Value>,
@@ -302,7 +302,7 @@ impl RegExpPrototype {
         RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode).into()
     }
 
-    /// get RegExp.prototype.multiline, https://tc39.es/ecma262/#sec-get-regexp.prototype.multiline
+    /// get RegExp.prototype.multiline (https://tc39.es/ecma262/#sec-get-regexp.prototype.multiline)
     pub fn multiline(
         cx: Context,
         this_value: Handle<Value>,
@@ -312,7 +312,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE)
     }
 
-    /// RegExp.prototype [ @@replace ], https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.replace%
+    /// RegExp.prototype [ @@replace ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.replace%)
     pub fn replace(
         cx: Context,
         this_value: Handle<Value>,
@@ -503,7 +503,7 @@ impl RegExpPrototype {
         StringValue::concat_all(cx, &string_parts).into()
     }
 
-    /// RegExp.prototype [ @@search ], https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.search%
+    /// RegExp.prototype [ @@search ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.search%)
     pub fn search(
         cx: Context,
         this_value: Handle<Value>,
@@ -542,7 +542,7 @@ impl RegExpPrototype {
         }
     }
 
-    /// get RegExp.prototype.source, https://tc39.es/ecma262/#sec-get-regexp.prototype.source
+    /// get RegExp.prototype.source (https://tc39.es/ecma262/#sec-get-regexp.prototype.source)
     pub fn source(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -567,7 +567,7 @@ impl RegExpPrototype {
         type_error(cx, "Expected a regular expression")
     }
 
-    /// RegExp.prototype [ @@split ], https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%
+    /// RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
     pub fn split(
         cx: Context,
         this_value: Handle<Value>,
@@ -715,7 +715,7 @@ impl RegExpPrototype {
         result_array.into()
     }
 
-    /// get RegExp.prototype.sticky, https://tc39.es/ecma262/#sec-get-regexp.prototype.sticky
+    /// get RegExp.prototype.sticky (https://tc39.es/ecma262/#sec-get-regexp.prototype.sticky)
     pub fn sticky(
         cx: Context,
         this_value: Handle<Value>,
@@ -725,7 +725,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::STICKY)
     }
 
-    /// RegExp.prototype.test, https://tc39.es/ecma262/#sec-regexp.prototype.test
+    /// RegExp.prototype.test (https://tc39.es/ecma262/#sec-regexp.prototype.test)
     pub fn test(
         cx: Context,
         this_value: Handle<Value>,
@@ -746,7 +746,7 @@ impl RegExpPrototype {
         cx.bool(!exec_result.is_null()).into()
     }
 
-    /// RegExp.prototype.toString, https://tc39.es/ecma262/#sec-regexp.prototype.tostring
+    /// RegExp.prototype.toString (https://tc39.es/ecma262/#sec-regexp.prototype.tostring)
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -771,7 +771,7 @@ impl RegExpPrototype {
             .into()
     }
 
-    /// get RegExp.prototype.unicode, https://tc39.es/ecma262/#sec-get-regexp.prototype.unicode
+    /// get RegExp.prototype.unicode (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicode)
     pub fn unicode(
         cx: Context,
         this_value: Handle<Value>,
@@ -781,7 +781,7 @@ impl RegExpPrototype {
         regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE)
     }
 
-    /// get RegExp.prototype.unicodeSets, https://tc39.es/ecma262/#sec-get-regexp.prototype.unicodesets
+    /// get RegExp.prototype.unicodeSets (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicodesets)
     pub fn unicode_sets(
         cx: Context,
         this_value: Handle<Value>,
@@ -792,7 +792,7 @@ impl RegExpPrototype {
     }
 }
 
-/// RegExpHasFlag, https://tc39.es/ecma262/#sec-regexphasflag
+/// RegExpHasFlag (https://tc39.es/ecma262/#sec-regexphasflag)
 fn regexp_has_flag(
     cx: Context,
     this_value: Handle<Value>,
@@ -818,7 +818,7 @@ pub fn flags_string_contains(flags_string: Handle<StringValue>, flag: CodePoint)
     flags_string.iter_code_points().any(|c| c == flag)
 }
 
-/// RegExpExec, https://tc39.es/ecma262/#sec-regexpexec
+/// RegExpExec (https://tc39.es/ecma262/#sec-regexpexec)
 pub fn regexp_exec(
     cx: Context,
     regexp_object: Handle<ObjectValue>,
@@ -842,7 +842,7 @@ pub fn regexp_exec(
     regexp_builtin_exec(cx, regexp_object.cast::<RegExpObject>(), string_value)
 }
 
-/// RegExpBuiltinExec, https://tc39.es/ecma262/#sec-regexpbuiltinexec
+/// RegExpBuiltinExec (https://tc39.es/ecma262/#sec-regexpbuiltinexec)
 fn regexp_builtin_exec(
     cx: Context,
     regexp_object: Handle<RegExpObject>,
@@ -1040,7 +1040,7 @@ fn regexp_builtin_exec(
     result_array.into()
 }
 
-/// AdvanceStringIndex, https://tc39.es/ecma262/#sec-advancestringindex
+/// AdvanceStringIndex (https://tc39.es/ecma262/#sec-advancestringindex)
 ///
 /// Increments the index by one if not unicode-aware, and by the size of the current code point if unicode-aware.
 ///

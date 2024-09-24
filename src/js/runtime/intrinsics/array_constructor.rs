@@ -25,7 +25,7 @@ use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 pub struct ArrayConstructor;
 
 impl ArrayConstructor {
-    /// Properties of the Array Constructor, https://tc39.es/ecma262/#sec-properties-of-the-array-constructor
+    /// Properties of the Array Constructor (https://tc39.es/ecma262/#sec-properties-of-the-array-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -46,14 +46,14 @@ impl ArrayConstructor {
         func.intrinsic_func(cx, cx.names.is_array(), Self::is_array, 1, realm);
         func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
-        // get Array [ @@species ], https://tc39.es/ecma262/#sec-get-array-%symbol.species%
+        // get Array [ @@species ] (https://tc39.es/ecma262/#sec-get-array-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    /// Array, https://tc39.es/ecma262/#sec-array
+    /// Array (https://tc39.es/ecma262/#sec-array)
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
@@ -105,7 +105,7 @@ impl ArrayConstructor {
         }
     }
 
-    /// Array.from, https://tc39.es/ecma262/#sec-array.from
+    /// Array.from (https://tc39.es/ecma262/#sec-array.from)
     pub fn from(
         cx: Context,
         this_value: Handle<Value>,
@@ -213,7 +213,7 @@ impl ArrayConstructor {
         array.into()
     }
 
-    /// Array.isArray, https://tc39.es/ecma262/#sec-array.isarray
+    /// Array.isArray (https://tc39.es/ecma262/#sec-array.isarray)
     pub fn is_array(
         cx: Context,
         _: Handle<Value>,
@@ -225,7 +225,7 @@ impl ArrayConstructor {
         cx.bool(is_array).into()
     }
 
-    /// Array.of, https://tc39.es/ecma262/#sec-array.of
+    /// Array.of (https://tc39.es/ecma262/#sec-array.of)
     pub fn of(
         cx: Context,
         this_value: Handle<Value>,

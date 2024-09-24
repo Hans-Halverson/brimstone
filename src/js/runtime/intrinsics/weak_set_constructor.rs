@@ -19,7 +19,7 @@ use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
 pub struct WeakSetConstructor;
 
 impl WeakSetConstructor {
-    /// Properties of the WeakSet Constructor, https://tc39.es/ecma262/#sec-properties-of-the-weakset-constructor
+    /// Properties of the WeakSet Constructor (https://tc39.es/ecma262/#sec-properties-of-the-weakset-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -39,7 +39,7 @@ impl WeakSetConstructor {
         func
     }
 
-    /// WeakSet, https://tc39.es/ecma262/#sec-weakset-iterable
+    /// WeakSet (https://tc39.es/ecma262/#sec-weakset-iterable)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

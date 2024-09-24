@@ -12,7 +12,7 @@ use super::{finalization_registry_object::FinalizationRegistryObject, intrinsics
 pub struct FinalizationRegistryConstructor;
 
 impl FinalizationRegistryConstructor {
-    /// Properties of the FinalizationRegistry Constructor, https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-constructor
+    /// Properties of the FinalizationRegistry Constructor (https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -34,7 +34,7 @@ impl FinalizationRegistryConstructor {
         func
     }
 
-    /// FinalizationRegistry, https://tc39.es/ecma262/#sec-finalization-registry-cleanup-callback
+    /// FinalizationRegistry (https://tc39.es/ecma262/#sec-finalization-registry-cleanup-callback)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

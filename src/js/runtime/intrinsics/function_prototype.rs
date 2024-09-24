@@ -39,7 +39,7 @@ impl FunctionPrototype {
         object.to_handle().into()
     }
 
-    /// Properties of the Function Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-function-prototype-object
+    /// Properties of the Function Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-function-prototype-object)
     pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
@@ -90,7 +90,7 @@ impl FunctionPrototype {
         );
     }
 
-    /// Function.prototype.apply, https://tc39.es/ecma262/#sec-function.prototype.apply
+    /// Function.prototype.apply (https://tc39.es/ecma262/#sec-function.prototype.apply)
     pub fn apply(
         cx: Context,
         this_value: Handle<Value>,
@@ -112,7 +112,7 @@ impl FunctionPrototype {
         }
     }
 
-    /// Function.prototype.bind, https://tc39.es/ecma262/#sec-function.prototype.bind
+    /// Function.prototype.bind (https://tc39.es/ecma262/#sec-function.prototype.bind)
     pub fn bind(
         cx: Context,
         this_value: Handle<Value>,
@@ -170,7 +170,7 @@ impl FunctionPrototype {
         bound_func.into()
     }
 
-    /// Function.prototype.call, https://tc39.es/ecma262/#sec-function.prototype.call
+    /// Function.prototype.call (https://tc39.es/ecma262/#sec-function.prototype.call)
     pub fn call_intrinsic(
         cx: Context,
         this_value: Handle<Value>,
@@ -189,7 +189,7 @@ impl FunctionPrototype {
         }
     }
 
-    /// Function.prototype.toString, https://tc39.es/ecma262/#sec-function.prototype.tostring
+    /// Function.prototype.toString (https://tc39.es/ecma262/#sec-function.prototype.tostring)
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,
@@ -243,7 +243,7 @@ impl FunctionPrototype {
         type_error(cx, "Function.prototype.toString expected a function")
     }
 
-    /// Function.prototype [ @@hasInstance ], https://tc39.es/ecma262/#sec-function.prototype-%symbol.hasinstance%
+    /// Function.prototype [ @@hasInstance ] (https://tc39.es/ecma262/#sec-function.prototype-%symbol.hasinstance%)
     pub fn has_instance(
         cx: Context,
         this_value: Handle<Value>,

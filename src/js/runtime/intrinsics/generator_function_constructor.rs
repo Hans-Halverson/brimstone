@@ -12,7 +12,7 @@ use super::intrinsics::Intrinsic;
 pub struct GeneratorFunctionConstructor;
 
 impl GeneratorFunctionConstructor {
-    /// Properties of the GeneratorFunction Constructor, https://tc39.es/ecma262/#sec-properties-of-the-generatorfunction-constructor
+    /// Properties of the GeneratorFunction Constructor (https://tc39.es/ecma262/#sec-properties-of-the-generatorfunction-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionConstructor);
         let mut func = BuiltinFunction::intrinsic_constructor(
@@ -35,7 +35,7 @@ impl GeneratorFunctionConstructor {
         func
     }
 
-    /// GeneratorFunction, https://tc39.es/ecma262/#sec-generatorfunction
+    /// GeneratorFunction (https://tc39.es/ecma262/#sec-generatorfunction)
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,

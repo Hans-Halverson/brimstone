@@ -6,7 +6,7 @@ use super::{
     string_value::StringValue, value::Value, Context, Handle,
 };
 
-/// SetFunctionName, https://tc39.es/ecma262/#sec-setfunctionname
+/// SetFunctionName (https://tc39.es/ecma262/#sec-setfunctionname)
 pub fn set_function_name(
     cx: Context,
     func: Handle<ObjectValue>,
@@ -51,7 +51,7 @@ pub fn build_function_name(
     }
 }
 
-/// SetFunctionLength, https://tc39.es/ecma262/#sec-setfunctionlength
+/// SetFunctionLength (https://tc39.es/ecma262/#sec-setfunctionlength)
 pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) {
     let length_value = Value::from(length).to_handle(cx);
     let desc = PropertyDescriptor::data(length_value, false, false, true);

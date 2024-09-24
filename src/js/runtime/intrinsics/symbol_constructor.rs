@@ -22,7 +22,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// Symbol Objects, https://tc39.es/ecma262/#sec-symbol-objects
+// Symbol Objects (https://tc39.es/ecma262/#sec-symbol-objects)
 extend_object! {
     pub struct SymbolObject {
         // The symbol value wrapped by this object
@@ -48,7 +48,7 @@ impl SymbolObject {
 pub struct SymbolConstructor;
 
 impl SymbolConstructor {
-    /// Properties of the Symbol Constructor, https://tc39.es/ecma262/#sec-properties-of-the-symbol-constructor
+    /// Properties of the Symbol Constructor (https://tc39.es/ecma262/#sec-properties-of-the-symbol-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -115,7 +115,7 @@ impl SymbolConstructor {
         func
     }
 
-    /// Symbol, https://tc39.es/ecma262/#sec-symbol-description
+    /// Symbol (https://tc39.es/ecma262/#sec-symbol-description)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -136,7 +136,7 @@ impl SymbolConstructor {
         SymbolValue::new(cx, description_value, /* is_private */ false).into()
     }
 
-    /// Symbol.for, https://tc39.es/ecma262/#sec-symbol.for
+    /// Symbol.for (https://tc39.es/ecma262/#sec-symbol.for)
     pub fn for_(
         mut cx: Context,
         _: Handle<Value>,
@@ -158,7 +158,7 @@ impl SymbolConstructor {
         new_symbol.into()
     }
 
-    /// Symbol.keyFor, https://tc39.es/ecma262/#sec-symbol.keyfor
+    /// Symbol.keyFor (https://tc39.es/ecma262/#sec-symbol.keyfor)
     pub fn key_for(
         cx: Context,
         _: Handle<Value>,

@@ -23,7 +23,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// Async-from-Sync Iterator Objects, https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects
+// Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
 extend_object! {
     pub struct AsyncFromSyncIterator {
         iterator: HeapPtr<ObjectValue>,
@@ -70,7 +70,7 @@ impl HeapObject for HeapPtr<AsyncFromSyncIterator> {
 pub struct AsyncFromSyncIteratorPrototype;
 
 impl AsyncFromSyncIteratorPrototype {
-    /// The %AsyncFromSyncIteratorPrototype% Object, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object
+    /// The %AsyncFromSyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object = ObjectValue::new(
             cx,
@@ -85,7 +85,7 @@ impl AsyncFromSyncIteratorPrototype {
         object
     }
 
-    /// %AsyncFromSyncIteratorPrototype%.next, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.next
+    /// %AsyncFromSyncIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.next)
     pub fn next(
         cx: Context,
         this_value: Handle<Value>,
@@ -110,7 +110,7 @@ impl AsyncFromSyncIteratorPrototype {
         async_from_sync_iterator_continuation(cx, iter_result, capability)
     }
 
-    /// %AsyncFromSyncIteratorPrototype%.return, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.return
+    /// %AsyncFromSyncIteratorPrototype%.return (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.return)
     pub fn return_(
         cx: Context,
         this_value: Handle<Value>,
@@ -156,7 +156,7 @@ impl AsyncFromSyncIteratorPrototype {
         async_from_sync_iterator_continuation(cx, return_result.as_object(), capability)
     }
 
-    /// %AsyncFromSyncIteratorPrototype%.throw, https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.throw
+    /// %AsyncFromSyncIteratorPrototype%.throw (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.throw)
     pub fn throw(
         cx: Context,
         this_value: Handle<Value>,
@@ -202,7 +202,7 @@ impl AsyncFromSyncIteratorPrototype {
     }
 }
 
-/// AsyncFromSyncIteratorContinuation, https://tc39.es/ecma262/#sec-asyncfromsynciteratorcontinuation
+/// AsyncFromSyncIteratorContinuation (https://tc39.es/ecma262/#sec-asyncfromsynciteratorcontinuation)
 fn async_from_sync_iterator_continuation(
     cx: Context,
     iter_result: Handle<ObjectValue>,

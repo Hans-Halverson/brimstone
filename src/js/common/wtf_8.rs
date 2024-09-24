@@ -95,7 +95,7 @@ impl Wtf8String {
 
     /// Returns true if the string does not have any unpaired surrogates.
     ///
-    /// IsWellFormedUnicode, https://tc39.es/ecma262/#sec-isstringwellformedunicode
+    /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)
     pub fn is_well_formed(&self) -> bool {
         let mut iter = self.iter_code_points();
 

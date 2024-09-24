@@ -30,7 +30,7 @@ use super::{intrinsics::Intrinsic, map_constructor::add_entries_from_iterable};
 pub struct ObjectConstructor;
 
 impl ObjectConstructor {
-    /// Properties of the Object Constructor, https://tc39.es/ecma262/#sec-properties-of-the-object-constructor
+    /// Properties of the Object Constructor (https://tc39.es/ecma262/#sec-properties-of-the-object-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -98,7 +98,7 @@ impl ObjectConstructor {
         func
     }
 
-    /// Object, https://tc39.es/ecma262/#sec-object-value
+    /// Object (https://tc39.es/ecma262/#sec-object-value)
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,
@@ -126,7 +126,7 @@ impl ObjectConstructor {
         must!(to_object(cx, value)).into()
     }
 
-    /// Object.assign, https://tc39.es/ecma262/#sec-object.assign
+    /// Object.assign (https://tc39.es/ecma262/#sec-object.assign)
     pub fn assign(
         cx: Context,
         _: Handle<Value>,
@@ -164,7 +164,7 @@ impl ObjectConstructor {
         to.into()
     }
 
-    /// Object.create, https://tc39.es/ecma262/#sec-object.create
+    /// Object.create (https://tc39.es/ecma262/#sec-object.create)
     pub fn create(
         cx: Context,
         _: Handle<Value>,
@@ -192,7 +192,7 @@ impl ObjectConstructor {
         }
     }
 
-    /// Object.defineProperties, https://tc39.es/ecma262/#sec-object.defineproperties
+    /// Object.defineProperties (https://tc39.es/ecma262/#sec-object.defineproperties)
     pub fn define_properties(
         cx: Context,
         _: Handle<Value>,
@@ -208,7 +208,7 @@ impl ObjectConstructor {
         Self::object_define_properties(cx, object.as_object(), properties_arg)
     }
 
-    /// ObjectDefineProperties, https://tc39.es/ecma262/#sec-objectdefineproperties
+    /// ObjectDefineProperties (https://tc39.es/ecma262/#sec-objectdefineproperties)
     pub fn object_define_properties(
         cx: Context,
         object: Handle<ObjectValue>,
@@ -240,7 +240,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.defineProperty, https://tc39.es/ecma262/#sec-object.defineproperty
+    /// Object.defineProperty (https://tc39.es/ecma262/#sec-object.defineproperty)
     pub fn define_property(
         cx: Context,
         _: Handle<Value>,
@@ -263,7 +263,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.entries, https://tc39.es/ecma262/#sec-object.defineproperty
+    /// Object.entries (https://tc39.es/ecma262/#sec-object.defineproperty)
     pub fn entries(
         cx: Context,
         _: Handle<Value>,
@@ -276,7 +276,7 @@ impl ObjectConstructor {
         create_array_from_list(cx, &name_list).into()
     }
 
-    /// Object.freeze, https://tc39.es/ecma262/#sec-object.freeze
+    /// Object.freeze (https://tc39.es/ecma262/#sec-object.freeze)
     pub fn freeze(
         cx: Context,
         _: Handle<Value>,
@@ -295,7 +295,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.fromEntries, https://tc39.es/ecma262/#sec-object.fromentries
+    /// Object.fromEntries (https://tc39.es/ecma262/#sec-object.fromentries)
     pub fn from_entries(
         cx: Context,
         _: Handle<Value>,
@@ -314,7 +314,7 @@ impl ObjectConstructor {
         })
     }
 
-    /// Object.getOwnPropertyDescriptor, https://tc39.es/ecma262/#sec-object.getownpropertydescriptor
+    /// Object.getOwnPropertyDescriptor (https://tc39.es/ecma262/#sec-object.getownpropertydescriptor)
     pub fn get_own_property_descriptor(
         cx: Context,
         _: Handle<Value>,
@@ -333,7 +333,7 @@ impl ObjectConstructor {
         }
     }
 
-    /// Object.getOwnPropertyDescriptors, https://tc39.es/ecma262/#sec-object.getownpropertydescriptors
+    /// Object.getOwnPropertyDescriptors (https://tc39.es/ecma262/#sec-object.getownpropertydescriptors)
     pub fn get_own_property_descriptors(
         cx: Context,
         _: Handle<Value>,
@@ -362,7 +362,7 @@ impl ObjectConstructor {
         descriptors.into()
     }
 
-    /// Object.getOwnPropertyNames, https://tc39.es/ecma262/#sec-object.getownpropertynames
+    /// Object.getOwnPropertyNames (https://tc39.es/ecma262/#sec-object.getownpropertynames)
     pub fn get_own_property_names(
         cx: Context,
         _: Handle<Value>,
@@ -374,7 +374,7 @@ impl ObjectConstructor {
         create_array_from_list(cx, &symbol_keys).into()
     }
 
-    /// Object.getOwnPropertySymbols, https://tc39.es/ecma262/#sec-object.getownpropertysymbols
+    /// Object.getOwnPropertySymbols (https://tc39.es/ecma262/#sec-object.getownpropertysymbols)
     pub fn get_own_property_symbols(
         cx: Context,
         _: Handle<Value>,
@@ -386,7 +386,7 @@ impl ObjectConstructor {
         create_array_from_list(cx, &symbol_keys).into()
     }
 
-    /// GetOwnPropertyKeys, https://tc39.es/ecma262/#sec-getownpropertykeys
+    /// GetOwnPropertyKeys (https://tc39.es/ecma262/#sec-getownpropertykeys)
     pub fn get_own_property_keys(
         cx: Context,
         object: Handle<Value>,
@@ -409,7 +409,7 @@ impl ObjectConstructor {
         keys_of_type.into()
     }
 
-    /// Object.getPrototypeOf, https://tc39.es/ecma262/#sec-object.getprototypeof
+    /// Object.getPrototypeOf (https://tc39.es/ecma262/#sec-object.getprototypeof)
     pub fn get_prototype_of(
         cx: Context,
         _: Handle<Value>,
@@ -426,7 +426,7 @@ impl ObjectConstructor {
         }
     }
 
-    /// Object.groupBy, https://tc39.es/ecma262/#sec-object.groupby
+    /// Object.groupBy (https://tc39.es/ecma262/#sec-object.groupby)
     pub fn group_by(
         cx: Context,
         _: Handle<Value>,
@@ -451,7 +451,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.hasOwn, https://tc39.es/ecma262/#sec-object.hasown
+    /// Object.hasOwn (https://tc39.es/ecma262/#sec-object.hasown)
     pub fn has_own(
         cx: Context,
         _: Handle<Value>,
@@ -468,7 +468,7 @@ impl ObjectConstructor {
         cx.bool(has_own).into()
     }
 
-    /// Object.is, https://tc39.es/ecma262/#sec-object.is
+    /// Object.is (https://tc39.es/ecma262/#sec-object.is)
     pub fn is(
         cx: Context,
         _: Handle<Value>,
@@ -479,7 +479,7 @@ impl ObjectConstructor {
         cx.bool(is_same).into()
     }
 
-    /// Object.isExtensible, https://tc39.es/ecma262/#sec-object.isextensible
+    /// Object.isExtensible (https://tc39.es/ecma262/#sec-object.isextensible)
     pub fn is_extensible(
         cx: Context,
         _: Handle<Value>,
@@ -495,7 +495,7 @@ impl ObjectConstructor {
         cx.bool(is_extensible).into()
     }
 
-    /// Object.isFrozen, https://tc39.es/ecma262/#sec-object.isfrozen
+    /// Object.isFrozen (https://tc39.es/ecma262/#sec-object.isfrozen)
     pub fn is_frozen(
         cx: Context,
         _: Handle<Value>,
@@ -511,7 +511,7 @@ impl ObjectConstructor {
         cx.bool(is_frozen).into()
     }
 
-    /// Object.isSealed, https://tc39.es/ecma262/#sec-object.issealed
+    /// Object.isSealed (https://tc39.es/ecma262/#sec-object.issealed)
     pub fn is_sealed(
         cx: Context,
         _: Handle<Value>,
@@ -527,7 +527,7 @@ impl ObjectConstructor {
         cx.bool(is_sealed).into()
     }
 
-    /// Object.keys, https://tc39.es/ecma262/#sec-object.keys
+    /// Object.keys (https://tc39.es/ecma262/#sec-object.keys)
     pub fn keys(
         cx: Context,
         _: Handle<Value>,
@@ -540,7 +540,7 @@ impl ObjectConstructor {
         create_array_from_list(cx, &name_list).into()
     }
 
-    /// Object.preventExtensions, https://tc39.es/ecma262/#sec-object.preventextensions
+    /// Object.preventExtensions (https://tc39.es/ecma262/#sec-object.preventextensions)
     pub fn prevent_extensions(
         cx: Context,
         _: Handle<Value>,
@@ -559,7 +559,7 @@ impl ObjectConstructor {
         value.into()
     }
 
-    /// Object.seal, https://tc39.es/ecma262/#sec-object.seal
+    /// Object.seal (https://tc39.es/ecma262/#sec-object.seal)
     pub fn seal(
         cx: Context,
         _: Handle<Value>,
@@ -578,7 +578,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.setPrototypeOf, https://tc39.es/ecma262/#sec-object.setprototypeof
+    /// Object.setPrototypeOf (https://tc39.es/ecma262/#sec-object.setprototypeof)
     pub fn set_prototype_of(
         cx: Context,
         _: Handle<Value>,
@@ -609,7 +609,7 @@ impl ObjectConstructor {
         object.into()
     }
 
-    /// Object.values, https://tc39.es/ecma262/#sec-object.values
+    /// Object.values (https://tc39.es/ecma262/#sec-object.values)
     pub fn values(
         cx: Context,
         _: Handle<Value>,

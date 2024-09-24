@@ -29,7 +29,7 @@ use super::{
     },
 };
 
-/// The %TypedArray% Intrinsic Object, https://tc39.es/ecma262/#sec-%typedarray%-intrinsic-object
+/// The %TypedArray% Intrinsic Object (https://tc39.es/ecma262/#sec-%typedarray%-intrinsic-object)
 pub struct TypedArrayConstructor;
 
 impl TypedArrayConstructor {
@@ -52,14 +52,14 @@ impl TypedArrayConstructor {
         func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
         func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
 
-        // get %TypedArray% [ @@species ], https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%
+        // get %TypedArray% [ @@species ] (https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
 
         func
     }
 
-    /// %TypedArray%, https://tc39.es/ecma262/#sec-%typedarray%
+    /// %TypedArray% (https://tc39.es/ecma262/#sec-%typedarray%)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -69,7 +69,7 @@ impl TypedArrayConstructor {
         type_error(cx, "TypedArray constructor is abstract and cannot be called")
     }
 
-    /// %TypedArray%.from, https://tc39.es/ecma262/#sec-%typedarray%.from
+    /// %TypedArray%.from (https://tc39.es/ecma262/#sec-%typedarray%.from)
     pub fn from(
         cx: Context,
         this_value: Handle<Value>,
@@ -170,7 +170,7 @@ impl TypedArrayConstructor {
         target_object.into()
     }
 
-    /// %TypedArray%.of, https://tc39.es/ecma262/#sec-%typedarray%.of
+    /// %TypedArray%.of (https://tc39.es/ecma262/#sec-%typedarray%.of)
     pub fn of(
         cx: Context,
         this_value: Handle<Value>,
@@ -256,7 +256,7 @@ macro_rules! create_typed_array_constructor {
 
         #[wrap_ordinary_object]
         impl VirtualObject for Handle<$typed_array> {
-            /// [[GetOwnProperty]], https://tc39.es/ecma262/#sec-typedarray-getownproperty
+            /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-typedarray-getownproperty)
             fn get_own_property(
                 &self,
                 cx: Context,
@@ -280,7 +280,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[HasProperty]], https://tc39.es/ecma262/#sec-typedarray-hasproperty
+            /// [[HasProperty]] (https://tc39.es/ecma262/#sec-typedarray-hasproperty)
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => ordinary_has_property(cx, self.object(), key),
@@ -289,7 +289,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-typedarray-defineownproperty
+            /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-typedarray-defineownproperty)
             fn define_own_property(
                 &mut self,
                 cx: Context,
@@ -354,7 +354,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[Get]], https://tc39.es/ecma262/#sec-typedarray-get
+            /// [[Get]] (https://tc39.es/ecma262/#sec-typedarray-get)
             fn get(
                 &self,
                 cx: Context,
@@ -376,7 +376,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[Set]], https://tc39.es/ecma262/#sec-typedarray-set
+            /// [[Set]] (https://tc39.es/ecma262/#sec-typedarray-set)
             fn set(
                 &mut self,
                 cx: Context,
@@ -439,7 +439,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[Delete]], https://tc39.es/ecma262/#sec-typedarray-delete
+            /// [[Delete]] (https://tc39.es/ecma262/#sec-typedarray-delete)
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => ordinary_delete(cx, self.object(), key),
@@ -448,7 +448,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// [[OwnPropertyKeys]], https://tc39.es/ecma262/#sec-typedarray-ownpropertykeys
+            /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-typedarray-ownpropertykeys)
             fn own_property_keys(&self, mut cx: Context) -> EvalResult<Vec<Handle<Value>>> {
                 let typed_array_record =
                     make_typed_array_with_buffer_witness_record(self.as_typed_array());
@@ -578,7 +578,7 @@ macro_rules! create_typed_array_constructor {
         pub struct $constructor;
 
         impl $constructor {
-            /// Properties of the TypedArray Constructors, https://tc39.es/ecma262/#sec-properties-of-the-typedarray-constructors
+            /// Properties of the TypedArray Constructors (https://tc39.es/ecma262/#sec-properties-of-the-typedarray-constructors)
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
                 let prototype = realm.get_intrinsic(Intrinsic::TypedArrayConstructor);
                 let mut func = BuiltinFunction::intrinsic_constructor(
@@ -606,7 +606,7 @@ macro_rules! create_typed_array_constructor {
                 func
             }
 
-            /// TypedArray, https://tc39.es/ecma262/#sec-typedarray
+            /// TypedArray (https://tc39.es/ecma262/#sec-typedarray)
             pub fn construct(
                 cx: Context,
                 _: Handle<Value>,
@@ -665,8 +665,8 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// AllocateTypedArray, https://tc39.es/ecma262/#sec-allocatetypedarray
-            /// AllocateTypedArrayBuffer, https://tc39.es/ecma262/#sec-allocatetypedarraybuffer
+            /// AllocateTypedArray (https://tc39.es/ecma262/#sec-allocatetypedarray)
+            /// AllocateTypedArrayBuffer (https://tc39.es/ecma262/#sec-allocatetypedarraybuffer)
             fn allocate_with_length(
                 cx: Context,
                 new_target: Handle<ObjectValue>,
@@ -706,7 +706,7 @@ macro_rules! create_typed_array_constructor {
                 .into()
             }
 
-            /// InitializeTypedArrayFromTypedArray, https://tc39.es/ecma262/#sec-initializetypedarrayfromtypedarray
+            /// InitializeTypedArrayFromTypedArray (https://tc39.es/ecma262/#sec-initializetypedarrayfromtypedarray)
             fn initialize_typed_array_from_typed_array(
                 cx: Context,
                 proto: Handle<ObjectValue>,
@@ -796,7 +796,7 @@ macro_rules! create_typed_array_constructor {
                 }
             }
 
-            /// InitializeTypedArrayFromArrayBuffer, https://tc39.es/ecma262/#sec-initializetypedarrayfromarraybuffer
+            /// InitializeTypedArrayFromArrayBuffer (https://tc39.es/ecma262/#sec-initializetypedarrayfromarraybuffer)
             fn initialize_typed_array_from_array_buffer(
                 cx: Context,
                 proto: Handle<ObjectValue>,
@@ -882,7 +882,7 @@ macro_rules! create_typed_array_constructor {
                 .into()
             }
 
-            /// InitializeTypedArrayFromList, https://tc39.es/ecma262/#sec-initializetypedarrayfromlist
+            /// InitializeTypedArrayFromList (https://tc39.es/ecma262/#sec-initializetypedarrayfromlist)
             fn initialize_typed_array_from_list(
                 cx: Context,
                 proto: Handle<ObjectValue>,
@@ -913,7 +913,7 @@ macro_rules! create_typed_array_constructor {
                 typed_array_object.into()
             }
 
-            /// InitializeTypedArrayFromArrayLike, https://tc39.es/ecma262/#sec-initializetypedarrayfromarraylike
+            /// InitializeTypedArrayFromArrayLike (https://tc39.es/ecma262/#sec-initializetypedarrayfromarraylike)
             fn initialize_typed_array_from_array_like(
                 cx: Context,
                 proto: Handle<ObjectValue>,
@@ -960,7 +960,7 @@ pub enum CanonicalIndexType {
     Valid(usize),
 }
 
-/// CanonicalNumericIndexString, https://tc39.es/ecma262/#sec-canonicalnumericindexstring
+/// CanonicalNumericIndexString (https://tc39.es/ecma262/#sec-canonicalnumericindexstring)
 ///
 /// Determines if the given key is a canonical numeric index string, and validates that it can be
 /// used as the index into a typed array with a particular length.

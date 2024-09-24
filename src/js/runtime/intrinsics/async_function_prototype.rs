@@ -7,14 +7,14 @@ use super::intrinsics::Intrinsic;
 pub struct AsyncFunctionPrototype;
 
 impl AsyncFunctionPrototype {
-    /// Properties of the AsyncFunction Prototype Object, https://tc39.es/ecma262/#sec-async-function-prototype-properties
+    /// Properties of the AsyncFunction Prototype Object (https://tc39.es/ecma262/#sec-async-function-prototype-properties)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)), true);
 
         // Constructor property is added once AsyncFunctionConstructor has been created
 
-        // AsyncFunction.prototype [ @@toStringTag ], https://tc39.es/ecma262/#sec-async-function-prototype-%symbol.tostringtag%
+        // AsyncFunction.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-async-function-prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(
             cx,

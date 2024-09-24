@@ -11,7 +11,7 @@ use super::{
     Context, Value,
 };
 
-/// Property Descriptor, https://tc39.es/ecma262/#sec-property-descriptor-specification-type
+/// Property Descriptor (https://tc39.es/ecma262/#sec-property-descriptor-specification-type)
 #[derive(Clone, Copy)]
 pub struct PropertyDescriptor {
     /// The [[Value]] field. None if [[Value]] field is not present.
@@ -154,22 +154,22 @@ impl PropertyDescriptor {
             && self.is_configurable.is_none()
     }
 
-    /// IsAccessorDescriptor, https://tc39.es/ecma262/#sec-isaccessordescriptor
+    /// IsAccessorDescriptor (https://tc39.es/ecma262/#sec-isaccessordescriptor)
     pub fn is_accessor_descriptor(&self) -> bool {
         self.has_get || self.has_set
     }
 
-    /// IsDataDescriptor, https://tc39.es/ecma262/#sec-isdatadescriptor
+    /// IsDataDescriptor (https://tc39.es/ecma262/#sec-isdatadescriptor)
     pub fn is_data_descriptor(&self) -> bool {
         self.value.is_some() || self.is_writable.is_some()
     }
 
-    /// IsGenericDescriptor, https://tc39.es/ecma262/#sec-isgenericdescriptor
+    /// IsGenericDescriptor (https://tc39.es/ecma262/#sec-isgenericdescriptor)
     pub fn is_generic_descriptor(&self) -> bool {
         !self.is_data_descriptor() && !self.is_accessor_descriptor()
     }
 
-    /// CompletePropertyDescriptor, https://tc39.es/ecma262/#sec-completepropertydescriptor
+    /// CompletePropertyDescriptor (https://tc39.es/ecma262/#sec-completepropertydescriptor)
     pub fn complete_property_descriptor(&mut self, cx: Context) {
         if self.is_generic_descriptor() || self.is_data_descriptor() {
             if self.value.is_none() {
@@ -193,7 +193,7 @@ impl PropertyDescriptor {
     }
 }
 
-/// FromPropertyDescriptor, https://tc39.es/ecma262/#sec-frompropertydescriptor
+/// FromPropertyDescriptor (https://tc39.es/ecma262/#sec-frompropertydescriptor)
 pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
     let object = ordinary_object_create(cx);
 
@@ -254,7 +254,7 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
     object
 }
 
-/// ToPropertyDescriptor, https://tc39.es/ecma262/#sec-topropertydescriptor
+/// ToPropertyDescriptor (https://tc39.es/ecma262/#sec-topropertydescriptor)
 pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<PropertyDescriptor> {
     if !value.is_object() {
         return type_error(cx, "property descriptor must be an object");

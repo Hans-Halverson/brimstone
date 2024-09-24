@@ -17,7 +17,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-/// The Math Object, https://tc39.es/ecma262/#sec-math-object
+/// The Math Object (https://tc39.es/ecma262/#sec-math-object)
 pub struct MathObject;
 
 impl MathObject {
@@ -25,7 +25,7 @@ impl MathObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        // Value Properties of the Math Object, https://tc39.es/ecma262/#sec-value-properties-of-the-math-object
+        // Value Properties of the Math Object (https://tc39.es/ecma262/#sec-value-properties-of-the-math-object)
         let e_value = Value::number(std::f64::consts::E).to_handle(cx);
         object.intrinsic_frozen_property(cx, cx.names.e(), e_value);
 
@@ -50,7 +50,7 @@ impl MathObject {
         let sqrt_2_value = Value::number(std::f64::consts::SQRT_2).to_handle(cx);
         object.intrinsic_frozen_property(cx, cx.names.sqrt2(), sqrt_2_value);
 
-        // Math [ @@toStringTag ], https://tc39.es/ecma262/#sec-math-%symbol.tostringtag%
+        // Math [ @@toStringTag ] (https://tc39.es/ecma262/#sec-math-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         let math_name_value = cx.names.math().as_string().into();
         object.set_property(
@@ -98,7 +98,7 @@ impl MathObject {
         object
     }
 
-    /// Math.abs, https://tc39.es/ecma262/#sec-math.abs
+    /// Math.abs (https://tc39.es/ecma262/#sec-math.abs)
     pub fn abs(
         cx: Context,
         _: Handle<Value>,
@@ -115,7 +115,7 @@ impl MathObject {
         }
     }
 
-    /// Math.acos, https://tc39.es/ecma262/#sec-math.acos
+    /// Math.acos (https://tc39.es/ecma262/#sec-math.acos)
     pub fn acos(
         cx: Context,
         _: Handle<Value>,
@@ -127,7 +127,7 @@ impl MathObject {
         Value::number(f64::acos(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.acosh, https://tc39.es/ecma262/#sec-math.acosh
+    /// Math.acosh (https://tc39.es/ecma262/#sec-math.acosh)
     pub fn acosh(
         cx: Context,
         _: Handle<Value>,
@@ -141,7 +141,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.asin, https://tc39.es/ecma262/#sec-math.asin
+    /// Math.asin (https://tc39.es/ecma262/#sec-math.asin)
     pub fn asin(
         cx: Context,
         _: Handle<Value>,
@@ -153,7 +153,7 @@ impl MathObject {
         Value::number(f64::asin(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.asinh, https://tc39.es/ecma262/#sec-math.asinh
+    /// Math.asinh (https://tc39.es/ecma262/#sec-math.asinh)
     pub fn asinh(
         cx: Context,
         _: Handle<Value>,
@@ -167,7 +167,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.atan, https://tc39.es/ecma262/#sec-math.atan
+    /// Math.atan (https://tc39.es/ecma262/#sec-math.atan)
     pub fn atan(
         cx: Context,
         _: Handle<Value>,
@@ -179,7 +179,7 @@ impl MathObject {
         Value::number(f64::atan(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.atanh, https://tc39.es/ecma262/#sec-math.atanh
+    /// Math.atanh (https://tc39.es/ecma262/#sec-math.atanh)
     pub fn atanh(
         cx: Context,
         _: Handle<Value>,
@@ -193,7 +193,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.atan2, https://tc39.es/ecma262/#sec-math.atan2
+    /// Math.atan2 (https://tc39.es/ecma262/#sec-math.atan2)
     pub fn atan2(
         cx: Context,
         _: Handle<Value>,
@@ -211,7 +211,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.cbrt, https://tc39.es/ecma262/#sec-math.cbrt
+    /// Math.cbrt (https://tc39.es/ecma262/#sec-math.cbrt)
     pub fn cbrt(
         cx: Context,
         _: Handle<Value>,
@@ -223,7 +223,7 @@ impl MathObject {
         Value::number(f64::cbrt(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.ceil, https://tc39.es/ecma262/#sec-math.ceil
+    /// Math.ceil (https://tc39.es/ecma262/#sec-math.ceil)
     pub fn ceil(
         cx: Context,
         _: Handle<Value>,
@@ -240,7 +240,7 @@ impl MathObject {
         }
     }
 
-    /// Math.clz32, https://tc39.es/ecma262/#sec-math.clz32
+    /// Math.clz32 (https://tc39.es/ecma262/#sec-math.clz32)
     pub fn clz32(
         cx: Context,
         _: Handle<Value>,
@@ -252,7 +252,7 @@ impl MathObject {
         Value::smi(n.leading_zeros() as i32).to_handle(cx).into()
     }
 
-    /// Math.cos, https://tc39.es/ecma262/#sec-math.cos
+    /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
     pub fn cos(
         cx: Context,
         _: Handle<Value>,
@@ -264,7 +264,7 @@ impl MathObject {
         Value::number(f64::cos(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.cosh, https://tc39.es/ecma262/#sec-math.cosh
+    /// Math.cosh (https://tc39.es/ecma262/#sec-math.cosh)
     pub fn cosh(
         cx: Context,
         _: Handle<Value>,
@@ -276,7 +276,7 @@ impl MathObject {
         Value::number(f64::cosh(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.exp, https://tc39.es/ecma262/#sec-math.exp
+    /// Math.exp (https://tc39.es/ecma262/#sec-math.exp)
     pub fn exp(
         cx: Context,
         _: Handle<Value>,
@@ -288,7 +288,7 @@ impl MathObject {
         Value::number(f64::exp(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.expm1, https://tc39.es/ecma262/#sec-math.expm1
+    /// Math.expm1 (https://tc39.es/ecma262/#sec-math.expm1)
     pub fn expm1(
         cx: Context,
         _: Handle<Value>,
@@ -302,7 +302,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.floor, https://tc39.es/ecma262/#sec-math.floor
+    /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)
     pub fn floor(
         cx: Context,
         _: Handle<Value>,
@@ -321,7 +321,7 @@ impl MathObject {
         }
     }
 
-    /// Math.fround, https://tc39.es/ecma262/#sec-math.fround
+    /// Math.fround (https://tc39.es/ecma262/#sec-math.fround)
     pub fn fround(
         cx: Context,
         _: Handle<Value>,
@@ -335,7 +335,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.hypot, https://tc39.es/ecma262/#sec-math.hypot
+    /// Math.hypot (https://tc39.es/ecma262/#sec-math.hypot)
     pub fn hypot(
         cx: Context,
         _: Handle<Value>,
@@ -382,7 +382,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.imul, https://tc39.es/ecma262/#sec-math.imul
+    /// Math.imul (https://tc39.es/ecma262/#sec-math.imul)
     pub fn imul(
         cx: Context,
         _: Handle<Value>,
@@ -400,7 +400,7 @@ impl MathObject {
         Value::smi(mod_mul as i32).to_handle(cx).into()
     }
 
-    /// Math.log, https://tc39.es/ecma262/#sec-math.log
+    /// Math.log (https://tc39.es/ecma262/#sec-math.log)
     pub fn log(
         cx: Context,
         _: Handle<Value>,
@@ -412,7 +412,7 @@ impl MathObject {
         Value::number(f64::ln(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.log1p, https://tc39.es/ecma262/#sec-math.log1p
+    /// Math.log1p (https://tc39.es/ecma262/#sec-math.log1p)
     pub fn log1p(
         cx: Context,
         _: Handle<Value>,
@@ -426,7 +426,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.log10, https://tc39.es/ecma262/#sec-math.log10
+    /// Math.log10 (https://tc39.es/ecma262/#sec-math.log10)
     pub fn log10(
         cx: Context,
         _: Handle<Value>,
@@ -440,7 +440,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.log2, https://tc39.es/ecma262/#sec-math.log2
+    /// Math.log2 (https://tc39.es/ecma262/#sec-math.log2)
     pub fn log2(
         cx: Context,
         _: Handle<Value>,
@@ -452,7 +452,7 @@ impl MathObject {
         Value::number(f64::log2(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.max, https://tc39.es/ecma262/#sec-math.max
+    /// Math.max (https://tc39.es/ecma262/#sec-math.max)
     pub fn max(
         cx: Context,
         _: Handle<Value>,
@@ -486,7 +486,7 @@ impl MathObject {
         highest.to_handle(cx).into()
     }
 
-    /// Math.min, https://tc39.es/ecma262/#sec-math.min
+    /// Math.min (https://tc39.es/ecma262/#sec-math.min)
     pub fn min(
         cx: Context,
         _: Handle<Value>,
@@ -520,7 +520,7 @@ impl MathObject {
         lowest.to_handle(cx).into()
     }
 
-    /// Math.pow, https://tc39.es/ecma262/#sec-math.pow
+    /// Math.pow (https://tc39.es/ecma262/#sec-math.pow)
     pub fn pow(
         cx: Context,
         _: Handle<Value>,
@@ -538,7 +538,7 @@ impl MathObject {
             .into()
     }
 
-    /// Math.random, https://tc39.es/ecma262/#sec-math.random
+    /// Math.random (https://tc39.es/ecma262/#sec-math.random)
     pub fn random(
         cx: Context,
         _: Handle<Value>,
@@ -549,7 +549,7 @@ impl MathObject {
         Value::number(n).to_handle(cx).into()
     }
 
-    /// Math.round, https://tc39.es/ecma262/#sec-math.round
+    /// Math.round (https://tc39.es/ecma262/#sec-math.round)
     pub fn round(
         cx: Context,
         _: Handle<Value>,
@@ -575,7 +575,7 @@ impl MathObject {
         }
     }
 
-    /// Math.sign, https://tc39.es/ecma262/#sec-math.sign
+    /// Math.sign (https://tc39.es/ecma262/#sec-math.sign)
     pub fn sign(
         cx: Context,
         _: Handle<Value>,
@@ -609,7 +609,7 @@ impl MathObject {
         value.to_handle(cx).into()
     }
 
-    /// Math.sin, https://tc39.es/ecma262/#sec-math.sin
+    /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)
     pub fn sin(
         cx: Context,
         _: Handle<Value>,
@@ -621,7 +621,7 @@ impl MathObject {
         Value::number(f64::sin(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.sinh, https://tc39.es/ecma262/#sec-math.sinh
+    /// Math.sinh (https://tc39.es/ecma262/#sec-math.sinh)
     pub fn sinh(
         cx: Context,
         _: Handle<Value>,
@@ -633,7 +633,7 @@ impl MathObject {
         Value::number(f64::sinh(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.sqrt, https://tc39.es/ecma262/#sec-math.sqrt
+    /// Math.sqrt (https://tc39.es/ecma262/#sec-math.sqrt)
     pub fn sqrt(
         cx: Context,
         _: Handle<Value>,
@@ -645,7 +645,7 @@ impl MathObject {
         Value::number(f64::sqrt(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.tan, https://tc39.es/ecma262/#sec-math.tan
+    /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
     pub fn tan(
         cx: Context,
         _: Handle<Value>,
@@ -657,7 +657,7 @@ impl MathObject {
         Value::number(f64::tan(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.tanh, https://tc39.es/ecma262/#sec-math.tanh
+    /// Math.tanh (https://tc39.es/ecma262/#sec-math.tanh)
     pub fn tanh(
         cx: Context,
         _: Handle<Value>,
@@ -669,7 +669,7 @@ impl MathObject {
         Value::number(f64::tanh(n.as_number())).to_handle(cx).into()
     }
 
-    /// Math.trunc, https://tc39.es/ecma262/#sec-math.trunc
+    /// Math.trunc (https://tc39.es/ecma262/#sec-math.trunc)
     pub fn trunc(
         cx: Context,
         _: Handle<Value>,

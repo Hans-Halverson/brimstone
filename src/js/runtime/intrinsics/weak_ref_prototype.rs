@@ -8,7 +8,7 @@ use super::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject};
 pub struct WeakRefPrototype;
 
 impl WeakRefPrototype {
-    /// Properties of the WeakRef Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-prototype-object
+    /// Properties of the WeakRef Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -27,7 +27,7 @@ impl WeakRefPrototype {
         object
     }
 
-    /// WeakRef.prototype.deref, https://tc39.es/ecma262/#sec-weak-ref.prototype.deref
+    /// WeakRef.prototype.deref (https://tc39.es/ecma262/#sec-weak-ref.prototype.deref)
     pub fn deref(
         cx: Context,
         this_value: Handle<Value>,

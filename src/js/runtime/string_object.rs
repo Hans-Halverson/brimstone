@@ -31,7 +31,7 @@ use super::{
     string_value::FlatString,
 };
 
-// String Exotic Objects, https://tc39.es/ecma262/#sec-string-exotic-objects
+// String Exotic Objects (https://tc39.es/ecma262/#sec-string-exotic-objects)
 extend_object! {
     pub struct StringObject {
         // The string value wrapped by this object
@@ -119,7 +119,7 @@ impl StringObject {
 }
 
 impl StringObject {
-    /// StringGetOwnProperty, https://tc39.es/ecma262/#sec-stringgetownproperty
+    /// StringGetOwnProperty (https://tc39.es/ecma262/#sec-stringgetownproperty)
     fn string_get_own_property(
         &self,
         cx: Context,
@@ -141,7 +141,7 @@ impl StringObject {
 
 #[wrap_ordinary_object]
 impl VirtualObject for Handle<StringObject> {
-    /// [[GetOwnProperty]], https://tc39.es/ecma262/#sec-string-exotic-objects-getownproperty-p
+    /// [[GetOwnProperty]] (https://tc39.es/ecma262/#sec-string-exotic-objects-getownproperty-p)
     fn get_own_property(
         &self,
         cx: Context,
@@ -155,7 +155,7 @@ impl VirtualObject for Handle<StringObject> {
         }
     }
 
-    /// [[DefineOwnProperty]], https://tc39.es/ecma262/#sec-string-exotic-objects-defineownproperty-p-desc
+    /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-string-exotic-objects-defineownproperty-p-desc)
     fn define_own_property(
         &mut self,
         cx: Context,
@@ -171,7 +171,7 @@ impl VirtualObject for Handle<StringObject> {
         }
     }
 
-    /// [[OwnPropertyKeys]], https://tc39.es/ecma262/#sec-string-exotic-objects-ownpropertykeys
+    /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-string-exotic-objects-ownpropertykeys)
     fn own_property_keys(&self, mut cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut keys: Vec<Handle<Value>> = vec![];
 

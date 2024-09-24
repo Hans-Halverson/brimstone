@@ -18,7 +18,7 @@ use crate::{
 pub struct ProxyConstructor;
 
 impl ProxyConstructor {
-    /// Properties of the Proxy Constructor, https://tc39.es/ecma262/#sec-properties-of-the-proxy-constructor
+    /// Properties of the Proxy Constructor (https://tc39.es/ecma262/#sec-properties-of-the-proxy-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -34,7 +34,7 @@ impl ProxyConstructor {
         func
     }
 
-    /// Proxy, https://tc39.es/ecma262/#sec-proxy-target-handler
+    /// Proxy (https://tc39.es/ecma262/#sec-proxy-target-handler)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -51,7 +51,7 @@ impl ProxyConstructor {
         maybe!(proxy_create(cx, target, handler)).into()
     }
 
-    /// Proxy.revocable, https://tc39.es/ecma262/#sec-proxy.revocable
+    /// Proxy.revocable (https://tc39.es/ecma262/#sec-proxy.revocable)
     pub fn revocable(
         cx: Context,
         _: Handle<Value>,

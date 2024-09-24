@@ -21,7 +21,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// Boolean Objects, https://tc39.es/ecma262/#sec-boolean-objects
+// Boolean Objects (https://tc39.es/ecma262/#sec-boolean-objects)
 extend_object! {
     pub struct BooleanObject {
         // The boolean value wrapped by this object
@@ -84,7 +84,7 @@ impl BooleanObject {
 pub struct BooleanConstructor;
 
 impl BooleanConstructor {
-    /// Properties of the Boolean Constructor, https://tc39.es/ecma262/#sec-properties-of-the-boolean-constructor
+    /// Properties of the Boolean Constructor (https://tc39.es/ecma262/#sec-properties-of-the-boolean-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -104,7 +104,7 @@ impl BooleanConstructor {
         func
     }
 
-    /// Boolean, https://tc39.es/ecma262/#sec-boolean-constructor-boolean-value
+    /// Boolean (https://tc39.es/ecma262/#sec-boolean-constructor-boolean-value)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,

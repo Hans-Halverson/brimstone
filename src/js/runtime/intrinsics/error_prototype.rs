@@ -12,7 +12,7 @@ use super::intrinsics::Intrinsic;
 pub struct ErrorPrototype;
 
 impl ErrorPrototype {
-    /// Properties of the Error Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-error-prototype-object
+    /// Properties of the Error Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-error-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -29,7 +29,7 @@ impl ErrorPrototype {
         object
     }
 
-    /// Error.prototype.toString, https://tc39.es/ecma262/#sec-error.prototype.tostring
+    /// Error.prototype.toString (https://tc39.es/ecma262/#sec-error.prototype.tostring)
     pub fn to_string(
         mut cx: Context,
         this_value: Handle<Value>,

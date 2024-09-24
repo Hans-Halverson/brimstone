@@ -12,7 +12,7 @@ use super::intrinsics::Intrinsic;
 pub struct AsyncGeneratorFunctionConstructor;
 
 impl AsyncGeneratorFunctionConstructor {
-    /// Properties of the AsyncGeneratorFunction Constructor, https://tc39.es/ecma262/#sec-properties-of-asyncgeneratorfunction
+    /// Properties of the AsyncGeneratorFunction Constructor (https://tc39.es/ecma262/#sec-properties-of-asyncgeneratorfunction)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionConstructor);
         let mut func = BuiltinFunction::intrinsic_constructor(
@@ -35,7 +35,7 @@ impl AsyncGeneratorFunctionConstructor {
         func
     }
 
-    /// AsyncGeneratorFunction, https://tc39.es/ecma262/#sec-asyncgeneratorfunction
+    /// AsyncGeneratorFunction (https://tc39.es/ecma262/#sec-asyncgeneratorfunction)
     pub fn construct(
         mut cx: Context,
         _: Handle<Value>,

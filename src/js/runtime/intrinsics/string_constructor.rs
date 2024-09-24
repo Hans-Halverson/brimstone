@@ -24,7 +24,7 @@ use super::{intrinsics::Intrinsic, symbol_prototype::symbol_descriptive_string};
 pub struct StringConstructor;
 
 impl StringConstructor {
-    /// Properties of the String Constructor, https://tc39.es/ecma262/#sec-properties-of-the-string-constructor
+    /// Properties of the String Constructor (https://tc39.es/ecma262/#sec-properties-of-the-string-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -48,7 +48,7 @@ impl StringConstructor {
         func
     }
 
-    /// String, https://tc39.es/ecma262/#sec-string-constructor-string-value
+    /// String (https://tc39.es/ecma262/#sec-string-constructor-string-value)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -76,7 +76,7 @@ impl StringConstructor {
         }
     }
 
-    /// String.fromCharCode, https://tc39.es/ecma262/#sec-string.fromcharcode
+    /// String.fromCharCode (https://tc39.es/ecma262/#sec-string.fromcharcode)
     pub fn from_char_code(
         cx: Context,
         _: Handle<Value>,
@@ -100,7 +100,7 @@ impl StringConstructor {
             .into()
     }
 
-    /// String.fromCodePoint, https://tc39.es/ecma262/#sec-string.fromcodepoint
+    /// String.fromCodePoint (https://tc39.es/ecma262/#sec-string.fromcodepoint)
     pub fn from_code_point(
         cx: Context,
         _: Handle<Value>,
@@ -148,7 +148,7 @@ impl StringConstructor {
             .into()
     }
 
-    /// String.raw, https://tc39.es/ecma262/#sec-string.raw
+    /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
     pub fn raw(
         cx: Context,
         _: Handle<Value>,

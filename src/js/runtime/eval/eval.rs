@@ -202,7 +202,7 @@ fn check_eval_var_name_conflicts(
     ().into()
 }
 
-/// EvalDeclarationInstantiation, https://tc39.es/ecma262/#sec-evaldeclarationinstantiation
+/// EvalDeclarationInstantiation (https://tc39.es/ecma262/#sec-evaldeclarationinstantiation)
 fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> EvalResult<()> {
     // Find the function and var names in the eval scope
     let mut eval_var_names = vec![];

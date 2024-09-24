@@ -26,7 +26,7 @@ use crate::{
 
 use super::intrinsics::Intrinsic;
 
-// BigInt Objects, https://tc39.es/ecma262/#sec-bigint-objects
+// BigInt Objects (https://tc39.es/ecma262/#sec-bigint-objects)
 extend_object! {
     pub struct BigIntObject {
         // The BigInt value wrapped by this object
@@ -52,7 +52,7 @@ impl BigIntObject {
 pub struct BigIntConstructor;
 
 impl BigIntConstructor {
-    //// The BigInt Constructor, https://tc39.es/ecma262/#sec-bigint-constructor
+    //// The BigInt Constructor (https://tc39.es/ecma262/#sec-bigint-constructor)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
@@ -75,7 +75,7 @@ impl BigIntConstructor {
         func
     }
 
-    /// BigInt, https://tc39.es/ecma262/#sec-bigint-constructor-number-value
+    /// BigInt (https://tc39.es/ecma262/#sec-bigint-constructor-number-value)
     pub fn construct(
         cx: Context,
         _: Handle<Value>,
@@ -106,7 +106,7 @@ impl BigIntConstructor {
         }
     }
 
-    /// BigInt.asIntN, https://tc39.es/ecma262/#sec-bigint.asintn
+    /// BigInt.asIntN (https://tc39.es/ecma262/#sec-bigint.asintn)
     pub fn as_int_n(
         cx: Context,
         _: Handle<Value>,
@@ -141,7 +141,7 @@ impl BigIntConstructor {
         BigIntValue::new(cx, new_bigint).into()
     }
 
-    /// BigInt.asUintN, https://tc39.es/ecma262/#sec-bigint.asuintn
+    /// BigInt.asUintN (https://tc39.es/ecma262/#sec-bigint.asuintn)
     pub fn as_uint_n(
         cx: Context,
         _: Handle<Value>,

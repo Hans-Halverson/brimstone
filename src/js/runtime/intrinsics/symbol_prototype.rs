@@ -12,7 +12,7 @@ use super::{intrinsics::Intrinsic, symbol_constructor::SymbolObject};
 pub struct SymbolPrototype;
 
 impl SymbolPrototype {
-    /// Properties of the Symbol Prototype Object, https://tc39.es/ecma262/#sec-properties-of-the-symbol-prototype-object
+    /// Properties of the Symbol Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-symbol-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
@@ -51,7 +51,7 @@ impl SymbolPrototype {
         object
     }
 
-    /// get Symbol.prototype.description, https://tc39.es/ecma262/#sec-symbol.prototype.description
+    /// get Symbol.prototype.description (https://tc39.es/ecma262/#sec-symbol.prototype.description)
     pub fn get_description(
         cx: Context,
         this_value: Handle<Value>,
@@ -65,7 +65,7 @@ impl SymbolPrototype {
         }
     }
 
-    /// Symbol.prototype.toString, https://tc39.es/ecma262/#sec-symbol.prototype.tostring
+    /// Symbol.prototype.toString (https://tc39.es/ecma262/#sec-symbol.prototype.tostring)
     pub fn to_string(
         cx: Context,
         this_value: Handle<Value>,
@@ -76,7 +76,7 @@ impl SymbolPrototype {
         symbol_descriptive_string(cx, symbol_value.as_symbol()).into()
     }
 
-    /// Symbol.prototype.valueOf, https://tc39.es/ecma262/#sec-symbol.prototype.valueof
+    /// Symbol.prototype.valueOf (https://tc39.es/ecma262/#sec-symbol.prototype.valueof)
     pub fn value_of(
         cx: Context,
         this_value: Handle<Value>,
@@ -86,7 +86,7 @@ impl SymbolPrototype {
         this_symbol_value(cx, this_value)
     }
 
-    /// Symbol.prototype [ @@toPrimitive ], https://tc39.es/ecma262/#sec-symbol.prototype-%symbol.toprimitive%
+    /// Symbol.prototype [ @@toPrimitive ] (https://tc39.es/ecma262/#sec-symbol.prototype-%symbol.toprimitive%)
     pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
@@ -112,7 +112,7 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
     type_error(cx, "value cannot be converted to symbol")
 }
 
-/// SymbolDescriptiveString, https://tc39.es/ecma262/#sec-symboldescriptivestring
+/// SymbolDescriptiveString (https://tc39.es/ecma262/#sec-symboldescriptivestring)
 pub fn symbol_descriptive_string(
     mut cx: Context,
     symbol: Handle<SymbolValue>,

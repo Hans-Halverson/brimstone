@@ -60,7 +60,7 @@ impl PropertyKey {
     #[inline]
     pub fn array_index(mut cx: Context, value: u32) -> PropertyKey {
         if value == u32::MAX {
-            let string_value = cx.alloc_string(&value.to_string());
+            let string_value = cx.alloc_string(&value.to_string()).as_string();
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
@@ -74,7 +74,7 @@ impl PropertyKey {
 
     pub fn from_u64(mut cx: Context, value: u64) -> PropertyKey {
         if value >= u32::MAX as u64 {
-            let string_value = cx.alloc_string(&value.to_string());
+            let string_value = cx.alloc_string(&value.to_string()).as_string();
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 

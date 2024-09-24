@@ -37,7 +37,7 @@ impl BooleanPrototype {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
         let string_value = if bool_value { "true" } else { "false" };
 
-        cx.alloc_string(string_value).into()
+        cx.alloc_string(string_value).as_string().into()
     }
 
     /// Boolean.prototype.valueOf (https://tc39.es/ecma262/#sec-boolean.prototype.valueof)

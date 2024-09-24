@@ -255,7 +255,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         // First generate all imports
         for toplevel in &program.toplevels {
             if let ast::Toplevel::Import(import) = toplevel {
-                let module_specifier = self.cx.alloc_wtf8_string(&import.source.value).as_flat();
+                let module_specifier = self.cx.alloc_wtf8_string(&import.source.value);
                 module_specifiers.insert(module_specifier);
 
                 // Each specifier will generate an import entry
@@ -268,14 +268,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                 .imported
                                 .as_ref()
                                 .map(|imported| self.alloc_module_name_string(imported))
-                                .unwrap_or_else(|| {
-                                    self.cx.alloc_string(&import.local.name).as_flat()
-                                });
+                                .unwrap_or_else(|| self.cx.alloc_string(&import.local.name));
                             (&import.local, Some(imported))
                         }
                     };
 
-                    let local_name = self.cx.alloc_string(&local_id.name).as_flat();
+                    let local_name = self.cx.alloc_string(&local_id.name);
                     let slot_index = Self::id_module_slot_index(local_id);
                     let is_exported = local_id.get_binding().is_exported();
 
@@ -312,14 +310,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 }
                 ast::Toplevel::ExportNamed(export) => {
                     let module_specifier = export.source.as_ref().map(|source| {
-                        let module_specifier = self.cx.alloc_wtf8_string(&source.value).as_flat();
+                        let module_specifier = self.cx.alloc_wtf8_string(&source.value);
                         module_specifiers.insert(module_specifier);
                         module_specifier
                     });
 
                     // Exporting a full named declaration adds export entries for each exported id
                     export.iter_declaration_ids(&mut |id| {
-                        let local_name = self.cx.alloc_string(&id.name).as_flat();
+                        let local_name = self.cx.alloc_string(&id.name);
                         let slot_index = Self::id_module_slot_index(id);
 
                         local_exports.push(LocalExportEntry {
@@ -331,7 +329,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // Each specifier will generate an export entry of some form
                     for specifier in &export.specifiers {
-                        let local_name = self.cx.alloc_string(&specifier.local.name).as_flat();
+                        let local_name = self.cx.alloc_string(&specifier.local.name);
                         let export_name = specifier
                             .exported
                             .as_ref()
@@ -373,8 +371,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     }
                 }
                 ast::Toplevel::ExportAll(export) => {
-                    let module_specifier =
-                        self.cx.alloc_wtf8_string(&export.source.value).as_flat();
+                    let module_specifier = self.cx.alloc_wtf8_string(&export.source.value);
                     module_specifiers.insert(module_specifier);
 
                     if let Some(exported_name) = export.exported.as_ref() {
@@ -450,8 +447,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn alloc_module_name_string(&mut self, module_name: &ast::ModuleName) -> Handle<FlatString> {
         match module_name {
-            ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name).as_flat(),
-            ast::ModuleName::String(lit) => self.cx.alloc_wtf8_string(&lit.value).as_flat(),
+            ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name),
+            ast::ModuleName::String(lit) => self.cx.alloc_wtf8_string(&lit.value),
         }
     }
 
@@ -8458,7 +8455,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         if let Some(id) = id {
-            cx.alloc_string(&id.name).as_flat()
+            cx.alloc_string(&id.name)
         } else {
             cx.names.default_name().as_string().as_flat()
         }

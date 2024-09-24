@@ -1267,7 +1267,7 @@ impl DatePrototype {
         let mut string = String::new();
         date_string(&mut string, date_value);
 
-        cx.alloc_string(&string).into()
+        cx.alloc_string(&string).as_string().into()
     }
 
     /// Date.prototype.toISOString (https://tc39.es/ecma262/#sec-date.prototype.toisostring)
@@ -1310,7 +1310,7 @@ impl DatePrototype {
             millisecond_from_time(date_value) as i64
         );
 
-        cx.alloc_string(&string).into()
+        cx.alloc_string(&string).as_string().into()
     }
 
     /// Date.prototype.toJSON (https://tc39.es/ecma262/#sec-date.prototype.tojson)
@@ -1435,7 +1435,7 @@ impl DatePrototype {
         time_string(&mut string, local_date_value);
         time_zone_string(&mut string, date_value);
 
-        cx.alloc_string(&string).into()
+        cx.alloc_string(&string).as_string().into()
     }
 
     /// Date.prototype.toUTCString (https://tc39.es/ecma262/#sec-date.prototype.toutcstring)
@@ -1472,7 +1472,7 @@ impl DatePrototype {
 
         time_string(&mut string, date_value);
 
-        cx.alloc_string(&string).into()
+        cx.alloc_string(&string).as_string().into()
     }
 
     /// Date.prototype.valueOf (https://tc39.es/ecma262/#sec-date.prototype.valueof)
@@ -1612,7 +1612,7 @@ pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
     time_string(&mut string, local_time_value);
     time_zone_string(&mut string, time_value);
 
-    cx.alloc_string(&string)
+    cx.alloc_string(&string).as_string()
 }
 
 #[inline]

@@ -206,7 +206,10 @@ impl FunctionPrototype {
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {
-                return cx.alloc_string("function () { [native code] }").into();
+                return cx
+                    .alloc_string("function () { [native code] }")
+                    .as_string()
+                    .into();
             }
 
             // Builtin functions have special formatting using the function name
@@ -237,7 +240,10 @@ impl FunctionPrototype {
         }
 
         if is_callable_object(this_object) {
-            return cx.alloc_string("function () { [native code] }").into();
+            return cx
+                .alloc_string("function () { [native code] }")
+                .as_string()
+                .into();
         }
 
         type_error(cx, "Function.prototype.toString expected a function")

@@ -8,7 +8,7 @@ use super::{
     collections::InlineArray,
     gc::{HeapObject, HeapVisitor},
     object_descriptor::ObjectDescriptor,
-    string_value::StringValue,
+    string_value::FlatString,
     Context, Handle, HeapPtr,
 };
 
@@ -16,7 +16,7 @@ use super::{
 pub struct SourceFile {
     descriptor: HeapPtr<ObjectDescriptor>,
     /// The name of the source file
-    name: HeapPtr<StringValue>,
+    name: HeapPtr<FlatString>,
     /// Inlined source file contents as a WTF8 string
     contents: InlineArray<u8>,
 }
@@ -45,7 +45,7 @@ impl SourceFile {
     }
 
     #[inline]
-    pub fn name(&self) -> Handle<StringValue> {
+    pub fn name(&self) -> Handle<FlatString> {
         self.name.to_handle()
     }
 

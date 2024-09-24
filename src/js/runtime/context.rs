@@ -29,7 +29,7 @@ use super::{
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
-    string_value::{FlatString, StringValue},
+    string_value::FlatString,
     tasks::TaskQueue,
     value::SymbolValue,
     Handle, HeapPtr, Value,
@@ -270,13 +270,13 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string(&mut self, str: &str) -> Handle<StringValue> {
-        self.alloc_string_ptr(str).as_string().to_handle()
+    pub fn alloc_string(&mut self, str: &str) -> Handle<FlatString> {
+        self.alloc_string_ptr(str).to_handle()
     }
 
     #[inline]
-    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<StringValue> {
-        self.alloc_wtf8_string_ptr(str).as_string().to_handle()
+    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<FlatString> {
+        self.alloc_wtf8_string_ptr(str).to_handle()
     }
 
     #[inline]

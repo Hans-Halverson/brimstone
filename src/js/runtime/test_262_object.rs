@@ -30,19 +30,19 @@ impl Test262Object {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
-        let create_realm_string = cx.alloc_string("createRealm");
+        let create_realm_string = cx.alloc_string("createRealm").as_string();
         let create_realm_key = PropertyKey::string(cx, create_realm_string).to_handle(cx);
         object.intrinsic_func(cx, create_realm_key, Self::create_realm, 0, realm);
 
-        let eval_script_string = cx.alloc_string("evalScript");
+        let eval_script_string = cx.alloc_string("evalScript").as_string();
         let eval_script_key = PropertyKey::string(cx, eval_script_string).to_handle(cx);
         object.intrinsic_func(cx, eval_script_key, Self::eval_script, 1, realm);
 
-        let global_string = cx.alloc_string("global");
+        let global_string = cx.alloc_string("global").as_string();
         let global_key = PropertyKey::string(cx, global_string).to_handle(cx);
         object.intrinsic_data_prop(cx, global_key, realm.global_object().into());
 
-        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer");
+        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer").as_string();
         let detach_array_buffer_key =
             PropertyKey::string(cx, detach_array_buffer_string).to_handle(cx);
         object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
@@ -52,14 +52,14 @@ impl Test262Object {
 
     pub fn install(mut cx: Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
         // Install the the "$262" property on the global object
-        let test_262_string = cx.alloc_string("$262");
+        let test_262_string = cx.alloc_string("$262").as_string();
         let test_262_key = PropertyKey::string(cx, test_262_string).to_handle(cx);
         realm
             .global_object()
             .intrinsic_data_prop(cx, test_262_key, test_262_object.into());
 
         // Also install a global print function needed in tests
-        let print_string = cx.alloc_string("print");
+        let print_string = cx.alloc_string("print").as_string();
         let print_key = PropertyKey::string(cx, print_string).to_handle(cx);
         realm
             .global_object()
@@ -74,7 +74,7 @@ impl Test262Object {
     }
 
     fn print_log_key(mut cx: Context) -> Handle<PropertyKey> {
-        let print_log_string = cx.alloc_string("$$printLog");
+        let print_log_string = cx.alloc_string("$$printLog").as_string();
         PropertyKey::string(cx, print_log_string).to_handle(cx)
     }
 

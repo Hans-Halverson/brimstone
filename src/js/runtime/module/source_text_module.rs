@@ -3,6 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use crate::{
     field_offset,
     js::runtime::{
+        boxed_value::BoxedValue,
         bytecode::function::BytecodeFunction,
         collections::{BsArray, InlineArray},
         gc::{HeapObject, HeapVisitor},
@@ -38,6 +39,9 @@ pub struct SourceTextModule {
     /// Each index corresponds to the specifier at the same index in `requested_module_specifiers`,
     /// and contains the module object if one has been loaded.
     loaded_modules: HeapPtr<ModuleOptionArray>,
+    // Indices used during DFS in the link and evaluate phases.
+    dfs_index: u32,
+    dfs_ancestor_index: u32,
     /// All import and export entries in the module.
     entries: InlineArray<ModuleEntry>,
 }
@@ -46,6 +50,14 @@ pub struct SourceTextModule {
 pub enum ModuleState {
     New,
     Unlinked,
+    Linking,
+    Linked,
+    #[allow(unused)]
+    Evaluating,
+    #[allow(unused)]
+    EvaluatingAsync,
+    #[allow(unused)]
+    Evaluated,
 }
 
 type StringArray = BsArray<HeapPtr<FlatString>>;
@@ -94,6 +106,8 @@ impl SourceTextModule {
         set_uninit!(object.import_meta, None);
         set_uninit!(object.requested_module_specifiers, heap_requested_module_specifiers.get_());
         set_uninit!(object.loaded_modules, loaded_modules.get_());
+        set_uninit!(object.dfs_index, 0);
+        set_uninit!(object.dfs_ancestor_index, 0);
 
         let entries = &mut object.entries;
         entries.init_with_uninit(num_entries);
@@ -144,6 +158,26 @@ impl SourceTextModule {
     }
 
     #[inline]
+    pub fn dfs_index(&self) -> u32 {
+        self.dfs_index
+    }
+
+    #[inline]
+    pub fn set_dfs_index(&mut self, dfs_index: u32) {
+        self.dfs_index = dfs_index;
+    }
+
+    #[inline]
+    pub fn dfs_ancestor_index(&self) -> u32 {
+        self.dfs_ancestor_index
+    }
+
+    #[inline]
+    pub fn set_dfs_ancestor_index(&mut self, dfs_ancestor_index: u32) {
+        self.dfs_ancestor_index = dfs_ancestor_index;
+    }
+
+    #[inline]
     pub fn program_function_ptr(&self) -> HeapPtr<BytecodeFunction> {
         self.program_function
     }
@@ -152,6 +186,11 @@ impl SourceTextModule {
     #[allow(unused)]
     pub fn program_function(&self) -> Handle<BytecodeFunction> {
         self.program_function_ptr().to_handle()
+    }
+
+    #[inline]
+    pub fn module_scope_ptr(&self) -> HeapPtr<Scope> {
+        self.module_scope
     }
 
     #[inline]
@@ -175,14 +214,175 @@ impl SourceTextModule {
         self.loaded_modules.as_slice()[index].is_some()
     }
 
+    pub fn get_loaded_module_at(&self, index: usize) -> HeapPtr<SourceTextModule> {
+        self.loaded_modules.as_slice()[index].unwrap()
+    }
+
     pub fn set_loaded_module_at(&mut self, index: usize, module: HeapPtr<SourceTextModule>) {
         self.loaded_modules.as_mut_slice()[index] = Some(module);
+    }
+
+    #[inline]
+    pub fn entries_as_slice(&self) -> &[ModuleEntry] {
+        self.entries.as_slice()
     }
 
     pub fn source_file_path(&self) -> String {
         let source_file = self.program_function_ptr().source_file_ptr().unwrap();
         source_file.name().to_string()
     }
+}
+
+impl HeapPtr<SourceTextModule> {
+    /// ResolveExport (https://tc39.es/ecma262/#sec-resolveexport)
+    pub fn resolve_export(
+        &self,
+        cx: Context,
+        export_name: HeapPtr<FlatString>,
+        resolve_set: &mut Vec<(HeapPtr<FlatString>, HeapPtr<SourceTextModule>)>,
+    ) -> ResolveExportResult {
+        let is_circular_import = resolve_set
+            .iter()
+            .any(|(name, module)| self.ptr_eq(module) && name == &export_name);
+        if is_circular_import {
+            return ResolveExportResult::Circular;
+        }
+
+        resolve_set.push((export_name, *self));
+
+        // Check if there is a local export entry with the given export name
+        for entry in self.entries.as_slice() {
+            if let ModuleEntry::LocalExport(entry) = entry {
+                if entry.export_name == export_name {
+                    let boxed_value = self.module_scope.get_slot(entry.slot_index);
+
+                    debug_assert!(
+                        boxed_value.is_pointer()
+                            && boxed_value.as_pointer().descriptor().kind()
+                                == ObjectKind::BoxedValue
+                    );
+
+                    return ResolveExportResult::Resolved {
+                        name: ResolveExportName::Local {
+                            name: entry.local_name,
+                            boxed_value: boxed_value.as_pointer().cast(),
+                        },
+                        module: *self,
+                    };
+                }
+            }
+        }
+
+        // Next check if there is a named re-export entry with the given export name
+        for entry in self.entries.as_slice() {
+            if let ModuleEntry::NamedReExport(entry) = entry {
+                if entry.export_name == export_name {
+                    let imported_module = self.get_imported_module(entry.module_request);
+
+                    if let Some(import_name) = entry.import_name {
+                        // Re-export of a named import tries to resolve in other module
+                        return imported_module.resolve_export(cx, import_name, resolve_set);
+                    } else {
+                        // Otherwise this is the named re-export of a namespace object
+                        return ResolveExportResult::Resolved {
+                            name: ResolveExportName::Namespace,
+                            module: imported_module,
+                        };
+                    }
+                }
+            }
+        }
+
+        // A default export was not explicitly defined by this module
+        if export_name == cx.names.default.as_string().as_flat() {
+            return ResolveExportResult::None;
+        }
+
+        // Star resolution is lazily initialized the first time the export name is resolved
+        let mut star_resolution = ResolveExportResult::None;
+
+        for entry in self.entries.as_slice() {
+            if let ModuleEntry::DirectReExport(entry) = entry {
+                let imported_module = self.get_imported_module(entry.module_request);
+                let resolution = imported_module.resolve_export(cx, export_name, resolve_set);
+
+                match resolution {
+                    ResolveExportResult::Ambiguous => return ResolveExportResult::Ambiguous,
+                    ResolveExportResult::Resolved {
+                        module: resolution_module,
+                        name: resolution_name,
+                        ..
+                    } => {
+                        // Multiple resolutions must match or the match is ambiguous. Two
+                        // resolutions match iff they are for the same module and the same name.
+                        if let ResolveExportResult::Resolved {
+                            module: star_resolution_module,
+                            name: star_resolution_name,
+                            ..
+                        } = star_resolution
+                        {
+                            // Check that the same module is resolved to
+                            if !resolution_module.ptr_eq(&star_resolution_module) {
+                                return ResolveExportResult::Ambiguous;
+                            }
+
+                            // Check that the same name is resolved to within that module
+                            let same_name = match (resolution_name, star_resolution_name) {
+                                (
+                                    ResolveExportName::Local { name: name1, .. },
+                                    ResolveExportName::Local { name: name2, .. },
+                                ) => name1 == name2,
+                                (ResolveExportName::Namespace, ResolveExportName::Namespace) => {
+                                    true
+                                }
+                                _ => false,
+                            };
+
+                            if !same_name {
+                                return ResolveExportResult::Ambiguous;
+                            }
+                        } else {
+                            // Star resolution is lazily initialized on the first resolution
+                            star_resolution = resolution;
+                        }
+                    }
+                    ResolveExportResult::Circular | ResolveExportResult::None => {}
+                }
+            }
+        }
+
+        star_resolution
+    }
+
+    /// GetImportedModule (https://tc39.es/ecma262/#sec-GetImportedModule)
+    pub fn get_imported_module(
+        &self,
+        module_specifier: HeapPtr<FlatString>,
+    ) -> HeapPtr<SourceTextModule> {
+        let index = self.lookup_specifier_index(module_specifier).unwrap();
+        self.get_loaded_module_at(index)
+    }
+
+    /// GetModuleNamespace (https://tc39.es/ecma262/#sec-getmodulenamespace)
+    pub fn get_namespace_object(&self, _: Context) -> HeapPtr<ObjectValue> {
+        unimplemented!("get namespace object")
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ResolveExportResult {
+    Resolved { name: ResolveExportName, module: HeapPtr<SourceTextModule> },
+    Ambiguous,
+    Circular,
+    None,
+}
+
+#[derive(Clone, Copy)]
+pub enum ResolveExportName {
+    /// No local name since this is a namespace import.
+    Namespace,
+    /// The local name of the binding in the module.
+    Local { name: HeapPtr<FlatString>, boxed_value: HeapPtr<BoxedValue> },
 }
 
 impl HeapObject for HeapPtr<SourceTextModule> {
@@ -234,7 +434,7 @@ fn next_module_id() -> ModuleId {
     module_id
 }
 
-enum ModuleEntry {
+pub enum ModuleEntry {
     Import(HeapImportEntry),
     LocalExport(HeapLocalExportEntry),
     NamedReExport(HeapNamedReExportEntry),
@@ -242,17 +442,18 @@ enum ModuleEntry {
 }
 
 /// ImportEntry, https://tc39.es/ecma262/#table-importentry-record-fields
-struct HeapImportEntry {
+pub struct HeapImportEntry {
     /// Name of the module that binding is being imported from.
-    module_request: HeapPtr<FlatString>,
+    pub module_request: HeapPtr<FlatString>,
     /// Name of the binding in the module is was declared in. If None then this entry is for the
-    /// namespace object.
-    import_name: Option<HeapPtr<FlatString>>,
+    /// namespace object, meaning the slot_index may refer to an unboxed value.
+    pub import_name: Option<HeapPtr<FlatString>>,
     /// Name of the imported binding in this module.
-    local_name: HeapPtr<FlatString>,
+    pub local_name: HeapPtr<FlatString>,
     /// Slot in the module scope where the imported binding is stored.
-    #[allow(unused)]
-    slot_index: usize,
+    pub slot_index: usize,
+    /// Whether this binding is exported
+    pub is_exported: bool,
 }
 
 pub struct ImportEntry {
@@ -260,6 +461,7 @@ pub struct ImportEntry {
     pub import_name: Option<Handle<FlatString>>,
     pub local_name: Handle<FlatString>,
     pub slot_index: usize,
+    pub is_exported: bool,
 }
 
 impl ImportEntry {
@@ -269,6 +471,7 @@ impl ImportEntry {
             import_name: self.import_name.map(|name| name.get_()),
             local_name: self.local_name.get_(),
             slot_index: self.slot_index,
+            is_exported: self.is_exported,
         }
     }
 }
@@ -277,13 +480,12 @@ impl ImportEntry {
 /// the field SourceTextModule.[[LocalExportEntries]].
 ///
 /// Corresponds to regular exports of local bindings including default exports.
-struct HeapLocalExportEntry {
+pub struct HeapLocalExportEntry {
     /// The name of the export, i.e. the name that importers must reference.
     export_name: HeapPtr<FlatString>,
     /// The name of the exported binding within its module.
     local_name: HeapPtr<FlatString>,
     /// Slot in the module scope where the exported binding is stored.
-    #[allow(unused)]
     slot_index: usize,
 }
 
@@ -308,9 +510,9 @@ impl LocalExportEntry {
 ///
 /// Corresponds to named re-exports of bindings from other modules, including both
 /// `export {x} from "mod"` and `export * as x from "mod`.
-struct HeapNamedReExportEntry {
+pub struct HeapNamedReExportEntry {
     /// The name of the export, i.e. the name that importers must reference.
-    export_name: HeapPtr<FlatString>,
+    pub export_name: HeapPtr<FlatString>,
     /// Name of the re-exported binding within its module. If None this is a named re-export of
     /// a namespace object.
     import_name: Option<HeapPtr<FlatString>>,
@@ -339,7 +541,7 @@ impl NamedReExportEntry {
 ///
 /// Coressponds to the direct re-export of all bindings from another module,
 /// i.e. `export * from "mod"`.
-struct HeapDirectReExportEntry {
+pub struct HeapDirectReExportEntry {
     /// Name of the module that is having its bindings re-exported.
     module_request: HeapPtr<FlatString>,
 }

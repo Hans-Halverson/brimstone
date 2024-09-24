@@ -591,9 +591,18 @@ impl ScopeTree {
                 continue;
             }
 
-            // Imported or exported bindings must be placed in the module's VM scope
-            if binding.is_exported() || matches!(binding.kind(), BindingKind::Import { .. }) {
+            if binding.is_module_binding() {
+                // Imported or exported bindings must be placed in the module's VM scope
                 binding.set_vm_location(VMLocation::ModuleScope {
+                    scope_id: vm_node_id,
+                    index: bindings.len(),
+                });
+                bindings.push(name.clone());
+                continue;
+            } else if binding.kind().is_namespace_import() {
+                // Namespace import bindings are always placed in the module's scope, but as regular
+                // scope values instead of BoxedValues.
+                binding.set_vm_location(VMLocation::Scope {
                     scope_id: vm_node_id,
                     index: bindings.len(),
                 });
@@ -1042,6 +1051,10 @@ impl BindingKind {
         matches!(self, BindingKind::PrivateName)
     }
 
+    pub fn is_namespace_import(&self) -> bool {
+        matches!(self, BindingKind::Import { is_namespace: true })
+    }
+
     fn has_tdz(&self) -> bool {
         matches!(
             self,
@@ -1123,10 +1136,16 @@ impl Binding {
         self.vm_location = Some(location);
     }
 
+    /// Whether this binding needs to be initialized to support the TDZ.
+    pub fn needs_tdz_init(&self) -> bool {
+        self.kind().has_tdz() && self.needs_tdz_check
+    }
+
+    /// Whether this binding needs TDZ checks when accessed.
     pub fn needs_tdz_check(&self) -> bool {
         // Exported bindings will always have an implicit TDZ check inside the LoadFromModule and
         // StoreToModule instructions.
-        self.kind().has_tdz() && self.needs_tdz_check && !self.is_exported()
+        self.needs_tdz_init() && !self.is_exported()
     }
 
     pub fn is_exported(&self) -> bool {
@@ -1135,6 +1154,12 @@ impl Binding {
 
     pub fn set_is_exported(&self, value: bool) {
         self.is_exported.set(value);
+    }
+
+    pub fn is_module_binding(&self) -> bool {
+        // Note that `import * as foo` is not a module binding, namespace object is instead stored
+        // in scope without needing a BoxedValue.
+        matches!(self.kind(), BindingKind::Import { is_namespace: false }) || self.is_exported()
     }
 }
 

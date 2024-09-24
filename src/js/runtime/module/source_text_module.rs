@@ -251,6 +251,7 @@ struct HeapImportEntry {
     /// Name of the imported binding in this module.
     local_name: HeapPtr<FlatString>,
     /// Slot in the module scope where the imported binding is stored.
+    #[allow(unused)]
     slot_index: usize,
 }
 
@@ -282,6 +283,7 @@ struct HeapLocalExportEntry {
     /// The name of the exported binding within its module.
     local_name: HeapPtr<FlatString>,
     /// Slot in the module scope where the exported binding is stored.
+    #[allow(unused)]
     slot_index: usize,
 }
 

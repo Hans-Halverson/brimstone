@@ -14,6 +14,7 @@ pub struct BoxedValue {
 }
 
 impl BoxedValue {
+    #[allow(unused)]
     pub fn new(cx: Context, value: Handle<Value>) -> HeapPtr<BoxedValue> {
         let mut scope = cx.alloc_uninit::<BoxedValue>();
 

@@ -2,8 +2,10 @@ use std::path::Path;
 
 use crate::{
     js::runtime::{
+        abstract_operations::call_object,
         builtin_function::BuiltinFunction,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
+        module::linker::link,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
         Context, EvalResult, Handle, Value,
@@ -53,17 +55,61 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
         None,
     );
 
+    // Pass module and capability to the resolve function
+    set_module(cx, on_resolve, module);
+    set_capability(cx, on_resolve, capability);
+
     perform_promise_then(cx, promise, on_resolve.into(), cx.undefined(), Some(capability));
 
     // Guaranteed to be a PromiseObject since created with the Promise constructor
     capability.promise().cast::<PromiseObject>()
 }
 
+fn get_module(cx: Context, function: Handle<ObjectValue>) -> Handle<SourceTextModule> {
+    function
+        .private_element_find(cx, cx.well_known_symbols.module().cast())
+        .unwrap()
+        .value()
+        .as_object()
+        .cast::<SourceTextModule>()
+}
+
+fn set_module(cx: Context, mut function: Handle<ObjectValue>, value: Handle<SourceTextModule>) {
+    function.private_element_set(cx, cx.well_known_symbols.module().cast(), value.into());
+}
+
+fn get_capability(cx: Context, function: Handle<ObjectValue>) -> Handle<PromiseCapability> {
+    function
+        .private_element_find(cx, cx.well_known_symbols.capability().cast())
+        .unwrap()
+        .value()
+        .as_object()
+        .cast::<PromiseCapability>()
+}
+
+fn set_capability(
+    cx: Context,
+    mut function: Handle<ObjectValue>,
+    value: Handle<PromiseCapability>,
+) {
+    function.private_element_set(cx, cx.well_known_symbols.capability().cast(), value.into());
+}
+
 pub fn load_requested_modules_resolve(
-    _: Context,
+    mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    unimplemented!("link and evaluate the modules");
+    // Fetch the promise and capbility passed from `execute_module`
+    let current_function = cx.current_function();
+    let module = get_module(cx, current_function);
+    let capability = get_capability(cx, current_function);
+
+    if let EvalResult::Throw(error) = link(cx, module) {
+        must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+        return cx.undefined().into();
+    }
+
+    unimplemented!("evaluate the modules");
 }

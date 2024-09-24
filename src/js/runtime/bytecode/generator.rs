@@ -17,12 +17,13 @@ use crate::js::{
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME,
-            STATIC_HOME_OBJECT_BINDING_NAME,
+            VMScopeNode, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+            NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
         },
         source::Source,
     },
     runtime::{
+        boxed_value::BoxedValue,
         bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
         class_names::{ClassNames, HomeObjectLocation, Method},
         eval::expression::generate_template_object,
@@ -33,6 +34,7 @@ use crate::js::{
             DirectReExportEntry, ImportEntry, LocalExportEntry, NamedReExportEntry,
             SourceTextModule,
         },
+        object_value::ObjectValue,
         regexp::compiler::compile_regexp,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
@@ -250,42 +252,48 @@ impl<'a> BytecodeProgramGenerator<'a> {
         // Inlined import and export entry creation logic from:
         // ParseModule (https://tc39.es/ecma262/#sec-parsemodule)
 
+        // First generate all imports
+        for toplevel in &program.toplevels {
+            if let ast::Toplevel::Import(import) = toplevel {
+                let module_specifier = self.cx.alloc_wtf8_string(&import.source.value).as_flat();
+                module_specifiers.insert(module_specifier);
+
+                // Each specifier will generate an import entry
+                for specifier in &import.specifiers {
+                    let (local_id, import_name) = match specifier {
+                        ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
+                        ast::ImportSpecifier::Namespace(import) => (&import.local, None),
+                        ast::ImportSpecifier::Named(import) => {
+                            let imported = import
+                                .imported
+                                .as_ref()
+                                .map(|imported| self.alloc_module_name_string(imported))
+                                .unwrap_or_else(|| {
+                                    self.cx.alloc_string(&import.local.name).as_flat()
+                                });
+                            (&import.local, Some(imported))
+                        }
+                    };
+
+                    let local_name = self.cx.alloc_string(&local_id.name).as_flat();
+                    let slot_index = Self::id_module_slot_index(local_id);
+                    let is_exported = local_id.get_binding().is_exported();
+
+                    imports.push(ImportEntry {
+                        module_request: module_specifier,
+                        local_name,
+                        import_name,
+                        slot_index,
+                        is_exported,
+                    });
+                }
+            }
+        }
+
+        // After import entries have been generated then generate all export entries. Two passes
+        // are need because export entries must be able to lookup import entries.
         for toplevel in &program.toplevels {
             match toplevel {
-                ast::Toplevel::Import(import) => {
-                    let module_specifier =
-                        self.cx.alloc_wtf8_string(&import.source.value).as_flat();
-                    module_specifiers.insert(module_specifier);
-
-                    // Each specifier will generate an import entry
-                    for specifier in &import.specifiers {
-                        let (local_id, import_name) = match specifier {
-                            ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
-                            ast::ImportSpecifier::Namespace(import) => (&import.local, None),
-                            ast::ImportSpecifier::Named(import) => {
-                                let imported = import
-                                    .imported
-                                    .as_ref()
-                                    .map(|imported| self.alloc_module_name_string(imported))
-                                    .unwrap_or_else(|| {
-                                        self.cx.alloc_string(&import.local.name).as_flat()
-                                    });
-                                (&import.local, Some(imported))
-                            }
-                        };
-
-                        let slot_index = Self::id_module_slot_index(local_id);
-
-                        let local_name = self.cx.alloc_string(&local_id.name).as_flat();
-
-                        imports.push(ImportEntry {
-                            module_request: module_specifier,
-                            local_name,
-                            import_name,
-                            slot_index,
-                        });
-                    }
-                }
                 ast::Toplevel::ExportDefault(export) => {
                     // Default specifiers are always local exports
                     let export_name = self.cx.names.default().as_string().as_flat();
@@ -308,9 +316,6 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         module_specifiers.insert(module_specifier);
                         module_specifier
                     });
-
-                    // TODO: Check if we are exporting an import and this should be treated as a
-                    // named re-export.
 
                     // Exporting a full named declaration adds export entries for each exported id
                     export.iter_declaration_ids(&mut |id| {
@@ -339,10 +344,26 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                 export_name,
                                 import_name: Some(local_name),
                             })
+                        } else if matches!(
+                            specifier.local.get_binding().kind(),
+                            BindingKind::Import { is_namespace: false }
+                        ) {
+                            // If we are exporting a non-namespace import then this is actually a
+                            // named re-export. Find the corresponding import entry.
+                            let import_entry = imports
+                                .iter()
+                                .find(|entry| entry.local_name == local_name)
+                                .unwrap();
+
+                            named_re_exports.push(NamedReExportEntry {
+                                module_request: import_entry.module_request,
+                                export_name,
+                                import_name: import_entry.import_name,
+                            });
                         } else {
+                            // Otherwise this is a regular local export
                             let slot_index = Self::id_module_slot_index(&specifier.local);
 
-                            // Otherwise this is a regular local export
                             local_exports.push(LocalExportEntry {
                                 export_name,
                                 local_name,
@@ -378,22 +399,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Flatten set of specifiers into list, preserving insertion order
         let module_specifiers = module_specifiers.into_iter().collect::<Vec<_>>();
-
-        // TODO: Properly create the module scope
-        let vm_scope_id = program.scope.as_ref().vm_scope_id().unwrap();
-        let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
-        let names = vm_node
-            .bindings()
-            .iter()
-            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-            .collect::<Vec<_>>();
-
-        let name_flags = BytecodeFunctionGenerator::gen_scope_name_flags(
-            program.scope.as_ref(),
-            self.scope_tree,
-        );
-        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags);
-        let module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object());
+        let module_scope = self.gen_module_scope(program);
 
         SourceTextModule::new(
             self.cx,
@@ -407,6 +413,41 @@ impl<'a> BytecodeProgramGenerator<'a> {
         )
     }
 
+    /// Create the root module scope for module evaluation. Initialize
+    fn gen_module_scope(&mut self, program: &ast::Program) -> Handle<Scope> {
+        let ast_node = program.scope.as_ref();
+        let vm_node = self.scope_tree.get_vm_node(ast_node.vm_scope_id().unwrap());
+
+        // Create the scope itself
+        let names = BytecodeFunctionGenerator::gen_scope_name_strings(self.cx, vm_node);
+        let name_flags = BytecodeFunctionGenerator::gen_scope_name_flags(ast_node, self.scope_tree);
+        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags);
+        let mut module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object());
+
+        // Initialize the exports with boxed values. Imports will be initialized during linking,
+        // and all other bindings will be initialized normally during execution.
+        for (_, binding) in ast_node.iter_bindings() {
+            if binding.is_exported() {
+                // We need to initialize with empty if TDZ checks are needed
+                let init_value = if binding.needs_tdz_init() {
+                    self.cx.empty()
+                } else {
+                    self.cx.undefined()
+                };
+
+                if let VMLocation::ModuleScope { index, .. } = binding.vm_location().unwrap() {
+                    // All exported value are boxed, which will eventually be linked to import
+                    let boxed_value = BoxedValue::new(self.cx, init_value);
+                    module_scope.set_slot(index, boxed_value.cast::<ObjectValue>().into());
+                } else {
+                    unreachable!("expected module scope location")
+                }
+            }
+        }
+
+        module_scope
+    }
+
     fn alloc_module_name_string(&mut self, module_name: &ast::ModuleName) -> Handle<FlatString> {
         match module_name {
             ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name).as_flat(),
@@ -418,7 +459,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// import and export bindings that are known to be stored in the module scope.
     fn id_module_slot_index(id: &ast::Identifier) -> usize {
         // Look up the slot index of the import in the module scope
-        if let VMLocation::ModuleScope { index, .. } = id.get_binding().vm_location().unwrap() {
+        if let VMLocation::ModuleScope { index, .. } | VMLocation::Scope { index, .. } =
+            id.get_binding().vm_location().unwrap()
+        {
             index
         } else {
             unreachable!("expected module scope location")
@@ -1877,7 +1920,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 | ast::Statement::Expr(_) => unimplemented!("anonymous default exports"),
                 _ => unreachable!("Invalid default export"),
             },
-            ast::Toplevel::ExportAll(_) => unimplemented!("export all declarations"),
+            ast::Toplevel::ExportAll(_) => {
+                // No evaluation action is needed for export all declarations. These are resolved
+                // during linking phase.
+            }
         }
 
         Ok(())
@@ -6710,11 +6756,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
-        let names = vm_node
-            .bindings()
-            .iter()
-            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-            .collect::<Vec<_>>();
+        let names = Self::gen_scope_name_strings(self.cx, vm_node);
 
         let name_flags = Self::gen_scope_name_flags(scope, self.scope_tree);
         let scope_names = ScopeNames::new(self.cx, flags, &names, &name_flags);
@@ -6728,6 +6770,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.scope_names_cache.insert(vm_scope_id, constant_index);
 
         Ok(constant_index)
+    }
+
+    fn gen_scope_name_strings(cx: Context, vm_node: &VMScopeNode) -> Vec<Handle<FlatString>> {
+        vm_node
+            .bindings()
+            .iter()
+            .map(|name| InternedStrings::get_str(cx, name).as_flat())
+            .collect::<Vec<_>>()
     }
 
     fn push_scope_stack_node(&mut self, vm_scope_id: ScopeNodeId) {
@@ -8387,13 +8437,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
 
         // Create a ScopeNames object containing all lexical names in scope.
-        let binding_names = vm_node.bindings();
         let binding_flags = Self::gen_scope_name_flags(global_scope, self.scope_tree);
 
-        let names = binding_names
-            .iter()
-            .map(|name| InternedStrings::get_str(self.cx, name).as_flat())
-            .collect::<Vec<_>>();
+        let names = Self::gen_scope_name_strings(self.cx, vm_node);
         let scope_names =
             ScopeNames::new(self.cx, ScopeFlags::IS_VAR_SCOPE, &names, &binding_flags);
 

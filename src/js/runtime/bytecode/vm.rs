@@ -1006,10 +1006,10 @@ impl VM {
                             dispatch!(StoreToScopeInstruction, execute_store_to_scope)
                         }
                         OpCode::LoadFromModule => {
-                            dispatch!(LoadFromModuleInstruction, execute_load_from_module)
+                            dispatch_or_throw!(LoadFromModuleInstruction, execute_load_from_module)
                         }
                         OpCode::StoreToModule => {
-                            dispatch!(StoreToModuleInstruction, execute_store_to_module)
+                            dispatch_or_throw!(StoreToModuleInstruction, execute_store_to_module)
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::RestParameter => {
@@ -3819,7 +3819,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_load_from_module<W: Width>(&mut self, instr: &LoadFromModuleInstruction<W>) {
+    fn execute_load_from_module<W: Width>(
+        &mut self,
+        instr: &LoadFromModuleInstruction<W>,
+    ) -> EvalResult<()> {
         let scope_index = instr.scope_index().value().to_usize();
         let parent_depth = instr.parent_depth().value().to_usize();
         let dest = instr.dest();
@@ -3828,18 +3831,36 @@ impl VM {
         let boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
         let value = boxed_value.get();
 
+        // Check for uninitialized values
+        if value.is_empty() {
+            return reference_error(self.cx(), "module value is not initialized");
+        }
+
         self.write_register(dest, value);
+
+        ().into()
     }
 
     #[inline]
-    fn execute_store_to_module<W: Width>(&mut self, instr: &StoreToModuleInstruction<W>) {
+    fn execute_store_to_module<W: Width>(
+        &mut self,
+        instr: &StoreToModuleInstruction<W>,
+    ) -> EvalResult<()> {
         let scope_index = instr.scope_index().value().to_usize();
         let parent_depth = instr.parent_depth().value().to_usize();
         let value = self.read_register(instr.value());
 
         // Module values are guaranteed to be boxed
         let mut boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
+
+        // Check for uninitialized values
+        if boxed_value.get().is_empty() {
+            return reference_error(self.cx(), "module value is not initialized");
+        }
+
         boxed_value.set(value);
+
+        ().into()
     }
 
     #[inline]

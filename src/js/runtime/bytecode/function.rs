@@ -14,7 +14,7 @@ use crate::{
             intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
             object_descriptor::{ObjectDescriptor, ObjectKind},
             object_value::ObjectValue,
-            ordinary_object::{object_create, object_create_with_proto, ordinary_object_create},
+            ordinary_object::{object_create, object_create_with_proto},
             property::Property,
             scope::Scope,
             source_file::SourceFile,
@@ -52,7 +52,7 @@ impl Closure {
         set_uninit!(object.scope, scope.get_());
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function);
+        Self::init_common_properties(cx, closure, function, cx.current_realm());
 
         closure
     }
@@ -69,7 +69,7 @@ impl Closure {
         set_uninit!(object.scope, scope.get_());
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function);
+        Self::init_common_properties(cx, closure, function, cx.current_realm());
 
         closure
     }
@@ -87,7 +87,7 @@ impl Closure {
         set_uninit!(object.scope, scope.get_());
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function);
+        Self::init_common_properties(cx, closure, function, realm);
 
         closure
     }
@@ -147,6 +147,7 @@ impl Closure {
         cx: Context,
         closure: Handle<Closure>,
         function: Handle<BytecodeFunction>,
+        realm: Handle<Realm>,
     ) {
         set_function_length(cx, closure.into(), function.function_length());
 
@@ -160,7 +161,10 @@ impl Closure {
 
         // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {
-            let prototype = ordinary_object_create(cx);
+            let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+            let prototype =
+                object_create_with_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, proto)
+                    .to_handle();
 
             let desc = PropertyDescriptor::data(closure.into(), true, false, true);
             must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));

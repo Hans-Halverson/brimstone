@@ -2654,7 +2654,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_imported_identifier(&mut self) -> ParseResult<Identifier> {
-        self.parse_identifier()
+        let mut id = self.parse_identifier()?;
+        self.add_binding(&mut id, BindingKind::Import { is_namespace: false })?;
+        Ok(id)
+    }
+
+    fn parse_imported_namespace_identifier(&mut self) -> ParseResult<Identifier> {
+        let mut id = self.parse_identifier()?;
+        self.add_binding(&mut id, BindingKind::Import { is_namespace: true })?;
+        Ok(id)
     }
 
     fn parse_identifier(&mut self) -> ParseResult<Identifier> {
@@ -4029,6 +4037,7 @@ impl<'a> Parser<'a> {
         if let Token::Identifier(_) = self.token {
             // Starts with default specifier
             let local = p(self.parse_imported_identifier()?);
+
             let default_specifier = ImportDefaultSpecifier { loc: local.loc, local };
             specifiers.push(ImportSpecifier::Default(default_specifier));
 
@@ -4071,7 +4080,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::As)?;
 
-        let local = p(self.parse_imported_identifier()?);
+        let local = p(self.parse_imported_namespace_identifier()?);
         let loc = self.mark_loc(start_pos);
 
         Ok(ImportSpecifier::Namespace(ImportNamespaceSpecifier { loc, local }))
@@ -4095,7 +4104,7 @@ impl<'a> Parser<'a> {
                 let loc = self.mark_loc(start_pos);
 
                 ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
-            } else if let Some(id) = self.parse_identifier_name()? {
+            } else if let Some(mut id) = self.parse_identifier_name()? {
                 // This is an import as specifier, so the id can be any name including reserved words
                 if self.token == Token::As {
                     self.advance()?;
@@ -4111,6 +4120,9 @@ impl<'a> Parser<'a> {
                     if self.is_reserved_word_in_current_context(&id.name) {
                         return self.error_unexpected_token(id.loc, &start_token);
                     }
+
+                    // Must add an import binding since not parsed as an imported identifier
+                    self.add_binding(&mut id, BindingKind::Import { is_namespace: false })?;
 
                     ImportNamedSpecifier { loc: id.loc, imported: None, local: p(id) }
                 }
@@ -4575,7 +4587,7 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
 pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_module());
     parser.advance()?;
 
     parser.parse_module()

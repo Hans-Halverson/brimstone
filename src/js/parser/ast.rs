@@ -1454,6 +1454,34 @@ pub struct ExportNamedDeclaration {
     pub source: Option<P<StringLiteral>>,
 }
 
+impl ExportNamedDeclaration {
+    pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&Identifier)) {
+        if let Some(declaration) = &self.declaration {
+            match declaration.as_ref() {
+                Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
+                    for decl in declarations {
+                        let _ = decl.iter_bound_names(&mut |id| {
+                            f(id);
+                            ().into()
+                        });
+                    }
+                }
+                Statement::FuncDecl(func) => {
+                    if let Some(id) = &func.id {
+                        f(id);
+                    }
+                }
+                Statement::ClassDecl(class) => {
+                    if let Some(id) = &class.id {
+                        f(id);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 pub struct ExportSpecifier {
     pub loc: Loc,
     pub local: P<Identifier>,
@@ -1464,6 +1492,16 @@ pub struct ExportDefaultDeclaration {
     pub loc: Loc,
     // Must be function declaration, class declaration, or expression statement
     pub declaration: P<Statement>,
+}
+
+impl ExportDefaultDeclaration {
+    pub fn id(&self) -> Option<&Identifier> {
+        match self.declaration.as_ref() {
+            Statement::FuncDecl(func) => func.id.as_deref(),
+            Statement::ClassDecl(class) => class.id.as_deref(),
+            _ => None,
+        }
+    }
 }
 
 pub struct ExportAllDeclaration {

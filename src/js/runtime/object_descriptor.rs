@@ -125,6 +125,8 @@ pub enum ObjectKind {
 
     CompiledRegExpObject,
 
+    BoxedValue,
+
     // Hash maps
     ObjectNamedPropertiesMap,
     MapObjectValueMap,
@@ -330,6 +332,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::SparseArrayProperties);
 
         other_heap_object_descriptor!(ObjectKind::CompiledRegExpObject);
+
+        other_heap_object_descriptor!(ObjectKind::BoxedValue);
 
         other_heap_object_descriptor!(ObjectKind::ObjectNamedPropertiesMap);
         other_heap_object_descriptor!(ObjectKind::MapObjectValueMap);

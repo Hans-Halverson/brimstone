@@ -894,6 +894,32 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         self.exit_strict_mode_context();
     }
+
+    fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration) {
+        default_visit_export_default_declaration(self, export);
+
+        // Mark local bindings as exported
+        if let Some(id) = export.id() {
+            id.get_binding().set_is_exported(true);
+        }
+    }
+
+    fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
+        default_visit_export_named_declaration(self, export);
+
+        // Mark local bindings as exported
+        export.iter_declaration_ids(&mut |id| {
+            id.get_binding().set_is_exported(true);
+        });
+
+        for specifier in &mut export.specifiers {
+            specifier.local.get_binding().set_is_exported(true);
+        }
+    }
+
+    fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration) {
+        default_visit_export_all_declaration(self, export);
+    }
 }
 
 impl Analyzer<'_> {

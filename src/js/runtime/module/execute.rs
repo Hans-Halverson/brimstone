@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
@@ -23,9 +25,21 @@ pub enum ExecuteOnReject {
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
 ///
 /// Returns a promise that resolves once the module has completed execution.
-pub fn execute_module(cx: Context, module: Handle<SourceTextModule>) -> Handle<PromiseObject> {
+pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Handle<PromiseObject> {
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
     let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+
+    // Cache the module at its canonical source path
+    //
+    // TODO: Move module caching right at module creation. May require first switching to storing
+    // absolute paths in Source but relative paths in the heap.
+    let source_file_path = Path::new(&module.source_file_path())
+        .canonicalize()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    cx.modules.insert(source_file_path, module.get_());
 
     let promise = load_requested_modules(cx, module);
 

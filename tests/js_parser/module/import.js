@@ -1,27 +1,27 @@
 import 'a';
 
-import * as a from 'b';
+import * as a1 from 'b';
 
 
-import a from 'b';
+import a2 from 'b';
 
-import a, * as b from 'c';
+import a3, * as b1 from 'c';
 
-import a, { b } from 'c';
+import a4, { b2 } from 'c';
 
 
 import {} from 'a';
 
-import {a} from 'b';
+import {a5} from 'b';
 
-import {a,} from 'b';
+import {a6,} from 'b';
 
-import {a, b, c} from 'd';
+import {a7, b3, c1} from 'd';
 
-import {a as b, c, d as e} from 'f';
+import {a8 as b4, c2, d1 as e1} from 'f';
 
-import {'a' as b, 'c' as d} from 'e';
+import {'a' as b5, 'c' as d2} from 'e';
 
-import(a)
+import(a1)
 
-import(a);
+import(a1);

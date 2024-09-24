@@ -228,6 +228,7 @@ impl fmt::Display for ParseError {
                     BindingKind::FunctionParameter { .. } => "function parameter",
                     BindingKind::Class { .. } => "class",
                     BindingKind::CatchParameter { .. } => "catch parameter",
+                    BindingKind::Import { .. } => "import",
                     BindingKind::ImplicitThis { .. } => "`this`",
                     BindingKind::ImplicitArguments => "`arguments`",
                     BindingKind::ImplicitNewTarget => "`new.target`",

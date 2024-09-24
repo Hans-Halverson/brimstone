@@ -47,6 +47,10 @@ impl ScopeTree {
         Self::new_with_root(ScopeNodeKind::Global)
     }
 
+    pub fn new_module() -> ScopeTree {
+        Self::new_with_root(ScopeNodeKind::Module)
+    }
+
     pub fn new_eval(is_direct: bool) -> ScopeTree {
         // Start off without setting the strict flag. This flag will be right away during parsing.
         Self::new_with_root(ScopeNodeKind::Eval { is_direct, is_strict: false })
@@ -128,6 +132,7 @@ impl ScopeTree {
         parent: Option<ScopeNodeId>,
     ) -> AstScopeNode {
         let enclosing_scope = if let ScopeNodeKind::Global
+        | ScopeNodeKind::Module
         | ScopeNodeKind::Function { .. }
         | ScopeNodeKind::Eval { .. } = kind
         {
@@ -459,7 +464,10 @@ impl ScopeTree {
 
             match scope.kind {
                 // No need to mark the global scope as supporting dynamic bindings
-                ScopeNodeKind::Global => return,
+                ScopeNodeKind::Global
+                // Module scopes do not need to support dynamic bindings since sloppy direct eval
+                // cannot appear in modules.
+                | ScopeNodeKind::Module => return,
                 // Functions must be marked to support dynamic bindings
                 ScopeNodeKind::Function { .. } | ScopeNodeKind::FunctionBody => {
                     scope.supports_dynamic_bindings = true;
@@ -535,9 +543,12 @@ impl ScopeTree {
         let has_mapped_arguments_object =
             num_extra_slots.is_some() && matches!(ast_node.kind(), ScopeNodeKind::Function { .. });
 
-        // The first slot in a global scope always contains the realm
         if ast_node.kind() == ScopeNodeKind::Global {
+            // The first slot in a global scope always contains the realm
             bindings.push(REALM_SCOPE_SLOT_NAME.to_owned());
+        } else if ast_node.kind() == ScopeNodeKind::Module {
+            // The first slot in a module scope always contains the module object
+            bindings.push(MODULE_SCOPE_SLOT_NAME.to_owned());
         } else if has_mapped_arguments_object {
             // A mapped arguments object requires that all arguments be placed in the VM scope node
             // in order.
@@ -580,6 +591,16 @@ impl ScopeTree {
                 continue;
             }
 
+            // Imported or exported bindings must be placed in the module's VM scope
+            if binding.is_exported() || matches!(binding.kind(), BindingKind::Import { .. }) {
+                binding.set_vm_location(VMLocation::ModuleScope {
+                    scope_id: vm_node_id,
+                    index: bindings.len(),
+                });
+                bindings.push(name.clone());
+                continue;
+            }
+
             let is_global = matches!(binding.vm_location, Some(VMLocation::Global));
             let is_eval_var = matches!(binding.vm_location, Some(VMLocation::EvalVar));
             let is_with_var = matches!(binding.vm_location, Some(VMLocation::WithVar));
@@ -595,7 +616,9 @@ impl ScopeTree {
                 //
                 // No need to place the global `this` in a VM scope unless it is captured.
                 (ast_node.supports_dynamic_access &&
-                    (name != "this" || ast_node.kind != ScopeNodeKind::Global))
+                    !(name == "this" &&
+                        (ast_node.kind == ScopeNodeKind::Global
+                            || ast_node.kind == ScopeNodeKind::Module)))
             ) && (
                 // Eval var bindings will already be placed in VM scope objects during eval
                 // declaration instantiation.
@@ -697,6 +720,7 @@ pub type ScopeNodeId = usize;
 #[derive(Clone, Copy, PartialEq)]
 pub enum ScopeNodeKind {
     Global,
+    Module,
     Function {
         /// A unique identifier for the function. Currently the function's starting source position.
         id: FunctionId,
@@ -730,6 +754,7 @@ impl ScopeNodeKind {
     fn is_hoist_target(&self) -> bool {
         match self {
             ScopeNodeKind::Global
+            | ScopeNodeKind::Module
             | ScopeNodeKind::Function { .. }
             | ScopeNodeKind::FunctionBody
             // Sloppy eval will add var bindings to the parent var scope. However we still consider
@@ -936,6 +961,10 @@ pub enum BindingKind {
         /// The source position after which this parameter has been initialized, inclusive.
         init_pos: Cell<Pos>,
     },
+    Import {
+        /// Whether this is a namespace import.
+        is_namespace: bool,
+    },
     /// An implicit `this` binding introduced in a function or root scope.
     ImplicitThis {
         /// Whether this is the `this` value for a derived constructor.
@@ -975,13 +1004,18 @@ impl BindingKind {
             BindingKind::Const { .. }
             | BindingKind::Let { .. }
             | BindingKind::Class { .. }
-            | BindingKind::CatchParameter { .. } => true,
+            | BindingKind::CatchParameter { .. }
+            | BindingKind::Import { .. } => true,
         }
     }
 
     pub fn is_immutable(&self) -> bool {
-        matches!(self, BindingKind::Const { .. })
-            | matches!(self, BindingKind::Class { in_body_scope: true, .. })
+        matches!(
+            self,
+            BindingKind::Const { .. }
+                | BindingKind::Class { in_body_scope: true, .. }
+                | BindingKind::Import { .. }
+        )
     }
 
     pub fn is_function(&self) -> bool {
@@ -1041,6 +1075,8 @@ pub struct Binding {
     index: usize,
     /// Whether this binding is captured by a nested function. Set during use analysis.
     is_captured: bool,
+    /// Whether this binding is exported from its module.
+    is_exported: Cell<bool>,
     /// Whether to force this binding to be in a VM scope. Set during use analysis.
     force_vm_scope: bool,
     /// If this is a const or let declaration, whether there is some use that requires a TDZ check.
@@ -1060,6 +1096,7 @@ impl Binding {
             kind,
             index,
             is_captured: false,
+            is_exported: Cell::new(false),
             force_vm_scope: false,
             needs_tdz_check,
             vm_location,
@@ -1087,7 +1124,17 @@ impl Binding {
     }
 
     pub fn needs_tdz_check(&self) -> bool {
-        self.kind().has_tdz() && self.needs_tdz_check
+        // Exported bindings will always have an implicit TDZ check inside the LoadFromModule and
+        // StoreToModule instructions.
+        self.kind().has_tdz() && self.needs_tdz_check && !self.is_exported()
+    }
+
+    pub fn is_exported(&self) -> bool {
+        self.is_exported.get()
+    }
+
+    pub fn set_is_exported(&self, value: bool) {
+        self.is_exported.set(value);
     }
 }
 
@@ -1101,6 +1148,8 @@ pub enum VMLocation {
     LocalRegister(usize),
     /// Captured binding with the given index in a VM scope.
     Scope { scope_id: usize, index: usize },
+    /// Binding is stored in the module's scope as an imported or exported binding.
+    ModuleScope { scope_id: usize, index: usize },
     /// In sloppy evals vars are added to the parent var scope at runtime. This means they must be
     /// dynamically looked up by name at runtime, and are defined via special instructions.
     EvalVar,
@@ -1122,6 +1171,7 @@ impl VMScopeNode {
 
 pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
 pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
+pub const MODULE_SCOPE_SLOT_NAME: &str = "%module";
 pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
 pub const DERIVED_CONSTRUCTOR_BINDING_NAME: &str = "%constructor";
 pub const HOME_OBJECT_BINDING_NAME: &str = "%homeObject";

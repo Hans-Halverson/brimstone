@@ -259,28 +259,30 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // Each specifier will generate an import entry
                     for specifier in &import.specifiers {
-                        let (local_name, import_name) = match specifier {
-                            ast::ImportSpecifier::Default(import) => {
-                                let local = self.cx.alloc_string(&import.local.name).as_flat();
-                                (local, Some(default))
-                            }
-                            ast::ImportSpecifier::Namespace(import) => {
-                                let local = self.cx.alloc_string(&import.local.name).as_flat();
-                                (local, None)
-                            }
+                        let (local_id, import_name) = match specifier {
+                            ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
+                            ast::ImportSpecifier::Namespace(import) => (&import.local, None),
                             ast::ImportSpecifier::Named(import) => {
-                                let local = self.cx.alloc_string(&import.local.name).as_flat();
-                                let imported = import.imported.as_ref().map_or(local, |imported| {
-                                    self.alloc_module_name_string(imported)
-                                });
-                                (local, Some(imported))
+                                let imported = import
+                                    .imported
+                                    .as_ref()
+                                    .map(|imported| self.alloc_module_name_string(imported))
+                                    .unwrap_or_else(|| {
+                                        self.cx.alloc_string(&import.local.name).as_flat()
+                                    });
+                                (&import.local, Some(imported))
                             }
                         };
+
+                        let slot_index = Self::id_module_slot_index(local_id);
+
+                        let local_name = self.cx.alloc_string(&local_id.name).as_flat();
 
                         imports.push(ImportEntry {
                             module_request: module_specifier,
                             local_name,
                             import_name,
+                            slot_index,
                         });
                     }
                 }
@@ -292,7 +294,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         &export.declaration,
                     );
 
-                    local_exports.push(LocalExportEntry { export_name, local_name })
+                    let slot_index = if let Some(id) = export.id() {
+                        Self::id_module_slot_index(id)
+                    } else {
+                        unimplemented!("export default declarations with an implicit name")
+                    };
+
+                    local_exports.push(LocalExportEntry { export_name, local_name, slot_index })
                 }
                 ast::Toplevel::ExportNamed(export) => {
                     let module_specifier = export.source.as_ref().map(|source| {
@@ -303,6 +311,18 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // TODO: Check if we are exporting an import and this should be treated as a
                     // named re-export.
+
+                    // Exporting a full named declaration adds export entries for each exported id
+                    export.iter_declaration_ids(&mut |id| {
+                        let local_name = self.cx.alloc_string(&id.name).as_flat();
+                        let slot_index = Self::id_module_slot_index(id);
+
+                        local_exports.push(LocalExportEntry {
+                            export_name: local_name,
+                            local_name,
+                            slot_index,
+                        });
+                    });
 
                     // Each specifier will generate an export entry of some form
                     for specifier in &export.specifiers {
@@ -320,8 +340,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                 import_name: Some(local_name),
                             })
                         } else {
+                            let slot_index = Self::id_module_slot_index(&specifier.local);
+
                             // Otherwise this is a regular local export
-                            local_exports.push(LocalExportEntry { export_name, local_name })
+                            local_exports.push(LocalExportEntry {
+                                export_name,
+                                local_name,
+                                slot_index,
+                            })
                         }
                     }
                 }
@@ -385,6 +411,17 @@ impl<'a> BytecodeProgramGenerator<'a> {
         match module_name {
             ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name).as_flat(),
             ast::ModuleName::String(lit) => self.cx.alloc_wtf8_string(&lit.value).as_flat(),
+        }
+    }
+
+    /// Look up the slot index of the given binding in the module scope. Should only be called for
+    /// import and export bindings that are known to be stored in the module scope.
+    fn id_module_slot_index(id: &ast::Identifier) -> usize {
+        // Look up the slot index of the import in the module scope
+        if let VMLocation::ModuleScope { index, .. } = id.get_binding().vm_location().unwrap() {
+            index
+        } else {
+            unreachable!("expected module scope location")
         }
     }
 
@@ -1814,21 +1851,36 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Toplevel::Statement(stmt) => {
                 // Ignore completion of toplevel statements, generate later toplevels even if abrupt
                 let _ = self.gen_statement(stmt)?;
-                Ok(())
             }
-            ast::Toplevel::Import(import) => {
-                // No evaluation action is needed for `import "module"` declarations. These only
-                // have side effects due to loading the module during load/link/eval time.
-                if import.specifiers.is_empty() {
-                    return Ok(());
+            ast::Toplevel::Import(_) => {
+                // No evaluation action is needed for import declarations. These are initialized
+                // during module linking.
+            }
+            ast::Toplevel::ExportNamed(export) => {
+                // Named exports should evaluate their declaration normally, which will store to
+                // the exported module binding.
+                if let Some(declaration) = export.declaration.as_ref() {
+                    self.gen_statement(declaration)?;
                 }
-
-                unimplemented!("bytecode for import declarations")
             }
-            ast::Toplevel::ExportDefault(_)
-            | ast::Toplevel::ExportNamed(_)
-            | ast::Toplevel::ExportAll(_) => unimplemented!("bytecode for export declarations"),
+            ast::Toplevel::ExportDefault(export) => match export.declaration.as_ref() {
+                // Named default exports should evaluate their declaration normally, which will
+                // store to the exported module binding.
+                ast::Statement::FuncDecl(decl) if decl.id.is_some() => {
+                    self.gen_statement(&export.declaration)?;
+                }
+                ast::Statement::ClassDecl(decl) if decl.id.is_some() => {
+                    self.gen_statement(&export.declaration)?;
+                }
+                ast::Statement::FuncDecl(_)
+                | ast::Statement::ClassDecl(_)
+                | ast::Statement::Expr(_) => unimplemented!("anonymous default exports"),
+                _ => unreachable!("Invalid default export"),
+            },
+            ast::Toplevel::ExportAll(_) => unimplemented!("export all declarations"),
         }
+
+        Ok(())
     }
 
     fn gen_statement(&mut self, stmt: &ast::Statement) -> EmitResult<StmtCompletion> {
@@ -2006,6 +2058,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     this.gen_load_scope_binding(scope_id, index, dest)
                 })
             }
+            // Module scope variables must be loaded to a register from the BoxedValue in the scope
+            // at the specified index.
+            VMLocation::ModuleScope { scope_id, index } => {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                    this.gen_load_module_scope_binding(scope_id, index, dest)
+                })
+            }
             // Eval or with variables must be loaded to a register from a scope chain lookup
             VMLocation::EvalVar | VMLocation::WithVar => {
                 self.gen_load_dynamic_identifier(name, dest)
@@ -2123,6 +2182,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(dest)
     }
 
+    fn gen_load_module_scope_binding(
+        &mut self,
+        scope_id: usize,
+        scope_index: usize,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let parent_depth = self.find_scope_depth(scope_id)?;
+        let scope_index =
+            GenUInt::try_from_unsigned(scope_index).ok_or(EmitError::IndexTooLarge)?;
+
+        let dest = self.allocate_destination(dest)?;
+        self.writer
+            .load_from_module_instruction(dest, scope_index, parent_depth);
+
+        Ok(dest)
+    }
+
     fn gen_load_dynamic_identifier(
         &mut self,
         name: &str,
@@ -2192,6 +2268,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             VMLocation::Scope { scope_id, index } => {
                 self.gen_store_scope_binding(scope_id, index, value)?
             }
+            // Module scope variables must be stored in the BoxedValue in the scope at the specified
+            // index.
+            VMLocation::ModuleScope { scope_id, index } => {
+                self.gen_store_module_scope_binding(scope_id, index, value)?
+            }
             // Eval or with vars are dynamically stored in parent scope at runtime, so they must be
             // dynamically stored to.
             VMLocation::EvalVar | VMLocation::WithVar => {
@@ -2221,6 +2302,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.writer
             .store_to_scope_instruction(value, scope_index, parent_depth);
+
+        Ok(())
+    }
+
+    fn gen_store_module_scope_binding(
+        &mut self,
+        scope_id: usize,
+        scope_index: usize,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        let parent_depth = self.find_scope_depth(scope_id)?;
+        let scope_index =
+            GenUInt::try_from_unsigned(scope_index).ok_or(EmitError::IndexTooLarge)?;
+
+        self.writer
+            .store_to_module_instruction(value, scope_index, parent_depth);
 
         Ok(())
     }
@@ -2255,6 +2352,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Other VM locations can be stored from any register
             VMLocation::Global
             | VMLocation::Scope { .. }
+            | VMLocation::ModuleScope { .. }
             | VMLocation::EvalVar
             | VMLocation::WithVar => return ExprDest::Any,
         };
@@ -6178,7 +6276,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(class_id) = class.id.as_ref() {
             let class_name = &class_id.name;
             if let Some(binding) = body_scope.get_binding_opt(class_name) {
-                if let Some(VMLocation::Scope { .. }) = binding.vm_location() {
+                if let Some(VMLocation::Scope { .. } | VMLocation::ModuleScope { .. }) =
+                    binding.vm_location()
+                {
                     self.gen_store_binding(
                         class_name,
                         binding,
@@ -6521,8 +6621,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.push_scope_stack_node(vm_node_id);
                 }
             }
-            // Global and with scopes are handled separately
-            ScopeNodeKind::Global | ScopeNodeKind::With => {}
+            // Global, module, and with scopes are handled separately
+            ScopeNodeKind::Global | ScopeNodeKind::Module | ScopeNodeKind::With => {}
             // Otherwise this is a generic lexical scope
             ScopeNodeKind::Block
             | ScopeNodeKind::Switch
@@ -6571,6 +6671,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.gen_store_scope_binding(scope_id, index, empty_reg)?;
                         self.register_allocator.release(empty_reg);
                     }
+                    // Bindings in the module scope will already have the TDZ initialized during
+                    // linking.
+                    VMLocation::ModuleScope { .. } => {}
                     VMLocation::EvalVar | VMLocation::WithVar => {
                         unreachable!("vars do not need TDZ checks")
                     }

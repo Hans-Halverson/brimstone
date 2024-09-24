@@ -1013,6 +1013,22 @@ define_instructions!(
         [2] parent_depth: UInt,
     }
 
+    /// Load the value at `scope_index` from a module scope and store in dest. The scope is found at
+    /// `parent_depth` levels up the scope chain. A `parent_depth` of 0 refers to the current scope.
+    LoadFromModule (LoadFromModuleInstruction, load_from_module_instruction) {
+        [0] dest: Register,
+        [1] scope_index: UInt,
+        [2] parent_depth: UInt,
+    }
+
+    /// Store the `value` into a module scope at `scope_index`. The scope is found at `parent_depth`
+    /// levels up the scope chain. A `parent_depth` of 0 refers to the current scope.
+    StoreToModule (StoreToModuleInstruction, store_to_module_instruction) {
+        [0] value: Register,
+        [1] scope_index: UInt,
+        [2] parent_depth: UInt,
+    }
+
     /// Throw an error.
     Throw(ThrowInstruction, throw_instruction) {
         [0] error: Register,

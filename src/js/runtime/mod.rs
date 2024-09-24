@@ -4,6 +4,7 @@ mod array_object;
 mod array_properties;
 mod async_generator_object;
 mod bound_function_object;
+mod boxed_value;
 mod builtin_function;
 mod builtin_names;
 pub mod bytecode;

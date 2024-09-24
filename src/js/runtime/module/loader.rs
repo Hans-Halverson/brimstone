@@ -92,8 +92,7 @@ impl GraphLoader {
         module: Handle<SourceTextModule>,
         module_specifier: Handle<FlatString>,
     ) -> EvalResult<Handle<SourceTextModule>> {
-        let source_file = module.program_function_ptr().source_file_ptr().unwrap();
-        let source_file_path = Path::new(&source_file.name().to_string())
+        let source_file_path = Path::new(&module.source_file_path())
             .canonicalize()
             .unwrap();
         let source_file_dir = source_file_path.parent().unwrap();

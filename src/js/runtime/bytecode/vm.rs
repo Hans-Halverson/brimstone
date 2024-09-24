@@ -14,6 +14,7 @@ use crate::{
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
+        boxed_value::BoxedValue,
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
@@ -95,9 +96,9 @@ use super::{
         JumpTrueConstantInstruction, JumpTrueInstruction, LessThanInstruction,
         LessThanOrEqualInstruction, LoadConstantInstruction, LoadDynamicInstruction,
         LoadDynamicOrUnresolvedInstruction, LoadEmptyInstruction, LoadFalseInstruction,
-        LoadFromScopeInstruction, LoadGlobalInstruction, LoadGlobalOrUnresolvedInstruction,
-        LoadImmediateInstruction, LoadNullInstruction, LoadTrueInstruction,
-        LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
+        LoadFromModuleInstruction, LoadFromScopeInstruction, LoadGlobalInstruction,
+        LoadGlobalOrUnresolvedInstruction, LoadImmediateInstruction, LoadNullInstruction,
+        LoadTrueInstruction, LoadUndefinedInstruction, LogNotInstruction, LooseEqualInstruction,
         LooseNotEqualInstruction, MovInstruction, MulInstruction, NegInstruction,
         NewAccessorInstruction, NewArrayInstruction, NewAsyncClosureInstruction,
         NewAsyncGeneratorInstruction, NewClassInstruction, NewClosureInstruction,
@@ -110,10 +111,10 @@ use super::{
         SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
         SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
         ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
-        StoreGlobalInstruction, StoreToScopeInstruction, StrictEqualInstruction,
-        StrictNotEqualInstruction, SubInstruction, ThrowInstruction, ToNumberInstruction,
-        ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction,
-        TypeOfInstruction, YieldInstruction,
+        StoreGlobalInstruction, StoreToModuleInstruction, StoreToScopeInstruction,
+        StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
+        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
+        ToStringInstruction, TypeOfInstruction, YieldInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -1003,6 +1004,12 @@ impl VM {
                         }
                         OpCode::StoreToScope => {
                             dispatch!(StoreToScopeInstruction, execute_store_to_scope)
+                        }
+                        OpCode::LoadFromModule => {
+                            dispatch!(LoadFromModuleInstruction, execute_load_from_module)
+                        }
+                        OpCode::StoreToModule => {
+                            dispatch!(StoreToModuleInstruction, execute_store_to_module)
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::RestParameter => {
@@ -3758,6 +3765,26 @@ impl VM {
     }
 
     #[inline]
+    fn load_from_scope_at_depth(&self, scope_index: usize, parent_depth: usize) -> Value {
+        // Find the scope at the given parent depth
+        let scope = self.scope_at_depth(parent_depth);
+
+        // Extract the value at the given index
+        scope.get_slot(scope_index)
+    }
+
+    #[inline]
+    fn execute_load_from_scope<W: Width>(&mut self, instr: &LoadFromScopeInstruction<W>) {
+        let scope_index = instr.scope_index().value().to_usize();
+        let parent_depth = instr.parent_depth().value().to_usize();
+        let dest = instr.dest();
+
+        let value = self.load_from_scope_at_depth(scope_index, parent_depth);
+
+        self.write_register(dest, value);
+    }
+
+    #[inline]
     pub fn store_to_scope_at_depth(&self, scope_index: usize, parent_depth: usize, value: Value) {
         // Find the scope at the given parent depth
         let mut scope = self.scope_at_depth(parent_depth);
@@ -3767,27 +3794,52 @@ impl VM {
     }
 
     #[inline]
-    fn execute_load_from_scope<W: Width>(&mut self, instr: &LoadFromScopeInstruction<W>) {
-        let scope_index = instr.scope_index().value().to_usize();
-        let parent_depth = instr.parent_depth().value().to_usize();
-        let dest = instr.dest();
-
-        // Find the scope at the given parent depth
-        let scope = self.scope_at_depth(parent_depth);
-
-        // Extract the value at the given index
-        let value = scope.get_slot(scope_index);
-
-        self.write_register(dest, value);
-    }
-
-    #[inline]
     fn execute_store_to_scope<W: Width>(&mut self, instr: &StoreToScopeInstruction<W>) {
         let scope_index = instr.scope_index().value().to_usize();
         let parent_depth = instr.parent_depth().value().to_usize();
         let value = self.read_register(instr.value());
 
         self.store_to_scope_at_depth(scope_index, parent_depth, value);
+    }
+
+    #[inline]
+    fn load_from_module_scope_at_depth(
+        &self,
+        scope_index: usize,
+        parent_depth: usize,
+    ) -> HeapPtr<BoxedValue> {
+        let boxed_value = self.load_from_scope_at_depth(scope_index, parent_depth);
+
+        debug_assert!(
+            boxed_value.is_pointer()
+                && boxed_value.as_pointer().descriptor().kind() == ObjectKind::BoxedValue
+        );
+
+        boxed_value.as_pointer().cast::<BoxedValue>()
+    }
+
+    #[inline]
+    fn execute_load_from_module<W: Width>(&mut self, instr: &LoadFromModuleInstruction<W>) {
+        let scope_index = instr.scope_index().value().to_usize();
+        let parent_depth = instr.parent_depth().value().to_usize();
+        let dest = instr.dest();
+
+        // Module values are guaranteed to be boxed
+        let boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
+        let value = boxed_value.get();
+
+        self.write_register(dest, value);
+    }
+
+    #[inline]
+    fn execute_store_to_module<W: Width>(&mut self, instr: &StoreToModuleInstruction<W>) {
+        let scope_index = instr.scope_index().value().to_usize();
+        let parent_depth = instr.parent_depth().value().to_usize();
+        let value = self.read_register(instr.value());
+
+        // Module values are guaranteed to be boxed
+        let mut boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
+        boxed_value.set(value);
     }
 
     #[inline]

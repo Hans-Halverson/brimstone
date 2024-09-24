@@ -178,6 +178,11 @@ impl SourceTextModule {
     pub fn set_loaded_module_at(&mut self, index: usize, module: HeapPtr<SourceTextModule>) {
         self.loaded_modules.as_mut_slice()[index] = Some(module);
     }
+
+    pub fn source_file_path(&self) -> String {
+        let source_file = self.program_function_ptr().source_file_ptr().unwrap();
+        source_file.name().to_string()
+    }
 }
 
 impl HeapObject for HeapPtr<SourceTextModule> {
@@ -241,16 +246,20 @@ struct HeapImportEntry {
     /// Name of the module that binding is being imported from.
     module_request: HeapPtr<FlatString>,
     /// Name of the binding in the module is was declared in. If None then this entry is for the
-    /// name object.
+    /// namespace object.
     import_name: Option<HeapPtr<FlatString>>,
     /// Name of the imported binding in this module.
     local_name: HeapPtr<FlatString>,
+    /// Slot in the module scope where the imported binding is stored.
+    #[allow(unused)]
+    slot_index: usize,
 }
 
 pub struct ImportEntry {
     pub module_request: Handle<FlatString>,
     pub import_name: Option<Handle<FlatString>>,
     pub local_name: Handle<FlatString>,
+    pub slot_index: usize,
 }
 
 impl ImportEntry {
@@ -259,6 +268,7 @@ impl ImportEntry {
             module_request: self.module_request.get_(),
             import_name: self.import_name.map(|name| name.get_()),
             local_name: self.local_name.get_(),
+            slot_index: self.slot_index,
         }
     }
 }
@@ -272,11 +282,15 @@ struct HeapLocalExportEntry {
     export_name: HeapPtr<FlatString>,
     /// The name of the exported binding within its module.
     local_name: HeapPtr<FlatString>,
+    /// Slot in the module scope where the exported binding is stored.
+    #[allow(unused)]
+    slot_index: usize,
 }
 
 pub struct LocalExportEntry {
     pub export_name: Handle<FlatString>,
     pub local_name: Handle<FlatString>,
+    pub slot_index: usize,
 }
 
 impl LocalExportEntry {
@@ -284,6 +298,7 @@ impl LocalExportEntry {
         HeapLocalExportEntry {
             export_name: self.export_name.get_(),
             local_name: self.local_name.get_(),
+            slot_index: self.slot_index,
         }
     }
 }

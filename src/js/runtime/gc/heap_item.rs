@@ -3,6 +3,7 @@ use crate::js::runtime::{
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
     async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
+    boxed_value::BoxedValue,
     bytecode::{
         constant_table::ConstantTable,
         exception_handlers::ExceptionHandlers,
@@ -150,6 +151,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             ObjectKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
             ObjectKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
+            ObjectKind::BoxedValue => self.cast::<BoxedValue>().byte_size(),
             ObjectKind::ObjectNamedPropertiesMap => {
                 NamedPropertiesMapField::byte_size(&self.cast())
             }
@@ -268,6 +270,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::CompiledRegExpObject => {
                 self.cast::<CompiledRegExpObject>().visit_pointers(visitor)
             }
+            ObjectKind::BoxedValue => self.cast::<BoxedValue>().visit_pointers(visitor),
             ObjectKind::ObjectNamedPropertiesMap => {
                 NamedPropertiesMapField::visit_pointers(self.cast_mut(), visitor)
             }

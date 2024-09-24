@@ -2,6 +2,7 @@ use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set
 
 use super::{
     abstract_operations::{has_own_property, has_property},
+    boxed_value::BoxedValue,
     collections::InlineArray,
     error::{err_assign_constant, err_cannot_set_property},
     gc::{HeapObject, HeapVisitor},
@@ -138,6 +139,18 @@ impl Scope {
     #[inline]
     pub fn set_slot(&mut self, index: usize, value: Value) {
         self.slots.as_mut_slice()[index] = value;
+    }
+
+    /// Return the boxed value at the given slot index of a module scope.
+    #[inline]
+    pub fn get_module_slot(&self, index: usize) -> HeapPtr<BoxedValue> {
+        let value = self.get_slot(index);
+
+        debug_assert!(
+            value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::BoxedValue
+        );
+
+        value.as_pointer().cast::<BoxedValue>()
     }
 
     /// Return the realm stored in this global scope.

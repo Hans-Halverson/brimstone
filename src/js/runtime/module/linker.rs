@@ -1,8 +1,7 @@
 use crate::{
     js::runtime::{
-        boxed_value::BoxedValue, error::syntax_error, module::source_text_module::ModuleState,
-        object_descriptor::ObjectKind, object_value::ObjectValue, Context, EvalResult, Handle,
-        HeapPtr,
+        error::syntax_error, module::source_text_module::ModuleState, object_value::ObjectValue,
+        Context, EvalResult, Handle, HeapPtr,
     },
     maybe,
 };
@@ -196,14 +195,7 @@ fn set_namespace_object(
     is_exported: bool,
 ) {
     if is_exported {
-        let boxed_value = module.module_scope_ptr().get_slot(slot_index);
-
-        debug_assert!(
-            boxed_value.is_pointer()
-                && boxed_value.as_pointer().descriptor().kind() == ObjectKind::BoxedValue
-        );
-
-        let mut boxed_value = boxed_value.as_pointer().cast::<BoxedValue>();
+        let mut boxed_value = module.module_scope_ptr().get_module_slot(slot_index);
         boxed_value.set(namespace_object.into());
     } else {
         module

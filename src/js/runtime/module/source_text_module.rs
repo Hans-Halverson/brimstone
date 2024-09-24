@@ -194,6 +194,11 @@ impl SourceTextModule {
     }
 
     #[inline]
+    pub fn module_scope(&self) -> Handle<Scope> {
+        self.module_scope_ptr().to_handle()
+    }
+
+    #[inline]
     pub fn requested_module_specifiers(&self) -> Handle<StringArray> {
         self.requested_module_specifiers.to_handle()
     }
@@ -254,19 +259,10 @@ impl HeapPtr<SourceTextModule> {
         for entry in self.entries.as_slice() {
             if let ModuleEntry::LocalExport(entry) = entry {
                 if entry.export_name == export_name {
-                    let boxed_value = self.module_scope.get_slot(entry.slot_index);
-
-                    debug_assert!(
-                        boxed_value.is_pointer()
-                            && boxed_value.as_pointer().descriptor().kind()
-                                == ObjectKind::BoxedValue
-                    );
+                    let boxed_value = self.module_scope.get_module_slot(entry.slot_index);
 
                     return ResolveExportResult::Resolved {
-                        name: ResolveExportName::Local {
-                            name: entry.local_name,
-                            boxed_value: boxed_value.as_pointer().cast(),
-                        },
+                        name: ResolveExportName::Local { name: entry.local_name, boxed_value },
                         module: *self,
                     };
                 }

@@ -48,6 +48,7 @@ use crate::js::{
 use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
+    function::Closure,
     instruction::{DecodeInfo, DefinePrivatePropertyFlags, EvalFlags, OpCode},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
@@ -65,9 +66,12 @@ pub struct BytecodeProgramGenerator<'a> {
     /// Source file of the functions that are being generated.
     source_file: Handle<SourceFile>,
 
+    /// The module that is being generated, if this is a module program.
+    module: Option<Handle<SourceTextModule>>,
+
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
-    pending_functions_queue: VecDeque<PatchablePendingFunction>,
+    pending_functions_queue: VecDeque<PendingFunction>,
 }
 
 pub struct BytecodeScript {
@@ -98,6 +102,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             scope_tree,
             realm,
             source_file,
+            module: None,
             pending_functions_queue: VecDeque::new(),
         }
     }
@@ -194,6 +199,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<SourceTextModule>> {
         let program_function = self.gen_module_function(program)?;
         let source_text_module = self.gen_source_text_module(program, program_function);
+
+        self.module = Some(source_text_module);
 
         while let Some(pending_function) = self.pending_functions_queue.pop_front() {
             self.gen_enqueued_function(pending_function)?;
@@ -610,12 +617,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(emit_result.bytecode_function)
     }
 
-    fn gen_enqueued_function(
-        &mut self,
-        pending_function: PatchablePendingFunction,
-    ) -> EmitResult<()> {
-        let PatchablePendingFunction { mut func_node, parent_function, constant_index, scope } =
-            pending_function;
+    fn gen_enqueued_function(&mut self, pending_function: PendingFunction) -> EmitResult<()> {
+        let PendingFunction { mut func_node, scope, patch } = pending_function;
 
         let mut emit_result = EmitFunctionResult::empty();
 
@@ -740,12 +743,34 @@ impl<'a> BytecodeProgramGenerator<'a> {
             emit_result.pending_functions,
         );
 
-        // Patch function into parent function's constant table
-        let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
-        parent_constant_table.set_constant(
-            constant_index as usize,
-            emit_result.bytecode_function.cast::<Value>().get(),
-        );
+        match patch {
+            // Patch function into parent function's constant table
+            Patch::ParentFunction { parent_function, constant_index } => {
+                let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
+                parent_constant_table.set_constant(
+                    constant_index as usize,
+                    emit_result.bytecode_function.cast::<Value>().get(),
+                );
+            }
+            // Patch exported function into the module scope
+            Patch::Export { slot_index } => {
+                // Create closure for the exported function
+                let module_scope = self.module.unwrap().module_scope();
+                let realm = self.module.unwrap().program_function_ptr().realm();
+
+                let closure: Handle<ObjectValue> = Closure::new_in_realm(
+                    self.cx,
+                    emit_result.bytecode_function,
+                    module_scope,
+                    realm,
+                )
+                .into();
+
+                // And place inside boxed value in the module scope
+                let mut boxed_value = module_scope.get_module_slot(slot_index);
+                boxed_value.set(closure.get_().into());
+            }
+        }
 
         Ok(())
     }
@@ -762,16 +787,18 @@ impl<'a> BytecodeProgramGenerator<'a> {
     fn enqueue_pending_functions(
         &mut self,
         parent_function: Handle<BytecodeFunction>,
-        pending_functions: PendingFunctions,
+        pending_functions: PendingFunctionNodes,
     ) {
-        for (func_node, constant_index, scope) in pending_functions {
+        for (func_node, func_gen_patch, scope) in pending_functions {
+            let patch = match func_gen_patch {
+                FuncGenPatch::ParentFunction(constant_index) => {
+                    Patch::ParentFunction { parent_function, constant_index }
+                }
+                FuncGenPatch::Export(slot_index) => Patch::Export { slot_index },
+            };
+
             self.pending_functions_queue
-                .push_back(PatchablePendingFunction {
-                    func_node,
-                    parent_function,
-                    constant_index,
-                    scope,
-                });
+                .push_back(PendingFunction { func_node, scope, patch });
         }
     }
 }
@@ -873,7 +900,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     exception_handler_builder: ExceptionHandlersBuilder,
 
     /// Queue of functions that still need to be generated.
-    pending_functions_queue: PendingFunctions,
+    pending_functions_queue: PendingFunctionNodes,
 }
 
 impl<'a> BytecodeFunctionGenerator<'a> {
@@ -1445,6 +1472,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(ConstantIndex::new(constant_index))
     }
 
+    /// Enqueue a patchable function to be generated later, returning the constant index of the slot
+    /// where the function will be patched in.
     fn enqueue_function_to_generate(
         &mut self,
         function: PendingFunctionNode,
@@ -1452,10 +1481,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let constant_index = self
             .constant_table_builder
             .add_heap_object(Handle::dangling())?;
-        self.pending_functions_queue
-            .push((function, constant_index, self.scope.clone()));
+        self.pending_functions_queue.push((
+            function,
+            FuncGenPatch::ParentFunction(constant_index),
+            self.scope.clone(),
+        ));
 
         Ok(constant_index)
+    }
+
+    /// Enqueue an exported function which will be generated later and patched into the module scope
+    /// at the provided slot.
+    fn enqueue_export_function_to_generate(
+        &mut self,
+        function: PendingFunctionNode,
+        slot_index: usize,
+    ) {
+        self.pending_functions_queue.push((
+            function,
+            FuncGenPatch::Export(slot_index),
+            self.scope.clone(),
+        ));
     }
 
     /// Generate the bytecode for a function.
@@ -5975,10 +6021,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         func_decl: &ast::Function,
     ) -> EmitResult<StmtCompletion> {
+        let binding = func_decl.id.as_ref().unwrap().get_binding();
+
         // Var function definitions are hoisted to the top of the scope
-        if let BindingKind::Function { is_lexical: false, .. } =
-            func_decl.id.as_ref().unwrap().get_binding().kind()
-        {
+        if let BindingKind::Function { is_lexical: false, .. } = binding.kind() {
+            return Ok(StmtCompletion::Normal);
+        }
+
+        // Exported functions are enqueued to be added to the module scope during initialization
+        if binding.is_exported() {
+            // Extract the slot in the module scope where this export is stored
+            let slot_index = if let Some(func_id) = func_decl.id.as_ref() {
+                let vm_location = func_id.get_binding().vm_location().unwrap();
+                if let VMLocation::ModuleScope { index, .. } = vm_location {
+                    index
+                } else {
+                    unreachable!("export must be in module scope")
+                }
+            } else {
+                unimplemented!("anonymous default exports")
+            };
+
+            let func_node = PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl));
+            self.enqueue_export_function_to_generate(func_node, slot_index);
+
             return Ok(StmtCompletion::Normal);
         }
 
@@ -8592,25 +8658,40 @@ impl PendingFunctionNode {
 
 /// Collection of functions that still need to be generated, along with their index in the
 /// function's constant table and the scope they should be generated in.
-type PendingFunctions = Vec<(PendingFunctionNode, ConstantTableIndex, Rc<ScopeStackNode>)>;
+type PendingFunctionNodes = Vec<(PendingFunctionNode, FuncGenPatch, Rc<ScopeStackNode>)>;
 
-/// A function that still needs to be generated, along with the information needed to patch it's
-/// creation into the parent function.
-struct PatchablePendingFunction {
-    /// This pending function's AST node
+enum FuncGenPatch {
+    ParentFunction(ConstantTableIndex),
+    Export(usize),
+}
+
+/// Information needed to patch a function into some other object once the function is created.
+enum Patch {
+    ParentFunction {
+        /// The already generated parent function which creates this function
+        parent_function: Handle<BytecodeFunction>,
+        /// The index into the parent function's constant table that needs to be patched with the
+        /// function once it is created.
+        constant_index: ConstantTableIndex,
+    },
+    Export {
+        /// The slot in the module scope that contains a BoxedValue that needs to be patched with
+        /// the function once it is created.
+        slot_index: usize,
+    },
+}
+
+struct PendingFunction {
+    /// This pending function's AST node.
     func_node: PendingFunctionNode,
-    /// The already generated parent function which creates this function
-    parent_function: Handle<BytecodeFunction>,
-    /// The index into the parent function's constant table that needs to be patched with the
-    /// function once it is created.
-    constant_index: ConstantTableIndex,
-    /// The scope that this function should be generated in
+    /// The scope that this function should be generated in.
     scope: Rc<ScopeStackNode>,
+    patch: Patch,
 }
 
 pub struct EmitFunctionResult {
     pub bytecode_function: Handle<BytecodeFunction>,
-    pending_functions: PendingFunctions,
+    pending_functions: PendingFunctionNodes,
 }
 
 impl EmitFunctionResult {

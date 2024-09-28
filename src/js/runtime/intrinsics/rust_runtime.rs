@@ -382,6 +382,7 @@ rust_runtime_functions!(
     MathObject::tan,
     MathObject::tanh,
     MathObject::trunc,
+    module::execute::load_requested_modules_reject,
     module::execute::load_requested_modules_resolve,
     ObjectConstructor::construct,
     ObjectConstructor::assign,

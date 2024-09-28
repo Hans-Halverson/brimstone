@@ -43,6 +43,7 @@ use crate::{
             rust_runtime::RustRuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
+        module::source_text_module::SourceTextModule,
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
@@ -246,6 +247,21 @@ impl VM {
             Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm);
 
         self.execute(program_closure, &[])
+    }
+
+    /// Execute a module. Must only be called during the evaluation phase, after loading and linking.
+    pub fn execute_module(
+        &mut self,
+        module: Handle<SourceTextModule>,
+    ) -> Result<Handle<Value>, Handle<Value>> {
+        let program_function = module.program_function();
+        let module_scope = module.module_scope();
+        let realm = program_function.realm();
+
+        let module_closure =
+            Closure::new_in_realm(self.cx(), program_function, module_scope, realm);
+
+        self.execute(module_closure, &[])
     }
 
     /// Execute a closure with the provided arguments.

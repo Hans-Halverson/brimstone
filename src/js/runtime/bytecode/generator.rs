@@ -1908,8 +1908,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_program_body(&mut self, program: &ast::Program) -> EmitResult<()> {
+        let scope = program.scope.as_ref();
+
         // Start the program's global scope
-        self.gen_start_global_scope(program.scope.as_ref())?;
+        self.gen_start_global_scope(scope)?;
+
+        // Modules need to initialize the TDZ for the module scope. Scripts instead have TDZ
+        // initialized during GlobalDeclarationInstantiation.
+        if program.kind == ast::ProgramKind::Module {
+            self.gen_init_tdz_for_scope(scope)?;
+        }
 
         // Heuristic to ignore the use strict directive in common cases. Safe since there must
         // be a directive prologue which can be ignored if there is a use strict directive.

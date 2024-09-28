@@ -355,7 +355,7 @@ impl ScopeTree {
                     | BindingKind::FunctionParameter { init_pos, .. } = binding.kind()
                     {
                         if name_loc.start < init_pos.get() {
-                            binding.needs_tdz_check = true;
+                            binding.set_needs_tdz_check(true);
                         }
                     }
 
@@ -654,7 +654,7 @@ impl ScopeTree {
                 // Lexical bindings in VM scope nodes need a TDZ check as we do not analyze whether
                 // they are guaranteed to be initialized before use.
                 if !matches!(binding.kind(), BindingKind::FunctionParameter { .. }) {
-                    binding.needs_tdz_check = true;
+                    binding.set_needs_tdz_check(true);
                 }
             }
 
@@ -666,7 +666,7 @@ impl ScopeTree {
 
             // All globals need a TDZ check as they could be captured by any function
             if is_global {
-                binding.needs_tdz_check = true;
+                binding.set_needs_tdz_check(true);
             }
         }
 
@@ -1093,7 +1093,7 @@ pub struct Binding {
     /// Whether to force this binding to be in a VM scope. Set during use analysis.
     force_vm_scope: bool,
     /// If this is a const or let declaration, whether there is some use that requires a TDZ check.
-    needs_tdz_check: bool,
+    needs_tdz_check: Cell<bool>,
     /// Location of the binding in the VM, must be set before bytecode generation.
     vm_location: Option<VMLocation>,
 }
@@ -1111,7 +1111,7 @@ impl Binding {
             is_captured: false,
             is_exported: Cell::new(false),
             force_vm_scope: false,
-            needs_tdz_check,
+            needs_tdz_check: Cell::new(needs_tdz_check),
             vm_location,
         }
     }
@@ -1138,7 +1138,7 @@ impl Binding {
 
     /// Whether this binding needs to be initialized to support the TDZ.
     pub fn needs_tdz_init(&self) -> bool {
-        self.kind().has_tdz() && self.needs_tdz_check
+        self.kind().has_tdz() && self.needs_tdz_check.get()
     }
 
     /// Whether this binding needs TDZ checks when accessed.
@@ -1148,12 +1148,21 @@ impl Binding {
         self.needs_tdz_init() && !self.is_exported()
     }
 
+    fn set_needs_tdz_check(&self, value: bool) {
+        self.needs_tdz_check.set(value);
+    }
+
     pub fn is_exported(&self) -> bool {
         self.is_exported.get()
     }
 
     pub fn set_is_exported(&self, value: bool) {
         self.is_exported.set(value);
+
+        // If a binding has a TDZ and is exported then TDZ checks are necessary
+        if value && self.kind().has_tdz() {
+            self.set_needs_tdz_check(true);
+        }
     }
 
     pub fn is_module_binding(&self) -> bool {

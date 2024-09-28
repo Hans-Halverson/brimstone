@@ -5,13 +5,14 @@ use crate::{
     js::runtime::{
         boxed_value::BoxedValue,
         bytecode::function::BytecodeFunction,
-        collections::{BsArray, InlineArray},
+        collections::{BsArray, BsVec, BsVecField, InlineArray},
         gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
+        promise_object::PromiseCapability,
         scope::Scope,
         string_value::FlatString,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };
@@ -28,6 +29,10 @@ pub struct SourceTextModule {
     id: ModuleId,
     /// State of the module during load/link/evaluation.
     state: ModuleState,
+    /// Whether this module has top-level await.
+    has_top_level_await: bool,
+    /// Whether this module is async or has an async dependency.
+    is_async_evaluation: bool,
     /// Function that evaluates the module when called in the module scope.
     program_function: HeapPtr<BytecodeFunction>,
     /// Scope for the module. Program function is executed in this scope.
@@ -42,6 +47,18 @@ pub struct SourceTextModule {
     // Indices used during DFS in the link and evaluate phases.
     dfs_index: u32,
     dfs_ancestor_index: u32,
+    /// The first visited module in a cycle, aka the root of the strongly connected component in DFS.
+    cycle_root: Option<HeapPtr<SourceTextModule>>,
+    /// Only set on cycle roots, contains the promise that will be settled for the entire evaluation
+    /// of the cycle.
+    top_level_capability: Option<HeapPtr<PromiseCapability>>,
+    /// The error that was thrown during evaluation, if any.
+    evaluation_error: Option<Value>,
+    /// The number of remaining async dependency modules that have yet to finish executing.
+    pending_async_dependencies: usize,
+    /// If this module is evaluating asynchronously, this is the list of importers of this module
+    /// that will not start execution until this module has completed execution.
+    async_parent_modules: Option<HeapPtr<AsyncParentModulesVec>>,
     /// All import and export entries in the module.
     entries: InlineArray<ModuleEntry>,
 }
@@ -101,6 +118,9 @@ impl SourceTextModule {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
         set_uninit!(object.state, ModuleState::New);
+        // TODO: Track top level await to properly set this
+        set_uninit!(object.has_top_level_await, false);
+        set_uninit!(object.is_async_evaluation, false);
         set_uninit!(object.program_function, program_function.get_());
         set_uninit!(object.module_scope, module_scope.get_());
         set_uninit!(object.import_meta, None);
@@ -108,6 +128,11 @@ impl SourceTextModule {
         set_uninit!(object.loaded_modules, loaded_modules.get_());
         set_uninit!(object.dfs_index, 0);
         set_uninit!(object.dfs_ancestor_index, 0);
+        set_uninit!(object.cycle_root, None);
+        set_uninit!(object.top_level_capability, None);
+        set_uninit!(object.evaluation_error, None);
+        set_uninit!(object.pending_async_dependencies, 0);
+        set_uninit!(object.async_parent_modules, None);
 
         let entries = &mut object.entries;
         entries.init_with_uninit(num_entries);
@@ -158,6 +183,21 @@ impl SourceTextModule {
     }
 
     #[inline]
+    pub fn has_top_level_await(&self) -> bool {
+        self.has_top_level_await
+    }
+
+    #[inline]
+    pub fn is_async_evaluation(&self) -> bool {
+        self.is_async_evaluation
+    }
+
+    #[inline]
+    pub fn set_async_evaluation(&mut self, is_async_evaluation: bool) {
+        self.is_async_evaluation = is_async_evaluation;
+    }
+
+    #[inline]
     pub fn dfs_index(&self) -> u32 {
         self.dfs_index
     }
@@ -175,6 +215,51 @@ impl SourceTextModule {
     #[inline]
     pub fn set_dfs_ancestor_index(&mut self, dfs_ancestor_index: u32) {
         self.dfs_ancestor_index = dfs_ancestor_index;
+    }
+
+    #[inline]
+    pub fn cycle_root(&self) -> Option<Handle<SourceTextModule>> {
+        self.cycle_root.map(|root| root.to_handle())
+    }
+
+    #[inline]
+    pub fn set_cycle_root(&mut self, cycle_root: HeapPtr<SourceTextModule>) {
+        self.cycle_root = Some(cycle_root);
+    }
+
+    #[inline]
+    pub fn top_level_capability_ptr(&self) -> Option<HeapPtr<PromiseCapability>> {
+        self.top_level_capability
+    }
+
+    #[inline]
+    pub fn set_top_level_capability(&mut self, capability: HeapPtr<PromiseCapability>) {
+        self.top_level_capability = Some(capability);
+    }
+
+    #[inline]
+    pub fn evaluation_error_ptr(&self) -> Option<Value> {
+        self.evaluation_error
+    }
+
+    #[inline]
+    pub fn evaluation_error(&self, cx: Context) -> Option<Handle<Value>> {
+        self.evaluation_error_ptr().map(|error| error.to_handle(cx))
+    }
+
+    #[inline]
+    pub fn set_evaluation_error(&mut self, error: Value) {
+        self.evaluation_error = Some(error);
+    }
+
+    #[inline]
+    pub fn pending_async_dependencies(&self) -> usize {
+        self.pending_async_dependencies
+    }
+
+    #[inline]
+    pub fn inc_pending_async_dependencies(&mut self) {
+        self.pending_async_dependencies += 1;
     }
 
     #[inline]
@@ -365,6 +450,29 @@ impl HeapPtr<SourceTextModule> {
     }
 }
 
+impl Handle<SourceTextModule> {
+    #[inline]
+    fn async_parent_modules_field(&self) -> AsyncParentModulesField {
+        AsyncParentModulesField(self.to_handle())
+    }
+
+    pub fn push_async_parent_module(
+        &mut self,
+        cx: Context,
+        parent_module: Handle<SourceTextModule>,
+    ) {
+        // Lazily initialize the async parent modules vec
+        if self.async_parent_modules.is_none() {
+            let async_parent_modules = BsVec::new(cx, ObjectKind::ValueVec, 4);
+            self.async_parent_modules = Some(async_parent_modules);
+        }
+
+        self.async_parent_modules_field()
+            .maybe_grow_for_push(cx)
+            .push_without_growing(parent_module.get_());
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum ResolveExportResult {
     Resolved { name: ResolveExportName, module: HeapPtr<SourceTextModule> },
@@ -549,5 +657,23 @@ pub struct DirectReExportEntry {
 impl DirectReExportEntry {
     fn to_heap(&self) -> HeapDirectReExportEntry {
         HeapDirectReExportEntry { module_request: self.module_request.get_() }
+    }
+}
+
+type AsyncParentModulesVec = BsVec<HeapPtr<SourceTextModule>>;
+
+struct AsyncParentModulesField(Handle<SourceTextModule>);
+
+impl BsVecField<HeapPtr<SourceTextModule>> for AsyncParentModulesField {
+    fn new_vec(&self, cx: Context, capacity: usize) -> HeapPtr<AsyncParentModulesVec> {
+        BsVec::new(cx, ObjectKind::ValueVec, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<AsyncParentModulesVec> {
+        self.0.async_parent_modules.unwrap()
+    }
+
+    fn set(&mut self, vec: HeapPtr<AsyncParentModulesVec>) {
+        self.0.async_parent_modules = Some(vec);
     }
 }

@@ -10,7 +10,10 @@ use crate::js::runtime::{
         function::{BytecodeFunction, Closure},
     },
     class_names::ClassNames,
-    collections::array::{value_array_byte_size, value_array_visit_pointers},
+    collections::{
+        array::{value_array_byte_size, value_array_visit_pointers},
+        vec::{value_vec_byte_size, value_vec_visit_pointers},
+    },
     context::GlobalSymbolRegistryField,
     for_in_iterator::ForInIterator,
     generator_object::GeneratorObject,
@@ -166,6 +169,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
+            ObjectKind::ValueVec => value_vec_byte_size(self.cast()),
             ObjectKind::ArrayBufferDataArray => ArrayBufferDataField::byte_size(&self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
@@ -299,6 +303,7 @@ impl HeapObject for HeapPtr<HeapItem> {
                 LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
+            ObjectKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ArrayBufferDataArray => {
                 ArrayBufferDataField::visit_pointers(self.cast_mut(), visitor)
             }

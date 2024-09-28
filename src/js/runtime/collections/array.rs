@@ -10,6 +10,7 @@ use crate::{
 
 use super::InlineArray;
 
+/// A fixed size array of values.
 #[repr(C)]
 pub struct BsArray<T> {
     descriptor: HeapPtr<ObjectDescriptor>,

@@ -144,6 +144,9 @@ pub enum ObjectKind {
     FinalizationRegistryCells,
     GlobalScopes,
 
+    // Vectors
+    ValueVec,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -349,6 +352,8 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
+
+        other_heap_object_descriptor!(ObjectKind::ValueVec);
 
         BaseDescriptors { descriptors }
     }

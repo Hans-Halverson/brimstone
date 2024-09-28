@@ -29,7 +29,7 @@ pub enum ExpectedResult {
     Negative { phase: TestPhase, type_: String },
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum TestPhase {
     Parse,
     Resolution,

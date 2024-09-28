@@ -11,8 +11,8 @@ use js::{
         options::{Args, Options},
     },
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, error::print_eval_error_and_exit,
-        module::execute::ExecuteOnReject, Context, Handle, Realm,
+        bytecode::generator::BytecodeProgramGenerator, error::print_eval_error_and_exit, Context,
+        Handle, Realm,
     },
 };
 
@@ -67,7 +67,7 @@ fn evaluate_file(
             BytecodeProgramGenerator::generate_from_parse_module_result(cx, &parse_result, realm)?;
 
         // Load modules and execute in the bytecode interpreter
-        if let Err(err) = cx.run_module(module, ExecuteOnReject::PrintAndExit) {
+        if let Err(err) = cx.run_module(module) {
             print_eval_error_and_exit(cx, err);
         }
     } else {

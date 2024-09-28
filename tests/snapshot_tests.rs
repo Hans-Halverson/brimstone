@@ -7,7 +7,7 @@ use brimstone::js::{
             generator::{BytecodeProgramGenerator, BytecodeScript},
         },
         initialize_host_defined_realm,
-        module::{execute::ExecuteOnReject, source_text_module::SourceTextModule},
+        module::source_text_module::SourceTextModule,
         Context, Handle, Realm,
     },
 };
@@ -127,7 +127,7 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
     let _ = cx.execute_then_drop(|mut cx| match bytecode_program {
         BytecodeResult::Script(script) => cx.run_script(script),
-        BytecodeResult::Module(module) => cx.run_module(module, ExecuteOnReject::Panic),
+        BytecodeResult::Module(module) => cx.run_module(module),
     });
 
     // Return a copy of the dump buffer

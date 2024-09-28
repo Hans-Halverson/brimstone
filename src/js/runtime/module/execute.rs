@@ -19,15 +19,6 @@ use super::{
     source_text_module::{ModuleState, SourceTextModule},
 };
 
-/// Action to take when the promise for an execution is rejected.
-pub enum ExecuteOnReject {
-    /// Print the error and exit the process.
-    PrintAndExit,
-    /// Panic the process.
-    #[allow(unused)]
-    Panic,
-}
-
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
 ///
 /// Returns a promise that resolves once the module has completed execution.
@@ -74,7 +65,7 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
     .into();
     set_capability(cx, on_reject, capability);
 
-    perform_promise_then(cx, promise, on_resolve.into(), cx.undefined(), None);
+    perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None);
 
     // Guaranteed to be a PromiseObject since created with the Promise constructor
     capability.promise().cast::<PromiseObject>()
@@ -125,6 +116,9 @@ pub fn load_requested_modules_resolve(
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
         return cx.undefined().into();
     }
+
+    // Mark the module resolution phase as complete
+    cx.has_finished_module_resolution = true;
 
     let evaluate_promise = module_evaluate(cx, module);
 

@@ -15,17 +15,13 @@ use super::{
     builtin_names::{BuiltinNames, BuiltinSymbols},
     bytecode::{generator::BytecodeScript, vm::VM},
     collections::{BsHashMap, BsHashMapField},
-    error::{panic_if_rejects, print_error_and_exit_if_rejects},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{
         finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic,
         rust_runtime::RustRuntimeFunctionRegistry,
     },
-    module::{
-        execute::{execute_module, ExecuteOnReject},
-        source_text_module::SourceTextModule,
-    },
+    module::{execute::execute_module, source_text_module::SourceTextModule},
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
@@ -92,6 +88,9 @@ pub struct ContextCell {
 
     /// Options passed to this program.
     pub options: Rc<Options>,
+
+    /// Set once module resolution has been completed.
+    pub has_finished_module_resolution: bool,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -120,6 +119,7 @@ impl Context {
             default_array_properties: HeapPtr::uninit(),
             finalizer_callbacks: vec![],
             options,
+            has_finished_module_resolution: false,
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
@@ -182,13 +182,7 @@ impl Context {
     }
 
     /// Execute a module, loading and executing all dependencies. Run until the task queue is empty.
-    ///
-    /// Must provide the action to take if the promise for the module execution rejects.
-    pub fn run_module(
-        &mut self,
-        module: Handle<SourceTextModule>,
-        on_reject: ExecuteOnReject,
-    ) -> Result<(), Handle<Value>> {
+    pub fn run_module(&mut self, module: Handle<SourceTextModule>) -> Result<(), Handle<Value>> {
         // Loading, linking, and evaluation should all have a current realm set as some objects
         // needing a realm will be created.
         let realm = module.program_function_ptr().realm_ptr();
@@ -196,13 +190,13 @@ impl Context {
 
         let promise = execute_module(*self, module);
 
-        // Set up action taken if the module execution rejects.
-        match on_reject {
-            ExecuteOnReject::PrintAndExit => print_error_and_exit_if_rejects(*self, promise),
-            ExecuteOnReject::Panic => panic_if_rejects(*self, promise),
-        }
-
         self.run_all_tasks().into_rust_result()?;
+
+        debug_assert!(!promise.is_pending());
+
+        if let Some(value) = promise.rejected_value() {
+            return Err(value.to_handle(*self));
+        }
 
         self.vm().pop_initial_realm_stack_frame();
 

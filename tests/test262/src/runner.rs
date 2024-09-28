@@ -21,9 +21,8 @@ use brimstone::js::{
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
-        module::execute::ExecuteOnReject, object_value::ObjectValue,
-        test_262_object::Test262Object, to_console_string, to_string, Context, EvalResult, Handle,
-        Realm, Value,
+        object_value::ObjectValue, test_262_object::Test262Object, to_console_string, to_string,
+        Context, EvalResult, Handle, Realm, Value,
     },
 };
 
@@ -353,7 +352,7 @@ fn execute_module_as_bytecode(
     };
 
     // Panic on rejection, which will be caught by the test runner
-    match cx.run_module(module, ExecuteOnReject::Panic) {
+    match cx.run_module(module) {
         Ok(_) => EvalResult::Ok(()),
         Err(error_value) => EvalResult::Throw(error_value),
     }
@@ -417,7 +416,10 @@ fn check_expected_completion(
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
         EvalResult::Throw(thrown_value) => match &test.expected_result {
-            ExpectedResult::Negative { phase: TestPhase::Runtime, type_ } => {
+            ExpectedResult::Negative {
+                phase: phase @ (TestPhase::Resolution | TestPhase::Runtime),
+                type_,
+            } if is_error_in_expected_phase(cx, test, *phase) => {
                 // Check that the thrown error matches the expected error type
                 let is_expected_error = if thrown_value.is_object() {
                     let thrown_object = thrown_value.as_object();
@@ -473,6 +475,20 @@ fn check_expected_completion(
                 )
             }
         },
+    }
+}
+
+fn is_error_in_expected_phase(cx: Context, test: &Test, expected_phase: TestPhase) -> bool {
+    if test.mode == TestMode::Module {
+        // Verify that resolution errors occur before module resolution is complete, otherwise
+        // this must be a runtime error.
+        if expected_phase == TestPhase::Resolution {
+            !cx.has_finished_module_resolution
+        } else {
+            expected_phase == TestPhase::Runtime && cx.has_finished_module_resolution
+        }
+    } else {
+        expected_phase == TestPhase::Runtime
     }
 }
 

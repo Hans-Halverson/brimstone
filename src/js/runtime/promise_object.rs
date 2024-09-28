@@ -121,6 +121,13 @@ impl PromiseObject {
         matches!(self.state, PromiseState::Pending { already_resolved: false, .. })
     }
 
+    pub fn rejected_value(&self) -> Option<Value> {
+        match self.state {
+            PromiseState::Rejected { result } => Some(result),
+            _ => None,
+        }
+    }
+
     pub fn set_already_resolved(&mut self, value: bool) {
         match self.state {
             PromiseState::Pending { ref mut already_resolved, .. } => *already_resolved = value,

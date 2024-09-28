@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     js::runtime::{
         async_generator_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
-        error, gc_object::GcObject, global_names, module, object_value::ObjectValue,
+        gc_object::GcObject, global_names, module, object_value::ObjectValue,
         promise_object::PromiseCapability, test_262_object::Test262Object, Context, EvalResult,
         Handle, Value,
     },
@@ -300,8 +300,6 @@ rust_runtime_functions!(
     DatePrototype::value_of,
     ErrorConstructor::construct,
     ErrorPrototype::to_string,
-    error::panic_runtime,
-    error::print_eval_error_and_exit_runtime,
     EvalErrorConstructor::construct,
     FinalizationRegistryConstructor::construct,
     FinalizationRegistryPrototype::register,

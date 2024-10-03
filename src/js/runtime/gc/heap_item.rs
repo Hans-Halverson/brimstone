@@ -11,7 +11,10 @@ use crate::js::runtime::{
     },
     class_names::ClassNames,
     collections::{
-        array::{value_array_byte_size, value_array_visit_pointers},
+        array::{
+            byte_array_byte_size, byte_array_visit_pointers, value_array_byte_size,
+            value_array_visit_pointers,
+        },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
     },
     context::GlobalSymbolRegistryField,
@@ -20,7 +23,7 @@ use crate::js::runtime::{
     global_names::GlobalNames,
     interned_strings::{InternedStringsMapField, InternedStringsSetField},
     intrinsics::{
-        array_buffer_constructor::{ArrayBufferDataField, ArrayBufferObject},
+        array_buffer_constructor::ArrayBufferObject,
         array_iterator::ArrayIterator,
         async_from_sync_iterator_prototype::AsyncFromSyncIterator,
         bigint_constructor::BigIntObject,
@@ -169,12 +172,12 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
-            ObjectKind::ValueVec => value_vec_byte_size(self.cast()),
-            ObjectKind::ArrayBufferDataArray => ArrayBufferDataField::byte_size(&self.cast()),
+            ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
             ObjectKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
+            ObjectKind::ValueVec => value_vec_byte_size(self.cast()),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }
@@ -303,14 +306,12 @@ impl HeapObject for HeapPtr<HeapItem> {
                 LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
-            ObjectKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
-            ObjectKind::ArrayBufferDataArray => {
-                ArrayBufferDataField::visit_pointers(self.cast_mut(), visitor)
-            }
+            ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()
                 .visit_pointers(visitor),
             ObjectKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
+            ObjectKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

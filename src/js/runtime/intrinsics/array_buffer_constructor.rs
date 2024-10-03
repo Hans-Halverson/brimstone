@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        collections::BsArray,
+        collections::{array::ByteArray, BsArray},
         completion::EvalResult,
         error::{range_error, type_error},
         function::get_argument,
@@ -34,11 +34,9 @@ extend_object! {
         max_byte_length: Option<usize>,
         // Data block containing array buffer's binary data. Detached array buffers represented as
         // a null data pointer.
-        data: Option<HeapPtr<DataArray>>,
+        data: Option<HeapPtr<ByteArray>>,
     }
 }
-
-type DataArray = BsArray<u8>;
 
 impl ArrayBufferObject {
     /// AllocateArrayBuffer (https://tc39.es/ecma262/#sec-allocatearraybuffer)
@@ -47,7 +45,7 @@ impl ArrayBufferObject {
         constructor: Handle<ObjectValue>,
         byte_length: usize,
         max_byte_length: Option<usize>,
-        data: Option<Handle<DataArray>>,
+        data: Option<Handle<ByteArray>>,
     ) -> EvalResult<Handle<ArrayBufferObject>> {
         if let Some(max_byte_length) = max_byte_length {
             if byte_length > max_byte_length {
@@ -87,7 +85,7 @@ impl ArrayBufferObject {
         object.data = if let Some(data) = data {
             Some(data.get_())
         } else {
-            Some(BsArray::<u8>::new(cx, ObjectKind::ArrayBufferDataArray, byte_length, 0))
+            Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
         };
 
         object.into()
@@ -113,11 +111,11 @@ impl ArrayBufferObject {
         self.data.as_mut().unwrap().as_mut_slice()
     }
 
-    pub fn data_opt(&self) -> Option<Handle<DataArray>> {
+    pub fn data_opt(&self) -> Option<Handle<ByteArray>> {
         self.data.map(|data| data.to_handle())
     }
 
-    pub fn set_data(&mut self, data: HeapPtr<DataArray>) {
+    pub fn set_data(&mut self, data: HeapPtr<ByteArray>) {
         self.data = Some(data);
     }
 
@@ -307,17 +305,5 @@ impl HeapObject for HeapPtr<ArrayBufferObject> {
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.cast::<ObjectValue>().visit_pointers(visitor);
         visitor.visit_pointer_opt(&mut self.data);
-    }
-}
-
-pub struct ArrayBufferDataField;
-
-impl ArrayBufferDataField {
-    pub fn byte_size(array: &HeapPtr<DataArray>) -> usize {
-        DataArray::calculate_size_in_bytes(array.len())
-    }
-
-    pub fn visit_pointers(array: &mut HeapPtr<DataArray>, visitor: &mut impl HeapVisitor) {
-        array.visit_pointers(visitor);
     }
 }

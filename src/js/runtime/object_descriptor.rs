@@ -140,7 +140,7 @@ pub enum ObjectKind {
 
     // Arrays
     ValueArray,
-    ArrayBufferDataArray,
+    ByteArray,
     FinalizationRegistryCells,
     GlobalScopes,
 
@@ -349,7 +349,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
 
         other_heap_object_descriptor!(ObjectKind::ValueArray);
-        other_heap_object_descriptor!(ObjectKind::ArrayBufferDataArray);
+        other_heap_object_descriptor!(ObjectKind::ByteArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 

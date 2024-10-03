@@ -30,6 +30,16 @@ impl<T: Clone> BsArray<T> {
         array
     }
 
+    pub fn new_from_slice(cx: Context, kind: ObjectKind, slice: &[T]) -> HeapPtr<Self> {
+        let size = Self::calculate_size_in_bytes(slice.len());
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
+
+        set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
+        array.array.init_from_slice(slice);
+
+        array
+    }
+
     pub fn new_uninit(cx: Context, kind: ObjectKind, length: usize) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
@@ -76,7 +86,7 @@ impl<T: Clone> HeapObject for HeapPtr<BsArray<T>> {
 pub type ValueArray = BsArray<Value>;
 
 pub fn value_array_byte_size(value_array: HeapPtr<ValueArray>) -> usize {
-    BsArray::<Value>::calculate_size_in_bytes(value_array.len())
+    ValueArray::calculate_size_in_bytes(value_array.len())
 }
 
 pub fn value_array_visit_pointers(
@@ -88,4 +98,20 @@ pub fn value_array_visit_pointers(
     for value in value_array.as_mut_slice() {
         visitor.visit_value(value);
     }
+}
+
+/// A generic array of bytes. Corresponds to ObjectKind::ByteArray.
+///
+/// Can be used for any kind of opaque byte data.
+pub type ByteArray = BsArray<u8>;
+
+pub fn byte_array_byte_size(byte_array: HeapPtr<ByteArray>) -> usize {
+    ByteArray::calculate_size_in_bytes(byte_array.len())
+}
+
+pub fn byte_array_visit_pointers(
+    byte_array: &mut HeapPtr<ByteArray>,
+    visitor: &mut impl HeapVisitor,
+) {
+    byte_array.visit_pointers(visitor);
 }

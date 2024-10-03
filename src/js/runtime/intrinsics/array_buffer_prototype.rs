@@ -133,8 +133,7 @@ impl ArrayBufferPrototype {
         }
 
         // Create new data block with copy of old data at start
-        let mut new_data =
-            BsArray::<u8>::new_uninit(cx, ObjectKind::ArrayBufferDataArray, new_byte_length);
+        let mut new_data = BsArray::<u8>::new_uninit(cx, ObjectKind::ByteArray, new_byte_length);
         let old_byte_length = array_buffer.byte_length();
 
         unsafe {

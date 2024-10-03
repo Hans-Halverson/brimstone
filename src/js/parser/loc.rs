@@ -19,7 +19,7 @@ impl Loc {
 pub const EMPTY_LOC: Loc = Loc { start: 0, end: 0 };
 
 /// Calculate the byte offsets of the start of each line.
-pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
+pub fn calculate_line_offsets(source: &[u8]) -> Vec<u32> {
     let mut line_offsets = vec![0];
 
     let mut pos = 0;
@@ -33,7 +33,8 @@ pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
             None => break,
             Some((newline_offset, _)) => {
                 pos += newline_offset + 1;
-                line_offsets.push(pos);
+                // Have already guaranteed that source is less than 2^32 bytes long
+                line_offsets.push(pos as u32);
             }
         }
     }
@@ -42,24 +43,24 @@ pub fn calculate_line_offsets(source: &[u8]) -> Vec<usize> {
 }
 
 /// Return the 1-indexed line and 0-indexed column number for a Pos, given the set of line start offsets.
-pub fn find_line_col_for_pos(pos: Pos, line_offsets: &[usize]) -> (usize, usize) {
+pub fn find_line_col_for_pos(pos: Pos, line_offsets: &[u32]) -> (usize, usize) {
     // Binary search to find the largest line start offset that is smaller than the pos. This is
     // the line number.
     let line = find_largest_offset_less_than_or_equal(pos, line_offsets);
 
     // Column is the byte offset from the line (col is number of bytes since Unicode is not yet supported)
-    let col = pos - line_offsets[line];
+    let col = pos - line_offsets[line] as usize;
 
     (line + 1, col)
 }
 
-fn find_largest_offset_less_than_or_equal(target: Pos, line_offsets: &[usize]) -> usize {
+fn find_largest_offset_less_than_or_equal(target: Pos, line_offsets: &[u32]) -> Pos {
     let mut lo = 0;
     let mut hi = line_offsets.len();
 
     while lo < hi {
         let mid = (lo + hi) / 2;
-        if line_offsets[mid] < target + 1 {
+        if (line_offsets[mid] as usize) < target + 1 {
             lo = mid + 1;
         } else {
             hi = mid;

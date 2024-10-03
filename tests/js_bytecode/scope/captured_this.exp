@@ -17,6 +17,14 @@
     5: [BytecodeFunction: <anonymous>]
 }
 
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 1
+     3: LoadFromScope r1, 1, 0
+     7: Add r0, r0, r1
+    11: Ret r0
+}
+
 [BytecodeFunction: capturedFunctionThis] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
@@ -83,12 +91,4 @@
     0: Mov r0, <this>
     3: LoadUndefined r1
     5: Ret r1
-}
-
-[BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 2
-     0: LoadImmediate r0, 1
-     3: LoadFromScope r1, 1, 0
-     7: Add r0, r0, r1
-    11: Ret r0
 }

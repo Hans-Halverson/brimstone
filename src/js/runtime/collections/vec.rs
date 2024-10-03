@@ -51,12 +51,12 @@ impl<T: Clone + Copy> BsVec<T> {
     }
 
     #[inline]
-    fn as_slice(&self) -> &[T] {
+    pub fn as_slice(&self) -> &[T] {
         &self.array.as_slice()[..self.len()]
     }
 
     #[inline]
-    fn as_mut_slice(&mut self) -> &mut [T] {
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
         let len = self.len();
         &mut self.array.as_mut_slice()[..len]
     }
@@ -83,7 +83,7 @@ impl<T: Clone + Copy> HeapObject for HeapPtr<BsVec<T>> {
 /// A BsVec stored as the field of a heap object. Can create new BsVec objects and set the field to
 /// a new BsVec.
 pub trait BsVecField<T: Clone + Copy> {
-    fn new_vec(&self, cx: Context, capacity: usize) -> HeapPtr<BsVec<T>>;
+    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<BsVec<T>>;
 
     fn get(&self) -> HeapPtr<BsVec<T>>;
 
@@ -107,7 +107,7 @@ pub trait BsVecField<T: Clone + Copy> {
 
         // Double size of vector, starting at a length of 4
         let new_capacity = (capacity * 2).max(4);
-        let mut new_vec = self.new_vec(cx, new_capacity);
+        let mut new_vec = Self::new_vec(cx, new_capacity);
 
         // Update parent reference from old child to new child map
         self.set(new_vec);

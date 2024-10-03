@@ -2,10 +2,7 @@ use brimstone::js::{
     common::options::Options,
     parser::{self, ast},
     runtime::{
-        bytecode::{
-            function::BytecodeFunction,
-            generator::{BytecodeProgramGenerator, BytecodeScript},
-        },
+        bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         initialize_host_defined_realm,
         module::source_text_module::SourceTextModule,
         Context, Handle, Realm,
@@ -35,20 +32,11 @@ fn print_ast(path: &str) -> GenericResult<String> {
 
 #[test]
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
-    // Context is shared between all tests
-    let options = Rc::new(Options::default());
-    let (cx, realm) = Context::new(options, |cx| initialize_host_defined_realm(cx, false, false));
-
     let bytecode_tests_dir = Path::new(file!()).parent().unwrap().join("js_bytecode");
-    let result =
-        run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(cx, realm, path));
-
-    cx.drop();
-
-    result
+    run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(path))
 }
 
-fn print_bytecode(cx: Context, realm: Handle<Realm>, path: &str) -> GenericResult<String> {
+fn print_bytecode(path: &str) -> GenericResult<String> {
     // Check if the test file should be run with dumped bytecode collected, e.g. for eval
     let file = fs::read_to_string(path).unwrap();
     if &file[0..11] == "// OPTIONS:" {
@@ -59,23 +47,35 @@ fn print_bytecode(cx: Context, realm: Handle<Realm>, path: &str) -> GenericResul
     }
 
     // Otherwise only need to generate bytecode
-    let bytecode_program = generate_bytecode(cx, realm, path)?;
+    run_and_return_bytecode(&mut |cx, realm| {
+        generate_bytecode(cx, realm, path)?;
+        Ok(())
+    })
+}
 
-    Ok(bytecode_program.bytecode().debug_print_recursive(true))
+/// Create a fresh context to be used for bytecode tests.
+fn run_and_return_bytecode(
+    f: &mut impl FnMut(Context, Handle<Realm>) -> GenericResult<()>,
+) -> GenericResult<String> {
+    // Bytecode will be dumped to the internal dump buffer
+    let mut options = Options::default();
+    options.print_bytecode = true;
+    options.dump_buffer = Some(Mutex::new(String::new()));
+    let options = Rc::new(options);
+
+    let (cx, realm) =
+        Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
+
+    f(cx, realm)?;
+
+    let dump_buffer = options.dump_buffer().unwrap().clone();
+
+    Ok(dump_buffer)
 }
 
 enum BytecodeResult {
     Script(BytecodeScript),
     Module(Handle<SourceTextModule>),
-}
-
-impl BytecodeResult {
-    fn bytecode(&self) -> Handle<BytecodeFunction> {
-        match self {
-            BytecodeResult::Script(script) => script.script_function,
-            BytecodeResult::Module(module) => module.program_function(),
-        }
-    }
 }
 
 fn generate_bytecode(
@@ -105,34 +105,17 @@ fn generate_bytecode(
 }
 
 fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
-    // Bytecode will be dumped to the internal dump buffer
-    let mut options = Options::default();
-    options.print_bytecode = true;
-    options.dump_buffer = Some(Mutex::new(String::new()));
-    let options = Rc::new(options);
+    run_and_return_bytecode(&mut |mut cx, realm| {
+        let bytecode_program = generate_bytecode(cx, realm, path)?;
 
-    // Create a fresh context to isolate tests since we are actually running code
-    let (cx, realm) =
-        Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
+        // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
+        let _ = match bytecode_program {
+            BytecodeResult::Script(script) => cx.run_script(script),
+            BytecodeResult::Module(module) => cx.run_module(module),
+        };
 
-    // Generate program and prepend to dump buffer
-    let bytecode_program = generate_bytecode(cx, realm, path)?;
-
-    let bytecode_string = bytecode_program.bytecode().debug_print_recursive(true);
-    options
-        .dump_buffer()
-        .unwrap()
-        .push_str(&format!("{}\n", bytecode_string));
-
-    // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
-    let _ = cx.execute_then_drop(|mut cx| match bytecode_program {
-        BytecodeResult::Script(script) => cx.run_script(script),
-        BytecodeResult::Module(module) => cx.run_module(module),
-    });
-
-    // Return a copy of the dump buffer
-    let dump_buffer = options.dump_buffer().unwrap();
-    Ok(dump_buffer.clone())
+        Ok(())
+    })
 }
 
 fn parse_script_or_module(path: &str) -> GenericResult<parser::parser::ParseProgramResult> {

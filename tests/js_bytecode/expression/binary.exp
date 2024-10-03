@@ -63,14 +63,6 @@
     4: [ClassNames]
 }
 
-[BytecodeFunction: method] {
-  Parameters: 0, Registers: 1
-     0: LoadFromScope r0, 1, 0
-     4: In r0, <this>, r0
-     8: LoadUndefined r0
-    10: Ret r0
-}
-
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
@@ -88,4 +80,12 @@
      7: DefinePrivateProperty <this>, r1, r0, 0
     12: LoadUndefined r0
     14: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+     0: LoadFromScope r0, 1, 0
+     4: In r0, <this>, r0
+     8: LoadUndefined r0
+    10: Ret r0
 }

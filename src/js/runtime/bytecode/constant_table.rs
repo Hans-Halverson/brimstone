@@ -67,10 +67,6 @@ impl ConstantTable {
         self.constants.as_mut_slice()[index] = value;
     }
 
-    pub fn as_slice(&self) -> &[Value] {
-        self.constants.as_slice()
-    }
-
     fn get_metadata_ptr(&self) -> *const u8 {
         let ptr = self as *const ConstantTable as *const u8;
         unsafe { ptr.add(Self::metadata_offset(self.constants.len())) }

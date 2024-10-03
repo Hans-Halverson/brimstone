@@ -250,28 +250,6 @@
     0: [String: prop]
 }
 
-[BytecodeFunction: decrement] {
-  Parameters: 1, Registers: 2
-     0: ToNumeric a0, a0
-     3: Dec a0
-     5: ToNumeric a0, a0
-     8: Mov r0, a0
-    11: Dec a0
-    13: GetNamedProperty r0, a0, c0
-    17: ToNumeric r0, r0
-    20: Dec r0
-    22: SetNamedProperty a0, c0, r0
-    26: GetNamedProperty r0, a0, c0
-    30: ToNumeric r0, r0
-    33: Mov r1, r0
-    36: Dec r1
-    38: SetNamedProperty a0, c0, r1
-    42: LoadUndefined r0
-    44: Ret r0
-  Constant Table:
-    0: [String: prop]
-}
-
 [BytecodeFunction: prefixSuperMember] {
   Parameters: 1, Registers: 3
      0: LoadFromScope r1, 0, 0
@@ -323,6 +301,28 @@
     66: Mov a0, r0
     69: LoadUndefined r0
     71: Ret r0
+  Constant Table:
+    0: [String: prop]
+}
+
+[BytecodeFunction: decrement] {
+  Parameters: 1, Registers: 2
+     0: ToNumeric a0, a0
+     3: Dec a0
+     5: ToNumeric a0, a0
+     8: Mov r0, a0
+    11: Dec a0
+    13: GetNamedProperty r0, a0, c0
+    17: ToNumeric r0, r0
+    20: Dec r0
+    22: SetNamedProperty a0, c0, r0
+    26: GetNamedProperty r0, a0, c0
+    30: ToNumeric r0, r0
+    33: Mov r1, r0
+    36: Dec r1
+    38: SetNamedProperty a0, c0, r1
+    42: LoadUndefined r0
+    44: Ret r0
   Constant Table:
     0: [String: prop]
 }

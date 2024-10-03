@@ -76,12 +76,6 @@
     3: [BytecodeFunction: staticInitializer]
 }
 
-[BytecodeFunction: method] {
-  Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 1
-    3: Ret r0
-}
-
 [BytecodeFunction: ] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
@@ -93,6 +87,12 @@
     0: LoadImmediate r0, 2
     3: LoadUndefined r0
     5: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: Ret r0
 }
 
 [BytecodeFunction: nonEmptyNamed] {
@@ -110,12 +110,6 @@
     3: [BytecodeFunction: staticInitializer]
 }
 
-[BytecodeFunction: method] {
-  Parameters: 0, Registers: 1
-    0: LoadImmediate r0, 1
-    3: Ret r0
-}
-
 [BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
@@ -127,6 +121,12 @@
     0: LoadImmediate r0, 2
     3: LoadUndefined r0
     5: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: Ret r0
 }
 
 [BytecodeFunction: storeToParam] {

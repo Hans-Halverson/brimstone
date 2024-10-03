@@ -149,10 +149,14 @@ impl Test262Object {
             return type_error(cx, "expected string");
         }
 
-        let source = Rc::new(Source::new_from_wtf8_string(
+        let source = match Source::new_from_wtf8_string(
             "<eval>",
             script_text.as_string().to_wtf8_string(),
-        ));
+        ) {
+            Ok(source) => Rc::new(source),
+            Err(error) => return syntax_error(cx, &error.to_string()),
+        };
+
         let parse_result = parse_script(&source);
         let mut parse_result = match parse_result {
             Ok(parse_result) => parse_result,

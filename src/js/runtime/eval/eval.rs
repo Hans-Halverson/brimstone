@@ -47,7 +47,11 @@ pub fn perform_eval(
     let private_names = get_private_names_from_scopes(direct_scope.map(|s| s.get_()));
 
     // Parse source code
-    let source = Rc::new(Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()));
+    let source = match Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()) {
+        Ok(source) => Rc::new(source),
+        Err(error) => return syntax_error(cx, &error.to_string()),
+    };
+
     let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,

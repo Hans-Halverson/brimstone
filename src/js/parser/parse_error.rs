@@ -16,6 +16,7 @@ pub enum ParseError {
     UnknownToken(Box<String>),
     UnexpectedToken(Box<Token>),
     ExpectedToken(Box<(Token, Token)>),
+    SourceTooLarge(bool),
     InvalidUnicode,
     UnterminatedStringLiteral,
     UnterminatedRegExpLiteral,
@@ -148,6 +149,10 @@ impl fmt::Display for ParseError {
             ParseError::ExpectedToken(payload) => {
                 let (actual, expected) = payload.as_ref();
                 write!(f, "Unexpected token {}, expected {}", actual, expected)
+            }
+            ParseError::SourceTooLarge(is_file) => {
+                let source = if *is_file { "File" } else { "String" };
+                write!(f, "{} is too large, max size is 2^32 bytes", source)
             }
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
@@ -417,7 +422,7 @@ pub struct LocalizedParseError {
 }
 
 impl LocalizedParseError {
-    fn new_without_loc(error: ParseError) -> LocalizedParseError {
+    pub fn new_without_loc(error: ParseError) -> LocalizedParseError {
         LocalizedParseError { error, source_loc: None }
     }
 }

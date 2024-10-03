@@ -109,24 +109,31 @@ pub fn create_dynamic_function(
 
     // Make sure that parameter list and body are valid by themselves. Only need to check that they
     // parse correctly, full analysis will be performed on entire function text.
-    let params_source = Source::new_from_wtf8_string("", params_string);
-    if let Err(err) = parse_function_params_for_function_constructor(
-        &Rc::new(params_source),
-        is_async,
-        is_generator,
-    ) {
+    let params_source = match Source::new_from_wtf8_string("", params_string) {
+        Ok(source) => Rc::new(source),
+        Err(err) => return syntax_error(cx, &err.to_string()),
+    };
+    if let Err(err) =
+        parse_function_params_for_function_constructor(&params_source, is_async, is_generator)
+    {
         return syntax_error(cx, &format!("could not parse function parameters: {}", err));
     }
 
-    let body_source = Source::new_from_wtf8_string("", body_string);
+    let body_source = match Source::new_from_wtf8_string("", body_string) {
+        Ok(source) => Rc::new(source),
+        Err(err) => return syntax_error(cx, &err.to_string()),
+    };
     if let Err(err) =
-        parse_function_body_for_function_constructor(&Rc::new(body_source), is_async, is_generator)
+        parse_function_body_for_function_constructor(&body_source, is_async, is_generator)
     {
         return syntax_error(cx, &format!("could not parse function body: {}", err));
     }
 
     // Parse and analyze entire function
-    let full_source = Rc::new(Source::new_from_wtf8_string("", source_string));
+    let full_source = match Source::new_from_wtf8_string("", source_string) {
+        Ok(source) => Rc::new(source),
+        Err(err) => return syntax_error(cx, &err.to_string()),
+    };
     let mut parse_result = match parse_function_for_function_constructor(&full_source) {
         Ok(parse_result) => parse_result,
         Err(err) => return syntax_error(cx, &format!("could not parse function: {}", err)),

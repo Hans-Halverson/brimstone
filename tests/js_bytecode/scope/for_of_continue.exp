@@ -43,16 +43,16 @@
      63: PushLexicalScope c2
      65: LoadEmpty r6
      67: StoreToScope r6, 0, 0
-     71: LoadImmediate r6, 3
-     74: StoreToScope r6, 0, 0
-     78: LoadImmediate r6, 4
-     81: JumpToBooleanFalse r6, 8 (.L2)
-     84: PopScope 
-     85: PopScope 
-     86: PopScope 
-     87: Jump -72 (.L0)
+     71: NewClosure r0, c3
+     74: LoadImmediate r6, 3
+     77: StoreToScope r6, 0, 0
+     81: LoadImmediate r6, 4
+     84: JumpToBooleanFalse r6, 8 (.L2)
+     87: PopScope 
+     88: PopScope 
+     89: PopScope 
+     90: Jump -75 (.L0)
   .L2:
-     89: NewClosure r0, c3
      92: PopScope 
      93: PopScope 
      94: Jump 12 (.L3)
@@ -117,15 +117,15 @@
     47: PushLexicalScope c2
     49: LoadEmpty r6
     51: StoreToScope r6, 0, 0
-    55: LoadImmediate r6, 3
-    58: StoreToScope r6, 0, 0
-    62: LoadImmediate r6, 4
-    65: JumpToBooleanFalse r6, 7 (.L2)
-    68: PopScope 
-    69: PopScope 
-    70: Jump -62 (.L0)
+    55: NewClosure r0, c3
+    58: LoadImmediate r6, 3
+    61: StoreToScope r6, 0, 0
+    65: LoadImmediate r6, 4
+    68: JumpToBooleanFalse r6, 7 (.L2)
+    71: PopScope 
+    72: PopScope 
+    73: Jump -65 (.L0)
   .L2:
-    72: NewClosure r0, c3
     75: PopScope 
     76: PopScope 
     77: Jump 12 (.L3)

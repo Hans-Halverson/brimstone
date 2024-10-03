@@ -85,30 +85,29 @@
      3: PushLexicalScope c0
      5: LoadEmpty r3
      7: StoreToScope r3, 0, 0
-    11: LoadImmediate r3, 1
-    14: StrictEqual r3, r2, r3
-    18: JumpTrue r3, 25 (.L0)
-    21: LoadImmediate r3, 2
-    24: StrictEqual r3, r2, r3
-    28: JumpTrue r3, 22 (.L1)
-    31: LoadImmediate r3, 3
-    34: StrictEqual r3, r2, r3
-    38: JumpTrue r3, 15 (.L2)
-    41: Jump 31 (.L3)
+    11: NewClosure r0, c1
+    14: LoadImmediate r3, 1
+    17: StrictEqual r3, r2, r3
+    21: JumpTrue r3, 25 (.L0)
+    24: LoadImmediate r3, 2
+    27: StrictEqual r3, r2, r3
+    31: JumpTrue r3, 22 (.L1)
+    34: LoadImmediate r3, 3
+    37: StrictEqual r3, r2, r3
+    41: JumpTrue r3, 12 (.L1)
+    44: Jump 28 (.L2)
   .L0:
-    43: LoadImmediate r2, 1
-    46: StoreToScope r2, 0, 0
+    46: LoadImmediate r2, 1
+    49: StoreToScope r2, 0, 0
   .L1:
-    50: NewClosure r0, c1
-  .L2:
     53: PushLexicalScope c2
     55: LoadEmpty r2
     57: StoreToScope r2, 0, 0
-    61: LoadImmediate r2, 1
-    64: StoreToScope r2, 0, 0
-    68: NewClosure r1, c3
+    61: NewClosure r1, c3
+    64: LoadImmediate r2, 1
+    67: StoreToScope r2, 0, 0
     71: PopScope 
-  .L3:
+  .L2:
     72: PopScope 
     73: LoadUndefined r2
     75: Ret r2

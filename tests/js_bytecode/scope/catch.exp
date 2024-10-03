@@ -63,9 +63,9 @@
     23: PushLexicalScope c1
     25: LoadEmpty r2
     27: StoreToScope r2, 0, 0
-    31: LoadImmediate r2, 1
-    34: StoreToScope r2, 0, 0
-    38: NewClosure r0, c2
+    31: NewClosure r0, c2
+    34: LoadImmediate r2, 1
+    37: StoreToScope r2, 0, 0
     41: PopScope 
   .L0:
     42: LoadUndefined r1
@@ -100,9 +100,9 @@
     11: PushLexicalScope c0
     13: LoadEmpty r2
     15: StoreToScope r2, 0, 0
-    19: LoadImmediate r2, 1
-    22: StoreToScope r2, 0, 0
-    26: NewClosure r0, c1
+    19: NewClosure r0, c1
+    22: LoadImmediate r2, 1
+    25: StoreToScope r2, 0, 0
     29: PopScope 
   .L0:
     30: LoadUndefined r1
@@ -132,10 +132,10 @@
     11: PushLexicalScope c0
     13: LoadEmpty r3
     15: StoreToScope r3, 0, 0
-    19: LoadImmediate r3, 1
-    22: Add r3, r3, r0
-    26: StoreToScope r3, 0, 0
-    30: NewClosure r1, c1
+    19: NewClosure r1, c1
+    22: LoadImmediate r3, 1
+    25: Add r3, r3, r0
+    29: StoreToScope r3, 0, 0
     33: PopScope 
   .L0:
     34: LoadUndefined r2

@@ -45,15 +45,15 @@
     45: PushLexicalScope c2
     47: LoadEmpty r1
     49: StoreToScope r1, 0, 0
-    53: LoadImmediate r1, 3
-    56: StoreToScope r1, 0, 0
-    60: LoadImmediate r1, 4
-    63: JumpToBooleanFalse r1, 7 (.L2)
-    66: PopScope 
-    67: PopScope 
-    68: Jump 7 (.L3)
+    53: NewClosure r0, c3
+    56: LoadImmediate r1, 3
+    59: StoreToScope r1, 0, 0
+    63: LoadImmediate r1, 4
+    66: JumpToBooleanFalse r1, 7 (.L2)
+    69: PopScope 
+    70: PopScope 
+    71: Jump 4 (.L3)
   .L2:
-    70: NewClosure r0, c3
     73: PopScope 
     74: PopScope 
   .L3:
@@ -105,14 +105,14 @@
     29: PushLexicalScope c1
     31: LoadEmpty r1
     33: StoreToScope r1, 0, 0
-    37: LoadImmediate r1, 3
-    40: StoreToScope r1, 0, 0
-    44: LoadImmediate r1, 4
-    47: JumpToBooleanFalse r1, 6 (.L2)
-    50: PopScope 
-    51: Jump 6 (.L3)
+    37: NewClosure r0, c2
+    40: LoadImmediate r1, 3
+    43: StoreToScope r1, 0, 0
+    47: LoadImmediate r1, 4
+    50: JumpToBooleanFalse r1, 6 (.L2)
+    53: PopScope 
+    54: Jump 3 (.L3)
   .L2:
-    53: NewClosure r0, c2
     56: PopScope 
   .L3:
     57: DupScope 
@@ -161,15 +161,15 @@
     38: PushLexicalScope c2
     40: LoadEmpty r1
     42: StoreToScope r1, 0, 0
-    46: LoadImmediate r1, 3
-    49: StoreToScope r1, 0, 0
-    53: LoadImmediate r1, 4
-    56: JumpToBooleanFalse r1, 7 (.L2)
-    59: PopScope 
-    60: PopScope 
-    61: Jump 7 (.L3)
+    46: NewClosure r0, c3
+    49: LoadImmediate r1, 3
+    52: StoreToScope r1, 0, 0
+    56: LoadImmediate r1, 4
+    59: JumpToBooleanFalse r1, 7 (.L2)
+    62: PopScope 
+    63: PopScope 
+    64: Jump 4 (.L3)
   .L2:
-    63: NewClosure r0, c3
     66: PopScope 
     67: PopScope 
   .L3:
@@ -216,14 +216,14 @@
     29: PushLexicalScope c1
     31: LoadEmpty r1
     33: StoreToScope r1, 0, 0
-    37: LoadImmediate r1, 3
-    40: StoreToScope r1, 0, 0
-    44: LoadImmediate r1, 4
-    47: JumpToBooleanFalse r1, 6 (.L2)
-    50: PopScope 
-    51: Jump 6 (.L3)
+    37: NewClosure r0, c2
+    40: LoadImmediate r1, 3
+    43: StoreToScope r1, 0, 0
+    47: LoadImmediate r1, 4
+    50: JumpToBooleanFalse r1, 6 (.L2)
+    53: PopScope 
+    54: Jump 3 (.L3)
   .L2:
-    53: NewClosure r0, c2
     56: PopScope 
   .L3:
     57: Jump -48 (.L0)

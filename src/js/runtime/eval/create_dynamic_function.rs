@@ -13,10 +13,7 @@ use crate::{
             source::Source,
         },
         runtime::{
-            bytecode::{
-                function::{dump_bytecode_function, Closure},
-                generator::BytecodeProgramGenerator,
-            },
+            bytecode::{function::Closure, generator::BytecodeProgramGenerator},
             completion::EvalResult,
             error::syntax_error,
             intrinsics::{
@@ -159,10 +156,6 @@ pub fn create_dynamic_function(
         Ok(func) => func,
         Err(error) => return syntax_error(cx, &error.to_string()),
     };
-
-    if cx.options.print_bytecode {
-        dump_bytecode_function(cx, bytecode_function.get_());
-    }
 
     // Dynamic functions are always in the global scope
     let global_scope = realm.default_global_scope();

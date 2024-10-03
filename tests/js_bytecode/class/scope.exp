@@ -42,13 +42,13 @@
     2: [ClassNames]
 }
 
-[BytecodeFunction: method] {
+[BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
 }
 
-[BytecodeFunction: C] {
+[BytecodeFunction: method] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0
@@ -73,6 +73,12 @@
     3: [ClassNames]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
@@ -81,12 +87,6 @@
     9: Ret r0
   Constant Table:
     0: [String: C]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: capturedByStaticInitializer] {
@@ -144,6 +144,12 @@
     3: [ClassNames]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
@@ -152,12 +158,6 @@
     9: Ret r0
   Constant Table:
     0: [String: C]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: capturedByEval] {
@@ -188,6 +188,12 @@
     4: [ClassNames]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
@@ -204,12 +210,6 @@
     0: [ScopeNames]
     1: [String: eval]
     2: [String: ]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }
 
 [BytecodeFunction: canReassignOutsideBodyButNotInside] {
@@ -232,6 +232,12 @@
     3: [ClassNames]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: method] {
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
@@ -243,10 +249,4 @@
     18: Ret r0
   Constant Table:
     0: [String: C]
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }

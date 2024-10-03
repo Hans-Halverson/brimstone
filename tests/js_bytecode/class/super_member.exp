@@ -26,6 +26,23 @@
     8: [ClassNames]
 }
 
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 3
+     0: LoadEmpty <this>
+     2: Mov r0, <closure>
+     5: GetSuperConstructor r2, r0
+     8: Construct r2, r2, r1, r1, 0
+    14: CheckSuperAlreadyCalled <this>
+    16: Mov <this>, r2
+    19: CheckThisInitialized <this>
+    21: LoadFromScope r2, 0, 0
+    25: GetNamedSuperProperty r2, r2, <this>, c0
+    30: CheckThisInitialized <this>
+    32: Ret <this>
+  Constant Table:
+    0: [String: x]
+}
+
 [BytecodeFunction: instanceSuperMember] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 0, 0
@@ -40,23 +57,6 @@
     0: LoadFromScope r0, 1, 0
     4: GetNamedSuperProperty r0, r0, <this>, c0
     9: Ret r0
-  Constant Table:
-    0: [String: x]
-}
-
-[BytecodeFunction: C1] {
-  Parameters: 0, Registers: 3
-     0: LoadEmpty <this>
-     2: Mov r0, <closure>
-     5: GetSuperConstructor r2, r0
-     8: Construct r2, r2, r1, r1, 0
-    14: CheckSuperAlreadyCalled <this>
-    16: Mov <this>, r2
-    19: CheckThisInitialized <this>
-    21: LoadFromScope r2, 0, 0
-    25: GetNamedSuperProperty r2, r2, <this>, c0
-    30: CheckThisInitialized <this>
-    32: Ret <this>
   Constant Table:
     0: [String: x]
 }

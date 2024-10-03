@@ -57,6 +57,12 @@
     15: [ClassNames]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: named1] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
@@ -130,12 +136,6 @@
 }
 
 [BytecodeFunction: <anonymous>] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
-}
-
-[BytecodeFunction: C] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

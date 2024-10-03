@@ -40,6 +40,78 @@
     11: [ClassNames]
 }
 
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 3, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 11
+    34: LoadFromScope r0, 1, 0
+    38: GetSuperConstructor r0, r0
+    41: LoadFromScope r1, 3, 0
+    45: Construct r0, r0, r1, r1, 0
+    51: LoadFromScope r1, 0, 0
+    55: CheckSuperAlreadyCalled r1
+    57: StoreToScope r0, 0, 0
+    61: NewClosure r1, c3
+    64: CallWithReceiver r1, r1, r0, r1, 0
+    70: LoadFromScope r0, 0, 0
+    74: CheckThisInitialized r0
+    76: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [BytecodeFunction: fieldsInitializer]
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: LoadGlobal r0, c1
+    13: LoadConstant r1, c2
+    16: CallMaybeEval r0, r0, r1, 1, 19
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 39
+    34: DefineNamedProperty <this>, c3, r0
+    38: PopScope 
+    39: LoadUndefined r0
+    41: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [String: field2]
+}
+
+[BytecodeFunction: fieldsInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: LoadGlobal r0, c1
+    13: LoadConstant r1, c2
+    16: CallMaybeEval r0, r0, r1, 1, 35
+    22: DefineNamedProperty <this>, c3, r0
+    26: PopScope 
+    27: LoadUndefined r0
+    29: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: ]
+    3: [String: field1]
+}
+
 [BytecodeFunction: method1] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
@@ -74,78 +146,6 @@
     0: [ScopeNames]
     1: [String: eval]
     2: [String: ]
-}
-
-[BytecodeFunction: C1] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: LoadEmpty <this>
-     4: StoreToScope <this>, 0, 0
-     8: StoreToScope r0, 3, 0
-    12: StoreToScope <closure>, 1, 0
-    16: NewUnmappedArguments r0
-    18: StoreToScope r0, 2, 0
-    22: LoadGlobal r0, c1
-    25: LoadConstant r1, c2
-    28: CallMaybeEval r0, r0, r1, 1, 11
-    34: LoadFromScope r0, 1, 0
-    38: GetSuperConstructor r0, r0
-    41: LoadFromScope r1, 3, 0
-    45: Construct r0, r0, r1, r1, 0
-    51: LoadFromScope r1, 0, 0
-    55: CheckSuperAlreadyCalled r1
-    57: StoreToScope r0, 0, 0
-    61: NewClosure r1, c3
-    64: CallWithReceiver r1, r1, r0, r1, 0
-    70: LoadFromScope r0, 0, 0
-    74: CheckThisInitialized r0
-    76: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: ]
-    3: [BytecodeFunction: fieldsInitializer]
-}
-
-[BytecodeFunction: fieldsInitializer] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 2, 0
-    10: LoadGlobal r0, c1
-    13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 35
-    22: DefineNamedProperty <this>, c3, r0
-    26: PopScope 
-    27: LoadUndefined r0
-    29: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: ]
-    3: [String: field1]
-}
-
-[BytecodeFunction: staticInitializer] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 2, 0
-    10: LoadGlobal r0, c1
-    13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 19
-    22: LoadGlobal r0, c1
-    25: LoadConstant r1, c2
-    28: CallMaybeEval r0, r0, r1, 1, 39
-    34: DefineNamedProperty <this>, c3, r0
-    38: PopScope 
-    39: LoadUndefined r0
-    41: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: ]
-    3: [String: field2]
 }
 
 [BytecodeFunction: C2] {

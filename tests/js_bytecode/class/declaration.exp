@@ -26,6 +26,12 @@
     9: [ClassNames]
 }
 
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: tdzGlobals] {
   Parameters: 0, Registers: 1
     0: LoadFromScope r0, 1, 0
@@ -113,10 +119,4 @@
     0: DefaultSuperCall 
     1: CheckThisInitialized <this>
     3: Ret <this>
-}
-
-[BytecodeFunction: C1] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }

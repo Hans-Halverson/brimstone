@@ -21,6 +21,12 @@
     2: Ret r0
 }
 
+[BytecodeFunction: test2] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: test3] {
   Parameters: 0, Registers: 2
     0: NewClosure r0, c0
@@ -31,12 +37,6 @@
 }
 
 [BytecodeFunction: test4] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
-}
-
-[BytecodeFunction: test2] {
   Parameters: 0, Registers: 1
     0: LoadUndefined r0
     2: Ret r0

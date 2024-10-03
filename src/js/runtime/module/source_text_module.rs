@@ -661,7 +661,7 @@ type AsyncParentModulesVec = BsVec<HeapPtr<SourceTextModule>>;
 struct AsyncParentModulesField(Handle<SourceTextModule>);
 
 impl BsVecField<HeapPtr<SourceTextModule>> for AsyncParentModulesField {
-    fn new_vec(&self, cx: Context, capacity: usize) -> HeapPtr<AsyncParentModulesVec> {
+    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<AsyncParentModulesVec> {
         BsVec::new(cx, ObjectKind::ValueVec, capacity)
     }
 

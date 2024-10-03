@@ -11,9 +11,7 @@ use crate::{
         runtime::{
             abstract_operations::call_object,
             bytecode::{
-                function::{dump_bytecode_function, Closure},
-                generator::BytecodeProgramGenerator,
-                instruction::EvalFlags,
+                function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
             },
             error::{syntax_error, type_error},
             global_names::{
@@ -91,11 +89,6 @@ pub fn perform_eval(
         Ok(func) => func,
         Err(error) => return syntax_error(cx, &error.to_string()),
     };
-
-    // Print the bytecode if necessary, optionally to the internal dump buffer
-    if cx.options.print_bytecode {
-        dump_bytecode_function(cx, bytecode_function.get_());
-    }
 
     // Eval function's parent scope is the global scope in an indirect eval
     let eval_scope = direct_scope.unwrap_or_else(|| cx.current_realm().default_global_scope());

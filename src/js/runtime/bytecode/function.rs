@@ -477,46 +477,20 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
 }
 
 pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
-    let bytecode_string = func.debug_print_recursive(false);
+    let mut printer = DebugPrinter::new(DebugPrintMode::Verbose);
+    printer.set_ignore_raw_bytes(/* ignore_raw_bytes */ true);
+
+    func.debug_format(&mut printer);
+    let bytecode_string = printer.finish();
 
     if let Some(mut dump_buffer) = cx.options.dump_buffer() {
-        dump_buffer.push_str(&bytecode_string);
-        dump_buffer.push('\n');
-    } else {
-        println!("{}", func.debug_print_recursive(false));
-    }
-}
-
-impl HeapPtr<BytecodeFunction> {
-    /// Debug print this function and all its child functions.
-    pub fn debug_print_recursive(&self, ignore_raw_bytes: bool) -> String {
-        let mut printer = DebugPrinter::new(DebugPrintMode::Verbose);
-        printer.set_ignore_raw_bytes(ignore_raw_bytes);
-
-        let mut stack = vec![*self];
-
-        while let Some(function) = stack.pop() {
-            if !printer.is_empty() {
-                printer.write("\n");
-            }
-
-            function.debug_format(&mut printer);
-
-            // Constant table contains all child functions in declaration order. Push them in
-            // reverse order so they are popped in depth-first declaration order.
-            if let Some(constant_table) = function.constant_table_ptr() {
-                for (i, constant) in constant_table.as_slice().iter().enumerate().rev() {
-                    if constant_table.is_value(i) && constant.is_pointer() {
-                        let heap_item = constant.as_pointer();
-                        if heap_item.descriptor().kind() == ObjectKind::BytecodeFunction {
-                            stack.push(heap_item.cast::<BytecodeFunction>());
-                        }
-                    }
-                }
-            }
+        if !dump_buffer.is_empty() {
+            dump_buffer.push('\n');
         }
 
-        printer.finish()
+        dump_buffer.push_str(&bytecode_string);
+    } else {
+        println!("{}", bytecode_string);
     }
 }
 

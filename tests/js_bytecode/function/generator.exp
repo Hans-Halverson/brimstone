@@ -286,15 +286,15 @@
     4: Ret r1
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
 [BytecodeFunction: generatorMethod] {
   Parameters: 0, Registers: 2
     0: GeneratorStart r0
     2: LoadUndefined r1
     4: Ret r1
-}
-
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 1
-    0: LoadUndefined r0
-    2: Ret r0
 }

@@ -60,10 +60,6 @@ impl DebugPrinter {
         self.result
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.result.is_empty()
-    }
-
     pub fn push_mode(&mut self, mode: DebugPrintMode) {
         self.mode_stack.push(mode);
     }

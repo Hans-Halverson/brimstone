@@ -39,6 +39,55 @@
     10: [String: method2]
 }
 
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 2
+     0: DefaultSuperCall 
+     1: NewClosure r1, c0
+     4: CallWithReceiver r1, r1, <this>, r1, 0
+    10: CheckThisInitialized <this>
+    12: Ret <this>
+  Constant Table:
+    0: [BytecodeFunction: fieldsInitializer]
+}
+
+[BytecodeFunction: staticInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: LoadGlobal r0, c1
+    13: LoadConstant r1, c2
+    16: CallMaybeEval r0, r0, r1, 1, 39
+    22: DefineNamedProperty <this>, c3, r0
+    26: PopScope 
+    27: LoadUndefined r0
+    29: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: super.member]
+    3: [String: field]
+}
+
+[BytecodeFunction: fieldsInitializer] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: LoadGlobal r0, c1
+    13: LoadConstant r1, c2
+    16: CallMaybeEval r0, r0, r1, 1, 35
+    22: DefineNamedProperty <this>, c3, r0
+    26: PopScope 
+    27: LoadUndefined r0
+    29: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: super.member]
+    3: [String: field]
+}
+
 [BytecodeFunction: method1] {
   Parameters: 0, Registers: 2
      0: PushFunctionScope c0
@@ -75,60 +124,11 @@
     2: [String: super.method]
 }
 
-[BytecodeFunction: C] {
-  Parameters: 0, Registers: 2
-     0: DefaultSuperCall 
-     1: NewClosure r1, c0
-     4: CallWithReceiver r1, r1, <this>, r1, 0
-    10: CheckThisInitialized <this>
-    12: Ret <this>
-  Constant Table:
-    0: [BytecodeFunction: fieldsInitializer]
-}
-
-[BytecodeFunction: fieldsInitializer] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 2, 0
-    10: LoadGlobal r0, c1
-    13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 35
-    22: DefineNamedProperty <this>, c3, r0
-    26: PopScope 
-    27: LoadUndefined r0
-    29: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: super.member]
-    3: [String: field]
-}
-
-[BytecodeFunction: staticInitializer] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 2, 0
-    10: LoadGlobal r0, c1
-    13: LoadConstant r1, c2
-    16: CallMaybeEval r0, r0, r1, 1, 39
-    22: DefineNamedProperty <this>, c3, r0
-    26: PopScope 
-    27: LoadUndefined r0
-    29: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: super.member]
-    3: [String: field]
-}
-
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 0d fe 00         LoadDynamic r1, c0
-    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
-    8: 18 ff            Ret r0
+    0: LoadDynamic r1, c0
+    3: GetNamedSuperProperty r0, r1, <this>, c1
+    8: Ret r0
   Constant Table:
     0: [String: %staticHomeObject]
     1: [String: member]
@@ -136,9 +136,9 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 0d fe 00         LoadDynamic r1, c0
-    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
-    8: 18 ff            Ret r0
+    0: LoadDynamic r1, c0
+    3: GetNamedSuperProperty r0, r1, <this>, c1
+    8: Ret r0
   Constant Table:
     0: [String: %homeObject]
     1: [String: member]
@@ -146,9 +146,9 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 0d fe 00         LoadDynamic r1, c0
-    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
-    8: 18 ff            Ret r0
+    0: LoadDynamic r1, c0
+    3: GetNamedSuperProperty r0, r1, <this>, c1
+    8: Ret r0
   Constant Table:
     0: [String: %homeObject]
     1: [String: method]
@@ -156,11 +156,10 @@
 
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 0d fe 00         LoadDynamic r1, c0
-    3: 5d ff fe 07 01   GetNamedSuperProperty r0, r1, <this>, c1
-    8: 18 ff            Ret r0
+    0: LoadDynamic r1, c0
+    3: GetNamedSuperProperty r0, r1, <this>, c1
+    8: Ret r0
   Constant Table:
     0: [String: %staticHomeObject]
     1: [String: method]
 }
-

@@ -24,8 +24,12 @@ use crate::js::{
     },
     runtime::{
         boxed_value::BoxedValue,
-        bytecode::{function::BytecodeFunction, instruction::DefinePropertyFlags},
+        bytecode::{
+            function::{dump_bytecode_function, BytecodeFunction},
+            instruction::DefinePropertyFlags,
+        },
         class_names::{ClassNames, HomeObjectLocation, Method},
+        collections::{BsVec, BsVecField},
         eval::expression::generate_template_object,
         gc::{Escapable, HandleScope},
         global_names::GlobalNames,
@@ -34,6 +38,7 @@ use crate::js::{
             DirectReExportEntry, ImportEntry, LocalExportEntry, NamedReExportEntry,
             SourceTextModule,
         },
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         regexp::compiler::compile_regexp,
         scope::Scope,
@@ -41,7 +46,7 @@ use crate::js::{
         source_file::SourceFile,
         string_value::FlatString,
         value::BigIntValue,
-        Context, Handle, Realm, Value,
+        Context, Handle, HeapPtr, Realm, Value,
     },
 };
 
@@ -72,6 +77,12 @@ pub struct BytecodeProgramGenerator<'a> {
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
     pending_functions_queue: VecDeque<PendingFunction>,
+
+    /// List of all functions that have been generated in the order they were generated in.
+    ///
+    /// This may be used for debugging purposes, to dump all functions in the order they were
+    /// generated. Functions are only added here if the option is not None.
+    all_functions: Option<Handle<FunctionVec>>,
 }
 
 pub struct BytecodeScript {
@@ -97,6 +108,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> Self {
         let source_file = SourceFile::new(cx, &source);
 
+        // If we are dumping bytecode then we must collect all functions
+        let all_functions = if cx.options.print_bytecode {
+            Some(FunctionVecField::new_vec(cx, 4).to_handle())
+        } else {
+            None
+        };
+
         Self {
             cx,
             scope_tree,
@@ -104,6 +122,32 @@ impl<'a> BytecodeProgramGenerator<'a> {
             source_file,
             module: None,
             pending_functions_queue: VecDeque::new(),
+            all_functions,
+        }
+    }
+
+    /// Perform postprocessing for generated functions, such as adding to the list of all functions
+    /// if necessary. Must be called on all functions after they are generated.
+    fn process_generated_function(&mut self, function: Handle<BytecodeFunction>) {
+        if self.all_functions.is_some() {
+            FunctionVecField(&mut self.all_functions)
+                .maybe_grow_for_push(self.cx)
+                .push_without_growing(function.get_());
+        }
+    }
+
+    /// Dump all bytecode functions if necessary. Must be called at the end of each bytecode program
+    /// generation entrypoint.
+    fn dump_bytecode_functions(&mut self) {
+        if self.cx.options.print_bytecode {
+            self.all_functions
+                .unwrap()
+                .as_mut_slice()
+                .sort_by_key(|f| f.source_range().start);
+
+            for bytecode_function in self.all_functions.unwrap().as_slice() {
+                dump_bytecode_function(self.cx, *bytecode_function);
+            }
         }
     }
 
@@ -121,9 +165,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let script = generator.generate_script_program(&parse_result.program)?;
 
-            if cx.options.print_bytecode {
-                println!("{}", script.script_function.debug_print_recursive(false));
-            }
+            generator.dump_bytecode_functions();
 
             Ok(script)
         })
@@ -162,6 +204,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
+        self.process_generated_function(emit_result.bytecode_function);
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -185,9 +228,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let module = generator.generate_module_program(&parse_result.program)?;
 
-            if cx.options.print_bytecode {
-                println!("{}", module.program_function_ptr().debug_print_recursive(false));
-            }
+            generator.dump_bytecode_functions();
 
             Ok(module)
         })
@@ -233,6 +274,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
+        self.process_generated_function(emit_result.bytecode_function);
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -481,7 +523,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
         HandleScope::new(cx, |_| {
             let mut generator =
                 Self::new(cx, &parse_result.scope_tree, realm, parse_result.program.source.clone());
-            generator.generate_eval(&parse_result.program)
+            let function = generator.generate_eval(&parse_result.program);
+
+            generator.dump_bytecode_functions();
+
+            function
         })
     }
 
@@ -556,6 +602,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
+        self.process_generated_function(emit_result.bytecode_function);
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -573,7 +620,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
         HandleScope::new(cx, |_| {
             let source = parse_result.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
-            generator.generate_function_constructor(&parse_result.function)
+            let function = generator.generate_function_constructor(&parse_result.function);
+
+            generator.dump_bytecode_functions();
+
+            function
         })
     }
 
@@ -603,6 +654,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         )?;
 
         let emit_result = generator.generate(function)?;
+        self.process_generated_function(emit_result.bytecode_function);
 
         // Generate all pending functions that were discovered while emitting the original function
         self.enqueue_pending_functions(
@@ -648,11 +700,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
             } else if let PendingFunctionNode::ClassFieldsInitializer {
                 scope: init_func_scope,
                 fields,
+                class,
             } = func_node
             {
                 let init_func_scope = init_func_scope.as_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
+                    class,
                     self.scope_tree,
                     scope,
                     self.realm,
@@ -666,11 +720,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
             } else if let PendingFunctionNode::ClassStaticInitializer {
                 scope: init_func_scope,
                 elements,
+                class,
             } = func_node
             {
                 let init_func_scope = init_func_scope.as_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
+                    class,
                     self.scope_tree,
                     scope,
                     self.realm,
@@ -737,6 +793,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
+        self.process_generated_function(emit_result.bytecode_function);
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -1110,6 +1167,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn new_for_class_initializer(
         cx: Context,
+        class: AstPtr<ast::Class>,
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
@@ -1124,6 +1182,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Err(EmitError::TooManyRegisters);
         }
 
+        // Use entire class's source range for the initializer function
+        let source_range = class.as_ref().loc.to_range();
+
         Ok(Self::new(
             cx,
             scope_tree,
@@ -1131,7 +1192,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             realm,
             Some(Wtf8String::from_str(name)),
             source_file,
-            0..0,
+            source_range,
             ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -5255,6 +5316,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let pending_node = PendingFunctionNode::ClassFieldsInitializer {
             scope: initializer.scope.unwrap(),
             fields: initializer.fields,
+            class: initializer.class,
         };
         let func_index = self.enqueue_function_to_generate(pending_node)?;
 
@@ -6354,7 +6416,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         // Create the constructor's static BytecodeFunction
-        let fields = ClassFieldsInitializer { fields, scope: class.fields_initializer_scope };
+        let fields = ClassFieldsInitializer {
+            fields,
+            scope: class.fields_initializer_scope,
+            class: AstPtr::from_ref(class),
+        };
         let is_base = class.super_class.is_none();
         let source_range = class.loc.to_range();
         let pending_constructor =
@@ -6412,6 +6478,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let pending_node = PendingFunctionNode::ClassStaticInitializer {
                 scope: *scope,
                 elements: static_elements,
+                class: AstPtr::from_ref(class),
             };
             let func_index = self.enqueue_function_to_generate(pending_node)?;
 
@@ -8615,10 +8682,12 @@ enum PendingFunctionNode {
     ClassFieldsInitializer {
         scope: AstPtr<AstScopeNode>,
         fields: Vec<ClassField>,
+        class: AstPtr<ast::Class>,
     },
     ClassStaticInitializer {
         scope: AstPtr<AstScopeNode>,
         elements: Vec<ClassStaticElement>,
+        class: AstPtr<ast::Class>,
     },
 }
 
@@ -8986,11 +9055,12 @@ enum ClassField {
 struct ClassFieldsInitializer {
     fields: Vec<ClassField>,
     scope: Option<AstPtr<AstScopeNode>>,
+    class: AstPtr<ast::Class>,
 }
 
 impl ClassFieldsInitializer {
     fn none() -> Self {
-        Self { fields: vec![], scope: None }
+        Self { fields: vec![], scope: None, class: AstPtr::uninit() }
     }
 }
 
@@ -9044,5 +9114,23 @@ impl StmtCompletion {
             (StmtCompletion::Abrupt, StmtCompletion::Abrupt) => StmtCompletion::Abrupt,
             _ => StmtCompletion::Normal,
         }
+    }
+}
+
+type FunctionVec = BsVec<HeapPtr<BytecodeFunction>>;
+
+struct FunctionVecField<'a>(&'a mut Option<Handle<FunctionVec>>);
+
+impl<'a> BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'a> {
+    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<FunctionVec> {
+        BsVec::new(cx, ObjectKind::ValueVec, capacity)
+    }
+
+    fn get(&self) -> HeapPtr<FunctionVec> {
+        self.0.as_ref().unwrap().get_()
+    }
+
+    fn set(&mut self, vec: HeapPtr<FunctionVec>) {
+        *self.0 = Some(vec.to_handle());
     }
 }

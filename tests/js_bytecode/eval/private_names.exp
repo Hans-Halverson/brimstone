@@ -27,24 +27,6 @@
     6: [String: method1]
 }
 
-[BytecodeFunction: method1] {
-  Parameters: 0, Registers: 2
-     0: PushFunctionScope c0
-     2: StoreToScope <this>, 0, 0
-     6: StoreToScope r0, 2, 0
-    10: NewUnmappedArguments r0
-    12: StoreToScope r0, 1, 0
-    16: LoadGlobal r0, c1
-    19: LoadConstant r1, c2
-    22: CallMaybeEval r0, r0, r1, 1, 7
-    28: LoadUndefined r0
-    30: Ret r0
-  Constant Table:
-    0: [ScopeNames]
-    1: [String: eval]
-    2: [String: this.#field]
-}
-
 [BytecodeFunction: C1] {
   Parameters: 0, Registers: 1
      0: NewClosure r0, c0
@@ -64,12 +46,29 @@
     14: Ret r0
 }
 
+[BytecodeFunction: method1] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: StoreToScope <this>, 0, 0
+     6: StoreToScope r0, 2, 0
+    10: NewUnmappedArguments r0
+    12: StoreToScope r0, 1, 0
+    16: LoadGlobal r0, c1
+    19: LoadConstant r1, c2
+    22: CallMaybeEval r0, r0, r1, 1, 7
+    28: LoadUndefined r0
+    30: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: this.#field]
+}
+
 [BytecodeFunction: <eval>] {
   Parameters: 0, Registers: 2
-    0: 0d fe 00      LoadDynamic r1, c0
-    3: 61 ff 07 fe   GetPrivateProperty r0, <this>, r1
-    7: 18 ff         Ret r0
+    0: LoadDynamic r1, c0
+    3: GetPrivateProperty r0, <this>, r1
+    7: Ret r0
   Constant Table:
     0: [String: #field]
 }
-

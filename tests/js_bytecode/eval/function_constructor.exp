@@ -27,29 +27,28 @@
 
 [BytecodeFunction: anonymous] {
   Parameters: 0, Registers: 1
-    0: 05 ff   LoadUndefined r0
-    2: 18 ff   Ret r0
+    0: LoadUndefined r0
+    2: Ret r0
 }
 
 [BytecodeFunction: anonymous] {
   Parameters: 0, Registers: 2
-     0: 0a ff 00      LoadGlobal r0, c0
-     3: 03 fe 01      LoadImmediate r1, 1
-     6: 19 ff ff fe   Add r0, r0, r1
-    10: 05 ff         LoadUndefined r0
-    12: 18 ff         Ret r0
+     0: LoadGlobal r0, c0
+     3: LoadImmediate r1, 1
+     6: Add r0, r0, r1
+    10: LoadUndefined r0
+    12: Ret r0
   Constant Table:
     0: [String: y]
 }
 
 [BytecodeFunction: anonymous] {
   Parameters: 2, Registers: 2
-     0: 19 ff 08 09   Add r0, a0, a1
-     4: 0a fe 00      LoadGlobal r1, c0
-     7: 19 ff ff fe   Add r0, r0, r1
-    11: 05 ff         LoadUndefined r0
-    13: 18 ff         Ret r0
+     0: Add r0, a0, a1
+     4: LoadGlobal r1, c0
+     7: Add r0, r0, r1
+    11: LoadUndefined r0
+    13: Ret r0
   Constant Table:
     0: [String: z]
 }
-

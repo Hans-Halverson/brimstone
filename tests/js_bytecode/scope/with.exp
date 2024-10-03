@@ -32,11 +32,11 @@
     31: StoreToScope r1, 0, 0
     35: LoadEmpty r1
     37: StoreToScope r1, 1, 0
-    41: LoadImmediate r1, 1
-    44: StoreToScope r1, 0, 0
-    48: LoadImmediate r1, 2
-    51: StoreToScope r1, 1, 0
-    55: NewClosure r0, c3
+    41: NewClosure r0, c3
+    44: LoadImmediate r1, 1
+    47: StoreToScope r1, 0, 0
+    51: LoadImmediate r1, 2
+    54: StoreToScope r1, 1, 0
     58: PopScope 
     59: PopScope 
     60: LoadUndefined r1

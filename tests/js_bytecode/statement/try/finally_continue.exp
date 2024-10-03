@@ -212,9 +212,9 @@
      38: PushLexicalScope c2
      40: LoadEmpty r4
      42: StoreToScope r4, 0, 0
-     46: LoadImmediate r4, 3
-     49: StoreToScope r4, 0, 0
-     53: NewClosure r0, c3
+     46: NewClosure r0, c3
+     49: LoadImmediate r4, 3
+     52: StoreToScope r4, 0, 0
      56: JumpToBooleanFalse a0, 8 (.L1)
      59: LoadImmediate r1, 1
      62: Jump 11 (.L2)

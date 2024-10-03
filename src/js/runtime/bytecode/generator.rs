@@ -1735,10 +1735,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        // Create closures for all var scoped functions in the function body. This must occur after
+        // Create closures for all functions in the function body scope. This must occur after
         // creating arguments object, so that the a function named "arguments" will overwrite the
         // arguments object.
-        self.gen_var_scoped_functions(func_scope)?;
+        self.gen_scope_functions(func_scope)?;
 
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
@@ -2048,10 +2048,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let num_allocated_before = self.register_allocator.num_allocated();
 
         let result = match stmt {
+            // Function declarations are handled when starting the scope
+            ast::Statement::FuncDecl(_) => Ok(StmtCompletion::Normal),
             ast::Statement::VarDecl(var_decl) => self.gen_variable_declaration(var_decl),
-            ast::Statement::FuncDecl(func_decl) => {
-                self.gen_function_declaration(func_decl.as_ref())
-            }
             ast::Statement::ClassDecl(class_decl) => self.gen_class_declaration(class_decl),
             ast::Statement::Expr(stmt) => self.gen_expression_statement(stmt),
             ast::Statement::Block(stmt) => self.gen_block_statement(stmt),
@@ -6093,11 +6092,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<StmtCompletion> {
         let binding = func_decl.id.as_ref().unwrap().get_binding();
 
-        // Var function definitions are hoisted to the top of the scope
-        if let BindingKind::Function { is_lexical: false, .. } = binding.kind() {
-            return Ok(StmtCompletion::Normal);
-        }
-
         // Exported functions are enqueued to be added to the module scope during initialization
         if binding.is_exported() {
             // Extract the slot in the module scope where this export is stored
@@ -6118,13 +6112,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return Ok(StmtCompletion::Normal);
         }
 
-        self.gen_function_declaration_impl(func_decl)
-    }
-
-    fn gen_function_declaration_impl(
-        &mut self,
-        func_decl: &ast::Function,
-    ) -> EmitResult<StmtCompletion> {
+        // Otherwise function is hoisted to top of the scope and must be created at runtime
         let func_constant_index = self.enqueue_function_to_generate(
             PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl)),
         )?;
@@ -6770,7 +6758,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         self.gen_push_scope(scope, flags)?;
         self.gen_init_tdz_for_scope(scope)?;
-        self.gen_var_scoped_functions(scope)?;
+        self.gen_scope_functions(scope)?;
 
         Ok(())
     }
@@ -6868,13 +6856,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    /// Generate var scoped function declarations, hoisted to the top of the scope
-    fn gen_var_scoped_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+    /// Generate all function declarations in this scope, hoisted to the top of the scope.
+    fn gen_scope_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
         for (_, binding) in scope.iter_bindings() {
-            if let BindingKind::Function { is_lexical: false, is_expression: false, func_node } =
-                binding.kind()
-            {
-                self.gen_function_declaration_impl(func_node.as_ref())?;
+            if let BindingKind::Function { is_expression: false, func_node, .. } = binding.kind() {
+                self.gen_function_declaration(func_node.as_ref())?;
             }
         }
 
@@ -6942,7 +6928,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let vm_scope_id = scope.vm_scope_id().unwrap();
         self.push_scope_stack_node(vm_scope_id);
 
-        self.gen_var_scoped_functions(scope)
+        self.gen_scope_functions(scope)
     }
 
     /// Must only be called on AST scope node with a corresponding VM scope node.

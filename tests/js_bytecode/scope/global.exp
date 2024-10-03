@@ -11,9 +11,9 @@
     26: PushLexicalScope c3
     28: LoadEmpty r1
     30: StoreToScope r1, 0, 0
-    34: LoadImmediate r1, 1
-    37: StoreToScope r1, 0, 0
-    41: NewClosure r0, c4
+    34: NewClosure r0, c4
+    37: LoadImmediate r1, 1
+    40: StoreToScope r1, 0, 0
     44: PopScope 
     45: LoadUndefined r1
     47: Ret r1

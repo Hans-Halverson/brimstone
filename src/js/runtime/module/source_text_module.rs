@@ -69,11 +69,8 @@ pub enum ModuleState {
     Unlinked,
     Linking,
     Linked,
-    #[allow(unused)]
     Evaluating,
-    #[allow(unused)]
     EvaluatingAsync,
-    #[allow(unused)]
     Evaluated,
 }
 
@@ -268,7 +265,6 @@ impl SourceTextModule {
     }
 
     #[inline]
-    #[allow(unused)]
     pub fn program_function(&self) -> Handle<BytecodeFunction> {
         self.program_function_ptr().to_handle()
     }

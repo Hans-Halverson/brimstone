@@ -6,7 +6,7 @@ export class Class1 {}
 // Initialized when linking, does not need to be initialized at runtime
 export function func1() {}
 
-function testAccessExportedBinding() {
+function testAccessSimpleExportedBinding() {
   var1 + let1 + const1 + Class1 + func1;
 
   {
@@ -17,4 +17,17 @@ function testAccessExportedBinding() {
     // Access from nested scope
     capturing(const1);
   }
+}
+
+// Exported in a separate declaration
+var var2 = 5;
+
+// Exported under a different name
+var var3 = 6;
+
+export { var2, var3 as renamedVar3 };
+
+function testAccessExportedInSeparateDeclaration() {
+  // Renamed variable is not resolved
+  var2 + var3 + renamedVar3;
 }

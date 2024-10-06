@@ -1,21 +1,27 @@
 [BytecodeFunction: <module>] {
-  Parameters: 0, Registers: 3
+  Parameters: 0, Registers: 4
      0: NewClosure r0, c0
-     3: LoadImmediate r1, 1
-     6: StoreToModule r1, 1, 0
-    10: LoadImmediate r1, 2
-    13: StoreToModule r1, 2, 0
-    17: LoadImmediate r1, 3
-    20: StoreToModule r1, 3, 0
-    24: LoadEmpty r2
-    26: NewClass r1, c2, c1, r2, r1
-    32: StoreToModule r1, 4, 0
-    36: LoadUndefined r1
-    38: Ret r1
+     3: NewClosure r1, c1
+     6: LoadImmediate r2, 1
+     9: StoreToModule r2, 1, 0
+    13: LoadImmediate r2, 2
+    16: StoreToModule r2, 2, 0
+    20: LoadImmediate r2, 3
+    23: StoreToModule r2, 3, 0
+    27: LoadEmpty r3
+    29: NewClass r2, c3, c2, r3, r2
+    35: StoreToModule r2, 4, 0
+    39: LoadImmediate r2, 5
+    42: StoreToModule r2, 6, 0
+    46: LoadImmediate r2, 6
+    49: StoreToModule r2, 7, 0
+    53: LoadUndefined r2
+    55: Ret r2
   Constant Table:
-    0: [BytecodeFunction: testAccessExportedBinding]
-    1: [BytecodeFunction: Class1]
-    2: [ClassNames]
+    0: [BytecodeFunction: testAccessSimpleExportedBinding]
+    1: [BytecodeFunction: testAccessExportedInSeparateDeclaration]
+    2: [BytecodeFunction: Class1]
+    3: [ClassNames]
 }
 
 [BytecodeFunction: Class1] {
@@ -30,7 +36,7 @@
     2: Ret r0
 }
 
-[BytecodeFunction: testAccessExportedBinding] {
+[BytecodeFunction: testAccessSimpleExportedBinding] {
   Parameters: 0, Registers: 3
      0: LoadFromModule r1, 1, 0
      4: LoadFromModule r2, 2, 0
@@ -67,4 +73,17 @@
     17: Ret r0
   Constant Table:
     0: [String: const2]
+}
+
+[BytecodeFunction: testAccessExportedInSeparateDeclaration] {
+  Parameters: 0, Registers: 2
+     0: LoadFromModule r0, 6, 0
+     4: LoadFromModule r1, 7, 0
+     8: Add r0, r0, r1
+    12: LoadGlobal r1, c0
+    15: Add r0, r0, r1
+    19: LoadUndefined r0
+    21: Ret r0
+  Constant Table:
+    0: [String: renamedVar3]
 }

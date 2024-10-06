@@ -1,0 +1,70 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 3
+     0: NewClosure r0, c0
+     3: LoadImmediate r1, 1
+     6: StoreToModule r1, 1, 0
+    10: LoadImmediate r1, 2
+    13: StoreToModule r1, 2, 0
+    17: LoadImmediate r1, 3
+    20: StoreToModule r1, 3, 0
+    24: LoadEmpty r2
+    26: NewClass r1, c2, c1, r2, r1
+    32: StoreToModule r1, 4, 0
+    36: LoadUndefined r1
+    38: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testAccessExportedBinding]
+    1: [BytecodeFunction: Class1]
+    2: [ClassNames]
+}
+
+[BytecodeFunction: Class1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: func1] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: testAccessExportedBinding] {
+  Parameters: 0, Registers: 3
+     0: LoadFromModule r1, 1, 0
+     4: LoadFromModule r2, 2, 0
+     8: Add r1, r1, r2
+    12: LoadFromModule r2, 3, 0
+    16: Add r1, r1, r2
+    20: LoadFromModule r2, 4, 0
+    24: Add r1, r1, r2
+    28: LoadFromModule r2, 5, 0
+    32: Add r1, r1, r2
+    36: PushLexicalScope c0
+    38: LoadEmpty r1
+    40: StoreToScope r1, 0, 0
+    44: NewClosure r0, c1
+    47: LoadImmediate r1, 4
+    50: StoreToScope r1, 0, 0
+    54: LoadFromModule r1, 3, 1
+    58: Call r1, r0, r1, 1
+    63: PopScope 
+    64: LoadUndefined r1
+    66: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: capturing]
+}
+
+[BytecodeFunction: capturing] {
+  Parameters: 0, Registers: 2
+     0: LoadFromModule r0, 3, 1
+     4: LoadFromScope r1, 0, 0
+     8: CheckTdz r1, c0
+    11: Add r0, r0, r1
+    15: LoadUndefined r0
+    17: Ret r0
+  Constant Table:
+    0: [String: const2]
+}

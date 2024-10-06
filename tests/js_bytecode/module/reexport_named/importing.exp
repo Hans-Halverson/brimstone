@@ -1,0 +1,17 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 2
+    0: NewClosure r0, c0
+    3: LoadUndefined r1
+    5: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testAccessImportedBindings]
+}
+
+[BytecodeFunction: testAccessImportedBindings] {
+  Parameters: 0, Registers: 2
+     0: LoadFromModule r0, 1, 0
+     4: LoadFromModule r1, 2, 0
+     8: Add r0, r0, r1
+    12: LoadUndefined r0
+    14: Ret r0
+}

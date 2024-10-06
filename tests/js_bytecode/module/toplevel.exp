@@ -1,0 +1,56 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 4
+     0: NewClosure r2, c0
+     3: StoreToScope r2, 4, 0
+     7: NewClosure r0, c1
+    10: LoadEmpty r2
+    12: StoreToScope r2, 2, 0
+    16: LoadEmpty r2
+    18: StoreToScope r2, 3, 0
+    22: LoadImmediate r2, 1
+    25: StoreToScope r2, 1, 0
+    29: LoadImmediate r2, 2
+    32: StoreToScope r2, 2, 0
+    36: LoadImmediate r2, 3
+    39: StoreToScope r2, 3, 0
+    43: NewClosure r1, c2
+    46: LoadImmediate r2, 100
+    49: LoadFromScope r3, 1, 0
+    53: Add r2, r2, r3
+    57: LoadUndefined r2
+    59: Ret r2
+  Constant Table:
+    0: [BytecodeFunction: toplevelMethod]
+    1: [BytecodeFunction: testToplevelBinding]
+    2: [BytecodeFunction: inBlock]
+}
+
+[BytecodeFunction: toplevelMethod] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: inBlock] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: testToplevelBinding] {
+  Parameters: 0, Registers: 2
+     0: LoadFromScope r0, 1, 0
+     4: LoadFromScope r1, 2, 0
+     8: CheckTdz r1, c0
+    11: Add r0, r0, r1
+    15: LoadFromScope r1, 3, 0
+    19: CheckTdz r1, c1
+    22: Add r0, r0, r1
+    26: LoadFromScope r1, 4, 0
+    30: Add r0, r0, r1
+    34: LoadUndefined r0
+    36: Ret r0
+  Constant Table:
+    0: [String: x2]
+    1: [String: x3]
+}

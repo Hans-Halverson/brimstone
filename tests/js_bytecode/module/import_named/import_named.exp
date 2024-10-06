@@ -1,0 +1,45 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 2
+    0: NewClosure r0, c0
+    3: LoadUndefined r1
+    5: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testAccess]
+}
+
+[BytecodeFunction: testAccess] {
+  Parameters: 0, Registers: 3
+     0: LoadFromModule r1, 1, 0
+     4: LoadFromModule r2, 2, 0
+     8: Add r1, r1, r2
+    12: LoadFromModule r2, 3, 0
+    16: Add r1, r1, r2
+    20: LoadFromModule r2, 4, 0
+    24: Add r1, r1, r2
+    28: PushLexicalScope c0
+    30: LoadEmpty r1
+    32: StoreToScope r1, 0, 0
+    36: NewClosure r0, c1
+    39: LoadImmediate r1, 0
+    42: StoreToScope r1, 0, 0
+    46: LoadFromModule r1, 1, 1
+    50: Call r1, r0, r1, 1
+    55: PopScope 
+    56: LoadUndefined r1
+    58: Ret r1
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: capturing]
+}
+
+[BytecodeFunction: capturing] {
+  Parameters: 0, Registers: 2
+     0: LoadFromModule r0, 1, 1
+     4: LoadFromScope r1, 0, 0
+     8: CheckTdz r1, c0
+    11: Add r0, r0, r1
+    15: LoadUndefined r0
+    17: Ret r0
+  Constant Table:
+    0: [String: c]
+}

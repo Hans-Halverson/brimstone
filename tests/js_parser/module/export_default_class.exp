@@ -1,0 +1,27 @@
+{
+  type: "Program",
+  loc: "1:0-1:25",
+  body: [
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "1:0-1:25",
+      declaration: {
+        type: "ClassDeclaration",
+        loc: "1:15-1:25",
+        id: {
+          type: "Identifier",
+          loc: "1:21-1:22",
+          name: "C",
+        },
+        superClass: null,
+        body: {
+          type: "ClassBody",
+          loc: "1:15-1:25",
+          body: [],
+        },
+      },
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

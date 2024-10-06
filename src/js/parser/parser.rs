@@ -14,7 +14,8 @@ use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
 use super::scope_tree::{
     AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
-    DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+    ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+    STATIC_HOME_OBJECT_BINDING_NAME,
 };
 use super::source::Source;
 use super::token::Token;
@@ -70,8 +71,8 @@ bitflags! {
     pub struct FunctionContext: u8 {
         /// Whether this is a function declaration or expression.
         const DECLARATION = 1 << 0;
-        /// If this is a function declaration, whether the name is optional.
-        const OPTIONAL_NAME = 1 << 1;
+        /// Whether this is an exported function declaration.
+        const EXPORT = 1 << 1;
         /// If this is a function declaration, whether the function appears at the toplevel of a
         /// script or function body (ignoring labels) for the purpose of scoping.
         const TOPLEVEL = 1 << 2;
@@ -285,6 +286,28 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn add_anonymous_default_export_to_scope(
+        &mut self,
+        loc: Loc,
+        kind: BindingKind,
+    ) -> ParseResult<()> {
+        if let Err(error) = self
+            .scope_builder
+            .add_binding(ANONYMOUS_DEFAULT_EXPORT_NAME, kind)
+        {
+            return self.error(loc, error);
+        }
+
+        // Immediately mark as exported (since there is no id to visit during analysis)
+        self.scope_builder
+            .current_scope()
+            .as_ref()
+            .get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME)
+            .set_is_exported(true);
+
+        Ok(())
+    }
+
     // Expect a semicolon, or insert one via automatic semicolon insertion if possible. Error if
     // a semicolon was not present and one could not be inserted.
     fn expect_semicolon(&mut self) -> ParseResult<()> {
@@ -459,7 +482,9 @@ impl<'a> Parser<'a> {
                     self.parse_statement()
                 }
             }
-            Token::Class => Ok(Statement::ClassDecl(self.parse_class(true, true)?)),
+            Token::Class => Ok(Statement::ClassDecl(
+                self.parse_class(/* is_true */ true, /* is_export */ false)?,
+            )),
             _ => {
                 if self.is_function_start()? {
                     return Ok(Statement::FuncDecl(
@@ -724,9 +749,10 @@ impl<'a> Parser<'a> {
         // and name is introduces into current scope.
         let mut id = None;
         if is_decl {
-            // Name may be optional in the case of export declarations
-            if !ctx_flags.contains(FunctionContext::OPTIONAL_NAME) || self.token != Token::LeftParen
-            {
+            let is_export = ctx_flags.contains(FunctionContext::EXPORT);
+
+            // Name is optional only in the case of export declarations
+            if !is_export || self.token != Token::LeftParen {
                 // Function is var scoped if it is toplevel, but if function has a label then it is
                 // only var scoped if it is non-async and non-generator.
                 let is_var_scoped = if ctx_flags.contains(FunctionContext::TOPLEVEL) {
@@ -746,6 +772,17 @@ impl<'a> Parser<'a> {
                 };
 
                 id = Some(p(self.parse_binding_identifier(Some(binding_kind))?));
+            } else {
+                // Anonymous exported functions must still be added to scope but under the anonymous
+                // default export name.
+                let kind = BindingKind::Function {
+                    is_lexical: false,
+                    is_expression: false,
+                    func_node: AstPtr::from_ref(func.as_ref()),
+                };
+
+                let loc = self.mark_loc(start_pos);
+                self.add_anonymous_default_export_to_scope(loc, kind)?;
             }
         }
 
@@ -2573,7 +2610,9 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
-            Token::Class => Ok(p(Expression::Class(self.parse_class(false, false)?))),
+            Token::Class => Ok(p(Expression::Class(
+                self.parse_class(/* is_decl */ false, /* is_export */ false)?,
+            ))),
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
@@ -3440,7 +3479,7 @@ impl<'a> Parser<'a> {
         Ok((property, is_private))
     }
 
-    fn parse_class(&mut self, is_decl: bool, is_name_required: bool) -> ParseResult<P<Class>> {
+    fn parse_class(&mut self, is_decl: bool, is_export: bool) -> ParseResult<P<Class>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
@@ -3448,8 +3487,8 @@ impl<'a> Parser<'a> {
         let old_in_strict_mode = self.in_strict_mode;
         self.set_in_strict_mode(true);
 
-        // Id is optional only for class expresssions
-        let id = if is_name_required
+        // Id is optional only for class expresssions and anonymous default exports.
+        let id = if (is_decl && !is_export)
             || (self.token != Token::LeftBrace && self.token != Token::Extends)
         {
             // Only introduce a binding for class declarations
@@ -3460,6 +3499,13 @@ impl<'a> Parser<'a> {
             };
 
             Some(p(self.parse_binding_identifier(binding_kind)?))
+        } else if is_export {
+            // Anonymous exported classes must still be added to scope but under the anonymous
+            // default export name.
+            let kind = BindingKind::Class { in_body_scope: false, init_pos: Cell::new(0) };
+            let loc = self.mark_loc(start_pos);
+            self.add_anonymous_default_export_to_scope(loc, kind)?;
+            None
         } else {
             None
         };
@@ -4243,28 +4289,33 @@ impl<'a> Parser<'a> {
 
                 // Default function and class declarations have an optional name
                 if self.token == Token::Class {
-                    let declaration = p(Statement::ClassDecl(self.parse_class(true, false)?));
+                    let declaration = ExportDefaultKind::Class(
+                        self.parse_class(/* is_decl */ true, /* is_export */ true)?,
+                    );
                     let loc = self.mark_loc(start_pos);
 
                     Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 } else if self.is_function_start()? {
-                    let declaration = p(Statement::FuncDecl(
-                        self.parse_function_declaration(FunctionContext::OPTIONAL_NAME)?,
-                    ));
+                    let declaration = ExportDefaultKind::Function(
+                        self.parse_function_declaration(FunctionContext::EXPORT)?,
+                    );
                     let loc = self.mark_loc(start_pos);
 
                     Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 } else {
                     // Otherwise default export is an expression
-                    let expr_start_pos = self.current_start_pos();
                     let expr = self.parse_assignment_expression()?.into_outer();
+                    let declaration = ExportDefaultKind::Expression(expr);
 
                     self.expect_semicolon()?;
                     let loc = self.mark_loc(start_pos);
 
-                    let expr_stmt_loc = self.mark_loc(expr_start_pos);
-                    let declaration =
-                        p(Statement::Expr(ExpressionStatement { loc: expr_stmt_loc, expr }));
+                    // Exported expressions are always anonymous and are added to bindings with a
+                    // special type.
+                    self.add_anonymous_default_export_to_scope(
+                        loc,
+                        BindingKind::DefaultExportExpression,
+                    )?;
 
                     Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 }

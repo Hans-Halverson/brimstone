@@ -2,6 +2,8 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
+use crate::js::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
+
 use super::scope_tree::BindingKind;
 use super::{
     loc::{find_line_col_for_pos, Loc},
@@ -225,23 +227,28 @@ impl fmt::Display for ParseError {
             }
             ParseError::NameRedeclaration(payload) => {
                 let (name, kind) = payload.as_ref();
-                let kind_string = match kind {
-                    BindingKind::Var => "var",
-                    BindingKind::Const { .. } => "const",
-                    BindingKind::Let { .. } => "let",
-                    BindingKind::Function { .. } => "function",
-                    BindingKind::FunctionParameter { .. } => "function parameter",
-                    BindingKind::Class { .. } => "class",
-                    BindingKind::CatchParameter { .. } => "catch parameter",
-                    BindingKind::Import { .. } => "import",
-                    BindingKind::ImplicitThis { .. } => "`this`",
-                    BindingKind::ImplicitArguments => "`arguments`",
-                    BindingKind::ImplicitNewTarget => "`new.target`",
-                    BindingKind::DerivedConstructor => "constructor",
-                    BindingKind::HomeObject => "homo object",
-                    BindingKind::PrivateName => "private name",
-                };
-                write!(f, "Redeclaration of {} {}", kind_string, name)
+                if name == ANONYMOUS_DEFAULT_EXPORT_NAME {
+                    write!(f, "Default export was already declared in this module")
+                } else {
+                    let kind_string = match kind {
+                        BindingKind::Var => "var",
+                        BindingKind::Const { .. } => "const",
+                        BindingKind::Let { .. } => "let",
+                        BindingKind::Function { .. } => "function",
+                        BindingKind::FunctionParameter { .. } => "function parameter",
+                        BindingKind::Class { .. } => "class",
+                        BindingKind::CatchParameter { .. } => "catch parameter",
+                        BindingKind::Import { .. } => "import",
+                        BindingKind::ImplicitThis { .. } => "`this`",
+                        BindingKind::ImplicitArguments => "`arguments`",
+                        BindingKind::ImplicitNewTarget => "`new.target`",
+                        BindingKind::DerivedConstructor => "constructor",
+                        BindingKind::HomeObject => "home object",
+                        BindingKind::PrivateName => "private name",
+                        BindingKind::DefaultExportExpression => "default export",
+                    };
+                    write!(f, "Redeclaration of {} {}", kind_string, name)
+                }
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),

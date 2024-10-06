@@ -1,0 +1,26 @@
+{
+  type: "Program",
+  loc: "1:0-1:35",
+  body: [
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "1:0-1:35",
+      declaration: {
+        type: "FunctionDeclaration",
+        loc: "1:15-1:35",
+        id: null,
+        params: [],
+        body: {
+          type: "Block",
+          loc: "1:33-1:35",
+          body: [],
+        },
+        async: true,
+        generator: false,
+        has_use_strict_directive: false,
+      },
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

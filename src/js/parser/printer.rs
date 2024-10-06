@@ -1067,8 +1067,18 @@ impl<'a> Printer<'a> {
 
     fn print_export_default_declaration(&mut self, export: &ExportDefaultDeclaration) {
         self.start_node("ExportDefaultDeclaration", &export.loc);
-        self.property("declaration", export.declaration.as_ref(), Printer::print_statement);
+        self.property("declaration", &export.declaration, Printer::print_export_default_kind);
         self.end_node();
+    }
+
+    fn print_export_default_kind(&mut self, kind: &ExportDefaultKind) {
+        match kind {
+            ExportDefaultKind::Function(func) => {
+                self.print_function(func.as_ref(), "FunctionDeclaration")
+            }
+            ExportDefaultKind::Class(class) => self.print_class(class.as_ref(), "ClassDeclaration"),
+            ExportDefaultKind::Expression(expr) => self.print_outer_expression(expr),
+        }
     }
 
     fn print_export_named_declaration(&mut self, export: &ExportNamedDeclaration) {

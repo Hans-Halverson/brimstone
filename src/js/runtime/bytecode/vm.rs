@@ -3866,13 +3866,9 @@ impl VM {
         let parent_depth = instr.parent_depth().value().to_usize();
         let value = self.read_register(instr.value());
 
-        // Module values are guaranteed to be boxed
+        // Module values are guaranteed to be boxed. No need to check for uninitialized values -
+        // TDZ checks are performed by a LoadFromModule instruction preceding the store when needed.
         let mut boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
-
-        // Check for uninitialized values
-        if boxed_value.get().is_empty() {
-            return reference_error(self.cx(), "module value is not initialized");
-        }
 
         boxed_value.set(value);
 

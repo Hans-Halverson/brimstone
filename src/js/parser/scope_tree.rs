@@ -991,6 +991,8 @@ pub enum BindingKind {
     HomeObject,
     /// A private name introduced in a class. Includes the "#" prefix.
     PrivateName,
+    /// A default exported expression
+    DefaultExportExpression,
 }
 
 impl BindingKind {
@@ -1014,7 +1016,8 @@ impl BindingKind {
             | BindingKind::Let { .. }
             | BindingKind::Class { .. }
             | BindingKind::CatchParameter { .. }
-            | BindingKind::Import { .. } => true,
+            | BindingKind::Import { .. }
+            | BindingKind::DefaultExportExpression => true,
         }
     }
 
@@ -1063,6 +1066,7 @@ impl BindingKind {
                 | BindingKind::Class { .. }
                 | BindingKind::CatchParameter { .. }
                 | BindingKind::FunctionParameter { .. }
+                | BindingKind::DefaultExportExpression
         )
     }
 
@@ -1203,4 +1207,5 @@ pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
 pub const DERIVED_CONSTRUCTOR_BINDING_NAME: &str = "%constructor";
 pub const HOME_OBJECT_BINDING_NAME: &str = "%homeObject";
 pub const STATIC_HOME_OBJECT_BINDING_NAME: &str = "%staticHomeObject";
+pub const ANONYMOUS_DEFAULT_EXPORT_NAME: &str = "%defaultExport";
 const CLASS_FIELD_SLOT_NAME: &str = "%classField";

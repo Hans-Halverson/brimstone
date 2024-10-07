@@ -1490,18 +1490,23 @@ pub struct ExportSpecifier {
 
 pub struct ExportDefaultDeclaration {
     pub loc: Loc,
-    // Must be function declaration, class declaration, or expression statement
-    pub declaration: P<Statement>,
+    pub declaration: ExportDefaultKind,
 }
 
 impl ExportDefaultDeclaration {
     pub fn id(&self) -> Option<&Identifier> {
-        match self.declaration.as_ref() {
-            Statement::FuncDecl(func) => func.id.as_deref(),
-            Statement::ClassDecl(class) => class.id.as_deref(),
-            _ => None,
+        match &self.declaration {
+            ExportDefaultKind::Function(func) => func.id.as_deref(),
+            ExportDefaultKind::Class(class) => class.id.as_deref(),
+            ExportDefaultKind::Expression(_) => None,
         }
     }
+}
+
+pub enum ExportDefaultKind {
+    Function(P<Function>),
+    Class(P<Class>),
+    Expression(P<OuterExpression>),
 }
 
 pub struct ExportAllDeclaration {

@@ -1,0 +1,35 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 3
+     0: PushLexicalScope c0
+     2: LoadEmpty r1
+     4: StoreToScope r1, 0, 0
+     8: LoadEmpty r1
+    10: NewClosure r2, c1
+    13: NewClass r0, c3, c2, r1, r2
+    19: StoreToScope r0, 0, 0
+    23: PopScope 
+    24: StoreToModule r0, 1, 0
+    28: LoadUndefined r0
+    30: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: method]
+    2: [BytecodeFunction: Named]
+    3: [ClassNames]
+}
+
+[BytecodeFunction: Named] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: method] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckTdz r0, c0
+    7: LoadUndefined r0
+    9: Ret r0
+  Constant Table:
+    0: [String: Named]
+}

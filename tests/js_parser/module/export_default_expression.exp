@@ -1,0 +1,27 @@
+{
+  type: "Program",
+  loc: "1:0-1:21",
+  body: [
+    {
+      type: "ExportDefaultDeclaration",
+      loc: "1:0-1:21",
+      declaration: {
+        type: "BinaryExpression",
+        loc: "1:15-1:20",
+        operator: "+",
+        left: {
+          type: "Literal",
+          loc: "1:15-1:16",
+          value: 1,
+        },
+        right: {
+          type: "Literal",
+          loc: "1:19-1:20",
+          value: 2,
+        },
+      },
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

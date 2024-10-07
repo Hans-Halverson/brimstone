@@ -17,8 +17,8 @@ use crate::js::{
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            VMScopeNode, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
-            NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+            VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME,
+            HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
         },
         source::Source,
     },
@@ -352,7 +352,18 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     let slot_index = if let Some(id) = export.id() {
                         Self::id_module_slot_index(id)
                     } else {
-                        unimplemented!("export default declarations with an implicit name")
+                        // If there is no id then this is an anonymous default export, so pull the
+                        // anonymous default export binding from the program scope.
+                        let scope = program.scope.as_ref();
+                        if let VMLocation::ModuleScope { index, .. } = scope
+                            .get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME)
+                            .vm_location()
+                            .unwrap()
+                        {
+                            index
+                        } else {
+                            unreachable!("expected module scope location")
+                        }
                     };
 
                     local_exports.push(LocalExportEntry { export_name, local_name, slot_index })
@@ -581,7 +592,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
             // Eval function consists of toplevel statements
             for toplevel in toplevels {
-                generator.gen_toplevel(toplevel)?;
+                generator.gen_toplevel(eval_program, toplevel)?;
             }
 
             // Scope end not needed since the eval function returns
@@ -769,6 +780,16 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 };
 
                 let default_name = func_node.default_name();
+
+                // If the generated function is an exported anonymous function
+                let anonymous_default_name =
+                    if default_name.is_none() && matches!(patch, Patch::Export { .. }) {
+                        Some(Wtf8String::from_str("default"))
+                    } else {
+                        None
+                    };
+
+                let default_name = default_name.or(anonymous_default_name.as_ref());
 
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
@@ -1990,7 +2011,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Program function consists of toplevel statements
         for toplevel in toplevels {
-            self.gen_toplevel(toplevel)?;
+            self.gen_toplevel(program, toplevel)?;
         }
 
         // Scope end not needed since the function returns
@@ -2001,7 +2022,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_toplevel(&mut self, toplevel: &ast::Toplevel) -> EmitResult<()> {
+    fn gen_toplevel(&mut self, program: &ast::Program, toplevel: &ast::Toplevel) -> EmitResult<()> {
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
                 // Ignore completion of toplevel statements, generate later toplevels even if abrupt
@@ -2018,20 +2039,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_statement(declaration)?;
                 }
             }
-            ast::Toplevel::ExportDefault(export) => match export.declaration.as_ref() {
-                // Named default exports should evaluate their declaration normally, which will
-                // store to the exported module binding.
-                ast::Statement::FuncDecl(decl) if decl.id.is_some() => {
-                    self.gen_statement(&export.declaration)?;
-                }
-                ast::Statement::ClassDecl(decl) if decl.id.is_some() => {
-                    self.gen_statement(&export.declaration)?;
-                }
-                ast::Statement::FuncDecl(_)
-                | ast::Statement::ClassDecl(_)
-                | ast::Statement::Expr(_) => unimplemented!("anonymous default exports"),
-                _ => unreachable!("Invalid default export"),
-            },
+            ast::Toplevel::ExportDefault(export) => {
+                self.gen_export_default_declaration(program, export)?
+            }
             ast::Toplevel::ExportAll(_) => {
                 // No evaluation action is needed for export all declarations. These are resolved
                 // during linking phase.
@@ -6092,21 +6102,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_function_declaration(
         &mut self,
         func_decl: &ast::Function,
+        binding: &Binding,
     ) -> EmitResult<StmtCompletion> {
-        let binding = func_decl.id.as_ref().unwrap().get_binding();
-
         // Exported functions are enqueued to be added to the module scope during initialization
         if binding.is_exported() {
             // Extract the slot in the module scope where this export is stored
-            let slot_index = if let Some(func_id) = func_decl.id.as_ref() {
-                let vm_location = func_id.get_binding().vm_location().unwrap();
-                if let VMLocation::ModuleScope { index, .. } = vm_location {
-                    index
-                } else {
-                    unreachable!("export must be in module scope")
-                }
+            let vm_location = binding.vm_location().unwrap();
+            let slot_index = if let VMLocation::ModuleScope { index, .. } = vm_location {
+                index
             } else {
-                unimplemented!("anonymous default exports")
+                unreachable!("export must be in module scope")
             };
 
             let func_node = PendingFunctionNode::Declaration(AstPtr::from_ref(func_decl));
@@ -6169,7 +6174,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
-        self.gen_class(class, /* is_decl */ true, None, ExprDest::Any)?;
+        self.gen_class(class, GenClassKind::Declaration, None, ExprDest::Any)?;
         Ok(StmtCompletion::Normal)
     }
 
@@ -6179,13 +6184,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_class(class, /* is_decl */ false, name, dest)
+        self.gen_class(class, GenClassKind::Expression, name, dest)
     }
 
     fn gen_class(
         &mut self,
         class: &ast::Class,
-        is_decl: bool,
+        kind: GenClassKind,
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -6194,7 +6199,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut constructor_dest = dest;
 
         if let Some(id) = class.id.as_ref() {
-            if is_decl {
+            if matches!(kind, GenClassKind::Declaration) {
                 constructor_dest = self.expr_dest_for_id(id, store_flags);
             }
         }
@@ -6401,6 +6406,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else if let Some(name) = name {
             // Handle name passed from named evaluation
             name
+        } else if let GenClassKind::Export { name, .. } = &kind {
+            // Handle name passed from export, such as the anonymous default export name
+            Wtf8String::from_str(name)
         } else {
             // Otherwise name is the empty string if class has no name
             Wtf8String::new()
@@ -6450,9 +6458,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(class_id) = class.id.as_ref() {
             let class_name = &class_id.name;
             if let Some(binding) = body_scope.get_binding_opt(class_name) {
-                if let Some(VMLocation::Scope { .. } | VMLocation::ModuleScope { .. }) =
-                    binding.vm_location()
-                {
+                if let Some(VMLocation::Scope { .. }) = binding.vm_location() {
                     self.gen_store_binding(
                         class_name,
                         binding,
@@ -6497,10 +6503,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Store constructor at the binding's location. Stores at declarations do not need a TDZ
         // check.
-        if let Some(id) = class.id.as_ref() {
-            if is_decl {
-                self.gen_store_identifier(id, constructor_reg, store_flags)?;
+        match kind {
+            GenClassKind::Declaration => {
+                if let Some(id) = class.id.as_ref() {
+                    self.gen_store_identifier(id, constructor_reg, store_flags)?;
+                }
             }
+            GenClassKind::Export { name, binding } => {
+                self.gen_store_binding(name, binding, constructor_reg, store_flags)?;
+            }
+            // Does not store constructor in parent scope
+            GenClassKind::Expression => {}
         }
 
         for argument in new_class_arguments.iter().rev() {
@@ -6509,12 +6522,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.register_allocator.release(super_class);
 
-        if is_decl {
+        if matches!(kind, GenClassKind::Expression) {
+            self.gen_mov_reg_to_dest(constructor_reg, dest)
+        } else {
             // Declaration result will not be used
             self.register_allocator.release(constructor_reg);
             Ok(constructor_reg)
-        } else {
-            self.gen_mov_reg_to_dest(constructor_reg, dest)
         }
     }
 
@@ -6754,6 +6767,51 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(stmt_completion)
     }
 
+    fn gen_export_default_declaration(
+        &mut self,
+        program: &ast::Program,
+        export: &ast::ExportDefaultDeclaration,
+    ) -> EmitResult<()> {
+        let scope = program.scope.as_ref();
+
+        match &export.declaration {
+            // Default exported function declarations will be added to module scope and generated
+            // like all other function declarations.
+            ast::ExportDefaultKind::Function(_) => Ok(()),
+            // Classes are generated similar to declarations, but potentially with a default name
+            // if the class is anonymous.
+            ast::ExportDefaultKind::Class(class) => {
+                let (name, binding) = if let Some(id) = class.id.as_ref() {
+                    (id.name.as_str(), id.get_binding())
+                } else {
+                    let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
+                    ("default", anonymous_binding)
+                };
+
+                self.gen_class(class, GenClassKind::Export { name, binding }, None, ExprDest::Any)?;
+
+                Ok(())
+            }
+            // Default exported expressions are evaluated and stored as the anonymous default in
+            // the current scope.
+            ast::ExportDefaultKind::Expression(expr) => {
+                let value = self.gen_outer_expression(expr)?;
+
+                let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
+                self.gen_store_binding(
+                    "default",
+                    anonymous_binding,
+                    value,
+                    StoreFlags::INITIALIZATION,
+                )?;
+
+                self.register_allocator.release(value);
+
+                Ok(())
+            }
+        }
+    }
+
     fn gen_scope_start(
         &mut self,
         scope: &AstScopeNode,
@@ -6863,7 +6921,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_scope_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
         for (_, binding) in scope.iter_bindings() {
             if let BindingKind::Function { is_expression: false, func_node, .. } = binding.kind() {
-                self.gen_function_declaration(func_node.as_ref())?;
+                self.gen_function_declaration(func_node.as_ref(), binding)?;
             }
         }
 
@@ -8577,11 +8635,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the name of a declaration that is part of a default export declaration, defaulting
     /// to "*default*" if the declaration has no name.
-    fn gen_default_export_name(mut cx: Context, decl: &ast::Statement) -> Handle<FlatString> {
+    fn gen_default_export_name(
+        mut cx: Context,
+        decl: &ast::ExportDefaultKind,
+    ) -> Handle<FlatString> {
         let id = match decl {
-            ast::Statement::FuncDecl(func) => &func.id,
-            ast::Statement::ClassDecl(class) => &class.id,
-            _ => &None,
+            ast::ExportDefaultKind::Function(func) => &func.id,
+            ast::ExportDefaultKind::Class(class) => &class.id,
+            ast::ExportDefaultKind::Expression(_) => &None,
         };
 
         if let Some(id) = id {
@@ -9061,6 +9122,12 @@ enum ClassStaticElement {
 enum CallArgs {
     Normal { argv: GenRegister, argc: GenUInt },
     Varargs { args: GenRegister, receiver: GenRegister },
+}
+
+enum GenClassKind<'a> {
+    Declaration,
+    Expression,
+    Export { name: &'a str, binding: &'a Binding },
 }
 
 /// A reference to a string that may be either wtf8 or utf8.

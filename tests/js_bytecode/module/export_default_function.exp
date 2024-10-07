@@ -1,0 +1,12 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: named] {
+  Parameters: 0, Registers: 1
+    0: LoadFromModule r0, 1, 0
+    4: LoadUndefined r0
+    6: Ret r0
+}

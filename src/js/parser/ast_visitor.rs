@@ -386,6 +386,10 @@ pub trait AstVisitor: Sized {
         default_visit_export_default_declaration(self, export)
     }
 
+    fn visit_export_default_kind(&mut self, kind: &mut ExportDefaultKind) {
+        default_visit_export_default_kind(self, kind)
+    }
+
     fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
         default_visit_export_named_declaration(self, export)
     }
@@ -852,7 +856,18 @@ pub fn default_visit_export_default_declaration<V: AstVisitor>(
     visitor: &mut V,
     export: &mut ExportDefaultDeclaration,
 ) {
-    visitor.visit_statement(&mut export.declaration);
+    visitor.visit_export_default_kind(&mut export.declaration);
+}
+
+pub fn default_visit_export_default_kind<V: AstVisitor>(
+    visitor: &mut V,
+    kind: &mut ExportDefaultKind,
+) {
+    match kind {
+        ExportDefaultKind::Function(func) => visitor.visit_function_declaration(func),
+        ExportDefaultKind::Class(class) => visitor.visit_class_declaration(class),
+        ExportDefaultKind::Expression(expr) => visitor.visit_outer_expression(expr),
+    }
 }
 
 pub fn default_visit_export_named_declaration<V: AstVisitor>(

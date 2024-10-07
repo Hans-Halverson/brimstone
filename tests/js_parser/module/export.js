@@ -21,16 +21,7 @@ export class C {};
 export function foo() {}
 export async function foo2() {}
 
-export default function foo3() {}
-export default function () {}
-export default async function foo4() {}
-export default async function () {}
-
-export default class C2 {}
-export default class {}
-
 export default a6;
-export default 1 + 2;
 
 export * from 'other';
 export * as a from 'other';

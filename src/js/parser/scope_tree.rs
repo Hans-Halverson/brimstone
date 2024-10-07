@@ -1136,16 +1136,9 @@ impl Binding {
         self.vm_location = Some(location);
     }
 
-    /// Whether this binding needs to be initialized to support the TDZ.
-    pub fn needs_tdz_init(&self) -> bool {
-        self.kind().has_tdz() && self.needs_tdz_check.get()
-    }
-
     /// Whether this binding needs TDZ checks when accessed.
     pub fn needs_tdz_check(&self) -> bool {
-        // Exported bindings will always have an implicit TDZ check inside the LoadFromModule and
-        // StoreToModule instructions.
-        self.needs_tdz_init() && !self.is_exported()
+        self.kind().has_tdz() && self.needs_tdz_check.get()
     }
 
     fn set_needs_tdz_check(&self, value: bool) {

@@ -475,7 +475,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for (_, binding) in ast_node.iter_bindings() {
             if binding.is_exported() {
                 // We need to initialize with empty if TDZ checks are needed
-                let init_value = if binding.needs_tdz_init() {
+                let init_value = if binding.needs_tdz_check() {
                     self.cx.empty()
                 } else {
                     self.cx.undefined()
@@ -2191,7 +2191,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         // For bindings that could be accessed during their TDZ we must generate a TDZ check. Must
         // ensure that TDZ check occurs before writing to a non-temporary register.
-        let add_tdz_check = binding.needs_tdz_check();
+        //
+        // No explicit TDZ check is needed for exported bindings since LoadFromModule has an
+        // implicit TDZ check.
+        let add_tdz_check = binding.needs_tdz_check() && !binding.is_exported();
 
         match binding.vm_location().unwrap() {
             // Fixed registers may directly reference the register

@@ -1,0 +1,27 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 3
+     0: NewClosure r0, c0
+     3: LoadImmediate r1, 1
+     6: StoreToModule r1, 1, 0
+    10: LoadImmediate r1, 2
+    13: LoadFromModule r2, 1, 0
+    17: StoreToModule r1, 1, 0
+    21: LoadImmediate r1, 4
+    24: LoadFromModule r2, 2, 0
+    28: StoreToModule r1, 2, 0
+    32: LoadImmediate r1, 5
+    35: StoreToModule r1, 2, 0
+    39: LoadUndefined r1
+    41: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testAccessWithTDZ]
+}
+
+[BytecodeFunction: testAccessWithTDZ] {
+  Parameters: 0, Registers: 2
+     0: LoadImmediate r0, 3
+     3: LoadFromModule r1, 1, 0
+     7: StoreToModule r0, 1, 0
+    11: LoadUndefined r0
+    13: Ret r0
+}

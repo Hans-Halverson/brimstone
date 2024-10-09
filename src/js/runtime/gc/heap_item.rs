@@ -50,7 +50,10 @@ use crate::js::runtime::{
         weak_ref_constructor::WeakRefObject,
         weak_set_object::{WeakSetObject, WeakSetObjectSetField},
     },
-    module::source_text_module::SourceTextModule,
+    module::{
+        module_namespace_object::ModuleNamespaceObject,
+        source_text_module::{ExportMapField, SourceTextModule},
+    },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
     promise_object::{PromiseCapability, PromiseObject, PromiseReaction},
@@ -151,6 +154,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
             ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().byte_size(),
+            ObjectKind::ModuleNamespaceObject => self.cast::<ModuleNamespaceObject>().byte_size(),
             ObjectKind::Generator => self.cast::<GeneratorObject>().byte_size(),
             ObjectKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
             ObjectKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
@@ -163,6 +167,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::MapObjectValueMap => MapObjectMapField::byte_size(&self.cast()),
             ObjectKind::SetObjectValueSet => SetObjectSetField::byte_size(&self.cast()),
+            ObjectKind::ExportMap => ExportMapField::byte_size(&self.cast()),
             ObjectKind::WeakMapObjectWeakValueMap => WeakMapObjectMapField::byte_size(&self.cast()),
             ObjectKind::WeakSetObjectWeakValueSet => WeakSetObjectSetField::byte_size(&self.cast()),
             ObjectKind::GlobalSymbolRegistryMap => {
@@ -261,6 +266,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
             ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().visit_pointers(visitor),
+            ObjectKind::ModuleNamespaceObject => {
+                self.cast::<ModuleNamespaceObject>().visit_pointers(visitor)
+            }
             ObjectKind::Generator => self.cast::<GeneratorObject>().visit_pointers(visitor),
             ObjectKind::AsyncGenerator => {
                 self.cast::<AsyncGeneratorObject>().visit_pointers(visitor)
@@ -287,6 +295,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::SetObjectValueSet => {
                 SetObjectSetField::visit_pointers(self.cast_mut(), visitor)
             }
+            ObjectKind::ExportMap => ExportMapField::visit_pointers(self.cast_mut(), visitor),
             ObjectKind::WeakMapObjectWeakValueMap => {
                 WeakMapObjectMapField::visit_pointers(self.cast_mut(), visitor)
             }

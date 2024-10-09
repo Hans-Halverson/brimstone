@@ -4,7 +4,9 @@ use bitflags::bitflags;
 
 use crate::{
     js::runtime::{
-        arguments_object::MappedArgumentsObject, ordinary_object::OrdinaryObject, Value,
+        arguments_object::MappedArgumentsObject,
+        module::module_namespace_object::ModuleNamespaceObject, ordinary_object::OrdinaryObject,
+        Value,
     },
     set_uninit,
 };
@@ -115,6 +117,7 @@ pub enum ObjectKind {
     ClassNames,
 
     SourceTextModule,
+    ModuleNamespaceObject,
 
     Generator,
     AsyncGenerator,
@@ -131,6 +134,7 @@ pub enum ObjectKind {
     ObjectNamedPropertiesMap,
     MapObjectValueMap,
     SetObjectValueSet,
+    ExportMap,
     WeakSetObjectWeakValueSet,
     WeakMapObjectWeakValueMap,
     GlobalSymbolRegistryMap,
@@ -326,6 +330,11 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ClassNames);
 
         other_heap_object_descriptor!(ObjectKind::SourceTextModule);
+        register_descriptor!(
+            ObjectKind::ModuleNamespaceObject,
+            ModuleNamespaceObject,
+            DescFlags::IS_OBJECT
+        );
 
         ordinary_object_descriptor!(ObjectKind::Generator);
         ordinary_object_descriptor!(ObjectKind::AsyncGenerator);
@@ -341,6 +350,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ObjectNamedPropertiesMap);
         other_heap_object_descriptor!(ObjectKind::MapObjectValueMap);
         other_heap_object_descriptor!(ObjectKind::SetObjectValueSet);
+        other_heap_object_descriptor!(ObjectKind::ExportMap);
         other_heap_object_descriptor!(ObjectKind::WeakMapObjectWeakValueMap);
         other_heap_object_descriptor!(ObjectKind::WeakSetObjectWeakValueSet);
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);

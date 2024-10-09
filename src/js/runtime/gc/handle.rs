@@ -424,6 +424,13 @@ impl Escapable for () {
     fn escape(&self, _: Context) -> Self {}
 }
 
+impl Escapable for u32 {
+    #[inline]
+    fn escape(&self, _: Context) -> Self {
+        *self
+    }
+}
+
 impl Escapable for Handle<Value> {
     #[inline]
     fn escape(&self, cx: Context) -> Self {

@@ -1,0 +1,16 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 2
+    0: NewClosure r0, c0
+    3: LoadUndefined r1
+    5: Ret r1
+  Constant Table:
+    0: [BytecodeFunction: testAccess]
+}
+
+[BytecodeFunction: testAccess] {
+  Parameters: 0, Registers: 1
+     0: LoadFromScope r0, 1, 0
+     4: LoadFromModule r0, 2, 0
+     8: LoadUndefined r0
+    10: Ret r0
+}

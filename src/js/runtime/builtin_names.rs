@@ -93,6 +93,7 @@ builtin_names!(
     (json, "JSON"),
     (map, "Map"),
     (math, "Math"),
+    (module, "Module"),
     (number, "Number"),
     (object, "Object"),
     (promise, "Promise"),

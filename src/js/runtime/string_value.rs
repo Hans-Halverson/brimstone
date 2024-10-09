@@ -629,24 +629,7 @@ impl Ord for Handle<StringValue> {
         let flat_string_1 = self.flatten();
         let flat_string_2 = other.flatten();
 
-        // Cannot allocate while iterating
-        let mut iter1 = flat_string_1.iter_code_units();
-        let mut iter2 = flat_string_2.iter_code_units();
-
-        loop {
-            match (iter1.next(), iter2.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, Some(_)) => return Ordering::Less,
-                (Some(_), None) => return Ordering::Greater,
-                (Some(code_unit_1), Some(code_unit_2)) => {
-                    if code_unit_1 < code_unit_2 {
-                        return Ordering::Less;
-                    } else if code_unit_1 > code_unit_2 {
-                        return Ordering::Greater;
-                    }
-                }
-            }
-        }
+        flat_string_1.get_().cmp(&flat_string_2.get_())
     }
 }
 
@@ -1161,6 +1144,47 @@ impl hash::Hash for HeapPtr<FlatString> {
 impl hash::Hash for Handle<FlatString> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.get_().hash(state)
+    }
+}
+
+impl PartialOrd for HeapPtr<FlatString> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialOrd for Handle<FlatString> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HeapPtr<FlatString> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Cannot allocate while iterating
+        let mut iter1 = self.iter_code_units();
+        let mut iter2 = other.iter_code_units();
+
+        loop {
+            match (iter1.next(), iter2.next()) {
+                (None, None) => return Ordering::Equal,
+                (None, Some(_)) => return Ordering::Less,
+                (Some(_), None) => return Ordering::Greater,
+                (Some(code_unit_1), Some(code_unit_2)) => {
+                    if code_unit_1 < code_unit_2 {
+                        return Ordering::Less;
+                    } else if code_unit_1 > code_unit_2 {
+                        return Ordering::Greater;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Ord for Handle<FlatString> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.get_().cmp(&other.get_())
     }
 }
 

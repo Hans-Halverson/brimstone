@@ -1,18 +1,22 @@
-use std::sync::{LazyLock, Mutex};
+use std::{
+    collections::HashSet,
+    sync::{LazyLock, Mutex},
+};
 
 use crate::{
     field_offset,
     js::runtime::{
         boxed_value::BoxedValue,
         bytecode::function::BytecodeFunction,
-        collections::{BsArray, BsVec, BsVecField, InlineArray},
-        gc::{HeapObject, HeapVisitor},
+        collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
+        gc::{HandleScope, HeapItem, HeapObject, HeapVisitor},
+        module::module_namespace_object::ModuleNamespaceObject,
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         promise_object::PromiseCapability,
         scope::Scope,
         string_value::FlatString,
-        Context, Handle, HeapPtr, Value,
+        Context, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
 };
@@ -39,6 +43,11 @@ pub struct SourceTextModule {
     module_scope: HeapPtr<Scope>,
     /// The `import.meta` object for this module. This is lazily created when first accessed.
     import_meta: Option<HeapPtr<ObjectValue>>,
+    /// Namespace object for this module. This is lazily created when first accessed.
+    namespace_object: Option<HeapPtr<ModuleNamespaceObject>>,
+    /// Map of all exported names to the BoxedValue that contains the exported value. This is lazily
+    /// created when the namespace object is first accessed.
+    exports: Option<HeapPtr<ExportMap>>,
     /// The set of module specifiers that are requested by this module in imports and re-exports.
     requested_module_specifiers: HeapPtr<StringArray>,
     /// Each index corresponds to the specifier at the same index in `requested_module_specifiers`,
@@ -77,6 +86,11 @@ pub enum ModuleState {
 type StringArray = BsArray<HeapPtr<FlatString>>;
 
 type ModuleOptionArray = BsArray<Option<HeapPtr<SourceTextModule>>>;
+
+/// Key is the name of the export.
+/// - If export is a namespace export then value is the SourceTextModule whose namespace is exported
+/// - Otherwise value is a BoxedValue which holds the exported value
+pub type ExportMap = BsHashMap<PropertyKey, HeapPtr<HeapItem>>;
 
 impl SourceTextModule {
     pub fn new(
@@ -121,6 +135,8 @@ impl SourceTextModule {
         set_uninit!(object.program_function, program_function.get_());
         set_uninit!(object.module_scope, module_scope.get_());
         set_uninit!(object.import_meta, None);
+        set_uninit!(object.namespace_object, None);
+        set_uninit!(object.exports, None);
         set_uninit!(object.requested_module_specifiers, heap_requested_module_specifiers.get_());
         set_uninit!(object.loaded_modules, loaded_modules.get_());
         set_uninit!(object.dfs_index, 0);
@@ -277,6 +293,11 @@ impl SourceTextModule {
     #[inline]
     pub fn module_scope(&self) -> Handle<Scope> {
         self.module_scope_ptr().to_handle()
+    }
+
+    #[inline]
+    pub fn exports_ptr(&self) -> HeapPtr<ExportMap> {
+        self.exports.unwrap()
     }
 
     #[inline]
@@ -440,9 +461,47 @@ impl HeapPtr<SourceTextModule> {
         self.get_loaded_module_at(index)
     }
 
-    /// GetModuleNamespace (https://tc39.es/ecma262/#sec-getmodulenamespace)
-    pub fn get_namespace_object(&self, _: Context) -> HeapPtr<ObjectValue> {
-        unimplemented!("get namespace object")
+    /// GetExportedNames (https://tc39.es/ecma262/#sec-getexportednames)
+    fn get_exported_names(
+        &self,
+        cx: Context,
+        exported_names: &mut HashSet<Handle<FlatString>>,
+        visited_set: &mut Option<HashSet<ModuleId>>,
+    ) {
+        for entry in self.entries_as_slice() {
+            match entry {
+                // Named exports are added to the set of exported names
+                ModuleEntry::LocalExport(HeapLocalExportEntry { export_name, .. })
+                | ModuleEntry::NamedReExport(HeapNamedReExportEntry { export_name, .. }) => {
+                    exported_names.insert(export_name.to_handle());
+                }
+                ModuleEntry::DirectReExport(named_re_export) => {
+                    // Lazily initialize the visited set when a re-export star is encountered
+                    if visited_set.is_none() {
+                        *visited_set = Some(HashSet::new())
+                    }
+
+                    // Reached a circular import
+                    if !visited_set.as_mut().unwrap().insert(self.id()) {
+                        continue;
+                    }
+
+                    // Add all names from the requested module to the set of exported names, excluding
+                    // the default export.
+                    let requested_module = self.get_imported_module(named_re_export.module_request);
+
+                    let mut re_exported_names = HashSet::new();
+                    requested_module.get_exported_names(cx, &mut re_exported_names, visited_set);
+
+                    for export_name in re_exported_names {
+                        if export_name.get_() != cx.names.default.as_string().as_flat() {
+                            exported_names.insert(export_name);
+                        }
+                    }
+                }
+                ModuleEntry::Import(_) => {}
+            }
+        }
     }
 }
 
@@ -450,6 +509,22 @@ impl Handle<SourceTextModule> {
     #[inline]
     fn async_parent_modules_field(&self) -> AsyncParentModulesField {
         AsyncParentModulesField(self.to_handle())
+    }
+
+    #[inline]
+    fn exports_field(&self) -> ExportMapField {
+        ExportMapField(*self)
+    }
+
+    pub fn insert_export(
+        &self,
+        cx: Context,
+        export_name: Handle<PropertyKey>,
+        boxed_value_or_module: Handle<HeapItem>,
+    ) -> bool {
+        self.exports_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(export_name.get(), boxed_value_or_module.get_())
     }
 
     pub fn push_async_parent_module(
@@ -466,6 +541,55 @@ impl Handle<SourceTextModule> {
         self.async_parent_modules_field()
             .maybe_grow_for_push(cx)
             .push_without_growing(parent_module.get_());
+    }
+
+    /// GetModuleNamespace (https://tc39.es/ecma262/#sec-getmodulenamespace)
+    ///
+    /// Returns the namespace object used when this module is namespace imported. Lazily creates the
+    /// cached namespace object and exports map.
+    pub fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject> {
+        if let Some(namespace_object) = self.namespace_object {
+            return namespace_object;
+        }
+
+        HandleScope::new(cx, |cx| {
+            // Lazily initialize the exports map
+            self.exports = Some(ExportMap::new(cx, ObjectKind::ExportMap, 4));
+
+            let mut exported_names = HashSet::new();
+            self.get_exported_names(cx, &mut exported_names, &mut None);
+
+            // Share handle between iterations
+            let mut key_handle: Handle<PropertyKey> = Handle::empty(cx);
+            let mut boxed_value_or_module_handle: Handle<HeapItem> = Handle::empty(cx);
+
+            for export_name in exported_names {
+                // First convert the export name to a PropertyKey
+                key_handle.replace(PropertyKey::string(cx, export_name.as_string()));
+
+                let result = self.resolve_export(cx, export_name.get_(), &mut vec![]);
+
+                // Ignore unresolved exports, this will lead to a linker error later
+                if let ResolveExportResult::Resolved { name, module } = result {
+                    match name {
+                        ResolveExportName::Local { boxed_value, .. } => {
+                            boxed_value_or_module_handle.replace(boxed_value.cast::<HeapItem>());
+                            self.insert_export(cx, key_handle, boxed_value_or_module_handle);
+                        }
+                        ResolveExportName::Namespace => {
+                            boxed_value_or_module_handle.replace(module.cast::<HeapItem>());
+                            self.insert_export(cx, key_handle, boxed_value_or_module_handle);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Create and cache the namespace object for this module
+        let namespace_object = ModuleNamespaceObject::new(cx, *self);
+        self.namespace_object = Some(namespace_object);
+
+        namespace_object
     }
 }
 
@@ -495,6 +619,8 @@ impl HeapObject for HeapPtr<SourceTextModule> {
         visitor.visit_pointer(&mut self.program_function);
         visitor.visit_pointer(&mut self.module_scope);
         visitor.visit_pointer_opt(&mut self.import_meta);
+        visitor.visit_pointer_opt(&mut self.namespace_object);
+        visitor.visit_pointer_opt(&mut self.exports);
         visitor.visit_pointer(&mut self.requested_module_specifiers);
         visitor.visit_pointer(&mut self.loaded_modules);
 
@@ -565,6 +691,16 @@ pub struct ImportEntry {
 }
 
 impl ImportEntry {
+    pub fn from_heap(entry: &HeapImportEntry) -> ImportEntry {
+        ImportEntry {
+            module_request: entry.module_request.to_handle(),
+            import_name: entry.import_name.map(|name| name.to_handle()),
+            local_name: entry.local_name.to_handle(),
+            slot_index: entry.slot_index,
+            is_exported: entry.is_exported,
+        }
+    }
+
     fn to_heap(&self) -> HeapImportEntry {
         HeapImportEntry {
             module_request: self.module_request.get_(),
@@ -653,6 +789,38 @@ pub struct DirectReExportEntry {
 impl DirectReExportEntry {
     fn to_heap(&self) -> HeapDirectReExportEntry {
         HeapDirectReExportEntry { module_request: self.module_request.get_() }
+    }
+}
+
+#[derive(Clone)]
+pub struct ExportMapField(Handle<SourceTextModule>);
+
+impl BsHashMapField<PropertyKey, HeapPtr<HeapItem>> for ExportMapField {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ExportMap> {
+        ExportMap::new(cx, ObjectKind::ExportMap, capacity)
+    }
+
+    fn get(&self, _: Context) -> HeapPtr<ExportMap> {
+        self.0.exports.unwrap()
+    }
+
+    fn set(&mut self, _: Context, map: HeapPtr<ExportMap>) {
+        self.0.exports = Some(map);
+    }
+}
+
+impl ExportMapField {
+    pub fn byte_size(map: &HeapPtr<ExportMap>) -> usize {
+        ExportMap::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<ExportMap>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_property_key(key);
+            visitor.visit_pointer(value);
+        }
     }
 }
 

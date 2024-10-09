@@ -47,6 +47,8 @@ bitflags! {
         const IS_FUNCTION_EXPRESSION_NAME = 1 << 3;
         /// Whether this is a private name binding.
         const IS_PRIVATE_NAME = 1 << 4;
+        /// Whether this is a module binding.
+        const IS_MODULE_BINDING = 1 << 5;
     }
 }
 
@@ -170,6 +172,12 @@ impl ScopeNames {
     pub fn is_private_name(&self, index: usize) -> bool {
         self.get_name_flags(index)
             .contains(ScopeNameFlags::IS_PRIVATE_NAME)
+    }
+
+    /// Return whether the binding at index is a module binding.
+    pub fn is_module_binding(&self, index: usize) -> bool {
+        self.get_name_flags(index)
+            .contains(ScopeNameFlags::IS_MODULE_BINDING)
     }
 }
 

@@ -34,6 +34,7 @@ pub struct Scope {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
+    Module,
     Lexical,
     /// A function scope is treated as a var scope when looking up the containing var scope.
     Function,
@@ -77,7 +78,7 @@ impl Scope {
         scope_names: Handle<ScopeNames>,
         global_object: Handle<ObjectValue>,
     ) -> Handle<Scope> {
-        Self::new(cx, ScopeKind::Lexical, None, scope_names, Some(global_object))
+        Self::new(cx, ScopeKind::Module, None, scope_names, Some(global_object))
     }
 
     pub fn new_lexical(
@@ -198,8 +199,16 @@ impl Handle<Scope> {
             // First check inline slots using scope names table
             let scope_names = scope.scope_names_ptr();
             if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
-                let value = scope.get_slot(index).to_handle(cx);
-                return Some(value).into();
+                let slot_value = scope.get_slot(index);
+
+                // If found in a module scope then must check if loading a module binding, meaning
+                // we need to load the value from the BoxedValue.
+                if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
+                    let boxed_value = slot_value.as_pointer().cast::<BoxedValue>();
+                    return Some(boxed_value.get().to_handle(cx)).into();
+                } else {
+                    return Some(slot_value.to_handle(cx)).into();
+                }
             }
 
             // Then check scope object if one exists
@@ -260,6 +269,14 @@ impl Handle<Scope> {
                     } else {
                         return true.into();
                     }
+                }
+
+                // If found in a module scope then must check if storing to a module binding,
+                // meaning we need to store the value in the BoxedValue.
+                if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
+                    let mut boxed_value = scope.get_module_slot(index);
+                    boxed_value.set(value.get());
+                    return true.into();
                 }
 
                 scope.set_slot(index, value.get());

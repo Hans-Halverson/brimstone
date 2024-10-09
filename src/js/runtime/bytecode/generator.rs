@@ -7031,6 +7031,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 flags |= ScopeNameFlags::IS_PRIVATE_NAME;
             }
 
+            if binding.is_module_binding() {
+                flags |= ScopeNameFlags::IS_MODULE_BINDING;
+            }
+
             all_flags.push(flags);
         }
 

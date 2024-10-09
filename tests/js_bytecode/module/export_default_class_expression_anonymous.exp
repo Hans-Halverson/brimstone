@@ -1,0 +1,17 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 2
+     0: LoadEmpty r1
+     2: NewClass r0, c1, c0, r1, r0
+     8: StoreToModule r0, 1, 0
+    12: LoadUndefined r0
+    14: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: default]
+    1: [ClassNames]
+}
+
+[BytecodeFunction: default] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

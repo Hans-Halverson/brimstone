@@ -1,13 +1,13 @@
 use crate::{
     js::runtime::{
-        error::syntax_error, module::source_text_module::ModuleState, object_value::ObjectValue,
-        Context, EvalResult, Handle, HeapPtr,
+        error::syntax_error, gc::HandleScope, module::source_text_module::ModuleState,
+        object_value::ObjectValue, Context, EvalResult, Handle, HeapPtr,
     },
     maybe,
 };
 
 use super::source_text_module::{
-    ModuleEntry, ResolveExportName, ResolveExportResult, SourceTextModule,
+    ImportEntry, ModuleEntry, ResolveExportName, ResolveExportResult, SourceTextModule,
 };
 
 struct GraphLinker {
@@ -107,7 +107,9 @@ impl GraphLinker {
             }
         }
 
-        maybe!(initialize_environment(cx, module));
+        // Can isolate InitializeEnvironment in a separate handle scope since handles cannot be
+        // stored anywhere else and escape.
+        maybe!(HandleScope::new(cx, |cx| { initialize_environment(cx, module) }));
 
         debug_assert!(module.dfs_ancestor_index() <= module.dfs_index());
 
@@ -140,11 +142,16 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
 
     // Initialize import bindings
     for i in 0..module.entries_as_slice().len() {
-        if let ModuleEntry::Import(entry) = &module.entries_as_slice()[i] {
-            let imported_module = module.get_imported_module(entry.module_request);
+        if let ModuleEntry::Import(heap_entry) = &module.entries_as_slice()[i] {
+            let entry = ImportEntry::from_heap(heap_entry);
+
+            let mut imported_module = module
+                .get_imported_module(entry.module_request.get_())
+                .to_handle();
 
             if let Some(import_name) = entry.import_name {
-                let resolution = imported_module.resolve_export(cx, import_name, &mut vec![]);
+                let resolution =
+                    imported_module.resolve_export(cx, import_name.get_(), &mut vec![]);
 
                 match resolution {
                     // Regular imports are linked to their corresponding export by referencing
@@ -162,10 +169,13 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                         name: ResolveExportName::Namespace,
                         module: resolved_module,
                     } => {
+                        // May allocate
+                        let mut resolved_module = resolved_module.to_handle();
                         let namespace_object = resolved_module.get_namespace_object(cx);
+
                         set_namespace_object(
                             module.get_(),
-                            namespace_object,
+                            namespace_object.into(),
                             entry.slot_index,
                             entry.is_exported,
                         );
@@ -177,7 +187,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                 let namespace_object = imported_module.get_namespace_object(cx);
                 set_namespace_object(
                     module.get_(),
-                    namespace_object,
+                    namespace_object.into(),
                     entry.slot_index,
                     entry.is_exported,
                 );
@@ -205,6 +215,8 @@ fn set_namespace_object(
 }
 
 pub fn link(cx: Context, module: Handle<SourceTextModule>) -> EvalResult<()> {
-    let mut linker = GraphLinker::new();
-    linker.link(cx, module)
+    HandleScope::new(cx, |cx| {
+        let mut linker = GraphLinker::new();
+        linker.link(cx, module)
+    })
 }

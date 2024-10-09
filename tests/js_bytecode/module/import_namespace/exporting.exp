@@ -1,0 +1,7 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 1
+    0: LoadImmediate r0, 1
+    3: StoreToModule r0, 1, 0
+    7: LoadUndefined r0
+    9: Ret r0
+}

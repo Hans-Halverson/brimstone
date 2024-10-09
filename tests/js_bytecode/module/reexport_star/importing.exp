@@ -12,8 +12,6 @@
      0: LoadFromModule r0, 1, 0
      4: LoadFromModule r1, 2, 0
      8: Add r0, r0, r1
-    12: LoadFromModule r1, 3, 0
-    16: Add r0, r0, r1
-    20: LoadUndefined r0
-    22: Ret r0
+    12: LoadUndefined r0
+    14: Ret r0
 }

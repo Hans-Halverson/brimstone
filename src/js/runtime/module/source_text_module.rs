@@ -3,6 +3,8 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
+use indexmap::IndexSet;
+
 use crate::{
     field_offset,
     js::runtime::{
@@ -97,7 +99,7 @@ impl SourceTextModule {
         cx: Context,
         program_function: Handle<BytecodeFunction>,
         module_scope: Handle<Scope>,
-        requested_module_specifiers: &[Handle<FlatString>],
+        requested_module_specifiers: &IndexSet<Handle<FlatString>>,
         imports: &[ImportEntry],
         local_exports: &[LocalExportEntry],
         named_re_exports: &[NamedReExportEntry],

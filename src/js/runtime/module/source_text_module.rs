@@ -673,7 +673,7 @@ pub enum ModuleEntry {
 pub struct HeapImportEntry {
     /// Name of the module that binding is being imported from.
     pub module_request: HeapPtr<FlatString>,
-    /// Name of the binding in the module is was declared in. If None then this entry is for the
+    /// Name of the binding in the module it was declared in. If None then this entry is for the
     /// namespace object, meaning the slot_index may refer to an unboxed value.
     pub import_name: Option<HeapPtr<FlatString>>,
     /// Name of the imported binding in this module.

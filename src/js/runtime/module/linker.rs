@@ -1,7 +1,8 @@
 use crate::{
     js::runtime::{
-        error::syntax_error, gc::HandleScope, module::source_text_module::ModuleState,
-        object_value::ObjectValue, Context, EvalResult, Handle, HeapPtr,
+        boxed_value::BoxedValue, error::syntax_error, gc::HandleScope,
+        module::source_text_module::ModuleState, object_value::ObjectValue, Context, EvalResult,
+        Handle,
     },
     maybe,
 };
@@ -171,47 +172,38 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                     } => {
                         // May allocate
                         let mut resolved_module = resolved_module.to_handle();
-                        let namespace_object = resolved_module.get_namespace_object(cx);
+                        let namespace_object = resolved_module.get_namespace_object(cx).to_handle();
 
-                        set_namespace_object(
-                            module.get_(),
-                            namespace_object.into(),
-                            entry.slot_index,
-                            entry.is_exported,
-                        );
+                        // The BoxedValue for namespace re-exports has not yet been created (unlike
+                        // all other exports, which are actual bindings whose BoxedValue is created
+                        // when creating the the module scope).
+                        let boxed_value = BoxedValue::new(cx, namespace_object.into());
+                        let stored_value = boxed_value.cast::<ObjectValue>().into();
+                        module
+                            .module_scope_ptr()
+                            .set_slot(entry.slot_index, stored_value);
                     }
                     _ => return syntax_error(cx, "could not resolve module specifier"),
                 }
             } else {
                 // Namespace object may be stored as a module or scope value
                 let namespace_object = imported_module.get_namespace_object(cx);
-                set_namespace_object(
-                    module.get_(),
-                    namespace_object.into(),
-                    entry.slot_index,
-                    entry.is_exported,
-                );
+                let namespace_object = namespace_object.cast::<ObjectValue>().into();
+                let slot_index = entry.slot_index;
+
+                if entry.is_exported {
+                    let mut boxed_value = module.module_scope_ptr().get_module_slot(slot_index);
+                    boxed_value.set(namespace_object);
+                } else {
+                    module
+                        .module_scope_ptr()
+                        .set_slot(slot_index, namespace_object);
+                }
             }
         }
     }
 
     ().into()
-}
-
-fn set_namespace_object(
-    module: HeapPtr<SourceTextModule>,
-    namespace_object: HeapPtr<ObjectValue>,
-    slot_index: usize,
-    is_exported: bool,
-) {
-    if is_exported {
-        let mut boxed_value = module.module_scope_ptr().get_module_slot(slot_index);
-        boxed_value.set(namespace_object.into());
-    } else {
-        module
-            .module_scope_ptr()
-            .set_slot(slot_index, namespace_object.into());
-    }
 }
 
 pub fn link(cx: Context, module: Handle<SourceTextModule>) -> EvalResult<()> {

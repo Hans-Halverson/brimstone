@@ -301,39 +301,51 @@ impl<'a> BytecodeProgramGenerator<'a> {
         // Inlined import and export entry creation logic from:
         // ParseModule (https://tc39.es/ecma262/#sec-parsemodule)
 
-        // First generate all imports
+        // First generate all imports and gather all module specifiers in source code order
         for toplevel in &program.toplevels {
-            if let ast::Toplevel::Import(import) = toplevel {
-                let module_specifier = self.cx.alloc_wtf8_string(&import.source.value);
-                module_specifiers.insert(module_specifier);
+            match toplevel {
+                ast::Toplevel::Import(import) => {
+                    let module_specifier = self.cx.alloc_wtf8_string(&import.source.value);
+                    module_specifiers.insert(module_specifier);
 
-                // Each specifier will generate an import entry
-                for specifier in &import.specifiers {
-                    let (local_id, import_name) = match specifier {
-                        ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
-                        ast::ImportSpecifier::Namespace(import) => (&import.local, None),
-                        ast::ImportSpecifier::Named(import) => {
-                            let imported = import
-                                .imported
-                                .as_ref()
-                                .map(|imported| self.alloc_module_name_string(imported))
-                                .unwrap_or_else(|| self.cx.alloc_string(&import.local.name));
-                            (&import.local, Some(imported))
-                        }
-                    };
+                    // Each specifier will generate an import entry
+                    for specifier in &import.specifiers {
+                        let (local_id, import_name) = match specifier {
+                            ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
+                            ast::ImportSpecifier::Namespace(import) => (&import.local, None),
+                            ast::ImportSpecifier::Named(import) => {
+                                let imported = import
+                                    .imported
+                                    .as_ref()
+                                    .map(|imported| self.alloc_module_name_string(imported))
+                                    .unwrap_or_else(|| self.cx.alloc_string(&import.local.name));
+                                (&import.local, Some(imported))
+                            }
+                        };
 
-                    let local_name = self.cx.alloc_string(&local_id.name);
-                    let slot_index = Self::id_module_slot_index(local_id);
-                    let is_exported = local_id.get_binding().is_exported();
+                        let local_name = self.cx.alloc_string(&local_id.name);
+                        let slot_index = Self::id_module_slot_index(local_id);
+                        let is_exported = local_id.get_binding().is_exported();
 
-                    imports.push(ImportEntry {
-                        module_request: module_specifier,
-                        local_name,
-                        import_name,
-                        slot_index,
-                        is_exported,
-                    });
+                        imports.push(ImportEntry {
+                            module_request: module_specifier,
+                            local_name,
+                            import_name,
+                            slot_index,
+                            is_exported,
+                        });
+                    }
                 }
+                // Gather module specifiers from re-exports
+                ast::Toplevel::ExportNamed(ast::ExportNamedDeclaration {
+                    source: Some(source),
+                    ..
+                })
+                | ast::Toplevel::ExportAll(ast::ExportAllDeclaration { source, .. }) => {
+                    let module_specifier = self.cx.alloc_wtf8_string(&source.value);
+                    module_specifiers.insert(module_specifier);
+                }
+                _ => {}
             }
         }
 
@@ -369,11 +381,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     local_exports.push(LocalExportEntry { export_name, local_name, slot_index })
                 }
                 ast::Toplevel::ExportNamed(export) => {
-                    let module_specifier = export.source.as_ref().map(|source| {
-                        let module_specifier = self.cx.alloc_wtf8_string(&source.value);
-                        module_specifiers.insert(module_specifier);
-                        module_specifier
-                    });
+                    let module_specifier = export
+                        .source
+                        .as_ref()
+                        .map(|source| self.cx.alloc_wtf8_string(&source.value));
 
                     // Exporting a full named declaration adds export entries for each exported id
                     export.iter_declaration_ids(&mut |id| {
@@ -432,7 +443,6 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 }
                 ast::Toplevel::ExportAll(export) => {
                     let module_specifier = self.cx.alloc_wtf8_string(&export.source.value);
-                    module_specifiers.insert(module_specifier);
 
                     if let Some(exported_name) = export.exported.as_ref() {
                         // If there is an exported name this is a namespace re-export, which counts
@@ -455,7 +465,6 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
 
         // Flatten set of specifiers into list, preserving insertion order
-        let module_specifiers = module_specifiers.into_iter().collect::<Vec<_>>();
         let module_scope = self.gen_module_scope(program);
 
         SourceTextModule::new(

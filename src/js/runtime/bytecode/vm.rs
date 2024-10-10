@@ -246,7 +246,10 @@ impl VM {
         let program_closure =
             Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm);
 
-        self.execute(program_closure, &[])
+        // Evaluate with the global object as the receiver
+        let receiver = program_closure.global_object().into();
+
+        self.execute(program_closure, receiver, &[])
     }
 
     /// Execute a module. Must only be called during the evaluation phase, after loading and linking.
@@ -261,22 +264,18 @@ impl VM {
         let module_closure =
             Closure::new_in_realm(self.cx(), program_function, module_scope, realm);
 
-        self.execute(module_closure, &[])
+        self.execute(module_closure, self.cx.undefined(), &[])
     }
 
     /// Execute a closure with the provided arguments.
     fn execute(
         &mut self,
         closure: Handle<Closure>,
+        receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> Result<Handle<Value>, Handle<Value>> {
-        // Evaluate with the global object as the receiver
-        let receiver = closure.global_object().into();
-
-        // Evaluate the provided function
-        let eval_result = self.call_from_rust(closure.cast(), receiver, arguments);
-
-        eval_result.into_rust_result()
+        self.call_from_rust(closure.cast(), receiver, arguments)
+            .into_rust_result()
     }
 
     /// Resume a suspended generator, executing it until it suspends or completes.

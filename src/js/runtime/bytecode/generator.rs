@@ -6795,7 +6795,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Default exported expressions are evaluated and stored as the anonymous default in
             // the current scope.
             ast::ExportDefaultKind::Expression(expr) => {
-                let value = self.gen_outer_expression(expr)?;
+                let value =
+                    self.gen_named_outer_expression(AnyStr::Str("default"), expr, ExprDest::Any)?;
 
                 let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
                 self.gen_store_binding(

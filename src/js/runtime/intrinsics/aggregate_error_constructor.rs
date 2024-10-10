@@ -1,27 +1,23 @@
 use crate::{
-    js::{
-        parser::LocalizedParseErrors,
-        runtime::{
-            abstract_operations::{
-                create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
-                define_property_or_throw,
-            },
-            array_object::create_array_from_list,
-            builtin_function::BuiltinFunction,
-            completion::EvalResult,
-            error::syntax_error_value,
-            function::get_argument,
-            intrinsics::error_constructor::install_error_cause,
-            iterator::iter_iterator_values,
-            object_descriptor::ObjectKind,
-            object_value::ObjectValue,
-            ordinary_object::{object_create, object_create_from_constructor},
-            property_descriptor::PropertyDescriptor,
-            realm::Realm,
-            stack_trace::attach_stack_trace_to_error,
-            type_utilities::to_string,
-            Context, Handle, Value,
+    js::runtime::{
+        abstract_operations::{
+            create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
+            define_property_or_throw,
         },
+        array_object::create_array_from_list,
+        builtin_function::BuiltinFunction,
+        completion::EvalResult,
+        function::get_argument,
+        intrinsics::error_constructor::install_error_cause,
+        iterator::iter_iterator_values,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::{object_create, object_create_from_constructor},
+        property_descriptor::PropertyDescriptor,
+        realm::Realm,
+        stack_trace::attach_stack_trace_to_error,
+        type_utilities::to_string,
+        Context, Handle, Value,
     },
     maybe, must,
 };
@@ -59,21 +55,6 @@ impl AggregateErrorObject {
         attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         object
-    }
-
-    pub fn new_from_localized_parse_errors(
-        cx: Context,
-        errors: &LocalizedParseErrors,
-    ) -> Handle<ErrorObject> {
-        let error_values = errors
-            .errors
-            .iter()
-            .map(|error| syntax_error_value(cx, &error.to_string()))
-            .collect::<Vec<_>>();
-
-        let errors_array = create_array_from_list(cx, &error_values);
-
-        Self::new(cx, errors_array.into())
     }
 }
 

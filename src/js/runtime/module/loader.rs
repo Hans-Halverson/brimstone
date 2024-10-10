@@ -11,9 +11,7 @@ use crate::{
             bytecode::generator::BytecodeProgramGenerator,
             completion::EvalResult,
             error::syntax_error,
-            intrinsics::{
-                aggregate_error_constructor::AggregateErrorObject, intrinsics::Intrinsic,
-            },
+            intrinsics::intrinsics::Intrinsic,
             promise_object::{PromiseCapability, PromiseObject},
             string_value::FlatString,
             Context, Handle, Realm,
@@ -123,8 +121,7 @@ impl GraphLoader {
 
         // Analyze AST
         if let Err(parse_errors) = analyze(&mut parse_result) {
-            let error = AggregateErrorObject::new_from_localized_parse_errors(cx, &parse_errors);
-            return EvalResult::Throw(error.into());
+            return syntax_error(cx, &parse_errors.errors[0].to_string());
         }
 
         if cx.options.print_ast {

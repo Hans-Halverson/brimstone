@@ -85,9 +85,9 @@ pub enum ParseError {
     AwaitInStaticInitializer,
     AwaitInParameters,
     YieldInParameters,
-    ModuleNameNotWellFormed,
-    ModuleNameIsReservedWord,
-    // RegExpr parsing errors
+    ExportNameNotWellFormed,
+    DirectExportNameIsString,
+    // RegExp parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
     DuplicateRegExpFlag,
@@ -368,11 +368,11 @@ impl fmt::Display for ParseError {
             ParseError::YieldInParameters => {
                 write!(f, "Yield expression not allowed in function parameters")
             }
-            ParseError::ModuleNameNotWellFormed => {
-                write!(f, "Module name is not well formed")
+            ParseError::ExportNameNotWellFormed => {
+                write!(f, "Exported name is not well formed")
             }
-            ParseError::ModuleNameIsReservedWord => {
-                write!(f, "Module name is a reserved word")
+            ParseError::DirectExportNameIsString => {
+                write!(f, "String export names are only allowed when there is a `from` clause")
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

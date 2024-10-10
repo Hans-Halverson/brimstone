@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-28:29",
+  loc: "1:0-34:29",
   body: [
     {
       type: "ExportNamedDeclaration",
@@ -202,20 +202,20 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "12:0-12:18",
+      loc: "13:0-13:18",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "12:8-12:16",
+          loc: "13:8-13:16",
           exported: {
             type: "Literal",
-            loc: "12:13-12:16",
+            loc: "13:13-13:16",
             value: "b",
           },
           local: {
             type: "Identifier",
-            loc: "12:8-12:9",
+            loc: "13:8-13:9",
             name: "a",
           },
         },
@@ -225,22 +225,96 @@
     {
       type: "ExportNamedDeclaration",
       loc: "14:0-14:17",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "14:8-14:15",
+          exported: {
+            type: "Identifier",
+            loc: "14:13-14:15",
+            name: "if",
+          },
+          local: {
+            type: "Identifier",
+            loc: "14:8-14:9",
+            name: "a",
+          },
+        },
+      ],
+      source: null,
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "17:0-17:33",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "17:8-17:18",
+          exported: {
+            type: "Literal",
+            loc: "17:15-17:18",
+            value: "b",
+          },
+          local: {
+            type: "Literal",
+            loc: "17:8-17:11",
+            value: "a",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "17:25-17:32",
+        value: "other",
+      },
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "18:0-18:31",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "18:8-18:16",
+          exported: {
+            type: "Identifier",
+            loc: "18:14-18:16",
+            name: "if",
+          },
+          local: {
+            type: "Identifier",
+            loc: "18:8-18:10",
+            name: "if",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "18:23-18:30",
+        value: "other",
+      },
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "20:0-20:17",
       declaration: {
         type: "VariableDeclaration",
-        loc: "14:7-14:17",
+        loc: "20:7-20:17",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "14:11-14:16",
+            loc: "20:11-20:16",
             id: {
               type: "Identifier",
-              loc: "14:11-14:12",
+              loc: "20:11-20:12",
               name: "a",
             },
             init: {
               type: "Literal",
-              loc: "14:15-14:16",
+              loc: "20:15-20:16",
               value: 1,
             },
           },
@@ -251,23 +325,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "15:0-15:18",
+      loc: "21:0-21:18",
       declaration: {
         type: "VariableDeclaration",
-        loc: "15:7-15:18",
+        loc: "21:7-21:18",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "15:11-15:17",
+            loc: "21:11-21:17",
             id: {
               type: "Identifier",
-              loc: "15:11-15:13",
+              loc: "21:11-21:13",
               name: "a2",
             },
             init: {
               type: "Literal",
-              loc: "15:16-15:17",
+              loc: "21:16-21:17",
               value: 1,
             },
           },
@@ -278,23 +352,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "16:0-16:20",
+      loc: "22:0-22:20",
       declaration: {
         type: "VariableDeclaration",
-        loc: "16:7-16:20",
+        loc: "22:7-22:20",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "16:13-16:19",
+            loc: "22:13-22:19",
             id: {
               type: "Identifier",
-              loc: "16:13-16:15",
+              loc: "22:13-22:15",
               name: "a3",
             },
             init: {
               type: "Literal",
-              loc: "16:18-16:19",
+              loc: "22:18-22:19",
               value: 1,
             },
           },
@@ -305,34 +379,34 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "17:0-17:26",
+      loc: "23:0-23:26",
       declaration: {
         type: "VariableDeclaration",
-        loc: "17:7-17:26",
+        loc: "23:7-23:26",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "17:13-17:25",
+            loc: "23:13-23:25",
             id: {
               type: "ArrayPattern",
-              loc: "17:13-17:21",
+              loc: "23:13-23:21",
               elements: [
                 {
                   type: "Identifier",
-                  loc: "17:14-17:16",
+                  loc: "23:14-23:16",
                   name: "a4",
                 },
                 {
                   type: "Identifier",
-                  loc: "17:18-17:20",
+                  loc: "23:18-23:20",
                   name: "b5",
                 },
               ],
             },
             init: {
               type: "Literal",
-              loc: "17:24-17:25",
+              loc: "23:24-23:25",
               value: 1,
             },
           },
@@ -343,19 +417,19 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "19:0-19:17",
+      loc: "25:0-25:17",
       declaration: {
         type: "ClassDeclaration",
-        loc: "19:7-19:17",
+        loc: "25:7-25:17",
         id: {
           type: "Identifier",
-          loc: "19:13-19:14",
+          loc: "25:13-25:14",
           name: "C",
         },
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "19:7-19:17",
+          loc: "25:7-25:17",
           body: [],
         },
       },
@@ -364,23 +438,23 @@
     },
     {
       type: "EmptyStatement",
-      loc: "19:17-19:18",
+      loc: "25:17-25:18",
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "21:0-21:24",
+      loc: "27:0-27:24",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "21:7-21:24",
+        loc: "27:7-27:24",
         id: {
           type: "Identifier",
-          loc: "21:16-21:19",
+          loc: "27:16-27:19",
           name: "foo",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "21:22-21:24",
+          loc: "27:22-27:24",
           body: [],
         },
         async: false,
@@ -392,19 +466,19 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "22:0-22:31",
+      loc: "28:0-28:31",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "22:7-22:31",
+        loc: "28:7-28:31",
         id: {
           type: "Identifier",
-          loc: "22:22-22:26",
+          loc: "28:22-28:26",
           name: "foo2",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "22:29-22:31",
+          loc: "28:29-28:31",
           body: [],
         },
         async: true,
@@ -416,48 +490,48 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "24:0-24:18",
+      loc: "30:0-30:18",
       declaration: {
         type: "Identifier",
-        loc: "24:15-24:17",
+        loc: "30:15-30:17",
         name: "a6",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "26:0-26:22",
+      loc: "32:0-32:22",
       exported: null,
       source: {
         type: "Literal",
-        loc: "26:14-26:21",
+        loc: "32:14-32:21",
         value: "other",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "27:0-27:27",
+      loc: "33:0-33:27",
       exported: {
         type: "Identifier",
-        loc: "27:12-27:13",
+        loc: "33:12-33:13",
         name: "a",
       },
       source: {
         type: "Literal",
-        loc: "27:19-27:26",
+        loc: "33:19-33:26",
         value: "other",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "28:0-28:29",
+      loc: "34:0-34:29",
       exported: {
         type: "Literal",
-        loc: "28:12-28:15",
+        loc: "34:12-34:15",
         value: "a",
       },
       source: {
         type: "Literal",
-        loc: "28:21-28:28",
+        loc: "34:21-34:28",
         value: "other",
       },
     },

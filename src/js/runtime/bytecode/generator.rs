@@ -317,7 +317,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                 let imported = import
                                     .imported
                                     .as_ref()
-                                    .map(|imported| self.alloc_module_name_string(imported))
+                                    .map(|imported| self.alloc_export_name_string(imported))
                                     .unwrap_or_else(|| self.cx.alloc_string(&import.local.name));
                                 (&import.local, Some(imported))
                             }
@@ -400,21 +400,28 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // Each specifier will generate an export entry of some form
                     for specifier in &export.specifiers {
-                        let local_name = self.cx.alloc_string(&specifier.local.name);
+                        let local_name = self.alloc_export_name_string(&specifier.local);
                         let export_name = specifier
                             .exported
                             .as_ref()
-                            .map_or(local_name, |exported| self.alloc_module_name_string(exported));
+                            .map_or(local_name, |exported| self.alloc_export_name_string(exported));
 
+                        // If there is a from source specifier this is a named re-export
                         if let Some(module_specifier) = module_specifier {
-                            // If there is a from source specifier this is a named re-export
                             named_re_exports.push(NamedReExportEntry {
                                 module_request: module_specifier,
                                 export_name,
                                 import_name: Some(local_name),
-                            })
-                        } else if matches!(
-                            specifier.local.get_binding().kind(),
+                            });
+
+                            continue;
+                        }
+
+                        // Local name is guaranteed to be an id since there is no `from` clause
+                        let local_id = specifier.local.to_id();
+
+                        if matches!(
+                            local_id.get_binding().kind(),
                             BindingKind::Import { is_namespace: false }
                         ) {
                             // If we are exporting a non-namespace import then this is actually a
@@ -431,7 +438,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                             });
                         } else {
                             // Otherwise this is a regular local export
-                            let slot_index = Self::id_module_slot_index(&specifier.local);
+                            let slot_index = Self::id_module_slot_index(local_id);
 
                             local_exports.push(LocalExportEntry {
                                 export_name,
@@ -447,7 +454,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     if let Some(exported_name) = export.exported.as_ref() {
                         // If there is an exported name this is a namespace re-export, which counts
                         // as a named re-export.
-                        let export_name = self.alloc_module_name_string(exported_name);
+                        let export_name = self.alloc_export_name_string(exported_name);
 
                         named_re_exports.push(NamedReExportEntry {
                             module_request: module_specifier,
@@ -514,10 +521,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
         module_scope
     }
 
-    fn alloc_module_name_string(&mut self, module_name: &ast::ModuleName) -> Handle<FlatString> {
+    fn alloc_export_name_string(&mut self, module_name: &ast::ExportName) -> Handle<FlatString> {
         match module_name {
-            ast::ModuleName::Id(id) => self.cx.alloc_string(&id.name),
-            ast::ModuleName::String(lit) => self.cx.alloc_wtf8_string(&lit.value),
+            ast::ExportName::Id(id) => self.cx.alloc_string(&id.name),
+            ast::ExportName::String(lit) => self.cx.alloc_wtf8_string(&lit.value),
         }
     }
 

@@ -1437,7 +1437,7 @@ pub struct ImportDefaultSpecifier {
 
 pub struct ImportNamedSpecifier {
     pub loc: Loc,
-    pub imported: Option<P<ModuleName>>,
+    pub imported: Option<P<ExportName>>,
     pub local: P<Identifier>,
 }
 
@@ -1484,8 +1484,9 @@ impl ExportNamedDeclaration {
 
 pub struct ExportSpecifier {
     pub loc: Loc,
-    pub local: P<Identifier>,
-    pub exported: Option<P<ModuleName>>,
+    /// Guaranteed to be an identifier if declaration is not a re-export declaration.
+    pub local: P<ExportName>,
+    pub exported: Option<P<ExportName>>,
 }
 
 pub struct ExportDefaultDeclaration {
@@ -1511,11 +1512,29 @@ pub enum ExportDefaultKind {
 
 pub struct ExportAllDeclaration {
     pub loc: Loc,
-    pub exported: Option<P<ModuleName>>,
+    pub exported: Option<P<ExportName>>,
     pub source: P<StringLiteral>,
 }
 
-pub enum ModuleName {
+/// The name of an export that other modules must reference when importing. Must be well formed
+/// unicode (which is already implicitly true for Identifiers).
+pub enum ExportName {
     Id(Identifier),
     String(StringLiteral),
+}
+
+impl ExportName {
+    pub fn to_id(&self) -> &Identifier {
+        match self {
+            ExportName::Id(id) => id,
+            _ => panic!("Expected identifier export name"),
+        }
+    }
+
+    pub fn to_id_mut(&mut self) -> &mut Identifier {
+        match self {
+            ExportName::Id(id) => id,
+            _ => panic!("Expected identifier export name"),
+        }
+    }
 }

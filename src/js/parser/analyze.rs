@@ -915,8 +915,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
         for specifier in &mut export.specifiers {
             // Only need to resolve the specifier's local binding if it is not a re-export
             if export.source.is_none() {
-                self.resolve_identifier_use(&mut specifier.local);
-                specifier.local.get_binding().set_is_exported(true);
+                // Local is guaranteed to be an identifier if this is not a re-export
+                let local_id = specifier.local.to_id_mut();
+                self.resolve_identifier_use(local_id);
+                local_id.get_binding().set_is_exported(true);
             }
         }
     }

@@ -2,6 +2,7 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
+use crate::js::common::wtf_8::Wtf8String;
 use crate::js::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
 
 use super::scope_tree::BindingKind;
@@ -87,6 +88,8 @@ pub enum ParseError {
     YieldInParameters,
     ExportNameNotWellFormed,
     DirectExportNameIsString,
+    UnresolvedExport,
+    DuplicateExport(Box<Wtf8String>),
     // RegExp parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
@@ -373,6 +376,12 @@ impl fmt::Display for ParseError {
             }
             ParseError::DirectExportNameIsString => {
                 write!(f, "String export names are only allowed when there is a `from` clause")
+            }
+            ParseError::UnresolvedExport => {
+                write!(f, "Exported name is not defined in module")
+            }
+            ParseError::DuplicateExport(name) => {
+                write!(f, "Export with name \"{}\" already exists in module", name)
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

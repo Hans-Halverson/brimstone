@@ -1054,7 +1054,7 @@ impl<'a> Printer<'a> {
 
     fn print_import_named_specifier(&mut self, spec: &ImportNamedSpecifier) {
         self.start_node("ImportSpecifier", &spec.loc);
-        self.property("imported", spec.imported.as_ref(), Printer::print_optional_module_name);
+        self.property("imported", spec.imported.as_ref(), Printer::print_optional_export_name);
         self.property("local", spec.local.as_ref(), Printer::print_identifier);
         self.end_node();
     }
@@ -1099,22 +1099,22 @@ impl<'a> Printer<'a> {
 
     fn print_export_all_declaration(&mut self, export: &ExportAllDeclaration) {
         self.start_node("ExportAllDeclaration", &export.loc);
-        self.property("exported", export.exported.as_ref(), Printer::print_optional_module_name);
+        self.property("exported", export.exported.as_ref(), Printer::print_optional_export_name);
         self.property("source", export.source.as_ref(), Printer::print_string_literal);
         self.end_node();
     }
 
     fn print_export_specifier(&mut self, spec: &ExportSpecifier) {
         self.start_node("ExportSpecifier", &spec.loc);
-        self.property("exported", spec.exported.as_ref(), Printer::print_optional_module_name);
-        self.property("local", spec.local.as_ref(), Printer::print_identifier);
+        self.property("exported", spec.exported.as_ref(), Printer::print_optional_export_name);
+        self.property("local", spec.local.as_ref(), Printer::print_export_name);
         self.end_node();
     }
 
-    fn print_module_name(&mut self, module_name: &ModuleName) {
-        match module_name {
-            ModuleName::Id(id) => self.print_identifier_parts(&id.loc, &id.name),
-            ModuleName::String(lit) => self.print_string_literal(lit),
+    fn print_export_name(&mut self, export_name: &ExportName) {
+        match export_name {
+            ExportName::Id(id) => self.print_identifier_parts(&id.loc, &id.name),
+            ExportName::String(lit) => self.print_string_literal(lit),
         }
     }
 
@@ -1195,10 +1195,10 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_module_name(&mut self, module_name: Option<&P<ModuleName>>) {
-        match module_name {
+    fn print_optional_export_name(&mut self, export_name: Option<&P<ExportName>>) {
+        match export_name {
             None => self.print_null(),
-            Some(module_name) => self.print_module_name(module_name),
+            Some(export_name) => self.print_export_name(export_name),
         }
     }
 

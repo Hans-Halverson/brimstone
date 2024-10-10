@@ -402,7 +402,7 @@ pub trait AstVisitor: Sized {
         default_visit_export_all_declaration(self, export)
     }
 
-    fn visit_module_name(&mut self, _: &mut ModuleName) {}
+    fn visit_export_name(&mut self, _: &mut ExportName) {}
 }
 
 #[macro_export]
@@ -848,7 +848,7 @@ pub fn default_visit_import_named_specifier<V: AstVisitor>(
     visitor: &mut V,
     spec: &mut ImportNamedSpecifier,
 ) {
-    visit_opt!(visitor, spec.imported, visit_module_name);
+    visit_opt!(visitor, spec.imported, visit_export_name);
     visitor.visit_identifier(&mut spec.local);
 }
 
@@ -880,15 +880,15 @@ pub fn default_visit_export_named_declaration<V: AstVisitor>(
 }
 
 pub fn default_visit_export_specifier<V: AstVisitor>(visitor: &mut V, spec: &mut ExportSpecifier) {
-    visitor.visit_identifier(&mut spec.local);
-    visit_opt!(visitor, spec.exported, visit_module_name);
+    visitor.visit_export_name(&mut spec.local);
+    visit_opt!(visitor, spec.exported, visit_export_name);
 }
 
 pub fn default_visit_export_all_declaration<V: AstVisitor>(
     visitor: &mut V,
     export: &mut ExportAllDeclaration,
 ) {
-    visit_opt!(visitor, export.exported, visit_module_name);
+    visit_opt!(visitor, export.exported, visit_export_name);
     visitor.visit_string_literal(&mut export.source);
 }
 

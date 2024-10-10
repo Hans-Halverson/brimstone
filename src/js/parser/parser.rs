@@ -4113,7 +4113,7 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             Token::LeftBrace => {
-                self.parse_named_specifiers(specifiers)?;
+                self.parse_import_named_specifiers(specifiers)?;
                 Ok(())
             }
             _ => self.error_unexpected_token(self.loc, &self.token),
@@ -4132,7 +4132,10 @@ impl<'a> Parser<'a> {
         Ok(ImportSpecifier::Namespace(ImportNamespaceSpecifier { loc, local }))
     }
 
-    fn parse_named_specifiers(&mut self, specifiers: &mut Vec<ImportSpecifier>) -> ParseResult<()> {
+    fn parse_import_named_specifiers(
+        &mut self,
+        specifiers: &mut Vec<ImportSpecifier>,
+    ) -> ParseResult<()> {
         self.advance()?;
 
         while self.token != Token::RightBrace {
@@ -4141,7 +4144,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported = self.create_export_module_name_string(self.loc, value.clone())?;
+                let imported = self.create_export_name_string(self.loc, value.clone())?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4155,7 +4158,7 @@ impl<'a> Parser<'a> {
                 if self.token == Token::As {
                     self.advance()?;
 
-                    let imported = self.create_export_module_name_identifier(id);
+                    let imported = self.create_export_name_identifier(id);
                     let local = p(self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
@@ -4205,12 +4208,12 @@ impl<'a> Parser<'a> {
                 // Parse list of specifiers between braces
                 while self.token != Token::RightBrace {
                     let start_pos = self.current_start_pos();
-                    let local = p(self.parse_identifier_reference()?);
+                    let local = p(self.parse_export_name()?);
 
                     // Specifiers optionally have an export alias
                     let exported = if self.token == Token::As {
                         self.advance()?;
-                        Some(p(self.parse_export_module_name()?))
+                        Some(p(self.parse_export_name()?))
                     } else {
                         None
                     };
@@ -4232,6 +4235,23 @@ impl<'a> Parser<'a> {
                 let source = if self.token == Token::From {
                     Some(p(self.parse_source()?))
                 } else {
+                    // If there is no `from` clause then the local name of each specifier must be an
+                    // identifier that is not a reserved word.
+                    for specifier in &specifiers {
+                        match specifier.local.as_ref() {
+                            ExportName::Id(id) => {
+                                if self.is_reserved_word_in_current_context(&id.name) {
+                                    return self
+                                        .error(id.loc, ParseError::IdentifierIsReservedWord);
+                                }
+                            }
+                            ExportName::String(string) => {
+                                return self
+                                    .error(string.loc, ParseError::DirectExportNameIsString);
+                            }
+                        }
+                    }
+
                     None
                 };
 
@@ -4252,7 +4272,7 @@ impl<'a> Parser<'a> {
                 // Optional exported alias
                 let exported = if self.token == Token::As {
                     self.advance()?;
-                    Some(p(self.parse_export_module_name()?))
+                    Some(p(self.parse_export_name()?))
                 } else {
                     None
                 };
@@ -4324,50 +4344,35 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_export_module_name(&mut self) -> ParseResult<ModuleName> {
+    fn parse_export_name(&mut self) -> ParseResult<ExportName> {
         if let Token::StringLiteral(value) = &self.token {
-            // Verify that exported module name is not a reserved word
-            if Self::is_reserved_word(
-                value.as_bytes(),
-                self.in_strict_mode,
-                self.allow_await,
-                self.allow_yield,
-            ) {
-                return self.error(self.loc, ParseError::ModuleNameIsReservedWord);
-            }
-
-            let module_name = self.create_export_module_name_string(self.loc, value.clone())?;
+            let export_name = self.create_export_name_string(self.loc, value.clone())?;
             self.advance()?;
 
-            Ok(module_name)
+            Ok(export_name)
         } else if let Some(id) = self.parse_identifier_name()? {
-            // Verify that exported module name is not a reserved word
-            if self.is_reserved_word_in_current_context(&id.name) {
-                return self.error(id.loc, ParseError::ModuleNameIsReservedWord);
-            }
-
-            Ok(self.create_export_module_name_identifier(id))
+            Ok(self.create_export_name_identifier(id))
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }
     }
 
-    fn create_export_module_name_string(
+    fn create_export_name_string(
         &mut self,
         loc: Loc,
         value: Wtf8String,
-    ) -> ParseResult<ModuleName> {
+    ) -> ParseResult<ExportName> {
         if !value.is_well_formed() {
-            return self.error(loc, ParseError::ModuleNameNotWellFormed);
+            return self.error(loc, ParseError::ExportNameNotWellFormed);
         }
 
-        Ok(ModuleName::String(StringLiteral { loc, value }))
+        Ok(ExportName::String(StringLiteral { loc, value }))
     }
 
-    fn create_export_module_name_identifier(&mut self, id: Identifier) -> ModuleName {
+    fn create_export_name_identifier(&mut self, id: Identifier) -> ExportName {
         // Do not need to check for IsStringWellFormedUnicode since Rust strings are guaranteed
         // to be valid UTF-8 and cannot have any unpaired surrogates.
-        ModuleName::Id(Identifier::new(id.loc, id.name))
+        ExportName::Id(Identifier::new(id.loc, id.name))
     }
 
     fn parse_source(&mut self) -> ParseResult<StringLiteral> {

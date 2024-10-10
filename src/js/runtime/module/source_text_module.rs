@@ -468,8 +468,13 @@ impl HeapPtr<SourceTextModule> {
         &self,
         cx: Context,
         exported_names: &mut HashSet<Handle<FlatString>>,
-        visited_set: &mut Option<HashSet<ModuleId>>,
+        visited_set: &mut HashSet<ModuleId>,
     ) {
+        // Reached a circular import
+        if !visited_set.insert(self.id()) {
+            return;
+        }
+
         for entry in self.entries_as_slice() {
             match entry {
                 // Named exports are added to the set of exported names
@@ -478,16 +483,6 @@ impl HeapPtr<SourceTextModule> {
                     exported_names.insert(export_name.to_handle());
                 }
                 ModuleEntry::DirectReExport(named_re_export) => {
-                    // Lazily initialize the visited set when a re-export star is encountered
-                    if visited_set.is_none() {
-                        *visited_set = Some(HashSet::new())
-                    }
-
-                    // Reached a circular import
-                    if !visited_set.as_mut().unwrap().insert(self.id()) {
-                        continue;
-                    }
-
                     // Add all names from the requested module to the set of exported names, excluding
                     // the default export.
                     let requested_module = self.get_imported_module(named_re_export.module_request);
@@ -559,7 +554,7 @@ impl Handle<SourceTextModule> {
             self.exports = Some(ExportMap::new(cx, ObjectKind::ExportMap, 4));
 
             let mut exported_names = HashSet::new();
-            self.get_exported_names(cx, &mut exported_names, &mut None);
+            self.get_exported_names(cx, &mut exported_names, &mut HashSet::new());
 
             // Share handle between iterations
             let mut key_handle: Handle<PropertyKey> = Handle::empty(cx);

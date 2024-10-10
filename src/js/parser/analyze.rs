@@ -5,6 +5,7 @@ use std::{
 
 use crate::{
     js::{
+        common::wtf_8::Wtf8String,
         parser::{parse_error::InvalidDuplicateParametersReason, scope_tree::VMLocation},
         runtime::EvalResult,
     },
@@ -33,6 +34,8 @@ pub struct Analyzer<'a> {
     scope_tree: &'a mut ScopeTree,
     /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
+    /// Set of all names exported by the current module
+    export_names: HashSet<Wtf8String>,
     /// Set of labels defined where the visitor is currently in
     labels: HashMap<String, LabelInfo>,
     /// Number of labeled statements that the visitor is currently inside. Multiple labels on the
@@ -123,6 +126,7 @@ impl<'a> Analyzer<'a> {
             errors: Vec::new(),
             scope_tree,
             strict_mode_context_depth: 0,
+            export_names: HashSet::new(),
             labels: HashMap::new(),
             label_depth: 0,
             breakable_depth: 0,
@@ -895,6 +899,18 @@ impl<'a> AstVisitor for Analyzer<'a> {
         self.exit_strict_mode_context();
     }
 
+    fn visit_import_declaration(&mut self, import: &mut ImportDeclaration) {
+        for specifier in &import.specifiers {
+            match specifier {
+                ImportSpecifier::Default(ImportDefaultSpecifier { local, .. })
+                | ImportSpecifier::Named(ImportNamedSpecifier { local, .. })
+                | ImportSpecifier::Namespace(ImportNamespaceSpecifier { local, .. }) => {
+                    self.error_if_strict_eval_or_arguments(local);
+                }
+            }
+        }
+    }
+
     fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration) {
         default_visit_export_default_declaration(self, export);
 
@@ -902,6 +918,8 @@ impl<'a> AstVisitor for Analyzer<'a> {
         if let Some(id) = export.id() {
             id.get_binding().set_is_exported(true);
         }
+
+        self.add_exported_str(export.loc, "default");
     }
 
     fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
@@ -910,6 +928,7 @@ impl<'a> AstVisitor for Analyzer<'a> {
         // Mark local bindings as exported
         export.iter_declaration_ids(&mut |id| {
             id.get_binding().set_is_exported(true);
+            self.add_exported_str(id.loc, &id.name);
         });
 
         for specifier in &mut export.specifiers {
@@ -918,13 +937,29 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 // Local is guaranteed to be an identifier if this is not a re-export
                 let local_id = specifier.local.to_id_mut();
                 self.resolve_identifier_use(local_id);
-                local_id.get_binding().set_is_exported(true);
+
+                if local_id.scope.is_resolved() {
+                    local_id.get_binding().set_is_exported(true);
+                } else {
+                    self.emit_error(local_id.loc, ParseError::UnresolvedExport);
+                }
             }
+
+            // Export name is the exported name if it exists, otherwise the local name
+            let export_name = specifier
+                .exported
+                .as_deref()
+                .unwrap_or(specifier.local.as_ref());
+            self.add_exported_name(export_name);
         }
     }
 
     fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration) {
         default_visit_export_all_declaration(self, export);
+
+        if let Some(export_name) = export.exported.as_deref() {
+            self.add_exported_name(export_name);
+        }
     }
 }
 
@@ -1503,6 +1538,30 @@ impl Analyzer<'_> {
 
             if !is_defined {
                 self.emit_error(id.loc, ParseError::new_private_name_not_defined(id.name.clone()));
+            }
+        }
+    }
+
+    fn add_export(&mut self, loc: Loc, name: Wtf8String) {
+        if self.export_names.contains(&name) {
+            self.emit_error(loc, ParseError::DuplicateExport(Box::new(name)));
+            return;
+        }
+
+        self.export_names.insert(name);
+    }
+
+    fn add_exported_str(&mut self, loc: Loc, str: &str) {
+        self.add_export(loc, Wtf8String::from_str(str));
+    }
+
+    fn add_exported_name(&mut self, export_name: &ExportName) {
+        match export_name {
+            ExportName::Id(id) => {
+                self.add_export(id.loc, Wtf8String::from_str(&id.name));
+            }
+            ExportName::String(string) => {
+                self.add_export(string.loc, string.value.clone());
             }
         }
     }

@@ -1,0 +1,191 @@
+{
+  type: "Program",
+  loc: "1:0-16:1",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:0-2:12",
+      kind: {
+        type: "MetaProperty",
+        loc: "2:0-2:11",
+        meta: {
+          type: "Identifier",
+          loc: "2:0-2:11",
+          name: "import",
+        },
+        property: {
+          type: "Identifier",
+          loc: "2:0-2:11",
+          name: "meta",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:0-3:11",
+      kind: {
+        type: "MetaProperty",
+        loc: "3:0-3:11",
+        meta: {
+          type: "Identifier",
+          loc: "3:0-3:11",
+          name: "import",
+        },
+        property: {
+          type: "Identifier",
+          loc: "3:0-3:11",
+          name: "meta",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:0-6:15",
+      kind: {
+        type: "CallExpression",
+        loc: "6:0-6:14",
+        callee: {
+          type: "MetaProperty",
+          loc: "6:0-6:11",
+          meta: {
+            type: "Identifier",
+            loc: "6:0-6:11",
+            name: "import",
+          },
+          property: {
+            type: "Identifier",
+            loc: "6:0-6:11",
+            name: "meta",
+          },
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "6:12-6:13",
+            value: 1,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:0-7:16",
+      kind: {
+        type: "BinaryExpression",
+        loc: "7:0-7:15",
+        operator: "+",
+        left: {
+          type: "MetaProperty",
+          loc: "7:0-7:11",
+          meta: {
+            type: "Identifier",
+            loc: "7:0-7:11",
+            name: "import",
+          },
+          property: {
+            type: "Identifier",
+            loc: "7:0-7:11",
+            name: "meta",
+          },
+        },
+        right: {
+          type: "Literal",
+          loc: "7:14-7:15",
+          value: 1,
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "8:0-8:16",
+      kind: {
+        type: "MemberExpression",
+        loc: "8:0-8:15",
+        object: {
+          type: "MetaProperty",
+          loc: "8:0-8:11",
+          meta: {
+            type: "Identifier",
+            loc: "8:0-8:11",
+            name: "import",
+          },
+          property: {
+            type: "Identifier",
+            loc: "8:0-8:11",
+            name: "meta",
+          },
+        },
+        property: {
+          type: "Identifier",
+          loc: "8:12-8:15",
+          name: "foo",
+        },
+        computed: false,
+        optional: false,
+      },
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "10:0-16:1",
+      id: {
+        type: "Identifier",
+        loc: "10:9-10:13",
+        name: "test",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "10:16-16:1",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "12:2-12:14",
+            kind: {
+              type: "MetaProperty",
+              loc: "12:2-12:13",
+              meta: {
+                type: "Identifier",
+                loc: "12:2-12:13",
+                name: "import",
+              },
+              property: {
+                type: "Identifier",
+                loc: "12:2-12:13",
+                name: "meta",
+              },
+            },
+          },
+          {
+            type: "ExpressionStatement",
+            loc: "15:2-15:18",
+            kind: {
+              type: "NewExpression",
+              loc: "15:2-15:17",
+              callee: {
+                type: "MetaProperty",
+                loc: "15:6-15:17",
+                meta: {
+                  type: "Identifier",
+                  loc: "15:6-15:17",
+                  name: "import",
+                },
+                property: {
+                  type: "Identifier",
+                  loc: "15:6-15:17",
+                  name: "meta",
+                },
+              },
+              arguments: [],
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: false,
+      has_use_strict_directive: false,
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

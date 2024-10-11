@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-3:12",
+  loc: "1:0-1:11",
   body: [
     {
       type: "ExpressionStatement",
@@ -17,24 +17,6 @@
           type: "Identifier",
           loc: "1:0-1:10",
           name: "target",
-        },
-      },
-    },
-    {
-      type: "ExpressionStatement",
-      loc: "3:0-3:12",
-      kind: {
-        type: "MetaProperty",
-        loc: "3:0-3:11",
-        meta: {
-          type: "Identifier",
-          loc: "3:0-3:11",
-          name: "import",
-        },
-        property: {
-          type: "Identifier",
-          loc: "3:0-3:11",
-          name: "meta",
         },
       },
     },

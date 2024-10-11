@@ -40,6 +40,7 @@ pub enum ParseError {
     IdentifierIsReservedWord,
     ExpectedNewTarget,
     ExpectedImportMeta,
+    ImportMetaOutsideModule,
     ExponentLHSUnary,
     TaggedTemplateInChain,
     NullishCoalesceMixedWithLogical,
@@ -209,6 +210,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::ExpectedImportMeta => {
                 write!(f, "Expected import.meta")
+            }
+            ParseError::ImportMetaOutsideModule => {
+                write!(f, "import.meta is only allowed in modules")
             }
             ParseError::ExponentLHSUnary => {
                 write!(

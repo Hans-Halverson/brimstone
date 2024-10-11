@@ -1,0 +1,8 @@
+[BytecodeFunction: <module>] {
+  Parameters: 0, Registers: 2
+     0: ImportMeta r0
+     2: LoadImmediate r1, 1
+     5: Add r0, r0, r1
+     9: LoadUndefined r0
+    11: Ret r0
+}

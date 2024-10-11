@@ -15,6 +15,7 @@ use crate::{
         module::module_namespace_object::ModuleNamespaceObject,
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
+        ordinary_object::object_create_with_optional_proto,
         promise_object::PromiseCapability,
         scope::Scope,
         string_value::FlatString,
@@ -587,6 +588,22 @@ impl Handle<SourceTextModule> {
         self.namespace_object = Some(namespace_object);
 
         namespace_object
+    }
+
+    /// Returns the `import.meta` object for this module. Lazily creates and caches the object when
+    /// first accessed.
+    pub fn get_import_meta_object(&mut self, cx: Context) -> HeapPtr<ObjectValue> {
+        if let Some(import_meta) = self.import_meta {
+            return import_meta;
+        }
+
+        // No properties are added to the `import.meta` object - this is up to the implementation
+        let object =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
+
+        self.import_meta = Some(object);
+
+        object
     }
 }
 

@@ -472,9 +472,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
 
         // Flatten set of specifiers into list, preserving insertion order
-        let module_scope = self.gen_module_scope(program);
+        let mut module_scope = self.gen_module_scope(program);
 
-        SourceTextModule::new(
+        let module = SourceTextModule::new(
             self.cx,
             program_function,
             module_scope,
@@ -483,7 +483,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
             &local_exports,
             &named_re_exports,
             &direct_re_exports,
-        )
+        );
+
+        // Place the module in the first slot of its module scope
+        module_scope.set_slot(0, module.cast::<ObjectValue>().get_().into());
+
+        module
     }
 
     /// Create the root module scope for module evaluation. Initialize
@@ -2159,9 +2164,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ast::MetaPropertyKind::NewTarget { scope } => {
                     self.gen_new_target_expression(scope, dest)
                 }
-                ast::MetaPropertyKind::ImportMeta => {
-                    unimplemented!("bytecode for import.meta expression")
-                }
+                ast::MetaPropertyKind::ImportMeta => self.gen_import_meta_expression(dest),
             },
             ast::Expression::Import(_) => unimplemented!("bytecode for import expressions"),
         }
@@ -5524,6 +5527,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         Ok(())
+    }
+
+    fn gen_import_meta_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+        self.writer.import_meta_instruction(dest);
+        Ok(dest)
     }
 
     fn gen_variable_declaration(

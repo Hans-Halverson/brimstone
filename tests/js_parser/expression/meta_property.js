@@ -1,3 +1,1 @@
 new.target;
-
-import.meta;

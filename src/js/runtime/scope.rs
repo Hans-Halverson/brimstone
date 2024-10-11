@@ -7,6 +7,7 @@ use super::{
     error::{err_assign_constant, err_cannot_set_property},
     gc::{HeapObject, HeapVisitor},
     get,
+    module::source_text_module::SourceTextModule,
     object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
@@ -161,6 +162,15 @@ impl Scope {
     pub fn global_scope_realm(&mut self) -> HeapPtr<Realm> {
         debug_assert!(self.kind == ScopeKind::Global);
         self.get_slot(0).as_pointer().cast::<Realm>()
+    }
+
+    /// Return the module stored in this module scope.
+    ///
+    /// Should only be called on module scopes.
+    #[inline]
+    pub fn module_scope_module(&mut self) -> HeapPtr<SourceTextModule> {
+        debug_assert!(self.kind == ScopeKind::Module);
+        self.get_slot(0).as_pointer().cast::<SourceTextModule>()
     }
 }
 

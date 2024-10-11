@@ -1205,6 +1205,11 @@ define_instructions!(
         [0] promise: Register,
         [1] value: Register,
     }
+
+    /// Load the `import.meta` object into dest.
+    ImportMeta(ImportMetaInstruction, import_meta_instruction) {
+        [0] dest: Register,
+    }
 );
 
 bitflags! {

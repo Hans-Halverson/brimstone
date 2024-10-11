@@ -86,7 +86,7 @@ use super::{
         GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
         GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
         GetSuperPropertyInstruction, GreaterThanInstruction, GreaterThanOrEqualInstruction,
-        InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
+        ImportMetaInstruction, InInstruction, IncInstruction, InstanceOfInstruction, Instruction,
         IteratorCloseInstruction, IteratorNextInstruction, IteratorUnpackResultInstruction,
         JumpConstantInstruction, JumpFalseConstantInstruction, JumpFalseInstruction,
         JumpInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
@@ -1125,6 +1125,9 @@ impl VM {
                         }
                         OpCode::RejectPromise => {
                             dispatch!(RejectPromiseInstruction, execute_reject_promise)
+                        }
+                        OpCode::ImportMeta => {
+                            dispatch!(ImportMetaInstruction, execute_import_meta)
                         }
                     }
                 };
@@ -4234,6 +4237,23 @@ impl VM {
         let mut promise = promise.as_object().cast::<PromiseObject>();
 
         promise.reject(self.cx(), value);
+    }
+
+    #[inline]
+    fn execute_import_meta<W: Width>(&mut self, instr: &ImportMetaInstruction<W>) {
+        let dest = instr.dest();
+
+        // Find the module scope, which is the top scope in the scope chain
+        let mut scope = self.scope();
+        while let Some(parent_scope) = scope.parent() {
+            scope = parent_scope;
+        }
+
+        // May allocate
+        let mut module = scope.module_scope_module().to_handle();
+        let object = module.get_import_meta_object(self.cx());
+
+        self.write_register(dest, object.into());
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

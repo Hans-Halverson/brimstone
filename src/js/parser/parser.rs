@@ -2513,6 +2513,10 @@ impl<'a> Parser<'a> {
                     self.advance()?;
                     let loc = self.mark_loc(start_pos);
 
+                    if self.program_kind != ProgramKind::Module {
+                        return self.error(self.loc, ParseError::ImportMetaOutsideModule);
+                    }
+
                     Ok(p(Expression::MetaProperty(MetaProperty {
                         loc,
                         kind: MetaPropertyKind::ImportMeta,
@@ -2521,6 +2525,7 @@ impl<'a> Parser<'a> {
                     self.error(self.loc, ParseError::ExpectedImportMeta)
                 }
             }
+            // Otherwise must be a dynamic import expression
             _ if allow_call => {
                 self.expect(Token::LeftParen)?;
                 let source = self.parse_assignment_expression()?;
@@ -4047,33 +4052,24 @@ impl<'a> Parser<'a> {
 
     fn parse_import_declaration(&mut self) -> ParseResult<Toplevel> {
         let start_pos = self.current_start_pos();
-        self.advance()?;
 
-        // May be the start of a toplevel import expression
-        if self.token == Token::LeftParen {
-            self.advance()?;
-            let source = self.parse_assignment_expression()?;
-            self.expect(Token::RightParen)?;
+        // May be the start of a toplevel import expression or import.meta expression. In either
+        // case parse as an expression statement.
+        let next_token = self.peek()?;
+        if next_token == Token::LeftParen || next_token == Token::Period {
+            let expr = self.parse_outer_expression()?;
 
-            let loc = self.mark_loc(start_pos);
-            let import_expr = Expression::Import(ImportExpression { loc, source });
-
-            // Finish parsing rest of expression started by this import expression
-            let full_expr = self.parse_call_expression(
-                p(import_expr),
-                start_pos,
-                /* allow_call */ true,
-                /* in_optional_chain */ false,
-            )?;
-
+            // Parse the rest of the expression statement
             self.expect_semicolon()?;
             let loc = self.mark_loc(start_pos);
 
-            let expr_stmt =
-                Statement::Expr(ExpressionStatement { loc, expr: full_expr.into_outer() });
+            let expr_stmt = Statement::Expr(ExpressionStatement { loc, expr });
 
             return Ok(Toplevel::Statement(expr_stmt));
         }
+
+        // Otherwise this is a standard import declaration so advance past the `import` token
+        self.advance()?;
 
         // No specifiers
         if let Token::StringLiteral(value) = &self.token {

@@ -23,3 +23,8 @@ new new a;
 new new a();
 
 new a().b;
+
+// Meta properties and super properties are allowed as MemberExpressions
+new import.meta;
+new new.target;
+new super.foo;

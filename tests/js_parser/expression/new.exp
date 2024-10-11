@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-25:10",
+  loc: "1:0-30:14",
   body: [
     {
       type: "ExpressionStatement",
@@ -313,6 +313,75 @@
         },
         computed: false,
         optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "28:0-28:16",
+      kind: {
+        type: "NewExpression",
+        loc: "28:0-28:15",
+        callee: {
+          type: "MetaProperty",
+          loc: "28:4-28:15",
+          meta: {
+            type: "Identifier",
+            loc: "28:4-28:15",
+            name: "import",
+          },
+          property: {
+            type: "Identifier",
+            loc: "28:4-28:15",
+            name: "meta",
+          },
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "29:0-29:15",
+      kind: {
+        type: "NewExpression",
+        loc: "29:0-29:14",
+        callee: {
+          type: "MetaProperty",
+          loc: "29:4-29:14",
+          meta: {
+            type: "Identifier",
+            loc: "29:4-29:14",
+            name: "new",
+          },
+          property: {
+            type: "Identifier",
+            loc: "29:4-29:14",
+            name: "target",
+          },
+        },
+        arguments: [],
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "30:0-30:14",
+      kind: {
+        type: "NewExpression",
+        loc: "30:0-30:13",
+        callee: {
+          type: "MemberExpression",
+          loc: "30:4-30:13",
+          object: {
+            type: "Super",
+            loc: "30:4-30:9",
+          },
+          property: {
+            type: "Identifier",
+            loc: "30:10-30:13",
+            name: "foo",
+          },
+          computed: false,
+        },
+        arguments: [],
       },
     },
   ],

@@ -2202,8 +2202,8 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         let expr = match &self.token {
             Token::New => self.parse_new_expression()?,
-            Token::Super => self.parse_super_expression()?,
-            Token::Import => self.parse_import_expression()?,
+            Token::Super => self.parse_super_expression(/* allow_call */ true)?,
+            Token::Import => self.parse_import_expression(/* allow_call */ true)?,
             _ => self.parse_primary_expression()?,
         };
 
@@ -2422,9 +2422,11 @@ impl<'a> Parser<'a> {
 
         self.advance()?;
 
+        // New is followed by MemberExpression in the spec. This is a subset of left hand side
+        // expressions which must start with only new expressions, meta properties, super
+        // properties, and primary expressions.
         let callee_start_pos = self.current_start_pos();
         let callee = match self.token {
-            Token::New => self.parse_new_expression()?,
             // Parse new.target meta property
             Token::Period => {
                 self.advance()?;
@@ -2437,6 +2439,9 @@ impl<'a> Parser<'a> {
                     self.error(self.loc, ParseError::ExpectedNewTarget)
                 };
             }
+            Token::New => self.parse_new_expression()?,
+            Token::Import => self.parse_import_expression(/* allow_call */ false)?,
+            Token::Super => self.parse_super_expression(/* allow_call */ false)?,
             _ => self.parse_primary_expression()?,
         };
 
@@ -2453,7 +2458,7 @@ impl<'a> Parser<'a> {
         Ok(p(Expression::New(NewExpression { loc, callee, arguments })))
     }
 
-    fn parse_super_expression(&mut self) -> ParseResult<P<Expression>> {
+    fn parse_super_expression(&mut self, allow_call: bool) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
         let super_loc = self.loc;
         self.advance()?;
@@ -2485,7 +2490,7 @@ impl<'a> Parser<'a> {
                     loc, super_loc, property, /* is_computed */ true,
                 ))))
             }
-            Token::LeftParen => {
+            Token::LeftParen if allow_call => {
                 let arguments = self.parse_call_arguments()?;
                 let loc = self.mark_loc(start_pos);
 
@@ -2495,7 +2500,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_import_expression(&mut self) -> ParseResult<P<Expression>> {
+    fn parse_import_expression(&mut self, allow_call: bool) -> ParseResult<P<Expression>> {
         let start_pos = self.current_start_pos();
 
         self.advance()?;
@@ -2516,7 +2521,7 @@ impl<'a> Parser<'a> {
                     self.error(self.loc, ParseError::ExpectedImportMeta)
                 }
             }
-            _ => {
+            _ if allow_call => {
                 self.expect(Token::LeftParen)?;
                 let source = self.parse_assignment_expression()?;
                 self.expect(Token::RightParen)?;
@@ -2524,6 +2529,10 @@ impl<'a> Parser<'a> {
                 let loc = self.mark_loc(start_pos);
 
                 Ok(p(Expression::Import(ImportExpression { loc, source })))
+            }
+            _ => {
+                let loc = self.mark_loc(start_pos);
+                self.error(loc, ParseError::ExpectedImportMeta)
             }
         }
     }

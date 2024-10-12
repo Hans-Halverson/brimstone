@@ -2,7 +2,7 @@
 
 Brimstone is a JavaScript engine written from scratch in Rust, aiming to have full support for the JavaScript language.
 
-Brimstone is a work in progress but already supports most of the JavaScript language (>94% of the ECMAScript language in test262). Not ready for use in production.
+Brimstone is a work in progress but already supports almost all of the JavaScript language (>97% of the ECMAScript language in test262). Not ready for use in production.
 
 Implements the [ECMAScript specification](https://tc39.es/ecma262/). Heavy inspiration is taken from the design of [V8](https://v8.dev/) and SerenityOS's [LibJS](https://github.com/LadybirdBrowser/ladybird). Brimstone chooses to implement almost all components of the engine from scratch with minimal dependencies, with the notable exception of [ICU4X](https://github.com/unicode-org/icu4x).
 

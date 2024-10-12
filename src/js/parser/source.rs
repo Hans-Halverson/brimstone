@@ -9,14 +9,22 @@ use super::parse_error::ParseResult;
 use super::{LocalizedParseError, ParseError};
 
 pub struct Source {
-    pub file_path: String,
+    /// Path to the source file on disk.
+    file_path: String,
+    /// Name of the source file to use when displaying. If not set, the file path is used.
+    display_name: Option<String>,
     pub contents: Wtf8String,
     line_offsets: RefCell<Option<Vec<u32>>>,
 }
 
 impl Source {
-    fn new(file_path: String, contents: Wtf8String) -> Source {
-        Source { file_path, contents, line_offsets: RefCell::new(None) }
+    fn new(file_path: String, display_name: Option<String>, contents: Wtf8String) -> Source {
+        Source {
+            file_path,
+            display_name,
+            contents,
+            line_offsets: RefCell::new(None),
+        }
     }
 
     pub fn new_from_file(file_path: &str) -> ParseResult<Source> {
@@ -34,16 +42,16 @@ impl Source {
             return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(true)));
         }
 
-        Ok(Source::new(file_path.to_owned(), wtf8_contents))
+        Ok(Source::new(file_path.to_owned(), None, wtf8_contents))
     }
 
-    pub fn new_from_wtf8_string(file_path: &str, contents: Wtf8String) -> ParseResult<Source> {
+    pub fn new_for_eval(file_path: String, contents: Wtf8String) -> ParseResult<Source> {
         // Guarantee that source size is within allowed range
         if is_source_too_large(contents.len()) {
             return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(false)));
         }
 
-        Ok(Self::new(file_path.to_owned(), contents))
+        Ok(Self::new(file_path, Some("<eval>".to_owned()), contents))
     }
 
     pub fn line_offsets(&self) -> &[u32] {
@@ -58,6 +66,21 @@ impl Source {
 
             (*(self.line_offsets.as_ptr())).as_mut().unwrap()
         }
+    }
+
+    pub fn file_path(&self) -> &str {
+        &self.file_path
+    }
+
+    pub fn display_name(&self) -> &str {
+        match &self.display_name {
+            Some(name) => name,
+            None => &self.file_path,
+        }
+    }
+
+    pub fn has_display_name(&self) -> bool {
+        self.display_name.is_some()
     }
 }
 

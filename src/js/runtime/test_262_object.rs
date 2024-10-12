@@ -149,10 +149,11 @@ impl Test262Object {
             return type_error(cx, "expected string");
         }
 
-        let source = match Source::new_from_wtf8_string(
-            "<eval>",
-            script_text.as_string().to_wtf8_string(),
-        ) {
+        // Use the file path of the active source file
+        let file_path = cx.vm().current_source_file().path().to_string();
+
+        let source = match Source::new_for_eval(file_path, script_text.as_string().to_wtf8_string())
+        {
             Ok(source) => Rc::new(source),
             Err(error) => return syntax_error(cx, &error.to_string()),
         };

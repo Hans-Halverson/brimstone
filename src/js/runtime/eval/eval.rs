@@ -44,8 +44,11 @@ pub fn perform_eval(
 
     let private_names = get_private_names_from_scopes(direct_scope.map(|s| s.get_()));
 
+    // Use the file path of the active source file
+    let file_path = cx.vm().current_source_file().path().to_string();
+
     // Parse source code
-    let source = match Source::new_from_wtf8_string("<eval>", code.to_wtf8_string()) {
+    let source = match Source::new_for_eval(file_path, code.to_wtf8_string()) {
         Ok(source) => Rc::new(source),
         Err(error) => return syntax_error(cx, &error.to_string()),
     };

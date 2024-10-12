@@ -48,7 +48,6 @@ For more information on testing see the [testing README](./tests/README.md).
 
 All features up to ES2024 have been implemented (as well as all stage 4 proposals as of 2024-09-15), except for the following features:
 
-- ECMAScript modules (next up)
 - UnicodeSets proposal
 - SharedArrayBuffer
 - Atomics

@@ -50,7 +50,7 @@ pub fn attach_stack_trace_to_error(
         stack_trace.push_str(" (");
 
         // Followed by the file where the function was defined
-        if let Some(file_name) = func.source_file_ptr().map(|file| file.name()) {
+        if let Some(file_name) = func.source_file_ptr().map(|file| file.display_name()) {
             stack_trace.push_str(&file_name.to_string());
         } else {
             stack_trace.push_str("<native>");

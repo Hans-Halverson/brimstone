@@ -554,6 +554,20 @@ pub fn load_requested_modules_dynamic_resolve(
         return cx.undefined().into();
     }
 
+    // Missing condition in the spec. If the module has already been evaluated and throw an error
+    // we should rethrow that error directly. Otherwise Evaluate will fail since it expects an
+    // evaluated module to have a [[CycleRoot]], but [[CycleRoot]] is not set if module evaluation
+    // errors.
+    if module.state() == ModuleState::Evaluated && module.evaluation_error_ptr().is_some() {
+        must!(call_object(
+            cx,
+            capability.reject(),
+            cx.undefined(),
+            &[module.evaluation_error(cx).unwrap()]
+        ));
+        return cx.undefined().into();
+    }
+
     let evaluate_promise = module_evaluate(cx, module);
 
     let on_resolve = callback(cx, module_evaluate_dynamic_resolve);

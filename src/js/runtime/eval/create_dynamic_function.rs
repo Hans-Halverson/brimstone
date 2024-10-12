@@ -30,7 +30,7 @@ use crate::{
 
 /// CreateDynamicFunction (https://tc39.es/ecma262/#sec-createdynamicfunction)
 pub fn create_dynamic_function(
-    cx: Context,
+    mut cx: Context,
     constructor: Handle<ObjectValue>,
     new_target: Option<Handle<ObjectValue>>,
     args: &[Handle<Value>],
@@ -104,9 +104,12 @@ pub fn create_dynamic_function(
         builder
     };
 
+    // Use the file path of the active source file
+    let file_path = cx.vm().current_source_file().path().to_string();
+
     // Make sure that parameter list and body are valid by themselves. Only need to check that they
     // parse correctly, full analysis will be performed on entire function text.
-    let params_source = match Source::new_from_wtf8_string("", params_string) {
+    let params_source = match Source::new_for_eval(file_path.clone(), params_string) {
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_error(cx, &err.to_string()),
     };
@@ -116,7 +119,7 @@ pub fn create_dynamic_function(
         return syntax_error(cx, &format!("could not parse function parameters: {}", err));
     }
 
-    let body_source = match Source::new_from_wtf8_string("", body_string) {
+    let body_source = match Source::new_for_eval(file_path.clone(), body_string) {
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_error(cx, &err.to_string()),
     };
@@ -127,7 +130,7 @@ pub fn create_dynamic_function(
     }
 
     // Parse and analyze entire function
-    let full_source = match Source::new_from_wtf8_string("", source_string) {
+    let full_source = match Source::new_for_eval(file_path, source_string) {
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_error(cx, &err.to_string()),
     };

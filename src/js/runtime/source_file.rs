@@ -33,9 +33,9 @@ type LineOffsetArray = BsArray<u32>;
 impl SourceFile {
     #[inline]
     pub fn new(mut cx: Context, source: &Source) -> Handle<SourceFile> {
-        let path = cx.alloc_string(&source.file_path());
+        let path = cx.alloc_string(source.file_path());
         let display_name = if source.has_display_name() {
-            Some(cx.alloc_string(&source.display_name()))
+            Some(cx.alloc_string(source.display_name()))
         } else {
             None
         };

@@ -77,7 +77,7 @@ pub struct SourceTextModule {
     entries: InlineArray<ModuleEntry>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModuleState {
     New,
     Unlinked,

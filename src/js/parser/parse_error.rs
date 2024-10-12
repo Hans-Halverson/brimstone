@@ -520,7 +520,7 @@ pub fn format_localized_parse_errors(errors: &[LocalizedParseError]) -> String {
     // Sort errors with locs
     errors_with_loc.sort_by(|a, b| {
         a.1.file_path()
-            .cmp(&b.1.file_path())
+            .cmp(b.1.file_path())
             .then_with(|| a.2.cmp(&b.2))
             .then_with(|| a.3.cmp(&b.3))
     });

@@ -50,8 +50,12 @@ impl GraphLoader {
 
                         // Create the SourceTextModule for the module with the given specifier,
                         // or evaluate to an error.
-                        let load_result =
-                            self.host_load_imported_module(cx, module, module_specifier);
+                        let load_result = host_load_imported_module(
+                            cx,
+                            module.source_file_path(),
+                            module_specifier,
+                            self.realm,
+                        );
 
                         // Continue module loading with the SourceTextModule or error result
                         self.finish_loading_imported_module(
@@ -81,74 +85,6 @@ impl GraphLoader {
                 &[cx.undefined()]
             ));
         }
-    }
-
-    /// HostLoadImportedModule (https://tc39.es/ecma262/#sec-HostLoadImportedModule)
-    fn host_load_imported_module(
-        &mut self,
-        mut cx: Context,
-        module: Handle<SourceTextModule>,
-        module_specifier: Handle<FlatString>,
-    ) -> EvalResult<Handle<SourceTextModule>> {
-        let source_file_path = Path::new(&module.source_file_path())
-            .canonicalize()
-            .unwrap();
-        let source_file_dir = source_file_path.parent().unwrap();
-
-        // Join source file path with specifier path so that relative specifiers will be applied to
-        // source path and absolute specifiers will overwrite source path.
-        let new_module_path = source_file_dir
-            .join(Path::new(&module_specifier.to_string()))
-            .canonicalize();
-
-        let new_module_path = match new_module_path {
-            Ok(path) => path,
-            Err(error) => return syntax_error(cx, &error.to_string()),
-        };
-
-        let new_module_path_string = new_module_path.to_str().unwrap().to_string();
-
-        // Use the cached module if it has already been loaded
-        if let Some(module) = cx.modules.get(&new_module_path_string) {
-            return module.to_handle().into();
-        }
-
-        // Parse the file at the given path, returning AST
-        let mut parse_result = match Self::parse_file_at_path(new_module_path.as_path()) {
-            Ok(parse_result) => parse_result,
-            Err(error) => return syntax_error(cx, &error.to_string()),
-        };
-
-        // Analyze AST
-        if let Err(parse_errors) = analyze(&mut parse_result) {
-            return syntax_error(cx, &parse_errors.errors[0].to_string());
-        }
-
-        if cx.options.print_ast {
-            println!("{}", print_program(&parse_result.program));
-        }
-
-        // Finally generate the SourceTextModule for the parsed module
-        let bytecode_result = BytecodeProgramGenerator::generate_from_parse_module_result(
-            cx,
-            &Rc::new(parse_result),
-            self.realm,
-        );
-
-        let module = match bytecode_result {
-            Ok(module) => module,
-            Err(error) => return syntax_error(cx, &error.to_string()),
-        };
-
-        // Cache the module
-        cx.modules.insert(new_module_path_string, module.get_());
-
-        module.into()
-    }
-
-    fn parse_file_at_path(path: &Path) -> ParseResult<ParseProgramResult> {
-        let source = Rc::new(Source::new_from_file(path.to_str().unwrap())?);
-        parse_module(&source)
     }
 
     /// FinishLoadingImportedModule (https://tc39.es/ecma262/#sec-FinishLoadingImportedModule)
@@ -212,4 +148,72 @@ pub fn load_requested_modules(
 
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
     capability.promise().cast::<PromiseObject>()
+}
+
+/// HostLoadImportedModule (https://tc39.es/ecma262/#sec-HostLoadImportedModule)
+pub fn host_load_imported_module(
+    mut cx: Context,
+    source_file_path: Handle<FlatString>,
+    module_specifier: Handle<FlatString>,
+    realm: Handle<Realm>,
+) -> EvalResult<Handle<SourceTextModule>> {
+    let source_file_path = Path::new(&source_file_path.to_string())
+        .canonicalize()
+        .unwrap();
+    let source_file_dir = source_file_path.parent().unwrap();
+
+    // Join source file path with specifier path so that relative specifiers will be applied to
+    // source path and absolute specifiers will overwrite source path.
+    let new_module_path = source_file_dir
+        .join(Path::new(&module_specifier.to_string()))
+        .canonicalize();
+
+    let new_module_path = match new_module_path {
+        Ok(path) => path,
+        Err(error) => return syntax_error(cx, &error.to_string()),
+    };
+
+    let new_module_path_string = new_module_path.to_str().unwrap().to_string();
+
+    // Use the cached module if it has already been loaded
+    if let Some(module) = cx.modules.get(&new_module_path_string) {
+        return module.to_handle().into();
+    }
+
+    // Parse the file at the given path, returning AST
+    let mut parse_result = match parse_file_at_path(new_module_path.as_path()) {
+        Ok(parse_result) => parse_result,
+        Err(error) => return syntax_error(cx, &error.to_string()),
+    };
+
+    // Analyze AST
+    if let Err(parse_errors) = analyze(&mut parse_result) {
+        return syntax_error(cx, &parse_errors.errors[0].to_string());
+    }
+
+    if cx.options.print_ast {
+        println!("{}", print_program(&parse_result.program));
+    }
+
+    // Finally generate the SourceTextModule for the parsed module
+    let bytecode_result = BytecodeProgramGenerator::generate_from_parse_module_result(
+        cx,
+        &Rc::new(parse_result),
+        realm,
+    );
+
+    let module = match bytecode_result {
+        Ok(module) => module,
+        Err(error) => return syntax_error(cx, &error.to_string()),
+    };
+
+    // Cache the module
+    cx.modules.insert(new_module_path_string, module.get_());
+
+    module.into()
+}
+
+fn parse_file_at_path(path: &Path) -> ParseResult<ParseProgramResult> {
+    let source = Rc::new(Source::new_from_file(path.to_str().unwrap())?);
+    parse_module(&source)
 }

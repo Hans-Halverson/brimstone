@@ -1,21 +1,23 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
+    if_abrupt_reject_promise,
     js::runtime::{
         abstract_operations::call_object,
-        builtin_function::BuiltinFunction,
+        builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         function::get_argument,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
         module::linker::link,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
-        Context, EvalResult, Handle, Value,
+        string_value::FlatString,
+        to_string, Context, EvalResult, Handle, Value,
     },
     maybe, must,
 };
 
 use super::{
-    loader::load_requested_modules,
+    loader::{host_load_imported_module, load_requested_modules},
     source_text_module::{ModuleId, ModuleState, SourceTextModule},
 };
 
@@ -30,7 +32,7 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
     //
     // TODO: Move module caching right at module creation. May require first switching to storing
     // absolute paths in Source but relative paths in the heap.
-    let source_file_path = Path::new(&module.source_file_path())
+    let source_file_path = Path::new(&module.source_file_path().to_string())
         .canonicalize()
         .unwrap()
         .to_str()
@@ -40,29 +42,11 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
 
     let promise = load_requested_modules(cx, module);
 
-    // Resolve function needs access to module and capability
-    let on_resolve = BuiltinFunction::create_builtin_function_without_properties(
-        cx,
-        load_requested_modules_resolve,
-        /* name */ None,
-        cx.current_realm(),
-        /* prototype */ None,
-        /* is_constructor */ false,
-    )
-    .into();
+    let on_resolve = callback(cx, load_requested_modules_static_resolve);
     set_module(cx, on_resolve, module);
     set_capability(cx, on_resolve, capability);
 
-    // Reject function needs access to capability
-    let on_reject = BuiltinFunction::create_builtin_function_without_properties(
-        cx,
-        load_requested_modules_reject,
-        /* name */ None,
-        cx.current_realm(),
-        /* prototype */ None,
-        /* is_constructor */ false,
-    )
-    .into();
+    let on_reject = callback(cx, load_requested_modules_reject);
     set_capability(cx, on_reject, capability);
 
     perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None);
@@ -101,7 +85,7 @@ fn set_capability(
     function.private_element_set(cx, cx.well_known_symbols.capability().cast(), value.into());
 }
 
-pub fn load_requested_modules_resolve(
+pub fn load_requested_modules_static_resolve(
     mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
@@ -140,6 +124,18 @@ pub fn load_requested_modules_reject(
     must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
     cx.undefined().into()
+}
+
+fn callback(cx: Context, func: BuiltinFunctionPtr) -> Handle<ObjectValue> {
+    BuiltinFunction::create_builtin_function_without_properties(
+        cx,
+        func,
+        /* name */ None,
+        cx.current_realm(),
+        /* prototype */ None,
+        /* is_constructor */ false,
+    )
+    .into()
 }
 
 fn module_evaluate(cx: Context, module: Handle<SourceTextModule>) -> Handle<PromiseObject> {
@@ -322,28 +318,10 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) {
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
     let promise = capability.promise().cast::<PromiseObject>();
 
-    // Resolve function needs access to module
-    let on_resolve = BuiltinFunction::create_builtin_function_without_properties(
-        cx,
-        async_module_execution_fulfilled,
-        /* name */ None,
-        cx.current_realm(),
-        /* prototype */ None,
-        /* is_constructor */ false,
-    )
-    .into();
+    let on_resolve = callback(cx, async_module_execution_fulfilled);
     set_module(cx, on_resolve, module);
 
-    // Reject function needs access to module
-    let on_reject = BuiltinFunction::create_builtin_function_without_properties(
-        cx,
-        async_module_execution_rejected_runtime,
-        /* name */ None,
-        cx.current_realm(),
-        /* prototype */ None,
-        /* is_constructor */ false,
-    )
-    .into();
+    let on_reject = callback(cx, async_module_execution_rejected_runtime);
     set_module(cx, on_reject, module);
 
     // Set up resolve and reject callbacks which re-enter module graph evaluation
@@ -507,6 +485,108 @@ pub fn async_module_execution_rejected_runtime(
 
     let error = get_argument(cx, arguments, 0);
     async_module_execution_rejected(cx, module, error);
+
+    cx.undefined().into()
+}
+
+/// Start a dynamic import within a module, passing the argument provided to `import()`.
+pub fn dynamic_import(
+    cx: Context,
+    source_file_path: Handle<FlatString>,
+    specifier: Handle<Value>,
+) -> EvalResult<Handle<ObjectValue>> {
+    let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
+    let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+
+    let specifier_string_completion = to_string(cx, specifier);
+    let specifier_string = if_abrupt_reject_promise!(cx, specifier_string_completion, capability);
+
+    let load_completion = host_load_imported_module(
+        cx,
+        source_file_path,
+        specifier_string.flatten(),
+        cx.current_realm(),
+    );
+    continue_dynamic_import(cx, capability, load_completion);
+
+    capability.promise().into()
+}
+
+/// ContinueDynamicImport (https://tc39.es/ecma262/#sec-ContinueDynamicImport)
+fn continue_dynamic_import(
+    cx: Context,
+    capability: Handle<PromiseCapability>,
+    load_completion: EvalResult<Handle<SourceTextModule>>,
+) {
+    let module = match load_completion {
+        EvalResult::Ok(module) => module,
+        EvalResult::Throw(error) => {
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+            return;
+        }
+    };
+
+    let load_promise = load_requested_modules(cx, module);
+
+    let on_resolve = callback(cx, load_requested_modules_dynamic_resolve);
+    set_module(cx, on_resolve, module);
+    set_capability(cx, on_resolve, capability);
+
+    let on_reject = callback(cx, load_requested_modules_reject);
+    set_capability(cx, on_reject, capability);
+
+    perform_promise_then(cx, load_promise, on_resolve.into(), on_reject.into(), None);
+}
+
+pub fn load_requested_modules_dynamic_resolve(
+    mut cx: Context,
+    _: Handle<Value>,
+    _: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    // Fetch the module and capbility passed from the caller
+    let current_function = cx.current_function();
+    let module = get_module(cx, current_function);
+    let capability = get_capability(cx, current_function);
+
+    if let EvalResult::Throw(error) = link(cx, module) {
+        must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+        return cx.undefined().into();
+    }
+
+    let evaluate_promise = module_evaluate(cx, module);
+
+    let on_resolve = callback(cx, module_evaluate_dynamic_resolve);
+    set_module(cx, on_resolve, module);
+    set_capability(cx, on_resolve, capability);
+
+    let on_reject = callback(cx, load_requested_modules_reject);
+    set_capability(cx, on_reject, capability);
+
+    perform_promise_then(cx, evaluate_promise, on_resolve.into(), on_reject.into(), None);
+
+    cx.undefined().into()
+}
+
+pub fn module_evaluate_dynamic_resolve(
+    mut cx: Context,
+    _: Handle<Value>,
+    _: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    // Fetch the module and capbility passed from the caller
+    let current_function = cx.current_function();
+    let mut module = get_module(cx, current_function);
+    let capability = get_capability(cx, current_function);
+
+    let namespace_object = module.get_namespace_object(cx).to_handle();
+
+    must!(call_object(
+        cx,
+        capability.resolve(),
+        cx.undefined(),
+        &[namespace_object.into()]
+    ));
 
     cx.undefined().into()
 }

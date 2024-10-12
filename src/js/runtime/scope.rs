@@ -159,7 +159,7 @@ impl Scope {
     ///
     /// Should only be called on global scopes.
     #[inline]
-    pub fn global_scope_realm(&mut self) -> HeapPtr<Realm> {
+    pub fn global_scope_realm(&self) -> HeapPtr<Realm> {
         debug_assert!(self.kind == ScopeKind::Global);
         self.get_slot(0).as_pointer().cast::<Realm>()
     }
@@ -168,7 +168,7 @@ impl Scope {
     ///
     /// Should only be called on module scopes.
     #[inline]
-    pub fn module_scope_module(&mut self) -> HeapPtr<SourceTextModule> {
+    pub fn module_scope_module(&self) -> HeapPtr<SourceTextModule> {
         debug_assert!(self.kind == ScopeKind::Module);
         self.get_slot(0).as_pointer().cast::<SourceTextModule>()
     }

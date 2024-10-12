@@ -63,6 +63,8 @@ pub struct Analyzer<'a> {
     /// needed instead of a stack, since we ensure that there is only one `has_assign_expr` context
     /// around each expression.
     has_assign_expr: bool,
+    /// Whether we are in a module and there is a top-level await
+    has_top_level_await: bool,
 }
 
 struct FunctionStackEntry {
@@ -139,6 +141,7 @@ impl<'a> Analyzer<'a> {
             allow_super_member_stack: vec![],
             in_parameters_stack: vec![],
             has_assign_expr: false,
+            has_top_level_await: false,
         }
     }
 
@@ -210,6 +213,10 @@ impl<'a> Analyzer<'a> {
 
     fn current_function(&self) -> Option<&FunctionStackEntry> {
         self.function_stack.last()
+    }
+
+    fn is_at_top_level(&self) -> bool {
+        self.function_stack.is_empty() && self.class_stack.is_empty()
     }
 
     // Save state before visiting a function or class. This prevents labels and some context from
@@ -303,6 +310,9 @@ impl<'a> AstVisitor for Analyzer<'a> {
         visit_vec!(self, program.toplevels, visit_toplevel);
 
         self.exit_scope();
+
+        // Set properties determined during analysis
+        program.has_top_level_await = self.has_top_level_await;
 
         if program.is_strict_mode {
             self.exit_strict_mode_context();
@@ -676,6 +686,11 @@ impl<'a> AstVisitor for Analyzer<'a> {
     }
 
     fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {
+        // Mark if the program has a top level await
+        if self.is_at_top_level() {
+            self.has_top_level_await = true;
+        }
+
         if let Some(true) = self.in_parameters_stack.last() {
             self.emit_error(expr.loc, ParseError::AwaitInParameters)
         } else if let Some(FunctionStackEntry { is_static_initializer: true, .. }) =

@@ -41,7 +41,7 @@ impl<T: Clone + Copy> BsVec<T> {
     }
 
     #[inline]
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 

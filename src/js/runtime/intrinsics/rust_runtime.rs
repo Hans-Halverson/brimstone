@@ -380,6 +380,8 @@ rust_runtime_functions!(
     MathObject::tan,
     MathObject::tanh,
     MathObject::trunc,
+    module::execute::async_module_execution_fulfilled,
+    module::execute::async_module_execution_rejected_runtime,
     module::execute::load_requested_modules_reject,
     module::execute::load_requested_modules_resolve,
     ObjectConstructor::construct,

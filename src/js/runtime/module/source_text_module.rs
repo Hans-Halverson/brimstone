@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    num::NonZeroUsize,
     sync::{LazyLock, Mutex},
 };
 
@@ -38,8 +39,9 @@ pub struct SourceTextModule {
     state: ModuleState,
     /// Whether this module has top-level await.
     has_top_level_await: bool,
-    /// Whether this module is async or has an async dependency.
-    is_async_evaluation: bool,
+    /// If set this module is async or has an async dependency. Contains a counter used to determine
+    /// the order where [[AsyncEvaluation]] was set.
+    async_evaluation_index: Option<NonZeroUsize>,
     /// Function that evaluates the module when called in the module scope.
     program_function: HeapPtr<BytecodeFunction>,
     /// Scope for the module. Program function is executed in this scope.
@@ -105,6 +107,7 @@ impl SourceTextModule {
         local_exports: &[LocalExportEntry],
         named_re_exports: &[NamedReExportEntry],
         direct_re_exports: &[DirectReExportEntry],
+        has_top_level_await: bool,
     ) -> Handle<SourceTextModule> {
         // First create arrays for requested and loaded modules. Requested modules are initialized
         // from arguments, loaded modules are initialized to None.
@@ -132,9 +135,8 @@ impl SourceTextModule {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
         set_uninit!(object.state, ModuleState::New);
-        // TODO: Track top level await to properly set this
-        set_uninit!(object.has_top_level_await, false);
-        set_uninit!(object.is_async_evaluation, false);
+        set_uninit!(object.has_top_level_await, has_top_level_await);
+        set_uninit!(object.async_evaluation_index, None);
         set_uninit!(object.program_function, program_function.get_());
         set_uninit!(object.module_scope, module_scope.get_());
         set_uninit!(object.import_meta, None);
@@ -205,12 +207,25 @@ impl SourceTextModule {
 
     #[inline]
     pub fn is_async_evaluation(&self) -> bool {
-        self.is_async_evaluation
+        self.async_evaluation_index.is_some()
     }
 
     #[inline]
-    pub fn set_async_evaluation(&mut self, is_async_evaluation: bool) {
-        self.is_async_evaluation = is_async_evaluation;
+    pub fn async_evaluation_index(&self) -> Option<NonZeroUsize> {
+        self.async_evaluation_index
+    }
+
+    #[inline]
+    pub fn set_async_evaluation(&mut self, mut cx: Context, is_async_evaluation: bool) {
+        if is_async_evaluation {
+            // Increment the async evaluation counter so we can track the order [[AsyncEvaluation]]
+            // was set.
+            let index = cx.async_evaluation_counter;
+            cx.async_evaluation_counter = index.checked_add(1).unwrap();
+            self.async_evaluation_index = Some(index);
+        } else {
+            self.async_evaluation_index = None;
+        }
     }
 
     #[inline]
@@ -234,8 +249,13 @@ impl SourceTextModule {
     }
 
     #[inline]
+    pub fn cycle_root_ptr(&self) -> Option<HeapPtr<SourceTextModule>> {
+        self.cycle_root
+    }
+
+    #[inline]
     pub fn cycle_root(&self) -> Option<Handle<SourceTextModule>> {
-        self.cycle_root.map(|root| root.to_handle())
+        self.cycle_root_ptr().map(|root| root.to_handle())
     }
 
     #[inline]
@@ -276,6 +296,22 @@ impl SourceTextModule {
     #[inline]
     pub fn inc_pending_async_dependencies(&mut self) {
         self.pending_async_dependencies += 1;
+    }
+
+    #[inline]
+    pub fn dec_pending_async_dependencies(&mut self) {
+        self.pending_async_dependencies -= 1;
+    }
+
+    #[inline]
+    pub fn async_parent_modules_ptr(&self) -> Option<HeapPtr<AsyncParentModulesVec>> {
+        self.async_parent_modules
+    }
+
+    #[inline]
+    pub fn async_parent_modules(&self) -> Option<Handle<AsyncParentModulesVec>> {
+        self.async_parent_modules_ptr()
+            .map(|modules| modules.to_handle())
     }
 
     #[inline]
@@ -637,6 +673,14 @@ impl HeapObject for HeapPtr<SourceTextModule> {
         visitor.visit_pointer_opt(&mut self.exports);
         visitor.visit_pointer(&mut self.requested_module_specifiers);
         visitor.visit_pointer(&mut self.loaded_modules);
+        visitor.visit_pointer_opt(&mut self.cycle_root);
+        visitor.visit_pointer_opt(&mut self.top_level_capability);
+
+        if let Some(error) = self.evaluation_error.as_mut() {
+            visitor.visit_value(error);
+        }
+
+        visitor.visit_pointer_opt(&mut self.async_parent_modules);
 
         for entry in self.entries.as_mut_slice() {
             match entry {

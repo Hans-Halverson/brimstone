@@ -250,13 +250,15 @@ impl VM {
         let receiver = program_closure.global_object().into();
 
         self.execute(program_closure, receiver, &[])
+            .into_rust_result()
     }
 
     /// Execute a module. Must only be called during the evaluation phase, after loading and linking.
     pub fn execute_module(
         &mut self,
         module: Handle<SourceTextModule>,
-    ) -> Result<Handle<Value>, Handle<Value>> {
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
         let program_function = module.program_function();
         let module_scope = module.module_scope();
         let realm = program_function.realm();
@@ -264,7 +266,7 @@ impl VM {
         let module_closure =
             Closure::new_in_realm(self.cx(), program_function, module_scope, realm);
 
-        self.execute(module_closure, self.cx.undefined(), &[])
+        self.execute(module_closure, self.cx.undefined(), arguments)
     }
 
     /// Execute a closure with the provided arguments.
@@ -273,9 +275,8 @@ impl VM {
         closure: Handle<Closure>,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
-    ) -> Result<Handle<Value>, Handle<Value>> {
+    ) -> EvalResult<Handle<Value>> {
         self.call_from_rust(closure.cast(), receiver, arguments)
-            .into_rust_result()
     }
 
     /// Resume a suspended generator, executing it until it suspends or completes.

@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     abstract_operations::set,
-    error::{syntax_error, type_error},
+    error::{syntax_error, syntax_parse_error, type_error},
     function::get_argument,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject, global_object::set_default_global_bindings,
@@ -155,20 +155,20 @@ impl Test262Object {
         let source = match Source::new_for_eval(file_path, script_text.as_string().to_wtf8_string())
         {
             Ok(source) => Rc::new(source),
-            Err(error) => return syntax_error(cx, &error.to_string()),
+            Err(error) => return syntax_parse_error(cx, &error),
         };
 
         let parse_result = parse_script(&source);
         let mut parse_result = match parse_result {
             Ok(parse_result) => parse_result,
-            Err(error) => return syntax_error(cx, &error.to_string()),
+            Err(error) => return syntax_parse_error(cx, &error),
         };
 
         let analyze_result = analyze(&mut parse_result);
         if let Err(errors) = analyze_result {
             // Choose an arbitrary syntax error to return
             let error = &errors.errors[0];
-            return syntax_error(cx, &error.to_string());
+            return syntax_parse_error(cx, error);
         }
 
         let realm = cx.current_realm();

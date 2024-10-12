@@ -15,7 +15,7 @@ use crate::{
         runtime::{
             bytecode::{function::Closure, generator::BytecodeProgramGenerator},
             completion::EvalResult,
-            error::syntax_error,
+            error::{syntax_error, syntax_parse_error},
             intrinsics::{
                 async_generator_prototype::AsyncGeneratorPrototype,
                 generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
@@ -111,32 +111,32 @@ pub fn create_dynamic_function(
     // parse correctly, full analysis will be performed on entire function text.
     let params_source = match Source::new_for_eval(file_path.clone(), params_string) {
         Ok(source) => Rc::new(source),
-        Err(err) => return syntax_error(cx, &err.to_string()),
+        Err(err) => return syntax_parse_error(cx, &err),
     };
     if let Err(err) =
         parse_function_params_for_function_constructor(&params_source, is_async, is_generator)
     {
-        return syntax_error(cx, &format!("could not parse function parameters: {}", err));
+        return syntax_parse_error(cx, &err);
     }
 
     let body_source = match Source::new_for_eval(file_path.clone(), body_string) {
         Ok(source) => Rc::new(source),
-        Err(err) => return syntax_error(cx, &err.to_string()),
+        Err(err) => return syntax_parse_error(cx, &err),
     };
     if let Err(err) =
         parse_function_body_for_function_constructor(&body_source, is_async, is_generator)
     {
-        return syntax_error(cx, &format!("could not parse function body: {}", err));
+        return syntax_parse_error(cx, &err);
     }
 
     // Parse and analyze entire function
     let full_source = match Source::new_for_eval(file_path, source_string) {
         Ok(source) => Rc::new(source),
-        Err(err) => return syntax_error(cx, &err.to_string()),
+        Err(err) => return syntax_parse_error(cx, &err),
     };
     let mut parse_result = match parse_function_for_function_constructor(&full_source) {
         Ok(parse_result) => parse_result,
-        Err(err) => return syntax_error(cx, &format!("could not parse function: {}", err)),
+        Err(err) => return syntax_parse_error(cx, &err),
     };
 
     if let Err(errs) =

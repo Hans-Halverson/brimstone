@@ -13,7 +13,7 @@ use crate::{
             bytecode::{
                 function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
             },
-            error::{syntax_error, type_error},
+            error::{syntax_error, syntax_parse_error, type_error},
             global_names::{
                 can_declare_global_function, can_declare_global_var,
                 create_global_function_binding, create_global_var_binding,
@@ -50,13 +50,13 @@ pub fn perform_eval(
     // Parse source code
     let source = match Source::new_for_eval(file_path, code.to_wtf8_string()) {
         Ok(source) => Rc::new(source),
-        Err(error) => return syntax_error(cx, &error.to_string()),
+        Err(error) => return syntax_parse_error(cx, &error),
     };
 
     let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
-        Err(error) => return syntax_error(cx, &error.to_string()),
+        Err(error) => return syntax_parse_error(cx, &error),
     };
 
     // Analyze source code
@@ -74,7 +74,7 @@ pub fn perform_eval(
 
     // Return the first syntax error
     if let Err(errors) = analyze_result {
-        return syntax_error(cx, &errors.errors[0].to_string());
+        return syntax_parse_error(cx, &errors.errors[0]);
     }
 
     // Sloppy direct evals must perform EvalDeclarationInstantiation as var scoped bindings will

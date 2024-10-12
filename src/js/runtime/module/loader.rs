@@ -10,7 +10,7 @@ use crate::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
             completion::EvalResult,
-            error::syntax_error,
+            error::{syntax_error, syntax_parse_error},
             intrinsics::intrinsics::Intrinsic,
             promise_object::{PromiseCapability, PromiseObject},
             string_value::FlatString,
@@ -183,12 +183,12 @@ pub fn host_load_imported_module(
     // Parse the file at the given path, returning AST
     let mut parse_result = match parse_file_at_path(new_module_path.as_path()) {
         Ok(parse_result) => parse_result,
-        Err(error) => return syntax_error(cx, &error.to_string()),
+        Err(error) => return syntax_parse_error(cx, &error),
     };
 
     // Analyze AST
     if let Err(parse_errors) = analyze(&mut parse_result) {
-        return syntax_error(cx, &parse_errors.errors[0].to_string());
+        return syntax_parse_error(cx, &parse_errors.errors[0]);
     }
 
     if cx.options.print_ast {

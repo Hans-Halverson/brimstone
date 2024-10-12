@@ -16,7 +16,7 @@ use crate::{
             abstract_operations::{define_property_or_throw, set},
             builtin_function::BuiltinFunction,
             completion::EvalResult,
-            error::syntax_error,
+            error::syntax_parse_error,
             function::get_argument,
             gc::{Handle, HeapObject, HeapVisitor},
             get,
@@ -279,7 +279,7 @@ fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<Reg
     fn parse_lexer_stream(cx: Context, lexer_stream: impl LexerStream) -> EvalResult<RegExpFlags> {
         match RegExpParser::parse_flags(lexer_stream) {
             Ok(flags) => flags.into(),
-            Err(error) => syntax_error(cx, &error.to_string()),
+            Err(error) => syntax_parse_error(cx, &error),
         }
     }
 
@@ -310,7 +310,7 @@ fn parse_pattern(
     ) -> EvalResult<RegExp> {
         match RegExpParser::parse_regexp(lexer_stream, flags) {
             Ok(regexp) => regexp.into(),
-            Err(error) => syntax_error(cx, &error.to_string()),
+            Err(error) => syntax_parse_error(cx, &error),
         }
     }
 

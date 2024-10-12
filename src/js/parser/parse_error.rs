@@ -445,20 +445,25 @@ impl LocalizedParseError {
     pub fn new_without_loc(error: ParseError) -> LocalizedParseError {
         LocalizedParseError { error, source_loc: None }
     }
+
+    /// Format as a string to display to the user without the "SyntaxError:" prefix
+    pub fn to_string_without_name(&self) -> String {
+        match &self.source_loc {
+            None => self.error.to_string(),
+            Some((loc, source)) => {
+                let offsets = source.line_offsets();
+                let (line, col) = find_line_col_for_pos(loc.start, offsets);
+                format!("{}:{}:{} {}", source.display_name(), line, col, self.error)
+            }
+        }
+    }
 }
 
 impl Error for LocalizedParseError {}
 
 impl fmt::Display for LocalizedParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.source_loc {
-            None => write!(f, "SyntaxError: {}", self.error),
-            Some((loc, source)) => {
-                let offsets = source.line_offsets();
-                let (line, col) = find_line_col_for_pos(loc.start, offsets);
-                write!(f, "SyntaxError: {}:{}:{} {}", source.display_name(), line, col, self.error)
-            }
-        }
+        write!(f, "SyntaxError: {}", self.to_string_without_name())
     }
 }
 

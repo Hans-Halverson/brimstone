@@ -1,4 +1,4 @@
-use crate::js::common::error::print_error_message_and_exit;
+use crate::js::{common::error::print_error_message_and_exit, parser::LocalizedParseError};
 
 use super::{
     completion::EvalResult,
@@ -62,4 +62,10 @@ pub fn err_cannot_set_property<T>(cx: Context, name: impl std::fmt::Display) -> 
 pub fn print_eval_error_and_exit(cx: Context, error: Handle<Value>) {
     let error_string = to_console_string(cx, error);
     print_error_message_and_exit(&error_string);
+}
+
+pub fn syntax_parse_error<T>(cx: Context, error: &LocalizedParseError) -> EvalResult<T> {
+    // Need error string without "SyntaxError:" prefix, since prefix will be added when printing
+    // the SyntaxError object.
+    syntax_error(cx, &error.to_string_without_name())
 }

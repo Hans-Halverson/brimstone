@@ -483,6 +483,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             &local_exports,
             &named_re_exports,
             &direct_re_exports,
+            program.has_top_level_await,
         );
 
         // Place the module in the first slot of its module scope
@@ -1163,7 +1164,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             /* is_constructor */ false,
             /* is_class_constructor */ false,
             /* is_base_constructor */ false,
-            /* is_async */ false,
+            /* async */ program.has_top_level_await,
         ))
     }
 
@@ -1836,21 +1837,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Finally emit the async body exception handler if it exists
         if let Some(body_handler_start) = async_body_handler_start {
             let body_handler_end = self.writer.current_offset();
-            let mut handler = ExceptionHandlerBuilder::new(body_handler_start, body_handler_end);
-
-            handler.handler = self.writer.current_offset();
-
-            // Reject the current promise with the current error
-            let error = self.register_allocator.allocate()?;
-            handler.error_register = Some(error);
-            self.register_allocator.release(error);
-
-            let promise = promise_reg.unwrap();
-            self.writer.reject_promise_instruction(promise, error);
-            self.exception_handler_builder.add(handler);
+            self.gen_async_body_exception_handler(body_handler_start, body_handler_end)?;
 
             // Then return the rejected promise
-            self.writer.ret_instruction(promise);
+            self.writer.ret_instruction(promise_reg.unwrap());
         }
 
         if let Some(generator_reg) = generator_reg {
@@ -2013,6 +2003,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_program_body(&mut self, program: &ast::Program) -> EmitResult<()> {
         let scope = program.scope.as_ref();
 
+        // Modules with top level await create an async function. Promise is passed as the first
+        // argument to the async module function, and will be stored in a register whose index is
+        // marked as the promise index.
+        let mut promise_reg = None;
+        if program.has_top_level_await {
+            let register = self.register_allocator.allocate()?;
+            self.promise_index = Some(register.local_index() as u32);
+            promise_reg = Some(register);
+
+            self.write_mov_instruction(register, Register::argument(0));
+        }
+
         // Start the program's global scope
         self.gen_start_global_scope(scope)?;
 
@@ -2030,6 +2032,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             &program.toplevels
         };
 
+        // Async module functions must wrap execution of toplevels in an exception handler
+        let async_body_handler_start = if promise_reg.is_some() {
+            Some(self.writer.current_offset())
+        } else {
+            None
+        };
+
         // Program function consists of toplevel statements
         for toplevel in toplevels {
             self.gen_toplevel(program, toplevel)?;
@@ -2037,8 +2046,37 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Scope end not needed since the function returns
 
-        // Implicitly return undefined at end of program function
+        // Return undefined at end of program function
         self.gen_return(/* return_arg */ None, /* derived_constructor_scope */ None)?;
+
+        // Write the exception handler if this is an async module function
+        if let Some(body_handler_start) = async_body_handler_start {
+            let body_handler_end = self.writer.current_offset();
+            self.gen_async_body_exception_handler(body_handler_start, body_handler_end)?;
+            self.register_allocator.release(promise_reg.unwrap());
+
+            // Then return undefined
+            let return_arg = self.register_allocator.allocate()?;
+            self.writer.load_undefined_instruction(return_arg);
+            self.writer.ret_instruction(return_arg);
+            self.register_allocator.release(return_arg);
+        }
+
+        Ok(())
+    }
+
+    fn gen_async_body_exception_handler(&mut self, start: usize, end: usize) -> EmitResult<()> {
+        let mut handler = ExceptionHandlerBuilder::new(start, end);
+        handler.handler = self.writer.current_offset();
+
+        // Reject the current promise with the current error
+        let error = self.register_allocator.allocate()?;
+        handler.error_register = Some(error);
+        self.register_allocator.release(error);
+
+        let promise = Register::local(self.promise_index.unwrap() as usize);
+        self.writer.reject_promise_instruction(promise, error);
+        self.exception_handler_builder.add(handler);
 
         Ok(())
     }

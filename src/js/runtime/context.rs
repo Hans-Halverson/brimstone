@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    num::NonZeroUsize,
     ops::{Deref, DerefMut},
     ptr::NonNull,
     rc::Rc,
@@ -91,6 +92,9 @@ pub struct ContextCell {
 
     /// Set once module resolution has been completed.
     pub has_finished_module_resolution: bool,
+
+    /// Counter for the [[AsyncEvaluation]] slot of SourceTextModule
+    pub async_evaluation_counter: NonZeroUsize,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -120,6 +124,7 @@ impl Context {
             finalizer_callbacks: vec![],
             options,
             has_finished_module_resolution: false,
+            async_evaluation_counter: NonZeroUsize::MIN,
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };

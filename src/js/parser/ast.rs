@@ -89,11 +89,13 @@ pub struct Program {
     pub toplevels: Vec<Toplevel>,
     pub kind: ProgramKind,
     pub source: Rc<Source>,
-    // Whether the function is in strict mode, which could be inherited from surrounding context
-    // (e.g. in a direct eval or module)
+    /// Whether the function is in strict mode, which could be inherited from surrounding context
+    /// (e.g. in a direct eval or module)
     pub is_strict_mode: bool,
-    // Whether the program has a "use strict" directive
+    /// Whether the program has a "use strict" directive
     pub has_use_strict_directive: bool,
+    /// Whether this is a module with top level await. Set during analysis.
+    pub has_top_level_await: bool,
 
     pub scope: AstPtr<AstScopeNode>,
 }
@@ -115,6 +117,7 @@ impl Program {
             source,
             is_strict_mode,
             has_use_strict_directive,
+            has_top_level_await: false,
             scope,
         }
     }

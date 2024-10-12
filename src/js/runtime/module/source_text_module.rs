@@ -375,7 +375,7 @@ impl SourceTextModule {
 
     pub fn source_file_path(&self) -> Handle<FlatString> {
         let source_file = self.program_function_ptr().source_file_ptr().unwrap();
-        source_file.name()
+        source_file.path()
     }
 }
 

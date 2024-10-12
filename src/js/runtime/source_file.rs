@@ -18,8 +18,10 @@ use super::{
 #[repr(C)]
 pub struct SourceFile {
     descriptor: HeapPtr<ObjectDescriptor>,
-    /// The name of the source file
-    name: HeapPtr<FlatString>,
+    /// The path to the source file
+    path: HeapPtr<FlatString>,
+    /// The display name of the source file, if it is different from the path
+    display_name: Option<HeapPtr<FlatString>>,
     /// Lazily generated array of line offsets for the source file
     line_offsets: Option<HeapPtr<LineOffsetArray>>,
     /// Inlined source file contents as a WTF8 string
@@ -31,14 +33,20 @@ type LineOffsetArray = BsArray<u32>;
 impl SourceFile {
     #[inline]
     pub fn new(mut cx: Context, source: &Source) -> Handle<SourceFile> {
-        let name = cx.alloc_string(&source.file_path);
+        let path = cx.alloc_string(&source.file_path());
+        let display_name = if source.has_display_name() {
+            Some(cx.alloc_string(&source.display_name()))
+        } else {
+            None
+        };
 
         let size = Self::calculate_size_in_bytes(source.contents.len());
         let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size);
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
-        set_uninit!(scope.name, name.get_());
+        set_uninit!(scope.path, path.get_());
+        set_uninit!(scope.display_name, display_name.map(|n| n.get_()));
 
         scope.contents.init_from_slice(source.contents.as_bytes());
 
@@ -53,8 +61,13 @@ impl SourceFile {
     }
 
     #[inline]
-    pub fn name(&self) -> Handle<FlatString> {
-        self.name.to_handle()
+    pub fn path(&self) -> Handle<FlatString> {
+        self.path.to_handle()
+    }
+
+    #[inline]
+    pub fn display_name(&self) -> Handle<FlatString> {
+        self.display_name.as_ref().unwrap_or(&self.path).to_handle()
     }
 
     #[inline]
@@ -88,6 +101,7 @@ impl HeapObject for HeapPtr<SourceFile> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer(&mut self.name);
+        visitor.visit_pointer(&mut self.path);
+        visitor.visit_pointer_opt(&mut self.display_name);
     }
 }

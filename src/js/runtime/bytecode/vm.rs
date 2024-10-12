@@ -53,6 +53,7 @@ use crate::{
         regexp::compiled_regexp::CompiledRegExpObject,
         scope::Scope,
         scope_names::ScopeNames,
+        source_file::SourceFile,
         to_string,
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
@@ -1254,6 +1255,19 @@ impl VM {
     #[inline]
     pub fn receiver(&self) -> Value {
         self.stack_frame().receiver()
+    }
+
+    /// Walk the stack, returning the first source file that is found.
+    pub fn current_source_file(&self) -> HeapPtr<SourceFile> {
+        let mut stack_frame = self.stack_frame();
+
+        loop {
+            if let Some(source_file) = stack_frame.closure().function_ptr().source_file_ptr() {
+                return source_file;
+            }
+
+            stack_frame = stack_frame.previous_frame().unwrap();
+        }
     }
 
     #[inline]
@@ -4282,7 +4296,7 @@ impl VM {
             .function_ptr()
             .source_file_ptr()
             .unwrap()
-            .name();
+            .path();
 
         // May allocate
         let namespace_promise = maybe!(dynamic_import(self.cx(), source_file_path, specifier));

@@ -456,7 +456,7 @@ impl fmt::Display for LocalizedParseError {
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
                 let (line, col) = find_line_col_for_pos(loc.start, offsets);
-                write!(f, "SyntaxError: {}:{}:{} {}", source.file_path, line, col, self.error)
+                write!(f, "SyntaxError: {}:{}:{} {}", source.display_name(), line, col, self.error)
             }
         }
     }
@@ -519,8 +519,8 @@ pub fn format_localized_parse_errors(errors: &[LocalizedParseError]) -> String {
 
     // Sort errors with locs
     errors_with_loc.sort_by(|a, b| {
-        a.1.file_path
-            .cmp(&b.1.file_path)
+        a.1.file_path()
+            .cmp(&b.1.file_path())
             .then_with(|| a.2.cmp(&b.2))
             .then_with(|| a.3.cmp(&b.3))
     });

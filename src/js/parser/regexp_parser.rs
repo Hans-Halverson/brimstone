@@ -860,12 +860,17 @@ impl<T: LexerStream> RegExpParser<T> {
                         _ => self.error(start_pos, ParseError::MalformedEscapeSeqence),
                     })
                 } else {
-                    // Otherwise all non id_continue characters can be escaped
+                    let save_state = self.save();
+
+                    // In non-unicode mode all non id_continue characters can be escaped
                     let code_point = self.parse_unicode_codepoint()?;
                     if !is_id_continue_unicode(code_point) {
                         Ok(code_point)
                     } else {
-                        self.error(start_pos, ParseError::MalformedEscapeSeqence)
+                        // Otherwise back up and treat the slash as a literal character, not the
+                        // start of an escape sequence.
+                        self.restore(&save_state);
+                        Ok('\\' as u32)
                     }
                 }
             }

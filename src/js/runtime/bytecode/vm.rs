@@ -43,7 +43,7 @@ use crate::{
             rust_runtime::RustRuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
-        module::source_text_module::SourceTextModule,
+        module::{execute::dynamic_import, source_text_module::SourceTextModule},
         object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
@@ -79,7 +79,7 @@ use super::{
         DecInstruction, DefaultSuperCallInstruction, DefineNamedPropertyInstruction,
         DefinePrivatePropertyFlags, DefinePrivatePropertyInstruction, DefinePropertyFlags,
         DefinePropertyInstruction, DeleteBindingInstruction, DeletePropertyInstruction,
-        DivInstruction, DupScopeInstruction, ErrorConstInstruction,
+        DivInstruction, DupScopeInstruction, DynamicImportInstruction, ErrorConstInstruction,
         ErrorDeleteSuperPropertyInstruction, ErrorIteratorNoThrowMethodInstruction, EvalFlags,
         ExpInstruction, ForInNextInstruction, GeneratorStartInstruction,
         GetAsyncIteratorInstruction, GetIteratorInstruction, GetMethodInstruction,
@@ -1129,6 +1129,9 @@ impl VM {
                         }
                         OpCode::ImportMeta => {
                             dispatch!(ImportMetaInstruction, execute_import_meta)
+                        }
+                        OpCode::DynamicImport => {
+                            dispatch_or_throw!(DynamicImportInstruction, execute_dynamic_import)
                         }
                     }
                 };
@@ -3783,6 +3786,17 @@ impl VM {
         scope
     }
 
+    /// Return the top scope in the scope chain, which may be a script or module scope.
+    #[inline]
+    fn top_scope(&self) -> HeapPtr<Scope> {
+        let mut scope = self.scope();
+        while let Some(parent_scope) = scope.parent() {
+            scope = parent_scope;
+        }
+
+        scope
+    }
+
     #[inline]
     fn load_from_scope_at_depth(&self, scope_index: usize, parent_depth: usize) -> Value {
         // Find the scope at the given parent depth
@@ -4245,16 +4259,37 @@ impl VM {
         let dest = instr.dest();
 
         // Find the module scope, which is the top scope in the scope chain
-        let mut scope = self.scope();
-        while let Some(parent_scope) = scope.parent() {
-            scope = parent_scope;
-        }
+        let module_scope = self.top_scope();
 
         // May allocate
-        let mut module = scope.module_scope_module().to_handle();
+        let mut module = module_scope.module_scope_module().to_handle();
         let object = module.get_import_meta_object(self.cx());
 
         self.write_register(dest, object.into());
+    }
+
+    #[inline]
+    fn execute_dynamic_import<W: Width>(
+        &mut self,
+        instr: &DynamicImportInstruction<W>,
+    ) -> EvalResult<()> {
+        let dest = instr.dest();
+        let specifier = self.read_register_to_handle(instr.specifier());
+
+        // Find the source path of the currently executing function
+        let source_file_path = self
+            .closure()
+            .function_ptr()
+            .source_file_ptr()
+            .unwrap()
+            .name();
+
+        // May allocate
+        let namespace_promise = maybe!(dynamic_import(self.cx(), source_file_path, specifier));
+
+        self.write_register(dest, namespace_promise.get_().into());
+
+        ().into()
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

@@ -2204,7 +2204,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
                 ast::MetaPropertyKind::ImportMeta => self.gen_import_meta_expression(dest),
             },
-            ast::Expression::Import(_) => unimplemented!("bytecode for import expressions"),
+            ast::Expression::Import(expr) => self.gen_dynamic_import_expression(expr, dest),
         }
     }
 
@@ -5570,6 +5570,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_import_meta_expression(&mut self, dest: ExprDest) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
         self.writer.import_meta_instruction(dest);
+        Ok(dest)
+    }
+
+    fn gen_dynamic_import_expression(
+        &mut self,
+        expr: &ast::ImportExpression,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let dest = self.allocate_destination(dest)?;
+
+        let specifier = self.gen_expression(&expr.source)?;
+        self.writer.dynamic_import_instruction(dest, specifier);
+
+        self.register_allocator.release(specifier);
+
         Ok(dest)
     }
 

@@ -1210,6 +1210,12 @@ define_instructions!(
     ImportMeta(ImportMetaInstruction, import_meta_instruction) {
         [0] dest: Register,
     }
+
+    /// Import the module with the given specifier, storing the result of the import into dest.
+    DynamicImport(DynamicImportInstruction, dynamic_import_instruction) {
+        [0] dest: Register,
+        [1] specifier: Register,
+    }
 );
 
 bitflags! {

@@ -18,7 +18,7 @@ Install the test262 repo at the pinned commit by running the following script:
 
 The test runner is run with `cargo run` in this directory. Run `cargo run -- --help` to see the full set of options for the test runner.
 
-Before running any tests, the test runner must first create an index of the test262 tests for fast consumption later on. This only needs to be run after you pull in a new version of the test272 repo.:
+Before running any tests, the test runner must first create an index of the test262 tests for fast consumption later on. This only needs to be run after you pull in a new version of the test262 repo.:
 
 ```
 cargo run -- --reindex

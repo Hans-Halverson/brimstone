@@ -3,10 +3,7 @@ use serde_json;
 
 use std::{collections::HashSet, fs, path::Path};
 
-use crate::{
-    index::{Test, TestMode},
-    utils::GenericError,
-};
+use crate::{index::Test, utils::GenericError};
 
 pub struct IgnoredIndex {
     /// Matcher for tests which should be ignored
@@ -20,8 +17,6 @@ struct Matcher {
     tests_regex: Regex,
     /// Features to match
     features: HashSet<String>,
-    /// Whether all module tests should match
-    module: bool,
 }
 
 impl IgnoredIndex {
@@ -53,11 +48,9 @@ impl IgnoredIndex {
         if ignore_unimplemented {
             // By default unimplemented tests are run but can be ignored with a flag
             builder.add_ignore_config(unimplemented);
-            builder.set_ignore_module(true);
         } else if report_test_262_progress {
             // Unimplemented features are treated as failures when reporting test262 progress
             builder.add_fail_config(unimplemented);
-            builder.set_fail_module(true);
         }
 
         // By default non-standard tests are ignored
@@ -99,10 +92,6 @@ impl Matcher {
             return true;
         }
 
-        if self.module && test.mode == TestMode::Module {
-            return true;
-        }
-
         for feature in &test.features {
             if self.features.contains(feature) {
                 return true;
@@ -116,21 +105,16 @@ impl Matcher {
 struct MatcherBuilder {
     test_strings: Vec<String>,
     features: HashSet<String>,
-    module: bool,
 }
 
 impl MatcherBuilder {
     fn new() -> Self {
-        Self {
-            test_strings: vec![],
-            features: HashSet::new(),
-            module: false,
-        }
+        Self { test_strings: vec![], features: HashSet::new() }
     }
 
     fn finish(self) -> Result<Matcher, GenericError> {
         let tests_regex = Self::build_regexp(&self.test_strings)?;
-        Ok(Matcher { tests_regex, features: self.features, module: self.module })
+        Ok(Matcher { tests_regex, features: self.features })
     }
 
     fn build_regexp(strings: &[String]) -> Result<Regex, GenericError> {
@@ -196,13 +180,5 @@ impl IgnoredIndexBuilder {
                     .insert(String::from(feature.as_str().unwrap()));
             }
         }
-    }
-
-    fn set_ignore_module(&mut self, ignore_module: bool) {
-        self.ignore.module = ignore_module;
-    }
-
-    fn set_fail_module(&mut self, fail_module: bool) {
-        self.fail.module = fail_module;
     }
 }

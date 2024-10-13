@@ -134,7 +134,7 @@ impl TypedArrayConstructor {
                 maybe!(set(cx, target_object, index_key, value, true));
             }
 
-            return target_object.into();
+            return Ok(target_object.as_value());
         }
 
         // Otherwise treat source like an array and add its values
@@ -167,7 +167,7 @@ impl TypedArrayConstructor {
             maybe!(set(cx, target_object, index_key, value, true));
         }
 
-        target_object.into()
+        Ok(target_object.as_value())
     }
 
     /// %TypedArray%.of (https://tc39.es/ecma262/#sec-%typedarray%.of)
@@ -197,7 +197,7 @@ impl TypedArrayConstructor {
             maybe!(set(cx, object, key, *value, true));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 }
 
@@ -264,9 +264,9 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Option<PropertyDescriptor>> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => {
-                        ordinary_get_own_property(cx, self.object(), key).into()
+                        Ok(ordinary_get_own_property(cx, self.as_object(), key))
                     }
-                    CanonicalIndexType::Invalid => None.into(),
+                    CanonicalIndexType::Invalid => Ok(None),
                     CanonicalIndexType::Valid(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index * element_size!() + self.byte_offset;
@@ -275,7 +275,7 @@ macro_rules! create_typed_array_constructor {
 
                         let desc = PropertyDescriptor::data(value, true, true, true);
 
-                        (Some(desc)).into()
+                        Ok(Some(desc))
                     }
                 }
             }
@@ -283,9 +283,11 @@ macro_rules! create_typed_array_constructor {
             /// [[HasProperty]] (https://tc39.es/ecma262/#sec-typedarray-hasproperty)
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    CanonicalIndexType::NotAnIndex => ordinary_has_property(cx, self.object(), key),
-                    CanonicalIndexType::Invalid => false.into(),
-                    CanonicalIndexType::Valid(_) => true.into(),
+                    CanonicalIndexType::NotAnIndex => {
+                        ordinary_has_property(cx, self.as_object(), key)
+                    }
+                    CanonicalIndexType::Invalid => Ok(false),
+                    CanonicalIndexType::Valid(_) => Ok(true),
                 }
             }
 
@@ -298,24 +300,24 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => {
-                        ordinary_define_own_property(cx, self.object(), key, desc)
+                        ordinary_define_own_property(cx, self.as_object(), key, desc)
                     }
-                    CanonicalIndexType::Invalid => false.into(),
+                    CanonicalIndexType::Invalid => Ok(false),
                     CanonicalIndexType::Valid(index) => {
                         if let Some(false) = desc.is_configurable {
-                            return false.into();
+                            return Ok(false);
                         } else if let Some(false) = desc.is_enumerable {
-                            return false.into();
+                            return Ok(false);
                         } else if desc.is_accessor_descriptor() {
-                            return false.into();
+                            return Ok(false);
                         } else if let Some(false) = desc.is_writable {
-                            return false.into();
+                            return Ok(false);
                         }
 
                         let value = if let Some(value) = desc.value {
                             value
                         } else {
-                            return true.into();
+                            return Ok(true);
                         };
 
                         // May allocate and invoke arbitrary user code
@@ -333,7 +335,7 @@ macro_rules! create_typed_array_constructor {
                             && self.array_length().is_some()
                         {
                             if array_buffer_ptr.is_detached() {
-                                return true.into();
+                                return Ok(true);
                             }
 
                             index
@@ -341,7 +343,7 @@ macro_rules! create_typed_array_constructor {
                             // Slow path - all bets are off and we must redo all bounds checks.
                             match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                                 CanonicalIndexType::Valid(index) => index,
-                                _ => return true.into(),
+                                _ => return Ok(true),
                             }
                         };
 
@@ -349,7 +351,7 @@ macro_rules! create_typed_array_constructor {
 
                         $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
-                        true.into()
+                        Ok(true)
                     }
                 }
             }
@@ -363,15 +365,14 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Handle<Value>> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => {
-                        ordinary_get(cx, self.object(), key, receiver)
+                        ordinary_get(cx, self.as_object(), key, receiver)
                     }
-                    CanonicalIndexType::Invalid => cx.undefined().into(),
+                    CanonicalIndexType::Invalid => Ok(cx.undefined()),
                     CanonicalIndexType::Valid(index) => {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index * element_size!() + self.byte_offset;
 
-                        self.read_element_value(cx, array_buffer_ptr, byte_index)
-                            .into()
+                        Ok(self.read_element_value(cx, array_buffer_ptr, byte_index))
                     }
                 }
             }
@@ -386,17 +387,17 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                     CanonicalIndexType::NotAnIndex => {
-                        ordinary_set(cx, self.object(), key, value, receiver)
+                        ordinary_set(cx, self.as_object(), key, value, receiver)
                     }
                     result @ (CanonicalIndexType::Invalid | CanonicalIndexType::Valid(_)) => {
                         // Check if this is not the same object as the specified receiver
                         if !receiver.is_object()
-                            || !receiver.as_object().get_().ptr_eq(&self.object().get_())
+                            || !receiver.as_object().get_().ptr_eq(&self.as_object().get_())
                         {
                             if matches!(result, CanonicalIndexType::Valid(_)) {
-                                return ordinary_set(cx, self.object(), key, value, receiver);
+                                return ordinary_set(cx, self.as_object(), key, value, receiver);
                             } else {
-                                return true.into();
+                                return Ok(true);
                             }
                         }
 
@@ -415,18 +416,18 @@ macro_rules! create_typed_array_constructor {
                             && self.array_length().is_some()
                         {
                             if array_buffer_ptr.is_detached() {
-                                return true.into();
+                                return Ok(true);
                             }
 
                             match result {
                                 CanonicalIndexType::Valid(index) => index,
-                                _ => return true.into(),
+                                _ => return Ok(true),
                             }
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
                             match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
                                 CanonicalIndexType::Valid(index) => index,
-                                _ => return true.into(),
+                                _ => return Ok(true),
                             }
                         };
 
@@ -434,7 +435,7 @@ macro_rules! create_typed_array_constructor {
 
                         $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
-                        true.into()
+                        Ok(true)
                     }
                 }
             }
@@ -442,9 +443,9 @@ macro_rules! create_typed_array_constructor {
             /// [[Delete]] (https://tc39.es/ecma262/#sec-typedarray-delete)
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
                 match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
-                    CanonicalIndexType::NotAnIndex => ordinary_delete(cx, self.object(), key),
-                    CanonicalIndexType::Invalid => true.into(),
-                    CanonicalIndexType::Valid(_) => false.into(),
+                    CanonicalIndexType::NotAnIndex => ordinary_delete(cx, self.as_object(), key),
+                    CanonicalIndexType::Invalid => Ok(true),
+                    CanonicalIndexType::Valid(_) => Ok(false),
                 }
             }
 
@@ -463,9 +464,9 @@ macro_rules! create_typed_array_constructor {
                     }
                 }
 
-                ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
+                ordinary_own_string_symbol_property_keys(self.as_object(), &mut keys);
 
-                keys.into()
+                Ok(keys)
             }
 
             fn as_typed_array(&self) -> DynTypedArray {
@@ -547,7 +548,7 @@ macro_rules! create_typed_array_constructor {
                     element_ptr.write(element_value)
                 }
 
-                ().into()
+                Ok(())
             }
 
             #[inline]
@@ -565,13 +566,13 @@ macro_rules! create_typed_array_constructor {
                 let typed_array_record =
                     make_typed_array_with_buffer_witness_record(self.as_typed_array());
                 if is_typed_array_out_of_bounds(&typed_array_record) {
-                    return ().into();
+                    return Ok(());
                 }
 
                 // Then check if index has become out of bounds
                 let length = typed_array_length(&typed_array_record);
                 if array_index >= length as u64 {
-                    return ().into();
+                    return Ok(());
                 }
 
                 let array_buffer_ptr = self.viewed_array_buffer_ptr();
@@ -579,7 +580,7 @@ macro_rules! create_typed_array_constructor {
 
                 $typed_array::write_element(array_buffer_ptr, byte_index, element_value);
 
-                ().into()
+                Ok(())
             }
         }
 
@@ -683,7 +684,7 @@ macro_rules! create_typed_array_constructor {
                 let proto =
                     maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
 
-                maybe!(Self::allocate_from_object_with_length(cx, proto, length)).into()
+                Ok(maybe!(Self::allocate_from_object_with_length(cx, proto, length)).as_value())
             }
 
             #[inline]
@@ -703,15 +704,16 @@ macro_rules! create_typed_array_constructor {
                     /* data */ None,
                 ));
 
-                $typed_array::new_with_proto(
+                let typed_array = $typed_array::new_with_proto(
                     cx,
                     proto,
                     array_buffer,
                     Some(byte_length),
                     0,
                     Some(length),
-                )
-                .into()
+                );
+
+                Ok(typed_array)
             }
 
             /// InitializeTypedArrayFromTypedArray (https://tc39.es/ecma262/#sec-initializetypedarrayfromtypedarray)
@@ -743,15 +745,16 @@ macro_rules! create_typed_array_constructor {
                         byte_length,
                     ));
 
-                    $typed_array::new_with_proto(
+                    let typed_array = $typed_array::new_with_proto(
                         cx,
                         proto,
                         data,
                         Some(byte_length),
                         0,
                         Some(source_array_length),
-                    )
-                    .into()
+                    );
+
+                    Ok(typed_array.as_value())
                 } else {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
@@ -792,15 +795,16 @@ macro_rules! create_typed_array_constructor {
                         target_byte_index += target_element_size;
                     }
 
-                    $typed_array::new_with_proto(
+                    let typed_array = $typed_array::new_with_proto(
                         cx,
                         proto,
                         data,
                         Some(byte_length),
                         0,
                         Some(source_array_length),
-                    )
-                    .into()
+                    );
+
+                    Ok(typed_array.as_value())
                 }
             }
 
@@ -879,15 +883,16 @@ macro_rules! create_typed_array_constructor {
                     result_new_array_length = Some(new_length);
                 };
 
-                $typed_array::new_with_proto(
+                let typed_array = $typed_array::new_with_proto(
                     cx,
                     proto,
                     array_buffer,
                     result_new_byte_length,
                     offset,
                     result_new_array_length,
-                )
-                .into()
+                );
+
+                Ok(typed_array.as_value())
             }
 
             /// InitializeTypedArrayFromList (https://tc39.es/ecma262/#sec-initializetypedarrayfromlist)
@@ -918,7 +923,7 @@ macro_rules! create_typed_array_constructor {
                     maybe!(set(cx, typed_array_object, key, value, true));
                 }
 
-                typed_array_object.into()
+                Ok(typed_array_object.as_value())
             }
 
             /// InitializeTypedArrayFromArrayLike (https://tc39.es/ecma262/#sec-initializetypedarrayfromarraylike)
@@ -942,7 +947,7 @@ macro_rules! create_typed_array_constructor {
                     maybe!(set(cx, typed_array_object, key, value, true));
                 }
 
-                typed_array_object.into()
+                Ok(typed_array_object.as_value())
             }
         }
 

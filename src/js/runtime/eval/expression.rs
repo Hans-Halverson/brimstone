@@ -38,10 +38,9 @@ pub fn generate_template_object(
     lit: &ast::TemplateLiteral,
 ) -> Handle<ObjectValue> {
     let num_strings = lit.quasis.len();
-    let template_object: Handle<ObjectValue> =
-        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).into();
-    let raw_object: Handle<ObjectValue> =
-        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).into();
+    let template_object =
+        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
+    let raw_object = must!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
 
     // Property key is shared between iterations
     let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -84,7 +83,7 @@ pub fn eval_delete_property(
         return type_error(cx, "cannot delete property");
     }
 
-    delete_status.into()
+    Ok(delete_status)
 }
 
 pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue> {
@@ -121,9 +120,9 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
 
     if value.is_bigint() {
         let neg_bignum = -value.as_bigint().bigint();
-        BigIntValue::new(cx, neg_bignum).into()
+        Ok(BigIntValue::new(cx, neg_bignum).into())
     } else {
-        Value::number(-value.as_number()).to_handle(cx).into()
+        Ok(Value::number(-value.as_number()).to_handle(cx))
     }
 }
 
@@ -132,10 +131,10 @@ pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
 
     if value.is_bigint() {
         let not_bignum = !value.as_bigint().bigint();
-        BigIntValue::new(cx, not_bignum).into()
+        Ok(BigIntValue::new(cx, not_bignum).into())
     } else {
         let value = must!(to_int32(cx, value));
-        Value::smi(!value).to_handle(cx).into()
+        Ok(Value::smi(!value).to_handle(cx))
     }
 }
 
@@ -150,7 +149,7 @@ pub fn eval_add(
         let left_string = maybe!(to_string(cx, left_prim));
         let right_string = maybe!(to_string(cx, right_prim));
 
-        return StringValue::concat(cx, left_string, right_string).into();
+        return Ok(StringValue::concat(cx, left_string, right_string).as_value());
     }
 
     let left_num = maybe!(to_numeric(cx, left_prim));
@@ -163,11 +162,9 @@ pub fn eval_add(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
-        Value::number(left_num.as_number() + right_num.as_number())
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(left_num.as_number() + right_num.as_number()).to_handle(cx))
     }
 }
 
@@ -186,11 +183,9 @@ pub fn eval_subtract(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
-        Value::number(left_num.as_number() - right_num.as_number())
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(left_num.as_number() - right_num.as_number()).to_handle(cx))
     }
 }
 
@@ -209,11 +204,9 @@ pub fn eval_multiply(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
-        Value::number(left_num.as_number() * right_num.as_number())
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(left_num.as_number() * right_num.as_number()).to_handle(cx))
     }
 }
 
@@ -237,11 +230,9 @@ pub fn eval_divide(
         }
 
         let result = left_num.as_bigint().bigint() / bigint_right;
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
-        Value::number(left_num.as_number() / right_num.as_number())
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(left_num.as_number() / right_num.as_number()).to_handle(cx))
     }
 }
 
@@ -266,15 +257,13 @@ pub fn eval_remainder(
 
         let bigint_left = left_num.as_bigint().bigint();
         if bigint_left.eq(&BigInt::default()) {
-            return BigIntValue::new(cx, BigInt::default()).into();
+            return Ok(BigIntValue::new(cx, BigInt::default()).into());
         }
 
         let result = bigint_left % bigint_right;
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
-        Value::number(left_num.as_number() % right_num.as_number())
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(left_num.as_number() % right_num.as_number()).to_handle(cx))
     }
 }
 
@@ -298,20 +287,19 @@ pub fn eval_exponentiation(
         if exponent_bignum.lt(&BigInt::default()) {
             return range_error(cx, "BigInt negative exponent");
         } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
-            return BigIntValue::new(cx, 1.into()).into();
+            return Ok(BigIntValue::new(cx, 1.into()).into());
         }
 
         if let Ok(exponent_u32) = exponent_bignum.try_into() {
             let result = base_bignum.pow(exponent_u32);
-            BigIntValue::new(cx, result).into()
+            Ok(BigIntValue::new(cx, result).into())
         } else {
             // This guarantees a bigint that is too large
             range_error(cx, "BigInt is too large")
         }
     } else {
-        Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
+            .to_handle(cx))
     }
 }
 
@@ -325,9 +313,9 @@ pub fn eval_less_than(
 
     let result = maybe!(is_less_than(cx, left, right));
     if result.is_undefined() {
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     } else {
-        cx.bool(result.as_bool()).into()
+        Ok(cx.bool(result.as_bool()))
     }
 }
 
@@ -342,9 +330,9 @@ pub fn eval_greater_than(
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
     if result.is_undefined() {
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     } else {
-        cx.bool(result.as_bool()).into()
+        Ok(cx.bool(result.as_bool()))
     }
 }
 
@@ -358,7 +346,7 @@ pub fn eval_less_than_or_equal(
 
     // Intentionally flipped
     let result = maybe!(is_less_than(cx, right, left));
-    cx.bool(result.is_false()).into()
+    Ok(cx.bool(result.is_false()))
 }
 
 pub fn eval_greater_than_or_equal(
@@ -370,7 +358,7 @@ pub fn eval_greater_than_or_equal(
     let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
 
     let result = maybe!(is_less_than(cx, left, right));
-    cx.bool(result.is_false()).into()
+    Ok(cx.bool(result.is_false()))
 }
 
 pub fn eval_bitwise_and(
@@ -388,12 +376,12 @@ pub fn eval_bitwise_and(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Value::smi(left_smi & right_smi).to_handle(cx).into()
+        Ok(Value::smi(left_smi & right_smi).to_handle(cx))
     }
 }
 
@@ -412,12 +400,12 @@ pub fn eval_bitwise_or(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Value::smi(left_smi | right_smi).to_handle(cx).into()
+        Ok(Value::smi(left_smi | right_smi).to_handle(cx))
     }
 }
 
@@ -436,12 +424,12 @@ pub fn eval_bitwise_xor(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Value::smi(left_smi ^ right_smi).to_handle(cx).into()
+        Ok(Value::smi(left_smi ^ right_smi).to_handle(cx))
     }
 }
 
@@ -465,7 +453,7 @@ pub fn eval_shift_left(
             &right_num.as_bigint().bigint()
         ));
 
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -473,7 +461,7 @@ pub fn eval_shift_left(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Value::smi(left_smi << shift).to_handle(cx).into()
+        Ok(Value::smi(left_smi << shift).to_handle(cx))
     }
 }
 
@@ -497,7 +485,7 @@ pub fn eval_shift_right_arithmetic(
             &-right_num.as_bigint().bigint()
         ));
 
-        BigIntValue::new(cx, result).into()
+        Ok(BigIntValue::new(cx, result).into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -505,7 +493,7 @@ pub fn eval_shift_right_arithmetic(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Value::smi(left_smi >> shift).to_handle(cx).into()
+        Ok(Value::smi(left_smi >> shift).to_handle(cx))
     }
 }
 
@@ -518,7 +506,7 @@ fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalRes
             Ok(exponent) => exponent,
             // This guarantees a bigint that is zero, since no bigints that can be represented
             // that would be large enough for the result to be non-zero.
-            Err(_) => return BigInt::default().into(),
+            Err(_) => return Ok(BigInt::default()),
         };
 
         let pow_of_2 = bigint_2.pow(exponent);
@@ -527,9 +515,9 @@ fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalRes
         // force rounding down for negative numbers.
         if left.sign() == Sign::Minus {
             let result: BigInt = (left - &pow_of_2 + 1) / &pow_of_2;
-            result.into()
+            Ok(result)
         } else {
-            (left / pow_of_2).into()
+            Ok(left / pow_of_2)
         }
     } else {
         let exponent: u32 = match right.try_into() {
@@ -540,7 +528,7 @@ fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalRes
             }
         };
 
-        (left * bigint_2.pow(exponent)).into()
+        Ok(left * bigint_2.pow(exponent))
     }
 }
 
@@ -563,7 +551,7 @@ pub fn eval_shift_right_logical(
     // Shift modulus 32
     let shift = right_u32 & 0x1F;
 
-    Value::from(left_smi >> shift).to_handle(cx).into()
+    Ok(Value::from(left_smi >> shift).to_handle(cx))
 }
 
 /// InstanceofOperator (https://tc39.es/ecma262/#sec-instanceofoperator)
@@ -580,7 +568,7 @@ pub fn eval_instanceof_expression(
     let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
     if let Some(instance_of_handler) = instance_of_handler {
         let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
-        return to_boolean(result.get()).into();
+        return Ok(to_boolean(result.get()));
     }
 
     let target_object = target.as_object();
@@ -589,7 +577,7 @@ pub fn eval_instanceof_expression(
     }
 
     let has_instance = maybe!(ordinary_has_instance(cx, target, value));
-    has_instance.into()
+    Ok(has_instance)
 }
 
 pub fn eval_in_expression(

@@ -154,7 +154,7 @@ pub fn set_default_global_bindings(
             Test262Object::install(cx, realm, test_262_object);
         }
 
-        ().into()
+        Ok(())
     })
 }
 
@@ -191,7 +191,7 @@ pub fn is_finite(
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = maybe!(to_number(cx, argument));
-    cx.bool(!num.is_nan() && !num.is_infinity()).into()
+    Ok(cx.bool(!num.is_nan() && !num.is_infinity()))
 }
 
 /// isNaN (https://tc39.es/ecma262/#sec-isnan-number)
@@ -203,7 +203,7 @@ pub fn is_nan(
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = maybe!(to_number(cx, argument));
-    cx.bool(num.is_nan()).into()
+    Ok(cx.bool(num.is_nan()))
 }
 
 /// parseFloat (https://tc39.es/ecma262/#sec-parsefloat-string)
@@ -217,8 +217,8 @@ pub fn parse_float(
     let input_string = maybe!(to_string(cx, input_string_arg));
 
     match parse_float_with_string_lexer(input_string) {
-        Some(float) => Value::number(float).to_handle(cx).into(),
-        None => Value::nan().to_handle(cx).into(),
+        Some(float) => Ok(Value::number(float).to_handle(cx)),
+        None => Ok(Value::nan().to_handle(cx)),
     }
 }
 
@@ -243,8 +243,8 @@ pub fn parse_int(
     let radix = maybe!(to_int32(cx, radix_arg));
 
     match parse_int_impl(input_string, radix) {
-        Some(number) => Value::number(number).to_handle(cx).into(),
-        None => Value::nan().to_handle(cx).into(),
+        Some(number) => Ok(Value::number(number).to_handle(cx)),
+        None => Ok(Value::nan().to_handle(cx)),
     }
 }
 
@@ -467,10 +467,9 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
         }
     }
 
-    FlatString::from_wtf8(cx, decoded_string.as_bytes())
-        .as_string()
+    Ok(FlatString::from_wtf8(cx, decoded_string.as_bytes())
         .to_handle()
-        .into()
+        .as_value())
 }
 
 /// encodeURI (https://tc39.es/ecma262/#sec-encodeuri-uri)
@@ -550,8 +549,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
     }
 
     // Safe since only ASCII characters were used
-    FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
-        .as_string()
+    Ok(FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
         .to_handle()
-        .into()
+        .as_value())
 }

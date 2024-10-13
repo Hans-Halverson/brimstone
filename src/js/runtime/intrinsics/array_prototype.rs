@@ -42,7 +42,7 @@ impl ArrayPrototype {
     /// Properties of the Array Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-array-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut array: Handle<ObjectValue> = ArrayObject::new(cx, object_proto).into();
+        let mut array = ArrayObject::new(cx, object_proto).as_object();
 
         // Create values function as it is referenced by multiple properties
         let values_function =
@@ -116,13 +116,13 @@ impl ArrayPrototype {
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
         } else {
             if -relative_index > length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
@@ -152,20 +152,20 @@ impl ArrayPrototype {
         let new_length_value = Value::from(n).to_handle(cx);
         maybe!(set(cx, array, cx.names.length(), new_length_value, true));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// IsConcatSpreadable (https://tc39.es/ecma262/#sec-isconcatspreadable)
     pub fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
-            return false.into();
+            return Ok(false);
         }
 
         let is_spreadable =
             maybe!(get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable()));
 
         if !is_spreadable.is_undefined() {
-            return to_boolean(is_spreadable.get()).into();
+            return Ok(to_boolean(is_spreadable.get()));
         }
 
         is_array(cx, object)
@@ -215,7 +215,7 @@ impl ArrayPrototype {
             *n += 1;
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Array.prototype.copyWithin (https://tc39.es/ecma262/#sec-array.prototype.copywithin)
@@ -273,7 +273,7 @@ impl ArrayPrototype {
             i64::min(from_end_index as i64 - from_index as i64, length as i64 - to_index as i64);
 
         if count <= 0 {
-            return object.into();
+            return Ok(object.as_value());
         }
 
         let mut count = count as u64;
@@ -321,7 +321,7 @@ impl ArrayPrototype {
             }
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.entries (https://tc39.es/ecma262/#sec-array.prototype.entries)
@@ -332,7 +332,7 @@ impl ArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).into()
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).as_value())
     }
 
     /// Array.prototype.every (https://tc39.es/ecma262/#sec-array.prototype.every)
@@ -367,12 +367,12 @@ impl ArrayPrototype {
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
                 if !to_boolean(test_result.get()) {
-                    return cx.bool(false).into();
+                    return Ok(cx.bool(false));
                 }
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// Array.prototype.fill (https://tc39.es/ecma262/#sec-array.prototype.fill)
@@ -424,7 +424,7 @@ impl ArrayPrototype {
             maybe!(set(cx, object, key, value, true));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.filter (https://tc39.es/ecma262/#sec-array.prototype.filter)
@@ -475,7 +475,7 @@ impl ArrayPrototype {
             }
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.find (https://tc39.es/ecma262/#sec-array.prototype.find)
@@ -500,8 +500,8 @@ impl ArrayPrototype {
             maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -527,8 +527,8 @@ impl ArrayPrototype {
             maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -554,8 +554,8 @@ impl ArrayPrototype {
             maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -581,8 +581,8 @@ impl ArrayPrototype {
             maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -617,7 +617,7 @@ impl ArrayPrototype {
             cx.undefined()
         ));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// FlattenIntoArray (https://tc39.es/ecma262/#sec-flattenintoarray)
@@ -687,7 +687,7 @@ impl ArrayPrototype {
             }
         }
 
-        target_index.into()
+        Ok(target_index)
     }
 
     /// Array.prototype.flatMap (https://tc39.es/ecma262/#sec-array.prototype.flatmap)
@@ -720,7 +720,7 @@ impl ArrayPrototype {
             this_arg
         ));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.forEach (https://tc39.es/ecma262/#sec-array.prototype.foreach)
@@ -757,7 +757,7 @@ impl ArrayPrototype {
             }
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Array.prototype.includes (https://tc39.es/ecma262/#sec-array.prototype.includes)
@@ -771,7 +771,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -779,7 +779,7 @@ impl ArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -798,11 +798,11 @@ impl ArrayPrototype {
             let element = maybe!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
-                return cx.bool(true).into();
+                return Ok(cx.bool(true));
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// Array.prototype.indexOf (https://tc39.es/ecma262/#sec-array.prototype.indexof)
@@ -816,7 +816,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -824,7 +824,7 @@ impl ArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -843,12 +843,12 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// Array.prototype.join (https://tc39.es/ecma262/#sec-array.prototype.join)
@@ -887,7 +887,7 @@ impl ArrayPrototype {
             }
         }
 
-        joined.into()
+        Ok(joined.as_value())
     }
 
     /// Array.prototype.keys (https://tc39.es/ecma262/#sec-array.prototype.keys)
@@ -898,7 +898,7 @@ impl ArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key).as_value())
     }
 
     /// Array.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-array.prototype.lastindexof)
@@ -912,7 +912,7 @@ impl ArrayPrototype {
         let length = maybe!(length_of_array_like(cx, object));
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -921,7 +921,7 @@ impl ArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
-                return Value::smi(-1).to_handle(cx).into();
+                return Ok(Value::smi(-1).to_handle(cx));
             }
 
             if n >= 0.0 {
@@ -930,7 +930,7 @@ impl ArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Value::smi(-1).to_handle(cx).into();
+                    return Ok(Value::smi(-1).to_handle(cx));
                 }
 
                 start_index as u64
@@ -947,12 +947,12 @@ impl ArrayPrototype {
             if maybe!(has_property(cx, object, key)) {
                 let element = maybe!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// Array.prototype.map (https://tc39.es/ecma262/#sec-array.prototype.map)
@@ -992,7 +992,7 @@ impl ArrayPrototype {
             }
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.pop (https://tc39.es/ecma262/#sec-array.prototype.pop)
@@ -1008,7 +1008,7 @@ impl ArrayPrototype {
         if length == 0 {
             let length_zero = Value::smi(0).to_handle(cx);
             maybe!(set(cx, object, cx.names.length(), length_zero, true));
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let new_length = length - 1;
@@ -1020,7 +1020,7 @@ impl ArrayPrototype {
         let new_length_value = Value::from(new_length).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
-        element.into()
+        Ok(element)
     }
 
     /// Array.prototype.push (https://tc39.es/ecma262/#sec-array.prototype.push)
@@ -1049,7 +1049,7 @@ impl ArrayPrototype {
         let new_length_value = Value::from(new_length).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
-        new_length_value.into()
+        Ok(new_length_value)
     }
 
     /// Array.prototype.reduce (https://tc39.es/ecma262/#sec-array.prototype.reduce)
@@ -1110,7 +1110,7 @@ impl ArrayPrototype {
             }
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// Array.prototype.reduceRight (https://tc39.es/ecma262/#sec-array.prototype.reduceright)
@@ -1170,7 +1170,7 @@ impl ArrayPrototype {
             }
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// Array.prototype.reverse (https://tc39.es/ecma262/#sec-array.prototype.reverse)
@@ -1228,7 +1228,7 @@ impl ArrayPrototype {
             upper -= 1;
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.shift (https://tc39.es/ecma262/#sec-array.prototype.shift)
@@ -1244,7 +1244,7 @@ impl ArrayPrototype {
         if length == 0 {
             let zero_value = Value::smi(0).to_handle(cx);
             maybe!(set(cx, object, cx.names.length(), zero_value, true));
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let first_key = PropertyKey::array_index(cx, 0).to_handle(cx);
@@ -1272,7 +1272,7 @@ impl ArrayPrototype {
         let new_length_value = Value::from(length - 1).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
-        first.into()
+        Ok(first)
     }
 
     /// Array.prototype.slice (https://tc39.es/ecma262/#sec-array.prototype.slice)
@@ -1340,7 +1340,7 @@ impl ArrayPrototype {
         let to_index_value = Value::from(to_index).to_handle(cx);
         maybe!(set(cx, array, cx.names.length(), to_index_value, true));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.some (https://tc39.es/ecma262/#sec-array.prototype.some)
@@ -1375,12 +1375,12 @@ impl ArrayPrototype {
 
                 let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
                 if to_boolean(test_result.get()) {
-                    return cx.bool(true).into();
+                    return Ok(cx.bool(true));
                 }
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// Array.prototype.sort (https://tc39.es/ecma262/#sec-array.prototype.sort)
@@ -1420,7 +1420,7 @@ impl ArrayPrototype {
             maybe!(delete_property_or_throw(cx, object, index_key));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.splice (https://tc39.es/ecma262/#sec-array.prototype.splice)
@@ -1522,7 +1522,7 @@ impl ArrayPrototype {
         let new_length_value = Value::from(new_length).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length_value, true));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toLocaleString (https://tc39.es/ecma262/#sec-array.prototype.tolocalestring)
@@ -1558,7 +1558,7 @@ impl ArrayPrototype {
             }
         }
 
-        result.into()
+        Ok(result.as_value())
     }
 
     /// Array.prototype.toReversed (https://tc39.es/ecma262/#sec-array.prototype.toreversed)
@@ -1585,7 +1585,7 @@ impl ArrayPrototype {
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toSorted (https://tc39.es/ecma262/#sec-array.prototype.tosorted)
@@ -1621,7 +1621,7 @@ impl ArrayPrototype {
             maybe!(create_data_property_or_throw(cx, sorted_array.into(), index_key, *value));
         }
 
-        sorted_array.into()
+        Ok(sorted_array.as_value())
     }
 
     /// Array.prototype.toSpliced (https://tc39.es/ecma262/#sec-array.prototype.tospliced)
@@ -1694,7 +1694,7 @@ impl ArrayPrototype {
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toString (https://tc39.es/ecma262/#sec-array.prototype.tostring)
@@ -1757,7 +1757,7 @@ impl ArrayPrototype {
         let new_length = Value::from(length + num_arguments).to_handle(cx);
         maybe!(set(cx, object, cx.names.length(), new_length, true));
 
-        new_length.into()
+        Ok(new_length)
     }
 
     /// Array.prototype.values (https://tc39.es/ecma262/#sec-array.prototype.values)
@@ -1768,7 +1768,7 @@ impl ArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value).as_value())
     }
 
     /// Array.prototype.with (https://tc39.es/ecma262/#sec-array.prototype.with)
@@ -1819,7 +1819,7 @@ impl ArrayPrototype {
             must!(create_data_property_or_throw(cx, array.into(), key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
@@ -1873,11 +1873,11 @@ pub fn find_via_predicate(
 
         let test_result = maybe!(call_object(cx, predicate, this_arg, &arguments));
         if to_boolean(test_result.get()) {
-            return Some((value, index_value)).into();
+            return Ok(Some((value, index_value)));
         }
     }
 
-    None.into()
+    Ok(None)
 }
 
 // Whether to exclude holes from the sorted output or not
@@ -1928,11 +1928,11 @@ fn compare_array_elements(
     let v1_is_undefined = v1.is_undefined();
     let v2_is_undefined = v2.is_undefined();
     if v1_is_undefined && v2_is_undefined {
-        return Ordering::Equal.into();
+        return Ok(Ordering::Equal);
     } else if v1_is_undefined {
-        return Ordering::Greater.into();
+        return Ok(Ordering::Greater);
     } else if v2_is_undefined {
-        return Ordering::Less.into();
+        return Ok(Ordering::Less);
     }
 
     // Use the compare function if provided
@@ -1940,7 +1940,7 @@ fn compare_array_elements(
         let result_value =
             maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
         if result_value.is_nan() {
-            return Ordering::Equal.into();
+            return Ok(Ordering::Equal);
         }
 
         let result_number = maybe!(to_number(cx, result_value));
@@ -1948,11 +1948,11 @@ fn compare_array_elements(
 
         // Covert from positive/negative/equal number result to Ordering
         return if result_number == 0.0 {
-            Ordering::Equal.into()
+            Ok(Ordering::Equal)
         } else if result_number < 0.0 {
-            Ordering::Less.into()
+            Ok(Ordering::Less)
         } else {
-            Ordering::Greater.into()
+            Ok(Ordering::Greater)
         };
     }
 
@@ -1961,11 +1961,11 @@ fn compare_array_elements(
     let v2_string = maybe!(to_string(cx, v2));
 
     if must!(is_less_than(cx, v1_string.into(), v2_string.into())).is_true() {
-        Ordering::Less.into()
+        Ok(Ordering::Less)
     } else if must!(is_less_than(cx, v2_string.into(), v1_string.into())).is_true() {
-        Ordering::Greater.into()
+        Ok(Ordering::Greater)
     } else {
-        Ordering::Equal.into()
+        Ok(Ordering::Equal)
     }
 }
 
@@ -1977,7 +1977,7 @@ where
     F: FnMut(Context, Handle<Value>, Handle<Value>) -> EvalResult<Ordering>,
 {
     if items.len() <= 1 {
-        return items.to_vec().into();
+        return Ok(items.to_vec());
     }
 
     let (first_half, second_half) = items.split_at(items.len() / 2);
@@ -2015,5 +2015,5 @@ where
         j += 1;
     }
 
-    result.into()
+    Ok(result)
 }

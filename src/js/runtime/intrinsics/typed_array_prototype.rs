@@ -123,13 +123,13 @@ impl TypedArrayPrototype {
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
         } else {
             if -relative_index > length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
@@ -146,7 +146,7 @@ impl TypedArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = maybe!(require_typed_array(cx, this_value));
-        typed_array.viewed_array_buffer().into()
+        Ok(typed_array.viewed_array_buffer().as_value())
     }
 
     /// get %TypedArray%.prototype.byteLength (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.bytelength)
@@ -160,12 +160,12 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Value::smi(0).to_handle(cx).into();
+            return Ok(Value::smi(0).to_handle(cx));
         }
 
         let byte_length = typed_array_byte_length(&typed_array_record);
 
-        Value::from(byte_length).to_handle(cx).into()
+        Ok(Value::from(byte_length).to_handle(cx))
     }
 
     /// get %TypedArray%.prototype.byteOffset (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.byteoffset)
@@ -179,10 +179,10 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Value::smi(0).to_handle(cx).into();
+            return Ok(Value::smi(0).to_handle(cx));
         }
 
-        Value::from(typed_array.byte_offset()).to_handle(cx).into()
+        Ok(Value::from(typed_array.byte_offset()).to_handle(cx))
     }
 
     /// %TypedArray%.prototype.copyWithin (https://tc39.es/ecma262/#sec-%typedarray%.prototype.copywithin)
@@ -244,7 +244,7 @@ impl TypedArrayPrototype {
             length as i64 - to_index as i64,
         );
         if count <= 0 {
-            return object.into();
+            return Ok(object.as_value());
         }
 
         let byte_offset = typed_array.byte_offset() as u64;
@@ -311,7 +311,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// %TypedArray%.prototype.entries (https://tc39.es/ecma262/#sec-%typedarray%.prototype.entries)
@@ -324,7 +324,7 @@ impl TypedArrayPrototype {
         let typed_array_record = maybe!(validate_typed_array(cx, this_value));
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue).into()
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue).as_value())
     }
 
     /// %TypedArray%.prototype.every (https://tc39.es/ecma262/#sec-%typedarray%.prototype.every)
@@ -361,11 +361,11 @@ impl TypedArrayPrototype {
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
             if !to_boolean(test_result.get()) {
-                return cx.bool(false).into();
+                return Ok(cx.bool(false));
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// %TypedArray%.prototype.fill (https://tc39.es/ecma262/#sec-%typedarray%.prototype.fill)
@@ -431,7 +431,7 @@ impl TypedArrayPrototype {
             must!(set(cx, object, key, value, true));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// %TypedArray%.prototype.filter (https://tc39.es/ecma262/#sec-%typedarray%.prototype.filter)
@@ -490,7 +490,7 @@ impl TypedArrayPrototype {
             must!(set(cx, array, index_key, value, true));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// %TypedArray%.prototype.find (https://tc39.es/ecma262/#sec-%typedarray%.prototype.find)
@@ -518,8 +518,8 @@ impl TypedArrayPrototype {
             maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -548,8 +548,8 @@ impl TypedArrayPrototype {
             maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -578,8 +578,8 @@ impl TypedArrayPrototype {
             maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -608,8 +608,8 @@ impl TypedArrayPrototype {
             maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -648,7 +648,7 @@ impl TypedArrayPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// %TypedArray%.prototype.includes (https://tc39.es/ecma262/#sec-%typedarray%.prototype.includes)
@@ -665,7 +665,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         if length == 0 {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -673,7 +673,7 @@ impl TypedArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -692,11 +692,11 @@ impl TypedArrayPrototype {
             let element = must!(get(cx, object, key));
 
             if same_value_zero(search_element, element) {
-                return cx.bool(true).into();
+                return Ok(cx.bool(true));
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// %TypedArray%.prototype.indexOf (https://tc39.es/ecma262/#sec-%typedarray%.prototype.indexof)
@@ -713,7 +713,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -721,7 +721,7 @@ impl TypedArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
         if n == f64::INFINITY {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -740,12 +740,12 @@ impl TypedArrayPrototype {
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// %TypedArray%.prototype.join (https://tc39.es/ecma262/#sec-%typedarray%.prototype.join)
@@ -787,7 +787,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        joined.into()
+        Ok(joined.into())
     }
 
     /// %TypedArray%.prototype.keys (https://tc39.es/ecma262/#sec-%typedarray%.prototype.keys)
@@ -800,7 +800,7 @@ impl TypedArrayPrototype {
         let typed_array_record = maybe!(validate_typed_array(cx, this_value));
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key).into()
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key).as_value())
     }
 
     /// %TypedArray%.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof)
@@ -817,7 +817,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -826,7 +826,7 @@ impl TypedArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = maybe!(to_integer_or_infinity(cx, start_arg));
             if n == f64::NEG_INFINITY {
-                return Value::smi(-1).to_handle(cx).into();
+                return Ok(Value::smi(-1).to_handle(cx));
             }
 
             if n >= 0.0 {
@@ -835,7 +835,7 @@ impl TypedArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Value::smi(-1).to_handle(cx).into();
+                    return Ok(Value::smi(-1).to_handle(cx));
                 }
 
                 start_index as u64
@@ -852,12 +852,12 @@ impl TypedArrayPrototype {
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// get %TypedArray%.prototype.length (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.length)
@@ -871,12 +871,12 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Value::smi(0).to_handle(cx).into();
+            return Ok(Value::smi(0).to_handle(cx));
         }
 
         let length = typed_array_length(&typed_array_record);
 
-        Value::from(length).to_handle(cx).into()
+        Ok(Value::from(length).to_handle(cx))
     }
 
     /// %TypedArray%.prototype.map (https://tc39.es/ecma262/#sec-%typedarray%.prototype.map)
@@ -918,7 +918,7 @@ impl TypedArrayPrototype {
             maybe!(set(cx, array, index_key, mapped_value, true));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// %TypedArray%.prototype.reduce (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduce)
@@ -966,7 +966,7 @@ impl TypedArrayPrototype {
             accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// %TypedArray%.prototype.reduceRight (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reduceright)
@@ -1014,7 +1014,7 @@ impl TypedArrayPrototype {
             accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// %TypedArray%.prototype.reverse (https://tc39.es/ecma262/#sec-%typedarray%.prototype.reverse)
@@ -1053,7 +1053,7 @@ impl TypedArrayPrototype {
             upper -= 1;
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// %TypedArray%.prototype.set (https://tc39.es/ecma262/#sec-%typedarray%.prototype.set)
@@ -1084,7 +1084,7 @@ impl TypedArrayPrototype {
             maybe!(Self::set_typed_array_from_array_like(cx, typed_array, offset, source_arg));
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// SetTypedArrayFromTypedArray (https://tc39.es/ecma262/#sec-settypedarrayfromtypedarray)
@@ -1171,7 +1171,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     fn set_typed_array_from_array_like(
@@ -1207,7 +1207,7 @@ impl TypedArrayPrototype {
             maybe!(target.write_element_value_unchecked(cx, target_index, value));
         }
 
-        ().into()
+        Ok(())
     }
 
     /// %TypedArray%.prototype.slice (https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice)
@@ -1258,7 +1258,7 @@ impl TypedArrayPrototype {
         let array = new_typed_array.into_object_value();
 
         if count == 0 {
-            return array.into();
+            return Ok(array.as_value());
         }
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -1309,7 +1309,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// %TypedArray%.prototype.some (https://tc39.es/ecma262/#sec-%typedarray%.prototype.some)
@@ -1346,11 +1346,11 @@ impl TypedArrayPrototype {
 
             let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
             if to_boolean(test_result.get()) {
-                return cx.bool(true).into();
+                return Ok(cx.bool(true));
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// %TypedArray%.prototype.sort (https://tc39.es/ecma262/#sec-%typedarray%.prototype.sort)
@@ -1387,7 +1387,7 @@ impl TypedArrayPrototype {
             maybe!(set(cx, object, index_key, *value, true));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// %TypedArray%.prototype.subarray (https://tc39.es/ecma262/#sec-%typedarray%.prototype.subarray)
@@ -1458,7 +1458,7 @@ impl TypedArrayPrototype {
             ))
         };
 
-        subarray.into()
+        Ok(subarray.as_value())
     }
 
     /// %TypedArray%.prototype.toLocaleString (https://tc39.es/ecma262/#sec-%typedarray%.prototype.tolocalestring)
@@ -1493,7 +1493,8 @@ impl TypedArrayPrototype {
                 result = StringValue::concat(cx, result, string_result);
             }
         }
-        result.into()
+
+        Ok(result.into())
     }
 
     /// %TypedArray%.prototype.toReversed (https://tc39.es/ecma262/#sec-%typedarray%.prototype.toreversed)
@@ -1523,7 +1524,7 @@ impl TypedArrayPrototype {
             must!(set(cx, array, to_key, value, true));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// %TypedArray%.prototype.toSorted (https://tc39.es/ecma262/#sec-%typedarray%.prototype.tosorted)
@@ -1562,7 +1563,7 @@ impl TypedArrayPrototype {
             maybe!(set(cx, sorted_array, index_key, *value, true));
         }
 
-        sorted_array.into()
+        Ok(sorted_array.as_value())
     }
 
     /// %TypedArray%.prototype.values (https://tc39.es/ecma262/#sec-%typedarray%.prototype.values)
@@ -1575,7 +1576,7 @@ impl TypedArrayPrototype {
         let typed_array_record = maybe!(validate_typed_array(cx, this_value));
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value).into()
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value).as_value())
     }
 
     /// %TypedArray%.prototype.with (https://tc39.es/ecma262/#sec-%typedarray%.prototype.with)
@@ -1648,7 +1649,7 @@ impl TypedArrayPrototype {
             must!(set(cx, array, key, value, true));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// get %TypedArray%.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%)
@@ -1659,15 +1660,15 @@ impl TypedArrayPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let this_object = this_value.as_object();
         if !this_object.is_typed_array() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
-        this_object.as_typed_array().name(cx).into()
+        Ok(this_object.as_typed_array().name(cx).into())
     }
 }
 
@@ -1711,7 +1712,7 @@ fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTyped
         return type_error(cx, "expected typed array");
     }
 
-    object.as_typed_array().into()
+    Ok(object.as_typed_array())
 }
 
 /// TypedArraySpeciesCreate (https://tc39.es/ecma262/#typedarray-species-create)
@@ -1721,7 +1722,7 @@ fn typed_array_species_create_object(
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = maybe!(typed_array_species_create(cx, exemplar, arguments));
-    result.into_object_value().into()
+    Ok(result.into_object_value())
 }
 
 fn typed_array_species_create(
@@ -1751,7 +1752,7 @@ fn typed_array_species_create(
         return type_error(cx, "typed arrays must both contain either numbers or BigInts");
     }
 
-    result.into()
+    Ok(result)
 }
 
 /// TypedArrayCreateFromConstructor (https://tc39.es/ecma262/#sec-typedarraycreatefromconstructor)
@@ -1761,7 +1762,7 @@ pub fn typed_array_create_from_constructor_object(
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = maybe!(typed_array_create_from_constructor(cx, constructor, arguments));
-    result.into_object_value().into()
+    Ok(result.into_object_value())
 }
 
 pub fn typed_array_create_from_constructor(
@@ -1785,7 +1786,7 @@ pub fn typed_array_create_from_constructor(
         }
     }
 
-    new_typed_array_record.typed_array.into()
+    Ok(new_typed_array_record.typed_array)
 }
 
 /// TypedArrayCreateSameType (https://tc39.es/ecma262/#sec-typedarray-create-same-type)
@@ -1827,7 +1828,7 @@ fn validate_typed_array(
         return type_error(cx, "typed array is out of bounds");
     }
 
-    typed_array_record.into()
+    Ok(typed_array_record)
 }
 
 pub struct TypedArrayWithBufferWitnessRecord {
@@ -1923,7 +1924,7 @@ pub fn compare_typed_array_elements(
         let result_value =
             maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
         if result_value.is_nan() {
-            return Ordering::Equal.into();
+            return Ok(Ordering::Equal);
         }
 
         let result_number = maybe!(to_number(cx, result_value));
@@ -1931,11 +1932,11 @@ pub fn compare_typed_array_elements(
 
         // Covert from positive/negative/equal number result to Ordering
         return if result_number == 0.0 {
-            Ordering::Equal.into()
+            Ok(Ordering::Equal)
         } else if result_number < 0.0 {
-            Ordering::Less.into()
+            Ok(Ordering::Less)
         } else {
-            Ordering::Greater.into()
+            Ok(Ordering::Greater)
         };
     }
 
@@ -1943,11 +1944,11 @@ pub fn compare_typed_array_elements(
     let v1_is_nan = v1.is_nan();
     let v2_is_nan = v2.is_nan();
     if v1_is_nan && v2_is_nan {
-        return Ordering::Equal.into();
+        return Ok(Ordering::Equal);
     } else if v1_is_nan {
-        return Ordering::Greater.into();
+        return Ok(Ordering::Greater);
     } else if v2_is_nan {
-        return Ordering::Less.into();
+        return Ok(Ordering::Less);
     }
 
     // Both values must have the same type - number or BigInt
@@ -1958,18 +1959,18 @@ pub fn compare_typed_array_elements(
         let v2_bigint = v2.as_bigint().bigint();
 
         if v1_bigint < v2_bigint {
-            return Ordering::Less.into();
+            return Ok(Ordering::Less);
         } else if v1_bigint > v2_bigint {
-            return Ordering::Greater.into();
+            return Ok(Ordering::Greater);
         }
 
         if v1_bigint.magnitude().eq(&BigUint::default())
             && v2_bigint.magnitude().eq(&BigUint::default())
         {
             if v1_bigint.sign() == Sign::Minus && v2_bigint.sign() == Sign::Plus {
-                return Ordering::Less.into();
+                return Ok(Ordering::Less);
             } else if v1_bigint.sign() == Sign::Plus && v2_bigint.sign() == Sign::Minus {
-                return Ordering::Greater.into();
+                return Ok(Ordering::Greater);
             }
         }
     } else {
@@ -1979,19 +1980,19 @@ pub fn compare_typed_array_elements(
         let v2_number = v2.as_number();
 
         if v1_number < v2_number {
-            return Ordering::Less.into();
+            return Ok(Ordering::Less);
         } else if v1_number > v2_number {
-            return Ordering::Greater.into();
+            return Ok(Ordering::Greater);
         }
 
         if v1_number == 0.0 && v2_number == 0.0 {
             if v1_number.is_sign_negative() && v2_number.is_sign_negative() {
-                return Ordering::Less.into();
+                return Ok(Ordering::Less);
             } else if v1_number.is_sign_positive() && v2_number.is_sign_negative() {
-                return Ordering::Greater.into();
+                return Ok(Ordering::Greater);
             }
         }
     }
 
-    Ordering::Equal.into()
+    Ok(Ordering::Equal)
 }

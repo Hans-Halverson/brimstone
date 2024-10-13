@@ -108,7 +108,7 @@ impl RegExpStringIteratorPrototype {
 
         // Check if we have already marked the iterator as done
         if regexp_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Run the regular expression
@@ -117,12 +117,12 @@ impl RegExpStringIteratorPrototype {
         // No match so return a completed iterator
         if match_result.is_null() {
             regexp_iterator.is_done = true;
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         if !regexp_iterator.is_global {
             regexp_iterator.is_done = true;
-            return create_iter_result_object(cx, match_result, false).into();
+            return Ok(create_iter_result_object(cx, match_result, false));
         }
 
         debug_assert!(match_result.is_object());
@@ -143,7 +143,7 @@ impl RegExpStringIteratorPrototype {
             maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
         }
 
-        create_iter_result_object(cx, match_result, false).into()
+        Ok(create_iter_result_object(cx, match_result, false))
     }
 }
 

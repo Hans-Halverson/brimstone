@@ -47,7 +47,7 @@ impl WeakMapObject {
 
         set_uninit!(object.weak_map_data, weak_map_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn weak_map_data(&self) -> HeapPtr<WeakValueMap> {

@@ -59,9 +59,9 @@ impl BigIntPrototype {
             radix_int as u32
         };
 
-        cx.alloc_string(&bigint_value.bigint().to_str_radix(radix))
-            .as_string()
-            .into()
+        Ok(cx
+            .alloc_string(&bigint_value.bigint().to_str_radix(radix))
+            .as_value())
     }
 
     /// BigInt.prototype.valueOf (https://tc39.es/ecma262/#sec-bigint.prototype.valueof)
@@ -71,19 +71,19 @@ impl BigIntPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        maybe!(this_bigint_value(cx, this_value)).into()
+        Ok(maybe!(this_bigint_value(cx, this_value)).into())
     }
 }
 
 fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
-        return value.as_bigint().into();
+        return Ok(value.as_bigint());
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_bigint_object() {
-            return object_value.cast::<BigIntObject>().bigint_data().into();
+            return Ok(object_value.cast::<BigIntObject>().bigint_data());
         }
     }
 

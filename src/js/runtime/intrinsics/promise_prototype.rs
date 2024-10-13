@@ -185,9 +185,7 @@ impl PromisePrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
-        let value = Self::get_value(cx, current_function);
-
-        value.into()
+        Ok(Self::get_value(cx, current_function))
     }
 
     pub fn finally_catch(
@@ -230,7 +228,7 @@ impl PromisePrototype {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
 
-        EvalResult::Throw(value)
+        Err(value)
     }
 
     /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)
@@ -252,7 +250,7 @@ impl PromisePrototype {
         let on_fulfilled = get_argument(cx, arguments, 0);
         let on_rejected = get_argument(cx, arguments, 1);
 
-        perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)).into()
+        Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)))
     }
 }
 

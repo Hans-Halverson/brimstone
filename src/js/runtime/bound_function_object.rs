@@ -61,7 +61,7 @@ impl BoundFunctionObject {
         let bound_args_array = create_array_from_list(cx, &bound_arguments);
         Self::set_bound_arguments(cx, bound_func, bound_args_array);
 
-        bound_func.into()
+        Ok(bound_func)
     }
 
     fn get_target_function(
@@ -185,7 +185,8 @@ impl BoundFunctionObject {
                 new_target
             };
 
-            maybe!(construct(cx, bound_target_function, &all_arguments, Some(new_target))).into()
+            Ok(maybe!(construct(cx, bound_target_function, &all_arguments, Some(new_target)))
+                .as_value())
         } else {
             // Otherwise call bound target normally
             call_object(cx, bound_target_function, bound_this, &all_arguments)

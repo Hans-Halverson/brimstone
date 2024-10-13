@@ -113,17 +113,17 @@ impl ObjectConstructor {
                     ObjectKind::OrdinaryObject,
                     Intrinsic::ObjectPrototype,
                 ));
-                return new_object.to_handle().into();
+                return Ok(new_object.to_handle().as_value());
             }
         }
 
         let value = get_argument(cx, arguments, 0);
         if value.is_nullish() {
             let new_value: Handle<Value> = ordinary_object_create(cx).into();
-            return new_value.into();
+            return Ok(new_value);
         }
 
-        must!(to_object(cx, value)).into()
+        Ok(must!(to_object(cx, value)).as_value())
     }
 
     /// Object.assign (https://tc39.es/ecma262/#sec-object.assign)
@@ -137,7 +137,7 @@ impl ObjectConstructor {
         let to = maybe!(to_object(cx, to_arg));
 
         if arguments.len() <= 1 {
-            return to.into();
+            return Ok(to.as_value());
         }
 
         // Shared between iterations
@@ -161,7 +161,7 @@ impl ObjectConstructor {
             }
         }
 
-        to.into()
+        Ok(to.as_value())
     }
 
     /// Object.create (https://tc39.es/ecma262/#sec-object.create)
@@ -186,7 +186,7 @@ impl ObjectConstructor {
 
         let properties = get_argument(cx, arguments, 1);
         if properties.is_undefined() {
-            object.into()
+            Ok(object.as_value())
         } else {
             Self::object_define_properties(cx, object, properties)
         }
@@ -237,7 +237,7 @@ impl ObjectConstructor {
             maybe!(define_property_or_throw(cx, object, key, desc));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Object.defineProperty (https://tc39.es/ecma262/#sec-object.defineproperty)
@@ -260,7 +260,7 @@ impl ObjectConstructor {
 
         maybe!(define_property_or_throw(cx, object.as_object(), property_key, desc,));
 
-        object.into()
+        Ok(object)
     }
 
     /// Object.entries (https://tc39.es/ecma262/#sec-object.defineproperty)
@@ -273,7 +273,7 @@ impl ObjectConstructor {
         let object_arg = get_argument(cx, arguments, 0);
         let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::KeyAndValue));
-        create_array_from_list(cx, &name_list).into()
+        Ok(create_array_from_list(cx, &name_list).as_value())
     }
 
     /// Object.freeze (https://tc39.es/ecma262/#sec-object.freeze)
@@ -285,14 +285,14 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return object.into();
+            return Ok(object);
         }
 
         if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Frozen)) {
             return type_error(cx, "failed to freeze object");
         }
 
-        object.into()
+        Ok(object)
     }
 
     /// Object.fromEntries (https://tc39.es/ecma262/#sec-object.fromentries)
@@ -310,7 +310,7 @@ impl ObjectConstructor {
         add_entries_from_iterable(cx, object.into(), iterable, |cx, key, value| {
             let property_key = maybe!(to_property_key(cx, key));
             must!(create_data_property_or_throw(cx, object, property_key, value));
-            ().into()
+            Ok(())
         })
     }
 
@@ -328,8 +328,8 @@ impl ObjectConstructor {
         let property_key = maybe!(to_property_key(cx, property_arg));
 
         match maybe!(object.get_own_property(cx, property_key)) {
-            None => cx.undefined().into(),
-            Some(desc) => from_property_descriptor(cx, desc).into(),
+            None => Ok(cx.undefined()),
+            Some(desc) => Ok(from_property_descriptor(cx, desc).as_value()),
         }
     }
 
@@ -359,7 +359,7 @@ impl ObjectConstructor {
             }
         }
 
-        descriptors.into()
+        Ok(descriptors.as_value())
     }
 
     /// Object.getOwnPropertyNames (https://tc39.es/ecma262/#sec-object.getownpropertynames)
@@ -371,7 +371,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let symbol_keys = maybe!(Self::get_own_property_keys(cx, object_arg, true));
-        create_array_from_list(cx, &symbol_keys).into()
+        Ok(create_array_from_list(cx, &symbol_keys).as_value())
     }
 
     /// Object.getOwnPropertySymbols (https://tc39.es/ecma262/#sec-object.getownpropertysymbols)
@@ -383,7 +383,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let symbol_keys = maybe!(Self::get_own_property_keys(cx, object_arg, false));
-        create_array_from_list(cx, &symbol_keys).into()
+        Ok(create_array_from_list(cx, &symbol_keys).as_value())
     }
 
     /// GetOwnPropertyKeys (https://tc39.es/ecma262/#sec-getownpropertykeys)
@@ -406,7 +406,7 @@ impl ObjectConstructor {
             })
             .collect();
 
-        keys_of_type.into()
+        Ok(keys_of_type)
     }
 
     /// Object.getPrototypeOf (https://tc39.es/ecma262/#sec-object.getprototypeof)
@@ -421,8 +421,8 @@ impl ObjectConstructor {
         let prototype = maybe!(object.get_prototype_of(cx));
 
         match prototype {
-            None => cx.null().into(),
-            Some(prototype) => prototype.into(),
+            None => Ok(cx.null()),
+            Some(prototype) => Ok(prototype.as_value()),
         }
     }
 
@@ -448,7 +448,7 @@ impl ObjectConstructor {
             must!(create_data_property_or_throw(cx, object, property_key, items.into()));
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Object.hasOwn (https://tc39.es/ecma262/#sec-object.hasown)
@@ -465,7 +465,7 @@ impl ObjectConstructor {
         let key = maybe!(to_property_key(cx, key_arg));
 
         let has_own = maybe!(has_own_property(cx, object, key));
-        cx.bool(has_own).into()
+        Ok(cx.bool(has_own))
     }
 
     /// Object.is (https://tc39.es/ecma262/#sec-object.is)
@@ -476,7 +476,7 @@ impl ObjectConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let is_same = same_value(get_argument(cx, arguments, 0), get_argument(cx, arguments, 1));
-        cx.bool(is_same).into()
+        Ok(cx.bool(is_same))
     }
 
     /// Object.isExtensible (https://tc39.es/ecma262/#sec-object.isextensible)
@@ -488,11 +488,11 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let is_extensible = maybe!(is_extensible(cx, value.as_object()));
-        cx.bool(is_extensible).into()
+        Ok(cx.bool(is_extensible))
     }
 
     /// Object.isFrozen (https://tc39.es/ecma262/#sec-object.isfrozen)
@@ -504,11 +504,11 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let is_frozen = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Frozen));
-        cx.bool(is_frozen).into()
+        Ok(cx.bool(is_frozen))
     }
 
     /// Object.isSealed (https://tc39.es/ecma262/#sec-object.issealed)
@@ -520,11 +520,11 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let is_sealed = maybe!(test_integrity_level(cx, value.as_object(), IntegrityLevel::Sealed));
-        cx.bool(is_sealed).into()
+        Ok(cx.bool(is_sealed))
     }
 
     /// Object.keys (https://tc39.es/ecma262/#sec-object.keys)
@@ -537,7 +537,7 @@ impl ObjectConstructor {
         let object_arg = get_argument(cx, arguments, 0);
         let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Key));
-        create_array_from_list(cx, &name_list).into()
+        Ok(create_array_from_list(cx, &name_list).as_value())
     }
 
     /// Object.preventExtensions (https://tc39.es/ecma262/#sec-object.preventextensions)
@@ -549,14 +549,14 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return value.into();
+            return Ok(value);
         }
 
         if !maybe!(value.as_object().prevent_extensions(cx)) {
             return type_error(cx, "failed to prevent extensions on object");
         }
 
-        value.into()
+        Ok(value)
     }
 
     /// Object.seal (https://tc39.es/ecma262/#sec-object.seal)
@@ -568,14 +568,14 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return object.into();
+            return Ok(object);
         }
 
         if !maybe!(set_integrity_level(cx, object.as_object(), IntegrityLevel::Sealed)) {
             return type_error(cx, "failed to seal object");
         }
 
-        object.into()
+        Ok(object)
     }
 
     /// Object.setPrototypeOf (https://tc39.es/ecma262/#sec-object.setprototypeof)
@@ -598,7 +598,7 @@ impl ObjectConstructor {
         };
 
         if !object.is_object() {
-            return object.into();
+            return Ok(object);
         }
         let mut object = object.as_object();
 
@@ -606,7 +606,7 @@ impl ObjectConstructor {
             return type_error(cx, "failed to set object prototype");
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Object.values (https://tc39.es/ecma262/#sec-object.values)
@@ -619,6 +619,6 @@ impl ObjectConstructor {
         let object_arg = get_argument(cx, arguments, 0);
         let object = maybe!(to_object(cx, object_arg));
         let name_list = maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Value));
-        create_array_from_list(cx, &name_list).into()
+        Ok(create_array_from_list(cx, &name_list).as_value())
     }
 }

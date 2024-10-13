@@ -105,7 +105,7 @@ impl SetIteratorPrototype {
 
         // Check if iterator is already done
         if set_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
@@ -125,7 +125,7 @@ impl SetIteratorPrototype {
         match iter_result {
             None => {
                 set_iterator.is_done = true;
-                create_iter_result_object(cx, cx.undefined(), true).into()
+                Ok(create_iter_result_object(cx, cx.undefined(), true))
             }
             Some((value, _)) => {
                 let value_value: Value = value.into();
@@ -133,11 +133,11 @@ impl SetIteratorPrototype {
 
                 match set_iterator.kind {
                     SetIteratorKind::Value => {
-                        create_iter_result_object(cx, value_handle, false).into()
+                        Ok(create_iter_result_object(cx, value_handle, false))
                     }
                     SetIteratorKind::KeyAndValue => {
                         let result_pair = create_array_from_list(cx, &[value_handle, value_handle]);
-                        create_iter_result_object(cx, result_pair.into(), false).into()
+                        Ok(create_iter_result_object(cx, result_pair.into(), false))
                     }
                 }
             }

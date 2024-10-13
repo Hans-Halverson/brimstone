@@ -41,7 +41,7 @@ impl SetObject {
 
         set_uninit!(object.set_data, set_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     /// Create a new SetObject with the provided set data.

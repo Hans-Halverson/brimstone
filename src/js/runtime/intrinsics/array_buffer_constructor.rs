@@ -88,7 +88,7 @@ impl ArrayBufferObject {
             Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
         };
 
-        object.into()
+        Ok(object)
     }
 
     pub fn byte_length(&self) -> usize {
@@ -183,14 +183,14 @@ impl ArrayBufferConstructor {
         let options_arg = get_argument(cx, arguments, 1);
         let max_byte_length = maybe!(get_array_buffer_max_byte_length_option(cx, options_arg));
 
-        maybe!(ArrayBufferObject::new(
+        Ok(maybe!(ArrayBufferObject::new(
             cx,
             new_target,
             byte_length,
             max_byte_length,
             /* data */ None
         ))
-        .into()
+        .as_value())
     }
 
     /// ArrayBuffer.isView (https://tc39.es/ecma262/#sec-arraybuffer.isview)
@@ -202,13 +202,13 @@ impl ArrayBufferConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let object = value.as_object();
         let is_view = object.is_data_view() || object.is_typed_array();
 
-        cx.bool(is_view).into()
+        Ok(cx.bool(is_view))
     }
 }
 
@@ -248,7 +248,7 @@ pub fn array_buffer_copy_and_detach(
     // Finally detach the original buffer
     array_buffer.detach();
 
-    new_buffer.into()
+    Ok(new_buffer)
 }
 
 /// CloneArrayBuffer (https://tc39.es/ecma262/#sec-clonearraybuffer)
@@ -273,7 +273,7 @@ pub fn clone_array_buffer(
 
     target_buffer.data().copy_from_slice(source_buffer_view);
 
-    target_buffer.into()
+    Ok(target_buffer)
 }
 
 /// GetArrayBufferMaxByteLengthOption (https://tc39.es/ecma262/#sec-getarraybuffermaxbytelengthoption)
@@ -282,17 +282,17 @@ fn get_array_buffer_max_byte_length_option(
     options: Handle<Value>,
 ) -> EvalResult<Option<usize>> {
     if !options.is_object() {
-        return None.into();
+        return Ok(None);
     }
 
     let options = options.as_object();
     let max_byte_length = maybe!(get(cx, options, cx.names.max_byte_length()));
 
     if max_byte_length.is_undefined() {
-        return None.into();
+        return Ok(None);
     }
 
-    Some(maybe!(to_index(cx, max_byte_length))).into()
+    Ok(Some(maybe!(to_index(cx, max_byte_length))))
 }
 
 #[inline]
@@ -300,7 +300,7 @@ pub fn throw_if_detached(cx: Context, array_buffer: HeapPtr<ArrayBufferObject>) 
     if array_buffer.is_detached() {
         type_error(cx, "array buffer is detached")
     } else {
-        ().into()
+        Ok(())
     }
 }
 

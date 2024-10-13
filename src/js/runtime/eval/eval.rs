@@ -36,7 +36,7 @@ pub fn perform_eval(
     flags: EvalFlags,
 ) -> EvalResult<Handle<Value>> {
     if !code.is_string() {
-        return code.into();
+        return Ok(code);
     }
     let code = code.as_string();
 
@@ -162,7 +162,7 @@ fn check_eval_var_name_conflicts(
             }
         }
 
-        return ().into();
+        return Ok(());
     }
 
     // Otherwise walk scopes up to the parent var scope
@@ -199,7 +199,7 @@ fn check_eval_var_name_conflicts(
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 /// EvalDeclarationInstantiation (https://tc39.es/ecma262/#sec-evaldeclarationinstantiation)
@@ -286,7 +286,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {

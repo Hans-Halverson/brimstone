@@ -95,7 +95,7 @@ impl GraphLoader {
         specifier: Handle<FlatString>,
         module_result: EvalResult<Handle<SourceTextModule>>,
     ) {
-        if let EvalResult::Ok(module) = module_result {
+        if let Ok(module) = module_result {
             let module_index = referrer.lookup_specifier_index(specifier.get_()).unwrap();
             if !referrer.has_loaded_module_at(module_index) {
                 referrer.set_loaded_module_at(module_index, module.get_());
@@ -116,10 +116,10 @@ impl GraphLoader {
         }
 
         match module_result {
-            EvalResult::Ok(module) => {
+            Ok(module) => {
                 self.inner_module_loading(cx, module);
             }
-            EvalResult::Throw(error) => {
+            Err(error) => {
                 self.is_loading = false;
                 must!(call_object(cx, self.promise_capability.reject(), cx.undefined(), &[error]));
             }
@@ -177,7 +177,7 @@ pub fn host_load_imported_module(
 
     // Use the cached module if it has already been loaded
     if let Some(module) = cx.modules.get(&new_module_path_string) {
-        return module.to_handle().into();
+        return Ok(module.to_handle());
     }
 
     // Parse the file at the given path, returning AST
@@ -210,7 +210,7 @@ pub fn host_load_imported_module(
     // Cache the module
     cx.modules.insert(new_module_path_string, module.get_());
 
-    module.into()
+    Ok(module)
 }
 
 fn parse_file_at_path(path: &Path) -> ParseResult<ParseProgramResult> {

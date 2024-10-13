@@ -109,7 +109,7 @@ pub fn global_declaration_instantiation_runtime(
 
     maybe!(global_declaration_instantiation(cx, realm, global_names,));
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// Initialize the global object with the provided var scoped names.
@@ -185,7 +185,7 @@ fn global_declaration_instantiation(
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 /// HasRestrictedGlobalProperty (https://tc39.es/ecma262/#sec-hasrestrictedglobalproperty)
@@ -197,8 +197,8 @@ pub fn has_restricted_global_property(
     let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
 
     match existing_prop {
-        None => false.into(),
-        Some(existing_prop) => (!existing_prop.is_configurable()).into(),
+        None => Ok(false),
+        Some(existing_prop) => Ok(!existing_prop.is_configurable()),
     }
 }
 
@@ -209,7 +209,7 @@ pub fn can_declare_global_var(
     name_key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
     if maybe!(has_own_property(cx, global_object, name_key)) {
-        return true.into();
+        return Ok(true);
     }
 
     is_extensible(cx, global_object)
@@ -227,14 +227,14 @@ pub fn can_declare_global_function(
         None => is_extensible(cx, global_object),
         Some(existing_prop) => {
             if existing_prop.is_configurable() {
-                return true.into();
+                return Ok(true);
             }
 
             let result = existing_prop.is_data_descriptor()
                 && existing_prop.is_writable()
                 && existing_prop.is_enumerable();
 
-            result.into()
+            Ok(result)
         }
     }
 }
@@ -257,7 +257,7 @@ pub fn create_global_var_binding(
         // No need for initialize_binding here since binding must already be undefined
     }
 
-    ().into()
+    Ok(())
 }
 
 /// CreateGlobalFunctionBinding (https://tc39.es/ecma262/#sec-createglobalfunctionbinding)
@@ -283,5 +283,5 @@ pub fn create_global_function_binding(
 
     maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
 
-    ().into()
+    Ok(())
 }

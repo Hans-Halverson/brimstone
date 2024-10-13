@@ -98,7 +98,7 @@ impl SetPrototype {
 
         set.insert(cx, value);
 
-        this_value.into()
+        Ok(this_value)
     }
 
     /// Set.prototype.clear (https://tc39.es/ecma262/#sec-set.prototype.clear)
@@ -116,7 +116,7 @@ impl SetPrototype {
 
         set.set_data_ptr().clear();
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Set.prototype.delete (https://tc39.es/ecma262/#sec-set.prototype.delete)
@@ -135,7 +135,7 @@ impl SetPrototype {
         let key = get_argument(cx, arguments, 0);
         let existed = set.set_data_ptr().remove(&ValueCollectionKey::from(key));
 
-        cx.bool(existed).into()
+        Ok(cx.bool(existed))
     }
 
     /// Set.prototype.difference (https://tc39.es/ecma262/#sec-set.prototype.difference)
@@ -197,7 +197,7 @@ impl SetPrototype {
             ));
         }
 
-        new_set.into()
+        Ok(new_set.as_value())
     }
 
     /// Set.prototype.entries (https://tc39.es/ecma262/#sec-set.prototype.entries)
@@ -213,7 +213,7 @@ impl SetPrototype {
             return type_error(cx, "entries method must be called on set");
         };
 
-        SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).into()
+        Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).as_value())
     }
 
     /// Set.prototype.forEach (https://tc39.es/ecma262/#sec-set.prototype.foreach)
@@ -249,7 +249,7 @@ impl SetPrototype {
             maybe!(call_object(cx, callback_function, this_arg, &arguments));
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Set.prototype.has (https://tc39.es/ecma262/#sec-set.prototype.has)
@@ -267,11 +267,10 @@ impl SetPrototype {
 
         let value = get_argument(cx, arguments, 0);
 
-        cx.bool(
+        Ok(cx.bool(
             set.set_data_ptr()
                 .contains(&ValueCollectionKey::from(value)),
-        )
-        .into()
+        ))
     }
 
     /// Set.prototype.intersection (https://tc39.es/ecma262/#sec-set.prototype.intersection)
@@ -338,7 +337,7 @@ impl SetPrototype {
             ));
         }
 
-        new_set.into()
+        Ok(new_set.as_value())
     }
 
     /// Set.prototype.isDisjointFrom (https://tc39.es/ecma262/#sec-set.prototype.isdisjointfrom)
@@ -376,7 +375,7 @@ impl SetPrototype {
 
                 // Return as soon as we find an element of this set that is in the other set
                 if in_other.is_true() {
-                    return cx.bool(false).into();
+                    return Ok(cx.bool(false));
                 }
             }
         } else {
@@ -396,12 +395,12 @@ impl SetPrototype {
                     .set_data_ptr()
                     .contains(&ValueCollectionKey::from(item))
                 {
-                    return cx.bool(false).into();
+                    return Ok(cx.bool(false));
                 }
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// Set.prototype.isSubsetOf (https://tc39.es/ecma262/#sec-set.prototype.issubsetof)
@@ -422,7 +421,7 @@ impl SetPrototype {
 
         // We can return early if this set is larger than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) > other_set_record.size {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         // If this set is smaller or equal to the other set, iterate through this set's keys and
@@ -442,11 +441,11 @@ impl SetPrototype {
             ));
 
             if !in_other.is_true() {
-                return cx.bool(false).into();
+                return Ok(cx.bool(false));
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// Set.prototype.isSupersetOf (https://tc39.es/ecma262/#sec-set.prototype.issupersetof)
@@ -467,7 +466,7 @@ impl SetPrototype {
 
         // We can return early if this set is smaller than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) < other_set_record.size {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         // Otherwise iterate through other set's keys and check if they are in this set
@@ -486,11 +485,11 @@ impl SetPrototype {
                 .set_data_ptr()
                 .contains(&ValueCollectionKey::from(item))
             {
-                return cx.bool(false).into();
+                return Ok(cx.bool(false));
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// get Set.prototype.size (https://tc39.es/ecma262/#sec-get-set.prototype.size)
@@ -506,9 +505,7 @@ impl SetPrototype {
             return type_error(cx, "size accessor must be called on set");
         };
 
-        Value::from(set.set_data_ptr().num_entries_occupied())
-            .to_handle(cx)
-            .into()
+        Ok(Value::from(set.set_data_ptr().num_entries_occupied()).to_handle(cx))
     }
 
     /// Set.prototype.symmetricDifference (https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference)
@@ -553,7 +550,7 @@ impl SetPrototype {
             }
         ));
 
-        new_set.into()
+        Ok(new_set.as_value())
     }
 
     /// Set.prototype.union (https://tc39.es/ecma262/#sec-set.prototype.union)
@@ -589,7 +586,7 @@ impl SetPrototype {
             }
         ));
 
-        new_set.into()
+        Ok(new_set.as_value())
     }
 
     /// Set.prototype.values (https://tc39.es/ecma262/#sec-set.prototype.values)
@@ -605,7 +602,7 @@ impl SetPrototype {
             return type_error(cx, "values method must be called on set");
         };
 
-        SetIterator::new(cx, set, SetIteratorKind::Value).into()
+        Ok(SetIterator::new(cx, set, SetIteratorKind::Value).as_value())
     }
 }
 
@@ -658,11 +655,10 @@ fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
         return type_error(cx, "keys method is not callable");
     }
 
-    SetRecord {
+    Ok(SetRecord {
         set_object: object,
         size: int_size,
         has_method: has_method.as_object(),
         keys_method: keys_method.as_object(),
-    }
-    .into()
+    })
 }

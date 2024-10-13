@@ -51,7 +51,7 @@ pub fn get_iterator(
                 let sync_iterator_record =
                     maybe!(get_iterator(cx, object, IteratorHint::Sync, sync_method));
 
-                return create_async_from_sync_iterator(cx, sync_iterator_record).into();
+                return Ok(create_async_from_sync_iterator(cx, sync_iterator_record));
             }
         } else {
             let iterator_key = cx.well_known_symbols.iterator();
@@ -77,7 +77,7 @@ pub fn get_iterator(
 
     let iterator_record = Iterator { iterator, next_method, is_done: false };
 
-    iterator_record.into()
+    Ok(iterator_record)
 }
 
 /// IteratorNext (https://tc39.es/ecma262/#sec-iteratornext)
@@ -97,13 +97,13 @@ pub fn iterator_next(
         return type_error(cx, "iterator's next method must return an object");
     }
 
-    result.as_object().into()
+    Ok(result.as_object())
 }
 
 /// IteratorComplete (https://tc39.es/ecma262/#sec-iteratorcomplete)
 pub fn iterator_complete(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = maybe!(get(cx, iter_result, cx.names.done()));
-    to_boolean(is_done.get()).into()
+    Ok(to_boolean(is_done.get()))
 }
 
 /// IteratorValue (https://tc39.es/ecma262/#sec-iteratorvalue)
@@ -117,9 +117,9 @@ pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Hand
     let is_done = maybe!(iterator_complete(cx, iter_result));
 
     if is_done {
-        None.into()
+        Ok(None)
     } else {
-        Some(iter_result).into()
+        Ok(Some(iter_result))
     }
 }
 
@@ -131,14 +131,13 @@ pub fn iterator_close(
 ) -> EvalResult<Handle<Value>> {
     let inner_result = get_method(cx, iterator.iterator.into(), cx.names.return_());
     let inner_result = match inner_result {
-        EvalResult::Ok(None) => return completion,
-        EvalResult::Ok(Some(return_)) => call_object(cx, return_, iterator.iterator.into(), &[]),
-        EvalResult::Throw(thrown_value) => EvalResult::Throw(thrown_value),
+        Ok(None) => return completion,
+        Ok(Some(return_)) => call_object(cx, return_, iterator.iterator.into(), &[]),
+        Err(thrown_value) => Err(thrown_value),
     };
 
-    if let EvalResult::Throw(_) = completion {
-        return completion;
-    }
+    // Return completion if it is an error
+    completion?;
 
     let inner_value = maybe!(inner_result);
     if !inner_value.is_object() {
@@ -160,33 +159,33 @@ pub fn iterator_step_value(
 ) -> EvalResult<Option<Handle<Value>>> {
     let iter_result_completion = iterator_next(cx, iterator.iterator, iterator.next_method, None);
     let iter_result = match iter_result_completion {
-        EvalResult::Ok(iter_result) => iter_result,
-        EvalResult::Throw(error) => {
+        Ok(iter_result) => iter_result,
+        Err(error) => {
             iterator.is_done = true;
-            return EvalResult::Throw(error);
+            return Err(error);
         }
     };
 
     let done_completion = iterator_complete(cx, iter_result);
     let done = match done_completion {
-        EvalResult::Ok(done) => done,
-        EvalResult::Throw(error) => {
+        Ok(done) => done,
+        Err(error) => {
             iterator.is_done = true;
-            return EvalResult::Throw(error);
+            return Err(error);
         }
     };
 
     if done {
         iterator.is_done = true;
-        return None.into();
+        return Ok(None);
     }
 
     let value_completion = get(cx, iter_result, cx.names.value());
     match value_completion {
-        EvalResult::Ok(value) => Some(value).into(),
-        EvalResult::Throw(error) => {
+        Ok(value) => Ok(Some(value)),
+        Err(error) => {
             iterator.is_done = true;
-            EvalResult::Throw(error)
+            Err(error)
         }
     }
 }
@@ -196,7 +195,7 @@ pub fn create_iter_result_object(
     cx: Context,
     value: Handle<Value>,
     is_done: bool,
-) -> Handle<ObjectValue> {
+) -> Handle<Value> {
     let object = ordinary_object_create(cx);
 
     must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
@@ -204,7 +203,7 @@ pub fn create_iter_result_object(
     let is_done_value = cx.bool(is_done);
     must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
 
-    object
+    object.as_value()
 }
 
 // Iterate over an object, executing a callback function against every value returned by the
@@ -221,14 +220,14 @@ pub fn iter_iterator_values<
     loop {
         let iter_result = maybe!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return cx.empty().into(),
+            None => return Ok(cx.empty()),
             Some(iter_result) => {
                 let value = maybe!(iterator_value(cx, iter_result));
 
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return maybe!(iterator_close(cx, &iterator, completion)).into();
+                    return iterator_close(cx, &iterator, completion);
                 }
             }
         }
@@ -248,14 +247,14 @@ pub fn iter_iterator_method_values<
     loop {
         let iter_result = maybe!(iterator_step(cx, &iterator));
         match iter_result {
-            None => return cx.empty().into(),
+            None => return Ok(cx.empty()),
             Some(iter_result) => {
                 let value = maybe!(iterator_value(cx, iter_result));
 
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return maybe!(iterator_close(cx, &iterator, completion)).into();
+                    return iterator_close(cx, &iterator, completion);
                 }
             }
         }

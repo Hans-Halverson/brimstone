@@ -57,12 +57,12 @@ impl ErrorPrototype {
         };
 
         if name_string.is_empty() {
-            message_string.into()
+            Ok(message_string.as_value())
         } else if message_string.is_empty() {
-            name_string.into()
+            Ok(name_string.as_value())
         } else {
             let separator = cx.alloc_string(": ").as_string();
-            StringValue::concat_all(cx, &[name_string, separator, message_string]).into()
+            Ok(StringValue::concat_all(cx, &[name_string, separator, message_string]).as_value())
         }
     }
 }

@@ -39,7 +39,7 @@ impl AggregateErrorObject {
             Intrinsic::AggregateErrorPrototype
         ));
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn new(cx: Context, errors: Handle<Value>) -> Handle<ErrorObject> {
@@ -123,11 +123,11 @@ impl AggregateErrorConstructor {
             None
         }));
 
-        let errors_array: Handle<ObjectValue> = create_array_from_list(cx, &errors_list).into();
+        let errors_array = create_array_from_list(cx, &errors_list).as_object();
 
         let errors_desc = PropertyDescriptor::data(errors_array.into(), true, false, true);
         must!(define_property_or_throw(cx, object.into(), cx.names.errors(), errors_desc));
 
-        object.into()
+        Ok(object.as_value())
     }
 }

@@ -43,7 +43,7 @@ impl FunctionPrototype {
     pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
-        let mut object = function_prototype.object();
+        let mut object = function_prototype.as_object();
 
         // Initialize all fields of the prototype objec
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
@@ -133,8 +133,8 @@ impl FunctionPrototype {
         };
         let num_bound_args = bound_args.len();
 
-        let bound_func: Handle<ObjectValue> =
-            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args));
+        let bound_func =
+            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args)).as_object();
 
         let mut length = Some(0);
 
@@ -167,7 +167,7 @@ impl FunctionPrototype {
         let name_key = PropertyKey::string(cx, target_name).to_handle(cx);
         set_function_name(cx, bound_func, name_key, Some("bound"));
 
-        bound_func.into()
+        Ok(bound_func.as_value())
     }
 
     /// Function.prototype.call (https://tc39.es/ecma262/#sec-function.prototype.call)
@@ -206,10 +206,7 @@ impl FunctionPrototype {
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {
-                return cx
-                    .alloc_string("function () { [native code] }")
-                    .as_string()
-                    .into();
+                return Ok(cx.alloc_string("function () { [native code] }").as_value());
             }
 
             // Builtin functions have special formatting using the function name
@@ -220,7 +217,7 @@ impl FunctionPrototype {
                 }
                 string_parts.push(InternedStrings::get_str(cx, "() { [native code] }"));
 
-                return StringValue::concat_all(cx, &string_parts).into();
+                return Ok(StringValue::concat_all(cx, &string_parts).as_value());
             }
 
             // Non-builtin functions return their original slice of the source code
@@ -236,14 +233,11 @@ impl FunctionPrototype {
                 .as_string()
                 .to_handle();
 
-            return func_string.into();
+            return Ok(func_string.as_value());
         }
 
         if is_callable_object(this_object) {
-            return cx
-                .alloc_string("function () { [native code] }")
-                .as_string()
-                .into();
+            return Ok(cx.alloc_string("function () { [native code] }").as_value());
         }
 
         type_error(cx, "Function.prototype.toString expected a function")
@@ -258,6 +252,6 @@ impl FunctionPrototype {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
-        cx.bool(has_instance).into()
+        Ok(cx.bool(has_instance))
     }
 }

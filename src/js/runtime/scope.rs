@@ -215,9 +215,9 @@ impl Handle<Scope> {
                 // we need to load the value from the BoxedValue.
                 if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
                     let boxed_value = slot_value.as_pointer().cast::<BoxedValue>();
-                    return Some(boxed_value.get().to_handle(cx)).into();
+                    return Ok(Some(boxed_value.get().to_handle(cx)));
                 } else {
-                    return Some(slot_value.to_handle(cx)).into();
+                    return Ok(Some(slot_value.to_handle(cx)));
                 }
             }
 
@@ -230,7 +230,7 @@ impl Handle<Scope> {
 
                 if maybe!(scope.has_object_binding(cx, object_handle, key)) {
                     let value = maybe!(get(cx, object_handle, key));
-                    return Some(value).into();
+                    return Ok(Some(value));
                 }
             }
 
@@ -242,7 +242,7 @@ impl Handle<Scope> {
                 let realm = scope.global_scope_realm();
                 let value = realm.get_lexical_name(name.as_flat().get_());
 
-                return value.map(|v| v.to_handle(cx)).into();
+                return Ok(value.map(|v| v.to_handle(cx)));
             }
         }
     }
@@ -277,7 +277,7 @@ impl Handle<Scope> {
                     if is_strict {
                         return err_assign_constant(cx, name.as_flat().get_());
                     } else {
-                        return true.into();
+                        return Ok(true);
                     }
                 }
 
@@ -286,11 +286,11 @@ impl Handle<Scope> {
                 if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
                     let mut boxed_value = scope.get_module_slot(index);
                     boxed_value.set(value.get());
-                    return true.into();
+                    return Ok(true);
                 }
 
                 scope.set_slot(index, value.get());
-                return true.into();
+                return Ok(true);
             }
 
             // Then check scope object if one exists
@@ -307,7 +307,7 @@ impl Handle<Scope> {
                     }
 
                     // Name was found, even if the set failed
-                    return true.into();
+                    return Ok(true);
                 }
             }
 
@@ -320,7 +320,7 @@ impl Handle<Scope> {
                 let success =
                     maybe!(realm.set_lexical_name(cx, name.as_flat().get_(), value.get()));
 
-                return success.into();
+                return Ok(success);
             }
         }
     }
@@ -358,14 +358,14 @@ impl Handle<Scope> {
                 .lookup_name(name.as_flat().get_())
                 .is_some()
             {
-                return false.into();
+                return Ok(false);
             }
 
             // Move to parent scope
             if let Some(parent) = scope.parent.as_ref() {
                 scope.replace(*parent);
             } else {
-                return true.into();
+                return Ok(true);
             }
         }
     }
@@ -381,11 +381,11 @@ impl Handle<Scope> {
     ) -> EvalResult<bool> {
         // Check if key appears in object
         if !maybe!(has_property(cx, object, key)) {
-            return false.into();
+            return Ok(false);
         }
 
         if self.kind != ScopeKind::With {
-            return true.into();
+            return Ok(true);
         }
 
         // With statements must also ignore properties in @@unscopables
@@ -397,11 +397,11 @@ impl Handle<Scope> {
             let value = maybe!(get(cx, unscopables, key));
             let blocked = to_boolean(value.get());
             if blocked {
-                return false.into();
+                return Ok(false);
             }
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// Return the object for this scope, creating it if necessary.

@@ -86,15 +86,15 @@ impl PropertyKey {
         if is_integral_number(value) {
             let number = value.as_double();
             if (0.0..MAX_U32_AS_F64).contains(&number) {
-                return PropertyKey::array_index(cx, number as u32).into();
+                return Ok(PropertyKey::array_index(cx, number as u32));
             }
         }
 
         if value.is_symbol() {
-            PropertyKey::symbol(value_handle.as_symbol()).get().into()
+            Ok(PropertyKey::symbol(value_handle.as_symbol()).get())
         } else {
             let string_value = maybe!(to_string(cx, value_handle));
-            PropertyKey::string(cx, string_value).into()
+            Ok(PropertyKey::string(cx, string_value))
         }
     }
 

@@ -28,7 +28,7 @@ use super::{
     gc::{Handle, HeapInfo, HeapObject, HeapPtr, HeapVisitor},
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
-    Context,
+    Context, Value,
 };
 
 #[derive(PartialEq)]
@@ -158,6 +158,11 @@ impl Handle<StringValue> {
 
     #[inline]
     pub fn as_flat(&self) -> Handle<FlatString> {
+        self.cast()
+    }
+
+    #[inline]
+    pub fn as_value(&self) -> Handle<Value> {
         self.cast()
     }
 
@@ -1103,6 +1108,11 @@ impl DebugPrint for HeapPtr<FlatString> {
 impl Handle<FlatString> {
     #[inline]
     pub fn as_string(&self) -> Handle<StringValue> {
+        self.cast()
+    }
+
+    #[inline]
+    pub fn as_value(&self) -> Handle<Value> {
         self.cast()
     }
 

@@ -52,11 +52,11 @@ impl FinalizationRegistryConstructor {
             return type_error(cx, "FinalizationRegistry cleanup callback is not a function");
         }
 
-        maybe!(FinalizationRegistryObject::new_from_constructor(
+        Ok(maybe!(FinalizationRegistryObject::new_from_constructor(
             cx,
             new_target,
             cleanup_callback.as_object(),
         ))
-        .into()
+        .as_value())
     }
 }

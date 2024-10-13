@@ -7,7 +7,6 @@ use crate::{
     js::{
         common::wtf_8::Wtf8String,
         parser::{parse_error::InvalidDuplicateParametersReason, scope_tree::VMLocation},
-        runtime::EvalResult,
     },
     must, visit_opt, visit_vec,
 };
@@ -1417,7 +1416,7 @@ impl Analyzer<'_> {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
                 }
 
-                ().into()
+                Ok(())
             }));
         }
 

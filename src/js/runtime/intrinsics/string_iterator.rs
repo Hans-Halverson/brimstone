@@ -75,11 +75,11 @@ impl StringIteratorPrototype {
         let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
 
         match string_iterator.iter.next() {
-            None => create_iter_result_object(cx, cx.undefined(), true).into(),
+            None => Ok(create_iter_result_object(cx, cx.undefined(), true)),
             Some(next_code_point) => {
                 let code_point_string =
                     FlatString::from_code_point(cx, next_code_point).as_string();
-                create_iter_result_object(cx, code_point_string.into(), false).into()
+                Ok(create_iter_result_object(cx, code_point_string.into(), false))
             }
         }
     }

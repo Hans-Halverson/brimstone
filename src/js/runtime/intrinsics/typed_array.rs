@@ -299,9 +299,9 @@ pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64
     let (sign, digits) = bigint.to_u64_digits();
 
     match sign {
-        Sign::Plus => (digits[0] as i64).into(),
-        Sign::NoSign => 0.into(),
-        Sign::Minus => (-(digits[0] as i64)).into(),
+        Sign::Plus => Ok(digits[0] as i64),
+        Sign::NoSign => Ok(0),
+        Sign::Minus => Ok(-(digits[0] as i64)),
     }
 }
 
@@ -330,9 +330,9 @@ pub fn to_big_uint64_element(cx: Context, value: Handle<Value>) -> EvalResult<u6
     let (sign, digits) = bigint.to_u64_digits();
 
     if sign == Sign::NoSign {
-        0.into()
+        Ok(0)
     } else {
-        digits[0].into()
+        Ok(digits[0])
     }
 }
 
@@ -356,7 +356,7 @@ create_typed_array!(
 #[inline]
 pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> {
     let number = maybe!(to_number(cx, value));
-    (number.as_number() as f32).into()
+    Ok(number.as_number() as f32)
 }
 
 #[inline]
@@ -378,7 +378,7 @@ create_typed_array!(
 #[inline]
 pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
     let number = maybe!(to_number(cx, value));
-    number.as_number().into()
+    Ok(number.as_number())
 }
 
 #[inline]

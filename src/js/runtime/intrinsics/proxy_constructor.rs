@@ -48,7 +48,7 @@ impl ProxyConstructor {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
 
-        maybe!(proxy_create(cx, target, handler)).into()
+        Ok(maybe!(proxy_create(cx, target, handler)).as_value())
     }
 
     /// Proxy.revocable (https://tc39.es/ecma262/#sec-proxy.revocable)
@@ -78,7 +78,7 @@ impl ProxyConstructor {
         must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));
         must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));
 
-        result.into()
+        Ok(result.as_value())
     }
 }
 
@@ -101,5 +101,5 @@ pub fn revoke(
         proxy_object.revoke();
     }
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }

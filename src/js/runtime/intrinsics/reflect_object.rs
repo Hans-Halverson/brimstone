@@ -110,7 +110,7 @@ impl ReflectObject {
         let arguments_arg = get_argument(cx, arguments, 1);
         let arguments_list = maybe!(create_list_from_array_like(cx, arguments_arg));
 
-        maybe!(construct(cx, target, &arguments_list, Some(new_target))).into()
+        Ok(maybe!(construct(cx, target, &arguments_list, Some(new_target))).as_value())
     }
 
     /// Reflect.defineProperty (https://tc39.es/ecma262/#sec-reflect.defineproperty)
@@ -134,7 +134,7 @@ impl ReflectObject {
         let desc = maybe!(to_property_descriptor(cx, desc_arg));
 
         let result = maybe!(target.define_own_property(cx, key, desc));
-        cx.bool(result).into()
+        Ok(cx.bool(result))
     }
 
     /// Reflect.deleteProperty (https://tc39.es/ecma262/#sec-reflect.deleteproperty)
@@ -154,7 +154,7 @@ impl ReflectObject {
         let key = maybe!(to_property_key(cx, key_arg));
 
         let result = maybe!(target.delete(cx, key));
-        cx.bool(result).into()
+        Ok(cx.bool(result))
     }
 
     /// Reflect.get (https://tc39.es/ecma262/#sec-reflect.get)
@@ -178,7 +178,7 @@ impl ReflectObject {
             target
         };
 
-        maybe!(target.as_object().get(cx, key, receiver)).into()
+        target.as_object().get(cx, key, receiver)
     }
 
     /// Reflect.getOwnPropertyDescriptor (https://tc39.es/ecma262/#sec-reflect.getownpropertydescriptor)
@@ -199,9 +199,9 @@ impl ReflectObject {
 
         let desc = maybe!(target.get_own_property(cx, key));
 
-        desc.map(|desc| from_property_descriptor(cx, desc).into())
-            .unwrap_or(cx.undefined())
-            .into()
+        Ok(desc
+            .map(|desc| from_property_descriptor(cx, desc).into())
+            .unwrap_or(cx.undefined()))
     }
 
     /// Reflect.getPrototypeOf (https://tc39.es/ecma262/#sec-reflect.getprototypeof)
@@ -218,10 +218,7 @@ impl ReflectObject {
 
         let prototype = maybe!(target.as_object().get_prototype_of(cx));
 
-        prototype
-            .map(|proto| proto.into())
-            .unwrap_or(cx.null())
-            .into()
+        Ok(prototype.map(|proto| proto.into()).unwrap_or(cx.null()))
     }
 
     /// Reflect.has (https://tc39.es/ecma262/#sec-reflect.has)
@@ -241,7 +238,7 @@ impl ReflectObject {
         let key = maybe!(to_property_key(cx, key_arg));
 
         let has_property = maybe!(target.has_property(cx, key));
-        cx.bool(has_property).into()
+        Ok(cx.bool(has_property))
     }
 
     /// Reflect.isExtensible (https://tc39.es/ecma262/#sec-reflect.isextensible)
@@ -257,7 +254,7 @@ impl ReflectObject {
         }
 
         let is_extensible = maybe!(target.as_object().is_extensible(cx));
-        cx.bool(is_extensible).into()
+        Ok(cx.bool(is_extensible))
     }
 
     /// Reflect.ownKeys (https://tc39.es/ecma262/#sec-reflect.ownkeys)
@@ -274,7 +271,7 @@ impl ReflectObject {
 
         let own_keys = maybe!(target.as_object().own_property_keys(cx));
 
-        create_array_from_list(cx, &own_keys).into()
+        Ok(create_array_from_list(cx, &own_keys).as_value())
     }
 
     /// Reflect.preventExtensions (https://tc39.es/ecma262/#sec-reflect.preventextensions)
@@ -290,7 +287,7 @@ impl ReflectObject {
         }
 
         let result = maybe!(target.as_object().prevent_extensions(cx));
-        cx.bool(result).into()
+        Ok(cx.bool(result))
     }
 
     /// Reflect.set (https://tc39.es/ecma262/#sec-reflect.set)
@@ -316,7 +313,7 @@ impl ReflectObject {
         };
 
         let result = maybe!(target.as_object().set(cx, key, value, receiver));
-        cx.bool(result).into()
+        Ok(cx.bool(result))
     }
 
     /// Reflect.setPrototypeOf (https://tc39.es/ecma262/#sec-reflect.setprototypeof)
@@ -341,6 +338,6 @@ impl ReflectObject {
         };
 
         let result = maybe!(target.as_object().set_prototype_of(cx, proto));
-        cx.bool(result).into()
+        Ok(cx.bool(result))
     }
 }

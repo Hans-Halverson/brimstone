@@ -43,7 +43,7 @@ impl AsyncFunctionConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
-        maybe!(create_dynamic_function(
+        Ok(maybe!(create_dynamic_function(
             cx,
             constructor,
             new_target,
@@ -51,6 +51,6 @@ impl AsyncFunctionConstructor {
             /* is_async */ true,
             /* is_generator */ false,
         ))
-        .into()
+        .as_value())
     }
 }

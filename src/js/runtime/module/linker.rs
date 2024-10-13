@@ -32,7 +32,7 @@ impl GraphLinker {
         ));
 
         match self.inner_link(cx, module, 0) {
-            EvalResult::Ok(_) => {
+            Ok(_) => {
                 // Assert state postcondition
                 debug_assert!(matches!(
                     module.state(),
@@ -40,9 +40,9 @@ impl GraphLinker {
                 ));
                 debug_assert!(self.stack.is_empty());
 
-                ().into()
+                Ok(())
             }
-            EvalResult::Throw(error) => {
+            Err(error) => {
                 // Any error should reset all modules in stack to unlinked
                 for module in &mut self.stack {
                     debug_assert!(module.state() == ModuleState::Linking);
@@ -52,7 +52,7 @@ impl GraphLinker {
                 // Assert state postcondition
                 debug_assert!(module.state() == ModuleState::Unlinked);
 
-                EvalResult::Throw(error)
+                Err(error)
             }
         }
     }
@@ -75,7 +75,7 @@ impl GraphLinker {
                     | ModuleState::Evaluated
             ));
 
-            return index.into();
+            return Ok(index);
         }
 
         module.set_state(ModuleState::Linking);
@@ -125,7 +125,7 @@ impl GraphLinker {
             }
         }
 
-        index.into()
+        Ok(index)
     }
 }
 
@@ -203,7 +203,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 pub fn link(cx: Context, module: Handle<SourceTextModule>) -> EvalResult<()> {

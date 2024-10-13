@@ -48,7 +48,7 @@ impl FinalizationRegistryObject {
         set_uninit!(object.cells, cells.get_());
         set_uninit!(object.cleanup_callback, cleanup_callback.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn cells(&self) -> HeapPtr<FinalizationRegistryCells> {

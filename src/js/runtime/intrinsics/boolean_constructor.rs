@@ -56,7 +56,7 @@ impl BooleanObject {
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn new_with_proto(
@@ -114,9 +114,10 @@ impl BooleanConstructor {
         let bool_value = to_boolean(get_argument(cx, arguments, 0).get());
 
         match new_target {
-            None => cx.bool(bool_value).into(),
+            None => Ok(cx.bool(bool_value)),
             Some(new_target) => {
-                maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value)).into()
+                Ok(maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value))
+                    .as_value())
             }
         }
     }

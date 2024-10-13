@@ -22,6 +22,6 @@ impl GcObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Heap::run_gc(cx);
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }

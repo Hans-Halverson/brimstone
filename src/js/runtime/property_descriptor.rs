@@ -326,5 +326,5 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         return type_error(cx, "property desriptor must be data or accesor");
     }
 
-    desc.into()
+    Ok(desc)
 }

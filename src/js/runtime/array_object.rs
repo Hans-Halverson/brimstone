@@ -53,19 +53,20 @@ impl VirtualObject for Handle<ArrayObject> {
     ) -> EvalResult<bool> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
-            if array_index >= self.object().array_properties_length() && !self.is_length_writable {
-                return false.into();
+            if array_index >= self.as_object().array_properties_length() && !self.is_length_writable
+            {
+                return Ok(false);
             }
 
-            if !must!(ordinary_define_own_property(cx, self.object(), key, desc)) {
-                return false.into();
+            if !must!(ordinary_define_own_property(cx, self.as_object(), key, desc)) {
+                return Ok(false);
             }
 
-            true.into()
+            Ok(true)
         } else if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
             array_set_length(cx, *self, desc)
         } else {
-            ordinary_define_own_property(cx, self.object(), key, desc)
+            ordinary_define_own_property(cx, self.as_object(), key, desc)
         }
     }
 
@@ -76,40 +77,40 @@ impl VirtualObject for Handle<ArrayObject> {
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
-            let length_value = Value::from(self.object().array_properties_length()).to_handle(cx);
-            return Some(PropertyDescriptor::data(
+            let length_value =
+                Value::from(self.as_object().array_properties_length()).to_handle(cx);
+            return Ok(Some(PropertyDescriptor::data(
                 length_value,
                 self.is_length_writable,
                 false,
                 false,
-            ))
-            .into();
+            )));
         }
 
-        ordinary_get_own_property(cx, self.object(), key).into()
+        Ok(ordinary_get_own_property(cx, self.as_object(), key))
     }
 
     // Not part of spec, but needed to handle attempts to delete custom length property
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
-            return false.into();
+            return Ok(false);
         }
 
-        ordinary_delete(cx, self.object(), key)
+        ordinary_delete(cx, self.as_object(), key)
     }
 
     // Not part of spec, but needed to add custom length property
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut keys: Vec<Handle<Value>> = vec![];
 
-        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, |_| true);
+        ordinary_filtered_own_indexed_property_keys(cx, self.as_object(), &mut keys, |_| true);
 
         // Insert length as the first non-index property
         keys.push(cx.names.length().as_string().into());
 
-        ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
+        ordinary_own_string_symbol_property_keys(self.as_object(), &mut keys);
 
-        keys.into()
+        Ok(keys)
     }
 }
 
@@ -141,7 +142,7 @@ pub fn array_create_in_realm(
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
     must!(array_object.define_own_property(cx, cx.names.length(), length_desc));
 
-    array_object.into()
+    Ok(array_object)
 }
 
 /// ArraySpeciesCreate (https://tc39.es/ecma262/#sec-arrayspeciescreate)
@@ -151,8 +152,8 @@ pub fn array_species_create(
     length: u64,
 ) -> EvalResult<Handle<ObjectValue>> {
     if !maybe!(is_array(cx, original_array.into())) {
-        let array_object: Handle<ObjectValue> = maybe!(array_create(cx, length, None)).into();
-        return array_object.into();
+        let array_object = maybe!(array_create(cx, length, None)).as_object();
+        return Ok(array_object);
     }
 
     let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
@@ -180,8 +181,8 @@ pub fn array_species_create(
     }
 
     if constructor.is_undefined() {
-        let array_object: Handle<ObjectValue> = maybe!(array_create(cx, length, None)).into();
-        return array_object.into();
+        let array_object = maybe!(array_create(cx, length, None)).as_object();
+        return Ok(array_object);
     }
 
     if !is_constructor_value(constructor) {
@@ -199,7 +200,7 @@ fn array_set_length(
     mut array: Handle<ArrayObject>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let mut new_len = array.object().array_properties_length();
+    let mut new_len = array.as_object().array_properties_length();
 
     if let Some(value) = desc.value {
         new_len = maybe!(to_uint32(cx, value));
@@ -211,28 +212,28 @@ fn array_set_length(
     }
 
     if let Some(true) = desc.is_configurable {
-        return false.into();
+        return Ok(false);
     } else if let Some(true) = desc.is_enumerable {
-        return false.into();
+        return Ok(false);
     } else if desc.is_accessor_descriptor() {
-        return false.into();
+        return Ok(false);
     }
 
     if !array.is_length_writable {
         if let Some(true) = desc.is_writable {
-            return false.into();
-        } else if new_len != array.object().array_properties_length() {
-            return false.into();
+            return Ok(false);
+        } else if new_len != array.as_object().array_properties_length() {
+            return Ok(false);
         }
     }
 
-    let has_delete_succeeded = array.object().set_array_properties_length(cx, new_len);
+    let has_delete_succeeded = array.as_object().set_array_properties_length(cx, new_len);
 
     if let Some(false) = desc.is_writable {
         array.is_length_writable = false;
     }
 
-    has_delete_succeeded.into()
+    Ok(has_delete_succeeded)
 }
 
 /// CreateArrayFromList (https://tc39.es/ecma262/#sec-createarrayfromlist)

@@ -18,10 +18,10 @@ impl BooleanPrototype {
 
         // Constructor property is added once BooleanConstructor has been created
         object
-            .object()
+            .as_object()
             .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
         object
-            .object()
+            .as_object()
             .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
 
         object.into()
@@ -37,7 +37,7 @@ impl BooleanPrototype {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
         let string_value = if bool_value { "true" } else { "false" };
 
-        cx.alloc_string(string_value).as_string().into()
+        Ok(cx.alloc_string(string_value).as_value())
     }
 
     /// Boolean.prototype.valueOf (https://tc39.es/ecma262/#sec-boolean.prototype.valueof)
@@ -48,19 +48,19 @@ impl BooleanPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = maybe!(this_boolean_value(cx, this_value));
-        cx.bool(bool_value).into()
+        Ok(cx.bool(bool_value))
     }
 }
 
 fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     if value.is_bool() {
-        return value.as_bool().into();
+        return Ok(value.as_bool());
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_bool_object() {
-            return object_value.cast::<BooleanObject>().boolean_data().into();
+            return Ok(object_value.cast::<BooleanObject>().boolean_data());
         }
     }
 

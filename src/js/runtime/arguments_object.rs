@@ -175,16 +175,16 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        let mut desc = ordinary_get_own_property(cx, self.object(), key);
+        let mut desc = ordinary_get_own_property(cx, self.as_object(), key);
         if let Some(desc) = &mut desc {
             if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
                 desc.value = Some(self.get_mapped_argument(cx, scope_index));
             }
         } else {
-            return None.into();
+            return Ok(None);
         }
 
-        desc.into()
+        Ok(desc)
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-arguments-exotic-objects-defineownproperty-p-desc)
@@ -207,8 +207,8 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
             }
         }
 
-        if !must!(ordinary_define_own_property(cx, self.object(), key, new_arg_desc)) {
-            return false.into();
+        if !must!(ordinary_define_own_property(cx, self.as_object(), key, new_arg_desc)) {
+            return Ok(false);
         }
 
         if let Some(scope_index) = scope_index {
@@ -225,7 +225,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
             }
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-arguments-exotic-objects-get-p-receiver)
@@ -236,9 +236,9 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
-            self.get_mapped_argument(cx, scope_index).into()
+            Ok(self.get_mapped_argument(cx, scope_index))
         } else {
-            ordinary_get(cx, self.object(), key, receiver)
+            ordinary_get(cx, self.as_object(), key, receiver)
         }
     }
 
@@ -250,20 +250,21 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
         value: Handle<Value>,
         receiver: Handle<Value>,
     ) -> EvalResult<bool> {
-        if receiver.is_object() && same_object_value_handles(self.object(), receiver.as_object()) {
+        if receiver.is_object() && same_object_value_handles(self.as_object(), receiver.as_object())
+        {
             if let Some(scope_index) = self.get_mapped_scope_index_for_key(key) {
                 self.set_mapped_argument(scope_index, value);
             }
         }
 
-        ordinary_set(cx, self.object(), key, value, receiver)
+        ordinary_set(cx, self.as_object(), key, value, receiver)
     }
 
     /// [[Delete]] (https://tc39.es/ecma262/#sec-arguments-exotic-objects-delete-p)
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         let scope_index = self.get_mapped_scope_index_for_key(key);
 
-        let result = maybe!(ordinary_delete(cx, self.object(), key));
+        let result = maybe!(ordinary_delete(cx, self.as_object(), key));
 
         if result {
             if let Some(scope_index) = scope_index {
@@ -271,7 +272,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
             }
         }
 
-        result.into()
+        Ok(result)
     }
 }
 

@@ -108,7 +108,7 @@ impl MapIteratorPrototype {
 
         // Check if iterator is already done
         if map_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
@@ -128,19 +128,19 @@ impl MapIteratorPrototype {
         match iter_result {
             None => {
                 map_iterator.is_done = true;
-                create_iter_result_object(cx, cx.undefined(), true).into()
+                Ok(create_iter_result_object(cx, cx.undefined(), true))
             }
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
                     let key_value: Value = key.into();
                     let key_handle = key_value.to_handle(cx);
 
-                    create_iter_result_object(cx, key_handle, false).into()
+                    Ok(create_iter_result_object(cx, key_handle, false))
                 }
                 MapIteratorKind::Value => {
                     let value_handle = value.to_handle(cx);
 
-                    create_iter_result_object(cx, value_handle, false).into()
+                    Ok(create_iter_result_object(cx, value_handle, false))
                 }
                 MapIteratorKind::KeyAndValue => {
                     let key_value: Value = key.into();
@@ -148,7 +148,7 @@ impl MapIteratorPrototype {
                     let value_handle = value.to_handle(cx);
                     let result_pair = create_array_from_list(cx, &[key_handle, value_handle]);
 
-                    create_iter_result_object(cx, result_pair.into(), false).into()
+                    Ok(create_iter_result_object(cx, result_pair.into(), false))
                 }
             },
         }

@@ -58,7 +58,7 @@ impl WeakMapConstructor {
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return weak_map.into();
+            return Ok(weak_map.as_value());
         }
 
         let adder = maybe!(get(cx, weak_map.into(), cx.names.set_()));
@@ -68,7 +68,7 @@ impl WeakMapConstructor {
 
         add_entries_from_iterable(cx, weak_map.into(), iterable, |cx, key, value| {
             maybe!(call_object(cx, adder.as_object(), weak_map.into(), &[key, value]));
-            ().into()
+            Ok(())
         })
     }
 }

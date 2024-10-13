@@ -65,7 +65,7 @@ impl ArrayConstructor {
             maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype));
 
         if arguments.is_empty() {
-            must!(array_create(cx, 0, Some(proto))).into()
+            Ok(must!(array_create(cx, 0, Some(proto))).as_value())
         } else if arguments.len() == 1 {
             let length = get_argument(cx, arguments, 0);
             let array = must!(array_create(cx, 0, Some(proto)));
@@ -87,7 +87,7 @@ impl ArrayConstructor {
             let int_len_value = Value::from(int_len).to_handle(cx);
             must!(set(cx, array.into(), cx.names.length(), int_len_value, true));
 
-            array.into()
+            Ok(array.as_value())
         } else {
             let array = maybe!(array_create(cx, arguments.len() as u64, Some(proto)));
 
@@ -101,7 +101,7 @@ impl ArrayConstructor {
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
             }
 
-            array.into()
+            Ok(array.as_value())
         }
     }
 
@@ -152,8 +152,8 @@ impl ArrayConstructor {
                     // Apply map function if present, returning if abnormal completion
                     let result = call_object(cx, map_function, this_arg, &[value, index_value]);
                     match result {
-                        EvalResult::Ok(mapped_value) => mapped_value,
-                        EvalResult::Throw(_) => return Some(result),
+                        Ok(mapped_value) => mapped_value,
+                        Err(_) => return Some(result),
                     }
                 } else {
                     value
@@ -163,8 +163,8 @@ impl ArrayConstructor {
 
                 // Append value to array, returning if abnormal completion
                 let result = create_data_property_or_throw(cx, array, key, value);
-                if let EvalResult::Throw(thrown_value) = result {
-                    return Some(EvalResult::Throw(thrown_value));
+                if let Err(error) = result {
+                    return Some(Err(error));
                 }
 
                 i += 1;
@@ -175,7 +175,7 @@ impl ArrayConstructor {
             let length_value = Value::from(i).to_handle(cx);
             maybe!(set(cx, array, cx.names.length(), length_value, true));
 
-            return array.into();
+            return Ok(array.as_value());
         }
 
         // Otherwise assume items arg is array like and copy elements from it
@@ -210,7 +210,7 @@ impl ArrayConstructor {
 
         maybe!(set(cx, array, cx.names.length(), length_value, true));
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.isArray (https://tc39.es/ecma262/#sec-array.isarray)
@@ -222,7 +222,7 @@ impl ArrayConstructor {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let is_array = maybe!(is_array(cx, argument));
-        cx.bool(is_array).into()
+        Ok(cx.bool(is_array))
     }
 
     /// Array.of (https://tc39.es/ecma262/#sec-array.of)
@@ -252,6 +252,6 @@ impl ArrayConstructor {
 
         maybe!(set(cx, array, cx.names.length(), length_value, true));
 
-        array.into()
+        Ok(array.as_value())
     }
 }

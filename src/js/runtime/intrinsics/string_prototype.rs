@@ -51,8 +51,7 @@ impl StringPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let mut object: Handle<ObjectValue> =
-            StringObject::new_with_proto(cx, object_proto, empty_string).into();
+        let mut object = StringObject::new_with_proto(cx, object_proto, empty_string).as_object();
 
         // Constructor property is added once StringConstructor has been created
         object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
@@ -124,7 +123,7 @@ impl StringPrototype {
         let index_arg = get_argument(cx, arguments, 0);
         let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
         if relative_index == f64::INFINITY {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let index = if relative_index >= 0.0 {
@@ -134,12 +133,12 @@ impl StringPrototype {
         };
 
         if index < 0 || index >= length {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(index as u32))
-            .as_string()
-            .into()
+        let code_unit_string = FlatString::from_code_unit(cx, string.code_unit_at(index as u32));
+
+        Ok(code_unit_string.as_value())
     }
 
     /// String.prototype.charAt (https://tc39.es/ecma262/#sec-string.prototype.charat)
@@ -156,12 +155,12 @@ impl StringPrototype {
         let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(position as u32))
-            .as_string()
-            .into()
+        let char_string = FlatString::from_code_unit(cx, string.code_unit_at(position as u32));
+
+        Ok(char_string.as_value())
     }
 
     /// String.prototype.charCodeAt (https://tc39.es/ecma262/#sec-string.prototype.charcodeat)
@@ -178,11 +177,11 @@ impl StringPrototype {
         let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let code_unit = string.code_unit_at(position as u32);
-        Value::smi(code_unit as i32).to_handle(cx).into()
+        Ok(Value::smi(code_unit as i32).to_handle(cx))
     }
 
     /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
@@ -199,11 +198,11 @@ impl StringPrototype {
         let position = maybe!(to_integer_or_infinity(cx, position_arg));
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let code_point = string.code_point_at(position as u32);
-        Value::smi(code_point as i32).to_handle(cx).into()
+        Ok(Value::smi(code_point as i32).to_handle(cx))
     }
 
     /// String.prototype.concat (https://tc39.es/ecma262/#sec-string.prototype.concat)
@@ -221,7 +220,7 @@ impl StringPrototype {
             concat_string = StringValue::concat(cx, concat_string, string);
         }
 
-        concat_string.into()
+        Ok(concat_string.as_value())
     }
 
     /// String.prototype.endsWith (https://tc39.es/ecma262/#sec-string.prototype.endswith)
@@ -252,17 +251,17 @@ impl StringPrototype {
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let start_index = match end_index.checked_sub(search_length) {
             Some(start_index) => start_index,
-            None => return cx.bool(false).into(),
+            None => return Ok(cx.bool(false)),
         };
 
         let ends_with_string = string.substring_equals(search_string, start_index);
 
-        cx.bool(ends_with_string).into()
+        Ok(cx.bool(ends_with_string))
     }
 
     /// String.prototype.includes (https://tc39.es/ecma262/#sec-string.prototype.includes)
@@ -287,11 +286,11 @@ impl StringPrototype {
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let found_search_string = string.find(search_string, pos).is_some();
-        cx.bool(found_search_string).into()
+        Ok(cx.bool(found_search_string))
     }
 
     /// String.prototype.indexOf (https://tc39.es/ecma262/#sec-string.prototype.indexof)
@@ -312,12 +311,12 @@ impl StringPrototype {
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         match string.find(search_string, pos) {
-            None => Value::smi(-1).to_handle(cx).into(),
-            Some(index) => Value::from(index).to_handle(cx).into(),
+            None => Ok(Value::smi(-1).to_handle(cx)),
+            Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
 
@@ -331,7 +330,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        cx.bool(string.is_well_formed()).into()
+        Ok(cx.bool(string.is_well_formed()))
     }
 
     /// String.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-string.prototype.lastindexof)
@@ -359,8 +358,8 @@ impl StringPrototype {
         let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
         match string.rfind(search_string, string_end) {
-            None => Value::smi(-1).to_handle(cx).into(),
-            Some(index) => Value::from(index).to_handle(cx).into(),
+            None => Ok(Value::smi(-1).to_handle(cx)),
+            Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
 
@@ -389,7 +388,7 @@ impl StringPrototype {
             Ordering::Greater => 1,
         };
 
-        Value::smi(comparison_number).to_handle(cx).into()
+        Ok(Value::smi(comparison_number).to_handle(cx))
     }
 
     /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)
@@ -516,7 +515,7 @@ impl StringPrototype {
             }
         };
 
-        normalized_string.into()
+        Ok(normalized_string.as_value())
     }
 
     /// String.prototype.padEnd (https://tc39.es/ecma262/#sec-string.prototype.padend)
@@ -560,7 +559,7 @@ impl StringPrototype {
 
         // No need to pad as string already has max length
         if int_max_length <= string_length as u64 {
-            return string.into();
+            return Ok(string.as_value());
         } else if int_max_length > u32::MAX as u64 {
             return range_error(cx, "target string length exceeds maximum string size");
         }
@@ -578,7 +577,7 @@ impl StringPrototype {
 
         // Check for an empty padding string which would have no effect
         if fill_string_length == 0 {
-            return string.into();
+            return Ok(string.as_value());
         }
 
         // Find the number of whole pad strings we can fit into the padding length
@@ -593,9 +592,9 @@ impl StringPrototype {
         }
 
         if is_start {
-            StringValue::concat(cx, pad_string, string).into()
+            Ok(StringValue::concat(cx, pad_string, string).as_value())
         } else {
-            StringValue::concat(cx, string, pad_string).into()
+            Ok(StringValue::concat(cx, string, pad_string).as_value())
         }
     }
 
@@ -614,10 +613,10 @@ impl StringPrototype {
         if !(0.0..=MAX_U32_AS_F64).contains(&n) {
             return range_error(cx, "count must be a finite, positive number that does not exceed the maximum string size");
         } else if n == 0.0 {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        string.repeat(cx, n as u32).as_string().into()
+        Ok(string.repeat(cx, n as u32).as_value())
     }
 
     /// String.prototype.replace (https://tc39.es/ecma262/#sec-string.prototype.replace)
@@ -654,7 +653,7 @@ impl StringPrototype {
         let matched_position = if let Some(matched_position) = matched_position {
             matched_position
         } else {
-            return target_string.into();
+            return Ok(target_string.as_value());
         };
 
         let replacement_string = match replace_value {
@@ -695,8 +694,10 @@ impl StringPrototype {
             .substring(cx, matched_position + search_string.len(), target_string.len())
             .as_string();
 
-        StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string])
-            .into()
+        let result_string =
+            StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string]);
+
+        Ok(result_string.as_value())
     }
 
     /// String.prototype.replaceAll (https://tc39.es/ecma262/#sec-string.prototype.replaceall)
@@ -811,7 +812,7 @@ impl StringPrototype {
             string_parts.push(preserved_substring);
         }
 
-        StringValue::concat_all(cx, &string_parts).into()
+        Ok(StringValue::concat_all(cx, &string_parts).as_value())
     }
 
     /// String.prototype.search (https://tc39.es/ecma262/#sec-string.prototype.search)
@@ -886,12 +887,10 @@ impl StringPrototype {
         };
 
         if start_index >= end_index {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        let substring = string.substring(cx, start_index, end_index).as_string();
-
-        substring.into()
+        Ok(string.substring(cx, start_index, end_index).as_value())
     }
 
     /// String.prototype.split (https://tc39.es/ecma262/#sec-string.prototype.split)
@@ -929,9 +928,9 @@ impl StringPrototype {
 
         if limit == 0 {
             let array_object = maybe!(array_create(cx, 0, None));
-            return array_object.into();
+            return Ok(array_object.as_value());
         } else if separator_argument.is_undefined() {
-            return create_array_from_list(cx, &[string.into()]).into();
+            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
         }
 
         // If separator is empty then return each code unit individually, up to the given limit
@@ -945,13 +944,13 @@ impl StringPrototype {
                 code_unit_strings.push(substring.into());
             }
 
-            return create_array_from_list(cx, &code_unit_strings).into();
+            return Ok(create_array_from_list(cx, &code_unit_strings).as_value());
         }
 
         // If the string is empty then it is the only substring
         let string_length = string.len();
         if string_length == 0 {
-            return create_array_from_list(cx, &[string.into()]).into();
+            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
         }
 
         let mut substrings = vec![];
@@ -967,7 +966,7 @@ impl StringPrototype {
 
             // If we have reached the limit of substrings then return them
             if substrings.len() == limit as usize {
-                return create_array_from_list(cx, &substrings).into();
+                return Ok(create_array_from_list(cx, &substrings).as_value());
             }
 
             // Find and skip the next separator
@@ -986,7 +985,7 @@ impl StringPrototype {
         let last_substring = string.substring(cx, i, string.len()).as_string();
         substrings.push(last_substring.into());
 
-        create_array_from_list(cx, &substrings).into()
+        Ok(create_array_from_list(cx, &substrings).as_value())
     }
 
     /// String.prototype.startsWith (https://tc39.es/ecma262/#sec-string.prototype.startswith)
@@ -1024,17 +1023,17 @@ impl StringPrototype {
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let end_index = start_index + search_length;
         if end_index > length {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let starts_with_string = string.substring_equals(search_string, start_index);
 
-        cx.bool(starts_with_string).into()
+        Ok(cx.bool(starts_with_string))
     }
 
     /// String.prototype.substring (https://tc39.es/ecma262/#sec-string.prototype.substring)
@@ -1064,9 +1063,7 @@ impl StringPrototype {
             std::mem::swap(&mut int_start, &mut int_end);
         }
 
-        let substring = string.substring(cx, int_start, int_end).as_string();
-
-        substring.into()
+        Ok(string.substring(cx, int_start, int_end).as_value())
     }
 
     /// String.prototype.toLocaleLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolocalelowercase)
@@ -1079,7 +1076,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_lower_case(cx).as_string().into()
+        Ok(string.to_lower_case(cx).as_value())
     }
 
     /// String.prototype.toLocaleUpperCase (https://tc39.es/ecma262/#sec-string.prototype.tolocaleuppercase)
@@ -1092,7 +1089,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_upper_case(cx).as_string().into()
+        Ok(string.to_upper_case(cx).as_value())
     }
 
     /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
@@ -1105,7 +1102,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_lower_case(cx).as_string().into()
+        Ok(string.to_lower_case(cx).as_value())
     }
 
     /// String.prototype.toString (https://tc39.es/ecma262/#sec-string.prototype.tostring)
@@ -1128,7 +1125,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_upper_case(cx).as_string().into()
+        Ok(string.to_upper_case(cx).as_value())
     }
 
     /// String.prototype.toWellFormed (https://tc39.es/ecma262/#sec-string.prototype.towellformed)
@@ -1141,7 +1138,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.to_well_formed(cx).as_string().to_handle().into()
+        Ok(string.to_well_formed(cx).to_handle().as_value())
     }
 
     /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
@@ -1154,7 +1151,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.trim(cx, true, true).into()
+        Ok(string.trim(cx, true, true).as_value())
     }
 
     /// String.prototype.trimEnd (https://tc39.es/ecma262/#sec-string.prototype.trimend)
@@ -1167,7 +1164,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.trim(cx, false, true).into()
+        Ok(string.trim(cx, false, true).as_value())
     }
 
     /// String.prototype.trimStart (https://tc39.es/ecma262/#sec-string.prototype.trimstart)
@@ -1180,7 +1177,7 @@ impl StringPrototype {
         let object = maybe!(require_object_coercible(cx, this_value));
         let string = maybe!(to_string(cx, object));
 
-        string.trim(cx, true, false).into()
+        Ok(string.trim(cx, true, false).as_value())
     }
 
     /// String.prototype.valueOf (https://tc39.es/ecma262/#sec-string.prototype.valueof)
@@ -1205,19 +1202,19 @@ impl StringPrototype {
 
         let flat_string = string.flatten();
 
-        StringIterator::new(cx, flat_string).into()
+        Ok(StringIterator::new(cx, flat_string).as_value())
     }
 }
 
 fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_string() {
-        return value.into();
+        return Ok(value);
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_string_object() {
-            return object_value.cast::<StringObject>().string_data().into();
+            return Ok(object_value.cast::<StringObject>().string_data().as_value());
         }
     }
 
@@ -1578,6 +1575,6 @@ impl SubstitutionTemplate {
             }
         }
 
-        StringValue::concat_all(cx, &string_parts).into()
+        Ok(StringValue::concat_all(cx, &string_parts))
     }
 }

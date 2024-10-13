@@ -51,7 +51,7 @@ impl WeakMapPrototype {
             .weak_map_data()
             .remove(&ValueCollectionKey::from(value));
 
-        cx.bool(removed_value).into()
+        Ok(cx.bool(removed_value))
     }
 
     /// WeakMap.prototype.get (https://tc39.es/ecma262/#sec-weakmap.prototype.get)
@@ -74,8 +74,8 @@ impl WeakMapPrototype {
         let value_opt = weak_map_data.get(&ValueCollectionKey::from(key));
 
         match value_opt {
-            None => cx.undefined().into(),
-            Some(value) => value.to_handle(cx).into(),
+            None => Ok(cx.undefined()),
+            Some(value) => Ok(value.to_handle(cx)),
         }
     }
 
@@ -99,7 +99,7 @@ impl WeakMapPrototype {
             .weak_map_data()
             .contains_key(&ValueCollectionKey::from(key));
 
-        cx.bool(has_key).into()
+        Ok(cx.bool(has_key))
     }
 
     /// WeakMap.prototype.set (https://tc39.es/ecma262/#sec-weakmap.prototype.set)
@@ -124,7 +124,7 @@ impl WeakMapPrototype {
 
         weak_map_object.insert(cx, key, value);
 
-        this_value.into()
+        Ok(this_value)
     }
 }
 

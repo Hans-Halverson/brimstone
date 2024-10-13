@@ -1339,7 +1339,7 @@ impl Pattern {
             Pattern::Array(patt) => patt.iter_bound_names(f),
             Pattern::Object(patt) => patt.iter_bound_names(f),
             Pattern::Assign(patt) => patt.iter_bound_names(f),
-            Pattern::Member(_) | Pattern::SuperMember(_) => ().into(),
+            Pattern::Member(_) | Pattern::SuperMember(_) => Ok(()),
         }
     }
 }
@@ -1370,7 +1370,7 @@ impl ArrayPattern {
             }
         }
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -1393,7 +1393,7 @@ impl ObjectPattern {
             maybe!(prop.value.iter_bound_names(f))
         }
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -1465,7 +1465,7 @@ impl ExportNamedDeclaration {
                     for decl in declarations {
                         let _ = decl.iter_bound_names(&mut |id| {
                             f(id);
-                            ().into()
+                            Ok(())
                         });
                     }
                 }

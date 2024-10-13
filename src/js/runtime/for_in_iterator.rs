@@ -95,7 +95,7 @@ impl ForInIterator {
             }
         }
 
-        Self::new(cx, object, &keys).into()
+        Ok(Self::new(cx, object, &keys))
     }
 
     const KEYS_OFFSET: usize = field_offset!(ForInIterator, keys);
@@ -113,7 +113,7 @@ impl Handle<ForInIterator> {
         // Find the next property that has not been deleted
         loop {
             if self.index >= self.keys.len() {
-                return Value::undefined().into();
+                return Ok(Value::undefined());
             }
 
             let key = self.keys.get_unchecked(self.index).to_handle();
@@ -123,7 +123,7 @@ impl Handle<ForInIterator> {
 
             // Check if property was deleted, otherwise skip it
             if maybe!(object.has_property(cx, property_key)) {
-                return Value::string(key.get_()).into();
+                return Ok(Value::string(key.get_()));
             }
         }
     }

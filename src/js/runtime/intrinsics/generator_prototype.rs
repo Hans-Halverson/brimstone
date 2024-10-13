@@ -89,6 +89,6 @@ impl GeneratorPrototype {
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
         maybe!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc));
 
-        ().into()
+        Ok(())
     }
 }

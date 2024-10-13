@@ -51,12 +51,11 @@ impl SetConstructor {
             return type_error(cx, "Set constructor must be called with new");
         };
 
-        let set_object: Handle<ObjectValue> =
-            maybe!(SetObject::new_from_constructor(cx, new_target)).into();
+        let set_object = maybe!(SetObject::new_from_constructor(cx, new_target)).as_object();
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return set_object.into();
+            return Ok(set_object.as_value());
         }
 
         let adder = maybe!(get(cx, set_object, cx.names.add()));
@@ -65,16 +64,16 @@ impl SetConstructor {
         }
 
         let adder = adder.as_object();
-        let set_value = set_object.into();
+        let set_value = set_object.as_value();
 
         maybe!(iter_iterator_values(cx, iterable, &mut |cx, value| {
             let result = call_object(cx, adder, set_value, &[value]);
             match result {
-                EvalResult::Ok(_) => None,
-                EvalResult::Throw(_) => Some(result),
+                Ok(_) => None,
+                Err(_) => Some(result),
             }
         }));
 
-        set_value.into()
+        Ok(set_value)
     }
 }

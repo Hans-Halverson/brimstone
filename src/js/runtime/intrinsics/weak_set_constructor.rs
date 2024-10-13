@@ -56,7 +56,7 @@ impl WeakSetConstructor {
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return weak_set.into();
+            return Ok(weak_set.as_value());
         }
 
         let adder = maybe!(get(cx, weak_set.into(), cx.names.add()));
@@ -69,14 +69,14 @@ impl WeakSetConstructor {
         loop {
             let next = maybe!(iterator_step(cx, &iterator));
             match next {
-                None => return weak_set.into(),
+                None => return Ok(weak_set.as_value()),
                 Some(next) => {
                     let next_value = maybe!(iterator_value(cx, next));
 
                     let add_result =
                         call_object(cx, adder.as_object(), weak_set.into(), &[next_value]);
 
-                    if let EvalResult::Throw(_) = add_result {
+                    if add_result.is_err() {
                         return iterator_close(cx, &iterator, add_result);
                     }
                 }

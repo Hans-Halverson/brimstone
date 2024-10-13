@@ -87,7 +87,7 @@ impl ArrayIterator {
             return type_error(cx, "typed array is out of bounds");
         }
 
-        (typed_array_length(&typed_array_record) as u64).into()
+        Ok(typed_array_length(&typed_array_record) as u64)
     }
 
     fn get_array_like_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
@@ -132,7 +132,7 @@ impl ArrayIteratorPrototype {
 
         // Early return if iterator is already done, before potential failure during `get_length`
         if array_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Dispatches based on whether this is array or typed array
@@ -141,7 +141,7 @@ impl ArrayIteratorPrototype {
         let current_index = array_iterator.current_index as u64;
         if array_iterator.is_done || current_index >= length {
             array_iterator.is_done = true;
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         array_iterator.current_index += 1;
@@ -149,12 +149,12 @@ impl ArrayIteratorPrototype {
         match array_iterator.kind {
             ArrayIteratorKind::Key => {
                 let key = Value::from(current_index).to_handle(cx);
-                create_iter_result_object(cx, key, false).into()
+                Ok(create_iter_result_object(cx, key, false))
             }
             ArrayIteratorKind::Value => {
                 let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
                 let value = maybe!(array.get(cx, property_key, array.into()));
-                create_iter_result_object(cx, value, false).into()
+                Ok(create_iter_result_object(cx, value, false))
             }
             ArrayIteratorKind::KeyAndValue => {
                 let key = Value::from(current_index).to_handle(cx);
@@ -162,7 +162,7 @@ impl ArrayIteratorPrototype {
                 let value = maybe!(array.get(cx, property_key, array.into()));
 
                 let result_pair = create_array_from_list(cx, &[key, value]);
-                create_iter_result_object(cx, result_pair.into(), false).into()
+                Ok(create_iter_result_object(cx, result_pair.into(), false))
             }
         }
     }

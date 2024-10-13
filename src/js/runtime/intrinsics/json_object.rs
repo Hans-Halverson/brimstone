@@ -86,7 +86,7 @@ impl JSONObject {
             return Self::internalize_json_property(cx, root, root_name, reviver);
         }
 
-        value.into()
+        Ok(value)
     }
 
     /// InternalizeJSONProperty (https://tc39.es/ecma262/#sec-internalizejsonproperty)
@@ -251,10 +251,10 @@ impl JSONObject {
 
         let mut serializer = JSONSerializer::new(replacer_function, property_list, gap);
         if !maybe!(serializer.serialize_json_property(cx, cx.names.empty_string(), wrapper)) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
-        serializer.build(cx).into()
+        Ok(serializer.build(cx).as_value())
     }
 }
 
@@ -482,7 +482,7 @@ impl JSONValue {
                 for (i, value) in values.iter().enumerate() {
                     key.replace(PropertyKey::from_u64(cx, i as u64));
                     let desc = Property::data(value.to_js_value(cx), true, true, true);
-                    array.object().set_property(cx, key, desc);
+                    array.as_object().set_property(cx, key, desc);
                 }
 
                 array.into()
@@ -609,10 +609,10 @@ impl JSONSerializer {
                 maybe!(self.serialize_json_object(cx, value.as_object()));
             }
         } else {
-            return false.into();
+            return Ok(false);
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// QuoteJSONString (https://tc39.es/ecma262/#sec-quotejsonstring)
@@ -662,7 +662,7 @@ impl JSONSerializer {
         if has_cycle {
             type_error(cx, "Cyclic object can't be serialized to JSON")
         } else {
-            ().into()
+            Ok(())
         }
     }
 
@@ -741,7 +741,7 @@ impl JSONSerializer {
 
         self.builder.push_char('}');
 
-        ().into()
+        Ok(())
     }
 
     /// SerializeJSONArray (https://tc39.es/ecma262/#sec-serializejsonarray)
@@ -791,6 +791,6 @@ impl JSONSerializer {
 
         self.builder.push_char(']');
 
-        ().into()
+        Ok(())
     }
 }

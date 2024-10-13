@@ -62,12 +62,11 @@ impl MapConstructor {
             return type_error(cx, "Map constructor must be called with new");
         };
 
-        let map_object: Handle<ObjectValue> =
-            maybe!(MapObject::new_from_constructor(cx, new_target)).into();
+        let map_object = maybe!(MapObject::new_from_constructor(cx, new_target)).as_object();
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return map_object.into();
+            return Ok(map_object.as_value());
         }
 
         let adder = maybe!(get(cx, map_object, cx.names.set_()));
@@ -77,7 +76,7 @@ impl MapConstructor {
 
         add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {
             maybe!(call_object(cx, adder.as_object(), map_object.into(), &[key, value]));
-            ().into()
+            Ok(())
         })
     }
 
@@ -102,7 +101,7 @@ impl MapConstructor {
             map.cast::<MapObject>().insert(cx, group.key, items);
         }
 
-        map.into()
+        Ok(map.as_value())
     }
 }
 
@@ -126,24 +125,24 @@ pub fn add_entries_from_iterable(
         // Extract key from entry, returning throw completion on error
         let key_result = get(cx, entry, key_index);
         let key = match key_result {
-            EvalResult::Ok(key) => key,
-            EvalResult::Throw(_) => return Some(key_result),
+            Ok(key) => key,
+            Err(_) => return Some(key_result),
         };
 
         // Extract value from entry, returning throw completion on error
         let value_result = get(cx, entry, value_index);
         let value = match value_result {
-            EvalResult::Ok(value) => value,
-            EvalResult::Throw(_) => return Some(value_result),
+            Ok(value) => value,
+            Err(_) => return Some(value_result),
         };
 
         // Add key and value to target
         let result = adder(cx, key, value);
         match result {
-            EvalResult::Ok(_) => None,
-            EvalResult::Throw(thrown_value) => Some(EvalResult::Throw(thrown_value)),
+            Ok(_) => None,
+            Err(thrown_value) => Some(Err(thrown_value)),
         }
     }));
 
-    target.into()
+    Ok(target)
 }

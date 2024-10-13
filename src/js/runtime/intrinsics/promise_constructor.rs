@@ -31,10 +31,10 @@ macro_rules! if_abrupt_reject_promise {
         let capability = $capability;
 
         match completion {
-            EvalResult::Ok(value) => value,
-            EvalResult::Throw(error) => {
+            Ok(value) => value,
+            Err(error) => {
                 maybe!(call_object($cx, capability.reject(), $cx.undefined(), &[error]));
-                return capability.promise().into();
+                return Ok(capability.promise().into());
             }
         }
     }};
@@ -123,12 +123,12 @@ impl PromiseConstructor {
 
         let mut completion = f(cx, &mut iterator, constructor, capability, resolve);
 
-        if let EvalResult::Throw(_) = completion {
+        if completion.is_err() {
             if !iterator.is_done {
                 completion = iterator_close(cx, &iterator, completion);
             }
 
-            if_abrupt_reject_promise!(cx, completion.clone(), capability);
+            if_abrupt_reject_promise!(cx, completion, capability);
         }
 
         completion
@@ -262,7 +262,7 @@ impl PromiseConstructor {
                         ));
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -309,7 +309,7 @@ impl PromiseConstructor {
 
         // Check if already called and mark as called
         if Self::get_already_called_or_false(cx, function) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         Self::set_already_called(cx, function, cx.bool(true));
@@ -333,7 +333,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.allSettled (https://tc39.es/ecma262/#sec-promise.allsettled)
@@ -377,7 +377,7 @@ impl PromiseConstructor {
                         ));
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -450,7 +450,7 @@ impl PromiseConstructor {
         // Check if already called and mark as called
         let mut already_called = Self::get_already_called_object(cx, function);
         if already_called.boolean_data() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         already_called.set_boolean_data(true);
@@ -489,7 +489,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.allSettled Reject (https://tc39.es/ecma262/#sec-promise.allsettled-reject-element-functions)
@@ -504,7 +504,7 @@ impl PromiseConstructor {
         // Check if already called and mark as called
         let mut already_called = Self::get_already_called_object(cx, function);
         if already_called.boolean_data() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         already_called.set_boolean_data(true);
@@ -543,7 +543,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.any (https://tc39.es/ecma262/#sec-promise.any)
@@ -589,7 +589,7 @@ impl PromiseConstructor {
                         ));
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -636,7 +636,7 @@ impl PromiseConstructor {
 
         // Check if already called and mark as called
         if Self::get_already_called_or_false(cx, function) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         Self::set_already_called(cx, function, cx.bool(true));
@@ -661,7 +661,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.reject(), cx.undefined(), &[error.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.race (https://tc39.es/ecma262/#sec-promise.race)
@@ -686,7 +686,7 @@ impl PromiseConstructor {
         loop {
             let next_value = maybe!(iterator_step_value(cx, iterator));
             match next_value {
-                None => return capability.promise().into(),
+                None => return Ok(capability.promise().as_value()),
                 Some(next_value) => {
                     let next_promise =
                         maybe!(call_object(cx, resolve, constructor.into(), &[next_value]));
@@ -711,7 +711,7 @@ impl PromiseConstructor {
         let capability = maybe!(PromiseCapability::new(cx, this_value));
         maybe!(call_object(cx, capability.reject(), cx.undefined(), &[result]));
 
-        capability.promise().into()
+        Ok(capability.promise().as_value())
     }
 
     /// Promise.resolve (https://tc39.es/ecma262/#sec-promise.resolve)
@@ -726,7 +726,7 @@ impl PromiseConstructor {
         }
 
         let result = get_argument(cx, arguments, 0);
-        maybe!(promise_resolve(cx, this_value, result)).into()
+        Ok(maybe!(promise_resolve(cx, this_value, result)).as_value())
     }
 
     /// Promise.withResolvers (https://tc39.es/ecma262/#sec-promise.withResolvers)
@@ -759,7 +759,7 @@ impl PromiseConstructor {
             capability.reject().into()
         ));
 
-        object.into()
+        Ok(object.as_value())
     }
 }
 
@@ -779,11 +779,11 @@ pub fn execute_then(
         call_object(cx, executor, this_value, &[resolve_function.into(), reject_function.into()]);
 
     // Reject if the executor function throws
-    if let EvalResult::Throw(error) = completion {
+    if let Err(error) = completion {
         maybe!(call_object(cx, reject_function, cx.undefined(), &[error]));
     }
 
-    promise.into()
+    Ok(promise.as_value())
 }
 
 fn create_resolve_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
@@ -837,7 +837,7 @@ pub fn resolve_builtin_function(
 
     resolve(cx, promise, resolution);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// Promise Reject Functions (https://tc39.es/ecma262/#sec-promise-reject-functions)
@@ -857,7 +857,7 @@ pub fn reject_builtin_function(
         promise.reject(cx, resolution.get());
     }
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// GetPromiseResolve (https://tc39.es/ecma262/#sec-getpromiseresolve)
@@ -870,5 +870,5 @@ fn get_promise_resolve(
         return type_error(cx, "resolve property must be a function");
     }
 
-    resolve.as_object().into()
+    Ok(resolve.as_object())
 }

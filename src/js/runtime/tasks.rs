@@ -131,7 +131,7 @@ impl Context {
             }));
         }
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -152,7 +152,7 @@ impl Callback1Task {
 
         maybe!(call(cx, func, cx.undefined(), &[arg]));
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -200,7 +200,7 @@ impl AwaitResumeTask {
             cx.vm().pop_initial_realm_stack_frame();
         }
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -244,26 +244,26 @@ impl PromiseThenReactionTask {
         } else {
             // If no handler was provided treat the handler result as a default normal or throw
             match self.kind {
-                PromiseReactionKind::Fulfill => EvalResult::Ok(result),
-                PromiseReactionKind::Reject => EvalResult::Throw(result),
+                PromiseReactionKind::Fulfill => Ok(result),
+                PromiseReactionKind::Reject => Err(result),
             }
         };
 
         let completion = if let Some(capability) = capability {
             // Resolve or reject the capability with the result of the handler
             match handler_result {
-                EvalResult::Ok(handler_result) => {
+                Ok(handler_result) => {
                     let resolve = capability.resolve();
                     call_object(cx, resolve, cx.undefined(), &[handler_result])
                 }
-                EvalResult::Throw(handler_result) => {
+                Err(handler_result) => {
                     let reject = capability.reject();
                     call_object(cx, reject, cx.undefined(), &[handler_result])
                 }
             }
         } else {
-            debug_assert!(matches!(handler_result, EvalResult::Ok(_)));
-            cx.undefined().into()
+            debug_assert!(handler_result.is_ok());
+            Ok(cx.undefined())
         };
 
         // Make sure we clean up the realm's stack frame before returning or throwing
@@ -273,7 +273,7 @@ impl PromiseThenReactionTask {
 
         maybe!(completion);
 
-        ().into()
+        Ok(())
     }
 }
 
@@ -313,6 +313,6 @@ impl PromiseThenSettleTask {
 
         maybe!(completion);
 
-        ().into()
+        Ok(())
     }
 }

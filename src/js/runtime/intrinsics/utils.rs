@@ -16,7 +16,7 @@ macro_rules! cast_from_value_fn {
                 return type_error(cx, concat!("expected object of type ", $name));
             }
 
-            object_value.cast::<$type>().into()
+            Ok(object_value.cast::<$type>())
         }
     };
 }

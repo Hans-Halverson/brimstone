@@ -43,7 +43,7 @@ impl GeneratorFunctionConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
-        maybe!(create_dynamic_function(
+        Ok(maybe!(create_dynamic_function(
             cx,
             constructor,
             new_target,
@@ -51,6 +51,6 @@ impl GeneratorFunctionConstructor {
             /* is_async */ false,
             /* is_generator */ true
         ))
-        .into()
+        .as_value())
     }
 }

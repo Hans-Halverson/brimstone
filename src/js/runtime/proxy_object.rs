@@ -108,7 +108,7 @@ impl VirtualObject for Handle<ProxyObject> {
         if trap_result.is_undefined() {
             let target_desc = maybe!(target.get_own_property(cx, key));
             if target_desc.is_none() {
-                return None.into();
+                return Ok(None);
             }
 
             if let Some(false) = target_desc.unwrap().is_configurable {
@@ -125,7 +125,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
             }
 
-            return None.into();
+            return Ok(None);
         } else if !trap_result.is_object() {
             return type_error(
                 cx,
@@ -157,7 +157,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        Some(result_desc).into()
+        Ok(Some(result_desc))
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-defineownproperty-p-desc)
@@ -185,7 +185,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
         if !to_boolean(trap_result.get()) {
-            return false.into();
+            return Ok(false);
         }
 
         let target_desc = maybe!(target.get_own_property(cx, key));
@@ -243,7 +243,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[HasProperty]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-hasproperty-p)
@@ -284,7 +284,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        trap_result.into()
+        Ok(trap_result)
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-get-p-receiver)
@@ -328,7 +328,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        trap_result.into()
+        Ok(trap_result)
     }
 
     /// [[Set]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-set-p-v-receiver)
@@ -356,7 +356,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
         if !to_boolean(trap_result.get()) {
-            return false.into();
+            return Ok(false);
         }
 
         let target_desc = maybe!(target.get_own_property(cx, key));
@@ -374,7 +374,7 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[Delete]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-delete-p)
@@ -396,7 +396,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
         if !to_boolean(trap_result.get()) {
-            return false.into();
+            return Ok(false);
         }
 
         let target_desc = maybe!(target.get_own_property(cx, key));
@@ -408,7 +408,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 );
             }
         } else {
-            return true.into();
+            return Ok(true);
         }
 
         if !maybe!(is_extensible_(cx, target)) {
@@ -418,7 +418,7 @@ impl VirtualObject for Handle<ProxyObject> {
             );
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys)
@@ -488,7 +488,7 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         if is_extensible_target && target_non_configurable_keys.is_empty() {
-            return trap_result_keys.into();
+            return Ok(trap_result_keys);
         }
 
         for key in target_non_configurable_keys {
@@ -501,7 +501,7 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         if is_extensible_target {
-            return trap_result_keys.into();
+            return Ok(trap_result_keys);
         }
 
         for key in target_configurable_keys {
@@ -518,7 +518,7 @@ impl VirtualObject for Handle<ProxyObject> {
             );
         }
 
-        trap_result_keys.into()
+        Ok(trap_result_keys)
     }
 
     /// [[Call]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-call-thisargument-argumentslist)
@@ -574,7 +574,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return type_error(cx, "proxy constructor must return an object");
         }
 
-        new_object.as_object().into()
+        Ok(new_object.as_object())
     }
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
@@ -614,7 +614,7 @@ impl ProxyObject {
         };
 
         if maybe!(is_extensible_(cx, target)) {
-            return handler_proto.into();
+            return Ok(handler_proto);
         }
 
         let target_proto = maybe!(target.get_prototype_of(cx));
@@ -626,7 +626,7 @@ impl ProxyObject {
             );
         }
 
-        handler_proto.into()
+        Ok(handler_proto)
     }
 
     /// [[SetPrototypeOf]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-setprototypeof-v)
@@ -659,11 +659,11 @@ impl ProxyObject {
         let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
 
         if !to_boolean(trap_result.get()) {
-            return false.into();
+            return Ok(false);
         }
 
         if maybe!(is_extensible_(cx, target)) {
-            return true.into();
+            return Ok(true);
         }
 
         let target_proto = maybe!(target.get_prototype_of(cx));
@@ -672,7 +672,7 @@ impl ProxyObject {
             return type_error(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[IsExtensible]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-isextensible)
@@ -701,7 +701,7 @@ impl ProxyObject {
             return type_error(cx, "proxy must report same extensiblitity as target");
         }
 
-        trap_result.into()
+        Ok(trap_result)
     }
 
     /// [[PreventExtensions]] (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-preventextensions)
@@ -728,7 +728,7 @@ impl ProxyObject {
             return type_error(cx, "proxy can't report an extensible object as non-extensible");
         }
 
-        trap_result.into()
+        Ok(trap_result)
     }
 }
 
@@ -754,7 +754,7 @@ pub fn proxy_create(
 
     let proxy = ProxyObject::new(cx, target_object, handler_object, is_callable, is_constructor);
 
-    proxy.into()
+    Ok(proxy)
 }
 
 impl HeapObject for HeapPtr<ProxyObject> {

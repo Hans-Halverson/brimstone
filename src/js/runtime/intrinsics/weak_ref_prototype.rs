@@ -35,7 +35,7 @@ impl WeakRefPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
-            weak_ref_object.weak_ref_target().to_handle(cx).into()
+            Ok(weak_ref_object.weak_ref_target().to_handle(cx))
         } else {
             type_error(cx, "deref method must be called on WeakRef")
         }

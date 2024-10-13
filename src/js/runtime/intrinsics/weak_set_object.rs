@@ -47,7 +47,7 @@ impl WeakSetObject {
 
         set_uninit!(object.weak_set_data, weak_set_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn weak_set_data(&self) -> HeapPtr<WeakValueSet> {

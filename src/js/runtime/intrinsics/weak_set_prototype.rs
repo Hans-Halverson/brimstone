@@ -50,7 +50,7 @@ impl WeakSetPrototype {
 
         weak_set_object.insert(cx, value);
 
-        this_value.into()
+        Ok(this_value)
     }
 
     /// WeakSet.prototype.delete (https://tc39.es/ecma262/#sec-weakset.prototype.delete)
@@ -73,7 +73,7 @@ impl WeakSetPrototype {
             .weak_set_data()
             .remove(&ValueCollectionKey::from(value));
 
-        cx.bool(removed_value).into()
+        Ok(cx.bool(removed_value))
     }
 
     /// WeakSet.prototype.has (https://tc39.es/ecma262/#sec-weakset.prototype.has)
@@ -96,7 +96,7 @@ impl WeakSetPrototype {
             .weak_set_data()
             .contains(&ValueCollectionKey::from(value));
 
-        cx.bool(has_value).into()
+        Ok(cx.bool(has_value))
     }
 }
 

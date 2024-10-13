@@ -282,5 +282,5 @@ pub fn new_class(
         maybe!(define_property_or_throw(cx, target, name, desc));
     }
 
-    constructor.into()
+    Ok(constructor)
 }

@@ -172,6 +172,5 @@ pub fn create_dynamic_function(
         }
     }
 
-    let closure_object: Handle<ObjectValue> = closure.into();
-    closure_object.into()
+    Ok(closure.as_object())
 }

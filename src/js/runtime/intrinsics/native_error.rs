@@ -38,7 +38,7 @@ macro_rules! create_native_error {
                 let object = object.to_handle();
 
                 object
-                    .object()
+                    .as_object()
                     .intrinsic_data_prop(cx, cx.names.message(), message_value);
 
                 attach_stack_trace_to_error(cx, object, /* skip_current_frame */ false);
@@ -57,7 +57,7 @@ macro_rules! create_native_error {
                     Intrinsic::$prototype
                 ));
 
-                object.to_handle().into()
+                Ok(object.to_handle())
             }
 
             #[allow(dead_code)]
@@ -127,7 +127,7 @@ macro_rules! create_native_error {
                 let options_arg = get_argument(cx, arguments, 1);
                 maybe!(install_error_cause(cx, object, options_arg));
 
-                object.into()
+                Ok(object.as_value())
             }
         }
 

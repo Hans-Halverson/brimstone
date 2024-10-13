@@ -41,7 +41,7 @@ pub fn to_primitive(
     mut preferred_type: ToPrimitivePreferredType,
 ) -> EvalResult<Handle<Value>> {
     if !value.is_object() {
-        return value.into();
+        return Ok(value);
     }
 
     let to_primitive_key = cx.well_known_symbols.to_primitive();
@@ -60,7 +60,7 @@ pub fn to_primitive(
                 return type_error(cx, "object cannot be converted to primitive");
             }
 
-            result.into()
+            Ok(result)
         }
         None => {
             if preferred_type == ToPrimitivePreferredType::None {
@@ -86,7 +86,7 @@ pub fn ordinary_to_primitive(
             if is_callable(method) {
                 let result = maybe!(call_object(cx, method.as_object(), object_value, &[]));
                 if !result.is_object() {
-                    return result.into();
+                    return Ok(result);
                 }
             }
         };
@@ -133,7 +133,7 @@ pub fn to_boolean(value: Value) -> bool {
 pub fn to_numeric(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     let prim_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
     if prim_value.is_bigint() {
-        return prim_value.into();
+        return Ok(prim_value);
     }
 
     to_number(cx, prim_value)
@@ -146,7 +146,7 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 
     // Fast path
     if value.is_number() {
-        return value_handle.into();
+        return Ok(value_handle);
     }
 
     if value.is_pointer() {
@@ -157,9 +157,7 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         } else {
             match value.as_pointer().descriptor().kind() {
                 // May allocate
-                ObjectKind::String => string_to_number(value_handle.as_string())
-                    .to_handle(cx)
-                    .into(),
+                ObjectKind::String => Ok(string_to_number(value_handle.as_string()).to_handle(cx)),
                 ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to number"),
                 ObjectKind::BigInt => type_error(cx, "BigInt cannot be converted to number"),
                 _ => unreachable!(),
@@ -167,13 +165,13 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Value::smi(0).to_handle(cx).into(),
-            UNDEFINED_TAG => Value::nan().to_handle(cx).into(),
+            NULL_TAG => Ok(Value::smi(0).to_handle(cx)),
+            UNDEFINED_TAG => Ok(Value::nan().to_handle(cx)),
             BOOL_TAG => {
                 if value.as_bool() {
-                    Value::smi(1).to_handle(cx).into()
+                    Ok(Value::smi(1).to_handle(cx))
                 } else {
-                    Value::smi(0).to_handle(cx).into()
+                    Ok(Value::smi(0).to_handle(cx))
                 }
             }
             _ => unreachable!(),
@@ -194,7 +192,7 @@ pub fn to_integer_or_infinity(cx: Context, value: Handle<Value>) -> EvalResult<f
     let number_handle = maybe!(to_number(cx, value));
     let number = number_handle.get();
 
-    to_integer_or_infinity_f64(number.as_number()).into()
+    Ok(to_integer_or_infinity_f64(number.as_number()))
 }
 
 pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
@@ -220,7 +218,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     // Fast pass if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
-        return value.as_smi().into();
+        return Ok(value.as_smi());
     }
 
     let number_value = maybe!(to_number(cx, value_handle));
@@ -228,7 +226,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -246,7 +244,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
         i32_number -= u32_max;
     }
 
-    (i32_number as i32).into()
+    Ok(i32_number as i32)
 }
 
 /// ToUint32 (https://tc39.es/ecma262/#sec-touint32)
@@ -256,7 +254,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
-            return (i32_value as u32).into();
+            return Ok(i32_value as u32);
         }
     }
 
@@ -265,7 +263,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -278,7 +276,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     let u32_max = u32::MAX as i64 + 1;
     u32_number = modulo(u32_number, u32_max);
 
-    (u32_number as u32).into()
+    Ok(u32_number as u32)
 }
 
 /// ToInt16 (https://tc39.es/ecma262/#sec-toint16)
@@ -286,7 +284,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     // Fast path if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
-        return (value.as_smi() as i16).into();
+        return Ok(value.as_smi() as i16);
     }
 
     let number_value = maybe!(to_number(cx, value_handle));
@@ -294,7 +292,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -312,7 +310,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
         i16_number -= u16_max;
     }
 
-    (i16_number as i16).into()
+    Ok(i16_number as i16)
 }
 
 /// ToUint16 (https://tc39.es/ecma262/#sec-touint16)
@@ -322,7 +320,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
-            return (i32_value as u16).into();
+            return Ok(i32_value as u16);
         }
     }
 
@@ -331,7 +329,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -344,7 +342,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     let u16_max = u16::MAX as i64 + 1;
     u16_number = modulo(u16_number, u16_max);
 
-    (u16_number as u16).into()
+    Ok(u16_number as u16)
 }
 
 /// ToInt8 (https://tc39.es/ecma262/#sec-toint8)
@@ -352,7 +350,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     // Fast path if the value is a smi
     let value = value_handle.get();
     if value.is_smi() {
-        return (value.as_smi() as i8).into();
+        return Ok(value.as_smi() as i8);
     }
 
     let number_value = maybe!(to_number(cx, value_handle));
@@ -360,7 +358,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -378,7 +376,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
         i8_number -= u8_max;
     }
 
-    (i8_number as i8).into()
+    Ok(i8_number as i8)
 }
 
 /// ToUint8 (https://tc39.es/ecma262/#sec-touint8)
@@ -388,7 +386,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
-            return (i32_value as u8).into();
+            return Ok(i32_value as u8);
         }
     }
 
@@ -397,7 +395,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
 
     // All zeros, infinities, and NaNs map to 0
     if f64_number == 0.0 || !f64_number.is_finite() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round float to an integer
@@ -410,7 +408,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     let u8_max = u8::MAX as i64 + 1;
     u8_number = ((u8_number % u8_max) + u8_max) % u8_max;
 
-    (u8_number as u8).into()
+    Ok(u8_number as u8)
 }
 
 /// ToUint8Clamp (https://tc39.es/ecma262/#sec-touint8clamp)
@@ -422,11 +420,11 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
 
         // Clamp within range
         if i32_value <= 0 {
-            return 0.into();
+            return Ok(0);
         } else if i32_value >= (u8::MAX as i32) {
-            return u8::MAX.into();
+            return Ok(u8::MAX);
         } else {
-            return (i32_value as u8).into();
+            return Ok(i32_value as u8);
         }
     }
 
@@ -435,26 +433,26 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
 
     // Clamp within range
     if f64_number <= 0.0 {
-        return 0.into();
+        return Ok(0);
     } else if f64_number >= MAX_U8_AS_F64 {
-        return u8::MAX.into();
+        return Ok(u8::MAX);
     } else if f64_number.is_nan() {
-        return 0.into();
+        return Ok(0);
     }
 
     // Round to closest integer
     let floor = f64_number.floor();
     if floor + 0.5 < f64_number {
-        return ((floor + 1.0) as u8).into();
+        return Ok((floor + 1.0) as u8);
     } else if f64_number < floor + 0.5 {
-        return (floor as u8).into();
+        return Ok(floor as u8);
     }
 
     // Round ties to even
     if floor % 2.0 == 1.0 {
-        ((floor + 1.0) as u8).into()
+        Ok((floor + 1.0) as u8)
     } else {
-        (floor as u8).into()
+        Ok(floor as u8)
     }
 }
 
@@ -465,11 +463,11 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
 
     if primitive.is_pointer() {
         match primitive.as_pointer().descriptor().kind() {
-            ObjectKind::BigInt => return primitive_handle.as_bigint().into(),
+            ObjectKind::BigInt => return Ok(primitive_handle.as_bigint()),
             ObjectKind::String => {
                 // May allocate
                 return if let Some(bigint) = string_to_bigint(primitive_handle.as_string()) {
-                    BigIntValue::new(cx, bigint).into()
+                    Ok(BigIntValue::new(cx, bigint))
                 } else {
                     syntax_error(cx, "string does not represent a BigInt")
                 };
@@ -478,9 +476,9 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
         }
     } else if primitive.is_bool() {
         return if primitive.as_bool() {
-            BigIntValue::new(cx, 1.into()).into()
+            Ok(BigIntValue::new(cx, 1.into()))
         } else {
-            BigIntValue::new(cx, 0.into()).into()
+            Ok(BigIntValue::new(cx, 0.into()))
         };
     }
 
@@ -500,7 +498,7 @@ pub fn to_big_int64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
         i64_number -= u64_max;
     }
 
-    i64_number.into()
+    Ok(i64_number)
 }
 
 /// ToBigUint64 (https://tc39.es/ecma262/#sec-tobiguint64)
@@ -511,7 +509,7 @@ pub fn to_big_uint64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
     let u64_max = (u64::MAX) as u128 + 1;
     let u64_number = ((bigint % u64_max) + u64_max) % u64_max;
 
-    u64_number.into()
+    Ok(u64_number)
 }
 
 /// ToString (https://tc39.es/ecma262/#sec-tostring)
@@ -521,7 +519,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
 
     // Fast path
     if value.is_string() {
-        return value_handle.as_string().into();
+        return Ok(value_handle.as_string());
     }
 
     if value.is_pointer() {
@@ -533,7 +531,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
             match value.as_pointer().descriptor().kind() {
                 ObjectKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
-                    cx.alloc_string(&bigint_string).as_string().into()
+                    Ok(cx.alloc_string(&bigint_string).as_string())
                 }
                 ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
@@ -541,20 +539,20 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => cx.alloc_string("null").as_string().into(),
-            UNDEFINED_TAG => cx.alloc_string("undefined").as_string().into(),
+            NULL_TAG => Ok(cx.alloc_string("null").as_string()),
+            UNDEFINED_TAG => Ok(cx.alloc_string("undefined").as_string()),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
-                cx.alloc_string(str).as_string().into()
+                Ok(cx.alloc_string(str).as_string())
             }
             SMI_TAG => {
                 let smi_string = value.as_smi().to_string();
-                cx.alloc_string(&smi_string).as_string().into()
+                Ok(cx.alloc_string(&smi_string).as_string())
             }
             // Otherwise must be double
             _ => {
                 let double_string = number_to_string(value.as_double());
-                cx.alloc_string(&double_string).as_string().into()
+                Ok(cx.alloc_string(&double_string).as_string())
             }
         }
     }
@@ -568,23 +566,17 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
     if value.is_pointer() {
         // Fast path
         if value.as_pointer().descriptor().is_object() {
-            value_handle.as_object().into()
+            Ok(value_handle.as_object())
         } else {
             match value.as_pointer().descriptor().kind() {
                 ObjectKind::String => {
-                    let object: Handle<ObjectValue> =
-                        StringObject::new_from_value(cx, value_handle.as_string()).into();
-                    object.into()
+                    Ok(StringObject::new_from_value(cx, value_handle.as_string()).as_object())
                 }
                 ObjectKind::Symbol => {
-                    let object: Handle<ObjectValue> =
-                        SymbolObject::new_from_value(cx, value_handle.as_symbol()).into();
-                    object.into()
+                    Ok(SymbolObject::new_from_value(cx, value_handle.as_symbol()).as_object())
                 }
                 ObjectKind::BigInt => {
-                    let object: Handle<ObjectValue> =
-                        BigIntObject::new_from_value(cx, value_handle.as_bigint()).into();
-                    object.into()
+                    Ok(BigIntObject::new_from_value(cx, value_handle.as_bigint()).as_object())
                 }
                 _ => unreachable!(),
             }
@@ -593,15 +585,9 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         match value.get_tag() {
             NULL_TAG => type_error(cx, "null has no properties"),
             UNDEFINED_TAG => type_error(cx, "undefined has no properties"),
-            BOOL_TAG => {
-                let object: Handle<ObjectValue> = BooleanObject::new(cx, value.as_bool()).into();
-                object.into()
-            }
+            BOOL_TAG => Ok(BooleanObject::new(cx, value.as_bool()).as_object()),
             // Otherwise is a number, either double or smi
-            _ => {
-                let object: Handle<ObjectValue> = NumberObject::new(cx, value.as_number()).into();
-                object.into()
-            }
+            _ => Ok(NumberObject::new(cx, value.as_number()).as_object()),
         }
     }
 }
@@ -610,7 +596,7 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 pub fn to_length(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
     let len = maybe!(to_integer_or_infinity(cx, value));
     if len <= 0.0 {
-        return 0.into();
+        return Ok(0);
     }
 
     let len_in_int_range = f64::min(len, MAX_SAFE_INTEGER_F64);
@@ -618,7 +604,7 @@ pub fn to_length(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
     // Safe since we have guaranteed that length is positive and within safe range
     let len_u64: u64 = unsafe { len_in_int_range.to_int_unchecked() };
 
-    len_u64.into()
+    Ok(len_u64)
 }
 
 /// Identical to CanonicalNumericIndexString, but for u32 string indices
@@ -681,16 +667,16 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
         if smi < 0 {
             range_error(cx, &format!("{} is out of range for an array index", smi))
         } else {
-            (smi as usize).into()
+            Ok(smi as usize)
         }
     } else if value.is_undefined() {
-        0.into()
+        Ok(0)
     } else {
         let integer = maybe!(to_integer_or_infinity(cx, value_handle));
         if !(0.0..=MAX_SAFE_INTEGER_F64).contains(&integer) {
             range_error(cx, &format!("{} is out of range for an array index", integer))
         } else {
-            (integer as usize).into()
+            Ok(integer as usize)
         }
     }
 }
@@ -705,18 +691,18 @@ pub fn require_object_coercible(cx: Context, value: Handle<Value>) -> EvalResult
         return type_error(cx, "can't convert undefined to object");
     }
 
-    value.into()
+    Ok(value)
 }
 
 /// IsArray (https://tc39.es/ecma262/#sec-isarray)
 pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     if !value.is_object() {
-        return false.into();
+        return Ok(false);
     }
 
     let object_value = value.as_object();
     if object_value.is_array() {
-        return true.into();
+        return Ok(true);
     }
 
     if object_value.is_proxy() {
@@ -728,7 +714,7 @@ pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         return is_array(cx, proxy.target().unwrap().into());
     }
 
-    false.into()
+    Ok(false)
 }
 
 /// IsCallable (https://tc39.es/ecma262/#sec-iscallable)
@@ -788,7 +774,7 @@ pub fn is_integral_number(value: Value) -> bool {
 /// If this returns true the value must be an object.
 pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     if !value.is_object() {
-        return false.into();
+        return Ok(false);
     }
 
     let object = value.as_object();
@@ -796,10 +782,10 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     let matcher = maybe!(get(cx, object, match_key));
 
     if !matcher.is_undefined() {
-        return to_boolean(matcher.get()).into();
+        return Ok(to_boolean(matcher.get()));
     }
 
-    object.is_regexp_object().into()
+    Ok(object.is_regexp_object())
 }
 
 /// SameValue (https://tc39.es/ecma262/#sec-samevalue)
@@ -951,23 +937,19 @@ pub fn to_property_key(
     if value.is_smi() {
         let smi_value = value.as_smi();
         if smi_value >= 0 {
-            return PropertyKey::array_index(cx, smi_value as u32)
-                .to_handle(cx)
-                .into();
+            return Ok(PropertyKey::array_index(cx, smi_value as u32).to_handle(cx));
         }
     }
 
     let key = maybe!(to_primitive(cx, value_handle, ToPrimitivePreferredType::String));
     if key.is_string() {
-        return PropertyKey::string(cx, key.as_string())
-            .to_handle(cx)
-            .into();
+        return Ok(PropertyKey::string(cx, key.as_string()).to_handle(cx));
     } else if key.is_symbol() {
-        return PropertyKey::symbol(key.as_symbol()).into();
+        return Ok(PropertyKey::symbol(key.as_symbol()));
     }
 
     let string_key = maybe!(to_string(cx, key));
-    PropertyKey::string(cx, string_key).to_handle(cx).into()
+    Ok(PropertyKey::string(cx, string_key).to_handle(cx))
 }
 
 /// IsLessThan (https://tc39.es/ecma262/#sec-islessthan)
@@ -991,15 +973,19 @@ pub fn is_less_than(
         if x_kind == ObjectKind::String {
             if y_kind == ObjectKind::String {
                 // May allocate
-                return (x_handle.as_string().cmp(&y_handle.as_string()).is_lt()).into();
+                return Ok(x_handle
+                    .as_string()
+                    .cmp(&y_handle.as_string())
+                    .is_lt()
+                    .into());
             } else if y_kind == ObjectKind::BigInt {
                 // May allocate
                 let x_bigint = string_to_bigint(x_handle.as_string());
 
                 return if let Some(x_bigint) = x_bigint {
-                    x_bigint.lt(&y_handle.as_bigint().bigint()).into()
+                    Ok(x_bigint.lt(&y_handle.as_bigint().bigint()).into())
                 } else {
-                    Value::undefined().into()
+                    Ok(Value::undefined())
                 };
             }
         }
@@ -1009,9 +995,9 @@ pub fn is_less_than(
             let y_bigint = string_to_bigint(y_handle.as_string());
 
             return if let Some(y_bigint) = y_bigint {
-                x_handle.as_bigint().bigint().lt(&y_bigint).into()
+                Ok(x_handle.as_bigint().bigint().lt(&y_bigint).into())
             } else {
-                Value::undefined().into()
+                Ok(Value::undefined())
             };
         }
     }
@@ -1026,30 +1012,30 @@ pub fn is_less_than(
     let y_is_bigint = num_y.is_bigint();
     if x_is_bigint == y_is_bigint {
         if x_is_bigint {
-            num_x
+            Ok(num_x
                 .as_bigint()
                 .bigint()
                 .lt(&num_y.as_bigint().bigint())
-                .into()
+                .into())
         } else {
             // Both are numbers
             if num_x.is_nan() || num_y.is_nan() {
-                return Value::undefined().into();
+                return Ok(Value::undefined());
             }
 
-            (num_x.as_number() < num_y.as_number()).into()
+            Ok((num_x.as_number() < num_y.as_number()).into())
         }
     } else if x_is_bigint {
         // x is a BigInt and y is a number
         if num_y.is_nan() {
-            return Value::undefined().into();
+            return Ok(Value::undefined());
         }
 
         let y_f64 = num_y.as_number();
         if y_f64 == f64::INFINITY {
-            return true.into();
+            return Ok(true.into());
         } else if y_f64 == f64::NEG_INFINITY {
-            return false.into();
+            return Ok(false.into());
         }
 
         // BigInt conversion truncates towards 0, so we must account for the possible fraction part
@@ -1057,30 +1043,30 @@ pub fn is_less_than(
         let y_bigint = y_f64.to_bigint().unwrap();
 
         match num_x.as_bigint().bigint().cmp(&y_bigint) {
-            Ordering::Less => true.into(),
+            Ordering::Less => Ok(true.into()),
             Ordering::Equal => {
                 // If y had a fractional part it was truncated towards 0. This means that if y had a
                 // fractional part and is positive it is greater than x, and if y had a fractional
                 // part and is negative it is less than x.
                 if y_has_fract {
-                    (y_f64 > 0.0).into()
+                    Ok((y_f64 > 0.0).into())
                 } else {
-                    false.into()
+                    Ok(false.into())
                 }
             }
-            Ordering::Greater => false.into(),
+            Ordering::Greater => Ok(false.into()),
         }
     } else {
         // x is a number and y is a BigInt
         if num_x.is_nan() {
-            return Value::undefined().into();
+            return Ok(Value::undefined());
         }
 
         let x_f64 = num_x.as_number();
         if x_f64 == f64::INFINITY {
-            return false.into();
+            return Ok(false.into());
         } else if x_f64 == f64::NEG_INFINITY {
-            return true.into();
+            return Ok(true.into());
         }
 
         // BigInt conversion truncates towards 0, so we must account for the possible fraction part
@@ -1088,18 +1074,18 @@ pub fn is_less_than(
         let x_bigint = x_f64.to_bigint().unwrap();
 
         match x_bigint.cmp(&num_y.as_bigint().bigint()) {
-            Ordering::Less => true.into(),
+            Ordering::Less => Ok(true.into()),
             Ordering::Equal => {
                 // If x had a fractional part it was truncated towards 0. This means that if x had a
                 // fractional part and is positive it is greater than y, and if x had a fractional
                 // part and is negative it is less than y.
                 if x_has_fract {
-                    (x_f64 < 0.0).into()
+                    Ok((x_f64 < 0.0).into())
                 } else {
-                    false.into()
+                    Ok(false.into())
                 }
             }
-            Ordering::Greater => false.into(),
+            Ordering::Greater => Ok(false.into()),
         }
     }
 }
@@ -1121,7 +1107,7 @@ pub fn is_loosely_equal(
     // this function.
     if v1.is_number() {
         if v2.is_number() {
-            return (v1.as_number() == v2.as_number()).into();
+            return Ok(v1.as_number() == v2.as_number());
         }
 
         return if v2.is_pointer() {
@@ -1129,27 +1115,27 @@ pub fn is_loosely_equal(
                 ObjectKind::String => {
                     // May allocate
                     let number_v2 = string_to_number(v2_handle.as_string());
-                    (v1_handle.as_number() == number_v2.as_number()).into()
+                    Ok(v1_handle.as_number() == number_v2.as_number())
                 }
                 ObjectKind::BigInt => {
                     if v1.is_nan() || v1.is_infinity() {
-                        return false.into();
+                        return Ok(false);
                     }
 
                     let v1_f64 = v1.as_number();
 
                     // Number must be an integer to be equal to a BigInt
                     if v1_f64.trunc() != v1_f64 {
-                        return false.into();
+                        return Ok(false);
                     }
 
                     // Now that we know number is an integer, it can losslessly be converted to a BigInt
                     let v1_bigint = v1_f64.to_bigint().unwrap();
                     let v2_bigint = v2.as_bigint().bigint();
 
-                    (v1_bigint == v2_bigint).into()
+                    Ok(v1_bigint == v2_bigint)
                 }
-                ObjectKind::Symbol => false.into(),
+                ObjectKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
                     let primitive_v2 =
@@ -1161,13 +1147,13 @@ pub fn is_loosely_equal(
             let v2_number = maybe!(to_number(cx, v2_handle));
             is_loosely_equal(cx, v1_handle, v2_number)
         } else {
-            false.into()
+            Ok(false)
         };
     }
 
     // Fast path - values with the same bit patterns are equal
     if v1.as_raw_bits() == v2.as_raw_bits() {
-        return true.into();
+        return Ok(true);
     }
 
     let tag1 = v1.get_tag();
@@ -1183,21 +1169,19 @@ pub fn is_loosely_equal(
                     // Only strings and BigInts may have the same value but different bit patterns
                     ObjectKind::String => {
                         // May allocate
-                        v1_handle.as_string().eq(&v2_handle.as_string()).into()
+                        Ok(v1_handle.as_string().eq(&v2_handle.as_string()))
                     }
-                    ObjectKind::BigInt => {
-                        v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()).into()
-                    }
-                    _ => false.into(),
+                    ObjectKind::BigInt => Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())),
+                    _ => Ok(false),
                 };
             // Two objects with different bit patterns are always unequal
             } else if v1.as_pointer().descriptor().is_object()
                 && v2.as_pointer().descriptor().is_object()
             {
-                return false.into();
+                return Ok(false);
             }
         } else {
-            return false.into();
+            return Ok(false);
         }
     }
 
@@ -1205,7 +1189,7 @@ pub fn is_loosely_equal(
 
     // Nullish values are loosely equal
     if (tag1 == NULL_TAG && tag2 == UNDEFINED_TAG) || (tag1 == UNDEFINED_TAG && tag2 == NULL_TAG) {
-        return true.into();
+        return Ok(true);
     }
 
     // Convert bools to numbers and try again
@@ -1225,27 +1209,27 @@ pub fn is_loosely_equal(
                 ObjectKind::String => {
                     // May allocate
                     let v1_number = string_to_number(v1_handle.as_string());
-                    (v1_number.as_number() == v2_handle.as_number()).into()
+                    Ok(v1_number.as_number() == v2_handle.as_number())
                 }
                 ObjectKind::BigInt => {
                     if v2.is_nan() || v2.is_infinity() {
-                        return false.into();
+                        return Ok(false);
                     }
 
                     let v2_f64 = v2.as_number();
 
                     // Number must be an integer to be equal to a BigInt
                     if v2_f64.trunc() != v2_f64 {
-                        return false.into();
+                        return Ok(false);
                     }
 
                     // Now that we know number is an integer, it can losslessly be converted to a BigInt
                     let v2_bigint = v2_f64.to_bigint().unwrap();
                     let v1_bigint = v1.as_bigint().bigint();
 
-                    (v1_bigint == v2_bigint).into()
+                    Ok(v1_bigint == v2_bigint)
                 }
-                ObjectKind::Symbol => false.into(),
+                ObjectKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
                     let v1_primitive =
@@ -1254,7 +1238,7 @@ pub fn is_loosely_equal(
                 }
             }
         } else {
-            false.into()
+            Ok(false)
         };
     }
 
@@ -1268,18 +1252,18 @@ pub fn is_loosely_equal(
                 // May allocate
                 let v1_bigint = string_to_bigint(v1_handle.as_string());
                 return if let Some(v1_bigint) = v1_bigint {
-                    v1_bigint.eq(&v2_handle.as_bigint().bigint()).into()
+                    Ok(v1_bigint.eq(&v2_handle.as_bigint().bigint()))
                 } else {
-                    false.into()
+                    Ok(false)
                 };
             }
             (ObjectKind::BigInt, ObjectKind::String) => {
                 // May allocate
                 let v2_bigint = string_to_bigint(v2_handle.as_string());
                 return if let Some(v2_bigint) = v2_bigint {
-                    v1_handle.as_bigint().bigint().eq(&v2_bigint).into()
+                    Ok(v1_handle.as_bigint().bigint().eq(&v2_bigint))
                 } else {
-                    false.into()
+                    Ok(false)
                 };
             }
             _ => {}
@@ -1296,7 +1280,7 @@ pub fn is_loosely_equal(
         }
     }
 
-    false.into()
+    Ok(false)
 }
 
 /// IsStrictlyEqual (https://tc39.es/ecma262/#sec-isstrictlyequal)

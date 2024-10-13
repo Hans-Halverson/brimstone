@@ -45,7 +45,7 @@ impl WeakRefObject {
 
         set_uninit!(object.weak_ref_target, value.get());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn weak_ref_target(&self) -> Value {
@@ -106,7 +106,7 @@ impl WeakRefConstructor {
             return type_error(cx, "WeakRef only holds objects and symbols");
         }
 
-        maybe!(WeakRefObject::new_from_constructor(cx, new_target, target_value)).into()
+        Ok(maybe!(WeakRefObject::new_from_constructor(cx, new_target, target_value)).as_value())
     }
 }
 

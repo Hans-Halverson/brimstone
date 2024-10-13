@@ -37,7 +37,7 @@ impl DateObject {
 
         set_uninit!(object.date_value, date_value);
 
-        object.into()
+        Ok(object)
     }
 
     pub fn date_value(&self) -> f64 {

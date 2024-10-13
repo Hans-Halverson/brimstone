@@ -37,7 +37,7 @@ impl ErrorObject {
             Intrinsic::ErrorPrototype
         ));
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 }
 
@@ -95,7 +95,7 @@ impl ErrorConstructor {
         let options_arg = get_argument(cx, arguments, 1);
         maybe!(install_error_cause(cx, object, options_arg));
 
-        object.into()
+        Ok(object.as_value())
     }
 }
 
@@ -118,7 +118,7 @@ pub fn install_error_cause(
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 impl HeapObject for HeapPtr<ErrorObject> {

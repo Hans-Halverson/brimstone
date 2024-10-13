@@ -219,10 +219,7 @@ impl VM {
 
     /// Execute an entire bytecode script, first instantiating the global declarations then
     /// running the script function.
-    pub fn execute_script(
-        &mut self,
-        bytecode_script: BytecodeScript,
-    ) -> Result<Handle<Value>, Handle<Value>> {
+    pub fn execute_script(&mut self, bytecode_script: BytecodeScript) -> EvalResult<Handle<Value>> {
         let mut realm = bytecode_script.script_function.realm();
         let global_names = bytecode_script.global_names;
 
@@ -235,14 +232,13 @@ impl VM {
             .rust_runtime_function_id()
             .unwrap();
 
-        self.call_rust_runtime(
+        maybe!(self.call_rust_runtime(
             init_closure,
             init_function_id,
             realm.global_object().into(),
             &[global_names.cast()],
             None,
-        )
-        .into_rust_result()?;
+        ));
 
         // Then create global scope and add lexical names to realm, since GDI would have errored
         // if there were any conflicts.
@@ -256,7 +252,6 @@ impl VM {
         let receiver = program_closure.global_object().into();
 
         self.execute(program_closure, receiver, &[])
-            .into_rust_result()
     }
 
     /// Execute a module. Must only be called during the evaluation phase, after loading and linking.
@@ -351,10 +346,10 @@ impl VM {
         let completion = self.dispatch_loop();
 
         if let Err(error_value) = completion {
-            return EvalResult::Throw(error_value.to_handle(self.cx()));
+            return Err(error_value.to_handle(self.cx()));
         }
 
-        return_value.to_handle(self.cx()).into()
+        Ok(return_value.to_handle(self.cx()))
     }
 
     fn reset_stack(&mut self) {
@@ -479,7 +474,7 @@ impl VM {
                         async_generator_complete_step(
                             self.cx(),
                             async_generator,
-                            EvalResult::Ok(yield_value),
+                            Ok(yield_value),
                             /* is_done */ false,
                         );
 
@@ -671,8 +666,8 @@ impl VM {
             macro_rules! maybe_throw {
                 ($expr:expr) => {
                     match $expr {
-                        EvalResult::Ok(result) => result,
-                        EvalResult::Throw(error) => throw!(error.get()),
+                        Ok(result) => result,
+                        Err(error) => throw!(error.get()),
                     }
                 };
             }
@@ -1446,7 +1441,7 @@ impl VM {
             CallableObject::Proxy(proxy) => {
                 return proxy.to_handle().call(self.cx(), receiver, arguments)
             }
-            CallableObject::Error(error) => return EvalResult::Throw(error),
+            CallableObject::Error(error) => return Err(error),
         };
 
         // Get the receiver to use. May allocate.
@@ -1487,10 +1482,10 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx()));
+                return Err(error_value.to_handle(self.cx()));
             }
 
-            return_value.to_handle(self.cx()).into()
+            Ok(return_value.to_handle(self.cx()))
         }
     }
 
@@ -1513,7 +1508,7 @@ impl VM {
                     .to_handle()
                     .construct(self.cx(), arguments, new_target);
             }
-            CallableObject::Error(error) => return EvalResult::Throw(error),
+            CallableObject::Error(error) => return Err(error),
         };
 
         let closure_ptr = closure_handle.get_();
@@ -1537,7 +1532,7 @@ impl VM {
             }));
 
             // Return value must be an object
-            return_value.as_object().into()
+            Ok(return_value.as_object())
         } else {
             // Create the receiver to use. Allocates.
             let is_base = function_ptr.is_base_constructor();
@@ -1573,14 +1568,14 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered. May allocate.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx()));
+                return Err(error_value.to_handle(self.cx()));
             }
 
             let return_value = return_value.to_handle(self.cx());
 
             // Use the function's return value if it is an object
             if return_value.is_object() {
-                return_value.as_object().into()
+                Ok(return_value.as_object())
             } else {
                 self.constructor_non_object_return_value(receiver_handle, is_base)
             }
@@ -1609,9 +1604,9 @@ impl VM {
                 let arguments = self.prepare_rust_runtime_args(args);
                 let return_value = maybe!(proxy.to_handle().call(self.cx(), receiver, &arguments));
                 unsafe { *return_value_address = return_value.get() };
-                return ().into();
+                return Ok(());
             }
-            CallableObject::Error(error) => return EvalResult::Throw(error),
+            CallableObject::Error(error) => return Err(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
@@ -1674,7 +1669,7 @@ impl VM {
             // Continue in dispatch loop, executing the first instruction of the function
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -1706,9 +1701,9 @@ impl VM {
                 // Can directly return value as proxy constructor is guaranteed to return an object
                 unsafe { *return_value_address = return_value.get_().into() };
 
-                return ().into();
+                return Ok(());
             }
-            CallableObject::Error(error) => return EvalResult::Throw(error),
+            CallableObject::Error(error) => return Err(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
@@ -1732,7 +1727,7 @@ impl VM {
                 ));
 
                 // Return value must be an object
-                return_value.as_object().into()
+                Ok(return_value.as_object())
             }));
 
             return_value.get_()
@@ -1784,7 +1779,7 @@ impl VM {
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
             if let Err(error_value) = self.dispatch_loop() {
-                return EvalResult::Throw(error_value.to_handle(self.cx()));
+                return Err(error_value.to_handle(self.cx()));
             }
 
             // Use the function's return value if it is an object
@@ -1798,7 +1793,7 @@ impl VM {
         // Set the return value from the Rust runtime call
         unsafe { *return_value_address = return_value.into() };
 
-        ().into()
+        Ok(())
     }
 
     /// Check that a value is a callable (either a closure or proxy object), returning the
@@ -1819,21 +1814,21 @@ impl VM {
                         "cannot call class constructor",
                     ));
 
-                    return CallableObject::Error(error_value.into()).into();
+                    return Ok(CallableObject::Error(error_value.into()));
                 }
 
                 // All other closures all callable
-                return CallableObject::Closure(closure).into();
+                return Ok(CallableObject::Closure(closure));
             } else if kind == ObjectKind::Proxy {
                 // Check if proxy is callable, and if so return the attached closure
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
                 if proxy_object.is_callable() {
-                    return CallableObject::Proxy(proxy_object).into();
+                    return Ok(CallableObject::Proxy(proxy_object));
                 }
             }
         }
 
-        CallableObject::Error(type_error_value(self.cx(), "value is not a function")).into()
+        Ok(CallableObject::Error(type_error_value(self.cx(), "value is not a function")))
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the
@@ -1936,7 +1931,7 @@ impl VM {
         // Start executing from the first instruction of the function
         self.set_pc(bytecode_function.bytecode().as_ptr());
 
-        ().into()
+        Ok(())
     }
 
     /// Pop the current stack frame, restoring the previous frame pointer and PC.
@@ -2098,7 +2093,7 @@ impl VM {
         if let Some(receiver) = receiver {
             self.coerce_receiver(receiver, function)
         } else {
-            self.default_receiver(function).into()
+            Ok(self.default_receiver(function))
         }
     }
 
@@ -2129,11 +2124,11 @@ impl VM {
             ))
             .into();
 
-            new_object.into()
+            Ok(new_object)
         } else {
             // Receiver starts out as the empty sentinel value in derived constructors, and only
             // will be set once super() is called.
-            Value::empty().into()
+            Ok(Value::empty())
         }
     }
 
@@ -2147,7 +2142,7 @@ impl VM {
         if is_base {
             // Base classes always return the receiver. Receiver is guaranteed to be an object
             // created earlier in this construct call.
-            receiver.as_object().into()
+            Ok(receiver.as_object())
         } else {
             // Derived constructors can either return an object or undefined. The derived
             // constructor implementation will return `this` if the code syntactically returns
@@ -2176,7 +2171,7 @@ impl VM {
             receiver_object.get_().into()
         };
 
-        value.into()
+        Ok(value)
     }
 
     /// Allocate space for local registers, initializing to undefined
@@ -2238,7 +2233,7 @@ impl VM {
             // Return undefined if there are no arguments
             if argc == 0 {
                 self.write_register(dest, Value::undefined());
-                return ().into();
+                return Ok(());
             }
 
             // Only the first argument is passed to eval
@@ -2267,7 +2262,7 @@ impl VM {
             let args_slice = self.get_varargs_slice(instr.args());
             if args_slice.is_empty() {
                 self.write_register(instr.dest(), Value::undefined());
-                return ().into();
+                return Ok(());
             }
 
             let arg = args_slice[0].to_handle(self.cx());
@@ -2292,7 +2287,7 @@ impl VM {
         let result = maybe!(perform_eval(self.cx(), arg, is_strict_caller, Some(scope), flags));
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2303,7 +2298,7 @@ impl VM {
         let super_constructor = must!(self
             .closure()
             .to_handle()
-            .object()
+            .as_object()
             .get_prototype_of(self.cx()));
 
         if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
@@ -2331,7 +2326,7 @@ impl VM {
         // Store result of super call to the `this` register, which will be returned at end of call
         self.write_register(Register::<W>::this(), this_value.get_().into());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2434,12 +2429,12 @@ impl VM {
             } else {
                 // If not erroring, return undefined for unresolved names
                 self.write_register(dest, Value::undefined());
-                return ().into();
+                return Ok(());
             };
 
             self.write_register(dest, value);
 
-            ().into()
+            Ok(())
         })
     }
 
@@ -2485,7 +2480,7 @@ impl VM {
                 return err_cannot_set_property(cx, name);
             }
 
-            ().into()
+            Ok(())
         })
     }
 
@@ -2528,7 +2523,7 @@ impl VM {
 
             if let Some(value) = maybe!(scope.lookup(cx, name)) {
                 self.write_register(dest, value.get());
-                ().into()
+                Ok(())
             } else {
                 if error_on_unresolved {
                     // Error if name could not be resolved
@@ -2536,7 +2531,7 @@ impl VM {
                 } else {
                     // If not erroring, return undefined for unresolved names
                     self.write_register(dest, Value::undefined());
-                    ().into()
+                    Ok(())
                 }
             }
         })
@@ -2573,7 +2568,7 @@ impl VM {
                 }
             }
 
-            ().into()
+            Ok(())
         })
     }
 
@@ -2588,7 +2583,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2602,7 +2597,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2616,7 +2611,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2630,7 +2625,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2644,7 +2639,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2658,7 +2653,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2672,7 +2667,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2686,7 +2681,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2700,7 +2695,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2714,7 +2709,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2731,7 +2726,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2748,7 +2743,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2765,7 +2760,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(result));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2782,7 +2777,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(!result));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2820,7 +2815,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2837,7 +2832,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2854,7 +2849,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2871,7 +2866,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2884,7 +2879,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2956,7 +2951,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2981,7 +2976,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(result));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -2998,7 +2993,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(result));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3011,7 +3006,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3024,7 +3019,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3037,7 +3032,7 @@ impl VM {
 
         self.write_register(dest, result.get_().into());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3053,7 +3048,7 @@ impl VM {
 
         self.write_register(dest, result.cast::<Value>().get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3066,7 +3061,7 @@ impl VM {
 
         self.write_register(dest, result.get_().into());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3119,7 +3114,7 @@ impl VM {
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3143,7 +3138,7 @@ impl VM {
 
         self.write_register(dest, Value::object(closure.get_().cast()));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3180,7 +3175,7 @@ impl VM {
 
         self.write_register(dest, Value::object(regexp.get_().cast()));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3264,7 +3259,7 @@ impl VM {
 
         self.write_register(dest, constructor.cast::<Value>().get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3318,7 +3313,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3344,7 +3339,7 @@ impl VM {
             maybe!(coerced_object.set(self.cx(), property_key, value, coerced_object.into()));
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3427,7 +3422,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3459,7 +3454,7 @@ impl VM {
             maybe!(coerced_object.set(self.cx(), property_key, value, coerced_object.into()));
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3506,7 +3501,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3537,7 +3532,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3569,7 +3564,7 @@ impl VM {
             maybe!(home_prototype.set(self.cx(), property_key, value, receiver));
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3588,7 +3583,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(delete_status));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3608,7 +3603,7 @@ impl VM {
 
         self.write_register(dest, Value::bool(delete_status));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3626,7 +3621,7 @@ impl VM {
 
         self.write_register(dest, result.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3642,7 +3637,7 @@ impl VM {
         let coerced_object = maybe!(to_object(self.cx(), object));
         maybe!(private_set(self.cx(), coerced_object, key, value));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3685,7 +3680,7 @@ impl VM {
         // May allocate
         let index = index.replace_into(must!(PropertyKey::from_value(self.cx(), index)));
         let desc = Property::data(value, true, true, true);
-        array.object().set_property(self.cx(), index, desc);
+        array.as_object().set_property(self.cx(), index, desc);
     }
 
     #[inline]
@@ -3717,7 +3712,7 @@ impl VM {
         // May allocate
         maybe!(copy_data_properties(self.cx(), dest, source, &excluded_property_keys));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3738,7 +3733,7 @@ impl VM {
             self.write_register(dest, function.get());
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3791,7 +3786,7 @@ impl VM {
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = lexical_scope;
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3908,7 +3903,7 @@ impl VM {
 
         self.write_register(dest, value);
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3926,7 +3921,7 @@ impl VM {
 
         boxed_value.set(value);
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3955,7 +3950,7 @@ impl VM {
 
                 let array_property = Property::data(value_handle, true, true, true);
                 rest_array
-                    .object()
+                    .as_object()
                     .set_property(self.cx(), array_key, array_property);
             }
         }
@@ -3983,7 +3978,7 @@ impl VM {
 
         self.write_register(dest, super_constructor);
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -3992,7 +3987,7 @@ impl VM {
 
         // Binding in TDZ represented as an empty value
         if !value.is_empty() {
-            return ().into();
+            return Ok(());
         }
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
@@ -4009,7 +4004,7 @@ impl VM {
 
         // Uninitialized `this` represented as an empty value
         if !value.is_empty() {
-            return ().into();
+            return Ok(());
         }
 
         reference_error(self.cx(), "this is not initialized")
@@ -4024,7 +4019,7 @@ impl VM {
 
         // Uninitialized `this` represented as an empty value
         if value.is_empty() {
-            return ().into();
+            return Ok(());
         }
 
         reference_error(self.cx(), "super constructor called multiple times")
@@ -4041,7 +4036,7 @@ impl VM {
             return type_error(self.cx(), "iterator result must be an object");
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4087,7 +4082,7 @@ impl VM {
 
         self.write_register(dest, iterator.cast::<ObjectValue>().into());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4102,7 +4097,7 @@ impl VM {
 
         self.write_register(dest, result);
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4120,7 +4115,7 @@ impl VM {
         self.write_register(iterator_dest, iterator_result.iterator.get_().into());
         self.write_register(next_method_dest, iterator_result.next_method.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4138,7 +4133,7 @@ impl VM {
         self.write_register(iterator_dest, iterator_result.iterator.get_().into());
         self.write_register(next_method_dest, iterator_result.next_method.get());
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4197,7 +4192,7 @@ impl VM {
             self.write_register(value_dest, value.get());
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4218,7 +4213,7 @@ impl VM {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4241,7 +4236,7 @@ impl VM {
 
         self.write_register(has_return_method, Value::bool(return_method.is_some()));
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4256,7 +4251,7 @@ impl VM {
             return type_error(self.cx(), "iterator's return method must return an object");
         }
 
-        ().into()
+        Ok(())
     }
 
     #[inline]
@@ -4264,7 +4259,7 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let promise: HeapPtr<ObjectValue> = PromiseObject::new_pending(self.cx()).into();
+        let promise = PromiseObject::new_pending(self.cx()).as_object();
 
         self.write_register(dest, promise.into());
     }
@@ -4326,7 +4321,7 @@ impl VM {
 
         self.write_register(dest, namespace_promise.get_().into());
 
-        ().into()
+        Ok(())
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

@@ -134,9 +134,9 @@ impl Realm {
             let mut global_scope = self.global_scopes.get(location.global_scope_index);
             global_scope.set_slot(location.slot_index as usize, value);
 
-            true.into()
+            Ok(true)
         } else {
-            false.into()
+            Ok(false)
         }
     }
 }
@@ -184,7 +184,7 @@ impl Handle<Realm> {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Check if a set of var names can be declared in the realm. A var name cannot be declared if
@@ -200,7 +200,7 @@ impl Handle<Realm> {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Create a new global scope within this realm. Each script has its own global scope with its

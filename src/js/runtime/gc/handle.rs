@@ -451,3 +451,13 @@ impl<T: Escapable> Escapable for Option<T> {
         self.as_ref().map(|some| some.escape(cx))
     }
 }
+
+impl<T: Escapable, E: Escapable> Escapable for Result<T, E> {
+    #[inline]
+    fn escape(&self, cx: Context) -> Self {
+        match self {
+            Ok(ok) => Ok(ok.escape(cx)),
+            Err(err) => Err(err.escape(cx)),
+        }
+    }
+}

@@ -114,7 +114,7 @@ impl PromiseObject {
             PromiseState::Pending { reactions: None, already_resolved: false }
         );
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn is_pending(&self) -> bool {
@@ -219,8 +219,8 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
     // Otherwise look for a "then" property on the resolution object
     let then_completion = get(cx, resolution.as_object(), cx.names.then());
     let then_value = match then_completion {
-        EvalResult::Ok(value) => value,
-        EvalResult::Throw(error) => {
+        Ok(value) => value,
+        Err(error) => {
             promise.reject(cx, error.get());
             return;
         }
@@ -355,14 +355,14 @@ pub fn coerce_to_ordinary_promise(
         if value_constructor.is_object()
             && same_object_value(value_constructor.as_object().get_(), promise_constructor)
         {
-            return value.into();
+            return Ok(value);
         }
     }
 
     let promise = PromiseObject::new_pending(cx).to_handle();
     resolve(cx, promise, value);
 
-    promise.into()
+    Ok(promise)
 }
 
 /// Creates a new promise with the provided constructor and immediately resolves it with a result.
@@ -378,7 +378,7 @@ pub fn promise_resolve(
         let result = result.as_object();
         let value_constructor = maybe!(get(cx, result, cx.names.constructor()));
         if same_value(value_constructor, constructor) {
-            return result.into();
+            return Ok(result);
         }
     }
 
@@ -386,7 +386,7 @@ pub fn promise_resolve(
     let capability = maybe!(PromiseCapability::new(cx, constructor));
     maybe!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
 
-    capability.promise().into()
+    Ok(capability.promise())
 }
 
 fn enqueue_promise_then_reaction_task(
@@ -512,7 +512,7 @@ impl PromiseCapability {
         // Finally store the promise in the capability record, completing it
         capability.promise = Some(promise.get_());
 
-        capability.into()
+        Ok(capability)
     }
 
     pub fn promise(&self) -> Handle<ObjectValue> {
@@ -555,7 +555,7 @@ impl PromiseCapability {
         capability.resolve = resolve.get();
         capability.reject = reject.get();
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }
 

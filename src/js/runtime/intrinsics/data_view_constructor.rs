@@ -52,7 +52,7 @@ impl DataViewObject {
         object.byte_length = byte_length;
         object.byte_offset = byte_offset;
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
@@ -176,7 +176,7 @@ impl DataViewConstructor {
             }
         }
 
-        data_view.into()
+        Ok(data_view.as_value())
     }
 }
 

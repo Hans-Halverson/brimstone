@@ -42,7 +42,7 @@ impl MapObject {
 
         set_uninit!(object.map_data, map_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn map_data(&self) -> HeapPtr<ValueMap> {

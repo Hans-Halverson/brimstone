@@ -62,7 +62,7 @@ impl DateConstructor {
         let new_target = if let Some(new_target) = new_target {
             new_target
         } else {
-            return to_date_string(cx, get_current_unix_time()).into();
+            return Ok(to_date_string(cx, get_current_unix_time()).as_value());
         };
 
         let number_of_args = arguments.len();
@@ -144,9 +144,9 @@ impl DateConstructor {
             time_clip(utc(final_date))
         };
 
-        maybe!(DateObject::new_from_constructor(cx, new_target, date_value))
+        Ok(maybe!(DateObject::new_from_constructor(cx, new_target, date_value))
             .to_handle()
-            .into()
+            .into())
     }
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
@@ -156,7 +156,7 @@ impl DateConstructor {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        Value::from(get_current_unix_time()).to_handle(cx).into()
+        Ok(Value::from(get_current_unix_time()).to_handle(cx))
     }
 
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)
@@ -170,9 +170,9 @@ impl DateConstructor {
         let string = maybe!(to_string(cx, string_arg));
 
         if let Some(date_value) = parse_string_to_date(string) {
-            Value::from(date_value).to_handle(cx).into()
+            Ok(Value::from(date_value).to_handle(cx))
         } else {
-            Value::nan().to_handle(cx).into()
+            Ok(Value::nan().to_handle(cx))
         }
     }
 
@@ -242,6 +242,6 @@ impl DateConstructor {
         let final_time = make_time(hour, minute, second, millisecond);
         let final_date = make_date(final_day, final_time);
 
-        Value::from(time_clip(final_date)).to_handle(cx).into()
+        Ok(Value::from(time_clip(final_date)).to_handle(cx))
     }
 }

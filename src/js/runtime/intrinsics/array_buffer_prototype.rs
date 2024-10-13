@@ -65,7 +65,7 @@ impl ArrayBufferPrototype {
         let array_buffer = maybe!(require_array_buffer(cx, this_value, "byteLength"));
 
         // Detached array buffers have byte length set to 0
-        Value::from(array_buffer.byte_length()).to_handle(cx).into()
+        Ok(Value::from(array_buffer.byte_length()).to_handle(cx))
     }
 
     /// get ArrayBuffer.prototype.detached (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.detached)
@@ -76,7 +76,7 @@ impl ArrayBufferPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = maybe!(require_array_buffer(cx, this_value, "detached"));
-        cx.bool(array_buffer.is_detached()).into()
+        Ok(cx.bool(array_buffer.is_detached()))
     }
 
     /// get ArrayBuffer.prototype.maxByteLength (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.maxbytelength)
@@ -93,7 +93,7 @@ impl ArrayBufferPrototype {
             .max_byte_length()
             .unwrap_or(array_buffer.byte_length());
 
-        Value::from(max_byte_length).to_handle(cx).into()
+        Ok(Value::from(max_byte_length).to_handle(cx))
     }
 
     /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
@@ -104,7 +104,7 @@ impl ArrayBufferPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = maybe!(require_array_buffer(cx, this_value, "resizable"));
-        cx.bool(!array_buffer.is_fixed_length()).into()
+        Ok(cx.bool(!array_buffer.is_fixed_length()))
     }
 
     /// ArrayBuffer.prototype.resize (https://tc39.es/ecma262/#sec-arraybuffer.prototype.resize)
@@ -157,7 +157,7 @@ impl ArrayBufferPrototype {
         array_buffer.set_data(new_data);
         array_buffer.set_byte_length(new_byte_length);
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// ArrayBuffer.prototype.slice (https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice)
@@ -240,7 +240,7 @@ impl ArrayBufferPrototype {
             std::ptr::copy_nonoverlapping(source, target, new_length as usize)
         }
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 
     /// ArrayBuffer.prototype.transfer (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfer)
@@ -260,7 +260,7 @@ impl ArrayBufferPrototype {
             /* to_fixed */ false
         ));
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 
     /// ArrayBuffer.prototype.transferToFixedLength (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfertofixedlength)
@@ -280,7 +280,7 @@ impl ArrayBufferPrototype {
             /* to_fixed */ true
         ));
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 }
 
@@ -292,7 +292,7 @@ fn require_array_buffer(
     if value.is_object() {
         let object = value.as_object();
         if object.is_array_buffer() {
-            return object.cast::<ArrayBufferObject>().into();
+            return Ok(object.cast::<ArrayBufferObject>());
         }
     }
 

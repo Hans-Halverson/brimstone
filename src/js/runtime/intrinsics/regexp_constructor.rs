@@ -64,7 +64,7 @@ impl RegExpObject {
 
         Self::define_last_index_property(cx, object);
 
-        object.into()
+        Ok(object)
     }
 
     pub fn new_from_compiled_regexp(
@@ -89,7 +89,7 @@ impl RegExpObject {
         let zero_value = Value::from(0).to_handle(cx);
         maybe!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
 
-        object.into()
+        Ok(object)
     }
 
     fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {
@@ -166,7 +166,7 @@ impl RegExpConstructor {
                         maybe!(get(cx, pattern_arg.as_object(), cx.names.constructor()));
 
                     if same_value(new_target.into(), pattern_constructor) {
-                        return pattern_arg.into();
+                        return Ok(pattern_arg);
                     }
                 }
 
@@ -264,7 +264,7 @@ pub fn regexp_create(
     let zero_value = Value::from(0).to_handle(cx);
     maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
 
-    regexp_object.into()
+    Ok(regexp_object.as_value())
 }
 
 fn value_or_empty_string(cx: Context, value: Handle<Value>) -> Handle<Value> {
@@ -278,7 +278,7 @@ fn value_or_empty_string(cx: Context, value: Handle<Value>) -> Handle<Value> {
 fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
     fn parse_lexer_stream(cx: Context, lexer_stream: impl LexerStream) -> EvalResult<RegExpFlags> {
         match RegExpParser::parse_flags(lexer_stream) {
-            Ok(flags) => flags.into(),
+            Ok(flags) => Ok(flags),
             Err(error) => syntax_parse_error(cx, &error),
         }
     }
@@ -309,7 +309,7 @@ fn parse_pattern(
         flags: RegExpFlags,
     ) -> EvalResult<RegExp> {
         match RegExpParser::parse_regexp(lexer_stream, flags) {
-            Ok(regexp) => regexp.into(),
+            Ok(regexp) => Ok(regexp),
             Err(error) => syntax_parse_error(cx, &error),
         }
     }

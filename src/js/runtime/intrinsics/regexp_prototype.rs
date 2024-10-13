@@ -161,7 +161,7 @@ impl RegExpPrototype {
             cx.alloc_string(&flags_string).as_string()
         };
 
-        flags_string.into()
+        Ok(flags_string.as_value())
     }
 
     /// get RegExp.prototype.global (https://tc39.es/ecma262/#sec-get-regexp.prototype.global)
@@ -230,9 +230,9 @@ impl RegExpPrototype {
             let result = maybe!(regexp_exec(cx, regexp_object, string_value));
             if result.is_null() {
                 if n == 0 {
-                    return cx.null().into();
+                    return Ok(cx.null());
                 } else {
-                    return result_array.into();
+                    return Ok(result_array.as_value());
                 }
             }
 
@@ -299,7 +299,7 @@ impl RegExpPrototype {
         let is_global = flags_string_contains(flags_string, 'g' as u32);
         let is_unicode = flags_string_contains(flags_string, 'u' as u32);
 
-        RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode).into()
+        Ok(RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode).as_value())
     }
 
     /// get RegExp.prototype.multiline (https://tc39.es/ecma262/#sec-get-regexp.prototype.multiline)
@@ -500,7 +500,7 @@ impl RegExpPrototype {
             string_parts.push(remaining_string);
         }
 
-        StringValue::concat_all(cx, &string_parts).into()
+        Ok(StringValue::concat_all(cx, &string_parts).as_value())
     }
 
     /// RegExp.prototype [ @@search ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.search%)
@@ -536,7 +536,7 @@ impl RegExpPrototype {
         }
 
         if result.is_null() {
-            Value::from(-1).to_handle(cx).into()
+            Ok(Value::from(-1).to_handle(cx))
         } else {
             get(cx, result.as_object(), cx.names.index())
         }
@@ -552,15 +552,15 @@ impl RegExpPrototype {
         if this_value.is_object() {
             let this_object = this_value.as_object();
             if this_object.is_regexp_object() {
-                return this_object
+                return Ok(this_object
                     .cast::<RegExpObject>()
                     .escaped_pattern_source()
-                    .into();
+                    .as_value());
             } else if same_object_value(
                 this_object.get_(),
                 cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
             ) {
-                return cx.alloc_string("(?:)").as_string().into();
+                return Ok(cx.alloc_string("(?:)").as_value());
             }
         }
 
@@ -609,7 +609,7 @@ impl RegExpPrototype {
         let splitter =
             maybe!(construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None));
 
-        let result_array: Handle<ObjectValue> = maybe!(array_create(cx, 0, None)).into();
+        let result_array = maybe!(array_create(cx, 0, None)).as_object();
 
         // Calculate optional limit argument
         let limit_arg = get_argument(cx, arguments, 1);
@@ -620,14 +620,14 @@ impl RegExpPrototype {
         };
 
         if limit == 0 {
-            return result_array.into();
+            return Ok(result_array.as_value());
         }
 
         // Handle the empty string case
         if string_value.is_empty() {
             let exec_result = maybe!(regexp_exec(cx, splitter, string_value));
             if !exec_result.is_null() {
-                return result_array.into();
+                return Ok(result_array.as_value());
             }
 
             let zero_key = PropertyKey::from_u8(0).to_handle(cx);
@@ -679,7 +679,7 @@ impl RegExpPrototype {
                     // Check if we have hit split limit
                     array_length += 1;
                     if array_length == limit {
-                        return result_array.into();
+                        return Ok(result_array.as_value());
                     }
 
                     p = e;
@@ -698,7 +698,7 @@ impl RegExpPrototype {
                         // Check if we have hit split limit
                         array_length += 1;
                         if array_length == limit {
-                            return result_array.into();
+                            return Ok(result_array.as_value());
                         }
                     }
 
@@ -712,7 +712,7 @@ impl RegExpPrototype {
         key.replace(PropertyKey::array_index(cx, array_length));
         maybe!(create_data_property_or_throw(cx, result_array, key, remaining_string.into()));
 
-        result_array.into()
+        Ok(result_array.as_value())
     }
 
     /// get RegExp.prototype.sticky (https://tc39.es/ecma262/#sec-get-regexp.prototype.sticky)
@@ -743,7 +743,7 @@ impl RegExpPrototype {
 
         let exec_result = maybe!(regexp_exec(cx, regexp_object, string_value));
 
-        cx.bool(!exec_result.is_null()).into()
+        Ok(cx.bool(!exec_result.is_null()))
     }
 
     /// RegExp.prototype.toString (https://tc39.es/ecma262/#sec-regexp.prototype.tostring)
@@ -767,8 +767,12 @@ impl RegExpPrototype {
 
         let slash_string = InternedStrings::get_str(cx, "/");
 
-        StringValue::concat_all(cx, &[slash_string, pattern_string, slash_string, flags_string])
-            .into()
+        let full_string = StringValue::concat_all(
+            cx,
+            &[slash_string, pattern_string, slash_string, flags_string],
+        );
+
+        Ok(full_string.as_value())
     }
 
     /// get RegExp.prototype.unicode (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicode)
@@ -802,12 +806,12 @@ fn regexp_has_flag(
         let this_object = this_value.as_object();
         if this_object.is_regexp_object() {
             let has_flag = this_object.cast::<RegExpObject>().flags().contains(flag);
-            return cx.bool(has_flag).into();
+            return Ok(cx.bool(has_flag));
         } else if same_object_value(
             this_object.get_(),
             cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
         ) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
     }
 
@@ -832,7 +836,7 @@ pub fn regexp_exec(
             return type_error(cx, "Regular expression exec must return null or an object");
         }
 
-        return exec_result.into();
+        return Ok(exec_result);
     }
 
     if !regexp_object.is_regexp_object() {
@@ -871,7 +875,7 @@ fn regexp_builtin_exec(
             maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
         }
 
-        return cx.null().into();
+        return Ok(cx.null());
     }
     let last_index = last_index as u32;
 
@@ -885,7 +889,7 @@ fn regexp_builtin_exec(
             maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
         }
 
-        return cx.null().into();
+        return Ok(cx.null());
     }
 
     let capture_groups = &match_.unwrap().capture_groups;
@@ -900,8 +904,7 @@ fn regexp_builtin_exec(
     }
 
     // Build result array of matches
-    let result_array: Handle<ObjectValue> =
-        must!(array_create(cx, capture_groups.len() as u64, None)).into();
+    let result_array = must!(array_create(cx, capture_groups.len() as u64, None)).as_object();
 
     // Mark the start of the full match
     let index_value = Value::from(full_capture.start).to_handle(cx);
@@ -934,8 +937,7 @@ fn regexp_builtin_exec(
 
     // Set up indices array to collect capture group indices, if flag is set
     let indices_result = if has_indices {
-        let indices_array: Handle<ObjectValue> =
-            must!(array_create(cx, capture_groups.len() as u64, None)).into();
+        let indices_array = must!(array_create(cx, capture_groups.len() as u64, None)).as_object();
 
         // Indices array contains named capture groups object if there are any named groups
         let named_groups_object = if compiled_regexp.has_named_capture_groups {
@@ -1037,7 +1039,7 @@ fn regexp_builtin_exec(
         ));
     }
 
-    result_array.into()
+    Ok(result_array.as_value())
 }
 
 /// AdvanceStringIndex (https://tc39.es/ecma262/#sec-advancestringindex)

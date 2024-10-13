@@ -81,7 +81,7 @@ impl FinalizationRegistryPrototype {
                 unregister_token: unregister_token.map(|t| t.get()),
             });
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// FinalizationRegistry.prototype.unregister (https://tc39.es/ecma262/#sec-finalization-registry.prototype.unregister)
@@ -109,7 +109,7 @@ impl FinalizationRegistryPrototype {
 
         let did_remove = registry_object.cells().remove(unregister_token.get());
 
-        cx.bool(did_remove).into()
+        Ok(cx.bool(did_remove))
     }
 }
 

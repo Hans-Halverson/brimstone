@@ -59,7 +59,7 @@ impl NumberObject {
 
         set_uninit!(object.number_data, number_data);
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn new_with_proto(
@@ -163,9 +163,10 @@ impl NumberConstructor {
         };
 
         match new_target {
-            None => Value::from(number_value).to_handle(cx).into(),
+            None => Ok(Value::from(number_value).to_handle(cx)),
             Some(new_target) => {
-                maybe!(NumberObject::new_from_constructor(cx, new_target, number_value)).into()
+                Ok(maybe!(NumberObject::new_from_constructor(cx, new_target, number_value))
+                    .as_value())
             }
         }
     }
@@ -179,10 +180,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(!value.is_nan() && !value.is_infinity()).into()
+        Ok(cx.bool(!value.is_nan() && !value.is_infinity()))
     }
 
     /// Number.isInteger (https://tc39.es/ecma262/#sec-number.isinteger)
@@ -193,7 +194,7 @@ impl NumberConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        cx.bool(is_integral_number(value.get())).into()
+        Ok(cx.bool(is_integral_number(value.get())))
     }
 
     /// Number.isNaN (https://tc39.es/ecma262/#sec-number.isnan)
@@ -205,10 +206,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(value.is_nan()).into()
+        Ok(cx.bool(value.is_nan()))
     }
 
     /// Number.isSafeInteger (https://tc39.es/ecma262/#sec-number.issafeinteger)
@@ -220,11 +221,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !is_integral_number(value.get()) {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64)
-            .into()
+        Ok(cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64))
     }
 }
 

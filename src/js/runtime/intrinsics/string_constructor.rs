@@ -60,18 +60,18 @@ impl StringConstructor {
         } else {
             let value = get_argument(cx, arguments, 0);
             if new_target.is_none() && value.is_symbol() {
-                return symbol_descriptive_string(cx, value.as_symbol()).into();
+                return Ok(symbol_descriptive_string(cx, value.as_symbol()).as_value());
             }
 
             maybe!(to_string(cx, value))
         };
 
         match new_target {
-            None => string_value.into(),
+            None => Ok(string_value.as_value()),
             Some(new_target) => {
                 let string_object =
                     maybe!(StringObject::new_from_constructor(cx, new_target, string_value));
-                string_object.into()
+                Ok(string_object.as_value())
             }
         }
     }
@@ -86,7 +86,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = maybe!(to_uint16(cx, arguments[0]));
-            return FlatString::from_code_unit(cx, code_unit).as_string().into();
+            return Ok(FlatString::from_code_unit(cx, code_unit).as_value());
         }
 
         let mut code_points = vec![];
@@ -95,9 +95,7 @@ impl StringConstructor {
             code_points.push(code_unit as u32);
         }
 
-        FlatString::from_code_points(cx, &code_points)
-            .as_string()
-            .into()
+        Ok(FlatString::from_code_points(cx, &code_points).as_value())
     }
 
     /// String.fromCodePoint (https://tc39.es/ecma262/#sec-string.fromcodepoint)
@@ -133,9 +131,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_point = get_code_point!(arguments[0]);
-            return FlatString::from_code_point(cx, code_point)
-                .as_string()
-                .into();
+            return Ok(FlatString::from_code_point(cx, code_point).as_value());
         }
 
         let mut code_points = vec![];
@@ -143,9 +139,7 @@ impl StringConstructor {
             code_points.push(get_code_point!(*arg));
         }
 
-        FlatString::from_code_points(cx, &code_points)
-            .as_string()
-            .into()
+        Ok(FlatString::from_code_points(cx, &code_points).as_value())
     }
 
     /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
@@ -165,7 +159,7 @@ impl StringConstructor {
 
         let literal_count = maybe!(length_of_array_like(cx, literals));
         if literal_count == 0 {
-            return cx.names.empty_string.as_string().to_handle().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
         let mut result = cx.names.empty_string.as_string().to_handle();
@@ -183,7 +177,7 @@ impl StringConstructor {
             result = StringValue::concat(cx, result, next_literal_string);
 
             if next_index + 1 == literal_count {
-                return result.into();
+                return Ok(result.as_value());
             }
 
             if next_index < substitution_count as u64 {

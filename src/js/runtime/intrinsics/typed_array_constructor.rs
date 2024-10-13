@@ -560,9 +560,17 @@ macro_rules! create_typed_array_constructor {
                 // May allocate, so call before accessing array buffer
                 let element_value = maybe!($to_element(cx, value));
 
+                // Call to `$to_element` may invoke user cade. Check if array has become detached
+                // or out of bounds.
                 let typed_array_record =
                     make_typed_array_with_buffer_witness_record(self.as_typed_array());
                 if is_typed_array_out_of_bounds(&typed_array_record) {
+                    return ().into();
+                }
+
+                // Then check if index has become out of bounds
+                let length = typed_array_length(&typed_array_record);
+                if array_index >= length as u64 {
                     return ().into();
                 }
 

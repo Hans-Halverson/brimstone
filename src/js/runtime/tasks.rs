@@ -191,8 +191,9 @@ impl AwaitResumeTask {
 
             // Must execute in the realm of the async generator since AsyncGeneratorResume may need
             // to drain the async queue when the VM stack is empty.
-            cx.vm()
-                .push_initial_realm_stack_frame(async_generator.realm_ptr());
+            maybe!(cx
+                .vm()
+                .push_initial_realm_stack_frame(async_generator.realm_ptr()));
 
             async_generator_resume(cx, async_generator, completion_value, completion_type);
 
@@ -229,7 +230,7 @@ impl PromiseThenReactionTask {
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
         if let Some(realm) = self.realm {
-            cx.vm().push_initial_realm_stack_frame(realm);
+            maybe!(cx.vm().push_initial_realm_stack_frame(realm));
         }
 
         let result = self.result.to_handle(cx);
@@ -299,7 +300,7 @@ impl PromiseThenSettleTask {
     }
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
-        cx.vm().push_initial_realm_stack_frame(self.realm);
+        maybe!(cx.vm().push_initial_realm_stack_frame(self.realm));
 
         let then_function = self.then_function.to_handle();
         let resolution = self.resolution.to_handle().into();

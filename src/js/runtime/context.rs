@@ -183,7 +183,9 @@ impl Context {
         // Loading, linking, and evaluation should all have a current realm set as some objects
         // needing a realm will be created.
         let realm = module.program_function_ptr().realm_ptr();
-        self.vm().push_initial_realm_stack_frame(realm);
+        self.vm()
+            .push_initial_realm_stack_frame(realm)
+            .into_rust_result()?;
 
         let promise = execute_module(*self, module);
 

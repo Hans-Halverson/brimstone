@@ -17,8 +17,8 @@ use crate::{
         boxed_value::BoxedValue,
         class_names::{new_class, ClassNames},
         error::{
-            err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
-            type_error, type_error_value,
+            err_assign_constant, err_cannot_set_property, err_not_defined, range_error,
+            reference_error, type_error, type_error_value,
         },
         eval::{
             eval::perform_eval,
@@ -185,8 +185,13 @@ impl VM {
     }
 
     #[inline]
-    fn stack_ptr_range(&self) -> std::ops::Range<*const StackSlotValue> {
-        self.stack.as_ptr_range()
+    fn stack_ptr_start(&self) -> *const StackSlotValue {
+        self.stack.as_ptr()
+    }
+
+    #[inline]
+    fn stack_ptr_end(&self) -> *const StackSlotValue {
+        self.stack.as_ptr_range().end
     }
 }
 
@@ -354,7 +359,7 @@ impl VM {
 
     fn reset_stack(&mut self) {
         // Reset stack
-        self.set_sp(self.stack_ptr_range().end as *mut StackSlotValue);
+        self.set_sp(self.stack_ptr_end().cast_mut());
         self.set_fp(std::ptr::null_mut());
     }
 
@@ -1468,14 +1473,14 @@ impl VM {
             let return_value_address = (&mut return_value) as *mut Value;
 
             // Push a stack frame for the function call, with return address set to return to Rust
-            self.push_stack_frame(
+            maybe!(self.push_stack_frame(
                 closure_ptr,
                 receiver,
                 args_rev_iter,
                 arguments.len(),
                 /* return_to_rust_runtime */ true,
                 return_value_address,
-            );
+            ));
 
             // If a new.target is needed it is implicitly left as undefined
 
@@ -1553,14 +1558,14 @@ impl VM {
             let return_value_address = (&mut return_value) as *mut Value;
 
             // Push a stack frame for the function call, with return address set to return to Rust
-            self.push_stack_frame(
+            maybe!(self.push_stack_frame(
                 closure_ptr,
                 receiver,
                 args_rev_iter,
                 arguments.len(),
                 /* return_to_rust_runtime */ true,
                 return_value_address,
-            );
+            ));
 
             // Set the new target if one exists
             self.set_new_target(function_ptr, new_target.get_());
@@ -1643,24 +1648,24 @@ impl VM {
             // order.
             match self.get_args_slice(args) {
                 ArgsSlice::Forward(slice) => {
-                    self.push_stack_frame(
+                    maybe!(self.push_stack_frame(
                         closure_ptr,
                         receiver,
                         slice.iter().rev(),
                         slice.len(),
                         /* return_to_rust_runtime */ false,
                         return_value_address,
-                    );
+                    ));
                 }
                 ArgsSlice::Reverse(slice) => {
-                    self.push_stack_frame(
+                    maybe!(self.push_stack_frame(
                         closure_ptr,
                         receiver,
                         slice.iter(),
                         slice.len(),
                         /* return_to_rust_runtime */ false,
                         return_value_address,
-                    );
+                    ));
                 }
             }
 
@@ -1752,24 +1757,24 @@ impl VM {
             // order.
             match self.get_args_slice(args) {
                 ArgsSlice::Forward(slice) => {
-                    self.push_stack_frame(
+                    maybe!(self.push_stack_frame(
                         closure_ptr,
                         receiver,
                         slice.iter().rev(),
                         slice.len(),
                         /* return_to_rust_runtime */ true,
                         inner_call_return_value_address,
-                    );
+                    ));
                 }
                 ArgsSlice::Reverse(slice) => {
-                    self.push_stack_frame(
+                    maybe!(self.push_stack_frame(
                         closure_ptr,
                         receiver,
                         slice.iter(),
                         slice.len(),
                         /* return_to_rust_runtime */ true,
                         inner_call_return_value_address,
-                    );
+                    ));
                 }
             }
 
@@ -1868,12 +1873,28 @@ impl VM {
         argc: usize,
         return_to_rust_runtime: bool,
         return_value_address: *mut Value,
-    ) {
+    ) -> EvalResult<()> {
         let bytecode_function = closure.function_ptr();
         let scope = closure.scope();
 
+        let num_parameters = bytecode_function.num_parameters() as usize;
+        let num_registers = bytecode_function.num_registers();
+
+        // Calculate total stack frame size
+        let num_argument_slots = usize::max(argc, num_parameters);
+        let num_frame_slots =
+            num_argument_slots + FIRST_ARGUMENT_SLOT_INDEX + (num_registers as usize);
+
+        // Check if stack pointer leaves the bounds of the stack (growing downwards). If so throw a
+        // stack overflow error.
+        unsafe {
+            if self.sp().sub(num_frame_slots).cast_const() < self.stack_ptr_start() {
+                return range_error(self.cx, "Stack Overflow");
+            }
+        }
+
         // Push arguments
-        self.push_call_arguments(bytecode_function, args_rev_iter, argc);
+        self.push_call_arguments(args_rev_iter, argc, num_parameters);
 
         // Push the receiver if one is supplied, or the default receiver otherwise
         self.push(receiver.as_raw_bits() as StackSlotValue);
@@ -1910,10 +1931,12 @@ impl VM {
         self.push_fp();
 
         // Make room for function locals
-        self.allocate_local_registers(bytecode_function.num_registers());
+        self.allocate_local_registers(num_registers);
 
         // Start executing from the first instruction of the function
         self.set_pc(bytecode_function.bytecode().as_ptr());
+
+        ().into()
     }
 
     /// Pop the current stack frame, restoring the previous frame pointer and PC.
@@ -1933,7 +1956,7 @@ impl VM {
 
     /// Push a dummy stack frame that sets the initial realm for the VM. Pushes the realm's empty
     /// function with no arguments.
-    pub fn push_initial_realm_stack_frame(&mut self, realm: HeapPtr<Realm>) {
+    pub fn push_initial_realm_stack_frame(&mut self, realm: HeapPtr<Realm>) -> EvalResult<()> {
         self.push_stack_frame(
             realm.empty_function_ptr(),
             Value::undefined(),
@@ -2035,15 +2058,15 @@ impl VM {
     #[inline]
     fn push_call_arguments<'a, I: Iterator<Item = &'a Value>>(
         &mut self,
-        func: HeapPtr<BytecodeFunction>,
         args_rev_iter: I,
         argc: usize,
+        num_declared_parameters: usize,
     ) {
         let mut sp = self.sp();
 
         // Handle under application of arguments, pushing undefined for missing arguments. This
         // guarantees that the number of pushed arguments equals max(argc, func.num_parameters).
-        let num_parameters = func.num_parameters() as usize;
+        let num_parameters = num_declared_parameters;
         if argc < num_parameters {
             for _ in argc..num_parameters {
                 unsafe {
@@ -2179,14 +2202,14 @@ impl VM {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Push a minimal stack frame for the Rust runtime function. No arguments are pushed in.
-        self.push_stack_frame(
+        maybe!(self.push_stack_frame(
             function,
             /* receiver */ Value::undefined(),
             /* arguments */ [].iter(),
             /* argc */ 0,
             /* return_to_rust_runtime */ true,
             /* return value address */ std::ptr::null_mut(),
-        );
+        ));
 
         // Perform the runtime call. May allocate.
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);

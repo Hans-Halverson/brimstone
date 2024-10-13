@@ -225,9 +225,7 @@ pub fn array_buffer_copy_and_detach(
         maybe!(to_index(cx, new_length))
     };
 
-    if array_buffer.is_detached() {
-        return type_error(cx, "array buffer is detached");
-    }
+    maybe!(throw_if_detached(cx, array_buffer.get_()));
 
     // Can only remain auto-resizable if ArrayBuffer was already resizable and we are not forced
     // to fix the length.
@@ -295,6 +293,15 @@ fn get_array_buffer_max_byte_length_option(
     }
 
     Some(maybe!(to_index(cx, max_byte_length))).into()
+}
+
+#[inline]
+pub fn throw_if_detached(cx: Context, array_buffer: HeapPtr<ArrayBufferObject>) -> EvalResult<()> {
+    if array_buffer.is_detached() {
+        type_error(cx, "array buffer is detached")
+    } else {
+        ().into()
+    }
 }
 
 impl HeapObject for HeapPtr<ArrayBufferObject> {

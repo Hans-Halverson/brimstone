@@ -8,6 +8,7 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
+        intrinsics::array_buffer_constructor::throw_if_detached,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -122,9 +123,7 @@ impl DataViewConstructor {
         let offset_arg = get_argument(cx, arguments, 1);
         let offset = maybe!(to_index(cx, offset_arg));
 
-        if buffer_object.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        }
+        maybe!(throw_if_detached(cx, buffer_object.get_()));
 
         let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
@@ -163,9 +162,7 @@ impl DataViewConstructor {
         ));
 
         // Be sure to check for array buffer detachment since constructor may invoke user code
-        if buffer_object.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        }
+        maybe!(throw_if_detached(cx, buffer_object.get_()));
 
         // Also check if underlying buffer was resized during construction and redo bounds checks
         let buffer_byte_length = buffer_object.byte_length();

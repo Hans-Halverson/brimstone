@@ -4,6 +4,7 @@ use crate::{
         collections::BsArray,
         error::{range_error, type_error},
         function::get_argument,
+        intrinsics::array_buffer_constructor::throw_if_detached,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property::Property,
@@ -124,9 +125,7 @@ impl ArrayBufferPrototype {
         let new_length_arg = get_argument(cx, arguments, 0);
         let new_byte_length = maybe!(to_index(cx, new_length_arg));
 
-        if array_buffer.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        }
+        maybe!(throw_if_detached(cx, array_buffer.get_()));
 
         if new_byte_length > max_byte_length {
             return range_error(cx, "new length exceeds max byte length");
@@ -170,9 +169,7 @@ impl ArrayBufferPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut array_buffer = maybe!(require_array_buffer(cx, this_value, "slice"));
 
-        if array_buffer.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        }
+        maybe!(throw_if_detached(cx, array_buffer.get_()));
 
         let length = array_buffer.byte_length() as u64;
 
@@ -224,18 +221,16 @@ impl ArrayBufferPrototype {
             return type_error(cx, "expected array buffer");
         };
 
-        if new_array_buffer.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        } else if new_array_buffer.ptr_eq(&array_buffer) {
+        maybe!(throw_if_detached(cx, new_array_buffer.get_()));
+
+        if new_array_buffer.ptr_eq(&array_buffer) {
             return type_error(cx, "constructor cannot return same array buffer");
         } else if (new_array_buffer.byte_length() as u64) < new_length {
             return type_error(cx, "new array buffer is too small");
         }
 
         // Original array buffer may have become detached during previous calls
-        if array_buffer.is_detached() {
-            return type_error(cx, "array buffer is detached");
-        }
+        maybe!(throw_if_detached(cx, array_buffer.get_()));
 
         // Copy data from original array buffer to new array buffer
         unsafe {

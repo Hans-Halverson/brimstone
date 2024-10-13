@@ -29,9 +29,6 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
     let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
     // Cache the module at its canonical source path
-    //
-    // TODO: Move module caching right at module creation. May require first switching to storing
-    // absolute paths in Source but relative paths in the heap.
     let source_file_path = Path::new(&module.source_file_path().to_string())
         .canonicalize()
         .unwrap()

@@ -2,7 +2,8 @@ use std::collections::VecDeque;
 
 use crate::{
     js::runtime::{
-        abstract_operations::call_object, intrinsics::promise_constructor::execute_then,
+        abstract_operations::{call, call_object},
+        intrinsics::promise_constructor::execute_then,
     },
     maybe,
 };
@@ -21,6 +22,7 @@ pub struct TaskQueue {
 }
 
 pub enum Task {
+    Callback1(Callback1Task),
     AwaitResume(AwaitResumeTask),
     PromiseThenReaction(PromiseThenReactionTask),
     PromiseThenSettle(PromiseThenSettleTask),
@@ -33,6 +35,10 @@ impl TaskQueue {
 
     pub fn enqueue(&mut self, task: Task) {
         self.tasks.push_back(task);
+    }
+
+    pub fn enqueue_callback_1_task(&mut self, func: Value, arg: Value) {
+        self.enqueue(Task::Callback1(Callback1Task::new(func, arg)));
     }
 
     pub fn enqueue_await_resume_task(
@@ -75,6 +81,10 @@ impl TaskQueue {
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
         for task in &mut self.tasks {
             match task {
+                Task::Callback1(Callback1Task { func, arg }) => {
+                    visitor.visit_value(func);
+                    visitor.visit_value(arg);
+                }
                 Task::AwaitResume(AwaitResumeTask { generator, result, .. }) => {
                     visitor.visit_pointer(generator);
                     visitor.visit_value(result);
@@ -113,12 +123,34 @@ impl Context {
         while let Some(task) = self.task_queue().tasks.pop_front() {
             maybe!(HandleScope::new(*self, |cx| {
                 match task {
+                    Task::Callback1(task) => task.execute(cx),
                     Task::AwaitResume(task) => task.execute(cx),
                     Task::PromiseThenReaction(task) => task.execute(cx),
                     Task::PromiseThenSettle(task) => task.execute(cx),
                 }
             }));
         }
+
+        ().into()
+    }
+}
+
+/// Call a function with a single argument.
+pub struct Callback1Task {
+    func: Value,
+    arg: Value,
+}
+
+impl Callback1Task {
+    fn new(func: Value, arg: Value) -> Self {
+        Self { func, arg }
+    }
+
+    fn execute(&self, cx: Context) -> EvalResult<()> {
+        let func = self.func.to_handle(cx);
+        let arg = self.arg.to_handle(cx);
+
+        maybe!(call(cx, func, cx.undefined(), &[arg]));
 
         ().into()
     }

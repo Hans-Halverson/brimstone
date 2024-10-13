@@ -4,10 +4,8 @@ use crate::js::runtime::{
     gc::Heap,
     interned_strings::InternedStrings,
     intrinsics::{
-        finalization_registry_object::{FinalizationRegistryObject, FinalizerCallback},
-        weak_map_object::WeakMapObject,
-        weak_ref_constructor::WeakRefObject,
-        weak_set_object::WeakSetObject,
+        finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
@@ -109,9 +107,7 @@ impl GarbageCollector {
         gc.fix_weak_refs();
         gc.fix_weak_sets();
         gc.fix_weak_maps();
-
-        let finalizer_callbacks = gc.fix_finalization_registries();
-        cx.add_finalizer_callbacks(finalizer_callbacks);
+        gc.fix_finalization_registries(cx);
 
         // In GC stress test mode, overwrite the old heap with 0x01 bytes to try to catch reads from
         // pointers to the old heap.
@@ -445,9 +441,7 @@ impl GarbageCollector {
         found_new_live_unregister_token
     }
 
-    fn fix_finalization_registries(&mut self) -> Vec<FinalizerCallback> {
-        let mut finalizer_callbacks = vec![];
-
+    fn fix_finalization_registries(&mut self, mut cx: Context) {
         // Walk all live finalization registries in the list
         let mut next_finalization_registry = self.finalization_registry_list;
         while let Some(finalization_registry) = next_finalization_registry {
@@ -459,11 +453,11 @@ impl GarbageCollector {
                     // Check if target has already been visited and moved to the to-space. If not,
                     // target should be garbage collected so remove cell from registry.
                     if !self.is_in_to_space(target_ptr) {
-                        // Save callback and held value to be called later
-                        finalizer_callbacks.push(FinalizerCallback {
-                            cleanup_callback: finalization_registry.cleanup_callback(),
-                            held_value: cell.held_value,
-                        });
+                        // Enqueue cleanup callback, passing in the held value
+                        cx.task_queue().enqueue_callback_1_task(
+                            finalization_registry.cleanup_callback().into(),
+                            cell.held_value,
+                        );
 
                         // Then remove cell from registry
                         finalization_registry.cells().remove_cell(cell_opt);
@@ -473,8 +467,6 @@ impl GarbageCollector {
 
             next_finalization_registry = finalization_registry.next_finalization_registry();
         }
-
-        finalizer_callbacks
     }
 
     fn prune_weak_interned_strings(&mut self, cx: Context) {

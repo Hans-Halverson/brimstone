@@ -30,13 +30,6 @@ extend_object! {
     }
 }
 
-/// A single finalizer callback for a target that has been garbage collected. Contains both the
-/// callback to run and the held value to pass to it.
-pub struct FinalizerCallback {
-    pub cleanup_callback: HeapPtr<ObjectValue>,
-    pub held_value: Value,
-}
-
 impl FinalizationRegistryObject {
     pub fn new_from_constructor(
         cx: Context,

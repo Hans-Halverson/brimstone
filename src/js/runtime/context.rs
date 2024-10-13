@@ -18,10 +18,7 @@ use super::{
     collections::{BsHashMap, BsHashMapField},
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
-    intrinsics::{
-        finalization_registry_object::FinalizerCallback, intrinsics::Intrinsic,
-        rust_runtime::RustRuntimeFunctionRegistry,
-    },
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
     module::{execute::execute_module, source_text_module::SourceTextModule},
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
@@ -83,10 +80,6 @@ pub struct ContextCell {
     /// An empty, dense array properties object to use as the initial value for array properties
     pub default_array_properties: HeapPtr<ArrayProperties>,
 
-    /// All pending finalizer callbacks for garbage collected values.
-    /// TODO: Call finalizer callbacks
-    finalizer_callbacks: Vec<FinalizerCallback>,
-
     /// Options passed to this program.
     pub options: Rc<Options>,
 
@@ -121,7 +114,6 @@ impl Context {
             modules: HashMap::new(),
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
-            finalizer_callbacks: vec![],
             options,
             has_finished_module_resolution: false,
             async_evaluation_counter: NonZeroUsize::MIN,
@@ -254,10 +246,6 @@ impl Context {
         GlobalSymbolRegistryField
     }
 
-    pub fn add_finalizer_callbacks(&mut self, finalizer_callbacks: Vec<FinalizerCallback>) {
-        self.finalizer_callbacks.extend(finalizer_callbacks);
-    }
-
     #[inline]
     pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
         FlatString::from_wtf8(*self, str.as_bytes())
@@ -311,11 +299,6 @@ impl Context {
 
         for module in self.modules.values_mut() {
             visitor.visit_pointer(module);
-        }
-
-        for finalizer_callback in self.finalizer_callbacks.iter_mut() {
-            visitor.visit_pointer(&mut finalizer_callback.cleanup_callback);
-            visitor.visit_value(&mut finalizer_callback.held_value);
         }
 
         if let Some(vm) = &mut self.vm {

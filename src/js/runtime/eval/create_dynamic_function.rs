@@ -1,31 +1,27 @@
 use std::rc::Rc;
 
-use crate::{
-    js::{
-        common::wtf_8::Wtf8String,
+use crate::js::{
+    common::wtf_8::Wtf8String,
+    parser::{
+        analyze::analyze_function_for_function_constructor,
         parser::{
-            analyze::analyze_function_for_function_constructor,
-            parser::{
-                parse_function_body_for_function_constructor,
-                parse_function_for_function_constructor,
-                parse_function_params_for_function_constructor,
-            },
-            source::Source,
+            parse_function_body_for_function_constructor, parse_function_for_function_constructor,
+            parse_function_params_for_function_constructor,
         },
-        runtime::{
-            bytecode::{function::Closure, generator::BytecodeProgramGenerator},
-            completion::EvalResult,
-            error::{syntax_error, syntax_parse_error},
-            intrinsics::{
-                async_generator_prototype::AsyncGeneratorPrototype,
-                generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
-            },
-            object_value::ObjectValue,
-            ordinary_object::get_prototype_from_constructor,
-            to_string, Context, Handle, Value,
-        },
+        source::Source,
     },
-    maybe,
+    runtime::{
+        bytecode::{function::Closure, generator::BytecodeProgramGenerator},
+        completion::EvalResult,
+        error::{syntax_error, syntax_parse_error},
+        intrinsics::{
+            async_generator_prototype::AsyncGeneratorPrototype,
+            generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
+        },
+        object_value::ObjectValue,
+        ordinary_object::get_prototype_from_constructor,
+        to_string, Context, Handle, Value,
+    },
 };
 
 /// CreateDynamicFunction (https://tc39.es/ecma262/#sec-createdynamicfunction)
@@ -68,18 +64,18 @@ pub fn create_dynamic_function(
     } else if arg_count == 1 {
         args[0]
     } else {
-        params_string.push_wtf8_str(&maybe!(to_string(cx, args[0])).to_wtf8_string());
+        params_string.push_wtf8_str(&to_string(cx, args[0])?.to_wtf8_string());
 
         for arg in &args[1..(args.len() - 1)] {
             params_string.push_char(',');
-            params_string.push_wtf8_str(&maybe!(to_string(cx, *arg)).to_wtf8_string());
+            params_string.push_wtf8_str(&to_string(cx, *arg)?.to_wtf8_string());
         }
 
         args[args.len() - 1]
     };
 
     // Build the body string
-    let body_string = maybe!(to_string(cx, body_arg));
+    let body_string = to_string(cx, body_arg)?;
     let body_string = {
         let mut builder = Wtf8String::new();
 
@@ -146,7 +142,7 @@ pub fn create_dynamic_function(
     }
 
     // Create function object
-    let proto = maybe!(get_prototype_from_constructor(cx, new_target, fallback_proto));
+    let proto = get_prototype_from_constructor(cx, new_target, fallback_proto)?;
 
     // Generate bytecode for the function
     let realm = cx.current_realm();
@@ -166,9 +162,9 @@ pub fn create_dynamic_function(
 
     if is_generator {
         if is_async {
-            maybe!(AsyncGeneratorPrototype::install_on_async_generator_function(cx, closure));
+            AsyncGeneratorPrototype::install_on_async_generator_function(cx, closure)?;
         } else {
-            maybe!(GeneratorPrototype::install_on_generator_function(cx, closure));
+            GeneratorPrototype::install_on_generator_function(cx, closure)?;
         }
     }
 

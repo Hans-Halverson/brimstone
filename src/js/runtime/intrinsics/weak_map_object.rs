@@ -12,7 +12,7 @@ use crate::{
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -38,12 +38,12 @@ impl WeakMapObject {
         let weak_map_data =
             WeakValueMap::new_initial(cx, ObjectKind::WeakMapObjectWeakValueMap).to_handle();
 
-        let mut object = maybe!(object_create_from_constructor::<WeakMapObject>(
+        let mut object = object_create_from_constructor::<WeakMapObject>(
             cx,
             constructor,
             ObjectKind::WeakMapObject,
-            Intrinsic::WeakMapPrototype
-        ));
+            Intrinsic::WeakMapPrototype,
+        )?;
 
         set_uninit!(object.weak_map_data, weak_map_data.get_());
 

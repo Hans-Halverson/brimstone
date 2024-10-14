@@ -8,7 +8,7 @@ use crate::{
         parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
         runtime::{interned_strings::InternedStrings, ordinary_object::object_create_with_size},
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -264,7 +264,7 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
         let scope_index = self.get_mapped_scope_index_for_key(key);
 
-        let result = maybe!(ordinary_delete(cx, self.as_object(), key));
+        let result = ordinary_delete(cx, self.as_object(), key)?;
 
         if result {
             if let Some(scope_index) = scope_index {

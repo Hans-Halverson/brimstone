@@ -5,7 +5,7 @@ use crate::{
         parser::{analyze::analyze, parse_script, source::Source},
         runtime::{bytecode::generator::BytecodeProgramGenerator, get},
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -82,7 +82,7 @@ impl Test262Object {
         cx: Context,
         global_object: Handle<ObjectValue>,
     ) -> EvalResult<Handle<StringValue>> {
-        let print_log = maybe!(get(cx, global_object, Self::print_log_key(cx)));
+        let print_log = get(cx, global_object, Self::print_log_key(cx))?;
         if !print_log.is_string() {
             return type_error(cx, "printLog must be a string");
         }
@@ -112,9 +112,9 @@ impl Test262Object {
 
         let global_object = cx.current_realm_ptr().global_object();
 
-        let old_print_log = maybe!(Self::get_print_log(cx, global_object));
+        let old_print_log = Self::get_print_log(cx, global_object)?;
         let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string());
-        maybe!(Self::set_print_log(cx, global_object, new_print_log));
+        Self::set_print_log(cx, global_object, new_print_log)?;
 
         Ok(cx.undefined())
     }
@@ -127,9 +127,9 @@ impl Test262Object {
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm
         let realm = Realm::new_uninit(cx);
-        maybe!(set_default_global_bindings(
-            cx, realm, /* expose_gc */ false, /* expose_test262 */ false
-        ));
+        set_default_global_bindings(
+            cx, realm, /* expose_gc */ false, /* expose_test262 */ false,
+        )?;
 
         // Add $262 object to new global object
         let test_262_object = Test262Object::new(cx, realm);

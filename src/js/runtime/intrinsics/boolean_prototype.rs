@@ -1,9 +1,6 @@
-use crate::{
-    js::runtime::{
-        completion::EvalResult, error::type_error, object_value::ObjectValue, realm::Realm,
-        Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    completion::EvalResult, error::type_error, object_value::ObjectValue, realm::Realm, Context,
+    Handle, Value,
 };
 
 use super::{boolean_constructor::BooleanObject, intrinsics::Intrinsic};
@@ -34,7 +31,7 @@ impl BooleanPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = maybe!(this_boolean_value(cx, this_value));
+        let bool_value = this_boolean_value(cx, this_value)?;
         let string_value = if bool_value { "true" } else { "false" };
 
         Ok(cx.alloc_string(string_value).as_value())
@@ -47,7 +44,7 @@ impl BooleanPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = maybe!(this_boolean_value(cx, this_value));
+        let bool_value = this_boolean_value(cx, this_value)?;
         Ok(cx.bool(bool_value))
     }
 }

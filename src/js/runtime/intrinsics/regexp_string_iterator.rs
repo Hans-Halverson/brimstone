@@ -20,7 +20,7 @@ use crate::{
         type_utilities::to_length,
         Context, Handle, HeapPtr, PropertyKey, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -101,7 +101,7 @@ impl RegExpStringIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut regexp_iterator = maybe!(RegExpStringIterator::cast_from_value(cx, this_value));
+        let mut regexp_iterator = RegExpStringIterator::cast_from_value(cx, this_value)?;
 
         let regexp_object = regexp_iterator.regexp_object();
         let target_string = regexp_iterator.target_string();
@@ -112,7 +112,7 @@ impl RegExpStringIteratorPrototype {
         }
 
         // Run the regular expression
-        let match_result = maybe!(regexp_exec(cx, regexp_object, target_string));
+        let match_result = regexp_exec(cx, regexp_object, target_string)?;
 
         // No match so return a completed iterator
         if match_result.is_null() {
@@ -129,18 +129,18 @@ impl RegExpStringIteratorPrototype {
 
         // Find matched string length
         let zero_key = PropertyKey::array_index(cx, 0).to_handle(cx);
-        let match_string = maybe!(get(cx, match_result.as_object(), zero_key));
-        let match_string = maybe!(to_string(cx, match_string));
+        let match_string = get(cx, match_result.as_object(), zero_key)?;
+        let match_string = to_string(cx, match_string)?;
 
         // Increment the lastIndex if the empty string was matched to avoid infinite loops
         if match_string.len() == 0 {
-            let last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
-            let last_index = maybe!(to_length(cx, last_index));
+            let last_index = get(cx, regexp_object, cx.names.last_index())?;
+            let last_index = to_length(cx, last_index)?;
 
             let next_index =
                 advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode);
             let next_index_value = Value::from(next_index).to_handle(cx);
-            maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
+            set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
         }
 
         Ok(create_iter_result_object(cx, match_result, false))

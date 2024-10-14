@@ -22,7 +22,7 @@ use crate::{
         value::Value,
         Context, PropertyKey,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -64,12 +64,12 @@ impl StringObject {
         constructor: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> EvalResult<Handle<StringObject>> {
-        let mut object = maybe!(object_create_from_constructor::<StringObject>(
+        let mut object = object_create_from_constructor::<StringObject>(
             cx,
             constructor,
             ObjectKind::StringObject,
-            Intrinsic::StringPrototype
-        ));
+            Intrinsic::StringPrototype,
+        )?;
 
         let string_data = string_data_handle.get_();
         let string_length = string_data.len();

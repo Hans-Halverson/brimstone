@@ -15,7 +15,7 @@ use crate::{
         value::Value,
         Context, Handle, PropertyKey, Realm,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -97,25 +97,22 @@ impl TypedArrayConstructor {
         let this_argument = get_argument(cx, arguments, 2);
 
         let iterator_key = cx.well_known_symbols.iterator();
-        let iterator = maybe!(get_method(cx, source, iterator_key));
+        let iterator = get_method(cx, source, iterator_key)?;
 
         // If source is iterable then add all values from iterator
         if let Some(iterator) = iterator {
             // Collect all values from iterator
             let mut values = vec![];
-            maybe!(iter_iterator_method_values(cx, source, iterator, &mut |_, value| {
+            iter_iterator_method_values(cx, source, iterator, &mut |_, value| {
                 values.push(value);
                 None
-            }));
+            })?;
 
             let length = values.len();
 
             let length_value = Value::from(length).to_handle(cx);
-            let target_object = maybe!(typed_array_create_from_constructor_object(
-                cx,
-                this_constructor,
-                &[length_value],
-            ));
+            let target_object =
+                typed_array_create_from_constructor_object(cx, this_constructor, &[length_value])?;
 
             // Shared between iterations
             let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -126,12 +123,12 @@ impl TypedArrayConstructor {
 
                 let value = if let Some(map_function) = map_function {
                     index_value.replace(Value::from(i));
-                    maybe!(call_object(cx, map_function, this_argument, &[value, index_value]))
+                    call_object(cx, map_function, this_argument, &[value, index_value])?
                 } else {
                     value
                 };
 
-                maybe!(set(cx, target_object, index_key, value, true));
+                set(cx, target_object, index_key, value, true)?;
             }
 
             return Ok(target_object.as_value());
@@ -139,14 +136,11 @@ impl TypedArrayConstructor {
 
         // Otherwise treat source like an array and add its values
         let array_like = must!(to_object(cx, source));
-        let length = maybe!(length_of_array_like(cx, array_like)) as usize;
+        let length = length_of_array_like(cx, array_like)? as usize;
 
         let length_value = Value::from(length).to_handle(cx);
-        let target_object = maybe!(typed_array_create_from_constructor_object(
-            cx,
-            this_constructor,
-            &[length_value],
-        ));
+        let target_object =
+            typed_array_create_from_constructor_object(cx, this_constructor, &[length_value])?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -155,16 +149,16 @@ impl TypedArrayConstructor {
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
 
-            let value = maybe!(get(cx, array_like, index_key));
+            let value = get(cx, array_like, index_key)?;
 
             let value = if let Some(map_function) = map_function {
                 index_value.replace(Value::from(i));
-                maybe!(call_object(cx, map_function, this_argument, &[value, index_value]))
+                call_object(cx, map_function, this_argument, &[value, index_value])?
             } else {
                 value
             };
 
-            maybe!(set(cx, target_object, index_key, value, true));
+            set(cx, target_object, index_key, value, true)?;
         }
 
         Ok(target_object.as_value())
@@ -186,7 +180,7 @@ impl TypedArrayConstructor {
         let length_value = Value::from(length).to_handle(cx);
 
         let typed_array =
-            maybe!(typed_array_create_from_constructor(cx, this_constructor, &[length_value],));
+            typed_array_create_from_constructor(cx, this_constructor, &[length_value])?;
         let object = typed_array.into_object_value();
 
         // Shared between iterations
@@ -194,7 +188,7 @@ impl TypedArrayConstructor {
 
         for (i, value) in arguments.iter().enumerate() {
             key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(set(cx, object, key, *value, true));
+            set(cx, object, key, *value, true)?;
         }
 
         Ok(object.as_value())
@@ -321,7 +315,7 @@ macro_rules! create_typed_array_constructor {
                         };
 
                         // May allocate and invoke arbitrary user code
-                        let element_value = maybe!($to_element(cx, value));
+                        let element_value = $to_element(cx, value)?;
 
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
 
@@ -402,7 +396,7 @@ macro_rules! create_typed_array_constructor {
                         }
 
                         // May allocate and invoke arbitrary user code
-                        let element_value = maybe!($to_element(cx, value));
+                        let element_value = $to_element(cx, value)?;
 
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
 
@@ -535,7 +529,7 @@ macro_rules! create_typed_array_constructor {
                 value: Handle<Value>,
             ) -> EvalResult<()> {
                 // May allocate, so call before accessing array buffer
-                let element_value = maybe!($to_element(cx, value));
+                let element_value = $to_element(cx, value)?;
 
                 unsafe {
                     let byte_ptr = self
@@ -559,7 +553,7 @@ macro_rules! create_typed_array_constructor {
                 value: Handle<Value>,
             ) -> EvalResult<()> {
                 // May allocate, so call before accessing array buffer
-                let element_value = maybe!($to_element(cx, value));
+                let element_value = $to_element(cx, value)?;
 
                 // Call to `$to_element` may invoke user cade. Check if array has become detached
                 // or out of bounds.
@@ -635,12 +629,11 @@ macro_rules! create_typed_array_constructor {
                     return Self::allocate_with_length(cx, new_target, 0);
                 }
 
-                let proto =
-                    maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
+                let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype)?;
 
                 let argument = get_argument(cx, arguments, 0);
                 if !argument.is_object() {
-                    let length = maybe!(to_index(cx, argument));
+                    let length = to_index(cx, argument)?;
                     return Self::allocate_with_length(cx, new_target, length);
                 }
 
@@ -665,7 +658,7 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 let iterator_key = cx.well_known_symbols.iterator();
-                let iterator = maybe!(get_method(cx, argument.into(), iterator_key));
+                let iterator = get_method(cx, argument.into(), iterator_key)?;
 
                 if let Some(iterator) = iterator {
                     Self::initialize_typed_array_from_list(cx, proto, argument.into(), iterator)
@@ -681,10 +674,9 @@ macro_rules! create_typed_array_constructor {
                 new_target: Handle<ObjectValue>,
                 length: usize,
             ) -> EvalResult<Handle<Value>> {
-                let proto =
-                    maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype));
+                let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype)?;
 
-                Ok(maybe!(Self::allocate_from_object_with_length(cx, proto, length)).as_value())
+                Ok(Self::allocate_from_object_with_length(cx, proto, length)?.as_value())
             }
 
             #[inline]
@@ -696,13 +688,13 @@ macro_rules! create_typed_array_constructor {
                 let byte_length = element_size!() * length;
 
                 let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                let array_buffer = maybe!(ArrayBufferObject::new(
+                let array_buffer = ArrayBufferObject::new(
                     cx,
                     array_buffer_constructor,
                     byte_length,
                     /* max_byte_length */ None,
                     /* data */ None,
-                ));
+                )?;
 
                 let typed_array = $typed_array::new_with_proto(
                     cx,
@@ -738,12 +730,8 @@ macro_rules! create_typed_array_constructor {
 
                 if source_typed_array.kind() == TypedArrayKind::$typed_array {
                     // If arrays have the same type then directly copy array buffer
-                    let data = maybe!(clone_array_buffer(
-                        cx,
-                        source_data,
-                        source_byte_offset,
-                        byte_length,
-                    ));
+                    let data =
+                        clone_array_buffer(cx, source_data, source_byte_offset, byte_length)?;
 
                     let typed_array = $typed_array::new_with_proto(
                         cx,
@@ -759,13 +747,13 @@ macro_rules! create_typed_array_constructor {
                     // Otherwise arrays have different type, so allocate buffer that holds the same
                     // number of elements as the source array.
                     let buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-                    let data = maybe!(ArrayBufferObject::new(
+                    let data = ArrayBufferObject::new(
                         cx,
                         buffer_constructor,
                         byte_length,
                         /* max_byte_length */ None,
                         /* data */ None,
-                    ));
+                    )?;
 
                     if source_typed_array.content_type() != $content_type {
                         return type_error(
@@ -787,7 +775,7 @@ macro_rules! create_typed_array_constructor {
 
                         // Convert element to target type. May allocate but may does not invoke
                         // user code.
-                        let element_value = maybe!($to_element(cx, value));
+                        let element_value = $to_element(cx, value)?;
 
                         $typed_array::write_element(data.get_(), target_byte_index, element_value);
 
@@ -816,7 +804,7 @@ macro_rules! create_typed_array_constructor {
                 byte_offset: Handle<Value>,
                 length: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
-                let offset = maybe!(to_index(cx, byte_offset));
+                let offset = to_index(cx, byte_offset)?;
                 if offset % element_size!() != 0 {
                     return range_error(
                         cx,
@@ -832,7 +820,7 @@ macro_rules! create_typed_array_constructor {
 
                 let mut new_length = 0;
                 if !length.is_undefined() {
-                    new_length = maybe!(to_index(cx, length));
+                    new_length = to_index(cx, length)?;
                 }
 
                 if array_buffer.is_detached() {
@@ -904,15 +892,14 @@ macro_rules! create_typed_array_constructor {
             ) -> EvalResult<Handle<Value>> {
                 // Collect all values from iterator
                 let mut values = vec![];
-                maybe!(iter_iterator_method_values(cx, iterable, iterator, &mut |_, value| {
+                iter_iterator_method_values(cx, iterable, iterator, &mut |_, value| {
                     values.push(value);
                     None
-                }));
+                })?;
 
                 // Allocated typed array
                 let length = values.len();
-                let typed_array_object =
-                    maybe!(Self::allocate_from_object_with_length(cx, proto, length));
+                let typed_array_object = Self::allocate_from_object_with_length(cx, proto, length)?;
 
                 // Shared between iterations
                 let mut key = PropertyKey::uninit().to_handle(cx);
@@ -920,7 +907,7 @@ macro_rules! create_typed_array_constructor {
                 // Add each value from iterator into typed array
                 for (i, value) in values.into_iter().enumerate() {
                     key.replace(PropertyKey::from_u64(cx, i as u64));
-                    maybe!(set(cx, typed_array_object, key, value, true));
+                    set(cx, typed_array_object, key, value, true)?;
                 }
 
                 Ok(typed_array_object.as_value())
@@ -933,9 +920,9 @@ macro_rules! create_typed_array_constructor {
                 array_like: Handle<ObjectValue>,
             ) -> EvalResult<Handle<Value>> {
                 // Allocated typed array
-                let length = maybe!(length_of_array_like(cx, array_like));
+                let length = length_of_array_like(cx, array_like)?;
                 let typed_array_object =
-                    maybe!(Self::allocate_from_object_with_length(cx, proto, length as usize));
+                    Self::allocate_from_object_with_length(cx, proto, length as usize)?;
 
                 // Shared between iterations
                 let mut key = PropertyKey::uninit().to_handle(cx);
@@ -943,8 +930,8 @@ macro_rules! create_typed_array_constructor {
                 // Add each value from array into typed array
                 for i in 0..length {
                     key.replace(PropertyKey::from_u64(cx, i));
-                    let value = maybe!(get(cx, array_like, key));
-                    maybe!(set(cx, typed_array_object, key, value, true));
+                    let value = get(cx, array_like, key)?;
+                    set(cx, typed_array_object, key, value, true)?;
                 }
 
                 Ok(typed_array_object.as_value())

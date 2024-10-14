@@ -1,5 +1,3 @@
-use crate::maybe;
-
 use super::{
     abstract_operations::{call_object, construct, length_of_array_like},
     array_object::{create_array_from_list, ArrayObject},
@@ -25,7 +23,7 @@ impl BoundFunctionObject {
         bound_this: Handle<Value>,
         bound_arguments: Vec<Handle<Value>>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        let prototype = maybe!(target_function.get_prototype_of(cx));
+        let prototype = target_function.get_prototype_of(cx)?;
 
         let is_constructor = if target_function.is_closure() {
             target_function
@@ -165,13 +163,13 @@ impl BoundFunctionObject {
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
-        let num_bound_arguments = maybe!(length_of_array_like(cx, bound_arguments.into()));
+        let num_bound_arguments = length_of_array_like(cx, bound_arguments.into())?;
 
         // OPTIMIZATION: Much room for optimization of bound arguments instead of using array and
         // standard array accessors.
         for i in 0..num_bound_arguments {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            let arg = maybe!(get(cx, bound_arguments.into(), index_key));
+            let arg = get(cx, bound_arguments.into(), index_key)?;
             all_arguments.push(arg)
         }
 
@@ -185,8 +183,7 @@ impl BoundFunctionObject {
                 new_target
             };
 
-            Ok(maybe!(construct(cx, bound_target_function, &all_arguments, Some(new_target)))
-                .as_value())
+            Ok(construct(cx, bound_target_function, &all_arguments, Some(new_target))?.as_value())
         } else {
             // Otherwise call bound target normally
             call_object(cx, bound_target_function, bound_this, &all_arguments)

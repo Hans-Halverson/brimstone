@@ -17,7 +17,7 @@ use crate::{
         value::{Value, ValueCollectionKey},
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -104,7 +104,7 @@ impl MapIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut map_iterator = maybe!(MapIterator::cast_from_value(cx, this_value));
+        let mut map_iterator = MapIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
         if map_iterator.is_done {

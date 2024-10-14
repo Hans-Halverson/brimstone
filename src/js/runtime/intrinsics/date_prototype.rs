@@ -1,20 +1,17 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::invoke,
-        builtin_function::BuiltinFunction,
-        error::{range_error, type_error},
-        function::get_argument,
-        interned_strings::InternedStrings,
-        intrinsics::date_object::{day, make_date, make_time, time_clip},
-        object_value::ObjectValue,
-        property::Property,
-        string_value::StringValue,
-        type_utilities::{
-            ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
-        },
-        Context, EvalResult, Handle, Realm, Value,
+use crate::js::runtime::{
+    abstract_operations::invoke,
+    builtin_function::BuiltinFunction,
+    error::{range_error, type_error},
+    function::get_argument,
+    interned_strings::InternedStrings,
+    intrinsics::date_object::{day, make_date, make_time, time_clip},
+    object_value::ObjectValue,
+    property::Property,
+    string_value::StringValue,
+    type_utilities::{
+        ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
     },
-    maybe,
+    Context, EvalResult, Handle, Realm, Value,
 };
 
 use super::{
@@ -556,7 +553,7 @@ impl DatePrototype {
         };
 
         let date_arg = get_argument(cx, arguments, 0);
-        let date = maybe!(to_number(cx, date_arg)).as_number();
+        let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
             return Ok(Value::nan().to_handle(cx));
@@ -591,7 +588,7 @@ impl DatePrototype {
         };
 
         let year_arg = get_argument(cx, arguments, 0);
-        let year = maybe!(to_number(cx, year_arg)).as_number();
+        let year = to_number(cx, year_arg)?.as_number();
 
         if date_value.is_nan() {
             date_value = 0.0;
@@ -601,14 +598,14 @@ impl DatePrototype {
 
         let month = if arguments.len() >= 2 {
             let month_arg = get_argument(cx, arguments, 1);
-            maybe!(to_number(cx, month_arg)).as_number()
+            to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
             let date_arg = get_argument(cx, arguments, 2);
-            maybe!(to_number(cx, date_arg)).as_number()
+            to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
         };
@@ -635,7 +632,7 @@ impl DatePrototype {
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
-        let hours = maybe!(to_number(cx, hours_arg)).as_number();
+        let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
         let mut minutes = 0.0;
@@ -648,17 +645,17 @@ impl DatePrototype {
 
         if has_minutes {
             let minutes_arg = get_argument(cx, arguments, 1);
-            minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+            minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 2);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 3);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -706,7 +703,7 @@ impl DatePrototype {
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
-        let milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+        let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if date_value.is_nan() {
             return Ok(Value::nan().to_handle(cx));
@@ -746,7 +743,7 @@ impl DatePrototype {
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
-        let minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+        let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
         let mut seconds = 0.0;
@@ -756,12 +753,12 @@ impl DatePrototype {
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 1);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 2);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -802,14 +799,14 @@ impl DatePrototype {
         };
 
         let month_arg = get_argument(cx, arguments, 0);
-        let month = maybe!(to_number(cx, month_arg)).as_number();
+        let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
             let date_arg = get_argument(cx, arguments, 1);
-            date = maybe!(to_number(cx, date_arg)).as_number();
+            date = to_number(cx, date_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -849,14 +846,14 @@ impl DatePrototype {
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
-        let seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+        let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 1);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -896,7 +893,7 @@ impl DatePrototype {
         };
 
         let time_arg = get_argument(cx, arguments, 0);
-        let time_num = time_clip(maybe!(to_number(cx, time_arg)).as_number());
+        let time_num = time_clip(to_number(cx, time_arg)?.as_number());
 
         set_date_value(this_value, time_num);
 
@@ -920,7 +917,7 @@ impl DatePrototype {
         };
 
         let date_arg = get_argument(cx, arguments, 0);
-        let date = maybe!(to_number(cx, date_arg)).as_number();
+        let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
             return Ok(Value::nan().to_handle(cx));
@@ -957,18 +954,18 @@ impl DatePrototype {
         }
 
         let year_arg = get_argument(cx, arguments, 0);
-        let year = maybe!(to_number(cx, year_arg)).as_number();
+        let year = to_number(cx, year_arg)?.as_number();
 
         let month = if arguments.len() >= 2 {
             let month_arg = get_argument(cx, arguments, 1);
-            maybe!(to_number(cx, month_arg)).as_number()
+            to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
             let date_arg = get_argument(cx, arguments, 2);
-            maybe!(to_number(cx, date_arg)).as_number()
+            to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
         };
@@ -998,7 +995,7 @@ impl DatePrototype {
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
-        let hours = maybe!(to_number(cx, hours_arg)).as_number();
+        let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
         let mut minutes = 0.0;
@@ -1011,17 +1008,17 @@ impl DatePrototype {
 
         if has_minutes {
             let minutes_arg = get_argument(cx, arguments, 1);
-            minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+            minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 2);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 3);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -1065,7 +1062,7 @@ impl DatePrototype {
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
-        let milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+        let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if milliseconds.is_nan() {
             return Ok(Value::nan().to_handle(cx));
@@ -1103,7 +1100,7 @@ impl DatePrototype {
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
-        let minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+        let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
         let mut seconds = 0.0;
@@ -1113,12 +1110,12 @@ impl DatePrototype {
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 1);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 2);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -1160,14 +1157,14 @@ impl DatePrototype {
         };
 
         let month_arg = get_argument(cx, arguments, 0);
-        let month = maybe!(to_number(cx, month_arg)).as_number();
+        let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
             let date_arg = get_argument(cx, arguments, 1);
-            date = maybe!(to_number(cx, date_arg)).as_number();
+            date = to_number(cx, date_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -1205,14 +1202,14 @@ impl DatePrototype {
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
-        let seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+        let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 1);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
@@ -1320,9 +1317,9 @@ impl DatePrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
+        let object = to_object(cx, this_value)?;
 
-        let time_value = maybe!(to_primitive(cx, object.into(), ToPrimitivePreferredType::Number));
+        let time_value = to_primitive(cx, object.into(), ToPrimitivePreferredType::Number)?;
 
         if time_value.is_number() && !time_value.as_number().is_finite() {
             return Ok(cx.null());

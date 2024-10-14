@@ -14,7 +14,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -36,12 +36,12 @@ impl WeakRefObject {
         constructor: Handle<ObjectValue>,
         value: Handle<Value>,
     ) -> EvalResult<Handle<WeakRefObject>> {
-        let mut object = maybe!(object_create_from_constructor::<WeakRefObject>(
+        let mut object = object_create_from_constructor::<WeakRefObject>(
             cx,
             constructor,
             ObjectKind::WeakRefObject,
-            Intrinsic::WeakRefPrototype
-        ));
+            Intrinsic::WeakRefPrototype,
+        )?;
 
         set_uninit!(object.weak_ref_target, value.get());
 
@@ -106,7 +106,7 @@ impl WeakRefConstructor {
             return type_error(cx, "WeakRef only holds objects and symbols");
         }
 
-        Ok(maybe!(WeakRefObject::new_from_constructor(cx, new_target, target_value)).as_value())
+        Ok(WeakRefObject::new_from_constructor(cx, new_target, target_value)?.as_value())
     }
 }
 

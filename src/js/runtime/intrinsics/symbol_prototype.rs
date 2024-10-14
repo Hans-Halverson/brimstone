@@ -1,10 +1,7 @@
-use crate::{
-    js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
-        object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
-        value::SymbolValue, Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
+    object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
+    value::SymbolValue, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, symbol_constructor::SymbolObject};
@@ -58,7 +55,7 @@ impl SymbolPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = maybe!(this_symbol_value(cx, this_value));
+        let symbol_value = this_symbol_value(cx, this_value)?;
         match symbol_value.as_symbol().description() {
             None => Ok(cx.undefined()),
             Some(desc) => Ok(desc.as_value()),
@@ -72,7 +69,7 @@ impl SymbolPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = maybe!(this_symbol_value(cx, this_value));
+        let symbol_value = this_symbol_value(cx, this_value)?;
         Ok(symbol_descriptive_string(cx, symbol_value.as_symbol()).as_value())
     }
 

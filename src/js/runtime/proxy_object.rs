@@ -1,6 +1,6 @@
 use std::{collections::HashSet, mem::size_of};
 
-use crate::{extend_object, maybe, must, set_uninit};
+use crate::{extend_object, must, set_uninit};
 
 use super::{
     abstract_operations::{
@@ -96,17 +96,17 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.get_own_property_descriptor()));
+        let trap = get_method(cx, handler, cx.names.get_own_property_descriptor())?;
 
         if trap.is_none() {
             return target.get_own_property(cx, key);
         }
 
         let trap_arguments = [target.into(), key.to_value(cx)];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if trap_result.is_undefined() {
-            let target_desc = maybe!(target.get_own_property(cx, key));
+            let target_desc = target.get_own_property(cx, key)?;
             if target_desc.is_none() {
                 return Ok(None);
             }
@@ -121,7 +121,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 );
             }
 
-            if !maybe!(is_extensible_(cx, target)) {
+            if !is_extensible_(cx, target)? {
                 return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
             }
 
@@ -133,10 +133,10 @@ impl VirtualObject for Handle<ProxyObject> {
             );
         }
 
-        let target_desc = maybe!(target.get_own_property(cx, key));
-        let is_target_extensible = maybe!(is_extensible_(cx, target));
+        let target_desc = target.get_own_property(cx, key)?;
+        let is_target_extensible = is_extensible_(cx, target)?;
 
-        let mut result_desc = maybe!(to_property_descriptor(cx, trap_result));
+        let mut result_desc = to_property_descriptor(cx, trap_result)?;
         result_desc.complete_property_descriptor(cx);
 
         if !is_compatible_property_descriptor(cx, is_target_extensible, result_desc, target_desc) {
@@ -174,7 +174,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let mut target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.define_property()));
+        let trap = get_method(cx, handler, cx.names.define_property())?;
 
         if trap.is_none() {
             return target.define_own_property(cx, key, desc);
@@ -182,14 +182,14 @@ impl VirtualObject for Handle<ProxyObject> {
 
         let desc_value = from_property_descriptor(cx, desc);
         let trap_arguments = [target.into(), key.to_value(cx), desc_value.into()];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if !to_boolean(trap_result.get()) {
             return Ok(false);
         }
 
-        let target_desc = maybe!(target.get_own_property(cx, key));
-        let is_target_extensible = maybe!(is_extensible_(cx, target));
+        let target_desc = target.get_own_property(cx, key)?;
+        let is_target_extensible = is_extensible_(cx, target)?;
 
         let mut is_setting_non_configurable = false;
         if let Some(false) = desc.is_configurable {
@@ -255,18 +255,18 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.has()));
+        let trap = get_method(cx, handler, cx.names.has())?;
 
         if trap.is_none() {
             return target.has_property(cx, key);
         }
 
         let trap_arguments = [target.into(), key.to_value(cx)];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
         let trap_result = to_boolean(trap_result.get());
 
         if !trap_result {
-            let target_desc = maybe!(target.get_own_property(cx, key));
+            let target_desc = target.get_own_property(cx, key)?;
             if let Some(desc) = target_desc {
                 if let Some(false) = desc.is_configurable {
                     return type_error(
@@ -278,7 +278,7 @@ impl VirtualObject for Handle<ProxyObject> {
                     );
                 }
 
-                if !maybe!(is_extensible_(cx, target)) {
+                if !is_extensible_(cx, target)? {
                     return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key));
                 }
             }
@@ -301,16 +301,16 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.get()));
+        let trap = get_method(cx, handler, cx.names.get())?;
 
         if trap.is_none() {
             return target.get(cx, key, receiver);
         }
 
         let trap_arguments = [target.into(), key.to_value(cx), receiver];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        let target_desc = maybe!(target.get_own_property(cx, key));
+        let target_desc = target.get_own_property(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
@@ -346,20 +346,20 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let mut target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.set_()));
+        let trap = get_method(cx, handler, cx.names.set_())?;
 
         if trap.is_none() {
             return target.set(cx, key, value, receiver);
         }
 
         let trap_arguments = [target.into(), key.to_value(cx), value, receiver];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if !to_boolean(trap_result.get()) {
             return Ok(false);
         }
 
-        let target_desc = maybe!(target.get_own_property(cx, key));
+        let target_desc = target.get_own_property(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 if target_desc.is_data_descriptor() {
@@ -386,20 +386,20 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let mut target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.delete_property()));
+        let trap = get_method(cx, handler, cx.names.delete_property())?;
 
         if trap.is_none() {
             return target.delete(cx, key);
         }
 
         let trap_arguments = [target.into(), key.to_value(cx)];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if !to_boolean(trap_result.get()) {
             return Ok(false);
         }
 
-        let target_desc = maybe!(target.get_own_property(cx, key));
+        let target_desc = target.get_own_property(cx, key)?;
         if let Some(target_desc) = target_desc {
             if let Some(false) = target_desc.is_configurable {
                 return type_error(
@@ -411,7 +411,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return Ok(true);
         }
 
-        if !maybe!(is_extensible_(cx, target)) {
+        if !is_extensible_(cx, target)? {
             return type_error(
                 cx,
                 &format!("proxy can't delete property '{}' on a non-extensible object", key),
@@ -430,13 +430,13 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.own_keys()));
+        let trap = get_method(cx, handler, cx.names.own_keys())?;
 
         if trap.is_none() {
             return target.own_property_keys(cx);
         }
 
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
 
         // Inlined CreateListFromArrayLike with type filtering and duplicate detection
         if !trap_result.is_object() {
@@ -444,14 +444,14 @@ impl VirtualObject for Handle<ProxyObject> {
         }
 
         let trap_result_object = trap_result.as_object();
-        let length = maybe!(length_of_array_like(cx, trap_result_object));
+        let length = length_of_array_like(cx, trap_result_object)?;
 
         let mut trap_result_keys = Vec::with_capacity(length as usize);
         let mut unchecked_result_keys = HashSet::new();
 
         for i in 0..length {
             let key = PropertyKey::array_index(cx, i as u32).to_handle(cx);
-            let next = maybe!(get(cx, trap_result_object, key));
+            let next = get(cx, trap_result_object, key)?;
             trap_result_keys.push(next);
 
             if !next.is_string() && !next.is_symbol() {
@@ -470,15 +470,15 @@ impl VirtualObject for Handle<ProxyObject> {
             }
         }
 
-        let is_extensible_target = maybe!(is_extensible_(cx, target));
-        let target_keys = maybe!(target.own_property_keys(cx));
+        let is_extensible_target = is_extensible_(cx, target)?;
+        let target_keys = target.own_property_keys(cx)?;
 
         let mut target_configurable_keys = vec![];
         let mut target_non_configurable_keys = vec![];
 
         for key in target_keys {
             let property_key = must!(PropertyKey::from_value(cx, key)).to_handle(cx);
-            let desc = maybe!(target.get_own_property(cx, property_key));
+            let desc = target.get_own_property(cx, property_key)?;
 
             if let Some(PropertyDescriptor { is_configurable: Some(false), .. }) = desc {
                 target_non_configurable_keys.push(property_key);
@@ -535,7 +535,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.apply()));
+        let trap = get_method(cx, handler, cx.names.apply())?;
 
         if trap.is_none() {
             return call_object(cx, target, this_argument, arguments);
@@ -560,7 +560,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let handler = self.handler().unwrap().into();
         let target = self.target().unwrap();
 
-        let trap = maybe!(get_method(cx, handler, cx.names.construct()));
+        let trap = get_method(cx, handler, cx.names.construct())?;
 
         if trap.is_none() {
             return construct(cx, target, arguments, Some(new_target));
@@ -568,7 +568,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         let arguments_array = create_array_from_list(cx, arguments);
         let trap_arguments = [target.into(), arguments_array.into(), new_target.into()];
-        let new_object = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let new_object = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if !new_object.is_object() {
             return type_error(cx, "proxy constructor must return an object");
@@ -598,13 +598,13 @@ impl ProxyObject {
 
         // Allocations happen after this point, so can no longer use self
 
-        let trap = maybe!(get_method(cx, handler, cx.names.get_prototype_of()));
+        let trap = get_method(cx, handler, cx.names.get_prototype_of())?;
 
         if trap.is_none() {
             return target.get_prototype_of(cx);
         }
 
-        let handler_proto = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let handler_proto = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
         let handler_proto = if handler_proto.is_object() {
             Some(handler_proto.as_object())
         } else if handler_proto.is_null() {
@@ -613,11 +613,11 @@ impl ProxyObject {
             return type_error(cx, "proxy getPrototypeOf handler must return object or null");
         };
 
-        if maybe!(is_extensible_(cx, target)) {
+        if is_extensible_(cx, target)? {
             return Ok(handler_proto);
         }
 
-        let target_proto = maybe!(target.get_prototype_of(cx));
+        let target_proto = target.get_prototype_of(cx)?;
 
         if !same_opt_object_value_handles(handler_proto, target_proto) {
             return type_error(
@@ -644,7 +644,7 @@ impl ProxyObject {
 
         // Allocations happen after this point, so can no longer use self
 
-        let trap = maybe!(get_method(cx, handler, cx.names.set_prototype_of()));
+        let trap = get_method(cx, handler, cx.names.set_prototype_of())?;
 
         if trap.is_none() {
             return target.set_prototype_of(cx, proto);
@@ -656,17 +656,17 @@ impl ProxyObject {
         };
 
         let trap_arguments = [target.into(), proto_value];
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &trap_arguments));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
         if !to_boolean(trap_result.get()) {
             return Ok(false);
         }
 
-        if maybe!(is_extensible_(cx, target)) {
+        if is_extensible_(cx, target)? {
             return Ok(true);
         }
 
-        let target_proto = maybe!(target.get_prototype_of(cx));
+        let target_proto = target.get_prototype_of(cx)?;
 
         if !same_opt_object_value_handles(proto, target_proto) {
             return type_error(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
@@ -686,16 +686,16 @@ impl ProxyObject {
 
         // Allocations happen after this point, so can no longer use self
 
-        let trap = maybe!(get_method(cx, handler, cx.names.is_extensible()));
+        let trap = get_method(cx, handler, cx.names.is_extensible())?;
 
         if trap.is_none() {
             return is_extensible_(cx, target);
         }
 
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
         let trap_result = to_boolean(trap_result.get());
 
-        let target_result = maybe!(is_extensible_(cx, target));
+        let target_result = is_extensible_(cx, target)?;
 
         if trap_result != target_result {
             return type_error(cx, "proxy must report same extensiblitity as target");
@@ -715,16 +715,16 @@ impl ProxyObject {
 
         // Allocations happen after this point, so can no longer use self
 
-        let trap = maybe!(get_method(cx, handler, cx.names.prevent_extensions()));
+        let trap = get_method(cx, handler, cx.names.prevent_extensions())?;
 
         if trap.is_none() {
             return target.prevent_extensions(cx);
         }
 
-        let trap_result = maybe!(call_object(cx, trap.unwrap(), handler, &[target.into()]));
+        let trap_result = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
         let trap_result = to_boolean(trap_result.get());
 
-        if trap_result && maybe!(is_extensible_(cx, target)) {
+        if trap_result && is_extensible_(cx, target)? {
             return type_error(cx, "proxy can't report an extensible object as non-extensible");
         }
 

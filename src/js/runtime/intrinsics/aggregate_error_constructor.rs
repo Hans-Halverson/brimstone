@@ -19,7 +19,7 @@ use crate::{
         type_utilities::to_string,
         Context, Handle, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
@@ -32,12 +32,12 @@ impl AggregateErrorObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ErrorObject>> {
-        let object = maybe!(object_create_from_constructor::<ErrorObject>(
+        let object = object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
             ObjectKind::ErrorObject,
-            Intrinsic::AggregateErrorPrototype
-        ));
+            Intrinsic::AggregateErrorPrototype,
+        )?;
 
         Ok(object.to_handle())
     }
@@ -97,12 +97,12 @@ impl AggregateErrorConstructor {
             cx.current_function()
         };
 
-        let object = maybe!(AggregateErrorObject::new_from_constructor(cx, new_target));
+        let object = AggregateErrorObject::new_from_constructor(cx, new_target)?;
 
         let errors = get_argument(cx, arguments, 0);
         let message = get_argument(cx, arguments, 1);
         if !message.is_undefined() {
-            let message_string = maybe!(to_string(cx, message));
+            let message_string = to_string(cx, message)?;
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object.into(),
@@ -114,14 +114,14 @@ impl AggregateErrorConstructor {
         attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         let options_arg = get_argument(cx, arguments, 2);
-        maybe!(install_error_cause(cx, object, options_arg));
+        install_error_cause(cx, object, options_arg)?;
 
         // Collect errors in iterable and create a new array containing all errors
         let mut errors_list = vec![];
-        maybe!(iter_iterator_values(cx, errors, &mut |_, value| {
+        iter_iterator_values(cx, errors, &mut |_, value| {
             errors_list.push(value);
             None
-        }));
+        })?;
 
         let errors_array = create_array_from_list(cx, &errors_list).as_object();
 

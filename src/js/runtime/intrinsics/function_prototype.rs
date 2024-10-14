@@ -20,7 +20,7 @@ use crate::{
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_undefined};
@@ -107,7 +107,7 @@ impl FunctionPrototype {
         if arg_array.is_nullish() {
             call_object(cx, this_value.as_object(), this_arg, &[])
         } else {
-            let arg_list = maybe!(create_list_from_array_like(cx, arg_array));
+            let arg_list = create_list_from_array_like(cx, arg_array)?;
             call_object(cx, this_value.as_object(), this_arg, &arg_list)
         }
     }
@@ -133,14 +133,13 @@ impl FunctionPrototype {
         };
         let num_bound_args = bound_args.len();
 
-        let bound_func =
-            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args)).as_object();
+        let bound_func = BoundFunctionObject::new(cx, target, this_arg, bound_args)?.as_object();
 
         let mut length = Some(0);
 
         // Set function length to an integer or infinity based on the inner function's length
-        if maybe!(has_own_property(cx, target, cx.names.length())) {
-            let target_length_value = maybe!(get(cx, target, cx.names.length()));
+        if has_own_property(cx, target, cx.names.length())? {
+            let target_length_value = get(cx, target, cx.names.length())?;
             if target_length_value.is_number() {
                 let target_length = target_length_value.as_number();
                 if target_length == f64::INFINITY {
@@ -157,7 +156,7 @@ impl FunctionPrototype {
 
         set_function_length_maybe_infinity(cx, bound_func, length);
 
-        let target_name = maybe!(get(cx, target, cx.names.name()));
+        let target_name = get(cx, target, cx.names.name())?;
         let target_name = if target_name.is_string() {
             target_name.as_string()
         } else {
@@ -251,7 +250,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
+        let has_instance = ordinary_has_instance(cx, this_value, argument)?;
         Ok(cx.bool(has_instance))
     }
 }

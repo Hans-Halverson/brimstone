@@ -8,10 +8,7 @@ use std::{
 use bitflags::bitflags;
 use num_bigint::BigInt;
 
-use crate::{
-    js::{common::wtf_8::Wtf8String, runtime::completion::EvalResult},
-    maybe,
-};
+use crate::js::{common::wtf_8::Wtf8String, runtime::completion::EvalResult};
 
 use super::{
     loc::{Loc, EMPTY_LOC},
@@ -1362,9 +1359,9 @@ impl ArrayPattern {
     ) -> EvalResult<()> {
         for element in &self.elements {
             match element {
-                ArrayPatternElement::Pattern(pattern) => maybe!(pattern.iter_bound_names(f)),
+                ArrayPatternElement::Pattern(pattern) => pattern.iter_bound_names(f)?,
                 ArrayPatternElement::Rest(RestElement { argument, .. }) => {
-                    maybe!(argument.iter_bound_names(f))
+                    argument.iter_bound_names(f)?
                 }
                 ArrayPatternElement::Hole => {}
             }
@@ -1390,7 +1387,7 @@ impl ObjectPattern {
         f: &mut F,
     ) -> EvalResult<()> {
         for prop in &self.properties {
-            maybe!(prop.value.iter_bound_names(f))
+            prop.value.iter_bound_names(f)?
         }
 
         Ok(())

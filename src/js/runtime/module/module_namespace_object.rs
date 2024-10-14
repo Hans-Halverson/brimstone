@@ -17,7 +17,7 @@ use crate::{
         type_utilities::same_value,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::source_text_module::SourceTextModule;
@@ -109,7 +109,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return Ok(ordinary_get_own_property(cx, (*self).into(), key));
         }
 
-        match maybe!(self.lookup_export(cx, key.get())) {
+        match self.lookup_export(cx, key.get())? {
             None => Ok(None),
             Some(value) => {
                 let value = value.to_handle(cx);
@@ -130,7 +130,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_define_own_property(cx, (*self).into(), key, desc);
         }
 
-        let current_desc = match maybe!(self.get_own_property(cx, key)) {
+        let current_desc = match self.get_own_property(cx, key)? {
             None => return Ok(false),
             Some(desc) => desc,
         };
@@ -172,7 +172,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_get(cx, (*self).into(), key, receiver);
         }
 
-        match maybe!(self.lookup_export(cx, key.get())) {
+        match self.lookup_export(cx, key.get())? {
             None => Ok(cx.undefined()),
             Some(value) => Ok(value.to_handle(cx)),
         }

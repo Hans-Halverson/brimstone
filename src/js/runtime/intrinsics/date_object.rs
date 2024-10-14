@@ -10,7 +10,7 @@ use crate::{
             type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
         },
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 // Date Objects (https://tc39.es/ecma262/#sec-date-objects)
@@ -28,12 +28,12 @@ impl DateObject {
         constructor: Handle<ObjectValue>,
         date_value: f64,
     ) -> EvalResult<HeapPtr<DateObject>> {
-        let mut object = maybe!(object_create_from_constructor::<DateObject>(
+        let mut object = object_create_from_constructor::<DateObject>(
             cx,
             constructor,
             ObjectKind::DateObject,
-            Intrinsic::DatePrototype
-        ));
+            Intrinsic::DatePrototype,
+        )?;
 
         set_uninit!(object.date_value, date_value);
 

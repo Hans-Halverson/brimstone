@@ -5,7 +5,7 @@ use crate::{
         get,
         intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -41,21 +41,21 @@ pub fn get_iterator(
     } else {
         if hint == IteratorHint::Async {
             let async_iterator_key = cx.well_known_symbols.async_iterator();
-            let method = maybe!(get_method(cx, object, async_iterator_key));
+            let method = get_method(cx, object, async_iterator_key)?;
 
             if let Some(method) = method {
                 method
             } else {
                 let sync_iterator_key = cx.well_known_symbols.iterator();
-                let sync_method = maybe!(get_method(cx, object, sync_iterator_key));
+                let sync_method = get_method(cx, object, sync_iterator_key)?;
                 let sync_iterator_record =
-                    maybe!(get_iterator(cx, object, IteratorHint::Sync, sync_method));
+                    get_iterator(cx, object, IteratorHint::Sync, sync_method)?;
 
                 return Ok(create_async_from_sync_iterator(cx, sync_iterator_record));
             }
         } else {
             let iterator_key = cx.well_known_symbols.iterator();
-            let method = maybe!(get_method(cx, object, iterator_key));
+            let method = get_method(cx, object, iterator_key)?;
 
             if let Some(method) = method {
                 method
@@ -66,14 +66,14 @@ pub fn get_iterator(
         }
     };
 
-    let iterator = maybe!(call_object(cx, method, object, &[]));
+    let iterator = call_object(cx, method, object, &[])?;
 
     if !iterator.is_object() {
         return type_error(cx, "iterator must be an object");
     }
     let iterator = iterator.as_object();
 
-    let next_method = maybe!(get(cx, iterator, cx.names.next()));
+    let next_method = get(cx, iterator, cx.names.next())?;
 
     let iterator_record = Iterator { iterator, next_method, is_done: false };
 
@@ -88,9 +88,9 @@ pub fn iterator_next(
     value: Option<Handle<Value>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = if let Some(value) = value {
-        maybe!(call(cx, next_method, iterator.into(), &[value]))
+        call(cx, next_method, iterator.into(), &[value])?
     } else {
-        maybe!(call(cx, next_method, iterator.into(), &[]))
+        call(cx, next_method, iterator.into(), &[])?
     };
 
     if !result.is_object() {
@@ -102,7 +102,7 @@ pub fn iterator_next(
 
 /// IteratorComplete (https://tc39.es/ecma262/#sec-iteratorcomplete)
 pub fn iterator_complete(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
-    let is_done = maybe!(get(cx, iter_result, cx.names.done()));
+    let is_done = get(cx, iter_result, cx.names.done())?;
     Ok(to_boolean(is_done.get()))
 }
 
@@ -113,8 +113,8 @@ pub fn iterator_value(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResu
 
 /// IteratorStep (https://tc39.es/ecma262/#sec-iteratorstep)
 pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Handle<ObjectValue>>> {
-    let iter_result = maybe!(iterator_next(cx, iterator.iterator, iterator.next_method, None));
-    let is_done = maybe!(iterator_complete(cx, iter_result));
+    let iter_result = iterator_next(cx, iterator.iterator, iterator.next_method, None)?;
+    let is_done = iterator_complete(cx, iter_result)?;
 
     if is_done {
         Ok(None)
@@ -139,7 +139,7 @@ pub fn iterator_close(
     // Return completion if it is an error
     completion?;
 
-    let inner_value = maybe!(inner_result);
+    let inner_value = inner_result?;
     if !inner_value.is_object() {
         return type_error(cx, "iterator's return method must return an object");
     }
@@ -215,14 +215,14 @@ pub fn iter_iterator_values<
     object: Handle<Value>,
     f: &mut F,
 ) -> EvalResult<Handle<Value>> {
-    let iterator = maybe!(get_iterator(cx, object, IteratorHint::Sync, None));
+    let iterator = get_iterator(cx, object, IteratorHint::Sync, None)?;
 
     loop {
-        let iter_result = maybe!(iterator_step(cx, &iterator));
+        let iter_result = iterator_step(cx, &iterator)?;
         match iter_result {
             None => return Ok(cx.empty()),
             Some(iter_result) => {
-                let value = maybe!(iterator_value(cx, iter_result));
+                let value = iterator_value(cx, iter_result)?;
 
                 let completion = f(cx, value);
 
@@ -242,14 +242,14 @@ pub fn iter_iterator_method_values<
     method: Handle<ObjectValue>,
     f: &mut F,
 ) -> EvalResult<Handle<Value>> {
-    let iterator = maybe!(get_iterator(cx, object, IteratorHint::Sync, Some(method)));
+    let iterator = get_iterator(cx, object, IteratorHint::Sync, Some(method))?;
 
     loop {
-        let iter_result = maybe!(iterator_step(cx, &iterator));
+        let iter_result = iterator_step(cx, &iterator)?;
         match iter_result {
             None => return Ok(cx.empty()),
             Some(iter_result) => {
-                let value = maybe!(iterator_value(cx, iter_result));
+                let value = iterator_value(cx, iter_result)?;
 
                 let completion = f(cx, value);
 

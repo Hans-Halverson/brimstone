@@ -1,14 +1,11 @@
-use crate::{
-    js::runtime::{
-        error::{range_error, type_error},
-        function::get_argument,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::{to_bigint, to_boolean, to_index, to_number},
-        Context, EvalResult, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    error::{range_error, type_error},
+    function::get_argument,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::{to_bigint, to_boolean, to_index, to_number},
+    Context, EvalResult, Handle, Value,
 };
 
 use super::{
@@ -75,7 +72,7 @@ impl DataViewPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let data_view = maybe!(require_is_data_view(cx, this_value));
+        let data_view = require_is_data_view(cx, this_value)?;
         Ok(data_view.viewed_array_buffer().as_value())
     }
 
@@ -86,7 +83,7 @@ impl DataViewPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let data_view = maybe!(require_is_data_view(cx, this_value));
+        let data_view = require_is_data_view(cx, this_value)?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
         if is_view_out_of_bounds(&data_view_record) {
@@ -105,7 +102,7 @@ impl DataViewPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let data_view = maybe!(require_is_data_view(cx, this_value));
+        let data_view = require_is_data_view(cx, this_value)?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
         if is_view_out_of_bounds(&data_view_record) {
@@ -416,10 +413,10 @@ fn get_view_value<T>(
     from_element_fn: fn(Context, T) -> Handle<Value>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
-    let data_view = maybe!(require_is_data_view(cx, this_value));
+    let data_view = require_is_data_view(cx, this_value)?;
 
     let get_index_arg = get_argument(cx, arguments, 0);
-    let get_index = maybe!(to_index(cx, get_index_arg));
+    let get_index = to_index(cx, get_index_arg)?;
     let is_little_endian = to_boolean(get_argument(cx, arguments, 1).get());
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -469,17 +466,17 @@ fn set_view_value<T>(
     to_element_fn: fn(Context, Handle<Value>) -> EvalResult<T>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
-    let data_view = maybe!(require_is_data_view(cx, this_value));
+    let data_view = require_is_data_view(cx, this_value)?;
 
     let get_index_arg = get_argument(cx, arguments, 0);
-    let get_index = maybe!(to_index(cx, get_index_arg));
+    let get_index = to_index(cx, get_index_arg)?;
     let is_little_endian = to_boolean(get_argument(cx, arguments, 2).get());
 
     let value_arg = get_argument(cx, arguments, 1);
     let value = if content_type == ContentType::BigInt {
-        maybe!(to_bigint(cx, value_arg)).into()
+        to_bigint(cx, value_arg)?.into()
     } else {
-        maybe!(to_number(cx, value_arg))
+        to_number(cx, value_arg)?
     };
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -496,7 +493,7 @@ fn set_view_value<T>(
     }
 
     // Convert number to bytes with correct endianness
-    let element = maybe!(to_element_fn(cx, value));
+    let element = to_element_fn(cx, value)?;
 
     let element_bytes = if cfg!(target_endian = "little") {
         if is_little_endian {

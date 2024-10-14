@@ -1,11 +1,8 @@
 use std::collections::VecDeque;
 
-use crate::{
-    js::runtime::{
-        abstract_operations::{call, call_object},
-        intrinsics::promise_constructor::execute_then,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::{call, call_object},
+    intrinsics::promise_constructor::execute_then,
 };
 
 use super::{
@@ -121,14 +118,12 @@ impl Context {
     /// Run all tasks until the task queue is empty.
     pub fn run_all_tasks(&mut self) -> EvalResult<()> {
         while let Some(task) = self.task_queue().tasks.pop_front() {
-            maybe!(HandleScope::new(*self, |cx| {
-                match task {
-                    Task::Callback1(task) => task.execute(cx),
-                    Task::AwaitResume(task) => task.execute(cx),
-                    Task::PromiseThenReaction(task) => task.execute(cx),
-                    Task::PromiseThenSettle(task) => task.execute(cx),
-                }
-            }));
+            HandleScope::new(*self, |cx| match task {
+                Task::Callback1(task) => task.execute(cx),
+                Task::AwaitResume(task) => task.execute(cx),
+                Task::PromiseThenReaction(task) => task.execute(cx),
+                Task::PromiseThenSettle(task) => task.execute(cx),
+            })?;
         }
 
         Ok(())
@@ -150,7 +145,7 @@ impl Callback1Task {
         let func = self.func.to_handle(cx);
         let arg = self.arg.to_handle(cx);
 
-        maybe!(call(cx, func, cx.undefined(), &[arg]));
+        call(cx, func, cx.undefined(), &[arg])?;
 
         Ok(())
     }
@@ -183,17 +178,15 @@ impl AwaitResumeTask {
 
         if generator.is_generator() {
             let generator = generator.cast::<GeneratorObject>();
-            maybe!(cx
-                .vm()
-                .resume_generator(generator, completion_value, completion_type));
+            cx.vm()
+                .resume_generator(generator, completion_value, completion_type)?;
         } else {
             let async_generator = generator.cast::<AsyncGeneratorObject>();
 
             // Must execute in the realm of the async generator since AsyncGeneratorResume may need
             // to drain the async queue when the VM stack is empty.
-            maybe!(cx
-                .vm()
-                .push_initial_realm_stack_frame(async_generator.realm_ptr()));
+            cx.vm()
+                .push_initial_realm_stack_frame(async_generator.realm_ptr())?;
 
             async_generator_resume(cx, async_generator, completion_value, completion_type);
 
@@ -230,7 +223,7 @@ impl PromiseThenReactionTask {
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
         if let Some(realm) = self.realm {
-            maybe!(cx.vm().push_initial_realm_stack_frame(realm));
+            cx.vm().push_initial_realm_stack_frame(realm)?;
         }
 
         let result = self.result.to_handle(cx);
@@ -271,7 +264,7 @@ impl PromiseThenReactionTask {
             cx.vm().pop_initial_realm_stack_frame();
         }
 
-        maybe!(completion);
+        completion?;
 
         Ok(())
     }
@@ -300,7 +293,7 @@ impl PromiseThenSettleTask {
     }
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
-        maybe!(cx.vm().push_initial_realm_stack_frame(self.realm));
+        cx.vm().push_initial_realm_stack_frame(self.realm)?;
 
         let then_function = self.then_function.to_handle();
         let resolution = self.resolution.to_handle().into();
@@ -311,7 +304,7 @@ impl PromiseThenSettleTask {
         // Make sure we clean up the realm's stack frame before returning or throwing
         cx.vm().pop_initial_realm_stack_frame();
 
-        maybe!(completion);
+        completion?;
 
         Ok(())
     }

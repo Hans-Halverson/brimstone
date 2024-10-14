@@ -1,4 +1,4 @@
-use crate::{js::runtime::abstract_operations::create_data_property_or_throw, maybe, must};
+use crate::{js::runtime::abstract_operations::create_data_property_or_throw, must};
 
 use super::{
     abstract_operations::{get, has_property},
@@ -273,27 +273,27 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         set: None,
     };
 
-    if maybe!(has_property(cx, object, cx.names.enumerable())) {
-        let enumerable = maybe!(get(cx, object, cx.names.enumerable()));
+    if has_property(cx, object, cx.names.enumerable())? {
+        let enumerable = get(cx, object, cx.names.enumerable())?;
         desc.is_enumerable = Some(to_boolean(enumerable.get()));
     }
 
-    if maybe!(has_property(cx, object, cx.names.configurable())) {
-        let configurable = maybe!(get(cx, object, cx.names.configurable()));
+    if has_property(cx, object, cx.names.configurable())? {
+        let configurable = get(cx, object, cx.names.configurable())?;
         desc.is_configurable = Some(to_boolean(configurable.get()));
     }
 
-    if maybe!(has_property(cx, object, cx.names.value())) {
-        desc.value = Some(maybe!(get(cx, object, cx.names.value())));
+    if has_property(cx, object, cx.names.value())? {
+        desc.value = Some(get(cx, object, cx.names.value())?);
     }
 
-    if maybe!(has_property(cx, object, cx.names.writable())) {
-        let writable = maybe!(get(cx, object, cx.names.writable()));
+    if has_property(cx, object, cx.names.writable())? {
+        let writable = get(cx, object, cx.names.writable())?;
         desc.is_writable = Some(to_boolean(writable.get()));
     }
 
-    if maybe!(has_property(cx, object, cx.names.get())) {
-        let get = maybe!(get(cx, object, cx.names.get()));
+    if has_property(cx, object, cx.names.get())? {
+        let get = get(cx, object, cx.names.get())?;
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
             return type_error(cx, "getter is not callable");
@@ -307,8 +307,8 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         };
     }
 
-    if maybe!(has_property(cx, object, cx.names.set_())) {
-        let set = maybe!(get(cx, object, cx.names.set_()));
+    if has_property(cx, object, cx.names.set_())? {
+        let set = get(cx, object, cx.names.set_())?;
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
             return type_error(cx, "setter is not callable");

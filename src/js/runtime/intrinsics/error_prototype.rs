@@ -1,10 +1,6 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::get, completion::EvalResult, error::type_error,
-        object_value::ObjectValue, realm::Realm, string_value::StringValue,
-        type_utilities::to_string, Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::get, completion::EvalResult, error::type_error, object_value::ObjectValue,
+    realm::Realm, string_value::StringValue, type_utilities::to_string, Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -42,18 +38,18 @@ impl ErrorPrototype {
 
         let this_object = this_value.as_object();
 
-        let name_value = maybe!(get(cx, this_object, cx.names.name()));
+        let name_value = get(cx, this_object, cx.names.name())?;
         let name_string = if name_value.is_undefined() {
             cx.names.error().as_string()
         } else {
-            maybe!(to_string(cx, name_value))
+            to_string(cx, name_value)?
         };
 
-        let message_value = maybe!(get(cx, this_object, cx.names.message()));
+        let message_value = get(cx, this_object, cx.names.message())?;
         let message_string = if message_value.is_undefined() {
             cx.names.empty_string().as_string()
         } else {
-            maybe!(to_string(cx, message_value))
+            to_string(cx, message_value)?
         };
 
         if name_string.is_empty() {

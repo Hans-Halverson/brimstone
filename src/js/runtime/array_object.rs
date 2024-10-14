@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use wrap_ordinary_object::wrap_ordinary_object;
 
-use crate::{extend_object, js::runtime::type_utilities::is_array, maybe, must, set_uninit};
+use crate::{extend_object, js::runtime::type_utilities::is_array, must, set_uninit};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
@@ -151,15 +151,15 @@ pub fn array_species_create(
     original_array: Handle<ObjectValue>,
     length: u64,
 ) -> EvalResult<Handle<ObjectValue>> {
-    if !maybe!(is_array(cx, original_array.into())) {
-        let array_object = maybe!(array_create(cx, length, None)).as_object();
+    if !is_array(cx, original_array.into())? {
+        let array_object = array_create(cx, length, None)?.as_object();
         return Ok(array_object);
     }
 
-    let mut constructor = maybe!(get(cx, original_array, cx.names.constructor()));
+    let mut constructor = get(cx, original_array, cx.names.constructor())?;
     if is_constructor_value(constructor) {
         let this_realm_ptr = cx.current_realm_ptr();
-        let constructor_realm = maybe!(get_function_realm(cx, constructor.as_object()));
+        let constructor_realm = get_function_realm(cx, constructor.as_object())?;
 
         if !this_realm_ptr.ptr_eq(&constructor_realm)
             && same_object_value(
@@ -173,7 +173,7 @@ pub fn array_species_create(
 
     if constructor.is_object() {
         let species_key = cx.well_known_symbols.species();
-        constructor = maybe!(get(cx, constructor.as_object(), species_key));
+        constructor = get(cx, constructor.as_object(), species_key)?;
 
         if constructor.is_null() {
             constructor = cx.undefined();
@@ -181,7 +181,7 @@ pub fn array_species_create(
     }
 
     if constructor.is_undefined() {
-        let array_object = maybe!(array_create(cx, length, None)).as_object();
+        let array_object = array_create(cx, length, None)?.as_object();
         return Ok(array_object);
     }
 
@@ -203,8 +203,8 @@ fn array_set_length(
     let mut new_len = array.as_object().array_properties_length();
 
     if let Some(value) = desc.value {
-        new_len = maybe!(to_uint32(cx, value));
-        let number_len = maybe!(to_number(cx, value));
+        new_len = to_uint32(cx, value)?;
+        let number_len = to_number(cx, value)?;
 
         if <u32 as Into<f64>>::into(new_len) != number_len.as_number() {
             return range_error(cx, "invalid array length");

@@ -1,26 +1,23 @@
-use crate::{
-    js::{
-        common::time::get_current_unix_time,
-        runtime::{
-            builtin_function::BuiltinFunction,
-            completion::EvalResult,
-            function::get_argument,
-            gc::Handle,
-            intrinsics::{
-                date_object::{make_date, make_day, make_time, time_clip, utc, DateObject},
-                date_prototype::{this_date_value, to_date_string},
-            },
-            object_value::ObjectValue,
-            realm::Realm,
-            string_parsing::parse_string_to_date,
-            to_string,
-            type_utilities::{
-                to_integer_or_infinity_f64, to_number, to_primitive, ToPrimitivePreferredType,
-            },
-            Context, Value,
+use crate::js::{
+    common::time::get_current_unix_time,
+    runtime::{
+        builtin_function::BuiltinFunction,
+        completion::EvalResult,
+        function::get_argument,
+        gc::Handle,
+        intrinsics::{
+            date_object::{make_date, make_day, make_time, time_clip, utc, DateObject},
+            date_prototype::{this_date_value, to_date_string},
         },
+        object_value::ObjectValue,
+        realm::Realm,
+        string_parsing::parse_string_to_date,
+        to_string,
+        type_utilities::{
+            to_integer_or_infinity_f64, to_number, to_primitive, ToPrimitivePreferredType,
+        },
+        Context, Value,
     },
-    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -70,61 +67,60 @@ impl DateConstructor {
         let date_value = if number_of_args == 0 {
             get_current_unix_time()
         } else if number_of_args == 1 {
-            let date_value = if let Some(date_value_arg) =
-                this_date_value(get_argument(cx, arguments, 0))
-            {
-                date_value_arg
-            } else {
-                let arg = get_argument(cx, arguments, 0);
-                let primitive_value = maybe!(to_primitive(cx, arg, ToPrimitivePreferredType::None));
-
-                if primitive_value.is_string() {
-                    let primitive_string = primitive_value.as_string();
-                    parse_string_to_date(primitive_string).unwrap_or(f64::NAN)
+            let date_value =
+                if let Some(date_value_arg) = this_date_value(get_argument(cx, arguments, 0)) {
+                    date_value_arg
                 } else {
-                    maybe!(to_number(cx, primitive_value)).as_number()
-                }
-            };
+                    let arg = get_argument(cx, arguments, 0);
+                    let primitive_value = to_primitive(cx, arg, ToPrimitivePreferredType::None)?;
+
+                    if primitive_value.is_string() {
+                        let primitive_string = primitive_value.as_string();
+                        parse_string_to_date(primitive_string).unwrap_or(f64::NAN)
+                    } else {
+                        to_number(cx, primitive_value)?.as_number()
+                    }
+                };
 
             time_clip(date_value)
         } else {
             let year_arg = get_argument(cx, arguments, 0);
-            let mut year = maybe!(to_number(cx, year_arg)).as_number();
+            let mut year = to_number(cx, year_arg)?.as_number();
 
             let month_arg = get_argument(cx, arguments, 1);
-            let month = maybe!(to_number(cx, month_arg)).as_number();
+            let month = to_number(cx, month_arg)?.as_number();
 
             let day = if number_of_args > 2 {
                 let day_arg = get_argument(cx, arguments, 2);
-                maybe!(to_number(cx, day_arg)).as_number()
+                to_number(cx, day_arg)?.as_number()
             } else {
                 1.0
             };
 
             let hour = if number_of_args > 3 {
                 let hour_arg = get_argument(cx, arguments, 3);
-                maybe!(to_number(cx, hour_arg)).as_number()
+                to_number(cx, hour_arg)?.as_number()
             } else {
                 0.0
             };
 
             let minute = if number_of_args > 4 {
                 let minute_arg = get_argument(cx, arguments, 4);
-                maybe!(to_number(cx, minute_arg)).as_number()
+                to_number(cx, minute_arg)?.as_number()
             } else {
                 0.0
             };
 
             let second = if number_of_args > 5 {
                 let second_arg = get_argument(cx, arguments, 5);
-                maybe!(to_number(cx, second_arg)).as_number()
+                to_number(cx, second_arg)?.as_number()
             } else {
                 0.0
             };
 
             let millisecond = if number_of_args > 6 {
                 let millisecond_arg = get_argument(cx, arguments, 6);
-                maybe!(to_number(cx, millisecond_arg)).as_number()
+                to_number(cx, millisecond_arg)?.as_number()
             } else {
                 0.0
             };
@@ -144,7 +140,7 @@ impl DateConstructor {
             time_clip(utc(final_date))
         };
 
-        Ok(maybe!(DateObject::new_from_constructor(cx, new_target, date_value))
+        Ok(DateObject::new_from_constructor(cx, new_target, date_value)?
             .to_handle()
             .into())
     }
@@ -167,7 +163,7 @@ impl DateConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let string_arg = get_argument(cx, arguments, 0);
-        let string = maybe!(to_string(cx, string_arg));
+        let string = to_string(cx, string_arg)?;
 
         if let Some(date_value) = parse_string_to_date(string) {
             Ok(Value::from(date_value).to_handle(cx))
@@ -186,46 +182,46 @@ impl DateConstructor {
         let number_of_args = arguments.len();
 
         let year_arg = get_argument(cx, arguments, 0);
-        let mut year = maybe!(to_number(cx, year_arg)).as_number();
+        let mut year = to_number(cx, year_arg)?.as_number();
 
         let month = if number_of_args > 1 {
             let month_arg = get_argument(cx, arguments, 1);
-            maybe!(to_number(cx, month_arg)).as_number()
+            to_number(cx, month_arg)?.as_number()
         } else {
             0.0
         };
 
         let day = if number_of_args > 2 {
             let day_arg = get_argument(cx, arguments, 2);
-            maybe!(to_number(cx, day_arg)).as_number()
+            to_number(cx, day_arg)?.as_number()
         } else {
             1.0
         };
 
         let hour = if number_of_args > 3 {
             let hour_arg = get_argument(cx, arguments, 3);
-            maybe!(to_number(cx, hour_arg)).as_number()
+            to_number(cx, hour_arg)?.as_number()
         } else {
             0.0
         };
 
         let minute = if number_of_args > 4 {
             let minute_arg = get_argument(cx, arguments, 4);
-            maybe!(to_number(cx, minute_arg)).as_number()
+            to_number(cx, minute_arg)?.as_number()
         } else {
             0.0
         };
 
         let second = if number_of_args > 5 {
             let second_arg = get_argument(cx, arguments, 5);
-            maybe!(to_number(cx, second_arg)).as_number()
+            to_number(cx, second_arg)?.as_number()
         } else {
             0.0
         };
 
         let millisecond = if number_of_args > 6 {
             let millisecond_arg = get_argument(cx, arguments, 6);
-            maybe!(to_number(cx, millisecond_arg)).as_number()
+            to_number(cx, millisecond_arg)?.as_number()
         } else {
             0.0
         };

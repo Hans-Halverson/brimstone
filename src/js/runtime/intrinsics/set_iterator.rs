@@ -17,7 +17,7 @@ use crate::{
         value::ValueCollectionKey,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, set_object::SetObject};
@@ -101,7 +101,7 @@ impl SetIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
+        let mut set_iterator = SetIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
         if set_iterator.is_done {

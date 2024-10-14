@@ -20,7 +20,7 @@ use crate::{
         realm::Realm,
         Context, Handle, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::intrinsics::Intrinsic;
@@ -175,7 +175,7 @@ impl AsyncGeneratorPrototype {
         .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
-        maybe!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc));
+        define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;
 
         Ok(())
     }

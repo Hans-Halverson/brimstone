@@ -1,10 +1,7 @@
-use crate::{
-    js::runtime::{
-        boxed_value::BoxedValue, error::syntax_error, gc::HandleScope,
-        module::source_text_module::ModuleState, object_value::ObjectValue, Context, EvalResult,
-        Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    boxed_value::BoxedValue, error::syntax_error, gc::HandleScope,
+    module::source_text_module::ModuleState, object_value::ObjectValue, Context, EvalResult,
+    Handle,
 };
 
 use super::source_text_module::{
@@ -90,7 +87,7 @@ impl GraphLinker {
         for i in 0..loaded_modules.len() {
             let required_module = loaded_modules.as_slice()[i].unwrap().to_handle();
 
-            index = maybe!(self.inner_link(cx, required_module, index));
+            index = self.inner_link(cx, required_module, index)?;
 
             debug_assert!(matches!(
                 required_module.state(),
@@ -110,7 +107,7 @@ impl GraphLinker {
 
         // Can isolate InitializeEnvironment in a separate handle scope since handles cannot be
         // stored anywhere else and escape.
-        maybe!(HandleScope::new(cx, |cx| { initialize_environment(cx, module) }));
+        HandleScope::new(cx, |cx| initialize_environment(cx, module))?;
 
         debug_assert!(module.dfs_ancestor_index() <= module.dfs_index());
 

@@ -17,7 +17,7 @@ use crate::{
         value::SymbolValue,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -130,7 +130,7 @@ impl SymbolConstructor {
         let description_value = if description_arg.is_undefined() {
             None
         } else {
-            Some(maybe!(to_string(cx, description_arg)))
+            Some(to_string(cx, description_arg)?)
         };
 
         Ok(SymbolValue::new(cx, description_value, /* is_private */ false).into())
@@ -144,7 +144,7 @@ impl SymbolConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let string_key = maybe!(to_string(cx, argument)).flatten();
+        let string_key = to_string(cx, argument)?.flatten();
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key.get_()) {
             return Ok(symbol_value.to_handle().into());
         }

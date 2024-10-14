@@ -12,7 +12,7 @@ use crate::{
         realm::Realm,
         Context, Value,
     },
-    maybe, must,
+    must,
 };
 
 pub struct ProxyConstructor;
@@ -48,7 +48,7 @@ impl ProxyConstructor {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
 
-        Ok(maybe!(proxy_create(cx, target, handler)).as_value())
+        Ok(proxy_create(cx, target, handler)?.as_value())
     }
 
     /// Proxy.revocable (https://tc39.es/ecma262/#sec-proxy.revocable)
@@ -60,7 +60,7 @@ impl ProxyConstructor {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
-        let proxy = maybe!(proxy_create(cx, target, handler));
+        let proxy = proxy_create(cx, target, handler)?;
 
         let realm = cx.current_realm();
         let mut revoker =

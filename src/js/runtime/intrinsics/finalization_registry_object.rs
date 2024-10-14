@@ -12,7 +12,7 @@ use crate::{
         type_utilities::same_value_non_numeric_non_allocating,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -38,12 +38,12 @@ impl FinalizationRegistryObject {
     ) -> EvalResult<Handle<FinalizationRegistryObject>> {
         let cells =
             FinalizationRegistryCells::new(cx, FinalizationRegistryCells::MIN_CAPACITY).to_handle();
-        let mut object = maybe!(object_create_from_constructor::<FinalizationRegistryObject>(
+        let mut object = object_create_from_constructor::<FinalizationRegistryObject>(
             cx,
             constructor,
             ObjectKind::FinalizationRegistryObject,
-            Intrinsic::FinalizationRegistryPrototype
-        ));
+            Intrinsic::FinalizationRegistryPrototype,
+        )?;
 
         set_uninit!(object.cells, cells.get_());
         set_uninit!(object.cleanup_callback, cleanup_callback.get_());

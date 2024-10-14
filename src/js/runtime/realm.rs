@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     js::{parser::scope_tree::REALM_SCOPE_SLOT_NAME, runtime::gc::HandleScope},
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -176,7 +176,7 @@ impl Handle<Realm> {
         for name in names {
             key.replace(PropertyKey::string(cx, name.as_string()));
 
-            let is_global_var_name = maybe!(has_restricted_global_property(cx, global_object, key));
+            let is_global_var_name = has_restricted_global_property(cx, global_object, key)?;
             let is_global_lex_name = self.get_lexical_name(name.get_()).is_some();
 
             if is_global_var_name || is_global_lex_name {

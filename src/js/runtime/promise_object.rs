@@ -15,7 +15,7 @@ use crate::{
         value::Value,
         Context, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -102,12 +102,12 @@ impl PromiseObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<PromiseObject>> {
-        let mut object = maybe!(object_create_from_constructor::<PromiseObject>(
+        let mut object = object_create_from_constructor::<PromiseObject>(
             cx,
             constructor,
             ObjectKind::Promise,
-            Intrinsic::PromisePrototype
-        ));
+            Intrinsic::PromisePrototype,
+        )?;
 
         set_uninit!(
             object.state,
@@ -350,7 +350,7 @@ pub fn coerce_to_ordinary_promise(
     if is_promise(value.get()) {
         let value = value.cast::<PromiseObject>();
 
-        let value_constructor = maybe!(get(cx, value.into(), cx.names.constructor()));
+        let value_constructor = get(cx, value.into(), cx.names.constructor())?;
         let promise_constructor = cx.get_intrinsic_ptr(Intrinsic::PromiseConstructor);
         if value_constructor.is_object()
             && same_object_value(value_constructor.as_object().get_(), promise_constructor)
@@ -376,15 +376,15 @@ pub fn promise_resolve(
     // If result is already a promise, return it if it was constructed with the same constructor.
     if is_promise(result.get()) {
         let result = result.as_object();
-        let value_constructor = maybe!(get(cx, result, cx.names.constructor()));
+        let value_constructor = get(cx, result, cx.names.constructor())?;
         if same_value(value_constructor, constructor) {
             return Ok(result);
         }
     }
 
     // Create a new promise and immediately resolve it
-    let capability = maybe!(PromiseCapability::new(cx, constructor));
-    maybe!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
+    let capability = PromiseCapability::new(cx, constructor)?;
+    call_object(cx, capability.resolve(), cx.undefined(), &[result])?;
 
     Ok(capability.promise())
 }
@@ -501,7 +501,7 @@ impl PromiseCapability {
 
         // Construct the promise using the provided constructor. This will fill the resolve and
         // reject fields of the capability.
-        let promise = maybe!(construct(cx, constructor, &[executor.into()], None));
+        let promise = construct(cx, constructor, &[executor.into()], None)?;
 
         if !is_callable(capability.resolve.to_handle(cx)) {
             return type_error(cx, "resolve must be callable");

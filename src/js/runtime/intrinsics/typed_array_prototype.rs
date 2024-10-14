@@ -27,7 +27,7 @@ use crate::{
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -112,14 +112,14 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
         let index_arg = get_argument(cx, arguments, 0);
-        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+        let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
@@ -145,7 +145,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let typed_array = require_typed_array(cx, this_value)?;
         Ok(typed_array.viewed_array_buffer().as_value())
     }
 
@@ -156,7 +156,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let typed_array = require_typed_array(cx, this_value)?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -175,7 +175,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let typed_array = require_typed_array(cx, this_value)?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -192,14 +192,14 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
         let target_arg = get_argument(cx, arguments, 0);
-        let relative_target = maybe!(to_integer_or_infinity(cx, target_arg));
+        let relative_target = to_integer_or_infinity(cx, target_arg)?;
         let to_index = if relative_target < 0.0 {
             if relative_target == f64::NEG_INFINITY {
                 0
@@ -211,7 +211,7 @@ impl TypedArrayPrototype {
         };
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let from_start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -224,7 +224,7 @@ impl TypedArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -321,7 +321,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue).as_value())
@@ -334,7 +334,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -359,7 +359,7 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
-            let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
             if !to_boolean(test_result.get()) {
                 return Ok(cx.bool(false));
             }
@@ -375,7 +375,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -383,12 +383,12 @@ impl TypedArrayPrototype {
 
         let value_arg = get_argument(cx, arguments, 0);
         let value = match typed_array.content_type() {
-            ContentType::Number => maybe!(to_number(cx, value_arg)),
-            ContentType::BigInt => maybe!(to_bigint(cx, value_arg)).into(),
+            ContentType::Number => to_number(cx, value_arg)?,
+            ContentType::BigInt => to_bigint(cx, value_arg)?.into(),
         };
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -401,7 +401,7 @@ impl TypedArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -441,7 +441,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -464,12 +464,12 @@ impl TypedArrayPrototype {
         // First collect all values that pass the predicate
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            let value = maybe!(get(cx, object, index_key));
+            let value = get(cx, object, index_key)?;
 
             index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
-            let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
 
             if to_boolean(is_selected.get()) {
                 kept_values.push(value)
@@ -479,8 +479,7 @@ impl TypedArrayPrototype {
         // Then create a new array that contains the kept values
         let num_kept_values = kept_values.len();
         let num_kept_values_value = Value::from(num_kept_values).to_handle(cx);
-        let array =
-            maybe!(typed_array_species_create_object(cx, typed_array, &[num_kept_values_value],));
+        let array = typed_array_species_create_object(cx, typed_array, &[num_kept_values_value])?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -500,7 +499,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -514,8 +513,7 @@ impl TypedArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let find_result =
-            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
+        let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
         match find_result {
             Some((value, _)) => Ok(value),
@@ -530,7 +528,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -544,8 +542,7 @@ impl TypedArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let find_result =
-            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
+        let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
@@ -560,7 +557,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -575,7 +572,7 @@ impl TypedArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let find_result =
-            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+            find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
 
         match find_result {
             Some((value, _)) => Ok(value),
@@ -590,7 +587,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -605,7 +602,7 @@ impl TypedArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let find_result =
-            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+            find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
@@ -620,7 +617,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -645,7 +642,7 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
-            maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            call_object(cx, callback_function, this_arg, &arguments)?;
         }
 
         Ok(cx.undefined())
@@ -658,7 +655,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -671,7 +668,7 @@ impl TypedArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
+        let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
             return Ok(cx.bool(false));
         } else if n == f64::NEG_INFINITY {
@@ -706,7 +703,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -719,7 +716,7 @@ impl TypedArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
+        let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
             return Ok(Value::smi(-1).to_handle(cx));
         } else if n == f64::NEG_INFINITY {
@@ -755,7 +752,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -765,7 +762,7 @@ impl TypedArrayPrototype {
         let separator = if separator.is_undefined() {
             InternedStrings::get_str(cx, ",")
         } else {
-            maybe!(to_string(cx, separator))
+            to_string(cx, separator)?
         };
 
         let mut joined = cx.names.empty_string().as_string();
@@ -782,7 +779,7 @@ impl TypedArrayPrototype {
             let element = must!(get(cx, object, key));
 
             if !element.is_undefined() {
-                let next = maybe!(to_string(cx, element));
+                let next = to_string(cx, element)?;
                 joined = StringValue::concat(cx, joined, next);
             }
         }
@@ -797,7 +794,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key).as_value())
@@ -810,7 +807,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -824,7 +821,7 @@ impl TypedArrayPrototype {
 
         let start_index = if arguments.len() >= 2 {
             let start_arg = get_argument(cx, arguments, 1);
-            let n = maybe!(to_integer_or_infinity(cx, start_arg));
+            let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
                 return Ok(Value::smi(-1).to_handle(cx));
             }
@@ -867,7 +864,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let typed_array = require_typed_array(cx, this_value)?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -886,7 +883,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -901,7 +898,7 @@ impl TypedArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let length_value = Value::from(length).to_handle(cx);
-        let array = maybe!(typed_array_species_create_object(cx, typed_array, &[length_value]));
+        let array = typed_array_species_create_object(cx, typed_array, &[length_value])?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -914,8 +911,8 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
-            let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
-            maybe!(set(cx, array, index_key, mapped_value, true));
+            let mapped_value = call_object(cx, callback_function, this_arg, &arguments)?;
+            set(cx, array, index_key, mapped_value, true)?;
         }
 
         Ok(array.as_value())
@@ -928,7 +925,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -963,7 +960,7 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
-            accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
+            accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
         }
 
         Ok(accumulator)
@@ -976,7 +973,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1011,7 +1008,7 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [accumulator, value, index_value, object.into()];
 
-            accumulator = maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
+            accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
         }
 
         Ok(accumulator)
@@ -1024,7 +1021,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1063,25 +1060,25 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let offset_arg = get_argument(cx, arguments, 1);
-        let offset = maybe!(to_integer_or_infinity(cx, offset_arg));
+        let offset = to_integer_or_infinity(cx, offset_arg)?;
         if offset < 0.0 {
             return range_error(cx, "TypedArray.prototype.set offset is negative");
         }
 
         let source_arg = get_argument(cx, arguments, 0);
         if source_arg.is_object() && source_arg.as_object().is_typed_array() {
-            maybe!(Self::set_typed_array_from_typed_array(
+            Self::set_typed_array_from_typed_array(
                 cx,
                 typed_array,
                 offset,
-                source_arg.as_object().as_typed_array()
-            ));
+                source_arg.as_object().as_typed_array(),
+            )?;
         } else {
-            maybe!(Self::set_typed_array_from_array_like(cx, typed_array, offset, source_arg));
+            Self::set_typed_array_from_array_like(cx, typed_array, offset, source_arg)?;
         }
 
         Ok(cx.undefined())
@@ -1125,12 +1122,8 @@ impl TypedArrayPrototype {
         let source_byte_index =
             if same_object_value(source_buffer.get_().into(), target_buffer.get_().into()) {
                 let source_byte_length = typed_array_byte_length(&source_record);
-                source_buffer = maybe!(clone_array_buffer(
-                    cx,
-                    source_buffer,
-                    source_byte_offset,
-                    source_byte_length,
-                ));
+                source_buffer =
+                    clone_array_buffer(cx, source_buffer, source_byte_offset, source_byte_length)?;
                 0
             } else {
                 source_byte_offset
@@ -1154,7 +1147,7 @@ impl TypedArrayPrototype {
                     let element_value =
                         source.read_element_value(cx, source_buffer.get_(), from_byte_index);
 
-                    maybe!(target.write_element_value(cx, to_byte_index, element_value));
+                    target.write_element_value(cx, to_byte_index, element_value)?;
 
                     from_byte_index += source_element_size;
                     to_byte_index += target_element_size;
@@ -1187,8 +1180,8 @@ impl TypedArrayPrototype {
 
         let target_length = typed_array_length(&target_record) as u64;
 
-        let source = maybe!(to_object(cx, source));
-        let source_length = maybe!(length_of_array_like(cx, source));
+        let source = to_object(cx, source)?;
+        let source_length = length_of_array_like(cx, source)?;
 
         if offset == f64::INFINITY || source_length + offset as u64 > target_length {
             return range_error(cx, "TypedArray.prototype.set offset is out of range");
@@ -1200,11 +1193,11 @@ impl TypedArrayPrototype {
 
         for i in 0..source_length {
             key.replace(PropertyKey::from_u64(cx, i));
-            let value = maybe!(get(cx, source, key));
+            let value = get(cx, source, key)?;
 
             let target_index = offset + i;
 
-            maybe!(target.write_element_value_unchecked(cx, target_index, value));
+            target.write_element_value_unchecked(cx, target_index, value)?;
         }
 
         Ok(())
@@ -1217,14 +1210,14 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1237,7 +1230,7 @@ impl TypedArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -1254,7 +1247,7 @@ impl TypedArrayPrototype {
 
         let count = end_index.saturating_sub(start_index);
         let count_value = Value::from(count).to_handle(cx);
-        let new_typed_array = maybe!(typed_array_species_create(cx, typed_array, &[count_value],));
+        let new_typed_array = typed_array_species_create(cx, typed_array, &[count_value])?;
         let array = new_typed_array.into_object_value();
 
         if count == 0 {
@@ -1280,8 +1273,8 @@ impl TypedArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, current_index));
                 to_key.replace(PropertyKey::from_u64(cx, i));
 
-                let value = maybe!(get(cx, object, from_key));
-                maybe!(set(cx, array, to_key, value, true));
+                let value = get(cx, object, from_key)?;
+                set(cx, array, to_key, value, true)?;
 
                 current_index += 1;
             }
@@ -1319,7 +1312,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1344,7 +1337,7 @@ impl TypedArrayPrototype {
             index_value.replace(Value::from(i));
             let arguments = [value, index_value, object.into()];
 
-            let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
             if to_boolean(test_result.get()) {
                 return Ok(cx.bool(true));
             }
@@ -1365,18 +1358,18 @@ impl TypedArrayPrototype {
             return type_error(cx, "Sort comparator must be a function");
         };
 
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
+        let sorted_values = sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
             cx,
             object,
             length,
-            compare_function_arg
-        ));
+            compare_function_arg,
+        )?;
 
         // Reuse handle between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1384,7 +1377,7 @@ impl TypedArrayPrototype {
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(set(cx, object, index_key, *value, true));
+            set(cx, object, index_key, *value, true)?;
         }
 
         Ok(object.as_value())
@@ -1397,7 +1390,7 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = maybe!(require_typed_array(cx, this_value));
+        let typed_array = require_typed_array(cx, this_value)?;
         let buffer = typed_array.viewed_array_buffer();
 
         let source_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -1408,7 +1401,7 @@ impl TypedArrayPrototype {
         };
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1421,7 +1414,7 @@ impl TypedArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -1444,18 +1437,18 @@ impl TypedArrayPrototype {
         let begin_byte_offset_value = Value::from(begin_byte_offset).to_handle(cx);
 
         let subarray = if typed_array.array_length().is_none() && end_argument.is_undefined() {
-            maybe!(typed_array_species_create_object(
+            typed_array_species_create_object(
                 cx,
                 typed_array,
                 &[buffer.into(), begin_byte_offset_value],
-            ))
+            )?
         } else {
             let new_length_value = Value::from(new_length).to_handle(cx);
-            maybe!(typed_array_species_create_object(
+            typed_array_species_create_object(
                 cx,
                 typed_array,
                 &[buffer.into(), begin_byte_offset_value, new_length_value],
-            ))
+            )?
         };
 
         Ok(subarray.as_value())
@@ -1468,7 +1461,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1486,9 +1479,8 @@ impl TypedArrayPrototype {
             let next_element = must!(get(cx, object, key));
 
             if !next_element.is_nullish() {
-                let string_result =
-                    maybe!(invoke(cx, next_element, cx.names.to_locale_string(), &[]));
-                let string_result = maybe!(to_string(cx, string_result));
+                let string_result = invoke(cx, next_element, cx.names.to_locale_string(), &[])?;
+                let string_result = to_string(cx, string_result)?;
 
                 result = StringValue::concat(cx, result, string_result);
             }
@@ -1504,13 +1496,13 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let array = maybe!(typed_array_create_same_type(cx, typed_array, length));
+        let array = typed_array_create_same_type(cx, typed_array, length)?;
 
         // Keys are shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1539,20 +1531,20 @@ impl TypedArrayPrototype {
             return type_error(cx, "Sort comparator must be a function");
         };
 
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let sorted_array = maybe!(typed_array_create_same_type(cx, typed_array, length));
+        let sorted_array = typed_array_create_same_type(cx, typed_array, length)?;
 
-        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
+        let sorted_values = sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
             cx,
             object,
             length,
-            compare_function_arg
-        ));
+            compare_function_arg,
+        )?;
 
         // Reuse handle between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1560,7 +1552,7 @@ impl TypedArrayPrototype {
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(set(cx, sorted_array, index_key, *value, true));
+            set(cx, sorted_array, index_key, *value, true)?;
         }
 
         Ok(sorted_array.as_value())
@@ -1573,7 +1565,7 @@ impl TypedArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value).as_value())
@@ -1586,14 +1578,14 @@ impl TypedArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = maybe!(validate_typed_array(cx, this_value));
+        let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record);
 
         let index_arg = get_argument(cx, arguments, 0);
-        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+        let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         // Convert from relative to actual index, making sure index is in range
         let actual_index = if relative_index >= 0.0 {
@@ -1605,8 +1597,8 @@ impl TypedArrayPrototype {
         // Convert new value to correct typed
         let new_value = get_argument(cx, arguments, 1);
         let new_value = match typed_array.content_type() {
-            ContentType::BigInt => maybe!(to_bigint(cx, new_value)).into(),
-            ContentType::Number => maybe!(to_number(cx, new_value)),
+            ContentType::BigInt => to_bigint(cx, new_value)?.into(),
+            ContentType::Number => to_number(cx, new_value)?,
         };
 
         // User code may have been invoked during conversions before this point, which may resize
@@ -1631,7 +1623,7 @@ impl TypedArrayPrototype {
         }
         let actual_index = actual_index as u64;
 
-        let array = maybe!(typed_array_create_same_type(cx, typed_array, length as u64));
+        let array = typed_array_create_same_type(cx, typed_array, length as u64)?;
 
         // Key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -1721,7 +1713,7 @@ fn typed_array_species_create_object(
     exemplar: DynTypedArray,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<ObjectValue>> {
-    let result = maybe!(typed_array_species_create(cx, exemplar, arguments));
+    let result = typed_array_species_create(cx, exemplar, arguments)?;
     Ok(result.into_object_value())
 }
 
@@ -1744,9 +1736,9 @@ fn typed_array_species_create(
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };
 
-    let constructor = maybe!(species_constructor(cx, exemplar.into_object_value(), intrinsic));
+    let constructor = species_constructor(cx, exemplar.into_object_value(), intrinsic)?;
 
-    let result = maybe!(typed_array_create_from_constructor(cx, constructor, arguments));
+    let result = typed_array_create_from_constructor(cx, constructor, arguments)?;
 
     if result.content_type() != exemplar.content_type() {
         return type_error(cx, "typed arrays must both contain either numbers or BigInts");
@@ -1761,7 +1753,7 @@ pub fn typed_array_create_from_constructor_object(
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<ObjectValue>> {
-    let result = maybe!(typed_array_create_from_constructor(cx, constructor, arguments));
+    let result = typed_array_create_from_constructor(cx, constructor, arguments)?;
     Ok(result.into_object_value())
 }
 
@@ -1770,9 +1762,9 @@ pub fn typed_array_create_from_constructor(
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<DynTypedArray> {
-    let new_typed_array = maybe!(construct(cx, constructor, arguments, None));
+    let new_typed_array = construct(cx, constructor, arguments, None)?;
 
-    let new_typed_array_record = maybe!(validate_typed_array(cx, new_typed_array.into()));
+    let new_typed_array_record = validate_typed_array(cx, new_typed_array.into())?;
 
     if arguments.len() == 1 && arguments[0].is_number() {
         if is_typed_array_out_of_bounds(&new_typed_array_record) {
@@ -1821,7 +1813,7 @@ fn validate_typed_array(
     cx: Context,
     value: Handle<Value>,
 ) -> EvalResult<TypedArrayWithBufferWitnessRecord> {
-    let typed_array = maybe!(require_typed_array(cx, value));
+    let typed_array = require_typed_array(cx, value)?;
     let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
 
     if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -1922,12 +1914,12 @@ pub fn compare_typed_array_elements(
     // Use the compare function if provided
     if !compare_function.is_undefined() {
         let result_value =
-            maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
+            call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2])?;
         if result_value.is_nan() {
             return Ok(Ordering::Equal);
         }
 
-        let result_number = maybe!(to_number(cx, result_value));
+        let result_number = to_number(cx, result_value)?;
         let result_number = result_number.as_number();
 
         // Covert from positive/negative/equal number result to Ordering

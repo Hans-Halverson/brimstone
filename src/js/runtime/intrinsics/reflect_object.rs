@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::{call_object, construct, create_list_from_array_like},
-        array_object::create_array_from_list,
-        completion::EvalResult,
-        error::type_error,
-        function::get_argument,
-        object_value::ObjectValue,
-        property::Property,
-        property_descriptor::{from_property_descriptor, to_property_descriptor},
-        realm::Realm,
-        type_utilities::{is_callable, is_constructor_value, to_property_key},
-        Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::{call_object, construct, create_list_from_array_like},
+    array_object::create_array_from_list,
+    completion::EvalResult,
+    error::type_error,
+    function::get_argument,
+    object_value::ObjectValue,
+    property::Property,
+    property_descriptor::{from_property_descriptor, to_property_descriptor},
+    realm::Realm,
+    type_utilities::{is_callable, is_constructor_value, to_property_key},
+    Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -77,7 +74,7 @@ impl ReflectObject {
 
         let this_argument = get_argument(cx, arguments, 1);
         let arguments_arg = get_argument(cx, arguments, 2);
-        let arguments_list = maybe!(create_list_from_array_like(cx, arguments_arg));
+        let arguments_list = create_list_from_array_like(cx, arguments_arg)?;
 
         call_object(cx, target.as_object(), this_argument, &arguments_list)
     }
@@ -108,9 +105,9 @@ impl ReflectObject {
         };
 
         let arguments_arg = get_argument(cx, arguments, 1);
-        let arguments_list = maybe!(create_list_from_array_like(cx, arguments_arg));
+        let arguments_list = create_list_from_array_like(cx, arguments_arg)?;
 
-        Ok(maybe!(construct(cx, target, &arguments_list, Some(new_target))).as_value())
+        Ok(construct(cx, target, &arguments_list, Some(new_target))?.as_value())
     }
 
     /// Reflect.defineProperty (https://tc39.es/ecma262/#sec-reflect.defineproperty)
@@ -128,12 +125,12 @@ impl ReflectObject {
         let mut target = target.as_object();
 
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
 
         let desc_arg = get_argument(cx, arguments, 2);
-        let desc = maybe!(to_property_descriptor(cx, desc_arg));
+        let desc = to_property_descriptor(cx, desc_arg)?;
 
-        let result = maybe!(target.define_own_property(cx, key, desc));
+        let result = target.define_own_property(cx, key, desc)?;
         Ok(cx.bool(result))
     }
 
@@ -151,9 +148,9 @@ impl ReflectObject {
 
         let mut target = target.as_object();
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
 
-        let result = maybe!(target.delete(cx, key));
+        let result = target.delete(cx, key)?;
         Ok(cx.bool(result))
     }
 
@@ -170,7 +167,7 @@ impl ReflectObject {
         }
 
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
 
         let receiver = if arguments.len() >= 3 {
             get_argument(cx, arguments, 2)
@@ -195,9 +192,9 @@ impl ReflectObject {
 
         let target = target.as_object();
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
 
-        let desc = maybe!(target.get_own_property(cx, key));
+        let desc = target.get_own_property(cx, key)?;
 
         Ok(desc
             .map(|desc| from_property_descriptor(cx, desc).into())
@@ -216,7 +213,7 @@ impl ReflectObject {
             return type_error(cx, "value is not an object");
         }
 
-        let prototype = maybe!(target.as_object().get_prototype_of(cx));
+        let prototype = target.as_object().get_prototype_of(cx)?;
 
         Ok(prototype.map(|proto| proto.into()).unwrap_or(cx.null()))
     }
@@ -235,9 +232,9 @@ impl ReflectObject {
 
         let target = target.as_object();
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
 
-        let has_property = maybe!(target.has_property(cx, key));
+        let has_property = target.has_property(cx, key)?;
         Ok(cx.bool(has_property))
     }
 
@@ -253,7 +250,7 @@ impl ReflectObject {
             return type_error(cx, "value is not an object");
         }
 
-        let is_extensible = maybe!(target.as_object().is_extensible(cx));
+        let is_extensible = target.as_object().is_extensible(cx)?;
         Ok(cx.bool(is_extensible))
     }
 
@@ -269,7 +266,7 @@ impl ReflectObject {
             return type_error(cx, "value is not an object");
         }
 
-        let own_keys = maybe!(target.as_object().own_property_keys(cx));
+        let own_keys = target.as_object().own_property_keys(cx)?;
 
         Ok(create_array_from_list(cx, &own_keys).as_value())
     }
@@ -286,7 +283,7 @@ impl ReflectObject {
             return type_error(cx, "value is not an object");
         }
 
-        let result = maybe!(target.as_object().prevent_extensions(cx));
+        let result = target.as_object().prevent_extensions(cx)?;
         Ok(cx.bool(result))
     }
 
@@ -303,7 +300,7 @@ impl ReflectObject {
         }
 
         let key_arg = get_argument(cx, arguments, 1);
-        let key = maybe!(to_property_key(cx, key_arg));
+        let key = to_property_key(cx, key_arg)?;
         let value = get_argument(cx, arguments, 2);
 
         let receiver = if arguments.len() >= 4 {
@@ -312,7 +309,7 @@ impl ReflectObject {
             target
         };
 
-        let result = maybe!(target.as_object().set(cx, key, value, receiver));
+        let result = target.as_object().set(cx, key, value, receiver)?;
         Ok(cx.bool(result))
     }
 
@@ -337,7 +334,7 @@ impl ReflectObject {
             return type_error(cx, "prototype must be an object or null");
         };
 
-        let result = maybe!(target.as_object().set_prototype_of(cx, proto));
+        let result = target.as_object().set_prototype_of(cx, proto)?;
         Ok(cx.bool(result))
     }
 }

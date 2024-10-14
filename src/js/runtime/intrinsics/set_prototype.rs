@@ -18,7 +18,7 @@ use crate::{
         value::{Value, ValueCollectionKey},
         Context, Handle,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -152,7 +152,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
@@ -169,12 +169,12 @@ impl SetPrototype {
             for (item, _) in new_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
-                let in_other = maybe!(call_object(
+                let in_other = call_object(
                     cx,
                     other_set_record.has_method,
                     other_set_record.set_object.into(),
-                    &[item_handle]
-                ));
+                    &[item_handle],
+                )?;
 
                 if in_other.is_true() {
                     new_set
@@ -184,7 +184,7 @@ impl SetPrototype {
             }
         } else {
             // Otherwise iterate through other set's keys and remove them from the new set
-            maybe!(iter_iterator_method_values(
+            iter_iterator_method_values(
                 cx,
                 other_set_record.set_object.into(),
                 other_set_record.keys_method,
@@ -193,8 +193,8 @@ impl SetPrototype {
                     new_set.set_data_ptr().remove(&key);
 
                     None
-                }
-            ));
+                },
+            )?;
         }
 
         Ok(new_set.as_value())
@@ -246,7 +246,7 @@ impl SetPrototype {
             value_handle.replace(value.into());
 
             let arguments = [value_handle, value_handle, this_value];
-            maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            call_object(cx, callback_function, this_arg, &arguments)?;
         }
 
         Ok(cx.undefined())
@@ -287,7 +287,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // Create an empty set
         let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
@@ -304,12 +304,12 @@ impl SetPrototype {
             for (item, _) in this_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
-                let in_other = maybe!(call_object(
+                let in_other = call_object(
                     cx,
                     other_set_record.has_method,
                     other_set_record.set_object.into(),
-                    &[item_handle]
-                ));
+                    &[item_handle],
+                )?;
 
                 if in_other.is_true() {
                     new_set.insert(cx, item_handle);
@@ -318,7 +318,7 @@ impl SetPrototype {
         } else {
             // Otherwise iterate through other set's keys and add them to the new set if they are
             // also in this set.
-            maybe!(iter_iterator_method_values(
+            iter_iterator_method_values(
                 cx,
                 other_set_record.set_object.into(),
                 other_set_record.keys_method,
@@ -333,8 +333,8 @@ impl SetPrototype {
                     }
 
                     None
-                }
-            ));
+                },
+            )?;
         }
 
         Ok(new_set.as_value())
@@ -354,7 +354,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
@@ -366,12 +366,12 @@ impl SetPrototype {
             for (item, _) in this_set.set_data().iter_gc_safe() {
                 item_handle.replace(item.get());
 
-                let in_other = maybe!(call_object(
+                let in_other = call_object(
                     cx,
                     other_set_record.has_method,
                     other_set_record.set_object.into(),
-                    &[item_handle]
-                ));
+                    &[item_handle],
+                )?;
 
                 // Return as soon as we find an element of this set that is in the other set
                 if in_other.is_true() {
@@ -380,15 +380,15 @@ impl SetPrototype {
             }
         } else {
             // Otherwise iterate through other set's keys and check if they are in this set
-            let iterator = maybe!(get_iterator(
+            let iterator = get_iterator(
                 cx,
                 other_set_record.set_object.into(),
                 IteratorHint::Sync,
-                Some(other_set_record.keys_method)
-            ));
+                Some(other_set_record.keys_method),
+            )?;
 
-            while let Some(iter_result) = maybe!(iterator_step(cx, &iterator)) {
-                let item = maybe!(iterator_value(cx, iter_result));
+            while let Some(iter_result) = iterator_step(cx, &iterator)? {
+                let item = iterator_value(cx, iter_result)?;
 
                 // Return as soon as we find an element of the other set that is in this set
                 if this_set
@@ -417,7 +417,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // We can return early if this set is larger than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) > other_set_record.size {
@@ -433,12 +433,12 @@ impl SetPrototype {
         for (item, _) in this_set.set_data().iter_gc_safe() {
             item_handle.replace(item.get());
 
-            let in_other = maybe!(call_object(
+            let in_other = call_object(
                 cx,
                 other_set_record.has_method,
                 other_set_record.set_object.into(),
-                &[item_handle]
-            ));
+                &[item_handle],
+            )?;
 
             if !in_other.is_true() {
                 return Ok(cx.bool(false));
@@ -462,7 +462,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // We can return early if this set is smaller than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) < other_set_record.size {
@@ -470,15 +470,15 @@ impl SetPrototype {
         }
 
         // Otherwise iterate through other set's keys and check if they are in this set
-        let iterator = maybe!(get_iterator(
+        let iterator = get_iterator(
             cx,
             other_set_record.set_object.into(),
             IteratorHint::Sync,
-            Some(other_set_record.keys_method)
-        ));
+            Some(other_set_record.keys_method),
+        )?;
 
-        while let Some(iter_result) = maybe!(iterator_step(cx, &iterator)) {
-            let item = maybe!(iterator_value(cx, iter_result));
+        while let Some(iter_result) = iterator_step(cx, &iterator)? {
+            let item = iterator_value(cx, iter_result)?;
 
             // Return as soon as we find an element of the other set that is not in this set
             if !this_set
@@ -522,7 +522,7 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
@@ -530,7 +530,7 @@ impl SetPrototype {
 
         // Iterate through keys of other set and add or remove them from the new set to ensure that
         // the new set contains only the keys that are in one set but not both.
-        maybe!(iter_iterator_method_values(
+        iter_iterator_method_values(
             cx,
             other_set_record.set_object.into(),
             other_set_record.keys_method,
@@ -547,8 +547,8 @@ impl SetPrototype {
                 }
 
                 None
-            }
-        ));
+            },
+        )?;
 
         Ok(new_set.as_value())
     }
@@ -567,14 +567,14 @@ impl SetPrototype {
         };
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = maybe!(get_set_record(cx, other));
+        let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
         let new_set = SetObject::new_from_set(cx, new_set_data);
 
         // Iterate through keys of other set and add them to the new set
-        maybe!(iter_iterator_method_values(
+        iter_iterator_method_values(
             cx,
             other_set_record.set_object.into(),
             other_set_record.keys_method,
@@ -583,8 +583,8 @@ impl SetPrototype {
                 new_set.insert(cx, key);
 
                 None
-            }
-        ));
+            },
+        )?;
 
         Ok(new_set.as_value())
     }
@@ -634,8 +634,8 @@ fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
 
     let object = value.as_object();
 
-    let raw_size = maybe!(get(cx, object, cx.names.size()));
-    let num_size = maybe!(to_number(cx, raw_size));
+    let raw_size = get(cx, object, cx.names.size())?;
+    let num_size = to_number(cx, raw_size)?;
     if num_size.is_nan() {
         return type_error(cx, "size is not a number");
     }
@@ -645,12 +645,12 @@ fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
         return type_error(cx, "size is negative");
     }
 
-    let has_method = maybe!(get(cx, object, cx.names.has()));
+    let has_method = get(cx, object, cx.names.has())?;
     if !is_callable(has_method) {
         return type_error(cx, "has method is not callable");
     }
 
-    let keys_method = maybe!(get(cx, object, cx.names.keys()));
+    let keys_method = get(cx, object, cx.names.keys())?;
     if !is_callable(keys_method) {
         return type_error(cx, "keys method is not callable");
     }

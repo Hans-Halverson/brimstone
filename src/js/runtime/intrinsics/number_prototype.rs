@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        completion::EvalResult,
-        error::{range_error, type_error},
-        function::get_argument,
-        interned_strings::InternedStrings,
-        object_value::ObjectValue,
-        realm::Realm,
-        string_value::FlatString,
-        to_string,
-        type_utilities::{number_to_string, to_integer_or_infinity},
-        value::Value,
-        Context, Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    completion::EvalResult,
+    error::{range_error, type_error},
+    function::get_argument,
+    interned_strings::InternedStrings,
+    object_value::ObjectValue,
+    realm::Realm,
+    string_value::FlatString,
+    to_string,
+    type_utilities::{number_to_string, to_integer_or_infinity},
+    value::Value,
+    Context, Handle,
 };
 
 use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
@@ -43,14 +40,14 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
-        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
+        let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
 
         if !number.is_finite() {
-            return Ok(maybe!(to_string(cx, number_value.to_handle(cx))).as_value());
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
         if !(0.0..=100.0).contains(&num_fraction_digits) {
@@ -123,11 +120,11 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
-        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
+        let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
         if !num_fraction_digits.is_finite() || !(0.0..=100.0).contains(&num_fraction_digits) {
             return range_error(cx, "number of fraction digits must between 0 and 100");
         }
@@ -179,16 +176,16 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
 
         let precision_arg = get_argument(cx, arguments, 0);
         if precision_arg.is_undefined() {
-            return Ok(maybe!(to_string(cx, number_value.to_handle(cx))).as_value());
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
-        let precision = maybe!(to_integer_or_infinity(cx, precision_arg));
+        let precision = to_integer_or_infinity(cx, precision_arg)?;
         if !number_value.as_number().is_finite() {
-            return Ok(maybe!(to_string(cx, number_value.to_handle(cx))).as_value());
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
         let precision = precision as i64;
@@ -264,7 +261,7 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
 
         let radix = get_argument(cx, arguments, 0);
 
@@ -280,7 +277,7 @@ impl NumberPrototype {
 
                 radix
             } else {
-                let radix = maybe!(to_integer_or_infinity(cx, radix));
+                let radix = to_integer_or_infinity(cx, radix)?;
 
                 if !(2.0..=36.0).contains(&radix) {
                     return range_error(cx, "radix must be between 2 and 36");
@@ -370,7 +367,7 @@ impl NumberPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
         Ok(number_value.to_handle(cx))
     }
 }

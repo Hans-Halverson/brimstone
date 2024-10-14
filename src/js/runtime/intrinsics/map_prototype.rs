@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::call_object,
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error,
-        function::get_argument,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::is_callable,
-        value::{Value, ValueCollectionKey},
-        Context, Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::call_object,
+    builtin_function::BuiltinFunction,
+    completion::EvalResult,
+    error::type_error,
+    function::get_argument,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::is_callable,
+    value::{Value, ValueCollectionKey},
+    Context, Handle,
 };
 
 use super::{
@@ -146,7 +143,7 @@ impl MapPrototype {
             value_handle.replace(value);
 
             let arguments = [value_handle, key_handle, this_value];
-            maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            call_object(cx, callback_function, this_arg, &arguments)?;
         }
 
         Ok(cx.undefined())

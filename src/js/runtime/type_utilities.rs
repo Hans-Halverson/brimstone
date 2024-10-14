@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
-use crate::{js::common::math::modulo, maybe, must};
+use crate::{js::common::math::modulo, must};
 
 use super::{
     abstract_operations::{call_object, get, get_method},
@@ -45,7 +45,7 @@ pub fn to_primitive(
     }
 
     let to_primitive_key = cx.well_known_symbols.to_primitive();
-    let exotic_prim = maybe!(get_method(cx, value, to_primitive_key));
+    let exotic_prim = get_method(cx, value, to_primitive_key)?;
     match exotic_prim {
         Some(exotic_prim) => {
             let hint_str = match preferred_type {
@@ -55,7 +55,7 @@ pub fn to_primitive(
             };
             let hint_value: Handle<Value> = cx.alloc_string(hint_str).into();
 
-            let result = maybe!(call_object(cx, exotic_prim, value, &[hint_value]));
+            let result = call_object(cx, exotic_prim, value, &[hint_value])?;
             if result.is_object() {
                 return type_error(cx, "object cannot be converted to primitive");
             }
@@ -82,9 +82,9 @@ pub fn ordinary_to_primitive(
 
     macro_rules! call_method {
         ($method_name:expr) => {
-            let method = maybe!(get(cx, object, $method_name));
+            let method = get(cx, object, $method_name)?;
             if is_callable(method) {
-                let result = maybe!(call_object(cx, method.as_object(), object_value, &[]));
+                let result = call_object(cx, method.as_object(), object_value, &[])?;
                 if !result.is_object() {
                     return Ok(result);
                 }
@@ -131,7 +131,7 @@ pub fn to_boolean(value: Value) -> bool {
 
 /// ToNumeric (https://tc39.es/ecma262/#sec-tonumeric)
 pub fn to_numeric(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
-    let prim_value = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+    let prim_value = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
     if prim_value.is_bigint() {
         return Ok(prim_value);
     }
@@ -151,8 +151,7 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 
     if value.is_pointer() {
         if value.as_pointer().descriptor().is_object() {
-            let primitive_value =
-                maybe!(to_primitive(cx, value_handle, ToPrimitivePreferredType::Number));
+            let primitive_value = to_primitive(cx, value_handle, ToPrimitivePreferredType::Number)?;
             to_number(cx, primitive_value)
         } else {
             match value.as_pointer().descriptor().kind() {
@@ -189,7 +188,7 @@ fn string_to_number(value: Handle<StringValue>) -> Value {
 
 /// ToIntegerOrInfinity (https://tc39.es/ecma262/#sec-tointegerorinfinity)
 pub fn to_integer_or_infinity(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
-    let number_handle = maybe!(to_number(cx, value));
+    let number_handle = to_number(cx, value)?;
     let number = number_handle.get();
 
     Ok(to_integer_or_infinity_f64(number.as_number()))
@@ -221,7 +220,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
         return Ok(value.as_smi());
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -258,7 +257,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
         }
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -287,7 +286,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
         return Ok(value.as_smi() as i16);
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -324,7 +323,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
         }
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -353,7 +352,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
         return Ok(value.as_smi() as i8);
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -390,7 +389,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
         }
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // All zeros, infinities, and NaNs map to 0
@@ -428,7 +427,7 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
         }
     }
 
-    let number_value = maybe!(to_number(cx, value_handle));
+    let number_value = to_number(cx, value_handle)?;
     let f64_number = number_value.as_number();
 
     // Clamp within range
@@ -458,7 +457,7 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
 
 /// ToBigInt (https://tc39.es/ecma262/#sec-tobigint)
 pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
-    let primitive_handle = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+    let primitive_handle = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
     let primitive = primitive_handle.get();
 
     if primitive.is_pointer() {
@@ -487,7 +486,7 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
 
 /// ToBigInt64 (https://tc39.es/ecma262/#sec-tobigint64)
 pub fn to_big_int64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
-    let bigint = maybe!(to_bigint(cx, value)).bigint();
+    let bigint = to_bigint(cx, value)?.bigint();
 
     // Compute modulus according to spec
     let u64_max = (u64::MAX) as u128 + 1;
@@ -503,7 +502,7 @@ pub fn to_big_int64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
 
 /// ToBigUint64 (https://tc39.es/ecma262/#sec-tobiguint64)
 pub fn to_big_uint64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
-    let bigint = maybe!(to_bigint(cx, value)).bigint();
+    let bigint = to_bigint(cx, value)?.bigint();
 
     // Compute modulus according to spec
     let u64_max = (u64::MAX) as u128 + 1;
@@ -524,8 +523,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
 
     if value.is_pointer() {
         if value.as_pointer().descriptor().is_object() {
-            let primitive_value =
-                maybe!(to_primitive(cx, value_handle, ToPrimitivePreferredType::String));
+            let primitive_value = to_primitive(cx, value_handle, ToPrimitivePreferredType::String)?;
             to_string(cx, primitive_value)
         } else {
             match value.as_pointer().descriptor().kind() {
@@ -594,7 +592,7 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 
 /// ToLength (https://tc39.es/ecma262/#sec-tolength)
 pub fn to_length(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
-    let len = maybe!(to_integer_or_infinity(cx, value));
+    let len = to_integer_or_infinity(cx, value)?;
     if len <= 0.0 {
         return Ok(0);
     }
@@ -672,7 +670,7 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     } else if value.is_undefined() {
         Ok(0)
     } else {
-        let integer = maybe!(to_integer_or_infinity(cx, value_handle));
+        let integer = to_integer_or_infinity(cx, value_handle)?;
         if !(0.0..=MAX_SAFE_INTEGER_F64).contains(&integer) {
             range_error(cx, &format!("{} is out of range for an array index", integer))
         } else {
@@ -779,7 +777,7 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
 
     let object = value.as_object();
     let match_key = cx.well_known_symbols.match_();
-    let matcher = maybe!(get(cx, object, match_key));
+    let matcher = get(cx, object, match_key)?;
 
     if !matcher.is_undefined() {
         return Ok(to_boolean(matcher.get()));
@@ -941,14 +939,14 @@ pub fn to_property_key(
         }
     }
 
-    let key = maybe!(to_primitive(cx, value_handle, ToPrimitivePreferredType::String));
+    let key = to_primitive(cx, value_handle, ToPrimitivePreferredType::String)?;
     if key.is_string() {
         return Ok(PropertyKey::string(cx, key.as_string()).to_handle(cx));
     } else if key.is_symbol() {
         return Ok(PropertyKey::symbol(key.as_symbol()));
     }
 
-    let string_key = maybe!(to_string(cx, key));
+    let string_key = to_string(cx, key)?;
     Ok(PropertyKey::string(cx, string_key).to_handle(cx))
 }
 
@@ -1002,8 +1000,8 @@ pub fn is_less_than(
         }
     }
 
-    let num_x_handle = maybe!(to_numeric(cx, x_handle));
-    let num_y_handle = maybe!(to_numeric(cx, y_handle));
+    let num_x_handle = to_numeric(cx, x_handle)?;
+    let num_y_handle = to_numeric(cx, y_handle)?;
 
     let num_x = num_x_handle.get();
     let num_y = num_y_handle.get();
@@ -1138,13 +1136,12 @@ pub fn is_loosely_equal(
                 ObjectKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
-                    let primitive_v2 =
-                        maybe!(to_primitive(cx, v2_handle, ToPrimitivePreferredType::None));
+                    let primitive_v2 = to_primitive(cx, v2_handle, ToPrimitivePreferredType::None)?;
                     is_loosely_equal(cx, v1_handle, primitive_v2)
                 }
             }
         } else if v2.is_bool() {
-            let v2_number = maybe!(to_number(cx, v2_handle));
+            let v2_number = to_number(cx, v2_handle)?;
             is_loosely_equal(cx, v1_handle, v2_number)
         } else {
             Ok(false)
@@ -1194,10 +1191,10 @@ pub fn is_loosely_equal(
 
     // Convert bools to numbers and try again
     if tag1 == BOOL_TAG {
-        let v1_number = maybe!(to_number(cx, v1_handle));
+        let v1_number = to_number(cx, v1_handle)?;
         return is_loosely_equal(cx, v1_number, v2_handle);
     } else if tag2 == BOOL_TAG {
-        let v2_number = maybe!(to_number(cx, v2_handle));
+        let v2_number = to_number(cx, v2_handle)?;
         return is_loosely_equal(cx, v1_handle, v2_number);
     }
 
@@ -1232,8 +1229,7 @@ pub fn is_loosely_equal(
                 ObjectKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
-                    let v1_primitive =
-                        maybe!(to_primitive(cx, v1_handle, ToPrimitivePreferredType::None));
+                    let v1_primitive = to_primitive(cx, v1_handle, ToPrimitivePreferredType::None)?;
                     is_loosely_equal(cx, v1_primitive, v2_handle)
                 }
             }
@@ -1272,10 +1268,10 @@ pub fn is_loosely_equal(
         // At this point, if one value is an object the other value is guaranteed to be a non-object
         // pointer value (aka string, symbol, or BigInt).
         if v1.as_pointer().descriptor().is_object() {
-            let v1_primitive = maybe!(to_primitive(cx, v1_handle, ToPrimitivePreferredType::None));
+            let v1_primitive = to_primitive(cx, v1_handle, ToPrimitivePreferredType::None)?;
             return is_loosely_equal(cx, v1_primitive, v2_handle);
         } else if v2.as_pointer().descriptor().is_object() {
-            let primitive_v2 = maybe!(to_primitive(cx, v2_handle, ToPrimitivePreferredType::None));
+            let primitive_v2 = to_primitive(cx, v2_handle, ToPrimitivePreferredType::None)?;
             return is_loosely_equal(cx, v1_handle, primitive_v2);
         }
     }

@@ -15,7 +15,7 @@ use crate::{
         string_value::{FlatString, SafeCodePointIterator},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -72,7 +72,7 @@ impl StringIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
+        let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
 
         match string_iterator.iter.next() {
             None => Ok(create_iter_result_object(cx, cx.undefined(), true)),

@@ -18,7 +18,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;

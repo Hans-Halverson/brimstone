@@ -13,7 +13,7 @@ use crate::{
         string_value::FlatString,
         to_string, Context, EvalResult, Handle, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -243,7 +243,7 @@ impl GraphEvaluator {
         for i in 0..loaded_modules.len() {
             let mut required_module = loaded_modules.as_slice()[i].unwrap().to_handle();
 
-            index = maybe!(self.inner_evaluate(cx, required_module, index));
+            index = self.inner_evaluate(cx, required_module, index)?;
 
             if required_module.state() == ModuleState::Evaluating {
                 let new_index = module
@@ -282,7 +282,7 @@ impl GraphEvaluator {
                 execute_async_module(cx, module);
             }
         } else {
-            maybe!(cx.vm().execute_module(module, &[]));
+            cx.vm().execute_module(module, &[])?;
         }
 
         debug_assert!(module.dfs_ancestor_index() <= module.dfs_index());

@@ -31,7 +31,7 @@ use crate::{
         value::{BigIntValue, Value},
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -293,7 +293,7 @@ create_typed_array!(
 
 #[inline]
 pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64> {
-    let bigint = maybe!(to_big_int64(cx, value));
+    let bigint = to_big_int64(cx, value)?;
 
     // Guaranteed to have a single u64 component in i64 range from checks in to_big_int64
     let (sign, digits) = bigint.to_u64_digits();
@@ -324,7 +324,7 @@ create_typed_array!(
 
 #[inline]
 pub fn to_big_uint64_element(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
-    let bigint = maybe!(to_big_uint64(cx, value));
+    let bigint = to_big_uint64(cx, value)?;
 
     // Guaranteed to have a single u64 component from checks in to_big_uint64
     let (sign, digits) = bigint.to_u64_digits();
@@ -355,7 +355,7 @@ create_typed_array!(
 
 #[inline]
 pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> {
-    let number = maybe!(to_number(cx, value));
+    let number = to_number(cx, value)?;
     Ok(number.as_number() as f32)
 }
 
@@ -377,7 +377,7 @@ create_typed_array!(
 
 #[inline]
 pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
-    let number = maybe!(to_number(cx, value));
+    let number = to_number(cx, value)?;
     Ok(number.as_number())
 }
 

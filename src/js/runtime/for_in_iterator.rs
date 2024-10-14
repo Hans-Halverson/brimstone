@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set_uninit};
+use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, set_uninit};
 
 use super::{
     collections::InlineArray,
@@ -65,7 +65,7 @@ impl ForInIterator {
         let mut current_object = object;
 
         loop {
-            let own_property_keys = maybe!(current_object.own_property_keys(cx));
+            let own_property_keys = current_object.own_property_keys(cx)?;
             for key in own_property_keys {
                 if key.is_symbol() {
                     continue;
@@ -81,7 +81,7 @@ impl ForInIterator {
                 }
 
                 // Only collect enumerable keys
-                if let Some(desc) = maybe!(current_object.get_own_property(cx, property_key)) {
+                if let Some(desc) = current_object.get_own_property(cx, property_key)? {
                     if desc.is_enumerable() {
                         keys.push(key);
                     }
@@ -89,7 +89,7 @@ impl ForInIterator {
             }
 
             // Collect keys from the parent object, if there is one
-            match maybe!(current_object.get_prototype_of(cx)) {
+            match current_object.get_prototype_of(cx)? {
                 None => break,
                 Some(proto_object) => current_object = proto_object,
             }
@@ -122,7 +122,7 @@ impl Handle<ForInIterator> {
             self.index += 1;
 
             // Check if property was deleted, otherwise skip it
-            if maybe!(object.has_property(cx, property_key)) {
+            if object.has_property(cx, property_key)? {
                 return Ok(Value::string(key.get_()));
             }
         }

@@ -1,10 +1,7 @@
-use crate::{
-    js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
-        function::get_argument, object_value::ObjectValue, realm::Realm,
-        type_utilities::is_callable, Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
+    function::get_argument, object_value::ObjectValue, realm::Realm, type_utilities::is_callable,
+    Context, Handle, Value,
 };
 
 use super::{finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic};
@@ -52,11 +49,11 @@ impl FinalizationRegistryConstructor {
             return type_error(cx, "FinalizationRegistry cleanup callback is not a function");
         }
 
-        Ok(maybe!(FinalizationRegistryObject::new_from_constructor(
+        Ok(FinalizationRegistryObject::new_from_constructor(
             cx,
             new_target,
             cleanup_callback.as_object(),
-        ))
+        )?
         .as_value())
     }
 }

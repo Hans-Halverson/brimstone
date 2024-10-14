@@ -14,7 +14,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr,
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -110,11 +110,8 @@ impl AsyncGeneratorObject {
         fp_index: usize,
         stack_frame: &[StackSlotValue],
     ) -> EvalResult<HeapPtr<AsyncGeneratorObject>> {
-        let prototype = maybe!(get_prototype_from_constructor(
-            cx,
-            closure.into(),
-            Intrinsic::AsyncGeneratorPrototype
-        ));
+        let prototype =
+            get_prototype_from_constructor(cx, closure.into(), Intrinsic::AsyncGeneratorPrototype)?;
 
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size);

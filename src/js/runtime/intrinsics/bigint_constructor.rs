@@ -21,7 +21,7 @@ use crate::{
         value::BigIntValue,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -87,7 +87,7 @@ impl BigIntConstructor {
         }
 
         let value = get_argument(cx, arguments, 0);
-        let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+        let primitive = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
 
         if primitive.is_number() {
             if !is_integral_number(primitive.get()) {
@@ -102,7 +102,7 @@ impl BigIntConstructor {
                 Ok(BigIntValue::new(cx, bigint).into())
             }
         } else {
-            Ok(maybe!(to_bigint(cx, primitive)).into())
+            Ok(to_bigint(cx, primitive)?.into())
         }
     }
 
@@ -114,10 +114,10 @@ impl BigIntConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
-        let bits = maybe!(to_index(cx, bits_arg));
+        let bits = to_index(cx, bits_arg)?;
 
         let bigint_arg = get_argument(cx, arguments, 1);
-        let bigint = maybe!(to_bigint(cx, bigint_arg));
+        let bigint = to_bigint(cx, bigint_arg)?;
 
         // Convert BigInt to its representation as bits
         let mut bytes = bigint.bigint().to_signed_bytes_le();
@@ -149,10 +149,10 @@ impl BigIntConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
-        let bits = maybe!(to_index(cx, bits_arg));
+        let bits = to_index(cx, bits_arg)?;
 
         let bigint_arg = get_argument(cx, arguments, 1);
-        let bigint = maybe!(to_bigint(cx, bigint_arg));
+        let bigint = to_bigint(cx, bigint_arg)?;
 
         // Convert BigInt to its representation as bits
         let mut bytes = bigint.bigint().to_signed_bytes_le();

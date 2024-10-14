@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     js::runtime::{error::type_error, object_descriptor::ObjectKind},
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -107,7 +107,7 @@ pub fn global_declaration_instantiation_runtime(
     let global_names = arguments.first().unwrap().cast::<GlobalNames>();
     let realm = cx.current_realm();
 
-    maybe!(global_declaration_instantiation(cx, realm, global_names,));
+    global_declaration_instantiation(cx, realm, global_names)?;
 
     Ok(cx.undefined())
 }
@@ -128,10 +128,10 @@ fn global_declaration_instantiation(
     for name_ptr in global_names.scope_names().name_ptrs() {
         lexical_names.push(name_ptr.to_handle());
     }
-    maybe!(realm.can_declare_lexical_names(cx, &lexical_names));
+    realm.can_declare_lexical_names(cx, &lexical_names)?;
 
     // Check whether any var names conflict with existing global names
-    maybe!(realm.can_declare_var_names(cx, global_names.names.as_slice()));
+    realm.can_declare_var_names(cx, global_names.names.as_slice())?;
 
     // Reuse handle between iterations
     let mut name_handle = Handle::<FlatString>::empty(cx);
@@ -145,14 +145,14 @@ fn global_declaration_instantiation(
         let name_key = name_handle.cast::<PropertyKey>();
 
         if i < global_names.num_functions {
-            if !maybe!(can_declare_global_function(cx, global_object, name_key)) {
+            if !can_declare_global_function(cx, global_object, name_key)? {
                 return type_error(
                     cx,
                     &format!("cannot declare global function {}", name_handle.get_()),
                 );
             }
         } else {
-            if !maybe!(can_declare_global_var(cx, global_object, name_key)) {
+            if !can_declare_global_var(cx, global_object, name_key)? {
                 return type_error(
                     cx,
                     &format!("cannot declare global var {}", name_handle.get_()),
@@ -169,19 +169,14 @@ fn global_declaration_instantiation(
         let name_key = name_handle.cast::<PropertyKey>();
 
         if i < global_names.num_functions {
-            maybe!(create_global_function_binding(
+            create_global_function_binding(
                 cx,
                 global_object,
                 name_key,
-                /* can_delete */ false
-            ));
+                /* can_delete */ false,
+            )?;
         } else {
-            maybe!(create_global_var_binding(
-                cx,
-                global_object,
-                name_key,
-                /* can_delete */ false
-            ));
+            create_global_var_binding(cx, global_object, name_key, /* can_delete */ false)?;
         }
     }
 
@@ -194,7 +189,7 @@ pub fn has_restricted_global_property(
     global_object: Handle<ObjectValue>,
     name_key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
+    let existing_prop = global_object.get_own_property(cx, name_key)?;
 
     match existing_prop {
         None => Ok(false),
@@ -208,7 +203,7 @@ pub fn can_declare_global_var(
     global_object: Handle<ObjectValue>,
     name_key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    if maybe!(has_own_property(cx, global_object, name_key)) {
+    if has_own_property(cx, global_object, name_key)? {
         return Ok(true);
     }
 
@@ -221,7 +216,7 @@ pub fn can_declare_global_function(
     global_object: Handle<ObjectValue>,
     name_key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
+    let existing_prop = global_object.get_own_property(cx, name_key)?;
 
     match existing_prop {
         None => is_extensible(cx, global_object),
@@ -246,13 +241,13 @@ pub fn create_global_var_binding(
     name_key: Handle<PropertyKey>,
     can_delete: bool,
 ) -> EvalResult<()> {
-    let has_property = maybe!(has_own_property(cx, global_object, name_key));
-    let is_extensible = maybe!(is_extensible(cx, global_object));
+    let has_property = has_own_property(cx, global_object, name_key)?;
+    let is_extensible = is_extensible(cx, global_object)?;
 
     if !has_property && is_extensible {
         // Inlined ObjectEnvironment::CreateMutableBinding from spec
         let prop_desc = PropertyDescriptor::data(cx.undefined(), true, true, can_delete);
-        maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
+        define_property_or_throw(cx, global_object, name_key, prop_desc)?;
 
         // No need for initialize_binding here since binding must already be undefined
     }
@@ -267,7 +262,7 @@ pub fn create_global_function_binding(
     name_key: Handle<PropertyKey>,
     can_delete: bool,
 ) -> EvalResult<()> {
-    let existing_prop = maybe!(global_object.get_own_property(cx, name_key));
+    let existing_prop = global_object.get_own_property(cx, name_key)?;
 
     let is_writable = match existing_prop {
         None => true,
@@ -281,7 +276,7 @@ pub fn create_global_function_binding(
         PropertyDescriptor::data_value_only(cx.undefined())
     };
 
-    maybe!(define_property_or_throw(cx, global_object, name_key, prop_desc));
+    define_property_or_throw(cx, global_object, name_key, prop_desc)?;
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{extend_object, maybe, must};
+use crate::{extend_object, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -186,8 +186,8 @@ pub fn ordinary_define_own_property(
     key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let current_desc = maybe!(object.get_own_property(cx, key));
-    let is_extensible = maybe!(object.is_extensible(cx));
+    let current_desc = object.get_own_property(cx, key)?;
+    let is_extensible = object.is_extensible(cx)?;
 
     Ok(validate_and_apply_property_descriptor(
         cx,
@@ -390,12 +390,12 @@ pub fn ordinary_has_property(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let own_property = maybe!(object.get_own_property(cx, key));
+    let own_property = object.get_own_property(cx, key)?;
     if own_property.is_some() {
         return Ok(true);
     }
 
-    let parent = maybe!(object.get_prototype_of(cx));
+    let parent = object.get_prototype_of(cx)?;
     match parent {
         Some(parent) => parent.has_property(cx, key),
         None => Ok(false),
@@ -409,10 +409,10 @@ pub fn ordinary_get(
     key: Handle<PropertyKey>,
     receiver: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let desc = maybe!(object.get_own_property(cx, key));
+    let desc = object.get_own_property(cx, key)?;
     match desc {
         None => {
-            let parent = maybe!(object.get_prototype_of(cx));
+            let parent = object.get_prototype_of(cx)?;
             match parent {
                 None => Ok(cx.undefined()),
                 Some(parent) => parent.get(cx, key, receiver),
@@ -435,10 +435,10 @@ pub fn ordinary_set(
     value: Handle<Value>,
     receiver: Handle<Value>,
 ) -> EvalResult<bool> {
-    let own_desc = maybe!(object.get_own_property(cx, key));
+    let own_desc = object.get_own_property(cx, key)?;
     let own_desc = match own_desc {
         None => {
-            let parent = maybe!(object.get_prototype_of(cx));
+            let parent = object.get_prototype_of(cx)?;
             match parent {
                 None => PropertyDescriptor::data(cx.undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
@@ -457,7 +457,7 @@ pub fn ordinary_set(
         }
 
         let mut receiver = receiver.as_object();
-        let existing_descriptor = maybe!(receiver.get_own_property(cx, key));
+        let existing_descriptor = receiver.get_own_property(cx, key)?;
         match existing_descriptor {
             None => create_data_property(cx, receiver, key, value),
             Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => Ok(false),
@@ -471,7 +471,7 @@ pub fn ordinary_set(
         match own_desc.set {
             None => Ok(false),
             Some(setter) => {
-                maybe!(call_object(cx, setter, receiver, &[value]));
+                call_object(cx, setter, receiver, &[value])?;
                 Ok(true)
             }
         }
@@ -484,7 +484,7 @@ pub fn ordinary_delete(
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let desc = maybe!(object.get_own_property(cx, key));
+    let desc = object.get_own_property(cx, key)?;
     match desc {
         None => Ok(true),
         Some(desc) => {
@@ -662,7 +662,7 @@ where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
     // May allocate, so call before allocating object
-    let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
+    let proto = get_prototype_from_constructor(cx, constructor, intrinsic_default_proto)?;
 
     let object = cx.alloc_uninit::<T>();
 
@@ -679,11 +679,11 @@ pub fn get_prototype_from_constructor(
     constructor: Handle<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor, cx.names.prototype()));
+    let proto = get(cx, constructor, cx.names.prototype())?;
     if proto.is_object() {
         Ok(proto.as_object())
     } else {
-        let realm = maybe!(get_function_realm(cx, constructor));
+        let realm = get_function_realm(cx, constructor)?;
         Ok(realm.get_intrinsic(intrinsic_default_proto))
     }
 }

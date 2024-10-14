@@ -33,7 +33,7 @@ use crate::{
             Context, Handle, PropertyKey, Value,
         },
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -85,7 +85,7 @@ impl RegExpPrototype {
         };
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
         regexp_builtin_exec(cx, regexp_object, string_value)
     }
@@ -115,42 +115,42 @@ impl RegExpPrototype {
 
         let mut flags_string = String::new();
 
-        let has_indices_value = maybe!(get(cx, this_object, cx.names.has_indices()));
+        let has_indices_value = get(cx, this_object, cx.names.has_indices())?;
         if to_boolean(has_indices_value.get()) {
             flags_string.push('d');
         }
 
-        let global_value = maybe!(get(cx, this_object, cx.names.global()));
+        let global_value = get(cx, this_object, cx.names.global())?;
         if to_boolean(global_value.get()) {
             flags_string.push('g');
         }
 
-        let ignore_case_value = maybe!(get(cx, this_object, cx.names.ignore_case()));
+        let ignore_case_value = get(cx, this_object, cx.names.ignore_case())?;
         if to_boolean(ignore_case_value.get()) {
             flags_string.push('i');
         }
 
-        let multiline_value = maybe!(get(cx, this_object, cx.names.multiline()));
+        let multiline_value = get(cx, this_object, cx.names.multiline())?;
         if to_boolean(multiline_value.get()) {
             flags_string.push('m');
         }
 
-        let dot_all_value = maybe!(get(cx, this_object, cx.names.dot_all()));
+        let dot_all_value = get(cx, this_object, cx.names.dot_all())?;
         if to_boolean(dot_all_value.get()) {
             flags_string.push('s');
         }
 
-        let unicode_value = maybe!(get(cx, this_object, cx.names.unicode()));
+        let unicode_value = get(cx, this_object, cx.names.unicode())?;
         if to_boolean(unicode_value.get()) {
             flags_string.push('u');
         }
 
-        let unicode_sets_value = maybe!(get(cx, this_object, cx.names.unicode_sets()));
+        let unicode_sets_value = get(cx, this_object, cx.names.unicode_sets())?;
         if to_boolean(unicode_sets_value.get()) {
             flags_string.push('v');
         }
 
-        let sticky_value = maybe!(get(cx, this_object, cx.names.sticky()));
+        let sticky_value = get(cx, this_object, cx.names.sticky())?;
         if to_boolean(sticky_value.get()) {
             flags_string.push('y');
         }
@@ -208,10 +208,10 @@ impl RegExpPrototype {
         let regexp_object = this_value.as_object();
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
-        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
-        let flags_string = maybe!(to_string(cx, flags_string));
+        let flags_string = get(cx, regexp_object, cx.names.flags())?;
+        let flags_string = to_string(cx, flags_string)?;
 
         let is_global = flags_string_contains(flags_string, 'g' as u32);
         let is_unicode = flags_string_contains(flags_string, 'u' as u32);
@@ -221,13 +221,13 @@ impl RegExpPrototype {
         }
 
         let zero_value = Value::from(0).to_handle(cx);
-        maybe!(set(cx, regexp_object, cx.names.last_index(), zero_value, true));
+        set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
 
-        let result_array = maybe!(array_create(cx, 0, None));
+        let result_array = array_create(cx, 0, None)?;
         let mut n = 0;
 
         loop {
-            let result = maybe!(regexp_exec(cx, regexp_object, string_value));
+            let result = regexp_exec(cx, regexp_object, string_value)?;
             if result.is_null() {
                 if n == 0 {
                     return Ok(cx.null());
@@ -241,8 +241,8 @@ impl RegExpPrototype {
             let result_object = result.as_object();
 
             let zero_key = PropertyKey::array_index(cx, 0).to_handle(cx);
-            let match_string = maybe!(get(cx, result_object, zero_key));
-            let match_string = maybe!(to_string(cx, match_string));
+            let match_string = get(cx, result_object, zero_key)?;
+            let match_string = to_string(cx, match_string)?;
 
             let n_key = PropertyKey::array_index(cx, n).to_handle(cx);
             must!(create_data_property_or_throw(
@@ -253,12 +253,12 @@ impl RegExpPrototype {
             ));
 
             if match_string.len() == 0 {
-                let last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
-                let last_index = maybe!(to_length(cx, last_index));
+                let last_index = get(cx, regexp_object, cx.names.last_index())?;
+                let last_index = to_length(cx, last_index)?;
 
                 let next_index = advance_u64_string_index(string_value, last_index, is_unicode);
                 let next_index_value = Value::from(next_index).to_handle(cx);
-                maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
+                set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
             }
 
             n += 1;
@@ -279,22 +279,21 @@ impl RegExpPrototype {
         let regexp_object = this_value.as_object();
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
-        let constructor =
-            maybe!(species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor));
+        let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
 
-        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
-        let flags_string = maybe!(to_string(cx, flags_string));
+        let flags_string = get(cx, regexp_object, cx.names.flags())?;
+        let flags_string = to_string(cx, flags_string)?;
 
         let matcher =
-            maybe!(construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None));
+            construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None)?;
 
-        let last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
-        let last_index = maybe!(to_length(cx, last_index));
+        let last_index = get(cx, regexp_object, cx.names.last_index())?;
+        let last_index = to_length(cx, last_index)?;
         let last_index_value = Value::from(last_index).to_handle(cx);
 
-        maybe!(set(cx, matcher, cx.names.last_index(), last_index_value, true));
+        set(cx, matcher, cx.names.last_index(), last_index_value, true)?;
 
         let is_global = flags_string_contains(flags_string, 'g' as u32);
         let is_unicode = flags_string_contains(flags_string, 'u' as u32);
@@ -326,18 +325,18 @@ impl RegExpPrototype {
         let regexp_object = this_value.as_object();
 
         let target_string_arg = get_argument(cx, arguments, 0);
-        let target_string = maybe!(to_string(cx, target_string_arg));
+        let target_string = to_string(cx, target_string_arg)?;
 
         let replace_arg = get_argument(cx, arguments, 1);
         let replace_value = if is_callable(replace_arg) {
             ReplaceValue::Function(replace_arg.as_object())
         } else {
-            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+            ReplaceValue::String(to_string(cx, replace_arg)?)
         };
 
         // Get flags string, determining if RegExp is unicode or global
-        let flags_value = maybe!(get(cx, regexp_object, cx.names.flags()));
-        let flags_string = maybe!(to_string(cx, flags_value));
+        let flags_value = get(cx, regexp_object, cx.names.flags())?;
+        let flags_string = to_string(cx, flags_value)?;
 
         let mut is_unicode = false;
         let mut is_global = false;
@@ -351,7 +350,7 @@ impl RegExpPrototype {
 
         if is_global {
             let zero_value = Value::from(0).to_handle(cx);
-            maybe!(set(cx, regexp_object, cx.names.last_index(), zero_value, true));
+            set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
         }
 
         // Key is shared between iterations
@@ -361,7 +360,7 @@ impl RegExpPrototype {
 
         loop {
             // Search target string, finding all matches if global
-            let exec_result = maybe!(regexp_exec(cx, regexp_object, target_string));
+            let exec_result = regexp_exec(cx, regexp_object, target_string)?;
             if exec_result.is_null() {
                 break;
             }
@@ -375,19 +374,19 @@ impl RegExpPrototype {
 
             // Extract matched string
             key.replace(PropertyKey::array_index(cx, 0));
-            let matched_value = maybe!(get(cx, exec_result, key));
-            let matched_string = maybe!(to_string(cx, matched_value));
+            let matched_value = get(cx, exec_result, key)?;
+            let matched_string = to_string(cx, matched_value)?;
 
             exec_results.push(exec_result);
 
             // If matched string is empty then increment last index
             if matched_string.is_empty() {
-                let this_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
-                let this_index = maybe!(to_length(cx, this_index));
+                let this_index = get(cx, regexp_object, cx.names.last_index())?;
+                let this_index = to_length(cx, this_index)?;
 
                 let next_index = advance_u64_string_index(target_string, this_index, is_unicode);
                 let next_index_value = Value::from(next_index).to_handle(cx);
-                maybe!(set(cx, regexp_object, cx.names.last_index(), next_index_value, true));
+                set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
             }
         }
 
@@ -398,17 +397,17 @@ impl RegExpPrototype {
         let mut substitution_template = None;
 
         for exec_result in exec_results {
-            let result_length = maybe!(length_of_array_like(cx, exec_result));
+            let result_length = length_of_array_like(cx, exec_result)?;
             let num_captures = result_length.saturating_sub(1);
 
             // Extract the matched string
             key.replace(PropertyKey::array_index(cx, 0));
-            let matched_value = maybe!(get(cx, exec_result, key));
-            let matched_string = maybe!(to_string(cx, matched_value));
+            let matched_value = get(cx, exec_result, key)?;
+            let matched_string = to_string(cx, matched_value)?;
 
             // Extract the position of the matched string
-            let matched_position = maybe!(get(cx, exec_result, cx.names.index()));
-            let matched_position = maybe!(to_integer_or_infinity(cx, matched_position));
+            let matched_position = get(cx, exec_result, cx.names.index())?;
+            let matched_position = to_integer_or_infinity(cx, matched_position)?;
             let matched_position =
                 f64::clamp(matched_position, 0.0, target_string.len() as f64) as u32;
 
@@ -416,16 +415,16 @@ impl RegExpPrototype {
             let mut indexed_captures = vec![];
             for i in 1..=num_captures {
                 key.replace(PropertyKey::from_u64(cx, i));
-                let capture_value = maybe!(get(cx, exec_result, key));
+                let capture_value = get(cx, exec_result, key)?;
                 if capture_value.is_undefined() {
                     indexed_captures.push(None);
                 } else {
-                    let capture_string = maybe!(to_string(cx, capture_value));
+                    let capture_string = to_string(cx, capture_value)?;
                     indexed_captures.push(Some(capture_string));
                 }
             }
 
-            let named_captures = maybe!(get(cx, exec_result, cx.names.groups()));
+            let named_captures = get(cx, exec_result, cx.names.groups())?;
 
             let replacement_string = match replace_value {
                 ReplaceValue::Function(replacer_function) => {
@@ -448,15 +447,15 @@ impl RegExpPrototype {
 
                     // Call replacer function and return string
                     let replacement_value =
-                        maybe!(call_object(cx, replacer_function, cx.undefined(), &replacer_args));
+                        call_object(cx, replacer_function, cx.undefined(), &replacer_args)?;
 
-                    maybe!(to_string(cx, replacement_value))
+                    to_string(cx, replacement_value)?
                 }
                 ReplaceValue::String(replace_string) => {
                     let named_captures = if named_captures.is_undefined() {
                         None
                     } else {
-                        Some(maybe!(to_object(cx, named_captures)))
+                        Some(to_object(cx, named_captures)?)
                     };
 
                     // Cache substitution template since it does not change between matches
@@ -468,14 +467,14 @@ impl RegExpPrototype {
                     }
 
                     // Apply substitution template
-                    maybe!(substitution_template.as_ref().unwrap().get_substitution(
+                    substitution_template.as_ref().unwrap().get_substitution(
                         cx,
                         target_string,
                         matched_string,
                         matched_position,
                         &indexed_captures,
-                        named_captures
-                    ))
+                        named_captures,
+                    )?
                 }
             };
 
@@ -517,22 +516,22 @@ impl RegExpPrototype {
         let regexp_object = this_value.as_object();
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
         // Save original last index, resetting to zero for search
-        let previous_last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+        let previous_last_index = get(cx, regexp_object, cx.names.last_index())?;
         if !previous_last_index.is_positive_zero() {
             let zero_value = Value::from(0).to_handle(cx);
-            maybe!(set(cx, regexp_object, cx.names.last_index(), zero_value, true));
+            set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
         }
 
         // Perform RegExp search
-        let result = maybe!(regexp_exec(cx, regexp_object, string_value));
+        let result = regexp_exec(cx, regexp_object, string_value)?;
 
         // Restore original last index
-        let current_last_index = maybe!(get(cx, regexp_object, cx.names.last_index()));
+        let current_last_index = get(cx, regexp_object, cx.names.last_index())?;
         if !same_value(current_last_index, previous_last_index) {
-            maybe!(set(cx, regexp_object, cx.names.last_index(), previous_last_index, true));
+            set(cx, regexp_object, cx.names.last_index(), previous_last_index, true)?;
         }
 
         if result.is_null() {
@@ -581,14 +580,13 @@ impl RegExpPrototype {
         };
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
-        let constructor =
-            maybe!(species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor));
+        let constructor = species_constructor(cx, regexp_object, Intrinsic::RegExpConstructor)?;
 
         // Get flags string, determining if a unicode or sticky flag is set
-        let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
-        let mut flags_string = maybe!(to_string(cx, flags_string));
+        let flags_string = get(cx, regexp_object, cx.names.flags())?;
+        let mut flags_string = to_string(cx, flags_string)?;
 
         let mut is_unicode = false;
         let mut is_sticky = false;
@@ -607,16 +605,16 @@ impl RegExpPrototype {
         }
 
         let splitter =
-            maybe!(construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None));
+            construct(cx, constructor, &[regexp_object.into(), flags_string.into()], None)?;
 
-        let result_array = maybe!(array_create(cx, 0, None)).as_object();
+        let result_array = array_create(cx, 0, None)?.as_object();
 
         // Calculate optional limit argument
         let limit_arg = get_argument(cx, arguments, 1);
         let limit = if limit_arg.is_undefined() {
             u32::MAX
         } else {
-            maybe!(to_uint32(cx, limit_arg))
+            to_uint32(cx, limit_arg)?
         };
 
         if limit == 0 {
@@ -625,13 +623,13 @@ impl RegExpPrototype {
 
         // Handle the empty string case
         if string_value.is_empty() {
-            let exec_result = maybe!(regexp_exec(cx, splitter, string_value));
+            let exec_result = regexp_exec(cx, splitter, string_value)?;
             if !exec_result.is_null() {
                 return Ok(result_array.as_value());
             }
 
             let zero_key = PropertyKey::from_u8(0).to_handle(cx);
-            maybe!(create_data_property_or_throw(cx, result_array, zero_key, string_value.into()));
+            create_data_property_or_throw(cx, result_array, zero_key, string_value.into())?;
         }
 
         // Property keys are shared between iterations
@@ -646,10 +644,10 @@ impl RegExpPrototype {
         // searched.
         while q < size {
             let q_value = Value::from(q).to_handle(cx);
-            maybe!(set(cx, splitter, cx.names.last_index(), q_value, true));
+            set(cx, splitter, cx.names.last_index(), q_value, true)?;
 
             // Execute RegExp at current index, advancing to next index if there is no match
-            let exec_result = maybe!(regexp_exec(cx, splitter, string_value));
+            let exec_result = regexp_exec(cx, splitter, string_value)?;
 
             if exec_result.is_null() {
                 q = advance_string_index(string_value, q, is_unicode);
@@ -657,8 +655,8 @@ impl RegExpPrototype {
                 // Otherwise there was a match so determine end of match
                 let exec_result = exec_result.as_object();
 
-                let e = maybe!(get(cx, splitter, cx.names.last_index()));
-                let e = maybe!(to_length(cx, e));
+                let e = get(cx, splitter, cx.names.last_index())?;
+                let e = to_length(cx, e)?;
                 let e = u64::min(e, size as u64) as u32;
 
                 // If there was a match but it is empty then advance to next index
@@ -669,12 +667,7 @@ impl RegExpPrototype {
                     let match_slice = string_value.substring(cx, p, q).as_string();
 
                     key.replace(PropertyKey::array_index(cx, array_length));
-                    maybe!(create_data_property_or_throw(
-                        cx,
-                        result_array,
-                        key,
-                        match_slice.into()
-                    ));
+                    create_data_property_or_throw(cx, result_array, key, match_slice.into())?;
 
                     // Check if we have hit split limit
                     array_length += 1;
@@ -685,15 +678,15 @@ impl RegExpPrototype {
                     p = e;
 
                     // Add capture groups to the result array
-                    let number_of_captures = maybe!(length_of_array_like(cx, exec_result));
+                    let number_of_captures = length_of_array_like(cx, exec_result)?;
                     let number_of_captures = number_of_captures.saturating_sub(1);
 
                     for i in 1..=number_of_captures {
                         key.replace(PropertyKey::from_u64(cx, i));
-                        let next_capture = maybe!(get(cx, exec_result, key));
+                        let next_capture = get(cx, exec_result, key)?;
 
                         key.replace(PropertyKey::array_index(cx, array_length));
-                        maybe!(create_data_property_or_throw(cx, result_array, key, next_capture));
+                        create_data_property_or_throw(cx, result_array, key, next_capture)?;
 
                         // Check if we have hit split limit
                         array_length += 1;
@@ -710,7 +703,7 @@ impl RegExpPrototype {
         // Add remaining portion of the original string to the result array
         let remaining_string = string_value.substring(cx, p, size).as_string();
         key.replace(PropertyKey::array_index(cx, array_length));
-        maybe!(create_data_property_or_throw(cx, result_array, key, remaining_string.into()));
+        create_data_property_or_throw(cx, result_array, key, remaining_string.into())?;
 
         Ok(result_array.as_value())
     }
@@ -739,9 +732,9 @@ impl RegExpPrototype {
         };
 
         let string_arg = get_argument(cx, arguments, 0);
-        let string_value = maybe!(to_string(cx, string_arg));
+        let string_value = to_string(cx, string_arg)?;
 
-        let exec_result = maybe!(regexp_exec(cx, regexp_object, string_value));
+        let exec_result = regexp_exec(cx, regexp_object, string_value)?;
 
         Ok(cx.bool(!exec_result.is_null()))
     }
@@ -759,11 +752,11 @@ impl RegExpPrototype {
 
         let this_object = this_value.as_object();
 
-        let pattern_value = maybe!(get(cx, this_object, cx.names.source()));
-        let pattern_string = maybe!(to_string(cx, pattern_value));
+        let pattern_value = get(cx, this_object, cx.names.source())?;
+        let pattern_string = to_string(cx, pattern_value)?;
 
-        let flags_value = maybe!(get(cx, this_object, cx.names.flags()));
-        let flags_string = maybe!(to_string(cx, flags_value));
+        let flags_value = get(cx, this_object, cx.names.flags())?;
+        let flags_string = to_string(cx, flags_value)?;
 
         let slash_string = InternedStrings::get_str(cx, "/");
 
@@ -828,10 +821,10 @@ pub fn regexp_exec(
     regexp_object: Handle<ObjectValue>,
     string_value: Handle<StringValue>,
 ) -> EvalResult<Handle<Value>> {
-    let exec = maybe!(get(cx, regexp_object, cx.names.exec()));
+    let exec = get(cx, regexp_object, cx.names.exec())?;
 
     if is_callable(exec) {
-        let exec_result = maybe!(call(cx, exec, regexp_object.into(), &[string_value.into()]));
+        let exec_result = call(cx, exec, regexp_object.into(), &[string_value.into()])?;
         if !exec_result.is_null() && !exec_result.is_object() {
             return type_error(cx, "Regular expression exec must return null or an object");
         }
@@ -855,8 +848,8 @@ fn regexp_builtin_exec(
     let compiled_regexp = regexp_object.compiled_regexp();
     let string_length = string_value.len();
 
-    let last_index = maybe!(get(cx, regexp_object.into(), cx.names.last_index()));
-    let mut last_index = maybe!(to_length(cx, last_index));
+    let last_index = get(cx, regexp_object.into(), cx.names.last_index())?;
+    let mut last_index = to_length(cx, last_index)?;
 
     let flags = regexp_object.flags();
     let is_global = flags.is_global();
@@ -872,7 +865,7 @@ fn regexp_builtin_exec(
     if last_index > string_length as u64 {
         if is_global || is_sticky {
             let zero_value = Value::from(0).to_handle(cx);
-            maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+            set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 
         return Ok(cx.null());
@@ -886,7 +879,7 @@ fn regexp_builtin_exec(
     if match_.is_none() {
         if is_global || is_sticky {
             let zero_value = Value::from(0).to_handle(cx);
-            maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+            set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 
         return Ok(cx.null());
@@ -900,7 +893,7 @@ fn regexp_builtin_exec(
     // Update last index to point past end of capture
     if is_global || is_sticky {
         let last_index_value = Value::from(full_capture.end).to_handle(cx);
-        maybe!(set(cx, regexp_object.into(), cx.names.last_index(), last_index_value, true));
+        set(cx, regexp_object.into(), cx.names.last_index(), last_index_value, true)?;
     }
 
     // Build result array of matches

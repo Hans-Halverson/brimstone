@@ -28,7 +28,7 @@ use crate::{
             Context, Handle, Realm,
         },
     },
-    maybe, must,
+    must,
 };
 
 /// GetTemplateObject (https://tc39.es/ecma262/#sec-gettemplateobject)
@@ -76,8 +76,8 @@ pub fn eval_delete_property(
     key: Handle<PropertyKey>,
     is_strict: bool,
 ) -> EvalResult<bool> {
-    let mut base_object = maybe!(to_object(cx, object));
-    let delete_status = maybe!(base_object.delete(cx, key));
+    let mut base_object = to_object(cx, object)?;
+    let delete_status = base_object.delete(cx, key)?;
 
     if !delete_status && is_strict {
         return type_error(cx, "cannot delete property");
@@ -116,7 +116,7 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue>
 }
 
 pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
-    let value = maybe!(to_numeric(cx, value));
+    let value = to_numeric(cx, value)?;
 
     if value.is_bigint() {
         let neg_bignum = -value.as_bigint().bigint();
@@ -127,7 +127,7 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
 }
 
 pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
-    let value = maybe!(to_numeric(cx, value));
+    let value = to_numeric(cx, value)?;
 
     if value.is_bigint() {
         let not_bignum = !value.as_bigint().bigint();
@@ -143,17 +143,17 @@ pub fn eval_add(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_prim = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::None));
-    let right_prim = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::None));
+    let left_prim = to_primitive(cx, left_value, ToPrimitivePreferredType::None)?;
+    let right_prim = to_primitive(cx, right_value, ToPrimitivePreferredType::None)?;
     if left_prim.is_string() || right_prim.is_string() {
-        let left_string = maybe!(to_string(cx, left_prim));
-        let right_string = maybe!(to_string(cx, right_prim));
+        let left_string = to_string(cx, left_prim)?;
+        let right_string = to_string(cx, right_prim)?;
 
         return Ok(StringValue::concat(cx, left_string, right_string).as_value());
     }
 
-    let left_num = maybe!(to_numeric(cx, left_prim));
-    let right_num = maybe!(to_numeric(cx, right_prim));
+    let left_num = to_numeric(cx, left_prim)?;
+    let right_num = to_numeric(cx, right_prim)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -173,8 +173,8 @@ pub fn eval_subtract(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -194,8 +194,8 @@ pub fn eval_multiply(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -215,8 +215,8 @@ pub fn eval_divide(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -241,8 +241,8 @@ pub fn eval_remainder(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -272,8 +272,8 @@ pub fn eval_exponentiation(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -308,10 +308,10 @@ pub fn eval_less_than(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
-    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
+    let left = to_primitive(cx, left_value, ToPrimitivePreferredType::Number)?;
+    let right = to_primitive(cx, right_value, ToPrimitivePreferredType::Number)?;
 
-    let result = maybe!(is_less_than(cx, left, right));
+    let result = is_less_than(cx, left, right)?;
     if result.is_undefined() {
         Ok(cx.bool(false))
     } else {
@@ -324,11 +324,11 @@ pub fn eval_greater_than(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
-    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
+    let left = to_primitive(cx, left_value, ToPrimitivePreferredType::Number)?;
+    let right = to_primitive(cx, right_value, ToPrimitivePreferredType::Number)?;
 
     // Intentionally flipped
-    let result = maybe!(is_less_than(cx, right, left));
+    let result = is_less_than(cx, right, left)?;
     if result.is_undefined() {
         Ok(cx.bool(false))
     } else {
@@ -341,11 +341,11 @@ pub fn eval_less_than_or_equal(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
-    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
+    let left = to_primitive(cx, left_value, ToPrimitivePreferredType::Number)?;
+    let right = to_primitive(cx, right_value, ToPrimitivePreferredType::Number)?;
 
     // Intentionally flipped
-    let result = maybe!(is_less_than(cx, right, left));
+    let result = is_less_than(cx, right, left)?;
     Ok(cx.bool(result.is_false()))
 }
 
@@ -354,10 +354,10 @@ pub fn eval_greater_than_or_equal(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left = maybe!(to_primitive(cx, left_value, ToPrimitivePreferredType::Number));
-    let right = maybe!(to_primitive(cx, right_value, ToPrimitivePreferredType::Number));
+    let left = to_primitive(cx, left_value, ToPrimitivePreferredType::Number)?;
+    let right = to_primitive(cx, right_value, ToPrimitivePreferredType::Number)?;
 
-    let result = maybe!(is_less_than(cx, left, right));
+    let result = is_less_than(cx, left, right)?;
     Ok(cx.bool(result.is_false()))
 }
 
@@ -366,8 +366,8 @@ pub fn eval_bitwise_and(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -390,8 +390,8 @@ pub fn eval_bitwise_or(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -414,8 +414,8 @@ pub fn eval_bitwise_xor(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -438,8 +438,8 @@ pub fn eval_shift_left(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -447,11 +447,11 @@ pub fn eval_shift_left(
     }
 
     if left_is_bigint {
-        let result = maybe!(eval_bigint_left_shift(
+        let result = eval_bigint_left_shift(
             cx,
             &left_num.as_bigint().bigint(),
-            &right_num.as_bigint().bigint()
-        ));
+            &right_num.as_bigint().bigint(),
+        )?;
 
         Ok(BigIntValue::new(cx, result).into())
     } else {
@@ -470,8 +470,8 @@ pub fn eval_shift_right_arithmetic(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint != right_num.is_bigint() {
@@ -479,11 +479,11 @@ pub fn eval_shift_right_arithmetic(
     }
 
     if left_is_bigint {
-        let result = maybe!(eval_bigint_left_shift(
+        let result = eval_bigint_left_shift(
             cx,
             &left_num.as_bigint().bigint(),
-            &-right_num.as_bigint().bigint()
-        ));
+            &-right_num.as_bigint().bigint(),
+        )?;
 
         Ok(BigIntValue::new(cx, result).into())
     } else {
@@ -537,8 +537,8 @@ pub fn eval_shift_right_logical(
     left_value: Handle<Value>,
     right_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let left_num = maybe!(to_numeric(cx, left_value));
-    let right_num = maybe!(to_numeric(cx, right_value));
+    let left_num = to_numeric(cx, left_value)?;
+    let right_num = to_numeric(cx, right_value)?;
 
     let left_is_bigint = left_num.is_bigint();
     if left_is_bigint || right_num.is_bigint() {
@@ -565,9 +565,9 @@ pub fn eval_instanceof_expression(
     }
 
     let has_instance_key = cx.well_known_symbols.has_instance();
-    let instance_of_handler = maybe!(get_method(cx, target, has_instance_key));
+    let instance_of_handler = get_method(cx, target, has_instance_key)?;
     if let Some(instance_of_handler) = instance_of_handler {
-        let result = maybe!(call_object(cx, instance_of_handler, target, &[value]));
+        let result = call_object(cx, instance_of_handler, target, &[value])?;
         return Ok(to_boolean(result.get()));
     }
 
@@ -576,7 +576,7 @@ pub fn eval_instanceof_expression(
         return type_error(cx, "invalid 'instanceof' operand");
     }
 
-    let has_instance = maybe!(ordinary_has_instance(cx, target, value));
+    let has_instance = ordinary_has_instance(cx, target, value)?;
     Ok(has_instance)
 }
 
@@ -589,6 +589,6 @@ pub fn eval_in_expression(
         return type_error(cx, "right side of 'in' must be an object");
     }
 
-    let property_key = maybe!(to_property_key(cx, left_value));
+    let property_key = to_property_key(cx, left_value)?;
     has_property(cx, right_value.as_object(), property_key)
 }

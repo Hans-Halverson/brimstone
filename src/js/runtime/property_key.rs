@@ -1,7 +1,5 @@
 use std::{fmt, hash};
 
-use crate::maybe;
-
 use super::{
     gc::{Handle, HandleContents, ToHandleContents},
     interned_strings::InternedStrings,
@@ -93,7 +91,7 @@ impl PropertyKey {
         if value.is_symbol() {
             Ok(PropertyKey::symbol(value_handle.as_symbol()).get())
         } else {
-            let string_value = maybe!(to_string(cx, value_handle));
+            let string_value = to_string(cx, value_handle)?;
             Ok(PropertyKey::string(cx, string_value))
         }
     }

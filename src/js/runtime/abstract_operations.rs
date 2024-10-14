@@ -6,7 +6,7 @@ use crate::{
         numeric_constants::MAX_SAFE_INTEGER_U64,
         type_utilities::{same_value_zero, to_property_key},
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -53,7 +53,7 @@ pub fn get_v(
     value: Handle<Value>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<Handle<Value>> {
-    let object = maybe!(to_object(cx, value));
+    let object = to_object(cx, value)?;
     object.get(cx, key, value)
 }
 
@@ -65,7 +65,7 @@ pub fn set(
     value: Handle<Value>,
     should_throw: bool,
 ) -> EvalResult<()> {
-    let success = maybe!(object.set(cx, key, value, object.into()));
+    let success = object.set(cx, key, value, object.into())?;
     if !success && should_throw {
         return err_cannot_set_property(cx, key);
     }
@@ -91,7 +91,7 @@ pub fn create_data_property_or_throw(
     key: Handle<PropertyKey>,
     value: Handle<Value>,
 ) -> EvalResult<()> {
-    let success = maybe!(create_data_property(cx, object, key, value));
+    let success = create_data_property(cx, object, key, value)?;
     if !success {
         return type_error(cx, &format!("Cannot create property {}", key));
     }
@@ -117,7 +117,7 @@ pub fn define_property_or_throw(
     key: Handle<PropertyKey>,
     prop_desc: PropertyDescriptor,
 ) -> EvalResult<()> {
-    let success = maybe!(object.define_own_property(cx, key, prop_desc));
+    let success = object.define_own_property(cx, key, prop_desc)?;
     if !success {
         return type_error(cx, &format!("cannot define property {}", key));
     }
@@ -131,7 +131,7 @@ pub fn delete_property_or_throw(
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
-    if !maybe!(object.delete(cx, key)) {
+    if !object.delete(cx, key)? {
         return type_error(cx, &format!("cannot delete property {}", key));
     }
 
@@ -144,7 +144,7 @@ pub fn get_method(
     value: Handle<Value>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<Option<Handle<ObjectValue>>> {
-    let func = maybe!(get_v(cx, value, key));
+    let func = get_v(cx, value, key)?;
     if func.is_nullish() {
         return Ok(None);
     }
@@ -171,7 +171,7 @@ pub fn has_own_property(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let desc = maybe!(object.get_own_property(cx, key));
+    let desc = object.get_own_property(cx, key)?;
     Ok(desc.is_some())
 }
 
@@ -218,11 +218,11 @@ pub fn set_integrity_level(
     mut object: Handle<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
-    if !maybe!(object.prevent_extensions(cx)) {
+    if !object.prevent_extensions(cx)? {
         return Ok(false);
     }
 
-    let keys = maybe!(object.own_property_keys(cx));
+    let keys = object.own_property_keys(cx)?;
 
     match level {
         IntegrityLevel::Sealed => {
@@ -232,7 +232,7 @@ pub fn set_integrity_level(
             for key_value in keys {
                 key.replace(must!(PropertyKey::from_value(cx, key_value)));
                 let desc = PropertyDescriptor::attributes(None, None, Some(false));
-                maybe!(define_property_or_throw(cx, object, key, desc));
+                define_property_or_throw(cx, object, key, desc)?;
             }
         }
         IntegrityLevel::Frozen => {
@@ -241,7 +241,7 @@ pub fn set_integrity_level(
 
             for key_value in keys {
                 key.replace(must!(PropertyKey::from_value(cx, key_value)));
-                let current_desc = maybe!(object.get_own_property(cx, key));
+                let current_desc = object.get_own_property(cx, key)?;
                 if let Some(current_desc) = current_desc {
                     let desc = if current_desc.is_accessor_descriptor() {
                         PropertyDescriptor::attributes(None, None, Some(false))
@@ -249,7 +249,7 @@ pub fn set_integrity_level(
                         PropertyDescriptor::attributes(Some(false), None, Some(false))
                     };
 
-                    maybe!(define_property_or_throw(cx, object, key, desc));
+                    define_property_or_throw(cx, object, key, desc)?;
                 }
             }
         }
@@ -264,18 +264,18 @@ pub fn test_integrity_level(
     object: Handle<ObjectValue>,
     level: IntegrityLevel,
 ) -> EvalResult<bool> {
-    if maybe!(object.is_extensible(cx)) {
+    if object.is_extensible(cx)? {
         return Ok(false);
     }
 
-    let keys = maybe!(object.own_property_keys(cx));
+    let keys = object.own_property_keys(cx)?;
 
     // Property key is shared between iterations
     let mut key = PropertyKey::uninit().to_handle(cx);
 
     for key_value in keys {
         key.replace(must!(PropertyKey::from_value(cx, key_value)));
-        let current_desc = maybe!(object.get_own_property(cx, key));
+        let current_desc = object.get_own_property(cx, key)?;
         if let Some(current_desc) = current_desc {
             if let Some(true) = current_desc.is_configurable {
                 return Ok(false);
@@ -294,7 +294,7 @@ pub fn test_integrity_level(
 
 /// LengthOfArrayLike (https://tc39.es/ecma262/#sec-lengthofarraylike)
 pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalResult<u64> {
-    let length_value = maybe!(get(cx, object, cx.names.length()));
+    let length_value = get(cx, object, cx.names.length())?;
     to_length(cx, length_value)
 }
 
@@ -308,7 +308,7 @@ pub fn create_list_from_array_like(
     }
 
     let object = object.as_object();
-    let length = maybe!(length_of_array_like(cx, object));
+    let length = length_of_array_like(cx, object)?;
 
     let mut vec = Vec::with_capacity(length as usize);
 
@@ -317,7 +317,7 @@ pub fn create_list_from_array_like(
 
     for i in 0..length {
         key.replace(PropertyKey::array_index(cx, i as u32));
-        let next = maybe!(get(cx, object, key));
+        let next = get(cx, object, key)?;
         vec.push(next);
     }
 
@@ -331,7 +331,7 @@ pub fn invoke(
     key: Handle<PropertyKey>,
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    let func = maybe!(get_v(cx, value, key));
+    let func = get_v(cx, value, key)?;
     call(cx, func, value, arguments)
 }
 
@@ -355,7 +355,7 @@ pub fn ordinary_has_instance(
         return Ok(false);
     }
 
-    let target_prototype = maybe!(get(cx, func, cx.names.prototype()));
+    let target_prototype = get(cx, func, cx.names.prototype())?;
     if !target_prototype.is_object() {
         return type_error(cx, "prototype must be object");
     }
@@ -364,7 +364,7 @@ pub fn ordinary_has_instance(
     // Walk prototype chain of object, looking for prototype of func
     let mut current_object = object.as_object();
     loop {
-        match maybe!(current_object.get_prototype_of(cx)) {
+        match current_object.get_prototype_of(cx)? {
             None => return Ok(false),
             Some(current_prototype) => {
                 if same_object_value_handles(target_prototype, current_prototype) {
@@ -383,7 +383,7 @@ pub fn species_constructor(
     object: Handle<ObjectValue>,
     default_constructor: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let constructor = maybe!(get(cx, object, cx.names.constructor()));
+    let constructor = get(cx, object, cx.names.constructor())?;
 
     if constructor.is_undefined() {
         return Ok(cx.get_intrinsic(default_constructor));
@@ -394,7 +394,7 @@ pub fn species_constructor(
     }
 
     let species_key = cx.well_known_symbols.species();
-    let species = maybe!(get(cx, constructor.as_object(), species_key));
+    let species = get(cx, constructor.as_object(), species_key)?;
 
     if species.is_nullish() {
         return Ok(cx.get_intrinsic(default_constructor));
@@ -419,7 +419,7 @@ pub fn enumerable_own_property_names(
     object: Handle<ObjectValue>,
     kind: KeyOrValue,
 ) -> EvalResult<Vec<Handle<Value>>> {
-    let keys = maybe!(object.own_property_keys(cx));
+    let keys = object.own_property_keys(cx)?;
 
     let mut properties = vec![];
 
@@ -432,18 +432,18 @@ pub fn enumerable_own_property_names(
         }
 
         key.replace(must!(PropertyKey::from_value(cx, key_value)));
-        let desc = maybe!(object.get_own_property(cx, key));
+        let desc = object.get_own_property(cx, key)?;
 
         if let Some(desc) = desc {
             if let Some(true) = desc.is_enumerable {
                 match kind {
                     KeyOrValue::Key => properties.push(key_value.to_handle(cx)),
                     KeyOrValue::Value => {
-                        let value = maybe!(get(cx, object, key));
+                        let value = get(cx, object, key)?;
                         properties.push(value);
                     }
                     KeyOrValue::KeyAndValue => {
-                        let value = maybe!(get(cx, object, key));
+                        let value = get(cx, object, key)?;
                         let key_and_value = [key_value.to_handle(cx), value];
                         let entry = create_array_from_list(cx, &key_and_value);
                         properties.push(entry.into());
@@ -504,7 +504,7 @@ pub fn copy_data_properties(
     }
 
     let from = must!(to_object(cx, source));
-    let keys = maybe!(from.own_property_keys(cx));
+    let keys = from.own_property_keys(cx)?;
 
     // Property key is shared between iterations
     let mut next_key = PropertyKey::uninit().to_handle(cx);
@@ -513,10 +513,10 @@ pub fn copy_data_properties(
         next_key.replace(must!(PropertyKey::from_value(cx, next_key_value)));
 
         if !excluded_items.contains(&next_key) {
-            let desc = maybe!(from.get_own_property(cx, next_key));
+            let desc = from.get_own_property(cx, next_key)?;
             match desc {
                 Some(desc) if desc.is_enumerable() => {
-                    let prop_value = maybe!(get(cx, from, next_key));
+                    let prop_value = get(cx, from, next_key)?;
                     must!(create_data_property_or_throw(cx, target, next_key, prop_value));
                 }
                 _ => {}
@@ -576,7 +576,7 @@ pub fn private_set(
             None => type_error(cx, "cannot set getter-only private property"),
             Some(setter) => {
                 let setter_handle = setter.to_handle();
-                maybe!(call_object(cx, setter_handle, object.into(), &[value]));
+                call_object(cx, setter_handle, object.into(), &[value])?;
                 Ok(())
             }
         }
@@ -601,7 +601,7 @@ pub fn group_by(
     callback: Handle<Value>,
     key_coercion: GroupByKeyCoercion,
 ) -> EvalResult<Vec<Group>> {
-    maybe!(require_object_coercible(cx, items));
+    require_object_coercible(cx, items)?;
 
     if !is_callable(callback) {
         return type_error(cx, "callback must be a function");
@@ -615,7 +615,7 @@ pub fn group_by(
     // Handle is shared between iterations
     let mut k_handle: Handle<Value> = Handle::empty(cx);
 
-    maybe!(iter_iterator_values(cx, items, &mut |cx, item| {
+    iter_iterator_values(cx, items, &mut |cx, item| {
         k_handle.replace(Value::from(k));
 
         let key = match call_object(cx, callback, cx.undefined(), &[item, k_handle]) {
@@ -665,7 +665,7 @@ pub fn group_by(
         }
 
         None
-    }));
+    })?;
 
     Ok(groups)
 }

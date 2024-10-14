@@ -122,7 +122,7 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
         let neg_bignum = -value.as_bigint().bigint();
         Ok(BigIntValue::new(cx, neg_bignum).into())
     } else {
-        Ok(Value::number(-value.as_number()).to_handle(cx))
+        Ok(cx.number(-value.as_number()))
     }
 }
 
@@ -134,7 +134,7 @@ pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
         Ok(BigIntValue::new(cx, not_bignum).into())
     } else {
         let value = must!(to_int32(cx, value));
-        Ok(Value::smi(!value).to_handle(cx))
+        Ok(cx.smi(!value))
     }
 }
 
@@ -164,7 +164,7 @@ pub fn eval_add(
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() + right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() + right_num.as_number()))
     }
 }
 
@@ -185,7 +185,7 @@ pub fn eval_subtract(
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() - right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() - right_num.as_number()))
     }
 }
 
@@ -206,7 +206,7 @@ pub fn eval_multiply(
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() * right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() * right_num.as_number()))
     }
 }
 
@@ -232,7 +232,7 @@ pub fn eval_divide(
         let result = left_num.as_bigint().bigint() / bigint_right;
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() / right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() / right_num.as_number()))
     }
 }
 
@@ -263,7 +263,7 @@ pub fn eval_remainder(
         let result = bigint_left % bigint_right;
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() % right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() % right_num.as_number()))
     }
 }
 
@@ -298,8 +298,7 @@ pub fn eval_exponentiation(
             range_error(cx, "BigInt is too large")
         }
     } else {
-        Ok(Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
-            .to_handle(cx))
+        Ok(cx.number(number_exponentiate(left_num.as_number(), right_num.as_number())))
     }
 }
 
@@ -381,7 +380,7 @@ pub fn eval_bitwise_and(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi & right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi & right_smi))
     }
 }
 
@@ -405,7 +404,7 @@ pub fn eval_bitwise_or(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi | right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi | right_smi))
     }
 }
 
@@ -429,7 +428,7 @@ pub fn eval_bitwise_xor(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi ^ right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi ^ right_smi))
     }
 }
 
@@ -461,7 +460,7 @@ pub fn eval_shift_left(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Ok(Value::smi(left_smi << shift).to_handle(cx))
+        Ok(cx.smi(left_smi << shift))
     }
 }
 
@@ -493,7 +492,7 @@ pub fn eval_shift_right_arithmetic(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Ok(Value::smi(left_smi >> shift).to_handle(cx))
+        Ok(cx.smi(left_smi >> shift))
     }
 }
 

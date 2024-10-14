@@ -86,7 +86,7 @@ impl RegExpObject {
         Self::define_last_index_property(cx, object);
 
         // Initialize last index property
-        let zero_value = Value::from(0).to_handle(cx);
+        let zero_value = cx.zero();
         set(cx, object.into(), cx.names.last_index(), zero_value, true)?;
 
         Ok(object)
@@ -261,7 +261,7 @@ pub fn regexp_create(
     }
 
     // Initialize last index property
-    let zero_value = Value::from(0).to_handle(cx);
+    let zero_value = cx.zero();
     set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
 
     Ok(regexp_object.as_value())

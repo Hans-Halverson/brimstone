@@ -23,28 +23,28 @@ impl MathObject {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
         // Value Properties of the Math Object (https://tc39.es/ecma262/#sec-value-properties-of-the-math-object)
-        let e_value = Value::number(std::f64::consts::E).to_handle(cx);
+        let e_value = cx.number(std::f64::consts::E);
         object.intrinsic_frozen_property(cx, cx.names.e(), e_value);
 
-        let ln_10_value = Value::number(std::f64::consts::LN_10).to_handle(cx);
+        let ln_10_value = cx.number(std::f64::consts::LN_10);
         object.intrinsic_frozen_property(cx, cx.names.ln10(), ln_10_value);
 
-        let ln_2_value = Value::number(std::f64::consts::LN_2).to_handle(cx);
+        let ln_2_value = cx.number(std::f64::consts::LN_2);
         object.intrinsic_frozen_property(cx, cx.names.ln2(), ln_2_value);
 
-        let log10_e_value = Value::number(std::f64::consts::LOG10_E).to_handle(cx);
+        let log10_e_value = cx.number(std::f64::consts::LOG10_E);
         object.intrinsic_frozen_property(cx, cx.names.log10e(), log10_e_value);
 
-        let log2_e_value = Value::number(std::f64::consts::LOG2_E).to_handle(cx);
+        let log2_e_value = cx.number(std::f64::consts::LOG2_E);
         object.intrinsic_frozen_property(cx, cx.names.log2e(), log2_e_value);
 
-        let pi_value = Value::number(std::f64::consts::PI).to_handle(cx);
+        let pi_value = cx.number(std::f64::consts::PI);
         object.intrinsic_frozen_property(cx, cx.names.pi(), pi_value);
 
-        let sqrt1_2_value = Value::number(std::f64::consts::FRAC_1_SQRT_2).to_handle(cx);
+        let sqrt1_2_value = cx.number(std::f64::consts::FRAC_1_SQRT_2);
         object.intrinsic_frozen_property(cx, cx.names.sqrt1_2(), sqrt1_2_value);
 
-        let sqrt_2_value = Value::number(std::f64::consts::SQRT_2).to_handle(cx);
+        let sqrt_2_value = cx.number(std::f64::consts::SQRT_2);
         object.intrinsic_frozen_property(cx, cx.names.sqrt2(), sqrt_2_value);
 
         // Math [ @@toStringTag ] (https://tc39.es/ecma262/#sec-math-%symbol.tostringtag%)
@@ -106,9 +106,9 @@ impl MathObject {
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            Ok(Value::smi(i32::abs(n.as_smi())).to_handle(cx))
+            Ok(cx.smi(i32::abs(n.as_smi())))
         } else {
-            Ok(Value::number(f64::abs(n.as_double())).to_handle(cx))
+            Ok(cx.number(f64::abs(n.as_double())))
         }
     }
 
@@ -121,7 +121,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::acos(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::acos(n.as_number())))
     }
 
     /// Math.acosh (https://tc39.es/ecma262/#sec-math.acosh)
@@ -133,7 +133,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::acosh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::acosh(n.as_number())))
     }
 
     /// Math.asin (https://tc39.es/ecma262/#sec-math.asin)
@@ -145,7 +145,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::asin(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::asin(n.as_number())))
     }
 
     /// Math.asinh (https://tc39.es/ecma262/#sec-math.asinh)
@@ -157,7 +157,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::asinh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::asinh(n.as_number())))
     }
 
     /// Math.atan (https://tc39.es/ecma262/#sec-math.atan)
@@ -169,7 +169,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::atan(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::atan(n.as_number())))
     }
 
     /// Math.atanh (https://tc39.es/ecma262/#sec-math.atanh)
@@ -181,7 +181,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::atanh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::atanh(n.as_number())))
     }
 
     /// Math.atan2 (https://tc39.es/ecma262/#sec-math.atan2)
@@ -197,7 +197,7 @@ impl MathObject {
         let x_arg = get_argument(cx, arguments, 1);
         let x = to_number(cx, x_arg)?;
 
-        Ok(Value::number(y.as_number().atan2(x.as_number())).to_handle(cx))
+        Ok(cx.number(y.as_number().atan2(x.as_number())))
     }
 
     /// Math.cbrt (https://tc39.es/ecma262/#sec-math.cbrt)
@@ -209,7 +209,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::cbrt(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::cbrt(n.as_number())))
     }
 
     /// Math.ceil (https://tc39.es/ecma262/#sec-math.ceil)
@@ -225,7 +225,7 @@ impl MathObject {
         if n.is_smi() {
             Ok(n)
         } else {
-            Ok(Value::number(f64::ceil(n.as_double())).to_handle(cx))
+            Ok(cx.number(f64::ceil(n.as_double())))
         }
     }
 
@@ -238,7 +238,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_uint32(cx, argument)?;
-        Ok(Value::smi(n.leading_zeros() as i32).to_handle(cx))
+        Ok(cx.smi(n.leading_zeros() as i32))
     }
 
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
@@ -250,7 +250,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::cos(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::cos(n.as_number())))
     }
 
     /// Math.cosh (https://tc39.es/ecma262/#sec-math.cosh)
@@ -262,7 +262,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::cosh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::cosh(n.as_number())))
     }
 
     /// Math.exp (https://tc39.es/ecma262/#sec-math.exp)
@@ -274,7 +274,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::exp(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::exp(n.as_number())))
     }
 
     /// Math.expm1 (https://tc39.es/ecma262/#sec-math.expm1)
@@ -286,7 +286,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::exp_m1(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::exp_m1(n.as_number())))
     }
 
     /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)
@@ -302,7 +302,7 @@ impl MathObject {
         if n.is_smi() {
             Ok(n)
         } else {
-            Ok(Value::number(f64::floor(n.as_double())).to_handle(cx))
+            Ok(cx.number(f64::floor(n.as_double())))
         }
     }
 
@@ -315,7 +315,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number((n.as_number() as f32) as f64).to_handle(cx))
+        Ok(cx.number((n.as_number() as f32) as f64))
     }
 
     /// Math.hypot (https://tc39.es/ecma262/#sec-math.hypot)
@@ -360,7 +360,7 @@ impl MathObject {
             return Ok(sum.to_handle(cx));
         }
 
-        Ok(Value::number(f64::sqrt(sum.as_number())).to_handle(cx))
+        Ok(cx.number(f64::sqrt(sum.as_number())))
     }
 
     /// Math.imul (https://tc39.es/ecma262/#sec-math.imul)
@@ -378,7 +378,7 @@ impl MathObject {
 
         let mod_mul = ((x as u64) * (y as u64)) as u32;
 
-        Ok(Value::smi(mod_mul as i32).to_handle(cx))
+        Ok(cx.smi(mod_mul as i32))
     }
 
     /// Math.log (https://tc39.es/ecma262/#sec-math.log)
@@ -390,7 +390,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::ln(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::ln(n.as_number())))
     }
 
     /// Math.log1p (https://tc39.es/ecma262/#sec-math.log1p)
@@ -402,7 +402,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::ln_1p(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::ln_1p(n.as_number())))
     }
 
     /// Math.log10 (https://tc39.es/ecma262/#sec-math.log10)
@@ -414,7 +414,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::log10(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::log10(n.as_number())))
     }
 
     /// Math.log2 (https://tc39.es/ecma262/#sec-math.log2)
@@ -426,7 +426,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::log2(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::log2(n.as_number())))
     }
 
     /// Math.max (https://tc39.es/ecma262/#sec-math.max)
@@ -521,7 +521,7 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let n = rand::thread_rng().gen::<f64>();
-        Ok(Value::number(n).to_handle(cx))
+        Ok(cx.number(n))
     }
 
     /// Math.round (https://tc39.es/ecma262/#sec-math.round)
@@ -546,7 +546,7 @@ impl MathObject {
                 f64::ceil(n)
             };
 
-            Ok(Value::number(rounded).to_handle(cx))
+            Ok(cx.number(rounded))
         }
     }
 
@@ -560,28 +560,26 @@ impl MathObject {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?.get();
 
-        let value = if n.is_smi() {
+        if n.is_smi() {
             let n_smi = n.as_smi();
             if n_smi == 0 {
-                n
+                Ok(n.to_handle(cx))
             } else if n_smi > 0 {
-                Value::smi(1)
+                Ok(cx.one())
             } else {
-                Value::smi(-1)
+                Ok(cx.negative_one())
             }
         } else {
             if n.is_negative_zero() || n.is_positive_zero() {
-                n
+                Ok(n.to_handle(cx))
             } else if n.as_double() > 0.0 {
-                Value::smi(1)
+                Ok(cx.one())
             } else if n.is_nan() {
-                Value::nan()
+                Ok(cx.nan())
             } else {
-                Value::smi(-1)
+                Ok(cx.negative_one())
             }
-        };
-
-        Ok(value.to_handle(cx))
+        }
     }
 
     /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)
@@ -593,7 +591,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::sin(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::sin(n.as_number())))
     }
 
     /// Math.sinh (https://tc39.es/ecma262/#sec-math.sinh)
@@ -605,7 +603,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::sinh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::sinh(n.as_number())))
     }
 
     /// Math.sqrt (https://tc39.es/ecma262/#sec-math.sqrt)
@@ -617,7 +615,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::sqrt(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::sqrt(n.as_number())))
     }
 
     /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
@@ -629,7 +627,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::tan(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::tan(n.as_number())))
     }
 
     /// Math.tanh (https://tc39.es/ecma262/#sec-math.tanh)
@@ -641,7 +639,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
-        Ok(Value::number(f64::tanh(n.as_number())).to_handle(cx))
+        Ok(cx.number(f64::tanh(n.as_number())))
     }
 
     /// Math.trunc (https://tc39.es/ecma262/#sec-math.trunc)
@@ -657,7 +655,7 @@ impl MathObject {
         if n.is_smi() {
             Ok(n)
         } else {
-            Ok(Value::number(f64::trunc(n.as_double())).to_handle(cx))
+            Ok(cx.number(f64::trunc(n.as_double())))
         }
     }
 }

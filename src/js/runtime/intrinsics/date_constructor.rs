@@ -168,7 +168,7 @@ impl DateConstructor {
         if let Some(date_value) = parse_string_to_date(string) {
             Ok(Value::from(date_value).to_handle(cx))
         } else {
-            Ok(Value::nan().to_handle(cx))
+            Ok(cx.nan())
         }
     }
 

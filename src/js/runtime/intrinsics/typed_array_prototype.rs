@@ -160,7 +160,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Ok(Value::smi(0).to_handle(cx));
+            return Ok(cx.zero());
         }
 
         let byte_length = typed_array_byte_length(&typed_array_record);
@@ -179,7 +179,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Ok(Value::smi(0).to_handle(cx));
+            return Ok(cx.zero());
         }
 
         Ok(Value::from(typed_array.byte_offset()).to_handle(cx))
@@ -546,7 +546,7 @@ impl TypedArrayPrototype {
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.negative_one()),
         }
     }
 
@@ -606,7 +606,7 @@ impl TypedArrayPrototype {
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.negative_one()),
         }
     }
 
@@ -710,7 +710,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         if length == 0 {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -718,7 +718,7 @@ impl TypedArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -742,7 +742,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        Ok(Value::smi(-1).to_handle(cx))
+        Ok(cx.negative_one())
     }
 
     /// %TypedArray%.prototype.join (https://tc39.es/ecma262/#sec-%typedarray%.prototype.join)
@@ -814,7 +814,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         if length == 0 {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -823,7 +823,7 @@ impl TypedArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
-                return Ok(Value::smi(-1).to_handle(cx));
+                return Ok(cx.negative_one());
             }
 
             if n >= 0.0 {
@@ -832,7 +832,7 @@ impl TypedArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Ok(Value::smi(-1).to_handle(cx));
+                    return Ok(cx.negative_one());
                 }
 
                 start_index as u64
@@ -854,7 +854,7 @@ impl TypedArrayPrototype {
             }
         }
 
-        Ok(Value::smi(-1).to_handle(cx))
+        Ok(cx.negative_one())
     }
 
     /// get %TypedArray%.prototype.length (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype.length)
@@ -868,7 +868,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return Ok(Value::smi(0).to_handle(cx));
+            return Ok(cx.zero());
         }
 
         let length = typed_array_length(&typed_array_record);
@@ -1679,8 +1679,7 @@ macro_rules! create_typed_array_prototype {
                 );
 
                 // Constructor property is added once TypedArrayConstructor has been created
-                let element_size_value =
-                    Value::smi(std::mem::size_of::<$element_type>() as i32).to_handle(cx);
+                let element_size_value = cx.smi(std::mem::size_of::<$element_type>() as i32);
                 object.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),

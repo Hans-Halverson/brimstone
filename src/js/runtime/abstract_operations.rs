@@ -437,14 +437,14 @@ pub fn enumerable_own_property_names(
         if let Some(desc) = desc {
             if let Some(true) = desc.is_enumerable {
                 match kind {
-                    KeyOrValue::Key => properties.push(key_value.to_handle(cx)),
+                    KeyOrValue::Key => properties.push(key_value),
                     KeyOrValue::Value => {
                         let value = get(cx, object, key)?;
                         properties.push(value);
                     }
                     KeyOrValue::KeyAndValue => {
                         let value = get(cx, object, key)?;
-                        let key_and_value = [key_value.to_handle(cx), value];
+                        let key_and_value = [key_value, value];
                         let entry = create_array_from_list(cx, &key_and_value);
                         properties.push(entry.into());
                     }
@@ -650,7 +650,7 @@ pub fn group_by(
         if !found_group {
             // Canonicalize key
             let key = if key.is_negative_zero() {
-                Value::from(0).to_handle(cx)
+                cx.zero()
             } else {
                 key
             };
@@ -672,7 +672,7 @@ pub fn group_by(
 
 pub fn canonicalize_keyed_collection_key(cx: Context, key: Handle<Value>) -> Handle<Value> {
     if key.is_negative_zero() {
-        Value::from(0).to_handle(cx)
+        cx.zero()
     } else {
         key
     }

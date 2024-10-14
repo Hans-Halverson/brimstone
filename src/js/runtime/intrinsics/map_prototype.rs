@@ -222,7 +222,7 @@ impl MapPrototype {
 
         // Convert negative zero to positive zero for key in map
         if key.is_negative_zero() {
-            key = Value::number(0.0).to_handle(cx);
+            key = cx.zero();
         }
 
         map.insert(cx, key, value);

@@ -526,7 +526,7 @@ impl ArrayPrototype {
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.negative_one()),
         }
     }
 
@@ -580,7 +580,7 @@ impl ArrayPrototype {
 
         match find_result {
             Some((_, index_value)) => Ok(index_value),
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.negative_one()),
         }
     }
 
@@ -805,7 +805,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -813,7 +813,7 @@ impl ArrayPrototype {
         let n_arg = get_argument(cx, arguments, 1);
         let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -837,7 +837,7 @@ impl ArrayPrototype {
             }
         }
 
-        Ok(Value::smi(-1).to_handle(cx))
+        Ok(cx.negative_one())
     }
 
     /// Array.prototype.join (https://tc39.es/ecma262/#sec-array.prototype.join)
@@ -901,7 +901,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.negative_one());
         }
 
         let search_element = get_argument(cx, arguments, 0);
@@ -910,7 +910,7 @@ impl ArrayPrototype {
             let start_arg = get_argument(cx, arguments, 1);
             let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
-                return Ok(Value::smi(-1).to_handle(cx));
+                return Ok(cx.negative_one());
             }
 
             if n >= 0.0 {
@@ -919,7 +919,7 @@ impl ArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Ok(Value::smi(-1).to_handle(cx));
+                    return Ok(cx.negative_one());
                 }
 
                 start_index as u64
@@ -941,7 +941,7 @@ impl ArrayPrototype {
             }
         }
 
-        Ok(Value::smi(-1).to_handle(cx))
+        Ok(cx.negative_one())
     }
 
     /// Array.prototype.map (https://tc39.es/ecma262/#sec-array.prototype.map)
@@ -995,7 +995,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            let length_zero = Value::smi(0).to_handle(cx);
+            let length_zero = cx.zero();
             set(cx, object, cx.names.length(), length_zero, true)?;
             return Ok(cx.undefined());
         }
@@ -1229,7 +1229,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            let zero_value = Value::smi(0).to_handle(cx);
+            let zero_value = cx.zero();
             set(cx, object, cx.names.length(), zero_value, true)?;
             return Ok(cx.undefined());
         }

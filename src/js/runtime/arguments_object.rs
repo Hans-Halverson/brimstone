@@ -281,7 +281,7 @@ pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]
     let object = UnmappedArgumentsObject::new(cx);
 
     // Set length property
-    let length_value = Value::smi(arguments.len() as i32).to_handle(cx);
+    let length_value = cx.smi(arguments.len() as i32);
     let length_desc = PropertyDescriptor::data(length_value, true, false, true);
     must!(define_property_or_throw(cx, object, cx.names.length(), length_desc));
 

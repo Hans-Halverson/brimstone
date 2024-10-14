@@ -39,7 +39,6 @@ use crate::js::{
             SourceTextModule,
         },
         object_descriptor::ObjectKind,
-        object_value::ObjectValue,
         regexp::compiler::compile_regexp,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
@@ -487,7 +486,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         );
 
         // Place the module in the first slot of its module scope
-        module_scope.set_slot(0, module.cast::<ObjectValue>().get_().into());
+        module_scope.set_heap_item_slot(0, module.get_().as_heap_item());
 
         module
     }
@@ -517,7 +516,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 if let VMLocation::ModuleScope { index, .. } = binding.vm_location().unwrap() {
                     // All exported value are boxed, which will eventually be linked to import
                     let boxed_value = BoxedValue::new(self.cx, init_value);
-                    module_scope.set_slot(index, boxed_value.cast::<ObjectValue>().into());
+                    module_scope.set_heap_item_slot(index, boxed_value.as_heap_item());
                 } else {
                     unreachable!("expected module scope location")
                 }

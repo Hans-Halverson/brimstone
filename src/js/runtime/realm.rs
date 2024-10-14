@@ -225,7 +225,7 @@ impl Handle<Realm> {
         for i in 0..scope_names.len() {
             if i == 0 {
                 // The first global scope slot is always the realm
-                global_scope.set_slot(0, self.get_().cast::<ObjectValue>().into());
+                global_scope.set_heap_item_slot(0, self.get_().as_heap_item());
             } else if scope_names
                 .get_slot_name(i)
                 .ptr_eq(&cx.names.this.as_string().as_flat())

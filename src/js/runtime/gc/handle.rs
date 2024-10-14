@@ -8,7 +8,7 @@ use std::{
 use crate::js::runtime::{
     object_value::ObjectValue,
     string_value::StringValue,
-    value::{AccessorValue, BigIntValue, SymbolValue},
+    value::{BigIntValue, SymbolValue},
     Context, Value,
 };
 
@@ -366,11 +366,6 @@ impl Handle<Value> {
 
     #[inline]
     pub fn as_bigint(&self) -> Handle<BigIntValue> {
-        self.cast()
-    }
-
-    #[inline]
-    pub fn as_accessor(&self) -> Handle<AccessorValue> {
         self.cast()
     }
 }

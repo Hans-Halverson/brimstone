@@ -225,7 +225,7 @@ pub fn new_class(
         cx.vm().store_to_scope_at_depth(
             home_object.scope_index as usize,
             home_object.parent_depth as usize,
-            constructor.cast::<ObjectValue>().get_().into(),
+            constructor.as_object().get_().into(),
         );
     }
 

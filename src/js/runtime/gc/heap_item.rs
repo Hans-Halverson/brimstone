@@ -1,4 +1,5 @@
 use crate::js::runtime::{
+    accessor::Accessor,
     arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,
     array_properties::{DenseArrayProperties, SparseArrayProperties},
@@ -65,7 +66,7 @@ use crate::js::runtime::{
     source_file::SourceFile,
     string_object::StringObject,
     string_value::StringValue,
-    value::{AccessorValue, BigIntValue, SymbolValue},
+    value::{BigIntValue, SymbolValue},
     Realm,
 };
 
@@ -139,7 +140,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
             ObjectKind::Symbol => self.cast::<SymbolValue>().byte_size(),
             ObjectKind::BigInt => self.cast::<BigIntValue>().byte_size(),
-            ObjectKind::Accessor => self.cast::<AccessorValue>().byte_size(),
+            ObjectKind::Accessor => self.cast::<Accessor>().byte_size(),
             ObjectKind::Promise => self.cast::<PromiseObject>().byte_size(),
             ObjectKind::PromiseReaction => self.cast::<PromiseReaction>().byte_size(),
             ObjectKind::PromiseCapability => self.cast::<PromiseCapability>().byte_size(),
@@ -247,7 +248,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::String => self.cast::<StringValue>().visit_pointers(visitor),
             ObjectKind::Symbol => self.cast::<SymbolValue>().visit_pointers(visitor),
             ObjectKind::BigInt => self.cast::<BigIntValue>().visit_pointers(visitor),
-            ObjectKind::Accessor => self.cast::<AccessorValue>().visit_pointers(visitor),
+            ObjectKind::Accessor => self.cast::<Accessor>().visit_pointers(visitor),
             ObjectKind::Promise => self.cast::<PromiseObject>().visit_pointers(visitor),
             ObjectKind::PromiseReaction => self.cast::<PromiseReaction>().visit_pointers(visitor),
             ObjectKind::PromiseCapability => {

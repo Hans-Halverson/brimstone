@@ -265,15 +265,6 @@ impl Value {
         self.as_pointer().descriptor().kind() == ObjectKind::BigInt
     }
 
-    #[inline]
-    pub fn is_accessor(&self) -> bool {
-        if !self.is_pointer() {
-            return false;
-        }
-
-        self.as_pointer().descriptor().kind() == ObjectKind::Accessor
-    }
-
     // Type casts
 
     #[inline]
@@ -382,29 +373,32 @@ impl Value {
         Value::from_raw_bits(!double_bits)
     }
 
+    /// Convert any heap item into a Value. Note that only object subtypes, strings, symbols, and
+    /// bigints are allowed to be treated as values in normal circumstances. Other heap items are
+    /// converted to values for compatiblity in some scenarios (e.g. storing in a scope).
+    #[inline]
+    pub fn heap_item(value: HeapPtr<HeapItem>) -> Value {
+        Value::from_raw_bits(value.as_ptr() as u64)
+    }
+
     #[inline]
     pub fn object(value: HeapPtr<ObjectValue>) -> Value {
-        Value::from_raw_bits(value.as_ptr() as u64)
+        Value::heap_item(value.as_heap_item())
     }
 
     #[inline]
     pub fn string(value: HeapPtr<StringValue>) -> Value {
-        Value::from_raw_bits(value.as_ptr() as u64)
+        Value::heap_item(value.as_heap_item())
     }
 
     #[inline]
     pub fn symbol(value: HeapPtr<SymbolValue>) -> Value {
-        Value::from_raw_bits(value.as_ptr() as u64)
+        Value::heap_item(value.as_heap_item())
     }
 
     #[inline]
     pub fn bigint(value: HeapPtr<BigIntValue>) -> Value {
-        Value::from_raw_bits(value.as_ptr() as u64)
-    }
-
-    #[inline]
-    pub fn accessor(value: HeapPtr<AccessorValue>) -> Value {
-        Value::from_raw_bits(value.as_ptr() as u64)
+        Value::heap_item(value.as_heap_item())
     }
 
     #[inline]
@@ -559,12 +553,6 @@ impl From<HeapPtr<SymbolValue>> for Value {
 impl From<HeapPtr<BigIntValue>> for Value {
     fn from(value: HeapPtr<BigIntValue>) -> Self {
         Value::bigint(value)
-    }
-}
-
-impl From<HeapPtr<AccessorValue>> for Value {
-    fn from(value: HeapPtr<AccessorValue>) -> Self {
-        Value::accessor(value)
     }
 }
 
@@ -742,41 +730,6 @@ impl HeapObject for HeapPtr<BigIntValue> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
-    }
-}
-
-#[repr(C)]
-pub struct AccessorValue {
-    descriptor: HeapPtr<ObjectDescriptor>,
-    pub get: Option<HeapPtr<ObjectValue>>,
-    pub set: Option<HeapPtr<ObjectValue>>,
-}
-
-impl AccessorValue {
-    pub fn new(
-        cx: Context,
-        get: Option<Handle<ObjectValue>>,
-        set: Option<Handle<ObjectValue>>,
-    ) -> Handle<AccessorValue> {
-        let mut accessor = cx.alloc_uninit::<AccessorValue>();
-
-        set_uninit!(accessor.descriptor, cx.base_descriptors.get(ObjectKind::Accessor));
-        set_uninit!(accessor.get, get.map(|v| v.get_()));
-        set_uninit!(accessor.set, set.map(|v| v.get_()));
-
-        accessor.to_handle()
-    }
-}
-
-impl HeapObject for HeapPtr<AccessorValue> {
-    fn byte_size(&self) -> usize {
-        size_of::<AccessorValue>()
-    }
-
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        visitor.visit_pointer(&mut self.descriptor);
-        visitor.visit_pointer_opt(&mut self.get);
-        visitor.visit_pointer_opt(&mut self.set);
     }
 }
 

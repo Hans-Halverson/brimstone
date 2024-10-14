@@ -607,11 +607,11 @@ impl Handle<SourceTextModule> {
                 if let ResolveExportResult::Resolved { name, module } = result {
                     match name {
                         ResolveExportName::Local { boxed_value, .. } => {
-                            boxed_value_or_module_handle.replace(boxed_value.cast::<HeapItem>());
+                            boxed_value_or_module_handle.replace(boxed_value.as_heap_item());
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle);
                         }
                         ResolveExportName::Namespace => {
-                            boxed_value_or_module_handle.replace(module.cast::<HeapItem>());
+                            boxed_value_or_module_handle.replace(module.as_heap_item());
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle);
                         }
                     }

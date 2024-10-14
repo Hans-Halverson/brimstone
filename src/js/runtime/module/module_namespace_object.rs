@@ -7,7 +7,7 @@ use crate::{
         error::reference_error,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
-        object_value::{ObjectValue, VirtualObject},
+        object_value::VirtualObject,
         ordinary_object::{
             object_create_with_optional_proto, ordinary_define_own_property, ordinary_delete,
             ordinary_get, ordinary_get_own_property, ordinary_has_property,
@@ -45,7 +45,7 @@ impl ModuleNamespaceObject {
         // Mark as non-extensible. This satisifes:
         // - [[IsExtensible]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-isextensible)
         // - [[PreventExtensions]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-preventextensions)
-        object.cast::<ObjectValue>().set_is_extensible_field(false);
+        object.as_object().set_is_extensible_field(false);
 
         set_uninit!(object.module, module.get_());
 

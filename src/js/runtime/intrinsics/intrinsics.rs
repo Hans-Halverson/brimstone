@@ -232,7 +232,7 @@ impl Intrinsics {
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
                 realm.intrinsics.intrinsics.as_mut_slice()[Intrinsic::$intrinsic_name as usize] =
-                    ($expr).cast::<ObjectValue>().get_();
+                    ($expr).as_object().get_();
             };
         }
 
@@ -486,7 +486,7 @@ pub fn throw_type_error(
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)
 fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    let throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
+    let mut throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
         cx,
         throw_type_error,
         /* name */ None,
@@ -510,9 +510,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     let name_desc = PropertyDescriptor::data(name, false, false, false);
     must!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
 
-    must!(throw_type_error_func
-        .cast::<ObjectValue>()
-        .prevent_extensions(cx));
+    must!(throw_type_error_func.prevent_extensions(cx));
 
     throw_type_error_func.into()
 }

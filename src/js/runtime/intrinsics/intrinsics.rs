@@ -496,7 +496,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
     )
     .into();
 
-    let zero_value = Value::smi(0).to_handle(cx);
+    let zero_value = cx.smi(0);
     let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
     must!(define_property_or_throw(
         cx,

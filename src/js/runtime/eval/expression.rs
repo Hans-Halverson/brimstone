@@ -134,7 +134,7 @@ pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
         Ok(BigIntValue::new(cx, not_bignum).into())
     } else {
         let value = must!(to_int32(cx, value));
-        Ok(Value::smi(!value).to_handle(cx))
+        Ok(cx.smi(!value))
     }
 }
 
@@ -381,7 +381,7 @@ pub fn eval_bitwise_and(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi & right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi & right_smi))
     }
 }
 
@@ -405,7 +405,7 @@ pub fn eval_bitwise_or(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi | right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi | right_smi))
     }
 }
 
@@ -429,7 +429,7 @@ pub fn eval_bitwise_xor(
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
 
-        Ok(Value::smi(left_smi ^ right_smi).to_handle(cx))
+        Ok(cx.smi(left_smi ^ right_smi))
     }
 }
 
@@ -461,7 +461,7 @@ pub fn eval_shift_left(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Ok(Value::smi(left_smi << shift).to_handle(cx))
+        Ok(cx.smi(left_smi << shift))
     }
 }
 
@@ -493,7 +493,7 @@ pub fn eval_shift_right_arithmetic(
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
 
-        Ok(Value::smi(left_smi >> shift).to_handle(cx))
+        Ok(cx.smi(left_smi >> shift))
     }
 }
 

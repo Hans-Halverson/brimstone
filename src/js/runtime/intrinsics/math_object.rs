@@ -238,7 +238,7 @@ impl MathObject {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_uint32(cx, argument)?;
-        Ok(Value::smi(n.leading_zeros() as i32).to_handle(cx))
+        Ok(cx.smi(n.leading_zeros() as i32))
     }
 
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
@@ -378,7 +378,7 @@ impl MathObject {
 
         let mod_mul = ((x as u64) * (y as u64)) as u32;
 
-        Ok(Value::smi(mod_mul as i32).to_handle(cx))
+        Ok(cx.smi(mod_mul as i32))
     }
 
     /// Math.log (https://tc39.es/ecma262/#sec-math.log)

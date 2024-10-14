@@ -599,7 +599,7 @@ macro_rules! create_typed_array_constructor {
                     realm.get_intrinsic(Intrinsic::$prototype).into(),
                 );
 
-                let element_size_value = Value::smi(element_size!() as i32).to_handle(cx);
+                let element_size_value = cx.smi(element_size!() as i32);
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),

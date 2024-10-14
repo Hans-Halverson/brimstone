@@ -181,7 +181,7 @@ impl StringPrototype {
         }
 
         let code_unit = string.code_unit_at(position as u32);
-        Ok(Value::smi(code_unit as i32).to_handle(cx))
+        Ok(cx.smi(code_unit as i32))
     }
 
     /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
@@ -202,7 +202,7 @@ impl StringPrototype {
         }
 
         let code_point = string.code_point_at(position as u32);
-        Ok(Value::smi(code_point as i32).to_handle(cx))
+        Ok(cx.smi(code_point as i32))
     }
 
     /// String.prototype.concat (https://tc39.es/ecma262/#sec-string.prototype.concat)
@@ -311,11 +311,11 @@ impl StringPrototype {
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return Ok(Value::smi(-1).to_handle(cx));
+            return Ok(cx.smi(-1));
         }
 
         match string.find(search_string, pos) {
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.smi(-1)),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
@@ -358,7 +358,7 @@ impl StringPrototype {
         let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
         match string.rfind(search_string, string_end) {
-            None => Ok(Value::smi(-1).to_handle(cx)),
+            None => Ok(cx.smi(-1)),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
@@ -388,7 +388,7 @@ impl StringPrototype {
             Ordering::Greater => 1,
         };
 
-        Ok(Value::smi(comparison_number).to_handle(cx))
+        Ok(cx.smi(comparison_number))
     }
 
     /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)

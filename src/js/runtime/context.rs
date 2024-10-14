@@ -290,6 +290,11 @@ impl Context {
         }
     }
 
+    #[inline]
+    pub fn smi(&self, value: i32) -> Handle<Value> {
+        Value::smi(value).to_handle(*self)
+    }
+
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.heap.visit_roots(visitor);
 

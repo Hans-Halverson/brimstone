@@ -88,9 +88,9 @@ pub fn iterator_next(
     value: Option<Handle<Value>>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let result = if let Some(value) = value {
-        call(cx, next_method, iterator.into(), &[value])?
+        call(cx, next_method, iterator.as_value(), &[value])?
     } else {
-        call(cx, next_method, iterator.into(), &[])?
+        call(cx, next_method, iterator.as_value(), &[])?
     };
 
     if !result.is_object() {
@@ -103,7 +103,7 @@ pub fn iterator_next(
 /// IteratorComplete (https://tc39.es/ecma262/#sec-iteratorcomplete)
 pub fn iterator_complete(cx: Context, iter_result: Handle<ObjectValue>) -> EvalResult<bool> {
     let is_done = get(cx, iter_result, cx.names.done())?;
-    Ok(to_boolean(is_done.get()))
+    Ok(to_boolean(*is_done))
 }
 
 /// IteratorValue (https://tc39.es/ecma262/#sec-iteratorvalue)

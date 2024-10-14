@@ -329,7 +329,7 @@ impl VM {
         {
             self.write_register(
                 Register::<ExtraWide>::local(completion_value_index as usize),
-                completion_value.get(),
+                *completion_value,
             );
             self.write_register(
                 Register::<ExtraWide>::local(completion_type_index as usize),
@@ -540,7 +540,7 @@ impl VM {
                         argument_promise.add_await_reaction(self.cx(), generator.into());
 
                         // Return the promise to the caller
-                        return_!(return_promise_or_generator.get())
+                        return_!(*return_promise_or_generator)
                     } else {
                         // Reuse the existing async generator object
                         let mut async_generator =
@@ -667,7 +667,7 @@ impl VM {
                 ($expr:expr) => {
                     match $expr {
                         Ok(result) => result,
-                        Err(error) => throw!(error.get()),
+                        Err(error) => throw!(*error),
                     }
                 };
             }
@@ -1436,7 +1436,7 @@ impl VM {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Check whether the value is callable, potentially deferring to proxy.
-        let closure_handle = match self.check_value_is_callable(function.get())? {
+        let closure_handle = match self.check_value_is_callable(*function)? {
             CallableObject::Closure(closure) => closure.to_handle(),
             CallableObject::Proxy(proxy) => {
                 return proxy.to_handle().call(self.cx(), receiver, arguments)
@@ -1445,9 +1445,8 @@ impl VM {
         };
 
         // Get the receiver to use. May allocate.
-        let receiver =
-            self.generate_receiver(Some(receiver.get()), closure_handle.function_ptr())?;
-        let closure_ptr = closure_handle.get_();
+        let receiver = self.generate_receiver(Some(*receiver), closure_handle.function_ptr())?;
+        let closure_ptr = *closure_handle;
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = closure_ptr.function_ptr().rust_runtime_function_id() {
@@ -1500,7 +1499,7 @@ impl VM {
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
         // Check whether the value is a constructor, potentially deferring to proxy.
-        let closure_handle = match self.check_value_is_constructor(function.get()) {
+        let closure_handle = match self.check_value_is_constructor(*function) {
             CallableObject::Closure(closure) => closure.to_handle(),
             // Proxy constructors call directly into the rust runtime
             CallableObject::Proxy(proxy) => {
@@ -1511,7 +1510,7 @@ impl VM {
             CallableObject::Error(error) => return Err(error),
         };
 
-        let closure_ptr = closure_handle.get_();
+        let closure_ptr = *closure_handle;
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
@@ -1539,7 +1538,7 @@ impl VM {
             let receiver = self.generate_constructor_receiver(new_target, is_base)?;
 
             // Reuse function handle for receiver
-            let closure_ptr = closure_handle.get_();
+            let closure_ptr = *closure_handle;
             let function_ptr = closure_ptr.function_ptr();
 
             let mut receiver_handle = closure_handle.cast::<Value>();
@@ -1563,7 +1562,7 @@ impl VM {
             )?;
 
             // Set the new target if one exists
-            self.set_new_target(function_ptr, new_target.get_());
+            self.set_new_target(function_ptr, *new_target);
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered. May allocate.
@@ -1603,7 +1602,7 @@ impl VM {
                 let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx());
                 let arguments = self.prepare_rust_runtime_args(args);
                 let return_value = proxy.to_handle().call(self.cx(), receiver, &arguments)?;
-                unsafe { *return_value_address = return_value.get() };
+                unsafe { *return_value_address = *return_value };
                 return Ok(());
             }
             CallableObject::Error(error) => return Err(error),
@@ -1617,7 +1616,7 @@ impl VM {
                 // Get the receiver to use. May allocate.
                 let closure_handle = closure_ptr.to_handle();
                 let receiver = self.generate_receiver(receiver, function_ptr)?;
-                let closure_ptr = closure_handle.get_();
+                let closure_ptr = *closure_handle;
 
                 // Reuse function handle for receiver
                 let mut receiver_handle = closure_handle.cast::<Value>();
@@ -1630,14 +1629,14 @@ impl VM {
             })?;
 
             // Set the return value from the Rust runtime call
-            unsafe { *return_value_address = return_value.get() };
+            unsafe { *return_value_address = *return_value };
         } else {
             // Otherwise this is a call to a JS function in the VM.
 
             // Get the receiver to use. May allocate.
             let closure_handle = closure_ptr.to_handle();
             let receiver = self.generate_receiver(receiver, function_ptr)?;
-            let closure_ptr = closure_handle.get_();
+            let closure_ptr = *closure_handle;
 
             // Set up the stack frame for the function call. Iterator should be over args in reverse
             // order.
@@ -1699,7 +1698,7 @@ impl VM {
                 let return_value = proxy.construct(self.cx(), &arguments, new_target)?;
 
                 // Can directly return value as proxy constructor is guaranteed to return an object
-                unsafe { *return_value_address = return_value.get_().into() };
+                unsafe { *return_value_address = *return_value.as_value() };
 
                 return Ok(());
             }
@@ -1731,7 +1730,7 @@ impl VM {
                     Ok(return_value.as_object())
                 })?;
 
-            return_value.get_()
+            *return_value
         } else {
             // Otherwise this is a call to a JS function in the VM.
             let closure_handle = closure_ptr.to_handle();
@@ -1741,7 +1740,7 @@ impl VM {
             let is_base = function_ptr.is_base_constructor();
             let receiver = self.generate_constructor_receiver(new_target, is_base)?;
 
-            let closure_ptr = closure_handle.get_();
+            let closure_ptr = *closure_handle;
             let mut receiver_handle = closure_handle.cast::<Value>();
             receiver_handle.replace(receiver);
 
@@ -1775,7 +1774,7 @@ impl VM {
             }
 
             // Set the new target if one exists
-            self.set_new_target(function_handle.get_(), new_target.get_());
+            self.set_new_target(*function_handle, *new_target);
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
@@ -1787,8 +1786,7 @@ impl VM {
             if return_value.is_object() {
                 return_value.as_object()
             } else {
-                self.constructor_non_object_return_value(receiver_handle, is_base)?
-                    .get_()
+                *self.constructor_non_object_return_value(receiver_handle, is_base)?
             }
         };
 
@@ -2166,11 +2164,11 @@ impl VM {
             receiver
         } else if receiver.is_nullish() {
             // Global object is used if receiver is nullish
-            function.realm_ptr().global_object_ptr().into()
+            function.realm_ptr().global_object_ptr().as_value()
         } else {
             let receiver = receiver.to_handle(self.cx());
             let receiver_object = to_object(self.cx(), receiver)?;
-            receiver_object.get_().into()
+            *receiver_object.as_value()
         };
 
         Ok(value)
@@ -2287,7 +2285,7 @@ impl VM {
 
         // Allocates
         let result = perform_eval(self.cx(), arg, is_strict_caller, Some(scope), flags)?;
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2322,10 +2320,11 @@ impl VM {
             .as_object();
 
         // Call the super constructor
-        let this_value = self.construct_from_rust(super_constructor.into(), &args, new_target)?;
+        let this_value =
+            self.construct_from_rust(super_constructor.as_value(), &args, new_target)?;
 
         // Store result of super call to the `this` register, which will be returned at end of call
-        self.write_register(Register::<W>::this(), this_value.get_().into());
+        self.write_register(Register::<W>::this(), *this_value.as_value());
 
         Ok(())
     }
@@ -2415,23 +2414,20 @@ impl VM {
             let global_object = self.closure().global_object();
 
             // Must first check if it is a lexical name in one of the realm's global scopes
-            let value = if let Some(value) = self
-                .closure()
-                .realm()
-                .get_lexical_name(name.as_flat().get_())
-            {
-                value
-            } else if has_property(cx, global_object, name_key)? {
-                // Otherwise might be a property in the global object
-                get(cx, global_object, name_key)?.get()
-            } else if error_on_unresolved {
-                // Error if property is not found
-                return err_not_defined(cx, name);
-            } else {
-                // If not erroring, return undefined for unresolved names
-                self.write_register(dest, Value::undefined());
-                return Ok(());
-            };
+            let value =
+                if let Some(value) = self.closure().realm().get_lexical_name(*name.as_flat()) {
+                    value
+                } else if has_property(cx, global_object, name_key)? {
+                    // Otherwise might be a property in the global object
+                    *get(cx, global_object, name_key)?
+                } else if error_on_unresolved {
+                    // Error if property is not found
+                    return err_not_defined(cx, name);
+                } else {
+                    // If not erroring, return undefined for unresolved names
+                    self.write_register(dest, Value::undefined());
+                    return Ok(());
+                };
 
             self.write_register(dest, value);
 
@@ -2457,23 +2453,24 @@ impl VM {
             let mut global_object = self.closure().global_object();
 
             // First set the global lexical binding with the given name if it exists
-            let success = if self.closure().realm().set_lexical_name(
-                self.cx(),
-                name.as_flat().get_(),
-                value.get(),
-            )? {
-                true
-            } else if has_property(cx, global_object, name_key)? {
-                // Otherwise if there is a global var with the given name then set the property on
-                // the global object.
-                global_object.set(cx, name_key, value, global_object.into())?
-            } else if self.closure().function_ptr().is_strict() {
-                // Otherwise if in strict mode, error on unresolved name
-                return err_not_defined(cx, name);
-            } else {
-                // Otherwise in sloppy mode create a new global property
-                return set(cx, global_object, name_key, value, false);
-            };
+            let success =
+                if self
+                    .closure()
+                    .realm()
+                    .set_lexical_name(self.cx(), *name.as_flat(), *value)?
+                {
+                    true
+                } else if has_property(cx, global_object, name_key)? {
+                    // Otherwise if there is a global var with the given name then set the property on
+                    // the global object.
+                    global_object.set(cx, name_key, value, global_object.as_value())?
+                } else if self.closure().function_ptr().is_strict() {
+                    // Otherwise if in strict mode, error on unresolved name
+                    return err_not_defined(cx, name);
+                } else {
+                    // Otherwise in sloppy mode create a new global property
+                    return set(cx, global_object, name_key, value, false);
+                };
 
             // If property set failed and in strict mode then error, otherwise silently ignore
             // failure in sloppy mode.
@@ -2523,7 +2520,7 @@ impl VM {
             let scope = self.scope().to_handle();
 
             if let Some(value) = scope.lookup(cx, name)? {
-                self.write_register(dest, value.get());
+                self.write_register(dest, *value);
                 Ok(())
             } else {
                 if error_on_unresolved {
@@ -2582,7 +2579,7 @@ impl VM {
         // May allocate
         let result = eval_add(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2596,7 +2593,7 @@ impl VM {
         // May allocate
         let result = eval_subtract(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2610,7 +2607,7 @@ impl VM {
         // May allocate
         let result = eval_multiply(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2624,7 +2621,7 @@ impl VM {
         // May allocate
         let result = eval_divide(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2638,7 +2635,7 @@ impl VM {
         // May allocate
         let result = eval_remainder(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2652,7 +2649,7 @@ impl VM {
         // May allocate
         let result = eval_exponentiation(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2666,7 +2663,7 @@ impl VM {
         // May allocate
         let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2680,7 +2677,7 @@ impl VM {
         // May allocate
         let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2694,7 +2691,7 @@ impl VM {
         // May allocate
         let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2708,7 +2705,7 @@ impl VM {
         // May allocate
         let result = eval_shift_left(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2725,7 +2722,7 @@ impl VM {
         // May allocate
         let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2742,7 +2739,7 @@ impl VM {
         // May allocate
         let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2814,7 +2811,7 @@ impl VM {
         // May allocate
         let result = eval_less_than(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2831,7 +2828,7 @@ impl VM {
         // May allocate
         let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2848,7 +2845,7 @@ impl VM {
         // May allocate
         let result = eval_greater_than(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2865,7 +2862,7 @@ impl VM {
         // May allocate
         let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2878,7 +2875,7 @@ impl VM {
         // May allocate
         let result = eval_negate(self.cx(), value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2950,7 +2947,7 @@ impl VM {
         // May allocate
         let result = eval_bitwise_not(self.cx(), value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -2963,7 +2960,7 @@ impl VM {
         // May allocate
         let result = eval_typeof(self.cx(), value);
 
-        self.write_register(dest, result.cast::<Value>().get());
+        self.write_register(dest, *result.as_value());
     }
 
     #[inline]
@@ -3005,7 +3002,7 @@ impl VM {
         // May allocate
         let result = to_number(self.cx(), value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3018,7 +3015,7 @@ impl VM {
         // May allocate
         let result = to_numeric(self.cx(), value)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3031,7 +3028,7 @@ impl VM {
         // May allocate
         let result = to_string(self.cx(), value)?;
 
-        self.write_register(dest, result.get_().into());
+        self.write_register(dest, *result.as_value());
 
         Ok(())
     }
@@ -3047,7 +3044,7 @@ impl VM {
         // May allocate
         let result = to_property_key(self.cx(), value)?;
 
-        self.write_register(dest, result.cast::<Value>().get());
+        self.write_register(dest, *result.cast::<Value>());
 
         Ok(())
     }
@@ -3060,7 +3057,7 @@ impl VM {
         // May allocate
         let result = to_object(self.cx(), value)?;
 
-        self.write_register(dest, result.get_().into());
+        self.write_register(dest, *result.as_value());
 
         Ok(())
     }
@@ -3076,7 +3073,7 @@ impl VM {
         // Allocates
         let closure = Closure::new(self.cx(), func, scope);
 
-        self.write_register(dest, Value::object(closure.get_().cast()));
+        self.write_register(dest, *closure.as_value());
     }
 
     #[inline]
@@ -3091,7 +3088,7 @@ impl VM {
         let proto = self.cx().get_intrinsic(Intrinsic::AsyncFunctionPrototype);
         let closure = Closure::new_with_proto(self.cx(), func, scope, proto);
 
-        self.write_register(dest, Value::object(closure.get_().cast()));
+        self.write_register(dest, *closure.as_value());
     }
 
     #[inline]
@@ -3113,7 +3110,7 @@ impl VM {
 
         GeneratorPrototype::install_on_generator_function(self.cx(), closure)?;
 
-        self.write_register(dest, Value::object(closure.get_().cast()));
+        self.write_register(dest, *closure.as_value());
 
         Ok(())
     }
@@ -3137,7 +3134,7 @@ impl VM {
 
         AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure)?;
 
-        self.write_register(dest, Value::object(closure.get_().cast()));
+        self.write_register(dest, *closure.as_value());
 
         Ok(())
     }
@@ -3149,7 +3146,7 @@ impl VM {
         // Allocates
         let object = ordinary_object_create(self.cx());
 
-        self.write_register(dest, object.cast::<Value>().get());
+        self.write_register(dest, *object.as_value());
     }
 
     #[inline]
@@ -3159,7 +3156,7 @@ impl VM {
         // Allocates
         let array = must!(array_create(self.cx(), 0, None));
 
-        self.write_register(dest, array.cast::<Value>().get());
+        self.write_register(dest, *array.as_value());
     }
 
     #[inline]
@@ -3174,7 +3171,7 @@ impl VM {
         // Allocates
         let regexp = RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp)?;
 
-        self.write_register(dest, Value::object(regexp.get_().cast()));
+        self.write_register(dest, *regexp.as_value());
 
         Ok(())
     }
@@ -3198,7 +3195,7 @@ impl VM {
         let arguments_object =
             MappedArgumentsObject::new(self.cx(), closure, &arguments, scope, num_parameters);
 
-        self.write_register(dest, arguments_object.cast::<Value>().get());
+        self.write_register(dest, *arguments_object.as_value());
     }
 
     #[inline]
@@ -3219,7 +3216,7 @@ impl VM {
         // Allocates
         let arguments_object = create_unmapped_arguments_object(self.cx(), &arguments);
 
-        self.write_register(dest, arguments_object.get());
+        self.write_register(dest, *arguments_object);
     }
 
     #[inline]
@@ -3258,7 +3255,7 @@ impl VM {
             &method_arguments,
         )?;
 
-        self.write_register(dest, constructor.cast::<Value>().get());
+        self.write_register(dest, *constructor.as_value());
 
         Ok(())
     }
@@ -3272,7 +3269,7 @@ impl VM {
         // Allocates
         let accessor = Accessor::new(self.cx(), Some(getter), Some(setter));
 
-        self.write_register(dest, Value::heap_item(accessor.get_().as_heap_item()));
+        self.write_register(dest, Value::heap_item(accessor.as_heap_item()));
     }
 
     #[inline]
@@ -3286,7 +3283,7 @@ impl VM {
         // Allocates
         let private_symbol = SymbolValue::new(self.cx(), Some(name), /* is_private */ true);
 
-        self.write_register(dest, private_symbol.get_().into());
+        self.write_register(dest, (*private_symbol).into());
     }
 
     #[inline]
@@ -3312,7 +3309,7 @@ impl VM {
 
         let result = coerced_object.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3421,7 +3418,7 @@ impl VM {
 
         let result = coerced_object.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3500,7 +3497,7 @@ impl VM {
 
         let result = home_prototype.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3531,7 +3528,7 @@ impl VM {
 
         let result = home_prototype.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3620,7 +3617,7 @@ impl VM {
         let coerced_object = to_object(self.cx(), object)?;
         let result = private_get(self.cx(), coerced_object, key)?;
 
-        self.write_register(dest, result.get());
+        self.write_register(dest, *result);
 
         Ok(())
     }
@@ -3731,7 +3728,7 @@ impl VM {
         } else if !is_callable(function) {
             return type_error(self.cx(), "value is not a function");
         } else {
-            self.write_register(dest, function.get());
+            self.write_register(dest, *function);
         }
 
         Ok(())
@@ -3746,10 +3743,10 @@ impl VM {
             .cast::<ScopeNames>();
 
         // Allocates
-        let lexical_scope = Scope::new_lexical(self.cx(), scope, scope_names).get_();
+        let lexical_scope = Scope::new_lexical(self.cx(), scope, scope_names);
 
         // Write the new scope to the stack
-        *self.stack_frame().scope_mut() = lexical_scope;
+        *self.stack_frame().scope_mut() = *lexical_scope;
     }
 
     #[inline]
@@ -3761,10 +3758,10 @@ impl VM {
             .cast::<ScopeNames>();
 
         // Allocates
-        let function_scope = Scope::new_function(self.cx(), scope, scope_names).get_();
+        let function_scope = Scope::new_function(self.cx(), scope, scope_names);
 
         // Write the new scope to the stack
-        *self.stack_frame().scope_mut() = function_scope;
+        *self.stack_frame().scope_mut() = *function_scope;
     }
 
     #[inline]
@@ -3782,10 +3779,10 @@ impl VM {
 
         // Allocates
         let object = to_object(self.cx(), object)?;
-        let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object).get_();
+        let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object);
 
         // Write the new scope to the stack
-        *self.stack_frame().scope_mut() = lexical_scope;
+        *self.stack_frame().scope_mut() = *lexical_scope;
 
         Ok(())
     }
@@ -3956,7 +3953,7 @@ impl VM {
             }
         }
 
-        self.write_register(dest, rest_array.cast::<Value>().get());
+        self.write_register(dest, *rest_array.as_value());
     }
 
     #[inline]
@@ -3974,7 +3971,7 @@ impl VM {
 
         // Return null if there is no prototype
         let super_constructor = super_constructor
-            .map(|o| o.get_().into())
+            .map(|o| *o.as_value())
             .unwrap_or(Value::null());
 
         self.write_register(dest, super_constructor);
@@ -4113,8 +4110,8 @@ impl VM {
         // May allocate
         let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Sync, None)?;
 
-        self.write_register(iterator_dest, iterator_result.iterator.get_().into());
-        self.write_register(next_method_dest, iterator_result.next_method.get());
+        self.write_register(iterator_dest, *iterator_result.iterator.as_value());
+        self.write_register(next_method_dest, *iterator_result.next_method);
 
         Ok(())
     }
@@ -4131,8 +4128,8 @@ impl VM {
         // May allocate
         let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Async, None)?;
 
-        self.write_register(iterator_dest, iterator_result.iterator.get_().into());
-        self.write_register(next_method_dest, iterator_result.next_method.get());
+        self.write_register(iterator_dest, *iterator_result.iterator.as_value());
+        self.write_register(next_method_dest, *iterator_result.next_method);
 
         Ok(())
     }
@@ -4190,7 +4187,7 @@ impl VM {
             let value = iterator_value(self.cx(), iterator_result)?;
 
             self.write_register(is_done_dest, Value::bool(false));
-            self.write_register(value_dest, value.get());
+            self.write_register(value_dest, *value);
         }
 
         Ok(())
@@ -4232,7 +4229,7 @@ impl VM {
         // Check if there is a return method and call it
         if let Some(return_method) = return_method {
             let return_result = call_object(self.cx(), return_method, iterator, &[])?;
-            self.write_register(return_result_dest, return_result.get());
+            self.write_register(return_result_dest, *return_result);
         }
 
         self.write_register(has_return_method, Value::bool(return_method.is_some()));
@@ -4262,7 +4259,7 @@ impl VM {
         // Allocates
         let promise = PromiseObject::new_pending(self.cx()).as_object();
 
-        self.write_register(dest, promise.into());
+        self.write_register(dest, promise.as_value())
     }
 
     #[inline]
@@ -4270,7 +4267,7 @@ impl VM {
         let promise = self.read_register_to_handle(instr.promise());
         let value = self.read_register_to_handle(instr.value());
 
-        debug_assert!(is_promise(promise.get()));
+        debug_assert!(is_promise(*promise));
         let promise = promise.as_object().cast::<PromiseObject>();
 
         resolve(self.cx(), promise, value);
@@ -4298,7 +4295,7 @@ impl VM {
         let mut module = module_scope.module_scope_module().to_handle();
         let object = module.get_import_meta_object(self.cx());
 
-        self.write_register(dest, object.into());
+        self.write_register(dest, object.as_value());
     }
 
     #[inline]
@@ -4320,7 +4317,7 @@ impl VM {
         // May allocate
         let namespace_promise = dynamic_import(self.cx(), source_file_path, specifier)?;
 
-        self.write_register(dest, namespace_promise.get_().into());
+        self.write_register(dest, *namespace_promise.as_value());
 
         Ok(())
     }

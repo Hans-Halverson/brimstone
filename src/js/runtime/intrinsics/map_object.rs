@@ -40,7 +40,7 @@ impl MapObject {
             Intrinsic::MapPrototype,
         )?;
 
-        set_uninit!(object.map_data, map_data.get_());
+        set_uninit!(object.map_data, *map_data);
 
         Ok(object.to_handle())
     }
@@ -60,7 +60,7 @@ impl Handle<MapObject> {
 
         self.map_data_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(key_handle.get(), value.get())
+            .insert_without_growing(key_handle.get(), *value)
     }
 }
 

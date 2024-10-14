@@ -509,7 +509,7 @@ impl Handle<StringValue> {
             }
             StringWidth::TwoByte => {
                 // Two byte slow path - must convert to valid str ranges for to_lowercase function
-                let iter = CodePointIterator::from_two_byte(flat_string.get_());
+                let iter = CodePointIterator::from_two_byte(*flat_string);
                 let lowercased = map_valid_substrings(iter, |str| str.to_lowercase());
 
                 FlatString::from_wtf8(cx, lowercased.as_bytes()).to_handle()
@@ -538,9 +538,9 @@ impl Handle<StringValue> {
                     return FlatString::new_one_byte(cx, &uppercased).to_handle();
                 }
 
-                CodePointIterator::from_one_byte(flat_string.get_())
+                CodePointIterator::from_one_byte(*flat_string)
             }
-            StringWidth::TwoByte => CodePointIterator::from_two_byte(flat_string.get_()),
+            StringWidth::TwoByte => CodePointIterator::from_two_byte(*flat_string),
         };
 
         // Slow path - must convert to valid str ranges for to_uppercase function
@@ -570,12 +570,8 @@ impl Handle<StringValue> {
         let flat_string = self.flatten();
 
         match flat_string.width() {
-            StringWidth::OneByte => {
-                CodeUnitIterator::from_one_byte_slice(flat_string.get_(), start, end)
-            }
-            StringWidth::TwoByte => {
-                CodeUnitIterator::from_two_byte_slice(flat_string.get_(), start, end)
-            }
+            StringWidth::OneByte => CodeUnitIterator::from_one_byte_slice(*flat_string, start, end),
+            StringWidth::TwoByte => CodeUnitIterator::from_two_byte_slice(*flat_string, start, end),
         }
     }
 
@@ -586,10 +582,10 @@ impl Handle<StringValue> {
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                CodePointIterator::from_one_byte_slice(flat_string.get_(), start, end)
+                CodePointIterator::from_one_byte_slice(*flat_string, start, end)
             }
             StringWidth::TwoByte => {
-                CodePointIterator::from_two_byte_slice(flat_string.get_(), start, end)
+                CodePointIterator::from_two_byte_slice(*flat_string, start, end)
             }
         }
     }
@@ -634,7 +630,7 @@ impl Ord for Handle<StringValue> {
         let flat_string_1 = self.flatten();
         let flat_string_2 = other.flatten();
 
-        flat_string_1.get_().cmp(&flat_string_2.get_())
+        flat_string_1.cmp(&flat_string_2)
     }
 }
 
@@ -647,6 +643,12 @@ impl From<Handle<StringValue>> for Handle<ObjectValue> {
 impl fmt::Display for HeapPtr<StringValue> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_handle().fmt(f)
+    }
+}
+
+impl fmt::Display for Handle<FlatString> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
@@ -1137,7 +1139,7 @@ impl PartialEq for HeapPtr<FlatString> {
 
 impl PartialEq for Handle<FlatString> {
     fn eq(&self, other: &Self) -> bool {
-        self.get_().eq(&other.get_())
+        (**self).eq(&**other)
     }
 }
 
@@ -1153,7 +1155,7 @@ impl hash::Hash for HeapPtr<FlatString> {
 
 impl hash::Hash for Handle<FlatString> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.get_().hash(state)
+        (**self).hash(state)
     }
 }
 
@@ -1194,7 +1196,7 @@ impl Ord for HeapPtr<FlatString> {
 
 impl Ord for Handle<FlatString> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.get_().cmp(&other.get_())
+        (**self).cmp(&**other)
     }
 }
 
@@ -1234,8 +1236,8 @@ impl ConcatString {
         set_uninit!(string.len, len);
         set_uninit!(string.kind, StringKind::Concat);
         set_uninit!(string.width, width);
-        set_uninit!(string.left, left.get_());
-        set_uninit!(string.right, Some(right.get_()));
+        set_uninit!(string.left, *left);
+        set_uninit!(string.right, Some(*right));
 
         string.as_string().to_handle()
     }
@@ -1425,7 +1427,7 @@ pub struct SafeCodeUnitIterator {
 
 impl SafeCodeUnitIterator {
     fn from_string(string: Handle<FlatString>) -> Self {
-        SafeCodeUnitIterator { string: string.get_(), index: 0 }
+        SafeCodeUnitIterator { string: *string, index: 0 }
     }
 }
 

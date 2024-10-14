@@ -163,7 +163,7 @@ pub fn array_species_create(
 
         if !this_realm_ptr.ptr_eq(&constructor_realm)
             && same_object_value(
-                constructor.as_object().get_(),
+                *constructor.as_object(),
                 constructor_realm.get_intrinsic_ptr(Intrinsic::ArrayConstructor),
             )
         {

@@ -649,7 +649,7 @@ impl JSONSerializer {
     }
 
     fn check_for_cycle(&mut self, cx: Context, value: Handle<ObjectValue>) -> EvalResult<()> {
-        let value_ptr = value.get_();
+        let value_ptr = *value;
         let has_cycle = self
             .stack
             .iter()

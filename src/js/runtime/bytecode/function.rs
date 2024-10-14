@@ -48,8 +48,8 @@ impl Closure {
         let mut object =
             object_create::<Closure>(cx, ObjectKind::Closure, Intrinsic::FunctionPrototype);
 
-        set_uninit!(object.function, function.get_());
-        set_uninit!(object.scope, scope.get_());
+        set_uninit!(object.function, *function);
+        set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
         Self::init_common_properties(cx, closure, function, cx.current_realm());
@@ -65,8 +65,8 @@ impl Closure {
     ) -> Handle<Closure> {
         let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
 
-        set_uninit!(object.function, function.get_());
-        set_uninit!(object.scope, scope.get_());
+        set_uninit!(object.function, *function);
+        set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
         Self::init_common_properties(cx, closure, function, cx.current_realm());
@@ -83,8 +83,8 @@ impl Closure {
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
         let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, proto);
 
-        set_uninit!(object.function, function.get_());
-        set_uninit!(object.scope, scope.get_());
+        set_uninit!(object.function, *function);
+        set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
         Self::init_common_properties(cx, closure, function, realm);
@@ -100,8 +100,8 @@ impl Closure {
     ) -> Handle<Closure> {
         let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
 
-        set_uninit!(object.function, function.get_());
-        set_uninit!(object.scope, scope.get_());
+        set_uninit!(object.function, *function);
+        set_uninit!(object.scope, *scope);
 
         // Does not need to the `name` and `length` properties as these will be set by caller
         object.to_handle()
@@ -271,9 +271,9 @@ impl BytecodeFunction {
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
-        set_uninit!(object.constant_table, constant_table.map(|c| c.get_()));
-        set_uninit!(object.exception_handlers, exception_handlers.map(|h| h.get_()));
-        set_uninit!(object.realm, realm.get_());
+        set_uninit!(object.constant_table, constant_table.map(|c| *c));
+        set_uninit!(object.exception_handlers, exception_handlers.map(|h| *h));
+        set_uninit!(object.realm, *realm);
         set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, num_parameters);
         set_uninit!(object.function_length, function_length);
@@ -284,8 +284,8 @@ impl BytecodeFunction {
         set_uninit!(object.is_async, is_async);
         set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.generator_index, generator_index);
-        set_uninit!(object.name, name.map(|n| n.get_()));
-        set_uninit!(object.source_file, source_file.map(|f| f.get_()));
+        set_uninit!(object.name, name.map(|n| *n));
+        set_uninit!(object.source_file, source_file.map(|f| *f));
         set_uninit!(object.source_range, source_range);
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_slice(&bytecode);
@@ -308,7 +308,7 @@ impl BytecodeFunction {
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
-        set_uninit!(object.realm, realm.get_());
+        set_uninit!(object.realm, *realm);
         set_uninit!(object.num_registers, 0);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.function_length, 0);
@@ -319,7 +319,7 @@ impl BytecodeFunction {
         set_uninit!(object.is_async, false);
         set_uninit!(object.new_target_index, None);
         set_uninit!(object.generator_index, None);
-        set_uninit!(object.name, name.map(|n| n.get_()));
+        set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, None);
         set_uninit!(object.source_range, 0..0);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));

@@ -79,7 +79,7 @@ impl RegExpObject {
             Intrinsic::RegExpPrototype
         ));
 
-        set_uninit!(object.compiled_regexp, compiled_regexp.get_());
+        set_uninit!(object.compiled_regexp, *compiled_regexp);
 
         let object = object.to_handle();
 
@@ -262,7 +262,7 @@ pub fn regexp_create(
 
             let compiled_regexp = compile_regexp(cx, &regexp, source);
 
-            regexp_object.compiled_regexp = compiled_regexp.get_();
+            regexp_object.compiled_regexp = *compiled_regexp;
         }
     }
 

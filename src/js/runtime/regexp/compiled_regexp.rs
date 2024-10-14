@@ -72,7 +72,7 @@ impl CompiledRegExpObject {
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size);
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::CompiledRegExpObject));
-        set_uninit!(object.escaped_pattern_source, escaped_pattern_source.get_());
+        set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
         set_uninit!(
@@ -88,7 +88,7 @@ impl CompiledRegExpObject {
         // Initialize capture group strings
         let capture_group_ptrs = capture_group_handles
             .into_iter()
-            .map(|capture_group| capture_group.map(|name_string| name_string.get_()))
+            .map(|capture_group| capture_group.map(|name_string| *name_string))
             .collect::<Vec<_>>();
         object
             .capture_groups_as_slice_mut()

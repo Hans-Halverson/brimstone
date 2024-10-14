@@ -181,7 +181,7 @@ impl ObjectDescriptor {
     {
         let mut desc = cx.alloc_uninit::<ObjectDescriptor>();
 
-        set_uninit!(desc.descriptor, descriptor.get_());
+        set_uninit!(desc.descriptor, *descriptor);
         set_uninit!(desc.vtable, extract_object_vtable::<Handle<T>>());
         set_uninit!(desc.kind, kind);
         set_uninit!(desc.flags, flags);
@@ -232,14 +232,14 @@ impl BaseDescriptors {
             ObjectKind::Descriptor,
             DescFlags::empty(),
         );
-        descriptor.descriptor = descriptor.get_();
-        descriptors[ObjectKind::Descriptor as usize] = descriptor.get_();
+        descriptor.descriptor = *descriptor;
+        descriptors[ObjectKind::Descriptor as usize] = *descriptor;
 
         macro_rules! register_descriptor {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
                 let desc =
                     ObjectDescriptor::new::<$object_ty>(cx, descriptor, $object_kind, $flags);
-                descriptors[$object_kind as usize] = desc.get_();
+                descriptors[$object_kind as usize] = *desc;
             };
         }
 

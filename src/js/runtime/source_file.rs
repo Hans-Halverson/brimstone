@@ -45,8 +45,8 @@ impl SourceFile {
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
-        set_uninit!(scope.path, path.get_());
-        set_uninit!(scope.display_name, display_name.map(|n| n.get_()));
+        set_uninit!(scope.path, *path);
+        set_uninit!(scope.display_name, display_name.map(|n| *n));
 
         scope.contents.init_from_slice(source.contents.as_bytes());
 

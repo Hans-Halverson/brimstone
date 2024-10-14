@@ -44,13 +44,13 @@ impl GlobalNames {
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size);
 
         set_uninit!(global_names.descriptor, cx.base_descriptors.get(ObjectKind::GlobalNames));
-        set_uninit!(global_names.scope_names, scope_names.get_());
+        set_uninit!(global_names.scope_names, *scope_names);
         global_names.num_functions = funcs.len();
 
         // Place function names first in the names array
         global_names.names.init_with_uninit(num_names);
         for (i, name) in funcs.iter().chain(vars.iter()).enumerate() {
-            global_names.names.set_unchecked(i, name.get_());
+            global_names.names.set_unchecked(i, **name);
         }
 
         global_names.to_handle()
@@ -146,17 +146,11 @@ fn global_declaration_instantiation(
 
         if i < global_names.num_functions {
             if !can_declare_global_function(cx, global_object, name_key)? {
-                return type_error(
-                    cx,
-                    &format!("cannot declare global function {}", name_handle.get_()),
-                );
+                return type_error(cx, &format!("cannot declare global function {}", *name_handle));
             }
         } else {
             if !can_declare_global_var(cx, global_object, name_key)? {
-                return type_error(
-                    cx,
-                    &format!("cannot declare global var {}", name_handle.get_()),
-                );
+                return type_error(cx, &format!("cannot declare global var {}", *name_handle));
             }
         }
     }

@@ -234,7 +234,7 @@ impl PromisePrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if !is_promise(this_value.get()) {
+        if !is_promise(*this_value) {
             return type_error(cx, "Promise.prototype.then called on non-promise");
         }
         let promise = this_value.as_object().cast::<PromiseObject>();

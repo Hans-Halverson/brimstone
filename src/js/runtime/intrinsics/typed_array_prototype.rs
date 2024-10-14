@@ -360,7 +360,7 @@ impl TypedArrayPrototype {
             let arguments = [value, index_value, object.into()];
 
             let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
-            if !to_boolean(test_result.get()) {
+            if !to_boolean(*test_result) {
                 return Ok(cx.bool(false));
             }
         }
@@ -471,7 +471,7 @@ impl TypedArrayPrototype {
 
             let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
 
-            if to_boolean(is_selected.get()) {
+            if to_boolean(*is_selected) {
                 kept_values.push(value)
             }
         }
@@ -1120,7 +1120,7 @@ impl TypedArrayPrototype {
         }
 
         let source_byte_index =
-            if same_object_value(source_buffer.get_().into(), target_buffer.get_().into()) {
+            if same_object_value(*source_buffer.as_object(), *target_buffer.as_object()) {
                 let source_byte_length = typed_array_byte_length(&source_record);
                 source_buffer =
                     clone_array_buffer(cx, source_buffer, source_byte_offset, source_byte_length)?;
@@ -1145,7 +1145,7 @@ impl TypedArrayPrototype {
                 while to_byte_index < limit {
                     // Convert between types. May allocate but does not invoke user code.
                     let element_value =
-                        source.read_element_value(cx, source_buffer.get_(), from_byte_index);
+                        source.read_element_value(cx, *source_buffer, from_byte_index);
 
                     target.write_element_value(cx, to_byte_index, element_value)?;
 
@@ -1338,7 +1338,7 @@ impl TypedArrayPrototype {
             let arguments = [value, index_value, object.into()];
 
             let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
-            if to_boolean(test_result.get()) {
+            if to_boolean(*test_result) {
                 return Ok(cx.bool(true));
             }
         }

@@ -55,7 +55,7 @@ impl Handle<ObjectValue> {
         cx: Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if same_opt_object_value(self.prototype(), new_prototype.map(|p| p.get_())) {
+        if same_opt_object_value(self.prototype(), new_prototype.map(|p| *p)) {
             return Ok(true);
         }
 
@@ -88,7 +88,7 @@ impl Handle<ObjectValue> {
             }
         }
 
-        self.set_prototype(new_prototype.map(|p| p.get_()));
+        self.set_prototype(new_prototype.map(|p| *p));
 
         Ok(true)
     }
@@ -370,11 +370,11 @@ pub fn validate_and_apply_property_descriptor(
                 let mut accessor_value = Accessor::from_value(property.value());
 
                 if desc.has_get {
-                    accessor_value.get = desc.get.map(|x| x.get_());
+                    accessor_value.get = desc.get.map(|x| *x);
                 }
 
                 if desc.has_set {
-                    accessor_value.set = desc.set.map(|x| x.get_());
+                    accessor_value.set = desc.set.map(|x| *x);
                 }
             }
 
@@ -617,7 +617,7 @@ where
     let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
-    object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
+    object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
 
     object
 }
@@ -633,7 +633,7 @@ where
     let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
-    let proto = proto.map(|p| p.get_());
+    let proto = proto.map(|p| *p);
     object_ordinary_init(cx, object.into(), descriptor, proto);
 
     object
@@ -670,7 +670,7 @@ where
     let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
-    object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
+    object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
 
     Ok(object)
 }

@@ -567,7 +567,7 @@ pub fn eval_instanceof_expression(
     let instance_of_handler = get_method(cx, target, has_instance_key)?;
     if let Some(instance_of_handler) = instance_of_handler {
         let result = call_object(cx, instance_of_handler, target, &[value])?;
-        return Ok(to_boolean(result.get()));
+        return Ok(to_boolean(*result));
     }
 
     let target_object = target.as_object();

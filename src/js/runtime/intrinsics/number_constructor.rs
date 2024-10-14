@@ -193,7 +193,7 @@ impl NumberConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        Ok(cx.bool(is_integral_number(value.get())))
+        Ok(cx.bool(is_integral_number(*value)))
     }
 
     /// Number.isNaN (https://tc39.es/ecma262/#sec-number.isnan)
@@ -219,7 +219,7 @@ impl NumberConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        if !is_integral_number(value.get()) {
+        if !is_integral_number(*value) {
             return Ok(cx.bool(false));
         }
 

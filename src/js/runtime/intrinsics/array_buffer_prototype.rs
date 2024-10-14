@@ -122,7 +122,7 @@ impl ArrayBufferPrototype {
         let new_length_arg = get_argument(cx, arguments, 0);
         let new_byte_length = to_index(cx, new_length_arg)?;
 
-        throw_if_detached(cx, array_buffer.get_())?;
+        throw_if_detached(cx, *array_buffer)?;
 
         if new_byte_length > max_byte_length {
             return range_error(cx, "new length exceeds max byte length");
@@ -166,7 +166,7 @@ impl ArrayBufferPrototype {
     ) -> EvalResult<Handle<Value>> {
         let mut array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
-        throw_if_detached(cx, array_buffer.get_())?;
+        throw_if_detached(cx, *array_buffer)?;
 
         let length = array_buffer.byte_length() as u64;
 
@@ -218,7 +218,7 @@ impl ArrayBufferPrototype {
             return type_error(cx, "expected array buffer");
         };
 
-        throw_if_detached(cx, new_array_buffer.get_())?;
+        throw_if_detached(cx, *new_array_buffer)?;
 
         if new_array_buffer.ptr_eq(&array_buffer) {
             return type_error(cx, "constructor cannot return same array buffer");
@@ -227,7 +227,7 @@ impl ArrayBufferPrototype {
         }
 
         // Original array buffer may have become detached during previous calls
-        throw_if_detached(cx, array_buffer.get_())?;
+        throw_if_detached(cx, *array_buffer)?;
 
         // Copy data from original array buffer to new array buffer
         unsafe {

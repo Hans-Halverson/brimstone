@@ -39,7 +39,7 @@ impl ObjectPrototype {
         let mut object = object.as_object();
 
         let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
-        object_ordinary_init(cx, object.get_(), descriptor, None);
+        object_ordinary_init(cx, *object, descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
         object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm);

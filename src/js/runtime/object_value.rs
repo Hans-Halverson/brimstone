@@ -177,7 +177,7 @@ impl ObjectValue {
         let mut object = cx.alloc_uninit::<ObjectValue>();
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
-        set_uninit!(object.prototype, prototype.map(|p| p.get_()));
+        set_uninit!(object.prototype, prototype.map(|p| *p));
         set_uninit!(object.named_properties, cx.default_named_properties);
         set_uninit!(object.array_properties, cx.default_array_properties);
         set_uninit!(object.is_extensible_field, is_extensible);
@@ -201,14 +201,14 @@ impl ObjectValue {
         // Safe since get_mut does not allocate on managed heap, and property reference is
         // immediately cloned.
         self.named_properties
-            .get(&property_key.get())
+            .get(&property_key)
             .map(|property| Property::from_heap(cx, property))
     }
 
     pub fn has_private_element(&self, private_name: Handle<SymbolValue>) -> bool {
         let property_key = PropertyKey::symbol(private_name);
         // Safe since contains_key does not allocate on managed heap
-        self.named_properties.contains_key(&property_key.get())
+        self.named_properties.contains_key(&property_key)
     }
 
     // Property accessors and mutators
@@ -220,7 +220,7 @@ impl ObjectValue {
 
         // Safe since get does not allocate on managed heap
         self.named_properties
-            .get(&key.get())
+            .get(&key)
             .map(|property| Property::from_heap(cx, property))
     }
 
@@ -358,7 +358,7 @@ impl Handle<ObjectValue> {
         // Safe since insert does allocate on managed heap
         self.named_properties_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(key.get(), property.to_heap());
+            .insert_without_growing(*key, property.to_heap());
     }
 
     pub fn remove_property(&mut self, key: Handle<PropertyKey>) {
@@ -370,7 +370,7 @@ impl Handle<ObjectValue> {
         }
 
         // Removal is O(1) but leaves permanent tombstone
-        self.named_properties.remove(&key.get());
+        self.named_properties.remove(&key);
     }
 
     pub fn private_element_set(
@@ -384,7 +384,7 @@ impl Handle<ObjectValue> {
         // Safe since insert does not allocate on managed heap
         self.named_properties_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(property_key.get(), property.to_heap());
+            .insert_without_growing(*property_key, property.to_heap());
     }
 
     /// PrivateFieldAdd (https://tc39.es/ecma262/#sec-privatefieldadd)
@@ -402,7 +402,7 @@ impl Handle<ObjectValue> {
             let property_key = PropertyKey::symbol(private_name);
             self.named_properties_field()
                 .maybe_grow_for_insertion(cx)
-                .insert_without_growing(property_key.get(), private_property.to_heap());
+                .insert_without_growing(*property_key, private_property.to_heap());
 
             Ok(())
         }

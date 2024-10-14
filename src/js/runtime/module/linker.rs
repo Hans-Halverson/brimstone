@@ -115,7 +115,7 @@ impl GraphLinker {
                 let mut required_module = self.stack.pop().unwrap();
                 required_module.set_state(ModuleState::Linked);
 
-                if required_module.ptr_eq(&module.get_()) {
+                if required_module.ptr_eq(&module) {
                     break;
                 }
             }
@@ -143,12 +143,11 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
             let entry = ImportEntry::from_heap(heap_entry);
 
             let mut imported_module = module
-                .get_imported_module(entry.module_request.get_())
+                .get_imported_module(*entry.module_request)
                 .to_handle();
 
             if let Some(import_name) = entry.import_name {
-                let resolution =
-                    imported_module.resolve_export(cx, import_name.get_(), &mut vec![]);
+                let resolution = imported_module.resolve_export(cx, *import_name, &mut vec![]);
 
                 match resolution {
                     // Regular imports are linked to their corresponding export by referencing

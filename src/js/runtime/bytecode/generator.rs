@@ -131,7 +131,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         if self.all_functions.is_some() {
             FunctionVecField(&mut self.all_functions)
                 .maybe_grow_for_push(self.cx)
-                .push_without_growing(function.get_());
+                .push_without_growing(*function);
         }
     }
 
@@ -486,7 +486,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         );
 
         // Place the module in the first slot of its module scope
-        module_scope.set_heap_item_slot(0, module.get_().as_heap_item());
+        module_scope.set_heap_item_slot(0, module.as_heap_item());
 
         module
     }
@@ -848,7 +848,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let mut parent_constant_table = parent_function.constant_table_ptr().unwrap();
                 parent_constant_table.set_constant(
                     constant_index as usize,
-                    emit_result.bytecode_function.cast::<Value>().get(),
+                    Value::heap_item(emit_result.bytecode_function.as_heap_item()),
                 );
             }
             // Patch exported function into the module scope
@@ -867,7 +867,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                 // And place inside boxed value in the module scope
                 let mut boxed_value = module_scope.get_module_slot(slot_index);
-                boxed_value.set(closure.get_().into());
+                boxed_value.set(*closure.as_value());
             }
         }
 
@@ -9265,7 +9265,7 @@ impl<'a> BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'a> {
     }
 
     fn get(&self) -> HeapPtr<FunctionVec> {
-        self.0.as_ref().unwrap().get_()
+        **self.0.as_ref().unwrap()
     }
 
     fn set(&mut self, vec: HeapPtr<FunctionVec>) {

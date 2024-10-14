@@ -206,13 +206,13 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
     // Check if a promise is trying to resolve itself
     if same_value(resolution, promise.into()) {
         let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself");
-        promise.reject(cx, self_resolution_error.get());
+        promise.reject(cx, *self_resolution_error);
         return;
     }
 
     // Resolving to a non-object immediately fulfills the promise
     if !resolution.is_object() {
-        promise.resolve(cx, resolution.get());
+        promise.resolve(cx, *resolution);
         return;
     }
 
@@ -221,14 +221,14 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
     let then_value = match then_completion {
         Ok(value) => value,
         Err(error) => {
-            promise.reject(cx, error.get());
+            promise.reject(cx, *error);
             return;
         }
     };
 
     // If "then" is not callable, immediately fulfill the promise
     if !is_callable(then_value) {
-        promise.resolve(cx, resolution.get());
+        promise.resolve(cx, *resolution);
         return;
     }
 
@@ -241,9 +241,9 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
 
     // Otherwise enqueue "then" to be called
     cx.task_queue().enqueue_promise_then_settle_task(
-        then_value.as_object().get_(),
-        resolution.as_object().get_(),
-        promise.get_(),
+        *then_value.as_object(),
+        *resolution.as_object(),
+        *promise,
         realm,
     );
 }
@@ -276,14 +276,14 @@ impl Handle<PromiseObject> {
             PromiseState::Fulfilled { result } => {
                 cx.task_queue().enqueue_await_resume_task(
                     PromiseReactionKind::Fulfill,
-                    suspended_generator.get_(),
+                    *suspended_generator,
                     *result,
                 );
             }
             PromiseState::Rejected { result } => {
                 cx.task_queue().enqueue_await_resume_task(
                     PromiseReactionKind::Reject,
-                    suspended_generator.get_(),
+                    *suspended_generator,
                     *result,
                 );
             }
@@ -315,8 +315,8 @@ impl Handle<PromiseObject> {
                 enqueue_promise_then_reaction_task(
                     cx,
                     PromiseReactionKind::Fulfill,
-                    fulfill_handler.map(|h| h.get_()),
-                    capability.map(|c| c.get_()),
+                    fulfill_handler.map(|h| *h),
+                    capability.map(|c| *c),
                     *result,
                 );
             }
@@ -324,8 +324,8 @@ impl Handle<PromiseObject> {
                 enqueue_promise_then_reaction_task(
                     cx,
                     PromiseReactionKind::Reject,
-                    reject_handler.map(|h| h.get_()),
-                    capability.map(|c| c.get_()),
+                    reject_handler.map(|h| *h),
+                    capability.map(|c| *c),
                     *result,
                 );
             }
@@ -339,7 +339,7 @@ pub fn is_promise(value: Value) -> bool {
 }
 
 pub fn as_promise(value: Handle<Value>) -> Option<Handle<PromiseObject>> {
-    if is_promise(value.get()) {
+    if is_promise(*value) {
         Some(value.cast())
     } else {
         None
@@ -359,7 +359,7 @@ pub fn coerce_to_ordinary_promise(
         let value_constructor = get(cx, value.into(), cx.names.constructor())?;
         let promise_constructor = cx.get_intrinsic_ptr(Intrinsic::PromiseConstructor);
         if value_constructor.is_object()
-            && same_object_value(value_constructor.as_object().get_(), promise_constructor)
+            && same_object_value(*value_constructor.as_object(), promise_constructor)
         {
             return Ok(value);
         }
@@ -380,7 +380,7 @@ pub fn promise_resolve(
     result: Handle<Value>,
 ) -> EvalResult<Handle<ObjectValue>> {
     // If result is already a promise, return it if it was constructed with the same constructor.
-    if is_promise(result.get()) {
+    if is_promise(*result) {
         let result = result.as_object();
         let value_constructor = get(cx, result, cx.names.constructor())?;
         if same_value(value_constructor, constructor) {
@@ -427,9 +427,9 @@ impl PromiseReaction {
         set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
-            ReactionHandler::AwaitResume { suspended_generator: suspended_generator.get_() }
+            ReactionHandler::AwaitResume { suspended_generator: *suspended_generator }
         );
-        set_uninit!(reaction.next, next.map(|r| r.get_()));
+        set_uninit!(reaction.next, next.map(|r| *r));
 
         reaction
     }
@@ -447,12 +447,12 @@ impl PromiseReaction {
         set_uninit!(
             reaction.handler,
             ReactionHandler::Then {
-                fulfill_handler: fulfill_handler.map(|h| h.get_()),
-                reject_handler: reject_handler.map(|h| h.get_()),
-                capability: capability.map(|c| c.get_()),
+                fulfill_handler: fulfill_handler.map(|h| *h),
+                reject_handler: reject_handler.map(|h| *h),
+                capability: capability.map(|c| *c),
             }
         );
-        set_uninit!(reaction.next, next.map(|r| r.get_()));
+        set_uninit!(reaction.next, next.map(|r| *r));
 
         reaction
     }
@@ -516,7 +516,7 @@ impl PromiseCapability {
         }
 
         // Finally store the promise in the capability record, completing it
-        capability.promise = Some(promise.get_());
+        capability.promise = Some(*promise);
 
         Ok(capability)
     }
@@ -558,8 +558,8 @@ impl PromiseCapability {
         let resolve = get_argument(cx, arguments, 0);
         let reject = get_argument(cx, arguments, 1);
 
-        capability.resolve = resolve.get();
-        capability.reject = reject.get();
+        capability.resolve = *resolve;
+        capability.reject = *reject;
 
         Ok(cx.undefined())
     }

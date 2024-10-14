@@ -417,7 +417,7 @@ fn get_view_value<T>(
 
     let get_index_arg = get_argument(cx, arguments, 0);
     let get_index = to_index(cx, get_index_arg)?;
-    let is_little_endian = to_boolean(get_argument(cx, arguments, 1).get());
+    let is_little_endian = to_boolean(*get_argument(cx, arguments, 1));
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
     if is_view_out_of_bounds(&data_view_record) {
@@ -470,7 +470,7 @@ fn set_view_value<T>(
 
     let get_index_arg = get_argument(cx, arguments, 0);
     let get_index = to_index(cx, get_index_arg)?;
-    let is_little_endian = to_boolean(get_argument(cx, arguments, 2).get());
+    let is_little_endian = to_boolean(*get_argument(cx, arguments, 2));
 
     let value_arg = get_argument(cx, arguments, 1);
     let value = if content_type == ContentType::BigInt {

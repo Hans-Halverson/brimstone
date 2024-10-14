@@ -119,7 +119,7 @@ impl SourceTextModule {
             .iter_mut()
             .zip(requested_module_specifiers.iter())
         {
-            *dst = src.get_();
+            *dst = **src;
         }
 
         let loaded_modules =
@@ -137,13 +137,13 @@ impl SourceTextModule {
         set_uninit!(object.state, ModuleState::New);
         set_uninit!(object.has_top_level_await, has_top_level_await);
         set_uninit!(object.async_evaluation_index, None);
-        set_uninit!(object.program_function, program_function.get_());
-        set_uninit!(object.module_scope, module_scope.get_());
+        set_uninit!(object.program_function, *program_function);
+        set_uninit!(object.module_scope, *module_scope);
         set_uninit!(object.import_meta, None);
         set_uninit!(object.namespace_object, None);
         set_uninit!(object.exports, None);
-        set_uninit!(object.requested_module_specifiers, heap_requested_module_specifiers.get_());
-        set_uninit!(object.loaded_modules, loaded_modules.get_());
+        set_uninit!(object.requested_module_specifiers, *heap_requested_module_specifiers);
+        set_uninit!(object.loaded_modules, *loaded_modules);
         set_uninit!(object.dfs_index, 0);
         set_uninit!(object.dfs_ancestor_index, 0);
         set_uninit!(object.cycle_root, None);
@@ -528,7 +528,7 @@ impl HeapPtr<SourceTextModule> {
                     requested_module.get_exported_names(cx, &mut re_exported_names, visited_set);
 
                     for export_name in re_exported_names {
-                        if export_name.get_() != cx.names.default.as_string().as_flat() {
+                        if *export_name != cx.names.default.as_string().as_flat() {
                             exported_names.insert(export_name);
                         }
                     }
@@ -558,7 +558,7 @@ impl Handle<SourceTextModule> {
     ) -> bool {
         self.exports_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(export_name.get(), boxed_value_or_module.get_())
+            .insert_without_growing(*export_name, *boxed_value_or_module)
     }
 
     pub fn push_async_parent_module(
@@ -574,7 +574,7 @@ impl Handle<SourceTextModule> {
 
         self.async_parent_modules_field()
             .maybe_grow_for_push(cx)
-            .push_without_growing(parent_module.get_());
+            .push_without_growing(*parent_module);
     }
 
     /// GetModuleNamespace (https://tc39.es/ecma262/#sec-getmodulenamespace)
@@ -601,7 +601,7 @@ impl Handle<SourceTextModule> {
                 // First convert the export name to a PropertyKey
                 key_handle.replace(PropertyKey::string(cx, export_name.as_string()));
 
-                let result = self.resolve_export(cx, export_name.get_(), &mut vec![]);
+                let result = self.resolve_export(cx, *export_name, &mut vec![]);
 
                 // Ignore unresolved exports, this will lead to a linker error later
                 if let ResolveExportResult::Resolved { name, module } = result {
@@ -761,9 +761,9 @@ impl ImportEntry {
 
     fn to_heap(&self) -> HeapImportEntry {
         HeapImportEntry {
-            module_request: self.module_request.get_(),
-            import_name: self.import_name.map(|name| name.get_()),
-            local_name: self.local_name.get_(),
+            module_request: *self.module_request,
+            import_name: self.import_name.map(|name| *name),
+            local_name: *self.local_name,
             slot_index: self.slot_index,
             is_exported: self.is_exported,
         }
@@ -792,8 +792,8 @@ pub struct LocalExportEntry {
 impl LocalExportEntry {
     fn to_heap(&self) -> HeapLocalExportEntry {
         HeapLocalExportEntry {
-            export_name: self.export_name.get_(),
-            local_name: self.local_name.get_(),
+            export_name: *self.export_name,
+            local_name: *self.local_name,
             slot_index: self.slot_index,
         }
     }
@@ -823,9 +823,9 @@ pub struct NamedReExportEntry {
 impl NamedReExportEntry {
     fn to_heap(&self) -> HeapNamedReExportEntry {
         HeapNamedReExportEntry {
-            export_name: self.export_name.get_(),
-            import_name: self.import_name.map(|name| name.get_()),
-            module_request: self.module_request.get_(),
+            export_name: *self.export_name,
+            import_name: self.import_name.map(|name| *name),
+            module_request: *self.module_request,
         }
     }
 }
@@ -846,7 +846,7 @@ pub struct DirectReExportEntry {
 
 impl DirectReExportEntry {
     fn to_heap(&self) -> HeapDirectReExportEntry {
-        HeapDirectReExportEntry { module_request: self.module_request.get_() }
+        HeapDirectReExportEntry { module_request: *self.module_request }
     }
 }
 

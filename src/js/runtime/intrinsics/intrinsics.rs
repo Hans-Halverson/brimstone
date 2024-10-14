@@ -232,7 +232,7 @@ impl Intrinsics {
         macro_rules! register_existing_intrinsic {
             ($intrinsic_name:ident, $expr:expr) => {
                 realm.intrinsics.intrinsics.as_mut_slice()[Intrinsic::$intrinsic_name as usize] =
-                    ($expr).as_object().get_();
+                    *($expr).as_object();
             };
         }
 

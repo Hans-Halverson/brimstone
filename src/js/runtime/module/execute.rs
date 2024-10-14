@@ -35,7 +35,7 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
         .to_str()
         .unwrap()
         .to_string();
-    cx.modules.insert(source_file_path, module.get_());
+    cx.modules.insert(source_file_path, *module);
 
     let promise = load_requested_modules(cx, module);
 
@@ -173,7 +173,7 @@ impl GraphEvaluator {
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
-        module.set_top_level_capability(capability.get_());
+        module.set_top_level_capability(*capability);
 
         let evaluation_result = self.inner_evaluate(cx, module, 0);
 
@@ -196,7 +196,7 @@ impl GraphEvaluator {
                 for module in &mut self.stack {
                     debug_assert!(module.state() == ModuleState::Evaluating);
                     module.set_state(ModuleState::Evaluated);
-                    module.set_evaluation_error(error.get());
+                    module.set_evaluation_error(*error);
                 }
 
                 debug_assert!(module.state() == ModuleState::Evaluated);
@@ -297,9 +297,9 @@ impl GraphEvaluator {
                     required_module.set_state(ModuleState::EvaluatingAsync);
                 }
 
-                required_module.set_cycle_root(module.get_());
+                required_module.set_cycle_root(*module);
 
-                if required_module.ptr_eq(&module.get_()) {
+                if required_module.ptr_eq(&module) {
                     break;
                 }
             }
@@ -359,7 +359,7 @@ pub fn async_module_execution_fulfilled(
 
     // If an entire cycle has been completed, resolve the top-level capability for the cycle
     if let Some(capability) = module.top_level_capability_ptr() {
-        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module.get_()));
+        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module));
         must!(call_object(cx, capability.resolve(), cx.undefined(), &[cx.undefined()]));
     }
 
@@ -393,7 +393,7 @@ pub fn async_module_execution_fulfilled(
         ancestor.set_state(ModuleState::Evaluated);
 
         if let Some(capability) = ancestor.top_level_capability_ptr() {
-            debug_assert!(ancestor.cycle_root_ptr().unwrap().ptr_eq(&ancestor.get_()));
+            debug_assert!(ancestor.cycle_root_ptr().unwrap().ptr_eq(&ancestor));
             must!(call_object(cx, capability.resolve(), cx.undefined(), &[cx.undefined()]));
         }
     }
@@ -453,7 +453,7 @@ fn async_module_execution_rejected(
     debug_assert!(module.evaluation_error_ptr().is_none());
 
     // Mark evaluation of module as complete with an error
-    module.set_evaluation_error(error.get());
+    module.set_evaluation_error(*error);
     module.set_state(ModuleState::Evaluated);
     module.set_async_evaluation(cx, false);
 
@@ -470,7 +470,7 @@ fn async_module_execution_rejected(
 
     // If entire cycle has been completed, reject the top-level capability for the cycle
     if let Some(capability) = module.top_level_capability_ptr() {
-        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module.get_()));
+        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module));
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
     }
 }

@@ -44,7 +44,7 @@ impl WeakSetPrototype {
         };
 
         let value = get_argument(cx, arguments, 0);
-        if !can_be_held_weakly(cx, value.get()) {
+        if !can_be_held_weakly(cx, *value) {
             return type_error(cx, "WeakSet only holds objects and symbols");
         }
 

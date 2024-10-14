@@ -68,7 +68,7 @@ impl ScopeNames {
         // Copy names into inline names array
         scope_names.names.init_with_uninit(names.len());
         for (i, name) in names.iter().enumerate() {
-            scope_names.names.set_unchecked(i, name.get_());
+            scope_names.names.set_unchecked(i, **name);
         }
 
         // Copy name flags into name flags section

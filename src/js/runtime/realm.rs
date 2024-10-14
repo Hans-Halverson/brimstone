@@ -158,7 +158,7 @@ impl Handle<Realm> {
             LexicalNameLocation::new(global_scope_index, slot_index, is_immutable);
         self.lexical_names_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(name.get_(), lexical_name_location);
+            .insert_without_growing(*name, lexical_name_location);
     }
 
     /// Check if a set of lexical names can be declared in the realm. A lexical name cannot be
@@ -174,13 +174,15 @@ impl Handle<Realm> {
         let mut key = Handle::<PropertyKey>::empty(cx);
 
         for name in names {
+            let name = *name;
+
             key.replace(PropertyKey::string(cx, name.as_string()));
 
             let is_global_var_name = has_restricted_global_property(cx, global_object, key)?;
-            let is_global_lex_name = self.get_lexical_name(name.get_()).is_some();
+            let is_global_lex_name = self.get_lexical_name(*name).is_some();
 
             if is_global_var_name || is_global_lex_name {
-                return syntax_error(cx, &format!("redeclaration of {}", name.get_()));
+                return syntax_error(cx, &format!("redeclaration of {}", *name));
             }
         }
 
@@ -215,8 +217,7 @@ impl Handle<Realm> {
 
         // Insert global scope into array of all global scopes
         let global_scope_index = self.global_scopes.len();
-        GlobalScopes::maybe_grow_for_insertion(cx, *self)
-            .insert_without_growing(global_scope.get_());
+        GlobalScopes::maybe_grow_for_insertion(cx, *self).insert_without_growing(*global_scope);
 
         // Handle is shared between iterations
         let mut name_handle = Handle::<FlatString>::empty(cx);
@@ -225,13 +226,13 @@ impl Handle<Realm> {
         for i in 0..scope_names.len() {
             if i == 0 {
                 // The first global scope slot is always the realm
-                global_scope.set_heap_item_slot(0, self.get_().as_heap_item());
+                global_scope.set_heap_item_slot(0, self.as_heap_item());
             } else if scope_names
                 .get_slot_name(i)
                 .ptr_eq(&cx.names.this.as_string().as_flat())
             {
                 // The global "this" binding is always the global object
-                global_scope.set_slot(i, global_object.get_().into());
+                global_scope.set_slot(i, *global_object.as_value());
             } else {
                 // All other scope bindings must be lexical bindings, so initialize to empty
                 global_scope.set_slot(i, Value::empty());
@@ -270,7 +271,7 @@ impl Handle<Realm> {
             /* prototype */ None,
             /* is_constructor */ false,
         );
-        self.empty_function = empty_function.get_();
+        self.empty_function = *empty_function;
     }
 }
 

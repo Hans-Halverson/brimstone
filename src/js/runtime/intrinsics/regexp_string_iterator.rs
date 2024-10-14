@@ -50,8 +50,8 @@ impl RegExpStringIterator {
             Intrinsic::RegExpStringIteratorPrototype,
         );
 
-        set_uninit!(object.regexp_object, regexp_object.get_());
-        set_uninit!(object.target_string, target_string.get_());
+        set_uninit!(object.regexp_object, *regexp_object);
+        set_uninit!(object.target_string, *target_string);
         set_uninit!(object.is_global, is_global);
         set_uninit!(object.is_unicode, is_unicode);
         set_uninit!(object.is_done, false);

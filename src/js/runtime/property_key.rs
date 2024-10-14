@@ -46,7 +46,7 @@ impl PropertyKey {
     pub fn string_not_array_index(cx: Context, value: Handle<StringValue>) -> PropertyKey {
         // Enforce that all string property keys are interned
         let flat_string = value.flatten();
-        let interned_string = InternedStrings::get(cx, flat_string.get_()).as_string();
+        let interned_string = InternedStrings::get(cx, *flat_string).as_string();
         PropertyKey { value: interned_string.into() }
     }
 
@@ -80,7 +80,7 @@ impl PropertyKey {
     }
 
     pub fn from_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
-        let value = value_handle.get();
+        let value = *value_handle;
         if is_integral_number(value) {
             let number = value.as_double();
             if (0.0..MAX_U32_AS_F64).contains(&number) {
@@ -89,7 +89,7 @@ impl PropertyKey {
         }
 
         if value.is_symbol() {
-            Ok(PropertyKey::symbol(value_handle.as_symbol()).get())
+            Ok(*PropertyKey::symbol(value_handle.as_symbol()))
         } else {
             let string_value = to_string(cx, value_handle)?;
             Ok(PropertyKey::string(cx, string_value))
@@ -194,7 +194,7 @@ impl fmt::Display for PropertyKey {
 
 impl PartialEq for Handle<PropertyKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.get().eq(&other.get())
+        (**self).eq(other)
     }
 }
 
@@ -202,23 +202,17 @@ impl Eq for Handle<PropertyKey> {}
 
 impl hash::Hash for Handle<PropertyKey> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.get().hash(state)
+        (**self).hash(state)
     }
 }
 
 impl fmt::Display for Handle<PropertyKey> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.get().fmt(f)
+        (**self).fmt(f)
     }
 }
 
 impl Handle<PropertyKey> {
-    /// Get the value stored behind the handle.
-    #[inline]
-    pub fn get(&self) -> PropertyKey {
-        PropertyKey { value: self.cast::<Value>().get() }
-    }
-
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &PropertyKey) -> Handle<PropertyKey> {
         Handle::<Value>::from_fixed_non_heap_ptr(&value_ref.value).cast()

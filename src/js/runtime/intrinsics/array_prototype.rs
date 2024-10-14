@@ -165,7 +165,7 @@ impl ArrayPrototype {
             get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable())?;
 
         if !is_spreadable.is_undefined() {
-            return Ok(to_boolean(is_spreadable.get()));
+            return Ok(to_boolean(*is_spreadable));
         }
 
         is_array(cx, object)
@@ -366,7 +366,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
-                if !to_boolean(test_result.get()) {
+                if !to_boolean(*test_result) {
                     return Ok(cx.bool(false));
                 }
             }
@@ -463,7 +463,7 @@ impl ArrayPrototype {
 
                 let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
 
-                if to_boolean(is_selected.get()) {
+                if to_boolean(*is_selected) {
                     // Reuse index_key handle as it is never referenced again
                     let mut result_index_key = index_key;
 
@@ -1361,7 +1361,7 @@ impl ArrayPrototype {
                 let arguments = [value, index_value, object.into()];
 
                 let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
-                if to_boolean(test_result.get()) {
+                if to_boolean(*test_result) {
                     return Ok(cx.bool(true));
                 }
             }
@@ -1858,7 +1858,7 @@ pub fn find_via_predicate(
         let arguments = [value, index_value, object.into()];
 
         let test_result = call_object(cx, predicate, this_arg, &arguments)?;
-        if to_boolean(test_result.get()) {
+        if to_boolean(*test_result) {
             return Ok(Some((value, index_value)));
         }
     }

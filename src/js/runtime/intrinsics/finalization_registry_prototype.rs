@@ -52,7 +52,7 @@ impl FinalizationRegistryPrototype {
         let held_value = get_argument(cx, arguments, 1);
         let unregister_token = get_argument(cx, arguments, 2);
 
-        if !can_be_held_weakly(cx, target.get()) {
+        if !can_be_held_weakly(cx, *target) {
             return type_error(cx, "FinalizationRegistry targets must be objects or symbols");
         }
 
@@ -63,7 +63,7 @@ impl FinalizationRegistryPrototype {
             );
         }
 
-        let unregister_token = if can_be_held_weakly(cx, unregister_token.get()) {
+        let unregister_token = if can_be_held_weakly(cx, *unregister_token) {
             Some(unregister_token)
         } else if unregister_token.is_undefined() {
             None
@@ -76,9 +76,9 @@ impl FinalizationRegistryPrototype {
 
         FinalizationRegistryCells::maybe_grow_for_insertion(cx, registry_object)
             .insert_without_growing(FinalizationRegistryCell {
-                target: target.get(),
-                held_value: held_value.get(),
-                unregister_token: unregister_token.map(|t| t.get()),
+                target: *target,
+                held_value: *held_value,
+                unregister_token: unregister_token.map(|t| *t),
             });
 
         Ok(cx.undefined())
@@ -100,14 +100,14 @@ impl FinalizationRegistryPrototype {
 
         let unregister_token = get_argument(cx, arguments, 0);
 
-        if !can_be_held_weakly(cx, unregister_token.get()) {
+        if !can_be_held_weakly(cx, *unregister_token) {
             return type_error(
                 cx,
                 "FinalizationRegistry unregister tokens must be objects or symbols",
             );
         }
 
-        let did_remove = registry_object.cells().remove(unregister_token.get());
+        let did_remove = registry_object.cells().remove(*unregister_token);
 
         Ok(cx.bool(did_remove))
     }

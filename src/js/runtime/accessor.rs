@@ -24,8 +24,8 @@ impl Accessor {
         let mut accessor = cx.alloc_uninit::<Accessor>();
 
         set_uninit!(accessor.descriptor, cx.base_descriptors.get(ObjectKind::Accessor));
-        set_uninit!(accessor.get, get.map(|v| v.get_()));
-        set_uninit!(accessor.set, set.map(|v| v.get_()));
+        set_uninit!(accessor.get, get.map(|v| *v));
+        set_uninit!(accessor.set, set.map(|v| *v));
 
         accessor.to_handle()
     }

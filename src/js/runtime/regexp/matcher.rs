@@ -730,7 +730,7 @@ pub fn run_matcher(
     // May allocate, after this point no more allocations can occur
     let flat_string = target_string.flatten();
 
-    let regexp = regexp.get_();
+    let regexp = *regexp;
 
     if regexp.flags.is_case_insensitive() {
         return run_case_insensitive_matcher(regexp, flat_string, start_index);

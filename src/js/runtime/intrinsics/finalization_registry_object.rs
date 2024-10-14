@@ -45,8 +45,8 @@ impl FinalizationRegistryObject {
             Intrinsic::FinalizationRegistryPrototype,
         )?;
 
-        set_uninit!(object.cells, cells.get_());
-        set_uninit!(object.cleanup_callback, cleanup_callback.get_());
+        set_uninit!(object.cells, *cells);
+        set_uninit!(object.cleanup_callback, *cleanup_callback);
 
         Ok(object.to_handle())
     }
@@ -158,7 +158,7 @@ impl FinalizationRegistryCells {
         // Save old cells pointer behind handle across allcation
         let old_cells = old_cells.to_handle();
         let mut new_cells = FinalizationRegistryCells::new(cx, new_capacity);
-        let old_cells = old_cells.get_();
+        let old_cells = *old_cells;
 
         // Copy over occupied cells to new array
         let mut new_cells_index = 0;

@@ -47,7 +47,7 @@ impl StringObject {
         let mut object =
             object_create::<StringObject>(cx, ObjectKind::StringObject, Intrinsic::StringPrototype);
 
-        let string_data = string_data_handle.get_();
+        let string_data = *string_data_handle;
         let string_length = string_data.len();
 
         set_uninit!(object.string_data, string_data);
@@ -71,7 +71,7 @@ impl StringObject {
             Intrinsic::StringPrototype,
         )?;
 
-        let string_data = string_data_handle.get_();
+        let string_data = *string_data_handle;
         let string_length = string_data.len();
 
         set_uninit!(object.string_data, string_data);
@@ -91,7 +91,7 @@ impl StringObject {
         let mut object =
             object_create_with_proto::<StringObject>(cx, ObjectKind::StringObject, proto);
 
-        let string_data = string_data_handle.get_();
+        let string_data = *string_data_handle;
         let string_length = string_data.len();
 
         set_uninit!(object.string_data, string_data);

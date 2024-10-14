@@ -300,7 +300,7 @@ impl ArrayProperties {
 
                 Self::set_property(cx, object, array_index, property);
             } else {
-                dense_properties.set(array_index, property.value().get());
+                dense_properties.set(array_index, *property.value());
             }
         } else {
             let mut sparse_properties = array_properties.as_sparse();

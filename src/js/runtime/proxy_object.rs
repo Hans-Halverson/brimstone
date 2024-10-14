@@ -44,8 +44,8 @@ impl ProxyObject {
         let mut object =
             object_create::<ProxyObject>(cx, ObjectKind::Proxy, Intrinsic::ObjectPrototype);
 
-        set_uninit!(object.proxy_handler, Some(proxy_handler.get_()));
-        set_uninit!(object.proxy_target, Some(proxy_target.get_()));
+        set_uninit!(object.proxy_handler, Some(*proxy_handler));
+        set_uninit!(object.proxy_target, Some(*proxy_target));
         set_uninit!(object.is_callable, is_callable);
         set_uninit!(object.is_constructor, is_constructor);
 
@@ -184,7 +184,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx), desc_value.into()];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        if !to_boolean(trap_result.get()) {
+        if !to_boolean(*trap_result) {
             return Ok(false);
         }
 
@@ -263,7 +263,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         let trap_arguments = [target.into(), key.to_value(cx)];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
-        let trap_result = to_boolean(trap_result.get());
+        let trap_result = to_boolean(*trap_result);
 
         if !trap_result {
             let target_desc = target.get_own_property(cx, key)?;
@@ -355,7 +355,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx), value, receiver];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        if !to_boolean(trap_result.get()) {
+        if !to_boolean(*trap_result) {
             return Ok(false);
         }
 
@@ -395,7 +395,7 @@ impl VirtualObject for Handle<ProxyObject> {
         let trap_arguments = [target.into(), key.to_value(cx)];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        if !to_boolean(trap_result.get()) {
+        if !to_boolean(*trap_result) {
             return Ok(false);
         }
 
@@ -658,7 +658,7 @@ impl ProxyObject {
         let trap_arguments = [target.into(), proto_value];
         let trap_result = call_object(cx, trap.unwrap(), handler, &trap_arguments)?;
 
-        if !to_boolean(trap_result.get()) {
+        if !to_boolean(*trap_result) {
             return Ok(false);
         }
 
@@ -693,7 +693,7 @@ impl ProxyObject {
         }
 
         let trap_result = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
-        let trap_result = to_boolean(trap_result.get());
+        let trap_result = to_boolean(*trap_result);
 
         let target_result = is_extensible_(cx, target)?;
 
@@ -722,7 +722,7 @@ impl ProxyObject {
         }
 
         let trap_result = call_object(cx, trap.unwrap(), handler, &[target.into()])?;
-        let trap_result = to_boolean(trap_result.get());
+        let trap_result = to_boolean(*trap_result);
 
         if trap_result && is_extensible_(cx, target)? {
             return type_error(cx, "proxy can't report an extensible object as non-extensible");

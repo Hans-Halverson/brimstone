@@ -397,11 +397,11 @@ fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
     }
 
     let object = value.as_object();
-    if !object.is_data_view() {
-        return type_error(cx, "expected data view");
+    if let Some(data_view) = object.as_data_view() {
+        return Ok(data_view);
     }
 
-    Ok(object.cast::<DataViewObject>())
+    type_error(cx, "expected data view")
 }
 
 /// GetViewValue (https://tc39.es/ecma262/#sec-getviewvalue)

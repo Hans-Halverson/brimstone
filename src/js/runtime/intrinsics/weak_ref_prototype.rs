@@ -47,10 +47,5 @@ fn this_weak_ref_value(value: Handle<Value>) -> Option<Handle<WeakRefObject>> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_weak_ref_object() {
-        return None;
-    }
-
-    Some(object.cast::<WeakRefObject>())
+    value.as_object().as_weak_ref_object()
 }

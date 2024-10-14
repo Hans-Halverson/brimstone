@@ -120,10 +120,5 @@ fn this_finalization_registry_value(
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_finalization_registry_object() {
-        return None;
-    }
-
-    Some(object.cast::<FinalizationRegistryObject>())
+    value.as_object().as_finalization_registry_object()
 }

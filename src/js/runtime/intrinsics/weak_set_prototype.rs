@@ -105,10 +105,5 @@ fn this_weak_set_value(value: Handle<Value>) -> Option<Handle<WeakSetObject>> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_weak_set_object() {
-        return None;
-    }
-
-    Some(object.cast::<WeakSetObject>())
+    value.as_object().as_weak_set_object()
 }

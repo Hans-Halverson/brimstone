@@ -175,11 +175,8 @@ impl RegExpConstructor {
             Some(new_target) => new_target,
         };
 
-        let regexp_source = if pattern_arg.is_object() && pattern_arg.as_object().is_regexp_object()
-        {
+        let regexp_source = if let Some(pattern_regexp_object) = as_regexp_object(pattern_arg) {
             // Construction from a regexp object
-            let pattern_regexp_object = pattern_arg.as_object().cast::<RegExpObject>();
-
             if flags_arg.is_undefined() {
                 RegExpSource::RegExpObject(pattern_regexp_object)
             } else {
@@ -206,6 +203,15 @@ impl RegExpConstructor {
         };
 
         regexp_create(cx, regexp_source, new_target)
+    }
+}
+
+#[inline]
+pub fn as_regexp_object(value: Handle<Value>) -> Option<Handle<RegExpObject>> {
+    if value.is_object() {
+        value.as_object().as_regexp_object()
+    } else {
+        None
     }
 }
 

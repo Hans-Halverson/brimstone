@@ -644,14 +644,14 @@ macro_rules! create_typed_array_constructor {
                         proto,
                         argument.as_typed_array(),
                     );
-                } else if argument.is_array_buffer() {
+                } else if let Some(argument) = argument.as_array_buffer() {
                     let byte_offset = get_argument(cx, arguments, 1);
                     let length = get_argument(cx, arguments, 2);
 
                     return Self::initialize_typed_array_from_array_buffer(
                         cx,
                         proto,
-                        argument.cast::<ArrayBufferObject>(),
+                        argument,
                         byte_offset,
                         length,
                     );

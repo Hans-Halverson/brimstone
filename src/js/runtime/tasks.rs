@@ -6,9 +6,9 @@ use crate::js::runtime::{
 };
 
 use super::{
-    async_generator_object::{async_generator_resume, AsyncGeneratorObject},
+    async_generator_object::async_generator_resume,
     gc::{HandleScope, HeapVisitor},
-    generator_object::{GeneratorCompletionType, GeneratorObject},
+    generator_object::GeneratorCompletionType,
     object_value::ObjectValue,
     promise_object::{PromiseCapability, PromiseObject, PromiseReactionKind},
     Context, EvalResult, HeapPtr, Realm, Value,
@@ -176,12 +176,11 @@ impl AwaitResumeTask {
             PromiseReactionKind::Reject => GeneratorCompletionType::Throw,
         };
 
-        if generator.is_generator() {
-            let generator = generator.cast::<GeneratorObject>();
+        if let Some(generator) = generator.as_generator() {
             cx.vm()
                 .resume_generator(generator, completion_value, completion_type)?;
         } else {
-            let async_generator = generator.cast::<AsyncGeneratorObject>();
+            let async_generator = generator.as_async_generator().unwrap();
 
             // Must execute in the realm of the async generator since AsyncGeneratorResume may need
             // to drain the async queue when the VM stack is empty.

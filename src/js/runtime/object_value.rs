@@ -8,18 +8,33 @@ use std::{
 use crate::set_uninit;
 
 use super::{
+    array_object::ArrayObject,
     array_properties::ArrayProperties,
+    async_generator_object::AsyncGeneratorObject,
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+    bytecode::function::Closure,
     collections::{BsIndexMap, BsIndexMapField},
     error::type_error,
     eval_result::EvalResult,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
-    intrinsics::typed_array::DynTypedArray,
+    generator_object::GeneratorObject,
+    intrinsics::{
+        array_buffer_constructor::ArrayBufferObject, bigint_constructor::BigIntObject,
+        boolean_constructor::BooleanObject, data_view_constructor::DataViewObject,
+        date_object::DateObject, error_constructor::ErrorObject,
+        finalization_registry_object::FinalizationRegistryObject, map_object::MapObject,
+        number_constructor::NumberObject, object_prototype::ObjectPrototype,
+        regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
+        typed_array::DynTypedArray, weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+    },
     object_descriptor::ObjectKind,
+    promise_object::PromiseObject,
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
+    string_object::StringObject,
     type_utilities::is_callable_object,
     value::{AccessorValue, SymbolValue, Value},
     Context, Realm,
@@ -269,116 +284,23 @@ impl ObjectValue {
 }
 
 impl ObjectValue {
-    fn descriptor_kind(&self) -> ObjectKind {
-        self.descriptor().kind()
-    }
-
-    pub fn is_array(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::ArrayObject
-    }
-
-    pub fn is_error(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::ErrorObject
-    }
-
-    pub fn is_bool_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::BooleanObject
-    }
-
-    pub fn is_number_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::NumberObject
-    }
-
-    pub fn is_string_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::StringObject
-    }
-
-    pub fn is_symbol_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::SymbolObject
-    }
-
-    pub fn is_bigint_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::BigIntObject
-    }
-
-    pub fn is_date_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::DateObject
-    }
-
-    pub fn is_regexp_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::RegExpObject
-    }
-
-    pub fn is_closure(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::Closure
-    }
-
-    pub fn is_map_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::MapObject
-    }
-
-    pub fn is_set_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::SetObject
-    }
-
-    pub fn is_array_buffer(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::ArrayBufferObject
-    }
-
+    #[inline]
     pub fn is_shared_array_buffer(&self) -> bool {
         false
     }
 
+    #[inline]
     pub fn is_typed_array(&self) -> bool {
-        let kind = self.descriptor_kind() as u8;
+        let kind = self.descriptor().kind() as u8;
         (kind >= ObjectKind::Int8Array as u8) && (kind <= ObjectKind::Float64Array as u8)
     }
 
-    pub fn is_data_view(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::DataViewObject
-    }
-
+    #[inline]
     pub fn is_arguments_object(&self) -> bool {
         matches!(
-            self.descriptor_kind(),
+            self.descriptor().kind(),
             ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject
         )
-    }
-
-    pub fn is_proxy(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::Proxy
-    }
-
-    pub fn is_generator(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::Generator
-    }
-
-    pub fn is_async_generator(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::AsyncGenerator
-    }
-
-    pub fn is_promise(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::Promise
-    }
-
-    pub fn is_object_prototype(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::ObjectPrototype
-    }
-
-    pub fn is_weak_ref_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::WeakRefObject
-    }
-
-    pub fn is_weak_set_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::WeakSetObject
-    }
-
-    pub fn is_weak_map_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::WeakMapObject
-    }
-
-    pub fn is_finalization_registry_object(&self) -> bool {
-        self.descriptor_kind() == ObjectKind::FinalizationRegistryObject
     }
 }
 
@@ -548,8 +470,8 @@ impl Handle<ObjectValue> {
     /// The [[GetPrototypeOf]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn get_prototype_of(&self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().get_prototype_of(cx)
+        if let Some(proxy_object) = self.as_proxy() {
+            proxy_object.get_prototype_of(cx)
         } else {
             self.ordinary_get_prototype_of()
         }
@@ -562,9 +484,8 @@ impl Handle<ObjectValue> {
         cx: Context,
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>()
-                .set_prototype_of(cx, new_prototype)
+        if let Some(mut proxy_object) = self.as_proxy() {
+            proxy_object.set_prototype_of(cx, new_prototype)
         } else {
             self.ordinary_set_prototype_of(cx, new_prototype)
         }
@@ -573,8 +494,8 @@ impl Handle<ObjectValue> {
     /// The [[IsExtensible]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn is_extensible(&self, cx: Context) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().is_extensible(cx)
+        if let Some(proxy_object) = self.as_proxy() {
+            proxy_object.is_extensible(cx)
         } else {
             self.ordinary_is_extensible()
         }
@@ -583,8 +504,8 @@ impl Handle<ObjectValue> {
     /// The [[PreventExtensions]] internal method for all objects. Dispatches to type-specific
     /// implementations as necessary.
     pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
-        if self.is_proxy() {
-            self.cast::<ProxyObject>().prevent_extensions(cx)
+        if let Some(mut proxy_object) = self.as_proxy() {
+            proxy_object.prevent_extensions(cx)
         } else {
             self.ordinary_prevent_extensions()
         }
@@ -796,3 +717,102 @@ impl NamedPropertiesMapField {
         });
     }
 }
+
+/// Implement subtype checks and downcasts for an object subtype.
+///
+/// - `is_subtype` returns true if the object is of the given subtype.
+/// - `as_subtype` returns the object as the given subtype if it is of that subtype, otherwise None.
+macro_rules! impl_subtype_casts {
+    ($subtype:ident, $desc:expr, $is_func:ident, $as_func:ident) => {
+        impl ObjectValue {
+            #[inline]
+            #[allow(unused)]
+            pub fn $is_func(&self) -> bool {
+                self.descriptor().kind() == $desc
+            }
+        }
+
+        impl HeapPtr<ObjectValue> {
+            #[inline]
+            #[allow(unused)]
+            pub fn $as_func(&self) -> Option<HeapPtr<$subtype>> {
+                if self.$is_func() {
+                    Some(self.cast())
+                } else {
+                    None
+                }
+            }
+        }
+
+        impl Handle<ObjectValue> {
+            #[inline]
+            #[allow(unused)]
+            pub fn $as_func(&self) -> Option<Handle<$subtype>> {
+                if self.$is_func() {
+                    Some(self.cast())
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+impl_subtype_casts!(ArrayObject, ObjectKind::ArrayObject, is_array, as_array);
+impl_subtype_casts!(ErrorObject, ObjectKind::ErrorObject, is_error, as_error);
+impl_subtype_casts!(BooleanObject, ObjectKind::BooleanObject, is_boolean_object, as_boolean_object);
+impl_subtype_casts!(NumberObject, ObjectKind::NumberObject, is_number_object, as_number_object);
+impl_subtype_casts!(StringObject, ObjectKind::StringObject, is_string_object, as_string_object);
+impl_subtype_casts!(SymbolObject, ObjectKind::SymbolObject, is_symbol_object, as_symbol_object);
+impl_subtype_casts!(BigIntObject, ObjectKind::BigIntObject, is_bigint_object, as_bigint_object);
+impl_subtype_casts!(DateObject, ObjectKind::DateObject, is_date_object, as_date_object);
+impl_subtype_casts!(RegExpObject, ObjectKind::RegExpObject, is_regexp_object, as_regexp_object);
+impl_subtype_casts!(Closure, ObjectKind::Closure, is_closure, as_closure);
+impl_subtype_casts!(MapObject, ObjectKind::MapObject, is_map_object, as_map_object);
+impl_subtype_casts!(SetObject, ObjectKind::SetObject, is_set_object, as_set_object);
+impl_subtype_casts!(
+    ArrayBufferObject,
+    ObjectKind::ArrayBufferObject,
+    is_array_buffer,
+    as_array_buffer
+);
+impl_subtype_casts!(DataViewObject, ObjectKind::DataViewObject, is_data_view, as_data_view);
+impl_subtype_casts!(ProxyObject, ObjectKind::Proxy, is_proxy, as_proxy);
+impl_subtype_casts!(GeneratorObject, ObjectKind::Generator, is_generator, as_generator);
+impl_subtype_casts!(
+    AsyncGeneratorObject,
+    ObjectKind::AsyncGenerator,
+    is_async_generator,
+    as_async_generator
+);
+impl_subtype_casts!(PromiseObject, ObjectKind::Promise, is_promise, as_promise);
+impl_subtype_casts!(
+    ObjectPrototype,
+    ObjectKind::ObjectPrototype,
+    is_object_prototype,
+    as_object_prototype
+);
+impl_subtype_casts!(
+    WeakRefObject,
+    ObjectKind::WeakRefObject,
+    is_weak_ref_object,
+    as_weak_ref_object
+);
+impl_subtype_casts!(
+    WeakSetObject,
+    ObjectKind::WeakSetObject,
+    is_weak_set_object,
+    as_weak_set_object
+);
+impl_subtype_casts!(
+    WeakMapObject,
+    ObjectKind::WeakMapObject,
+    is_weak_map_object,
+    as_weak_map_object
+);
+impl_subtype_casts!(
+    FinalizationRegistryObject,
+    ObjectKind::FinalizationRegistryObject,
+    is_finalization_registry_object,
+    as_finalization_registry_object
+);

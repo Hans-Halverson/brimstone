@@ -200,8 +200,8 @@ impl FunctionPrototype {
         }
 
         let this_object = this_value.as_object();
-        if this_object.is_closure() {
-            let function = this_object.cast::<Closure>().function();
+        if let Some(closure) = this_object.as_closure() {
+            let function = closure.function();
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {

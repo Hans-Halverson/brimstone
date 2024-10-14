@@ -4,7 +4,7 @@ use crate::js::runtime::{
     value::SymbolValue, Context, Handle, Value,
 };
 
-use super::{intrinsics::Intrinsic, symbol_constructor::SymbolObject};
+use super::intrinsics::Intrinsic;
 
 pub struct SymbolPrototype;
 
@@ -101,8 +101,8 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
 
     if value.is_object() {
         let object_value = value.as_object();
-        if object_value.is_symbol_object() {
-            return Ok(object_value.cast::<SymbolObject>().symbol_data().into());
+        if let Some(symbol_object) = object_value.as_symbol_object() {
+            return Ok(symbol_object.symbol_data().into());
         }
     }
 

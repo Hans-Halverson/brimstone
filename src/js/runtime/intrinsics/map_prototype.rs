@@ -268,10 +268,5 @@ fn this_map_value(value: Handle<Value>) -> Option<Handle<MapObject>> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_map_object() {
-        return None;
-    }
-
-    Some(object.cast::<MapObject>())
+    value.as_object().as_map_object()
 }

@@ -389,8 +389,8 @@ fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Val
 
     if value.is_object() {
         let object_value = value.as_object();
-        if object_value.is_number_object() {
-            let number_f64 = object_value.cast::<NumberObject>().number_data();
+        if let Some(number_object) = object_value.as_number_object() {
+            let number_f64 = number_object.number_data();
             return Ok(Value::number(number_f64));
         }
     }

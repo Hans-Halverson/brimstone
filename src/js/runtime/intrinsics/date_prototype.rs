@@ -1618,12 +1618,10 @@ pub fn this_date_value(value: Handle<Value>) -> Option<f64> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_date_object() {
-        return None;
-    }
-
-    Some(object.cast::<DateObject>().date_value())
+    value
+        .as_object()
+        .as_date_object()
+        .map(|date| date.date_value())
 }
 
 #[inline]

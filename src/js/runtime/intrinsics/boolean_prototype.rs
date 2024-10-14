@@ -56,8 +56,8 @@ fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
 
     if value.is_object() {
         let object_value = value.as_object();
-        if object_value.is_bool_object() {
-            return Ok(object_value.cast::<BooleanObject>().boolean_data());
+        if let Some(boolean_object) = object_value.as_boolean_object() {
+            return Ok(boolean_object.boolean_data());
         }
     }
 

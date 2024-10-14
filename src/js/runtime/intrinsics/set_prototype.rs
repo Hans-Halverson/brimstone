@@ -611,12 +611,7 @@ fn this_set_value(value: Handle<Value>) -> Option<Handle<SetObject>> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_set_object() {
-        return None;
-    }
-
-    Some(object.cast::<SetObject>())
+    value.as_object().as_set_object()
 }
 
 struct SetRecord {

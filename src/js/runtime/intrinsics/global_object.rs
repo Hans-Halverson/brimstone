@@ -73,7 +73,7 @@ pub fn set_default_global_bindings(
 
         // Value Properties of the Global Object (https://tc39.es/ecma262/#sec-value-properties-of-the-global-object)
         let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
-        let nan_value = Value::nan().to_handle(cx);
+        let nan_value = cx.nan();
 
         value_prop!(cx.names.global_this(), realm.global_object().into(), true, false, true);
         value_prop!(cx.names.infinity(), infinity_value, false, false, false);
@@ -215,7 +215,7 @@ pub fn parse_float(
 
     match parse_float_with_string_lexer(input_string) {
         Some(float) => Ok(Value::number(float).to_handle(cx)),
-        None => Ok(Value::nan().to_handle(cx)),
+        None => Ok(cx.nan()),
     }
 }
 
@@ -241,7 +241,7 @@ pub fn parse_int(
 
     match parse_int_impl(input_string, radix) {
         Some(number) => Ok(Value::number(number).to_handle(cx)),
-        None => Ok(Value::nan().to_handle(cx)),
+        None => Ok(cx.nan()),
     }
 }
 

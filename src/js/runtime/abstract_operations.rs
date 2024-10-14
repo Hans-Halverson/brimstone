@@ -650,7 +650,7 @@ pub fn group_by(
         if !found_group {
             // Canonicalize key
             let key = if key.is_negative_zero() {
-                Value::from(0).to_handle(cx)
+                cx.zero()
             } else {
                 key
             };
@@ -672,7 +672,7 @@ pub fn group_by(
 
 pub fn canonicalize_keyed_collection_key(cx: Context, key: Handle<Value>) -> Handle<Value> {
     if key.is_negative_zero() {
-        Value::from(0).to_handle(cx)
+        cx.zero()
     } else {
         key
     }

@@ -141,7 +141,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date = date_from_time(local_time(date_value));
@@ -163,7 +163,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let day = week_day(local_time(date_value));
@@ -188,7 +188,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let year = year_from_time(local_time(date_value));
@@ -210,7 +210,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let hour = hour_from_time(local_time(date_value));
@@ -235,7 +235,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let millisecond = millisecond_from_time(local_time(date_value));
@@ -260,7 +260,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let minute = minute_from_time(local_time(date_value));
@@ -282,7 +282,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let month = month_from_time(local_time(date_value));
@@ -307,7 +307,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let second = second_from_time(local_time(date_value));
@@ -343,7 +343,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let timezone_offset = (date_value - local_time(date_value)) / MS_PER_MINUTE;
@@ -365,7 +365,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date = date_from_time(date_value);
@@ -387,7 +387,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let hour = week_day(date_value);
@@ -409,7 +409,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let year = year_from_time(date_value);
@@ -431,7 +431,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let hour = hour_from_time(date_value);
@@ -456,7 +456,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let millisecond = millisecond_from_time(date_value);
@@ -481,7 +481,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let minute = minute_from_time(date_value);
@@ -506,7 +506,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let month = month_from_time(date_value);
@@ -531,7 +531,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let second = second_from_time(date_value);
@@ -556,7 +556,7 @@ impl DatePrototype {
         let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -659,7 +659,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -706,7 +706,7 @@ impl DatePrototype {
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -762,7 +762,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -810,7 +810,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -857,7 +857,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let date_value = local_time(date_value);
@@ -920,7 +920,7 @@ impl DatePrototype {
         let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let new_date = time_clip(make_date(
@@ -1022,7 +1022,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         if !has_minutes {
@@ -1065,7 +1065,7 @@ impl DatePrototype {
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if milliseconds.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let new_date = time_clip(make_date(
@@ -1119,7 +1119,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         if !has_seconds {
@@ -1168,7 +1168,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         if !has_date {
@@ -1213,7 +1213,7 @@ impl DatePrototype {
         }
 
         if date_value.is_nan() {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         if !has_milliseconds {

@@ -164,13 +164,13 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Ok(cx.smi(0)),
-            UNDEFINED_TAG => Ok(Value::nan().to_handle(cx)),
+            NULL_TAG => Ok(cx.zero()),
+            UNDEFINED_TAG => Ok(cx.nan()),
             BOOL_TAG => {
                 if value.as_bool() {
-                    Ok(cx.smi(1))
+                    Ok(cx.one())
                 } else {
-                    Ok(cx.smi(0))
+                    Ok(cx.zero())
                 }
             }
             _ => unreachable!(),

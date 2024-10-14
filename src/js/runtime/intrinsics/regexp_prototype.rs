@@ -220,7 +220,7 @@ impl RegExpPrototype {
             return regexp_exec(cx, regexp_object, string_value);
         }
 
-        let zero_value = Value::from(0).to_handle(cx);
+        let zero_value = cx.zero();
         set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
 
         let result_array = array_create(cx, 0, None)?;
@@ -349,7 +349,7 @@ impl RegExpPrototype {
         }
 
         if is_global {
-            let zero_value = Value::from(0).to_handle(cx);
+            let zero_value = cx.zero();
             set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
         }
 
@@ -521,7 +521,7 @@ impl RegExpPrototype {
         // Save original last index, resetting to zero for search
         let previous_last_index = get(cx, regexp_object, cx.names.last_index())?;
         if !previous_last_index.is_positive_zero() {
-            let zero_value = Value::from(0).to_handle(cx);
+            let zero_value = cx.zero();
             set(cx, regexp_object, cx.names.last_index(), zero_value, true)?;
         }
 
@@ -535,7 +535,7 @@ impl RegExpPrototype {
         }
 
         if result.is_null() {
-            Ok(Value::from(-1).to_handle(cx))
+            Ok(cx.negative_one())
         } else {
             get(cx, result.as_object(), cx.names.index())
         }
@@ -864,7 +864,7 @@ fn regexp_builtin_exec(
     // last index under certain flags.
     if last_index > string_length as u64 {
         if is_global || is_sticky {
-            let zero_value = Value::from(0).to_handle(cx);
+            let zero_value = cx.zero();
             set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 
@@ -878,7 +878,7 @@ fn regexp_builtin_exec(
     // Handle match failure, resetting last index under sticky flag
     if match_.is_none() {
         if is_global || is_sticky {
-            let zero_value = Value::from(0).to_handle(cx);
+            let zero_value = cx.zero();
             set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
         }
 

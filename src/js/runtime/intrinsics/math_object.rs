@@ -560,28 +560,26 @@ impl MathObject {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?.get();
 
-        let value = if n.is_smi() {
+        if n.is_smi() {
             let n_smi = n.as_smi();
             if n_smi == 0 {
-                n
+                Ok(n.to_handle(cx))
             } else if n_smi > 0 {
-                Value::smi(1)
+                Ok(cx.one())
             } else {
-                Value::smi(-1)
+                Ok(cx.negative_one())
             }
         } else {
             if n.is_negative_zero() || n.is_positive_zero() {
-                n
+                Ok(n.to_handle(cx))
             } else if n.as_double() > 0.0 {
-                Value::smi(1)
+                Ok(cx.one())
             } else if n.is_nan() {
-                Value::nan()
+                Ok(cx.nan())
             } else {
-                Value::smi(-1)
+                Ok(cx.negative_one())
             }
-        };
-
-        Ok(value.to_handle(cx))
+        }
     }
 
     /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)

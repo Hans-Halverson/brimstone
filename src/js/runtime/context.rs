@@ -67,6 +67,10 @@ pub struct ContextCell {
     empty: Value,
     true_: Value,
     false_: Value,
+    zero: Value,
+    one: Value,
+    negative_one: Value,
+    nan: Value,
 
     /// Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
@@ -110,6 +114,10 @@ impl Context {
             empty: Value::empty(),
             true_: Value::bool(true),
             false_: Value::bool(false),
+            zero: Value::smi(0),
+            one: Value::smi(1),
+            negative_one: Value::smi(-1),
+            nan: Value::nan(),
             interned_strings: InternedStrings::uninit(),
             modules: HashMap::new(),
             default_named_properties: HeapPtr::uninit(),
@@ -293,6 +301,26 @@ impl Context {
     #[inline]
     pub fn smi(&self, value: i32) -> Handle<Value> {
         Value::smi(value).to_handle(*self)
+    }
+
+    #[inline]
+    pub fn zero(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.zero)
+    }
+
+    #[inline]
+    pub fn one(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.one)
+    }
+
+    #[inline]
+    pub fn negative_one(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.negative_one)
+    }
+
+    #[inline]
+    pub fn nan(&self) -> Handle<Value> {
+        Handle::<Value>::from_fixed_non_heap_ptr(&self.nan)
     }
 
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {

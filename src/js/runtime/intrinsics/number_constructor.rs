@@ -119,7 +119,7 @@ impl NumberConstructor {
         let min_value = Value::number(MIN_POSITIVE_SUBNORMAL_F64).to_handle(cx);
         func.intrinsic_frozen_property(cx, cx.names.min_value(), min_value);
 
-        let nan_value = Value::nan().to_handle(cx);
+        let nan_value = cx.nan();
         func.intrinsic_frozen_property(cx, cx.names.nan(), nan_value);
 
         let neg_infinity_value = Value::number(f64::NEG_INFINITY).to_handle(cx);

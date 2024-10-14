@@ -177,7 +177,7 @@ impl StringPrototype {
         let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
-            return Ok(Value::nan().to_handle(cx));
+            return Ok(cx.nan());
         }
 
         let code_unit = string.code_unit_at(position as u32);
@@ -311,11 +311,11 @@ impl StringPrototype {
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return Ok(cx.smi(-1));
+            return Ok(cx.negative_one());
         }
 
         match string.find(search_string, pos) {
-            None => Ok(cx.smi(-1)),
+            None => Ok(cx.negative_one()),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
@@ -358,7 +358,7 @@ impl StringPrototype {
         let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
         match string.rfind(search_string, string_end) {
-            None => Ok(cx.smi(-1)),
+            None => Ok(cx.negative_one()),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }

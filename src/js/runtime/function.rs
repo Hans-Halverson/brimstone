@@ -67,7 +67,7 @@ pub fn set_function_length_maybe_infinity(
     let length = if let Some(length) = length {
         Value::from(length).to_handle(cx)
     } else {
-        Value::number(f64::INFINITY).to_handle(cx)
+        cx.number(f64::INFINITY)
     };
 
     let desc = PropertyDescriptor::data(length, false, false, true);

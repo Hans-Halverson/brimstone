@@ -104,28 +104,28 @@ impl NumberConstructor {
             realm.get_intrinsic(Intrinsic::NumberPrototype).into(),
         );
 
-        let epsilon_value = Value::number(f64::EPSILON).to_handle(cx);
+        let epsilon_value = cx.number(f64::EPSILON);
         func.intrinsic_frozen_property(cx, cx.names.epsilon(), epsilon_value);
 
-        let max_safe_integer_value = Value::number(MAX_SAFE_INTEGER_F64).to_handle(cx);
+        let max_safe_integer_value = cx.number(MAX_SAFE_INTEGER_F64);
         func.intrinsic_frozen_property(cx, cx.names.max_safe_integer(), max_safe_integer_value);
 
-        let max_value = Value::number(f64::MAX).to_handle(cx);
+        let max_value = cx.number(f64::MAX);
         func.intrinsic_frozen_property(cx, cx.names.max_value(), max_value);
 
-        let min_safe_integer_value = Value::number(MIN_SAFE_INTEGER_F64).to_handle(cx);
+        let min_safe_integer_value = cx.number(MIN_SAFE_INTEGER_F64);
         func.intrinsic_frozen_property(cx, cx.names.min_safe_integer(), min_safe_integer_value);
 
-        let min_value = Value::number(MIN_POSITIVE_SUBNORMAL_F64).to_handle(cx);
+        let min_value = cx.number(MIN_POSITIVE_SUBNORMAL_F64);
         func.intrinsic_frozen_property(cx, cx.names.min_value(), min_value);
 
         let nan_value = cx.nan();
         func.intrinsic_frozen_property(cx, cx.names.nan(), nan_value);
 
-        let neg_infinity_value = Value::number(f64::NEG_INFINITY).to_handle(cx);
+        let neg_infinity_value = cx.number(f64::NEG_INFINITY);
         func.intrinsic_frozen_property(cx, cx.names.negative_infinity(), neg_infinity_value);
 
-        let infinity_value = Value::number(f64::INFINITY).to_handle(cx);
+        let infinity_value = cx.number(f64::INFINITY);
         func.intrinsic_frozen_property(cx, cx.names.positive_infinity(), infinity_value);
 
         func.intrinsic_func(cx, cx.names.is_finite(), Self::is_finite, 1, realm);

@@ -299,11 +299,6 @@ impl Context {
     }
 
     #[inline]
-    pub fn smi(&self, value: i32) -> Handle<Value> {
-        Value::smi(value).to_handle(*self)
-    }
-
-    #[inline]
     pub fn zero(&self) -> Handle<Value> {
         Handle::<Value>::from_fixed_non_heap_ptr(&self.zero)
     }
@@ -321,6 +316,16 @@ impl Context {
     #[inline]
     pub fn nan(&self) -> Handle<Value> {
         Handle::<Value>::from_fixed_non_heap_ptr(&self.nan)
+    }
+
+    #[inline]
+    pub fn smi(&self, value: i32) -> Handle<Value> {
+        Value::smi(value).to_handle(*self)
+    }
+
+    #[inline]
+    pub fn number(&self, value: f64) -> Handle<Value> {
+        Value::number(value).to_handle(*self)
     }
 
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {

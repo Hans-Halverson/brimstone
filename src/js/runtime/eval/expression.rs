@@ -122,7 +122,7 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
         let neg_bignum = -value.as_bigint().bigint();
         Ok(BigIntValue::new(cx, neg_bignum).into())
     } else {
-        Ok(Value::number(-value.as_number()).to_handle(cx))
+        Ok(cx.number(-value.as_number()))
     }
 }
 
@@ -164,7 +164,7 @@ pub fn eval_add(
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() + right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() + right_num.as_number()))
     }
 }
 
@@ -185,7 +185,7 @@ pub fn eval_subtract(
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() - right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() - right_num.as_number()))
     }
 }
 
@@ -206,7 +206,7 @@ pub fn eval_multiply(
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() * right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() * right_num.as_number()))
     }
 }
 
@@ -232,7 +232,7 @@ pub fn eval_divide(
         let result = left_num.as_bigint().bigint() / bigint_right;
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() / right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() / right_num.as_number()))
     }
 }
 
@@ -263,7 +263,7 @@ pub fn eval_remainder(
         let result = bigint_left % bigint_right;
         Ok(BigIntValue::new(cx, result).into())
     } else {
-        Ok(Value::number(left_num.as_number() % right_num.as_number()).to_handle(cx))
+        Ok(cx.number(left_num.as_number() % right_num.as_number()))
     }
 }
 
@@ -298,8 +298,7 @@ pub fn eval_exponentiation(
             range_error(cx, "BigInt is too large")
         }
     } else {
-        Ok(Value::number(number_exponentiate(left_num.as_number(), right_num.as_number()))
-            .to_handle(cx))
+        Ok(cx.number(number_exponentiate(left_num.as_number(), right_num.as_number())))
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::js::runtime::{
-    completion::EvalResult,
     error::{range_error, type_error},
+    eval_result::EvalResult,
     function::get_argument,
     interned_strings::InternedStrings,
     object_value::ObjectValue,

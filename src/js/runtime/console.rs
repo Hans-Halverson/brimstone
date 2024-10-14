@@ -1,6 +1,6 @@
 use super::{
     abstract_operations::get,
-    completion::EvalResult,
+    eval_result::EvalResult,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::ObjectValue,

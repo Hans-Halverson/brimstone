@@ -2,7 +2,7 @@ use crate::{extend_object, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
-    completion::EvalResult,
+    eval_result::EvalResult,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},

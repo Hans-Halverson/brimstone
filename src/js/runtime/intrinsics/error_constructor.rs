@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,

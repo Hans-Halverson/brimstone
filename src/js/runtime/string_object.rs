@@ -5,7 +5,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     extend_object,
     js::runtime::{
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{Handle, HeapPtr},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,

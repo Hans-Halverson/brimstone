@@ -3,8 +3,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{call_object, get_method},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error_value,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         intrinsics::promise_prototype::perform_promise_then,

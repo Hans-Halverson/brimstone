@@ -3,8 +3,8 @@ use crate::{
         abstract_operations::{call_object, create_data_property_or_throw, invoke},
         array_object::{array_create, ArrayObject},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         get,
         intrinsics::{

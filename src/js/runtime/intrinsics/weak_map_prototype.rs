@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    completion::EvalResult, error::type_error, function::get_argument,
+    error::type_error, eval_result::EvalResult, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };

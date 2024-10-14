@@ -1,8 +1,8 @@
 use crate::js::runtime::{
     abstract_operations::call_object,
     builtin_function::BuiltinFunction,
-    completion::EvalResult,
     error::type_error,
+    eval_result::EvalResult,
     function::get_argument,
     object_value::ObjectValue,
     property::Property,

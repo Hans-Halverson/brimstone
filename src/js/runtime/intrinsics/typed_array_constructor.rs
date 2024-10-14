@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         get,
         iterator::iter_iterator_method_values,

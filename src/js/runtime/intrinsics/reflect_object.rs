@@ -1,8 +1,8 @@
 use crate::js::runtime::{
     abstract_operations::{call_object, construct, create_list_from_array_like},
     array_object::create_array_from_list,
-    completion::EvalResult,
     error::type_error,
+    eval_result::EvalResult,
     function::get_argument,
     object_value::ObjectValue,
     property::Property,

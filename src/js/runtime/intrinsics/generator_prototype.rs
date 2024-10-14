@@ -1,7 +1,7 @@
 use crate::js::runtime::{
     abstract_operations::define_property_or_throw,
     bytecode::function::Closure,
-    completion::EvalResult,
+    eval_result::EvalResult,
     function::get_argument,
     generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
     object_descriptor::ObjectKind,

@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::create_data_property_or_throw,
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         gc::Handle,
         object_value::ObjectValue,

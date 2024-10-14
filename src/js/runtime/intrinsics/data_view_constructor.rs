@@ -4,8 +4,8 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         intrinsics::array_buffer_constructor::throw_if_detached,

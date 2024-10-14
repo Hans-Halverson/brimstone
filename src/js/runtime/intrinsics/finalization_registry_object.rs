@@ -4,7 +4,7 @@ use crate::{
     extend_object, field_offset,
     js::runtime::{
         collections::InlineArray,
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,

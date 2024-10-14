@@ -1,6 +1,7 @@
 use crate::js::runtime::{
-    abstract_operations::get, completion::EvalResult, error::type_error, object_value::ObjectValue,
-    realm::Realm, string_value::StringValue, type_utilities::to_string, Context, Handle, Value,
+    abstract_operations::get, error::type_error, eval_result::EvalResult,
+    object_value::ObjectValue, realm::Realm, string_value::StringValue, type_utilities::to_string,
+    Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;

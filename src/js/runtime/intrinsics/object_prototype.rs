@@ -4,8 +4,8 @@ use crate::{
     extend_object,
     js::runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,

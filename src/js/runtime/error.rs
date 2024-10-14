@@ -1,7 +1,7 @@
 use crate::js::{common::error::print_error_message_and_exit, parser::LocalizedParseError};
 
 use super::{
-    completion::EvalResult,
+    eval_result::EvalResult,
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
     string_value::{FlatString, StringValue},
     to_console_string, Context, Handle, HeapPtr, Value,

@@ -6,7 +6,7 @@ use crate::{
         },
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         intrinsics::error_constructor::install_error_cause,
         iterator::iter_iterator_values,

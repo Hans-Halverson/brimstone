@@ -4,8 +4,8 @@ use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
         abstract_operations::set,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         get,
         intrinsics::regexp_prototype::{advance_u64_string_index, regexp_exec},

@@ -7,8 +7,8 @@ use crate::{js::common::math::modulo, must};
 use super::{
     abstract_operations::{call_object, get, get_method},
     bytecode::function::Closure,
-    completion::EvalResult,
     error::{range_error, syntax_error, type_error},
+    eval_result::EvalResult,
     gc::{Handle, HeapPtr},
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,

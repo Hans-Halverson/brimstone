@@ -1,6 +1,6 @@
 use super::{
-    completion::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
-    realm::Realm, Context, Handle, Value,
+    eval_result::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic,
+    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 pub struct GcObject;

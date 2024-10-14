@@ -6,7 +6,7 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{Handle, HeapObject, HeapVisitor},
         numeric_constants::{

@@ -3,8 +3,8 @@ use crate::js::{
     runtime::{
         abstract_operations::length_of_array_like,
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::range_error,
+        eval_result::EvalResult,
         function::get_argument,
         get,
         object_value::ObjectValue,

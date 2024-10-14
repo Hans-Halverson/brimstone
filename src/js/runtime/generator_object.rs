@@ -1,7 +1,7 @@
 use crate::{
     extend_object, field_offset,
     js::runtime::{
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,

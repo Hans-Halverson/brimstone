@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         collections::{BsHashMap, BsHashMapField},
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,

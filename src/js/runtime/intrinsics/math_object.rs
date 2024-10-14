@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use crate::js::runtime::{
-    completion::EvalResult,
+    eval_result::EvalResult,
     function::get_argument,
     numeric_operations::number_exponentiate,
     object_value::ObjectValue,

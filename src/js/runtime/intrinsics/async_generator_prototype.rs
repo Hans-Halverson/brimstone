@@ -7,7 +7,7 @@ use crate::{
             AsyncGeneratorState,
         },
         bytecode::function::Closure,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         generator_object::GeneratorCompletionType,
         iterator::create_iter_result_object,

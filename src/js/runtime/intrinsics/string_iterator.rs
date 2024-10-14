@@ -3,8 +3,8 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,

@@ -15,8 +15,8 @@ use crate::{
         runtime::{
             abstract_operations::{define_property_or_throw, set},
             builtin_function::BuiltinFunction,
-            completion::EvalResult,
             error::syntax_parse_error,
+            eval_result::EvalResult,
             function::get_argument,
             gc::{Handle, HeapObject, HeapVisitor},
             get,

@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
+    builtin_function::BuiltinFunction, error::type_error, eval_result::EvalResult,
     function::get_argument, object_value::ObjectValue, realm::Realm, type_utilities::is_callable,
     Context, Handle, Value,
 };

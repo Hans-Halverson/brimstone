@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         array_object::create_array_from_list,
         collections::index_map::GcSafeEntriesIter,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,

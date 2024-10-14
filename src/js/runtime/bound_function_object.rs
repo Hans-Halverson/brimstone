@@ -3,7 +3,7 @@ use super::{
     array_object::{create_array_from_list, ArrayObject},
     builtin_function::BuiltinFunction,
     bytecode::function::Closure,
-    completion::EvalResult,
+    eval_result::EvalResult,
     gc::HeapPtr,
     get,
     object_value::ObjectValue,

@@ -2,7 +2,7 @@ use crate::js::{
     common::time::get_current_unix_time,
     runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::Handle,
         intrinsics::{

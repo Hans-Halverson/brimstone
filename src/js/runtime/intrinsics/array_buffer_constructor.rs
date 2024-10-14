@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         collections::{array::ByteArray, BsArray},
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         get,

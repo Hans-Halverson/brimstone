@@ -8,8 +8,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         iterator::iter_iterator_method_values,

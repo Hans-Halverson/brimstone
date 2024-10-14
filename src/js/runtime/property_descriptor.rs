@@ -2,8 +2,8 @@ use crate::{js::runtime::abstract_operations::create_data_property_or_throw, mus
 
 use super::{
     abstract_operations::{get, has_property},
-    completion::EvalResult,
     error::type_error,
+    eval_result::EvalResult,
     gc::Handle,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,

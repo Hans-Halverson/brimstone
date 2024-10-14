@@ -9,8 +9,8 @@ use crate::{
         runtime::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
-            completion::EvalResult,
             error::{syntax_error, syntax_parse_error},
+            eval_result::EvalResult,
             intrinsics::intrinsics::Intrinsic,
             promise_object::{PromiseCapability, PromiseObject},
             string_value::FlatString,

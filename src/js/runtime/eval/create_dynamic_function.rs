@@ -12,8 +12,8 @@ use crate::js::{
     },
     runtime::{
         bytecode::{function::Closure, generator::BytecodeProgramGenerator},
-        completion::EvalResult,
         error::{syntax_error, syntax_parse_error},
+        eval_result::EvalResult,
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,

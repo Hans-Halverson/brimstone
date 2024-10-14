@@ -14,8 +14,8 @@ use crate::{
         runtime::{
             abstract_operations::{call_object, get_method, invoke},
             array_object::{array_create, create_array_from_list},
-            completion::EvalResult,
             error::{range_error, type_error},
+            eval_result::EvalResult,
             function::get_argument,
             get,
             interned_strings::InternedStrings,

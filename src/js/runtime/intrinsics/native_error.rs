@@ -1,7 +1,7 @@
 use crate::js::runtime::{
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     builtin_function::BuiltinFunction,
-    completion::EvalResult,
+    eval_result::EvalResult,
     function::get_argument,
     intrinsics::{
         error_constructor::{install_error_cause, ErrorObject},

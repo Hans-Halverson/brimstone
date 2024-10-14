@@ -1,6 +1,6 @@
 use crate::js::runtime::{
-    abstract_operations::call_object, builtin_function::BuiltinFunction, completion::EvalResult,
-    error::type_error, function::get_argument, get, intrinsics::set_object::SetObject,
+    abstract_operations::call_object, builtin_function::BuiltinFunction, error::type_error,
+    eval_result::EvalResult, function::get_argument, get, intrinsics::set_object::SetObject,
     iterator::iter_iterator_values, object_value::ObjectValue, realm::Realm,
     type_utilities::is_callable, Context, Handle, Value,
 };

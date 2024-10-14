@@ -8,7 +8,7 @@ use std::{
 use bitflags::bitflags;
 use num_bigint::BigInt;
 
-use crate::js::{common::wtf_8::Wtf8String, runtime::completion::EvalResult};
+use crate::js::{common::wtf_8::Wtf8String, runtime::eval_result::EvalResult};
 
 use super::{
     loc::{Loc, EMPTY_LOC},

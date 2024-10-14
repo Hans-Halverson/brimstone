@@ -132,7 +132,7 @@ impl HeapObject for HeapPtr<WeakRefObject> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
 
         // Intentionally do not visit weak_ref_target and next_weak_ref
     }

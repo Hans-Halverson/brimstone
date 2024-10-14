@@ -368,6 +368,6 @@ impl HeapObject for HeapPtr<ObjectPrototype> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
     }
 }

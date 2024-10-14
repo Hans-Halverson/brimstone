@@ -153,7 +153,7 @@ impl HeapObject for HeapPtr<RegExpStringIterator> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
         visitor.visit_pointer(&mut self.regexp_object);
         visitor.visit_pointer(&mut self.target_string);
     }

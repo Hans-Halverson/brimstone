@@ -145,6 +145,14 @@ macro_rules! extend_object {
                 value.cast::<$crate::js::runtime::object_value::ObjectValue>()
             }
         }
+
+        impl $(<$($generics),*>)? $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
+            #[inline]
+            pub fn visit_object_pointers(&self, visitor: &mut impl $crate::js::runtime::gc::HeapVisitor) {
+                use $crate::js::runtime::gc::HeapObject;
+                self.as_object().visit_pointers(visitor);
+            }
+        }
     }
 }
 

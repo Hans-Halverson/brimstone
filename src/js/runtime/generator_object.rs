@@ -296,7 +296,7 @@ impl HeapObject for HeapPtr<GeneratorObject> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
 
         if self.state.is_suspended() {
             let mut stack_frame = StackFrame::for_fp(self.current_fp().cast_mut());

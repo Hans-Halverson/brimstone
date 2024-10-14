@@ -353,6 +353,6 @@ impl HeapObject for HeapPtr<DateObject> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl crate::js::runtime::gc::HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
     }
 }

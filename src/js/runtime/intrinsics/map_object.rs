@@ -86,7 +86,7 @@ impl HeapObject for HeapPtr<MapObject> {
     }
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        self.cast::<ObjectValue>().visit_pointers(visitor);
+        self.visit_object_pointers(visitor);
         visitor.visit_pointer(&mut self.map_data);
     }
 }

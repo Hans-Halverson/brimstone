@@ -1,4 +1,4 @@
-use crate::{extend_object, must};
+use crate::{extend_object_without_conversions, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -19,7 +19,7 @@ use super::{
 // from ObjectValue so that the same methods can appear on ObjectValue but perform dynamic dispatch.
 //
 // Should never be created. Only used to reference its vtable.
-extend_object! {
+extend_object_without_conversions! {
     pub struct OrdinaryObject {}
 }
 

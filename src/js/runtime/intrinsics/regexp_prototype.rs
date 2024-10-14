@@ -37,7 +37,9 @@ use crate::{
 };
 
 use super::{
-    intrinsics::Intrinsic, regexp_constructor::RegExpObject, string_prototype::ReplaceValue,
+    intrinsics::Intrinsic,
+    regexp_constructor::{as_regexp_object, RegExpObject},
+    string_prototype::ReplaceValue,
 };
 
 pub struct RegExpPrototype;
@@ -78,8 +80,8 @@ impl RegExpPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let regexp_object = if this_value.is_object() && this_value.as_object().is_regexp_object() {
-            this_value.as_object().cast::<RegExpObject>()
+        let regexp_object = if let Some(regexp_object) = as_regexp_object(this_value) {
+            regexp_object
         } else {
             return type_error(cx, "RegExpr.prototype.exec must be called on a regular expression");
         };
@@ -550,11 +552,8 @@ impl RegExpPrototype {
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_object() {
             let this_object = this_value.as_object();
-            if this_object.is_regexp_object() {
-                return Ok(this_object
-                    .cast::<RegExpObject>()
-                    .escaped_pattern_source()
-                    .as_value());
+            if let Some(regexp_object) = this_object.as_regexp_object() {
+                return Ok(regexp_object.escaped_pattern_source().as_value());
             } else if same_object_value(
                 this_object.get_(),
                 cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
@@ -797,8 +796,8 @@ fn regexp_has_flag(
 ) -> EvalResult<Handle<Value>> {
     if this_value.is_object() {
         let this_object = this_value.as_object();
-        if this_object.is_regexp_object() {
-            let has_flag = this_object.cast::<RegExpObject>().flags().contains(flag);
+        if let Some(regexp_object) = this_object.as_regexp_object() {
+            let has_flag = regexp_object.flags().contains(flag);
             return Ok(cx.bool(has_flag));
         } else if same_object_value(
             this_object.get_(),

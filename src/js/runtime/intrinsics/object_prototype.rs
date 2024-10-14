@@ -177,7 +177,7 @@ impl ObjectPrototype {
             "Function"
         } else if object.is_error() {
             "Error"
-        } else if object.is_bool_object() {
+        } else if object.is_boolean_object() {
             "Boolean"
         } else if object.is_number_object() {
             "Number"

@@ -2,13 +2,11 @@ use super::{
     abstract_operations::{call_object, construct, length_of_array_like},
     array_object::{create_array_from_list, ArrayObject},
     builtin_function::BuiltinFunction,
-    bytecode::function::Closure,
     eval_result::EvalResult,
     gc::HeapPtr,
     get,
     object_value::ObjectValue,
     property_key::PropertyKey,
-    proxy_object::ProxyObject,
     type_utilities::{is_constructor_object_value, same_object_value_handles},
     value::Value,
     Context, Handle,
@@ -25,13 +23,10 @@ impl BoundFunctionObject {
     ) -> EvalResult<Handle<ObjectValue>> {
         let prototype = target_function.get_prototype_of(cx)?;
 
-        let is_constructor = if target_function.is_closure() {
-            target_function
-                .cast::<Closure>()
-                .function_ptr()
-                .is_constructor()
-        } else if target_function.is_proxy() {
-            target_function.cast::<ProxyObject>().is_constructor()
+        let is_constructor = if let Some(closure) = target_function.as_closure() {
+            closure.function_ptr().is_constructor()
+        } else if let Some(proxy_object) = target_function.as_proxy() {
+            proxy_object.is_constructor()
         } else if let Some(target_function) =
             BoundFunctionObject::get_target_if_bound_function(cx, target_function)
         {

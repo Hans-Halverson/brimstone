@@ -133,10 +133,5 @@ fn this_weak_map_value(value: Handle<Value>) -> Option<Handle<WeakMapObject>> {
         return None;
     }
 
-    let object = value.as_object();
-    if !object.is_weak_map_object() {
-        return None;
-    }
-
-    Some(object.cast::<WeakMapObject>())
+    value.as_object().as_weak_map_object()
 }

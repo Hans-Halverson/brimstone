@@ -42,7 +42,7 @@ use crate::{
     must,
 };
 
-use super::regexp_constructor::{FlagsSource, RegExpObject};
+use super::regexp_constructor::FlagsSource;
 
 pub struct StringPrototype;
 
@@ -433,8 +433,9 @@ impl StringPrototype {
         if !regexp_arg.is_nullish() {
             if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
-                let has_global_flag = if regexp_object.is_regexp_object() {
-                    regexp_object.cast::<RegExpObject>().flags().is_global()
+                let has_global_flag = if let Some(regexp_object) = regexp_object.as_regexp_object()
+                {
+                    regexp_object.flags().is_global()
                 } else {
                     let flags_string = get(cx, regexp_object, cx.names.flags())?;
                     require_object_coercible(cx, flags_string)?;
@@ -1213,8 +1214,8 @@ fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
 
     if value.is_object() {
         let object_value = value.as_object();
-        if object_value.is_string_object() {
-            return Ok(object_value.cast::<StringObject>().string_data().as_value());
+        if let Some(string_object) = object_value.as_string_object() {
+            return Ok(string_object.string_data().as_value());
         }
     }
 

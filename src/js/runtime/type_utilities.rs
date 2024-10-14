@@ -703,8 +703,7 @@ pub fn is_array(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         return Ok(true);
     }
 
-    if object_value.is_proxy() {
-        let proxy = object_value.cast::<ProxyObject>();
+    if let Some(proxy) = object_value.as_proxy() {
         if proxy.is_revoked() {
             return type_error(cx, "operation attempted on revoked proxy");
         }

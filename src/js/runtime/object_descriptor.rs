@@ -189,14 +189,17 @@ impl ObjectDescriptor {
         desc.to_handle()
     }
 
+    #[inline]
     pub const fn kind(&self) -> ObjectKind {
         self.kind
     }
 
+    #[inline]
     pub const fn vtable(&self) -> VirtualObjectVtable {
         self.vtable
     }
 
+    #[inline]
     pub fn is_object(&self) -> bool {
         self.flags.contains(DescFlags::IS_OBJECT)
     }

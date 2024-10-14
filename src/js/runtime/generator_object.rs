@@ -203,17 +203,17 @@ fn generator_validate(
     cx: Context,
     generator: Handle<Value>,
 ) -> EvalResult<Handle<GeneratorObject>> {
-    if !generator.is_object() || !generator.as_object().is_generator() {
-        return type_error(cx, "expected generator");
+    if generator.is_object() {
+        if let Some(generator) = generator.as_object().as_generator() {
+            if generator.state == GeneratorState::Executing {
+                return type_error(cx, "generator is already executing");
+            }
+
+            return Ok(generator);
+        }
     }
 
-    let generator = generator.as_object().cast::<GeneratorObject>();
-
-    if generator.state == GeneratorState::Executing {
-        return type_error(cx, "generator is already executing");
-    }
-
-    Ok(generator)
+    type_error(cx, "expected generator")
 }
 
 /// GeneratorResume (https://tc39.es/ecma262/#sec-generatorresume)

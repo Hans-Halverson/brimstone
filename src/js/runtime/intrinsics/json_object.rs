@@ -12,7 +12,6 @@ use crate::{
             error::{syntax_error, type_error},
             function::get_argument,
             get,
-            intrinsics::{bigint_constructor::BigIntObject, boolean_constructor::BooleanObject},
             object_value::ObjectValue,
             ordinary_object::ordinary_object_create,
             property::Property,
@@ -572,11 +571,10 @@ impl JSONSerializer {
                 value = to_number(cx, value)?;
             } else if value_object.is_string_object() {
                 value = to_string(cx, value)?.into();
-            } else if value_object.is_bool_object() {
-                let bool = value_object.cast::<BooleanObject>().boolean_data();
-                value = cx.bool(bool);
-            } else if value_object.is_bigint_object() {
-                value = value_object.cast::<BigIntObject>().bigint_data().into()
+            } else if let Some(boolean_object) = value_object.as_boolean_object() {
+                value = cx.bool(boolean_object.boolean_data());
+            } else if let Some(bigint_object) = value_object.as_bigint_object() {
+                value = bigint_object.bigint_data().into()
             }
         }
 

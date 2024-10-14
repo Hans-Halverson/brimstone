@@ -210,8 +210,8 @@ impl ArrayBufferPrototype {
         let new_object = construct(cx, constructor, &[new_length_value], None)?;
 
         // Check type of object returned from constructor
-        let mut new_array_buffer = if new_object.is_array_buffer() {
-            new_object.cast::<ArrayBufferObject>()
+        let mut new_array_buffer = if let Some(array_buffer) = new_object.as_array_buffer() {
+            array_buffer
         } else if new_object.is_shared_array_buffer() {
             return type_error(cx, "constructor cannot return SharedArrayBuffer");
         } else {
@@ -280,8 +280,8 @@ fn require_array_buffer(
 ) -> EvalResult<Handle<ArrayBufferObject>> {
     if value.is_object() {
         let object = value.as_object();
-        if object.is_array_buffer() {
-            return Ok(object.cast::<ArrayBufferObject>());
+        if let Some(array_buffer) = object.as_array_buffer() {
+            return Ok(array_buffer);
         }
     }
 

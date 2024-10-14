@@ -45,7 +45,7 @@ impl WeakSetObject {
             Intrinsic::WeakSetPrototype,
         )?;
 
-        set_uninit!(object.weak_set_data, weak_set_data.get_());
+        set_uninit!(object.weak_set_data, *weak_set_data);
 
         Ok(object.to_handle())
     }

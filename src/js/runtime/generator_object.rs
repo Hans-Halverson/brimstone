@@ -113,7 +113,7 @@ impl GeneratorObject {
         let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size);
 
         let descriptor = cx.base_descriptors.get(ObjectKind::Generator);
-        object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| p.get_()));
+        object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
 
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);

@@ -35,7 +35,7 @@ impl SymbolObject {
         let mut object =
             object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
 
-        set_uninit!(object.symbol_data, symbol_data.get_());
+        set_uninit!(object.symbol_data, *symbol_data);
 
         object.to_handle()
     }
@@ -145,7 +145,7 @@ impl SymbolConstructor {
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let string_key = to_string(cx, argument)?.flatten();
-        if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key.get_()) {
+        if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key) {
             return Ok(symbol_value.to_handle().into());
         }
 
@@ -153,7 +153,7 @@ impl SymbolConstructor {
             SymbolValue::new(cx, Some(string_key.as_string()), /* is_private */ false);
         cx.global_symbol_registry_field()
             .maybe_grow_for_insertion(cx)
-            .insert_without_growing(string_key.get_(), new_symbol.get_());
+            .insert_without_growing(*string_key, *new_symbol);
 
         Ok(new_symbol.into())
     }
@@ -169,7 +169,7 @@ impl SymbolConstructor {
         if !symbol_value.is_symbol() {
             return type_error(cx, "expected symbol value");
         }
-        let symbol_value = symbol_value.as_symbol().get_();
+        let symbol_value = *symbol_value.as_symbol();
 
         for (string, symbol) in cx.global_symbol_registry().iter_gc_unsafe() {
             if symbol.ptr_eq(&symbol_value) {

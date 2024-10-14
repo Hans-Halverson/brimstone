@@ -118,42 +118,42 @@ impl RegExpPrototype {
         let mut flags_string = String::new();
 
         let has_indices_value = get(cx, this_object, cx.names.has_indices())?;
-        if to_boolean(has_indices_value.get()) {
+        if to_boolean(*has_indices_value) {
             flags_string.push('d');
         }
 
         let global_value = get(cx, this_object, cx.names.global())?;
-        if to_boolean(global_value.get()) {
+        if to_boolean(*global_value) {
             flags_string.push('g');
         }
 
         let ignore_case_value = get(cx, this_object, cx.names.ignore_case())?;
-        if to_boolean(ignore_case_value.get()) {
+        if to_boolean(*ignore_case_value) {
             flags_string.push('i');
         }
 
         let multiline_value = get(cx, this_object, cx.names.multiline())?;
-        if to_boolean(multiline_value.get()) {
+        if to_boolean(*multiline_value) {
             flags_string.push('m');
         }
 
         let dot_all_value = get(cx, this_object, cx.names.dot_all())?;
-        if to_boolean(dot_all_value.get()) {
+        if to_boolean(*dot_all_value) {
             flags_string.push('s');
         }
 
         let unicode_value = get(cx, this_object, cx.names.unicode())?;
-        if to_boolean(unicode_value.get()) {
+        if to_boolean(*unicode_value) {
             flags_string.push('u');
         }
 
         let unicode_sets_value = get(cx, this_object, cx.names.unicode_sets())?;
-        if to_boolean(unicode_sets_value.get()) {
+        if to_boolean(*unicode_sets_value) {
             flags_string.push('v');
         }
 
         let sticky_value = get(cx, this_object, cx.names.sticky())?;
-        if to_boolean(sticky_value.get()) {
+        if to_boolean(*sticky_value) {
             flags_string.push('y');
         }
 
@@ -555,7 +555,7 @@ impl RegExpPrototype {
             if let Some(regexp_object) = this_object.as_regexp_object() {
                 return Ok(regexp_object.escaped_pattern_source().as_value());
             } else if same_object_value(
-                this_object.get_(),
+                *this_object,
                 cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
             ) {
                 return Ok(cx.alloc_string("(?:)").as_value());
@@ -799,10 +799,8 @@ fn regexp_has_flag(
         if let Some(regexp_object) = this_object.as_regexp_object() {
             let has_flag = regexp_object.flags().contains(flag);
             return Ok(cx.bool(has_flag));
-        } else if same_object_value(
-            this_object.get_(),
-            cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype),
-        ) {
+        } else if same_object_value(*this_object, cx.get_intrinsic_ptr(Intrinsic::RegExpPrototype))
+        {
             return Ok(cx.undefined());
         }
     }

@@ -337,12 +337,6 @@ impl HandleContext {
 }
 
 impl Handle<Value> {
-    /// Get the value stored behind the handle.
-    #[inline]
-    pub fn get(&self) -> Value {
-        unsafe { self.ptr.as_ptr().cast::<Value>().read() }
-    }
-
     #[inline]
     pub fn from_fixed_non_heap_ptr(value_ref: &Value) -> Handle<Value> {
         let ptr = unsafe { NonNull::new_unchecked(value_ref as *const Value as *mut Value) };
@@ -367,14 +361,6 @@ impl Handle<Value> {
     #[inline]
     pub fn as_bigint(&self) -> Handle<BigIntValue> {
         self.cast()
-    }
-}
-
-impl<T: IsHeapObject> Handle<T> {
-    /// Get the heap pointer stored behind the handle.
-    #[inline]
-    pub fn get_(&self) -> HeapPtr<T> {
-        unsafe { self.ptr.as_ptr().cast::<HeapPtr<T>>().read() }
     }
 }
 
@@ -429,14 +415,14 @@ impl Escapable for u32 {
 impl Escapable for Handle<Value> {
     #[inline]
     fn escape(&self, cx: Context) -> Self {
-        self.get().to_handle(cx)
+        (**self).to_handle(cx)
     }
 }
 
 impl<T: IsHeapObject> Escapable for Handle<T> {
     #[inline]
     fn escape(&self, _: Context) -> Self {
-        self.get_().to_handle()
+        (**self).to_handle()
     }
 }
 

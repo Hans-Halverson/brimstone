@@ -56,13 +56,13 @@ macro_rules! heap_trait_object {
         impl $stack_object {
             #[allow(dead_code)]
             pub fn ptr_eq(&self, other: &Self) -> bool {
-                self.data.get_().ptr_eq(&other.data.get_())
+                (*self.data).ptr_eq(&*other.data)
             }
 
             #[allow(dead_code)]
             #[inline]
             pub fn to_heap(self) -> $heap_object {
-                $heap_object { data: self.data.get_(), vtable: self.vtable }
+                $heap_object { data: *self.data, vtable: self.vtable }
             }
 
             #[allow(dead_code)]

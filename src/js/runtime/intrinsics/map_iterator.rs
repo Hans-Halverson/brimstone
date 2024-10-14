@@ -69,7 +69,7 @@ impl MapIterator {
 
     fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, Value>) {
         let (map, next_entry_index) = iter.to_parts();
-        self.map = map.get_();
+        self.map = *map;
         self.next_entry_index = next_entry_index;
     }
 }

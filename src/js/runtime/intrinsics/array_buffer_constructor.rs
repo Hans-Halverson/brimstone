@@ -83,7 +83,7 @@ impl ArrayBufferObject {
 
         // Initialize data block to all zeros
         object.data = if let Some(data) = data {
-            Some(data.get_())
+            Some(*data)
         } else {
             Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
         };
@@ -225,7 +225,7 @@ pub fn array_buffer_copy_and_detach(
         to_index(cx, new_length)?
     };
 
-    throw_if_detached(cx, array_buffer.get_())?;
+    throw_if_detached(cx, *array_buffer)?;
 
     // Can only remain auto-resizable if ArrayBuffer was already resizable and we are not forced
     // to fix the length.

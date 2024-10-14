@@ -39,7 +39,7 @@ impl BigIntObject {
         let mut object =
             object_create::<BigIntObject>(cx, ObjectKind::BigIntObject, Intrinsic::BigIntPrototype);
 
-        set_uninit!(object.bigint_data, bigint_data.get_());
+        set_uninit!(object.bigint_data, *bigint_data);
 
         object.to_handle()
     }
@@ -90,7 +90,7 @@ impl BigIntConstructor {
         let primitive = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
 
         if primitive.is_number() {
-            if !is_integral_number(primitive.get()) {
+            if !is_integral_number(*primitive) {
                 return range_error(cx, "number is not an integer");
             }
 

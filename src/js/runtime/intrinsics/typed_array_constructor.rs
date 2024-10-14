@@ -225,7 +225,7 @@ macro_rules! create_typed_array_constructor {
                 let mut object =
                     object_create_with_proto::<$typed_array>(cx, ObjectKind::$typed_array, proto);
 
-                set_uninit!(object.viewed_array_buffer, viewed_array_buffer.get_());
+                set_uninit!(object.viewed_array_buffer, *viewed_array_buffer);
                 set_uninit!(object.byte_length, byte_length);
                 set_uninit!(object.array_length, array_length);
                 set_uninit!(object.byte_offset, byte_offset);
@@ -386,7 +386,7 @@ macro_rules! create_typed_array_constructor {
                     result @ (CanonicalIndexType::Invalid | CanonicalIndexType::Valid(_)) => {
                         // Check if this is not the same object as the specified receiver
                         if !receiver.is_object()
-                            || !receiver.as_object().get_().ptr_eq(&self.as_object().get_())
+                            || !(*receiver.as_object()).ptr_eq(&self.as_object())
                         {
                             if matches!(result, CanonicalIndexType::Valid(_)) {
                                 return ordinary_set(cx, self.as_object(), key, value, receiver);
@@ -769,7 +769,7 @@ macro_rules! create_typed_array_constructor {
                     for _ in 0..source_array_length {
                         let value = source_typed_array.read_element_value(
                             cx,
-                            source_data.get_(),
+                            *source_data,
                             source_byte_index,
                         );
 
@@ -777,7 +777,7 @@ macro_rules! create_typed_array_constructor {
                         // user code.
                         let element_value = $to_element(cx, value)?;
 
-                        $typed_array::write_element(data.get_(), target_byte_index, element_value);
+                        $typed_array::write_element(*data, target_byte_index, element_value);
 
                         source_byte_index += source_element_size;
                         target_byte_index += target_element_size;
@@ -992,7 +992,7 @@ pub fn canonical_numeric_index_string(
         // If string representations are equal, must be canonical numeric index
         let number_string = must!(to_string(cx, number_value));
         if key_string.eq(&number_string) {
-            if !is_integral_number(number_value.get()) {
+            if !is_integral_number(*number_value) {
                 return CanonicalIndexType::Invalid;
             }
 
@@ -1013,8 +1013,7 @@ pub fn canonical_numeric_index_string(
             }
 
             CanonicalIndexType::Valid(number)
-        } else if key_string
-            .get_()
+        } else if (*key_string)
             .as_flat()
             .eq(&cx.names.negative_zero.as_string().as_flat())
         {

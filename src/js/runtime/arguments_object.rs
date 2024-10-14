@@ -82,7 +82,7 @@ impl MappedArgumentsObject {
             Intrinsic::ObjectPrototype,
         );
 
-        set_uninit!(object.scope, scope.get_());
+        set_uninit!(object.scope, *scope);
 
         // An parameter is mapped if it has not been shadowed, which we know due to the special
         // shadowed scope slot name.
@@ -90,7 +90,7 @@ impl MappedArgumentsObject {
 
         object.mapped_parameters.init_with_uninit(num_parameters);
         for i in 0..num_parameters {
-            let is_mapped = !scope_names.get_slot_name(i).ptr_eq(&shadowed_name.get_());
+            let is_mapped = !scope_names.get_slot_name(i).ptr_eq(&*shadowed_name);
             object.mapped_parameters.as_mut_slice()[i] = is_mapped;
         }
 
@@ -163,7 +163,7 @@ impl MappedArgumentsObject {
     }
 
     fn set_mapped_argument(&mut self, index: usize, value: Handle<Value>) {
-        self.scope.set_slot(index, value.get());
+        self.scope.set_slot(index, *value);
     }
 }
 

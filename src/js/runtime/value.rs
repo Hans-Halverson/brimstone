@@ -576,7 +576,7 @@ impl SymbolValue {
         let mut symbol = cx.alloc_uninit::<SymbolValue>();
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
-        set_uninit!(symbol.description, description.map(|desc| desc.get_()));
+        set_uninit!(symbol.description, description.map(|desc| *desc));
         set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
 
@@ -632,14 +632,14 @@ impl Eq for HeapPtr<SymbolValue> {}
 impl hash::Hash for Handle<SymbolValue> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.get_().hash(state)
+        (**self).hash(state)
     }
 }
 
 impl PartialEq for Handle<SymbolValue> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.get_().eq(&other.get_())
+        (**self).eq(&**other)
     }
 }
 
@@ -743,10 +743,10 @@ impl ValueCollectionKey {
     pub fn from(value: Handle<Value>) -> Self {
         if value.is_string() {
             let flat_string = value.as_string().flatten();
-            return ValueCollectionKey(flat_string.as_string().get_().into());
+            return ValueCollectionKey(*flat_string.as_value());
         }
 
-        ValueCollectionKey(value.get())
+        ValueCollectionKey(*value)
     }
 
     pub fn get(&self) -> Value {
@@ -826,6 +826,6 @@ impl ValueCollectionKeyHandle {
     }
 
     pub fn get(&self) -> ValueCollectionKey {
-        ValueCollectionKey(self.0.get())
+        ValueCollectionKey(*self.0)
     }
 }

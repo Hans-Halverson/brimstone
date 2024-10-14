@@ -330,7 +330,7 @@ impl MathObject {
         let mut has_nan: bool = false;
 
         for arg in arguments {
-            let n = to_number(cx, *arg)?.get();
+            let n = *to_number(cx, *arg)?;
 
             if has_infinity {
                 continue;
@@ -440,7 +440,7 @@ impl MathObject {
         let mut found_nan = false;
 
         for arg in arguments {
-            let n = to_number(cx, *arg)?.get();
+            let n = *to_number(cx, *arg)?;
 
             if found_nan || n.is_nan() {
                 if !found_nan {
@@ -474,7 +474,7 @@ impl MathObject {
         let mut found_nan = false;
 
         for arg in arguments {
-            let n = to_number(cx, *arg)?.get();
+            let n = *to_number(cx, *arg)?;
 
             if found_nan || n.is_nan() {
                 if !found_nan {
@@ -558,7 +558,7 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = to_number(cx, argument)?.get();
+        let n = *to_number(cx, argument)?;
 
         if n.is_smi() {
             let n_smi = n.as_smi();

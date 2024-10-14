@@ -142,7 +142,7 @@ pub fn to_numeric(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>
 /// ToNumber (https://tc39.es/ecma262/#sec-tonumber)
 pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<Value>> {
     // Safe since value is never referenced after allocation
-    let value = value_handle.get();
+    let value = *value_handle;
 
     // Fast path
     if value.is_number() {
@@ -189,7 +189,7 @@ fn string_to_number(value: Handle<StringValue>) -> Value {
 /// ToIntegerOrInfinity (https://tc39.es/ecma262/#sec-tointegerorinfinity)
 pub fn to_integer_or_infinity(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
     let number_handle = to_number(cx, value)?;
-    let number = number_handle.get();
+    let number = *number_handle;
 
     Ok(to_integer_or_infinity_f64(number.as_number()))
 }
@@ -215,7 +215,7 @@ pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
 /// ToInt32 (https://tc39.es/ecma262/#sec-toint32)
 pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     // Fast pass if the value is a smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         return Ok(value.as_smi());
     }
@@ -249,7 +249,7 @@ pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
 /// ToUint32 (https://tc39.es/ecma262/#sec-touint32)
 pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
     // Fast pass if the value is a non-negative smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
@@ -281,7 +281,7 @@ pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
 /// ToInt16 (https://tc39.es/ecma262/#sec-toint16)
 pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     // Fast path if the value is a smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         return Ok(value.as_smi() as i16);
     }
@@ -315,7 +315,7 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
 /// ToUint16 (https://tc39.es/ecma262/#sec-touint16)
 pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
     // Fast path if the value is a non-negative smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
@@ -347,7 +347,7 @@ pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
 /// ToInt8 (https://tc39.es/ecma262/#sec-toint8)
 pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     // Fast path if the value is a smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         return Ok(value.as_smi() as i8);
     }
@@ -381,7 +381,7 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
 /// ToUint8 (https://tc39.es/ecma262/#sec-touint8)
 pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     // Fast path if the value is a non-negative smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let i32_value = value.as_smi();
         if i32_value >= 0 {
@@ -413,7 +413,7 @@ pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
 /// ToUint8Clamp (https://tc39.es/ecma262/#sec-touint8clamp)
 pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
     // Fast path if the value is a smi
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let i32_value = value.as_smi();
 
@@ -458,7 +458,7 @@ pub fn to_uint8_clamp(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8
 /// ToBigInt (https://tc39.es/ecma262/#sec-tobigint)
 pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     let primitive_handle = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
-    let primitive = primitive_handle.get();
+    let primitive = *primitive_handle;
 
     if primitive.is_pointer() {
         match primitive.as_pointer().descriptor().kind() {
@@ -514,7 +514,7 @@ pub fn to_big_uint64(cx: Context, value: Handle<Value>) -> EvalResult<BigInt> {
 /// ToString (https://tc39.es/ecma262/#sec-tostring)
 pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<StringValue>> {
     // Safe since value is never referenced after allocation
-    let value = value_handle.get();
+    let value = *value_handle;
 
     // Fast path
     if value.is_string() {
@@ -559,7 +559,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
 /// ToObject (https://tc39.es/ecma262/#sec-toobject)
 pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<ObjectValue>> {
     // Safe since pointer value is never referenced after allocation
-    let value = value_handle.get();
+    let value = *value_handle;
 
     if value.is_pointer() {
         // Fast path
@@ -627,7 +627,7 @@ pub fn canonical_numeric_string_index_string(
         // If string representations are equal, must be canonical numeric index
         let number_string = must!(to_string(cx, number_value));
         if key_string.eq(&number_string) {
-            if !is_integral_number(number_value.get()) {
+            if !is_integral_number(*number_value) {
                 return Some(None);
             }
 
@@ -642,8 +642,7 @@ pub fn canonical_numeric_string_index_string(
             }
 
             Some(Some(number as u32))
-        } else if key_string
-            .get_()
+        } else if (*key_string)
             .as_flat()
             .eq(&cx.names.negative_zero.as_string().as_flat())
         {
@@ -659,7 +658,7 @@ pub fn canonical_numeric_string_index_string(
 
 /// ToIndex (https://tc39.es/ecma262/#sec-toindex)
 pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let smi = value.as_smi();
         if smi < 0 {
@@ -779,7 +778,7 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
     let matcher = get(cx, object, match_key)?;
 
     if !matcher.is_undefined() {
-        return Ok(to_boolean(matcher.get()));
+        return Ok(to_boolean(*matcher));
     }
 
     Ok(object.is_regexp_object())
@@ -815,8 +814,8 @@ pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
 
 /// SameValueZero (https://tc39.es/ecma262/#sec-samevaluezero)
 pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
-    let v1 = v1_handle.get();
-    let v2 = v2_handle.get();
+    let v1 = *v1_handle;
+    let v2 = *v2_handle;
 
     // Same as same_value, but treats differently signed zeros as equal
     if v1.is_number() {
@@ -858,8 +857,8 @@ pub fn same_value_zero_non_allocating(v1: Value, v2: Value) -> bool {
 /// Also includes BigInt handling
 #[inline]
 fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
-    let v1 = v1_handle.get();
-    let v2 = v2_handle.get();
+    let v1 = *v1_handle;
+    let v2 = *v2_handle;
 
     // Fast path, if values have same bits they are always equal
     if v1.as_raw_bits() == v2.as_raw_bits() {
@@ -930,7 +929,7 @@ pub fn to_property_key(
     cx: Context,
     value_handle: Handle<Value>,
 ) -> EvalResult<Handle<PropertyKey>> {
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_smi() {
         let smi_value = value.as_smi();
         if smi_value >= 0 {
@@ -960,8 +959,8 @@ pub fn is_less_than(
 ) -> EvalResult<Value> {
     // Safe since allocation can only occur during to_numeric, and direct values are not held
     // across the to_numeric calls.
-    let x = x_handle.get();
-    let y = y_handle.get();
+    let x = *x_handle;
+    let y = *y_handle;
 
     if x.is_pointer() && y.is_pointer() {
         let x_kind = x.as_pointer().descriptor().kind();
@@ -1002,8 +1001,8 @@ pub fn is_less_than(
     let num_x_handle = to_numeric(cx, x_handle)?;
     let num_y_handle = to_numeric(cx, y_handle)?;
 
-    let num_x = num_x_handle.get();
-    let num_y = num_y_handle.get();
+    let num_x = *num_x_handle;
+    let num_y = *num_y_handle;
 
     let x_is_bigint = num_x.is_bigint();
     let y_is_bigint = num_y.is_bigint();
@@ -1095,8 +1094,8 @@ pub fn is_loosely_equal(
 ) -> EvalResult<bool> {
     // Safe since allocation can only occur during to_number, to_primitive, and recursive calls to
     // is_loosely_equal, and direct values are not held across these calls.
-    let v1 = v1_handle.get();
-    let v2 = v2_handle.get();
+    let v1 = *v1_handle;
+    let v2 = *v2_handle;
 
     // If values have the same type, then use (inlined) is_strictly_equal.
     //
@@ -1280,8 +1279,8 @@ pub fn is_loosely_equal(
 
 /// IsStrictlyEqual (https://tc39.es/ecma262/#sec-isstrictlyequal)
 pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
-    let v1 = v1_handle.get();
-    let v2 = v2_handle.get();
+    let v1 = *v1_handle;
+    let v2 = *v2_handle;
 
     if v1.is_number() {
         if v2.is_number() {
@@ -1302,7 +1301,7 @@ pub fn same_object_value(value1: HeapPtr<ObjectValue>, value2: HeapPtr<ObjectVal
 
 #[inline]
 pub fn same_object_value_handles(value1: Handle<ObjectValue>, value2: Handle<ObjectValue>) -> bool {
-    value1.get_().ptr_eq(&value2.get_())
+    same_object_value(*value1, *value2)
 }
 
 /// Specialization of SameValue for optional objects, checks object identity
@@ -1325,7 +1324,7 @@ pub fn same_opt_object_value_handles(
 ) -> bool {
     match (value1, value2) {
         (None, None) => true,
-        (Some(value1), Some(value2)) => value1.get_().ptr_eq(&value2.get_()),
+        (Some(value1), Some(value2)) => same_object_value_handles(value1, value2),
         _ => false,
     }
 }

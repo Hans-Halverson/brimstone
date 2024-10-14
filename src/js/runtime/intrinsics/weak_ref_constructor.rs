@@ -43,7 +43,7 @@ impl WeakRefObject {
             Intrinsic::WeakRefPrototype,
         )?;
 
-        set_uninit!(object.weak_ref_target, value.get());
+        set_uninit!(object.weak_ref_target, *value);
 
         Ok(object.to_handle())
     }
@@ -102,7 +102,7 @@ impl WeakRefConstructor {
         };
 
         let target_value = get_argument(cx, arguments, 0);
-        if !can_be_held_weakly(cx, target_value.get()) {
+        if !can_be_held_weakly(cx, *target_value) {
             return type_error(cx, "WeakRef only holds objects and symbols");
         }
 

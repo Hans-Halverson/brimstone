@@ -65,7 +65,7 @@ impl SetIterator {
 
     fn store_iter(&mut self, iter: GcSafeEntriesIter<ValueCollectionKey, ()>) {
         let (set, next_entry_index) = iter.to_parts();
-        self.set = set.get_();
+        self.set = *set;
         self.next_entry_index = next_entry_index;
     }
 }

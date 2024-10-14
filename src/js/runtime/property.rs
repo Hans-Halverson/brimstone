@@ -183,7 +183,7 @@ impl Property {
     }
 
     pub fn to_heap(&self) -> HeapProperty {
-        HeapProperty { value: self.value.get(), flags: self.flags }
+        HeapProperty { value: *self.value, flags: self.flags }
     }
 
     pub fn from_heap(cx: Context, heap_property: &HeapProperty) -> Property {

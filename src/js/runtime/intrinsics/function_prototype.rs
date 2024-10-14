@@ -47,7 +47,7 @@ impl FunctionPrototype {
 
         // Initialize all fields of the prototype objec
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
-        object_ordinary_init(cx, object.get_(), descriptor_ptr, Some(object_proto_ptr));
+        object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined
         // when invoked.
@@ -62,7 +62,7 @@ impl FunctionPrototype {
 
         object
             .cast::<Closure>()
-            .init_extra_fields(function.get_(), scope.get_());
+            .init_extra_fields(*function, *scope);
 
         object.instrinsic_length_prop(cx, 0);
         object.intrinsic_name_prop(cx, "");
@@ -204,7 +204,7 @@ impl FunctionPrototype {
             let function = closure.function();
 
             // First check for if the closure is a bound function
-            if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {
+            if BoundFunctionObject::is_bound_function(cx, *this_object) {
                 return Ok(cx.alloc_string("function () { [native code] }").as_value());
             }
 

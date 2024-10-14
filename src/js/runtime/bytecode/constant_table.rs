@@ -34,7 +34,7 @@ impl ConstantTable {
         // Copy constants into inline constants array
         object.constants.init_with_uninit(constants.len());
         for (i, constant) in constants.iter().enumerate() {
-            set_uninit!(object.constants.as_mut_slice()[i], constant.get());
+            set_uninit!(object.constants.as_mut_slice()[i], **constant);
         }
 
         // Copy metadata into metadata section

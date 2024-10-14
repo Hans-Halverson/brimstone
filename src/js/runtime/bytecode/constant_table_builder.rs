@@ -53,7 +53,7 @@ impl PartialEq for ConstantTableEntry {
         match (self, other) {
             // Strings must be interned, so we can check pointer equality
             (ConstantTableEntry::String(lhs), ConstantTableEntry::String(rhs)) => {
-                lhs.get_().ptr_eq(&rhs.get_())
+                lhs.ptr_eq(&**rhs)
             }
             // Heap objects are not deduplicated, so compare the index
             (

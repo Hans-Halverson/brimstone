@@ -71,9 +71,9 @@ impl InternedStrings {
                 cx.interned_strings
                     .strings_field()
                     .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(string.get_());
+                    .insert_without_growing(*string);
 
-                string.get_()
+                *string
             }
         }
     }
@@ -88,7 +88,7 @@ impl InternedStrings {
                 cx.interned_strings
                     .str_cache_field()
                     .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(Wtf8String::from_str(str), interned_string.get_());
+                    .insert_without_growing(Wtf8String::from_str(str), *interned_string);
 
                 interned_string.as_string()
             }
@@ -105,7 +105,7 @@ impl InternedStrings {
                 cx.interned_strings
                     .str_cache_field()
                     .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(str.clone(), interned_string.get_());
+                    .insert_without_growing(str.clone(), *interned_string);
 
                 interned_string.as_string()
             }

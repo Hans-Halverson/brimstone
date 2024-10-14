@@ -382,7 +382,7 @@ const RADIX_TO_PRECISION: [u8; 37] = [
 ];
 
 fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Value> {
-    let value = value_handle.get();
+    let value = *value_handle;
     if value.is_number() {
         return Ok(value);
     }

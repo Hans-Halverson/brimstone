@@ -40,8 +40,8 @@ impl AsyncFromSyncIterator {
         );
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::AsyncFromSyncIterator));
-        set_uninit!(object.iterator, iterator.iterator.get_());
-        set_uninit!(object.next_method, iterator.next_method.get());
+        set_uninit!(object.iterator, *iterator.iterator);
+        set_uninit!(object.next_method, *iterator.next_method);
 
         object.to_handle()
     }

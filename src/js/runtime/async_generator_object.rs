@@ -117,7 +117,7 @@ impl AsyncGeneratorObject {
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size);
 
         let descriptor = cx.base_descriptors.get(ObjectKind::AsyncGenerator);
-        object_ordinary_init(cx, generator.into(), descriptor, Some(prototype.get_()));
+        object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
 
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
@@ -263,8 +263,8 @@ impl AsyncGeneratorRequest {
         let mut request = cx.alloc_uninit::<AsyncGeneratorRequest>();
 
         set_uninit!(request.descriptor, cx.base_descriptors.get(ObjectKind::AsyncGeneratorRequest));
-        set_uninit!(request.capability, capability.get_());
-        set_uninit!(request.completion_value, completion_value.get());
+        set_uninit!(request.capability, *capability);
+        set_uninit!(request.completion_value, *completion_value);
         set_uninit!(request.completion_type, completion_type);
         set_uninit!(request.next, None);
 

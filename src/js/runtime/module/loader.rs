@@ -96,9 +96,9 @@ impl GraphLoader {
         module_result: EvalResult<Handle<SourceTextModule>>,
     ) {
         if let Ok(module) = module_result {
-            let module_index = referrer.lookup_specifier_index(specifier.get_()).unwrap();
+            let module_index = referrer.lookup_specifier_index(*specifier).unwrap();
             if !referrer.has_loaded_module_at(module_index) {
-                referrer.set_loaded_module_at(module_index, module.get_());
+                referrer.set_loaded_module_at(module_index, *module);
             }
         }
 
@@ -208,7 +208,7 @@ pub fn host_load_imported_module(
     };
 
     // Cache the module
-    cx.modules.insert(new_module_path_string, module.get_());
+    cx.modules.insert(new_module_path_string, *module);
 
     Ok(module)
 }

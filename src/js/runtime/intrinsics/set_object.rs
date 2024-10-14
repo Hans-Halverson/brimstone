@@ -39,7 +39,7 @@ impl SetObject {
             Intrinsic::SetPrototype,
         )?;
 
-        set_uninit!(object.set_data, set_data.get_());
+        set_uninit!(object.set_data, *set_data);
 
         Ok(object.to_handle())
     }
@@ -49,7 +49,7 @@ impl SetObject {
         let mut object =
             object_create::<SetObject>(cx, ObjectKind::SetObject, Intrinsic::SetPrototype);
 
-        set_uninit!(object.set_data, set_data.get_());
+        set_uninit!(object.set_data, *set_data);
 
         object.to_handle()
     }

@@ -140,7 +140,7 @@ impl Method {
     #[inline]
     fn to_heap(&self) -> HeapMethod {
         HeapMethod {
-            name: self.name.map(|n| n.get_()),
+            name: self.name.map(|n| *n),
             is_static: self.is_static,
             is_getter: self.is_getter,
             is_setter: self.is_setter,
@@ -216,7 +216,7 @@ pub fn new_class(
         cx.vm().store_to_scope_at_depth(
             home_object.scope_index as usize,
             home_object.parent_depth as usize,
-            prototype.get_().into(),
+            *prototype.as_value(),
         );
     }
 
@@ -225,7 +225,7 @@ pub fn new_class(
         cx.vm().store_to_scope_at_depth(
             home_object.scope_index as usize,
             home_object.parent_depth as usize,
-            constructor.as_object().get_().into(),
+            *constructor.as_value(),
         );
     }
 

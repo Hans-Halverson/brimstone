@@ -42,12 +42,12 @@ impl ForInIterator {
         let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size);
 
         set_uninit!(iterator.descriptor, cx.base_descriptors.get(ObjectKind::ForInIterator));
-        set_uninit!(iterator.object, object.get_());
+        set_uninit!(iterator.object, *object);
         set_uninit!(iterator.index, 0);
 
         iterator.keys.init_with_uninit(keys.len());
         for (i, key) in keys.iter().enumerate() {
-            set_uninit!(iterator.keys.as_mut_slice()[i], key.get_());
+            set_uninit!(iterator.keys.as_mut_slice()[i], **key);
         }
 
         iterator
@@ -123,7 +123,7 @@ impl Handle<ForInIterator> {
 
             // Check if property was deleted, otherwise skip it
             if object.has_property(cx, property_key)? {
-                return Ok(Value::string(key.get_()));
+                return Ok(*key.as_value());
             }
         }
     }

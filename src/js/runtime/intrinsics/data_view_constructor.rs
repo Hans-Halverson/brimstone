@@ -45,7 +45,7 @@ impl DataViewObject {
             Intrinsic::DataViewPrototype,
         )?;
 
-        let viewed_array_buffer = viewed_array_buffer.get_();
+        let viewed_array_buffer = *viewed_array_buffer;
 
         object.viewed_array_buffer = viewed_array_buffer;
         object.byte_length = byte_length;
@@ -122,7 +122,7 @@ impl DataViewConstructor {
         let offset_arg = get_argument(cx, arguments, 1);
         let offset = to_index(cx, offset_arg)?;
 
-        throw_if_detached(cx, buffer_object.get_())?;
+        throw_if_detached(cx, *buffer_object)?;
 
         let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
@@ -161,7 +161,7 @@ impl DataViewConstructor {
         )?;
 
         // Be sure to check for array buffer detachment since constructor may invoke user code
-        throw_if_detached(cx, buffer_object.get_())?;
+        throw_if_detached(cx, *buffer_object)?;
 
         // Also check if underlying buffer was resized during construction and redo bounds checks
         let buffer_byte_length = buffer_object.byte_length();

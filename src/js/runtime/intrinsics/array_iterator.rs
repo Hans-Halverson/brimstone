@@ -66,7 +66,7 @@ impl ArrayIterator {
             Self::get_array_like_length
         };
 
-        set_uninit!(object.array, array.get_());
+        set_uninit!(object.array, *array);
         set_uninit!(object.is_done, false);
         set_uninit!(object.kind, kind);
         set_uninit!(object.current_index, 0);

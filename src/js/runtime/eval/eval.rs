@@ -39,7 +39,7 @@ pub fn perform_eval(
 
     let is_direct = direct_scope.is_some();
 
-    let private_names = get_private_names_from_scopes(direct_scope.map(|s| s.get_()));
+    let private_names = get_private_names_from_scopes(direct_scope.map(|s| *s));
 
     // Use the file path of the active source file
     let file_path = cx.vm().current_source_file().path().to_string();
@@ -152,7 +152,7 @@ fn check_eval_var_name_conflicts(
     // Special case for an eval in the function params scope
     if scope.scope_names_ptr().is_function_parameters_scope() {
         for name in eval_var_names.iter().chain(eval_func_names.iter()) {
-            if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
+            if let Some(index) = scope.scope_names_ptr().lookup_name(**name) {
                 if scope.scope_names_ptr().is_function_parameter(index) {
                     return error_name_already_declared(cx, *name);
                 }
@@ -166,7 +166,7 @@ fn check_eval_var_name_conflicts(
     loop {
         // Name will conflict with a lexical binding in any parent scope
         for name in eval_var_names.iter().chain(eval_func_names.iter()) {
-            if let Some(index) = scope.scope_names_ptr().lookup_name(name.get_()) {
+            if let Some(index) = scope.scope_names_ptr().lookup_name(**name) {
                 if scope.scope_names_ptr().is_lexical(index) {
                     return error_name_already_declared(cx, *name);
                 }
@@ -177,7 +177,7 @@ fn check_eval_var_name_conflicts(
         if scope.kind() == ScopeKind::Global {
             let realm = scope.global_scope_realm();
             for name in eval_var_names.iter().chain(eval_func_names.iter()) {
-                if realm.get_lexical_name(name.get_()).is_some() {
+                if realm.get_lexical_name(**name).is_some() {
                     return error_name_already_declared(cx, *name);
                 }
             }
@@ -235,16 +235,13 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     if is_global_scope {
         for func_name in &eval_func_names {
             if !can_declare_global_function(cx, scope_object, func_name.cast())? {
-                return type_error(
-                    cx,
-                    &format!("cannot declare global function {}", func_name.get_()),
-                );
+                return type_error(cx, &format!("cannot declare global function {}", *func_name));
             }
         }
 
         for var_name in &eval_var_names {
             if !can_declare_global_var(cx, scope_object, var_name.cast())? {
-                return type_error(cx, &format!("cannot declare global var {}", var_name.get_()));
+                return type_error(cx, &format!("cannot declare global var {}", *var_name));
             }
         }
     }
@@ -282,5 +279,5 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
-    syntax_error(cx, &format!("identifier '{}' has already been declared", name.get_()))
+    syntax_error(cx, &format!("identifier '{}' has already been declared", name))
 }

@@ -57,9 +57,9 @@ impl Scope {
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
         set_uninit!(scope.kind, kind);
-        set_uninit!(scope.parent, parent.map(|p| p.get_()));
-        set_uninit!(scope.scope_names, scope_names.get_());
-        set_uninit!(scope.object, object.map(|o| o.get_()));
+        set_uninit!(scope.parent, parent.map(|p| *p));
+        set_uninit!(scope.scope_names, *scope_names);
+        set_uninit!(scope.object, object.map(|o| *o));
 
         scope.slots.init_with(num_slots, Value::undefined());
 
@@ -208,12 +208,12 @@ impl Handle<Scope> {
         // Reuse handles while walking scope chain
         let mut object_handle = Handle::<ObjectValue>::empty(cx);
         let mut scope = Handle::<Scope>::empty(cx);
-        scope.replace(self.get_());
+        scope.replace(**self);
 
         loop {
             // First check inline slots using scope names table
             let scope_names = scope.scope_names_ptr();
-            if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
+            if let Some(index) = scope_names.lookup_name(*name.as_flat()) {
                 let slot_value = scope.get_slot(index);
 
                 // If found in a module scope then must check if loading a module binding, meaning
@@ -245,7 +245,7 @@ impl Handle<Scope> {
             } else {
                 // Finally check for global lexical names
                 let realm = scope.global_scope_realm();
-                let value = realm.get_lexical_name(name.as_flat().get_());
+                let value = realm.get_lexical_name(*name.as_flat());
 
                 return Ok(value.map(|v| v.to_handle(cx)));
             }
@@ -265,22 +265,22 @@ impl Handle<Scope> {
         // Reuse handles while walking scope chain
         let mut object_handle = Handle::<ObjectValue>::empty(cx);
         let mut scope = Handle::<Scope>::empty(cx);
-        scope.replace(self.get_());
+        scope.replace(**self);
 
         loop {
             // First check inline slots using scope names table
             let scope_names = scope.scope_names_ptr();
-            if let Some(index) = scope_names.lookup_name(name.as_flat().get_()) {
+            if let Some(index) = scope_names.lookup_name(*name.as_flat()) {
                 // Check if storing to a constant
                 if scope_names.is_immutable(index) {
-                    return err_assign_constant(cx, name.as_flat().get_());
+                    return err_assign_constant(cx, *name.as_flat());
                 }
 
                 // Check if storing to a function expression name
                 if scope_names.is_function_expression_name(index) {
                     // Error if reassigning in strict mode, otherwise is a no-op
                     if is_strict {
-                        return err_assign_constant(cx, name.as_flat().get_());
+                        return err_assign_constant(cx, *name.as_flat());
                     } else {
                         return Ok(true);
                     }
@@ -290,11 +290,11 @@ impl Handle<Scope> {
                 // meaning we need to store the value in the BoxedValue.
                 if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
                     let mut boxed_value = scope.get_module_slot(index);
-                    boxed_value.set(value.get());
+                    boxed_value.set(*value);
                     return Ok(true);
                 }
 
-                scope.set_slot(index, value.get());
+                scope.set_slot(index, *value);
                 return Ok(true);
             }
 
@@ -322,7 +322,7 @@ impl Handle<Scope> {
             } else {
                 // Otherwise check for a global lexical name
                 let mut realm = scope.global_scope_realm();
-                let success = realm.set_lexical_name(cx, name.as_flat().get_(), value.get())?;
+                let success = realm.set_lexical_name(cx, *name.as_flat(), *value)?;
 
                 return Ok(success);
             }
@@ -338,7 +338,7 @@ impl Handle<Scope> {
         // Reuse handles while walking scope chain
         let mut object_handle = Handle::<ObjectValue>::empty(cx);
         let mut scope = Handle::<Scope>::empty(cx);
-        scope.replace(self.get_());
+        scope.replace(**self);
 
         loop {
             // Properties can be deleted off scope objects. This can be either the global object,
@@ -359,7 +359,7 @@ impl Handle<Scope> {
             // are vars and functions in eval scopes or dynamically created vars.
             if scope
                 .scope_names_ptr()
-                .lookup_name(name.as_flat().get_())
+                .lookup_name(*name.as_flat())
                 .is_some()
             {
                 return Ok(false);
@@ -399,7 +399,7 @@ impl Handle<Scope> {
             let unscopables = unscopables.as_object();
 
             let value = get(cx, unscopables, key)?;
-            let blocked = to_boolean(value.get());
+            let blocked = to_boolean(*value);
             if blocked {
                 return Ok(false);
             }
@@ -415,7 +415,7 @@ impl Handle<Scope> {
         }
 
         let object = ordinary_object_create(cx);
-        self.object = Some(object.get_());
+        self.object = Some(*object);
         object
     }
 }

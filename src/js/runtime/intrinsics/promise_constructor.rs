@@ -838,7 +838,7 @@ pub fn reject_builtin_function(
 
     // Rejecting an already settled promise has no effect
     if promise.is_pending() {
-        promise.reject(cx, resolution.get());
+        promise.reject(cx, *resolution);
     }
 
     Ok(cx.undefined())

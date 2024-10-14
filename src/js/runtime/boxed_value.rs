@@ -18,7 +18,7 @@ impl BoxedValue {
         let mut scope = cx.alloc_uninit::<BoxedValue>();
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::BoxedValue));
-        set_uninit!(scope.value, value.get());
+        set_uninit!(scope.value, *value);
 
         scope
     }

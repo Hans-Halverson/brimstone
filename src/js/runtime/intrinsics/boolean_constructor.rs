@@ -111,7 +111,7 @@ impl BooleanConstructor {
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = to_boolean(get_argument(cx, arguments, 0).get());
+        let bool_value = to_boolean(*get_argument(cx, arguments, 0));
 
         match new_target {
             None => Ok(cx.bool(bool_value)),

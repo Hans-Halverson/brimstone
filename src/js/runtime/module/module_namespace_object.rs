@@ -47,7 +47,7 @@ impl ModuleNamespaceObject {
         // - [[PreventExtensions]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-preventextensions)
         object.as_object().set_is_extensible_field(false);
 
-        set_uninit!(object.module, module.get_());
+        set_uninit!(object.module, *module);
 
         let object = object.to_handle();
 
@@ -59,7 +59,7 @@ impl ModuleNamespaceObject {
             Property::data(cx.names.module().as_string().into(), false, false, false),
         );
 
-        object.get_()
+        *object
     }
 }
 
@@ -109,7 +109,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return Ok(ordinary_get_own_property(cx, (*self).into(), key));
         }
 
-        match self.lookup_export(cx, key.get())? {
+        match self.lookup_export(cx, *key)? {
             None => Ok(None),
             Some(value) => {
                 let value = value.to_handle(cx);
@@ -158,7 +158,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_has_property(cx, (*self).into(), key);
         }
 
-        Ok(self.module.exports_ptr().contains_key(&key.get()))
+        Ok(self.module.exports_ptr().contains_key(&key))
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-get-p-receiver)
@@ -172,7 +172,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_get(cx, (*self).into(), key, receiver);
         }
 
-        match self.lookup_export(cx, key.get())? {
+        match self.lookup_export(cx, *key)? {
             None => Ok(cx.undefined()),
             Some(value) => Ok(value.to_handle(cx)),
         }
@@ -195,7 +195,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_delete(cx, (*self).into(), key);
         }
 
-        Ok(!self.module.exports_ptr().contains_key(&key.get()))
+        Ok(!self.module.exports_ptr().contains_key(&key))
     }
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-ownpropertykeys)

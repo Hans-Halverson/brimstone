@@ -275,12 +275,12 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
 
     if has_property(cx, object, cx.names.enumerable())? {
         let enumerable = get(cx, object, cx.names.enumerable())?;
-        desc.is_enumerable = Some(to_boolean(enumerable.get()));
+        desc.is_enumerable = Some(to_boolean(*enumerable));
     }
 
     if has_property(cx, object, cx.names.configurable())? {
         let configurable = get(cx, object, cx.names.configurable())?;
-        desc.is_configurable = Some(to_boolean(configurable.get()));
+        desc.is_configurable = Some(to_boolean(*configurable));
     }
 
     if has_property(cx, object, cx.names.value())? {
@@ -289,7 +289,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
 
     if has_property(cx, object, cx.names.writable())? {
         let writable = get(cx, object, cx.names.writable())?;
-        desc.is_writable = Some(to_boolean(writable.get()));
+        desc.is_writable = Some(to_boolean(*writable));
     }
 
     if has_property(cx, object, cx.names.get())? {

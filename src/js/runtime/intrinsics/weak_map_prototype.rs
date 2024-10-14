@@ -118,7 +118,7 @@ impl WeakMapPrototype {
         let key = get_argument(cx, arguments, 0);
         let value = get_argument(cx, arguments, 1);
 
-        if !can_be_held_weakly(cx, key.get()) {
+        if !can_be_held_weakly(cx, *key) {
             return type_error(cx, "WeakMap keys must be objects or symbols");
         }
 

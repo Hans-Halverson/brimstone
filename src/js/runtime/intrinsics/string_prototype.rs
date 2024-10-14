@@ -484,7 +484,7 @@ impl StringPrototype {
         let form = if form_arg.is_undefined() {
             NormalizationForm::NFC
         } else {
-            let form_string = to_string(cx, form_arg)?.flatten().get_();
+            let form_string = *to_string(cx, form_arg)?.flatten();
             if form_string == cx.names.nfc.as_string().as_flat() {
                 NormalizationForm::NFC
             } else if form_string == cx.names.nfd.as_string().as_flat() {
@@ -1315,7 +1315,7 @@ fn normalize_string<I: Iterator<Item = char>>(
     string: Handle<StringValue>,
     f: impl Fn(CharIterator) -> I,
 ) -> Handle<StringValue> {
-    let parts = to_valid_string_parts(string.flatten().get_());
+    let parts = to_valid_string_parts(*string.flatten());
 
     let mut normalized_string = Wtf8String::new();
 

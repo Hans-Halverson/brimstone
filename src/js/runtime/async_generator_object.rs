@@ -308,11 +308,13 @@ pub fn async_generator_validate(
     cx: Context,
     generator: Handle<Value>,
 ) -> EvalResult<Handle<AsyncGeneratorObject>> {
-    if !generator.is_object() || !generator.as_object().is_async_generator() {
-        return type_error(cx, "expected async generator");
+    if generator.is_object() {
+        if let Some(async_generator) = generator.as_object().as_async_generator() {
+            return Ok(async_generator);
+        }
     }
 
-    Ok(generator.as_object().cast::<AsyncGeneratorObject>())
+    type_error(cx, "expected async generator")
 }
 
 /// AsyncGeneratorResume (https://tc39.es/ecma262/#sec-asyncgeneratorresume)

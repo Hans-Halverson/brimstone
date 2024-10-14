@@ -1,7 +1,6 @@
 use crate::js::runtime::{
     boxed_value::BoxedValue, error::syntax_error, gc::HandleScope,
-    module::source_text_module::ModuleState, object_value::ObjectValue, Context, EvalResult,
-    Handle,
+    module::source_text_module::ModuleState, Context, EvalResult, Handle,
 };
 
 use super::source_text_module::{
@@ -160,7 +159,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                     } => {
                         module
                             .module_scope_ptr()
-                            .set_slot(entry.slot_index, boxed_value.cast::<ObjectValue>().into());
+                            .set_heap_item_slot(entry.slot_index, boxed_value.as_heap_item());
                     }
                     // Namespace object may be stored as a module or scope value
                     ResolveExportResult::Resolved {
@@ -175,17 +174,16 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                         // all other exports, which are actual bindings whose BoxedValue is created
                         // when creating the the module scope).
                         let boxed_value = BoxedValue::new(cx, namespace_object.into());
-                        let stored_value = boxed_value.cast::<ObjectValue>().into();
                         module
                             .module_scope_ptr()
-                            .set_slot(entry.slot_index, stored_value);
+                            .set_heap_item_slot(entry.slot_index, boxed_value.as_heap_item());
                     }
                     _ => return syntax_error(cx, "could not resolve module specifier"),
                 }
             } else {
                 // Namespace object may be stored as a module or scope value
                 let namespace_object = imported_module.get_namespace_object(cx);
-                let namespace_object = namespace_object.cast::<ObjectValue>().into();
+                let namespace_object = namespace_object.as_value();
                 let slot_index = entry.slot_index;
 
                 if entry.is_exported {

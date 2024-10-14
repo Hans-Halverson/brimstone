@@ -19,6 +19,16 @@ pub trait IsHeapObject {}
 
 impl<T> IsHeapObject for T where HeapPtr<T>: HeapObject {}
 
+impl<T> HeapPtr<T>
+where
+    HeapPtr<T>: HeapObject,
+{
+    #[inline]
+    pub fn as_heap_item(&self) -> HeapPtr<HeapItem> {
+        self.cast()
+    }
+}
+
 pub trait HeapVisitor {
     fn visit(&mut self, ptr: &mut HeapPtr<HeapItem>);
 

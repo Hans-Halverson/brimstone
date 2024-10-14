@@ -8,7 +8,6 @@ use crate::js::runtime::{
         weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
-    object_value::ObjectValue,
     string_value::FlatString,
     Context, Value,
 };
@@ -267,7 +266,7 @@ impl GarbageCollector {
 
                 // Target is known to be live if it has already moved (and left a forwarding pointer)
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
-                    weak_ref.set_weak_ref_target(forwarding_ptr.cast::<ObjectValue>().into());
+                    weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
                 } else {
                     // Otherwise target was garbage collected so reset target to undefined
                     weak_ref.set_weak_ref_target(Value::undefined());
@@ -295,7 +294,7 @@ impl GarbageCollector {
 
                     // Value is known to be live if it has already moved (and left a forwarding pointer)
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_ref_descriptor) {
-                        *weak_ref_value = forwarding_ptr.cast::<ObjectValue>().into();
+                        *weak_ref_value = Value::heap_item(forwarding_ptr);
                     } else {
                         // Otherwise value was garbage collected so remove value from set.
                         // It is safe to remove during iteration for a BsHashSet.
@@ -353,7 +352,7 @@ impl GarbageCollector {
                     // pointer. Visit the value associated with the key since we now know it is
                     // live. Also update key to point to to-space so we can tell it is visited.
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_key_descriptor) {
-                        *weak_key_value = forwarding_ptr.cast::<ObjectValue>().into();
+                        *weak_key_value = Value::heap_item(forwarding_ptr);
                         found_new_live_value = true;
                         self.visit_value(value);
                     }
@@ -407,7 +406,7 @@ impl GarbageCollector {
                     // know it is live. Also update target to point to to-space so we can tell it
                     // is visited.
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
-                        cell.target = forwarding_ptr.cast::<ObjectValue>().into();
+                        cell.target = Value::heap_item(forwarding_ptr);
 
                         if let Some(ref mut unregister_token) = cell.unregister_token {
                             found_new_live_unregister_token = true;

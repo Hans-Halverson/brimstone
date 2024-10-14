@@ -10,6 +10,7 @@ use crate::{
 };
 
 use super::{
+    accessor::Accessor,
     array_object::create_array_from_list,
     bound_function_object::BoundFunctionObject,
     bytecode::function::Closure,
@@ -542,7 +543,7 @@ pub fn private_get(
         return Ok(property.value());
     }
 
-    let accessor = property.value().as_accessor();
+    let accessor = Accessor::from_value(property.value());
     match accessor.get {
         None => type_error(cx, "cannot access private field or method"),
         Some(getter) => {
@@ -571,7 +572,7 @@ pub fn private_set(
         type_error(cx, "cannot assign to private method")
     } else {
         // Property is an private accessor
-        let accessor = property.value().as_accessor();
+        let accessor = Accessor::from_value(property.value());
         match accessor.set {
             None => type_error(cx, "cannot set getter-only private property"),
             Some(setter) => {

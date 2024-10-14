@@ -8,6 +8,7 @@ use std::{
 use crate::set_uninit;
 
 use super::{
+    accessor::Accessor,
     array_object::ArrayObject,
     array_properties::ArrayProperties,
     async_generator_object::AsyncGeneratorObject,
@@ -36,7 +37,7 @@ use super::{
     proxy_object::ProxyObject,
     string_object::StringObject,
     type_utilities::is_callable_object,
-    value::{AccessorValue, SymbolValue, Value},
+    value::{SymbolValue, Value},
     Context, Realm,
 };
 
@@ -94,6 +95,12 @@ macro_rules! extend_object_without_conversions {
             #[inline]
             pub fn as_object(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
                 self.cast()
+            }
+
+            #[allow(dead_code)]
+            #[inline]
+            pub fn as_value(&self) -> $crate::js::runtime::Value {
+                self.as_object().into()
             }
         }
 
@@ -433,7 +440,7 @@ impl Handle<ObjectValue> {
         realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
-        let accessor_value = AccessorValue::new(cx, Some(getter), None);
+        let accessor_value = Accessor::new(cx, Some(getter), None);
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 
@@ -447,7 +454,7 @@ impl Handle<ObjectValue> {
     ) {
         let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, realm, None, Some("set"));
-        let accessor_value = AccessorValue::new(cx, Some(getter), Some(setter));
+        let accessor_value = Accessor::new(cx, Some(getter), Some(setter));
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
 

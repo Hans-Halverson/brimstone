@@ -1,9 +1,10 @@
 use bitflags::bitflags;
 
 use super::{
+    accessor::Accessor,
     gc::{Handle, HeapVisitor},
     object_value::ObjectValue,
-    value::{AccessorValue, Value},
+    value::Value,
     Context,
 };
 
@@ -99,7 +100,7 @@ impl Property {
     }
 
     pub fn private_getter(cx: Context, getter: Handle<ObjectValue>) -> Property {
-        let accessor_value = AccessorValue::new(cx, Some(getter), None);
+        let accessor_value = Accessor::new(cx, Some(getter), None);
         Property {
             value: accessor_value.into(),
             flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
@@ -107,14 +108,14 @@ impl Property {
     }
 
     pub fn private_setter(cx: Context, setter: Handle<ObjectValue>) -> Property {
-        let accessor_value = AccessorValue::new(cx, None, Some(setter));
+        let accessor_value = Accessor::new(cx, None, Some(setter));
         Property {
             value: accessor_value.into(),
             flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
         }
     }
 
-    pub fn private_accessor(accessor: Handle<AccessorValue>) -> Property {
+    pub fn private_accessor(accessor: Handle<Accessor>) -> Property {
         Property {
             value: accessor.into(),
             flags: PropertyFlags::IS_PRIVATE_ACCESSOR,

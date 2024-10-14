@@ -65,7 +65,7 @@ impl BoundFunctionObject {
             .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
             .unwrap()
             .value()
-            .cast::<ObjectValue>()
+            .as_object()
     }
 
     fn set_target_function(
@@ -87,7 +87,7 @@ impl BoundFunctionObject {
     ) -> Option<Handle<ObjectValue>> {
         object
             .private_element_find(cx, cx.well_known_symbols.bound_target().cast())
-            .map(|p| p.value().cast::<ObjectValue>())
+            .map(|p| p.value().as_object())
     }
 
     pub fn is_bound_function(cx: Context, object: HeapPtr<ObjectValue>) -> bool {

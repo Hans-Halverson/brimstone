@@ -5,7 +5,7 @@ use super::{
     boxed_value::BoxedValue,
     collections::InlineArray,
     error::{err_assign_constant, err_cannot_set_property},
-    gc::{HeapObject, HeapVisitor},
+    gc::{HeapItem, HeapObject, HeapVisitor},
     get,
     module::source_text_module::SourceTextModule,
     object_descriptor::ObjectDescriptor,
@@ -153,6 +153,11 @@ impl Scope {
         );
 
         value.as_pointer().cast::<BoxedValue>()
+    }
+
+    /// Set the boxed value at the given slot index of a module scope.
+    pub fn set_heap_item_slot(&mut self, index: usize, heap_item: HeapPtr<HeapItem>) {
+        self.set_slot(index, Value::heap_item(heap_item));
     }
 
     /// Return the realm stored in this global scope.

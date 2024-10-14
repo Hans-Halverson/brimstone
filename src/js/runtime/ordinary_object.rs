@@ -2,6 +2,7 @@ use crate::{extend_object_without_conversions, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
+    accessor::Accessor,
     eval_result::EvalResult,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
@@ -11,7 +12,7 @@ use super::{
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
     type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
-    value::{AccessorValue, Value},
+    value::Value,
     Context,
 };
 
@@ -159,8 +160,10 @@ pub fn ordinary_get_own_property(
     match object.get_property(cx, key) {
         None => None,
         Some(property) => {
-            if property.value().is_accessor() {
-                let accessor_value = property.value().as_accessor();
+            let value = property.value();
+            if value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Accessor
+            {
+                let accessor_value = value.as_pointer().cast::<Accessor>();
                 Some(PropertyDescriptor::accessor(
                     accessor_value.get.map(|f| f.to_handle()),
                     accessor_value.set.map(|f| f.to_handle()),
@@ -169,7 +172,7 @@ pub fn ordinary_get_own_property(
                 ))
             } else {
                 Some(PropertyDescriptor::data(
-                    property.value(),
+                    value,
                     property.is_writable(),
                     property.is_enumerable(),
                     property.is_configurable(),
@@ -240,7 +243,7 @@ pub fn validate_and_apply_property_descriptor(
         let is_configurable = desc.is_configurable.unwrap_or(false);
 
         let property = if desc.is_accessor_descriptor() {
-            let accessor_value = AccessorValue::new(cx, desc.get, desc.set);
+            let accessor_value = Accessor::new(cx, desc.get, desc.set);
 
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
         } else {
@@ -288,7 +291,7 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(cx.undefined());
                     property.set_is_writable(false);
                 } else {
-                    let accessor_value = AccessorValue::new(cx, None, None);
+                    let accessor_value = Accessor::new(cx, None, None);
                     property.set_value(accessor_value.into());
                 }
 
@@ -364,7 +367,7 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(value);
                 }
             } else {
-                let mut accessor_value = property.value().as_accessor();
+                let mut accessor_value = Accessor::from_value(property.value());
 
                 if desc.has_get {
                     accessor_value.get = desc.get.map(|x| x.get_());

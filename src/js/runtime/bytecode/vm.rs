@@ -11,6 +11,7 @@ use crate::{
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
             set,
         },
+        accessor::Accessor,
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
@@ -59,7 +60,7 @@ use crate::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
             same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
-        value::{AccessorValue, BigIntValue, SymbolValue},
+        value::{BigIntValue, SymbolValue},
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
     must,
@@ -587,7 +588,7 @@ impl VM {
                         ));
 
                         // Store the generator into the provided register in the stored stack frame
-                        let generator_value = async_generator.cast::<ObjectValue>().into();
+                        let generator_value = async_generator.as_value();
                         async_generator.set_register(generator_reg.local_index(), generator_value);
 
                         generator_value
@@ -601,7 +602,7 @@ impl VM {
                         ));
 
                         // Store the generator into the provided register in the stored stack frame
-                        let generator_value = generator.cast::<ObjectValue>().into();
+                        let generator_value = generator.as_value();
                         generator.set_register(generator_reg.local_index(), generator_value);
 
                         generator_value
@@ -3269,9 +3270,9 @@ impl VM {
         let setter = self.read_register_to_handle(instr.setter()).as_object();
 
         // Allocates
-        let accessor = AccessorValue::new(self.cx(), Some(getter), Some(setter));
+        let accessor = Accessor::new(self.cx(), Some(getter), Some(setter));
 
-        self.write_register(dest, accessor.get_().into());
+        self.write_register(dest, Value::heap_item(accessor.get_().as_heap_item()));
     }
 
     #[inline]
@@ -3658,7 +3659,7 @@ impl VM {
             Property::private_method(value.as_object())
         } else if flags.contains(DefinePrivatePropertyFlags::GETTER) {
             if flags.contains(DefinePrivatePropertyFlags::SETTER) {
-                Property::private_accessor(value.as_accessor())
+                Property::private_accessor(Accessor::from_value(value))
             } else {
                 Property::private_getter(self.cx(), value.as_object())
             }
@@ -3965,7 +3966,7 @@ impl VM {
     ) -> EvalResult<()> {
         let derived_constructor = self
             .read_register_to_handle(instr.derived_constructor())
-            .cast::<ObjectValue>();
+            .as_object();
         let dest = instr.dest();
 
         // May allocate
@@ -4080,7 +4081,7 @@ impl VM {
         let object = to_object(self.cx(), object)?;
         let iterator = ForInIterator::new_for_object(self.cx(), object)?;
 
-        self.write_register(dest, iterator.cast::<ObjectValue>().into());
+        self.write_register(dest, Value::heap_item(iterator.as_heap_item()));
 
         Ok(())
     }

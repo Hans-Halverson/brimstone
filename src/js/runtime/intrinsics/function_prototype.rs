@@ -6,8 +6,8 @@ use crate::{
         bound_function_object::BoundFunctionObject,
         builtin_function::BuiltinFunction,
         bytecode::function::{BytecodeFunction, Closure},
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
         interned_strings::InternedStrings,
@@ -20,7 +20,7 @@ use crate::{
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_undefined};
@@ -43,7 +43,7 @@ impl FunctionPrototype {
     pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
-        let mut object = function_prototype.object();
+        let mut object = function_prototype.as_object();
 
         // Initialize all fields of the prototype objec
         let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
@@ -107,7 +107,7 @@ impl FunctionPrototype {
         if arg_array.is_nullish() {
             call_object(cx, this_value.as_object(), this_arg, &[])
         } else {
-            let arg_list = maybe!(create_list_from_array_like(cx, arg_array));
+            let arg_list = create_list_from_array_like(cx, arg_array)?;
             call_object(cx, this_value.as_object(), this_arg, &arg_list)
         }
     }
@@ -133,14 +133,13 @@ impl FunctionPrototype {
         };
         let num_bound_args = bound_args.len();
 
-        let bound_func: Handle<ObjectValue> =
-            maybe!(BoundFunctionObject::new(cx, target, this_arg, bound_args));
+        let bound_func = BoundFunctionObject::new(cx, target, this_arg, bound_args)?.as_object();
 
         let mut length = Some(0);
 
         // Set function length to an integer or infinity based on the inner function's length
-        if maybe!(has_own_property(cx, target, cx.names.length())) {
-            let target_length_value = maybe!(get(cx, target, cx.names.length()));
+        if has_own_property(cx, target, cx.names.length())? {
+            let target_length_value = get(cx, target, cx.names.length())?;
             if target_length_value.is_number() {
                 let target_length = target_length_value.as_number();
                 if target_length == f64::INFINITY {
@@ -157,7 +156,7 @@ impl FunctionPrototype {
 
         set_function_length_maybe_infinity(cx, bound_func, length);
 
-        let target_name = maybe!(get(cx, target, cx.names.name()));
+        let target_name = get(cx, target, cx.names.name())?;
         let target_name = if target_name.is_string() {
             target_name.as_string()
         } else {
@@ -167,7 +166,7 @@ impl FunctionPrototype {
         let name_key = PropertyKey::string(cx, target_name).to_handle(cx);
         set_function_name(cx, bound_func, name_key, Some("bound"));
 
-        bound_func.into()
+        Ok(bound_func.as_value())
     }
 
     /// Function.prototype.call (https://tc39.es/ecma262/#sec-function.prototype.call)
@@ -206,10 +205,7 @@ impl FunctionPrototype {
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, this_object.get_()) {
-                return cx
-                    .alloc_string("function () { [native code] }")
-                    .as_string()
-                    .into();
+                return Ok(cx.alloc_string("function () { [native code] }").as_value());
             }
 
             // Builtin functions have special formatting using the function name
@@ -220,7 +216,7 @@ impl FunctionPrototype {
                 }
                 string_parts.push(InternedStrings::get_str(cx, "() { [native code] }"));
 
-                return StringValue::concat_all(cx, &string_parts).into();
+                return Ok(StringValue::concat_all(cx, &string_parts).as_value());
             }
 
             // Non-builtin functions return their original slice of the source code
@@ -236,14 +232,11 @@ impl FunctionPrototype {
                 .as_string()
                 .to_handle();
 
-            return func_string.into();
+            return Ok(func_string.as_value());
         }
 
         if is_callable_object(this_object) {
-            return cx
-                .alloc_string("function () { [native code] }")
-                .as_string()
-                .into();
+            return Ok(cx.alloc_string("function () { [native code] }").as_value());
         }
 
         type_error(cx, "Function.prototype.toString expected a function")
@@ -257,7 +250,7 @@ impl FunctionPrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let has_instance = maybe!(ordinary_has_instance(cx, this_value, argument));
-        cx.bool(has_instance).into()
+        let has_instance = ordinary_has_instance(cx, this_value, argument)?;
+        Ok(cx.bool(has_instance))
     }
 }

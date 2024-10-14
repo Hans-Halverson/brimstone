@@ -13,7 +13,7 @@ use crate::{
         string_value::FlatString,
         to_string, Context, EvalResult, Handle, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -93,9 +93,9 @@ pub fn load_requested_modules_static_resolve(
     let module = get_module(cx, current_function);
     let capability = get_capability(cx, current_function);
 
-    if let EvalResult::Throw(error) = link(cx, module) {
+    if let Err(error) = link(cx, module) {
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
-        return cx.undefined().into();
+        return Ok(cx.undefined());
     }
 
     // Mark the module resolution phase as complete
@@ -103,8 +103,13 @@ pub fn load_requested_modules_static_resolve(
 
     let evaluate_promise = module_evaluate(cx, module);
 
-    perform_promise_then(cx, evaluate_promise, cx.undefined(), cx.undefined(), Some(capability))
-        .into()
+    Ok(perform_promise_then(
+        cx,
+        evaluate_promise,
+        cx.undefined(),
+        cx.undefined(),
+        Some(capability),
+    ))
 }
 
 pub fn load_requested_modules_reject(
@@ -120,7 +125,7 @@ pub fn load_requested_modules_reject(
     let error = get_argument(cx, arguments, 0);
     must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 fn callback(cx: Context, func: BuiltinFunctionPtr) -> Handle<ObjectValue> {
@@ -173,7 +178,7 @@ impl GraphEvaluator {
         let evaluation_result = self.inner_evaluate(cx, module, 0);
 
         match evaluation_result {
-            EvalResult::Ok(_) => {
+            Ok(_) => {
                 debug_assert!(matches!(
                     module.state(),
                     ModuleState::Evaluated | ModuleState::EvaluatingAsync
@@ -187,7 +192,7 @@ impl GraphEvaluator {
 
                 debug_assert!(self.stack.is_empty());
             }
-            EvalResult::Throw(error) => {
+            Err(error) => {
                 for module in &mut self.stack {
                     debug_assert!(module.state() == ModuleState::Evaluating);
                     module.set_state(ModuleState::Evaluated);
@@ -213,14 +218,14 @@ impl GraphEvaluator {
     ) -> EvalResult<u32> {
         if matches!(module.state(), ModuleState::Evaluated | ModuleState::EvaluatingAsync) {
             if let Some(error) = module.evaluation_error(cx) {
-                return EvalResult::Throw(error);
+                return Err(error);
             } else {
-                return index.into();
+                return Ok(index);
             }
         }
 
         if module.state() == ModuleState::Evaluating {
-            return index.into();
+            return Ok(index);
         }
 
         debug_assert!(module.state() == ModuleState::Linked);
@@ -238,7 +243,7 @@ impl GraphEvaluator {
         for i in 0..loaded_modules.len() {
             let mut required_module = loaded_modules.as_slice()[i].unwrap().to_handle();
 
-            index = maybe!(self.inner_evaluate(cx, required_module, index));
+            index = self.inner_evaluate(cx, required_module, index)?;
 
             if required_module.state() == ModuleState::Evaluating {
                 let new_index = module
@@ -259,7 +264,7 @@ impl GraphEvaluator {
                 ));
 
                 if let Some(error) = required_module.evaluation_error(cx) {
-                    return EvalResult::Throw(error);
+                    return Err(error);
                 }
             }
 
@@ -277,7 +282,7 @@ impl GraphEvaluator {
                 execute_async_module(cx, module);
             }
         } else {
-            maybe!(cx.vm().execute_module(module, &[]));
+            cx.vm().execute_module(module, &[])?;
         }
 
         debug_assert!(module.dfs_ancestor_index() <= module.dfs_index());
@@ -300,7 +305,7 @@ impl GraphEvaluator {
             }
         }
 
-        index.into()
+        Ok(index)
     }
 }
 
@@ -341,7 +346,7 @@ pub fn async_module_execution_fulfilled(
 
     if module.state() == ModuleState::Evaluated {
         debug_assert!(module.evaluation_error_ptr().is_some());
-        return cx.undefined().into();
+        return Ok(cx.undefined());
     }
 
     debug_assert!(module.state() == ModuleState::EvaluatingAsync);
@@ -379,7 +384,7 @@ pub fn async_module_execution_fulfilled(
 
         let execute_result = cx.vm().execute_module(ancestor, &[]);
 
-        if let EvalResult::Throw(error) = execute_result {
+        if let Err(error) = execute_result {
             async_module_execution_rejected(cx, ancestor, error);
             continue;
         }
@@ -393,7 +398,7 @@ pub fn async_module_execution_fulfilled(
         }
     }
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// GatherAvailableAncestors (https://tc39.es/ecma262/#sec-gather-available-ancestors)
@@ -483,7 +488,7 @@ pub fn async_module_execution_rejected_runtime(
     let error = get_argument(cx, arguments, 0);
     async_module_execution_rejected(cx, module, error);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// Start a dynamic import within a module, passing the argument provided to `import()`.
@@ -506,7 +511,7 @@ pub fn dynamic_import(
     );
     continue_dynamic_import(cx, capability, load_completion);
 
-    capability.promise().into()
+    Ok(capability.promise())
 }
 
 /// ContinueDynamicImport (https://tc39.es/ecma262/#sec-ContinueDynamicImport)
@@ -516,8 +521,8 @@ fn continue_dynamic_import(
     load_completion: EvalResult<Handle<SourceTextModule>>,
 ) {
     let module = match load_completion {
-        EvalResult::Ok(module) => module,
-        EvalResult::Throw(error) => {
+        Ok(module) => module,
+        Err(error) => {
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             return;
         }
@@ -546,9 +551,9 @@ pub fn load_requested_modules_dynamic_resolve(
     let module = get_module(cx, current_function);
     let capability = get_capability(cx, current_function);
 
-    if let EvalResult::Throw(error) = link(cx, module) {
+    if let Err(error) = link(cx, module) {
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
-        return cx.undefined().into();
+        return Ok(cx.undefined());
     }
 
     // Missing condition in the spec. If the module has already been evaluated and throw an error
@@ -562,7 +567,7 @@ pub fn load_requested_modules_dynamic_resolve(
             cx.undefined(),
             &[module.evaluation_error(cx).unwrap()]
         ));
-        return cx.undefined().into();
+        return Ok(cx.undefined());
     }
 
     let evaluate_promise = module_evaluate(cx, module);
@@ -576,7 +581,7 @@ pub fn load_requested_modules_dynamic_resolve(
 
     perform_promise_then(cx, evaluate_promise, on_resolve.into(), on_reject.into(), None);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 pub fn module_evaluate_dynamic_resolve(
@@ -599,5 +604,5 @@ pub fn module_evaluate_dynamic_resolve(
         &[namespace_object.into()]
     ));
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }

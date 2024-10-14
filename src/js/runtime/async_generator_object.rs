@@ -2,7 +2,7 @@ use crate::{
     extend_object, field_offset,
     js::runtime::{
         abstract_operations::call_object,
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
@@ -14,7 +14,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr,
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -110,11 +110,8 @@ impl AsyncGeneratorObject {
         fp_index: usize,
         stack_frame: &[StackSlotValue],
     ) -> EvalResult<HeapPtr<AsyncGeneratorObject>> {
-        let prototype = maybe!(get_prototype_from_constructor(
-            cx,
-            closure.into(),
-            Intrinsic::AsyncGeneratorPrototype
-        ));
+        let prototype =
+            get_prototype_from_constructor(cx, closure.into(), Intrinsic::AsyncGeneratorPrototype)?;
 
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size);
@@ -129,7 +126,7 @@ impl AsyncGeneratorObject {
         set_uninit!(generator.request_queue, None);
         generator.stack_frame.init_from_slice(stack_frame);
 
-        generator.into()
+        Ok(generator)
     }
 
     const STACK_FRAME_OFFSET: usize = field_offset!(AsyncGeneratorObject, stack_frame);
@@ -296,12 +293,12 @@ pub fn async_generator_complete_step(
     let capability = next_request.capability.to_handle();
 
     match completion {
-        EvalResult::Ok(value) => {
+        Ok(value) => {
             let result_object = create_iter_result_object(cx, value, is_done);
-            must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object.into()]));
+            must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object]));
         }
-        EvalResult::Throw(value) => {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[value],));
+        Err(value) => {
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[value]));
         }
     }
 }
@@ -315,7 +312,7 @@ pub fn async_generator_validate(
         return type_error(cx, "expected async generator");
     }
 
-    generator.as_object().cast::<AsyncGeneratorObject>().into()
+    Ok(generator.as_object().cast::<AsyncGeneratorObject>())
 }
 
 /// AsyncGeneratorResume (https://tc39.es/ecma262/#sec-asyncgeneratorresume)
@@ -332,7 +329,7 @@ pub fn async_generator_resume(
         .resume_generator(async_generator, completion_value, completion_type);
 
     // An empty normal completion signals that the generator was suspended at an await or yield
-    if let EvalResult::Ok(value) = completion {
+    if let Ok(value) = completion {
         if value.is_empty() {
             debug_assert!(async_generator.state.is_suspended());
             return;
@@ -359,14 +356,9 @@ pub fn async_generator_await_return(
     let promise_completion = coerce_to_ordinary_promise(cx, completion_value);
 
     let promise = match promise_completion {
-        EvalResult::Ok(promise) => promise,
-        EvalResult::Throw(error) => {
-            async_generator_complete_step(
-                cx,
-                async_generator,
-                EvalResult::Throw(error),
-                /* is_done */ true,
-            );
+        Ok(promise) => promise,
+        Err(error) => {
+            async_generator_complete_step(cx, async_generator, Err(error), /* is_done */ true);
             async_generator_drain_queue(cx, async_generator);
             return;
         }
@@ -412,15 +404,10 @@ pub fn await_return_resolve(
 
     async_generator.state = AsyncGeneratorState::Completed;
 
-    async_generator_complete_step(
-        cx,
-        async_generator,
-        EvalResult::Ok(value),
-        /* is_done */ true,
-    );
+    async_generator_complete_step(cx, async_generator, Ok(value), /* is_done */ true);
     async_generator_drain_queue(cx, async_generator);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 pub fn await_return_reject(
@@ -436,16 +423,10 @@ pub fn await_return_reject(
 
     async_generator.state = AsyncGeneratorState::Completed;
 
-    async_generator_complete_step(
-        cx,
-        async_generator,
-        EvalResult::Throw(value),
-        /* is_done */ true,
-    );
-
+    async_generator_complete_step(cx, async_generator, Err(value), /* is_done */ true);
     async_generator_drain_queue(cx, async_generator);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 fn get_async_generator(cx: Context, function: Handle<ObjectValue>) -> Handle<AsyncGeneratorObject> {
@@ -483,7 +464,7 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
                 return;
             }
             GeneratorCompletionType::Normal => {
-                let completion = EvalResult::Ok(cx.undefined());
+                let completion = Ok(cx.undefined());
                 async_generator_complete_step(
                     cx,
                     async_generator,
@@ -492,7 +473,7 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
                 );
             }
             GeneratorCompletionType::Throw => {
-                let completion = EvalResult::Throw(request.completion_value().to_handle(cx));
+                let completion = Err(request.completion_value().to_handle(cx));
                 async_generator_complete_step(
                     cx,
                     async_generator,

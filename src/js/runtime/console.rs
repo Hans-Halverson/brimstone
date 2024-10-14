@@ -1,6 +1,6 @@
 use super::{
     abstract_operations::get,
-    completion::EvalResult,
+    eval_result::EvalResult,
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
@@ -36,7 +36,7 @@ impl ConsoleObject {
 
         println!("{}", formatted);
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }
 
@@ -57,7 +57,7 @@ pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
                 if object.is_error() {
                     match get(cx, object, cx.names.stack()) {
                         // Try to use the stack property if it exists and is a string
-                        EvalResult::Ok(stack_value) if stack_value.is_string() => {
+                        Ok(stack_value) if stack_value.is_string() => {
                             stack_value.as_string().to_string()
                         }
                         // Otherwise use default one line error formatting
@@ -90,14 +90,14 @@ pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
 /// Format an error object into a one line string containing name and message
 pub fn format_error_one_line(cx: Context, object: Handle<ObjectValue>) -> String {
     let name = match get(cx, object, cx.names.name()) {
-        EvalResult::Ok(name_value) if name_value.is_string() => name_value.as_string(),
+        Ok(name_value) if name_value.is_string() => name_value.as_string(),
         _ => cx.names.error().as_string(),
     };
 
     match get(cx, object, cx.names.message()) {
-        EvalResult::Ok(message_value) => {
+        Ok(message_value) => {
             format!("{}: {}", name, to_console_string(cx, message_value))
         }
-        EvalResult::Throw(_) => format!("{}", name),
+        Err(_) => format!("{}", name),
     }
 }

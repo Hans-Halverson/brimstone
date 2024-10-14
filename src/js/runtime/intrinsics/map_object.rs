@@ -12,7 +12,7 @@ use crate::{
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, EvalResult, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 // Map Objects (https://tc39.es/ecma262/#sec-map-objects)
@@ -33,16 +33,16 @@ impl MapObject {
         let map_data =
             ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY).to_handle();
 
-        let mut object = maybe!(object_create_from_constructor::<MapObject>(
+        let mut object = object_create_from_constructor::<MapObject>(
             cx,
             constructor,
             ObjectKind::MapObject,
-            Intrinsic::MapPrototype
-        ));
+            Intrinsic::MapPrototype,
+        )?;
 
         set_uninit!(object.map_data, map_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn map_data(&self) -> HeapPtr<ValueMap> {

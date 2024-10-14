@@ -1,30 +1,27 @@
-use crate::{
-    js::{
-        common::{
-            unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
-            wtf_8::Wtf8String,
-        },
-        runtime::{
-            abstract_operations::define_property_or_throw,
-            builtin_function::BuiltinFunction,
-            bytecode::instruction::EvalFlags,
-            console::ConsoleObject,
-            error::uri_error,
-            eval::eval::perform_eval,
-            function::get_argument,
-            gc::HandleScope,
-            gc_object::GcObject,
-            object_value::ObjectValue,
-            property_descriptor::PropertyDescriptor,
-            string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
-            string_value::{FlatString, StringValue},
-            test_262_object::Test262Object,
-            to_string,
-            type_utilities::{to_int32, to_number},
-            Context, EvalResult, Handle, Realm, Value,
-        },
+use crate::js::{
+    common::{
+        unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
+        wtf_8::Wtf8String,
     },
-    maybe,
+    runtime::{
+        abstract_operations::define_property_or_throw,
+        builtin_function::BuiltinFunction,
+        bytecode::instruction::EvalFlags,
+        console::ConsoleObject,
+        error::uri_error,
+        eval::eval::perform_eval,
+        function::get_argument,
+        gc::HandleScope,
+        gc_object::GcObject,
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
+        string_value::{FlatString, StringValue},
+        test_262_object::Test262Object,
+        to_string,
+        type_utilities::{to_int32, to_number},
+        Context, EvalResult, Handle, Realm, Value,
+    },
 };
 
 use super::intrinsics::Intrinsic;
@@ -39,7 +36,7 @@ pub fn set_default_global_bindings(
     HandleScope::new(cx, |cx| {
         macro_rules! value_prop {
             ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
-                maybe!(define_property_or_throw(
+                define_property_or_throw(
                     cx,
                     realm.global_object(),
                     $name,
@@ -47,9 +44,9 @@ pub fn set_default_global_bindings(
                         $value,
                         $is_writable,
                         $is_enumerable,
-                        $is_configurable
-                    )
-                ));
+                        $is_configurable,
+                    ),
+                )?;
             };
         }
 
@@ -65,12 +62,12 @@ pub fn set_default_global_bindings(
         macro_rules! intrinsic_prop {
             ($name:expr, $intrinsic:ident) => {
                 let value = realm.get_intrinsic(Intrinsic::$intrinsic);
-                maybe!(define_property_or_throw(
+                define_property_or_throw(
                     cx,
                     realm.global_object(),
                     $name,
-                    PropertyDescriptor::data(value.into(), true, false, true)
-                ));
+                    PropertyDescriptor::data(value.into(), true, false, true),
+                )?;
             };
         }
 
@@ -154,7 +151,7 @@ pub fn set_default_global_bindings(
             Test262Object::install(cx, realm, test_262_object);
         }
 
-        ().into()
+        Ok(())
     })
 }
 
@@ -190,8 +187,8 @@ pub fn is_finite(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
-    let num = maybe!(to_number(cx, argument));
-    cx.bool(!num.is_nan() && !num.is_infinity()).into()
+    let num = to_number(cx, argument)?;
+    Ok(cx.bool(!num.is_nan() && !num.is_infinity()))
 }
 
 /// isNaN (https://tc39.es/ecma262/#sec-isnan-number)
@@ -202,8 +199,8 @@ pub fn is_nan(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
-    let num = maybe!(to_number(cx, argument));
-    cx.bool(num.is_nan()).into()
+    let num = to_number(cx, argument)?;
+    Ok(cx.bool(num.is_nan()))
 }
 
 /// parseFloat (https://tc39.es/ecma262/#sec-parsefloat-string)
@@ -214,11 +211,11 @@ pub fn parse_float(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
-    let input_string = maybe!(to_string(cx, input_string_arg));
+    let input_string = to_string(cx, input_string_arg)?;
 
     match parse_float_with_string_lexer(input_string) {
-        Some(float) => Value::number(float).to_handle(cx).into(),
-        None => Value::nan().to_handle(cx).into(),
+        Some(float) => Ok(Value::number(float).to_handle(cx)),
+        None => Ok(Value::nan().to_handle(cx)),
     }
 }
 
@@ -237,14 +234,14 @@ pub fn parse_int(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
-    let input_string = maybe!(to_string(cx, input_string_arg));
+    let input_string = to_string(cx, input_string_arg)?;
 
     let radix_arg = get_argument(cx, arguments, 1);
-    let radix = maybe!(to_int32(cx, radix_arg));
+    let radix = to_int32(cx, radix_arg)?;
 
     match parse_int_impl(input_string, radix) {
-        Some(number) => Value::number(number).to_handle(cx).into(),
-        None => Value::nan().to_handle(cx).into(),
+        Some(number) => Ok(Value::number(number).to_handle(cx)),
+        None => Ok(Value::nan().to_handle(cx)),
     }
 }
 
@@ -351,7 +348,7 @@ pub fn decode_uri(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_arg = get_argument(cx, arguments, 0);
-    let uri_string = maybe!(to_string(cx, uri_arg));
+    let uri_string = to_string(cx, uri_arg)?;
 
     decode::<true>(cx, uri_string)
 }
@@ -364,7 +361,7 @@ pub fn decode_uri_component(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_component_arg = get_argument(cx, arguments, 0);
-    let uri_component_string = maybe!(to_string(cx, uri_component_arg));
+    let uri_component_string = to_string(cx, uri_component_arg)?;
 
     decode::<false>(cx, uri_component_string)
 }
@@ -467,10 +464,9 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
         }
     }
 
-    FlatString::from_wtf8(cx, decoded_string.as_bytes())
-        .as_string()
+    Ok(FlatString::from_wtf8(cx, decoded_string.as_bytes())
         .to_handle()
-        .into()
+        .as_value())
 }
 
 /// encodeURI (https://tc39.es/ecma262/#sec-encodeuri-uri)
@@ -481,7 +477,7 @@ pub fn encode_uri(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_arg = get_argument(cx, arguments, 0);
-    let uri_string = maybe!(to_string(cx, uri_arg));
+    let uri_string = to_string(cx, uri_arg)?;
 
     encode::<true>(cx, uri_string)
 }
@@ -494,7 +490,7 @@ pub fn encode_uri_component(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_component_arg = get_argument(cx, arguments, 0);
-    let uri_component_string = maybe!(to_string(cx, uri_component_arg));
+    let uri_component_string = to_string(cx, uri_component_arg)?;
 
     encode::<false>(cx, uri_component_string)
 }
@@ -550,8 +546,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
     }
 
     // Safe since only ASCII characters were used
-    FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
-        .as_string()
+    Ok(FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
         .to_handle()
-        .into()
+        .as_value())
 }

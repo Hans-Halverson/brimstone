@@ -17,7 +17,7 @@ use crate::{
         type_utilities::same_value,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::source_text_module::SourceTextModule;
@@ -53,7 +53,7 @@ impl ModuleNamespaceObject {
 
         // Module Namepace Objects [ %Symbol.toStringTag% ] (https://tc39.es/ecma262/#sec-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        object.object().set_property(
+        object.as_object().set_property(
             cx,
             to_string_tag_key,
             Property::data(cx.names.module().as_string().into(), false, false, false),
@@ -72,7 +72,7 @@ impl HeapPtr<ModuleNamespaceObject> {
         let exports = self.module.exports_ptr();
         let heap_item = match exports.get(&key) {
             Some(heap_item) => heap_item,
-            None => return None.into(),
+            None => return Ok(None),
         };
 
         if heap_item.descriptor().kind() == ObjectKind::BoxedValue {
@@ -83,16 +83,16 @@ impl HeapPtr<ModuleNamespaceObject> {
             if value.is_empty() {
                 reference_error(cx, "module value is not initialized")
             } else {
-                Some(value).into()
+                Ok(Some(value))
             }
         } else {
             // Otherwise a SourceTextModule is which represents a namespace export of that module
             debug_assert!(heap_item.descriptor().kind() == ObjectKind::SourceTextModule);
 
             let mut module = heap_item.cast::<SourceTextModule>().to_handle();
-            let namespace_object: HeapPtr<ObjectValue> = module.get_namespace_object(cx).into();
+            let namespace_object = module.get_namespace_object(cx).as_object();
 
-            Some(namespace_object.into()).into()
+            Ok(Some(namespace_object.into()))
         }
     }
 }
@@ -106,15 +106,15 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
         if key.is_symbol() {
-            return ordinary_get_own_property(cx, (*self).into(), key).into();
+            return Ok(ordinary_get_own_property(cx, (*self).into(), key));
         }
 
-        match maybe!(self.lookup_export(cx, key.get())) {
-            None => None.into(),
+        match self.lookup_export(cx, key.get())? {
+            None => Ok(None),
             Some(value) => {
                 let value = value.to_handle(cx);
                 let desc = PropertyDescriptor::data(value, true, true, false);
-                Some(desc).into()
+                Ok(Some(desc))
             }
         }
     }
@@ -130,8 +130,8 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_define_own_property(cx, (*self).into(), key, desc);
         }
 
-        let current_desc = match maybe!(self.get_own_property(cx, key)) {
-            None => return false.into(),
+        let current_desc = match self.get_own_property(cx, key)? {
+            None => return Ok(false),
             Some(desc) => desc,
         };
 
@@ -141,15 +141,15 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             || desc.is_accessor_descriptor()
             || desc.is_writable == Some(false)
         {
-            return false.into();
+            return Ok(false);
         }
 
         // If a value was provided it must match the current value
         if let Some(desc_value) = desc.value {
-            return same_value(desc_value, current_desc.value.unwrap()).into();
+            return Ok(same_value(desc_value, current_desc.value.unwrap()));
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// [[HasProperty]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-hasproperty-p)
@@ -158,7 +158,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_has_property(cx, (*self).into(), key);
         }
 
-        self.module.exports_ptr().contains_key(&key.get()).into()
+        Ok(self.module.exports_ptr().contains_key(&key.get()))
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-get-p-receiver)
@@ -172,9 +172,9 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_get(cx, (*self).into(), key, receiver);
         }
 
-        match maybe!(self.lookup_export(cx, key.get())) {
-            None => cx.undefined().into(),
-            Some(value) => value.to_handle(cx).into(),
+        match self.lookup_export(cx, key.get())? {
+            None => Ok(cx.undefined()),
+            Some(value) => Ok(value.to_handle(cx)),
         }
     }
 
@@ -186,7 +186,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
         _: Handle<Value>,
         _: Handle<Value>,
     ) -> EvalResult<bool> {
-        false.into()
+        Ok(false)
     }
 
     /// [[Delete]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-delete-p)
@@ -195,7 +195,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_delete(cx, (*self).into(), key);
         }
 
-        (!self.module.exports_ptr().contains_key(&key.get())).into()
+        Ok(!self.module.exports_ptr().contains_key(&key.get()))
     }
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-ownpropertykeys)
@@ -227,9 +227,9 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             .collect::<Vec<_>>();
 
         // Add keys on object which may only be symbol keys
-        ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
+        ordinary_own_string_symbol_property_keys(self.as_object(), &mut keys);
 
-        keys.into()
+        Ok(keys)
     }
 }
 

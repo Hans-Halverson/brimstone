@@ -1,7 +1,7 @@
 use crate::{
     extend_object, field_offset,
     js::runtime::{
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
@@ -10,7 +10,7 @@ use crate::{
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -131,13 +131,10 @@ impl GeneratorObject {
         fp_index: usize,
         stack_frame: &[StackSlotValue],
     ) -> EvalResult<HeapPtr<GeneratorObject>> {
-        let proto = maybe!(get_prototype_from_constructor(
-            cx,
-            closure.into(),
-            Intrinsic::GeneratorPrototype
-        ));
+        let proto =
+            get_prototype_from_constructor(cx, closure.into(), Intrinsic::GeneratorPrototype)?;
 
-        Self::new(cx, Some(proto), pc_to_resume_offset, fp_index, None, stack_frame).into()
+        Ok(Self::new(cx, Some(proto), pc_to_resume_offset, fp_index, None, stack_frame))
     }
 
     pub fn new_for_async_function(
@@ -216,7 +213,7 @@ fn generator_validate(
         return type_error(cx, "generator is already executing");
     }
 
-    generator.into()
+    Ok(generator)
 }
 
 /// GeneratorResume (https://tc39.es/ecma262/#sec-generatorresume)
@@ -225,11 +222,11 @@ pub fn generator_resume(
     generator: Handle<Value>,
     completion_value: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let generator = maybe!(generator_validate(cx, generator));
+    let generator = generator_validate(cx, generator)?;
 
     // Check if generator has already completed
     if generator.state == GeneratorState::Completed {
-        return create_iter_result_object(cx, cx.undefined(), true).into();
+        return Ok(create_iter_result_object(cx, cx.undefined(), true));
     }
 
     debug_assert!(generator.state.is_suspended());
@@ -259,10 +256,10 @@ fn generate_resume_impl(
     // generator as completed.
     generator.state = GeneratorState::Completed;
 
-    let next_value = maybe!(next_completion);
+    let next_value = next_completion?;
     let is_done = generator.state == GeneratorState::Completed;
 
-    create_iter_result_object(cx, next_value, is_done).into()
+    Ok(create_iter_result_object(cx, next_value, is_done))
 }
 
 /// GeneratorResumeAbrupt (https://tc39.es/ecma262/#sec-generatorresumeabrupt)
@@ -272,7 +269,7 @@ pub fn generator_resume_abrupt(
     completion_value: Handle<Value>,
     completion_type: GeneratorCompletionType,
 ) -> EvalResult<Handle<Value>> {
-    let mut generator = maybe!(generator_validate(cx, generator));
+    let mut generator = generator_validate(cx, generator)?;
 
     // An abrupt completion on a generator that has not been started immediately completes it
     if generator.state == GeneratorState::SuspendedStart {
@@ -282,9 +279,9 @@ pub fn generator_resume_abrupt(
     // Check if generator has already completed
     if generator.state == GeneratorState::Completed {
         if completion_type == GeneratorCompletionType::Return {
-            return create_iter_result_object(cx, completion_value, true).into();
+            return Ok(create_iter_result_object(cx, completion_value, true));
         } else {
-            return EvalResult::Throw(completion_value);
+            return Err(completion_value);
         }
     }
 

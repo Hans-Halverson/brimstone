@@ -1,22 +1,19 @@
-use crate::{
-    js::{
-        common::unicode::CodePoint,
-        runtime::{
-            abstract_operations::length_of_array_like,
-            builtin_function::BuiltinFunction,
-            completion::EvalResult,
-            error::range_error,
-            function::get_argument,
-            get,
-            object_value::ObjectValue,
-            realm::Realm,
-            string_object::StringObject,
-            string_value::{FlatString, StringValue},
-            type_utilities::{to_number, to_object, to_string, to_uint16},
-            Context, Handle, PropertyKey, Value,
-        },
+use crate::js::{
+    common::unicode::CodePoint,
+    runtime::{
+        abstract_operations::length_of_array_like,
+        builtin_function::BuiltinFunction,
+        error::range_error,
+        eval_result::EvalResult,
+        function::get_argument,
+        get,
+        object_value::ObjectValue,
+        realm::Realm,
+        string_object::StringObject,
+        string_value::{FlatString, StringValue},
+        type_utilities::{to_number, to_object, to_string, to_uint16},
+        Context, Handle, PropertyKey, Value,
     },
-    maybe,
 };
 
 use super::{intrinsics::Intrinsic, symbol_prototype::symbol_descriptive_string};
@@ -60,18 +57,18 @@ impl StringConstructor {
         } else {
             let value = get_argument(cx, arguments, 0);
             if new_target.is_none() && value.is_symbol() {
-                return symbol_descriptive_string(cx, value.as_symbol()).into();
+                return Ok(symbol_descriptive_string(cx, value.as_symbol()).as_value());
             }
 
-            maybe!(to_string(cx, value))
+            to_string(cx, value)?
         };
 
         match new_target {
-            None => string_value.into(),
+            None => Ok(string_value.as_value()),
             Some(new_target) => {
                 let string_object =
-                    maybe!(StringObject::new_from_constructor(cx, new_target, string_value));
-                string_object.into()
+                    StringObject::new_from_constructor(cx, new_target, string_value)?;
+                Ok(string_object.as_value())
             }
         }
     }
@@ -85,19 +82,17 @@ impl StringConstructor {
     ) -> EvalResult<Handle<Value>> {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
-            let code_unit = maybe!(to_uint16(cx, arguments[0]));
-            return FlatString::from_code_unit(cx, code_unit).as_string().into();
+            let code_unit = to_uint16(cx, arguments[0])?;
+            return Ok(FlatString::from_code_unit(cx, code_unit).as_value());
         }
 
         let mut code_points = vec![];
         for arg in arguments {
-            let code_unit = maybe!(to_uint16(cx, *arg));
+            let code_unit = to_uint16(cx, *arg)?;
             code_points.push(code_unit as u32);
         }
 
-        FlatString::from_code_points(cx, &code_points)
-            .as_string()
-            .into()
+        Ok(FlatString::from_code_points(cx, &code_points).as_value())
     }
 
     /// String.fromCodePoint (https://tc39.es/ecma262/#sec-string.fromcodepoint)
@@ -110,7 +105,7 @@ impl StringConstructor {
         macro_rules! get_code_point {
             ($arg:expr) => {{
                 let arg = $arg;
-                let code_point = maybe!(to_number(cx, arg));
+                let code_point = to_number(cx, arg)?;
 
                 // All valid code points are integers in the smi range
                 if !code_point.is_smi() {
@@ -133,9 +128,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_point = get_code_point!(arguments[0]);
-            return FlatString::from_code_point(cx, code_point)
-                .as_string()
-                .into();
+            return Ok(FlatString::from_code_point(cx, code_point).as_value());
         }
 
         let mut code_points = vec![];
@@ -143,9 +136,7 @@ impl StringConstructor {
             code_points.push(get_code_point!(*arg));
         }
 
-        FlatString::from_code_points(cx, &code_points)
-            .as_string()
-            .into()
+        Ok(FlatString::from_code_points(cx, &code_points).as_value())
     }
 
     /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
@@ -158,14 +149,14 @@ impl StringConstructor {
         let substitution_count = arguments.len() - 1;
 
         let template_arg = get_argument(cx, arguments, 0);
-        let cooked = maybe!(to_object(cx, template_arg));
+        let cooked = to_object(cx, template_arg)?;
 
-        let literals = maybe!(get(cx, cooked, cx.names.raw()));
-        let literals = maybe!(to_object(cx, literals));
+        let literals = get(cx, cooked, cx.names.raw())?;
+        let literals = to_object(cx, literals)?;
 
-        let literal_count = maybe!(length_of_array_like(cx, literals));
+        let literal_count = length_of_array_like(cx, literals)?;
         if literal_count == 0 {
-            return cx.names.empty_string.as_string().to_handle().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
         let mut result = cx.names.empty_string.as_string().to_handle();
@@ -177,18 +168,18 @@ impl StringConstructor {
         loop {
             key.replace(PropertyKey::from_u64(cx, next_index));
 
-            let next_literal_value = maybe!(get(cx, literals, key));
-            let next_literal_string = maybe!(to_string(cx, next_literal_value));
+            let next_literal_value = get(cx, literals, key)?;
+            let next_literal_string = to_string(cx, next_literal_value)?;
 
             result = StringValue::concat(cx, result, next_literal_string);
 
             if next_index + 1 == literal_count {
-                return result.into();
+                return Ok(result.as_value());
             }
 
             if next_index < substitution_count as u64 {
                 let substitution_arg = get_argument(cx, arguments, next_index as usize + 1);
-                let next_substitution = maybe!(to_string(cx, substitution_arg));
+                let next_substitution = to_string(cx, substitution_arg)?;
 
                 result = StringValue::concat(cx, result, next_substitution);
             }

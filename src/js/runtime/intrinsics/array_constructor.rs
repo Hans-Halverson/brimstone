@@ -17,7 +17,7 @@ use crate::{
         type_utilities::{is_array, is_callable, is_constructor_value, to_object, to_uint32},
         Context, EvalResult, Handle, Realm, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
@@ -61,11 +61,10 @@ impl ArrayConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let new_target = new_target.unwrap_or_else(|| cx.current_function());
-        let proto =
-            maybe!(get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype));
+        let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype)?;
 
         if arguments.is_empty() {
-            must!(array_create(cx, 0, Some(proto))).into()
+            Ok(must!(array_create(cx, 0, Some(proto))).as_value())
         } else if arguments.len() == 1 {
             let length = get_argument(cx, arguments, 0);
             let array = must!(array_create(cx, 0, Some(proto)));
@@ -87,9 +86,9 @@ impl ArrayConstructor {
             let int_len_value = Value::from(int_len).to_handle(cx);
             must!(set(cx, array.into(), cx.names.length(), int_len_value, true));
 
-            array.into()
+            Ok(array.as_value())
         } else {
-            let array = maybe!(array_create(cx, arguments.len() as u64, Some(proto)));
+            let array = array_create(cx, arguments.len() as u64, Some(proto))?;
 
             // Property key is shared between iterations
             let mut key = PropertyKey::uninit().to_handle(cx);
@@ -101,7 +100,7 @@ impl ArrayConstructor {
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
             }
 
-            array.into()
+            Ok(array.as_value())
         }
     }
 
@@ -128,10 +127,10 @@ impl ArrayConstructor {
         let this_arg = get_argument(cx, arguments, 2);
 
         // If an iterator was supplied use it to create array
-        let iterator = maybe!(get_method(cx, items_arg, cx.well_known_symbols.iterator()));
+        let iterator = get_method(cx, items_arg, cx.well_known_symbols.iterator())?;
         if let Some(iterator) = iterator {
             let array = if is_constructor_value(this_value) {
-                maybe!(construct(cx, this_value.as_object(), &[], None))
+                construct(cx, this_value.as_object(), &[], None)?
             } else {
                 must!(array_create(cx, 0, None)).into()
             };
@@ -141,7 +140,7 @@ impl ArrayConstructor {
             let mut index_value: Handle<Value> = Handle::empty(cx);
             let mut i = 0;
 
-            maybe!(iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
+            iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
                 if i >= MAX_SAFE_INTEGER_U64 {
                     return Some(type_error(cx, "array is too large"));
                 }
@@ -152,8 +151,8 @@ impl ArrayConstructor {
                     // Apply map function if present, returning if abnormal completion
                     let result = call_object(cx, map_function, this_arg, &[value, index_value]);
                     match result {
-                        EvalResult::Ok(mapped_value) => mapped_value,
-                        EvalResult::Throw(_) => return Some(result),
+                        Ok(mapped_value) => mapped_value,
+                        Err(_) => return Some(result),
                     }
                 } else {
                     value
@@ -163,30 +162,30 @@ impl ArrayConstructor {
 
                 // Append value to array, returning if abnormal completion
                 let result = create_data_property_or_throw(cx, array, key, value);
-                if let EvalResult::Throw(thrown_value) = result {
-                    return Some(EvalResult::Throw(thrown_value));
+                if let Err(error) = result {
+                    return Some(Err(error));
                 }
 
                 i += 1;
 
                 None
-            }));
+            })?;
 
             let length_value = Value::from(i).to_handle(cx);
-            maybe!(set(cx, array, cx.names.length(), length_value, true));
+            set(cx, array, cx.names.length(), length_value, true)?;
 
-            return array.into();
+            return Ok(array.as_value());
         }
 
         // Otherwise assume items arg is array like and copy elements from it
         let array_like = must!(to_object(cx, items_arg));
-        let length = maybe!(length_of_array_like(cx, array_like));
+        let length = length_of_array_like(cx, array_like)?;
         let length_value = Value::from(length).to_handle(cx);
 
         let array = if is_constructor_value(this_value) {
-            maybe!(construct(cx, this_value.as_object(), &[length_value], None))
+            construct(cx, this_value.as_object(), &[length_value], None)?
         } else {
-            maybe!(array_create(cx, length, None)).into()
+            array_create(cx, length, None)?.into()
         };
 
         // Handles are shared between iterations
@@ -197,20 +196,20 @@ impl ArrayConstructor {
         for i in 0..length {
             key.replace(PropertyKey::from_u64(cx, i));
 
-            let mut value = maybe!(get(cx, array_like, key));
+            let mut value = get(cx, array_like, key)?;
 
             // Apply map function if present
             if let Some(map_function) = map_function {
                 index_value.replace(Value::from(i));
-                value = maybe!(call_object(cx, map_function, this_arg, &[value, index_value]));
+                value = call_object(cx, map_function, this_arg, &[value, index_value])?;
             }
 
-            maybe!(create_data_property_or_throw(cx, array, key, value));
+            create_data_property_or_throw(cx, array, key, value)?;
         }
 
-        maybe!(set(cx, array, cx.names.length(), length_value, true));
+        set(cx, array, cx.names.length(), length_value, true)?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.isArray (https://tc39.es/ecma262/#sec-array.isarray)
@@ -221,8 +220,8 @@ impl ArrayConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let is_array = maybe!(is_array(cx, argument));
-        cx.bool(is_array).into()
+        let is_array = is_array(cx, argument)?;
+        Ok(cx.bool(is_array))
     }
 
     /// Array.of (https://tc39.es/ecma262/#sec-array.of)
@@ -236,9 +235,9 @@ impl ArrayConstructor {
         let length_value = Value::from(length).to_handle(cx);
 
         let array = if is_constructor_value(this_value) {
-            maybe!(construct(cx, this_value.as_object(), &[length_value], None))
+            construct(cx, this_value.as_object(), &[length_value], None)?
         } else {
-            maybe!(array_create(cx, length as u64, None)).into()
+            array_create(cx, length as u64, None)?.into()
         };
 
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -247,11 +246,11 @@ impl ArrayConstructor {
             key.replace(PropertyKey::array_index(cx, index as u32));
             let value = get_argument(cx, arguments, index);
 
-            maybe!(create_data_property_or_throw(cx, array, key, value));
+            create_data_property_or_throw(cx, array, key, value)?;
         }
 
-        maybe!(set(cx, array, cx.names.length(), length_value, true));
+        set(cx, array, cx.names.length(), length_value, true)?;
 
-        array.into()
+        Ok(array.as_value())
     }
 }

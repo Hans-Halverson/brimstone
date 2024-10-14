@@ -1,4 +1,4 @@
-use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, maybe, set_uninit};
+use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, set_uninit};
 
 use super::{
     abstract_operations::{has_own_property, has_property},
@@ -215,9 +215,9 @@ impl Handle<Scope> {
                 // we need to load the value from the BoxedValue.
                 if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
                     let boxed_value = slot_value.as_pointer().cast::<BoxedValue>();
-                    return Some(boxed_value.get().to_handle(cx)).into();
+                    return Ok(Some(boxed_value.get().to_handle(cx)));
                 } else {
-                    return Some(slot_value.to_handle(cx)).into();
+                    return Ok(Some(slot_value.to_handle(cx)));
                 }
             }
 
@@ -228,9 +228,9 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(scope.has_object_binding(cx, object_handle, key)) {
-                    let value = maybe!(get(cx, object_handle, key));
-                    return Some(value).into();
+                if scope.has_object_binding(cx, object_handle, key)? {
+                    let value = get(cx, object_handle, key)?;
+                    return Ok(Some(value));
                 }
             }
 
@@ -242,7 +242,7 @@ impl Handle<Scope> {
                 let realm = scope.global_scope_realm();
                 let value = realm.get_lexical_name(name.as_flat().get_());
 
-                return value.map(|v| v.to_handle(cx)).into();
+                return Ok(value.map(|v| v.to_handle(cx)));
             }
         }
     }
@@ -277,7 +277,7 @@ impl Handle<Scope> {
                     if is_strict {
                         return err_assign_constant(cx, name.as_flat().get_());
                     } else {
-                        return true.into();
+                        return Ok(true);
                     }
                 }
 
@@ -286,11 +286,11 @@ impl Handle<Scope> {
                 if scope.kind == ScopeKind::Module && scope_names.is_module_binding(index) {
                     let mut boxed_value = scope.get_module_slot(index);
                     boxed_value.set(value.get());
-                    return true.into();
+                    return Ok(true);
                 }
 
                 scope.set_slot(index, value.get());
-                return true.into();
+                return Ok(true);
             }
 
             // Then check scope object if one exists
@@ -300,14 +300,14 @@ impl Handle<Scope> {
                 // Name is an interned string (and cannot be a number) so is already a property key
                 let key = name.cast::<PropertyKey>();
 
-                if maybe!(scope.has_object_binding(cx, object_handle, key)) {
-                    let success = maybe!(object_handle.set(cx, key, value, object_handle.into()));
+                if scope.has_object_binding(cx, object_handle, key)? {
+                    let success = object_handle.set(cx, key, value, object_handle.into())?;
                     if !success && is_strict {
                         return err_cannot_set_property(cx, name);
                     }
 
                     // Name was found, even if the set failed
-                    return true.into();
+                    return Ok(true);
                 }
             }
 
@@ -317,10 +317,9 @@ impl Handle<Scope> {
             } else {
                 // Otherwise check for a global lexical name
                 let mut realm = scope.global_scope_realm();
-                let success =
-                    maybe!(realm.set_lexical_name(cx, name.as_flat().get_(), value.get()));
+                let success = realm.set_lexical_name(cx, name.as_flat().get_(), value.get())?;
 
-                return success.into();
+                return Ok(success);
             }
         }
     }
@@ -346,7 +345,7 @@ impl Handle<Scope> {
                 let key = name.cast::<PropertyKey>();
 
                 // If the property is found, delete it
-                if maybe!(has_own_property(cx, object_handle, key)) {
+                if has_own_property(cx, object_handle, key)? {
                     return object_handle.delete(cx, key);
                 }
             }
@@ -358,14 +357,14 @@ impl Handle<Scope> {
                 .lookup_name(name.as_flat().get_())
                 .is_some()
             {
-                return false.into();
+                return Ok(false);
             }
 
             // Move to parent scope
             if let Some(parent) = scope.parent.as_ref() {
                 scope.replace(*parent);
             } else {
-                return true.into();
+                return Ok(true);
             }
         }
     }
@@ -380,28 +379,28 @@ impl Handle<Scope> {
         key: Handle<PropertyKey>,
     ) -> EvalResult<bool> {
         // Check if key appears in object
-        if !maybe!(has_property(cx, object, key)) {
-            return false.into();
+        if !has_property(cx, object, key)? {
+            return Ok(false);
         }
 
         if self.kind != ScopeKind::With {
-            return true.into();
+            return Ok(true);
         }
 
         // With statements must also ignore properties in @@unscopables
         let unscopables_key = cx.well_known_symbols.unscopables();
-        let unscopables = maybe!(get(cx, object, unscopables_key));
+        let unscopables = get(cx, object, unscopables_key)?;
         if unscopables.is_object() {
             let unscopables = unscopables.as_object();
 
-            let value = maybe!(get(cx, unscopables, key));
+            let value = get(cx, unscopables, key)?;
             let blocked = to_boolean(value.get());
             if blocked {
-                return false.into();
+                return Ok(false);
             }
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// Return the object for this scope, creating it if necessary.

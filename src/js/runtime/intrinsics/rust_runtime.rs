@@ -633,7 +633,7 @@ pub fn return_this(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    this_value.into()
+    Ok(this_value)
 }
 
 /// Rust runtime function that simply returns `undefined`.
@@ -644,5 +644,5 @@ pub fn return_undefined(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    cx.undefined().into()
+    Ok(cx.undefined())
 }

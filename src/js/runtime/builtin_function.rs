@@ -2,7 +2,7 @@ use crate::js::runtime::bytecode::function::Closure;
 
 use super::{
     bytecode::function::BytecodeFunction,
-    completion::EvalResult,
+    eval_result::EvalResult,
     function::{build_function_name, set_function_length, set_function_name},
     intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,

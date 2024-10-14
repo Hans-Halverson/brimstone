@@ -6,7 +6,7 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{Handle, HeapObject, HeapVisitor},
         numeric_constants::{
@@ -22,7 +22,7 @@ use crate::{
         value::Value,
         Context, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -50,16 +50,16 @@ impl NumberObject {
         constructor: Handle<ObjectValue>,
         number_data: f64,
     ) -> EvalResult<Handle<NumberObject>> {
-        let mut object = maybe!(object_create_from_constructor::<NumberObject>(
+        let mut object = object_create_from_constructor::<NumberObject>(
             cx,
             constructor,
             ObjectKind::NumberObject,
-            Intrinsic::NumberPrototype
-        ));
+            Intrinsic::NumberPrototype,
+        )?;
 
         set_uninit!(object.number_data, number_data);
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn new_with_proto(
@@ -153,7 +153,7 @@ impl NumberConstructor {
             0.0
         } else {
             let argument = get_argument(cx, arguments, 0);
-            let numeric_value = maybe!(to_numeric(cx, argument));
+            let numeric_value = to_numeric(cx, argument)?;
             if numeric_value.is_bigint() {
                 // Safe since BigInt::to_f64 never returns None
                 numeric_value.as_bigint().bigint().to_f64().unwrap()
@@ -163,9 +163,9 @@ impl NumberConstructor {
         };
 
         match new_target {
-            None => Value::from(number_value).to_handle(cx).into(),
+            None => Ok(Value::from(number_value).to_handle(cx)),
             Some(new_target) => {
-                maybe!(NumberObject::new_from_constructor(cx, new_target, number_value)).into()
+                Ok(NumberObject::new_from_constructor(cx, new_target, number_value)?.as_value())
             }
         }
     }
@@ -179,10 +179,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(!value.is_nan() && !value.is_infinity()).into()
+        Ok(cx.bool(!value.is_nan() && !value.is_infinity()))
     }
 
     /// Number.isInteger (https://tc39.es/ecma262/#sec-number.isinteger)
@@ -193,7 +193,7 @@ impl NumberConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
-        cx.bool(is_integral_number(value.get())).into()
+        Ok(cx.bool(is_integral_number(value.get())))
     }
 
     /// Number.isNaN (https://tc39.es/ecma262/#sec-number.isnan)
@@ -205,10 +205,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(value.is_nan()).into()
+        Ok(cx.bool(value.is_nan()))
     }
 
     /// Number.isSafeInteger (https://tc39.es/ecma262/#sec-number.issafeinteger)
@@ -220,11 +220,10 @@ impl NumberConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !is_integral_number(value.get()) {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
-        cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64)
-            .into()
+        Ok(cx.bool(value.as_number().abs() <= MAX_SAFE_INTEGER_F64))
     }
 }
 

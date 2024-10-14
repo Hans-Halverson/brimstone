@@ -1,7 +1,7 @@
 use crate::js::{common::error::print_error_message_and_exit, parser::LocalizedParseError};
 
 use super::{
-    completion::EvalResult,
+    eval_result::EvalResult,
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
     string_value::{FlatString, StringValue},
     to_console_string, Context, Handle, HeapPtr, Value,
@@ -28,23 +28,23 @@ fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
 }
 
 pub fn syntax_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    EvalResult::Throw(syntax_error_value(cx, message))
+    Err(syntax_error_value(cx, message))
 }
 
 pub fn type_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    EvalResult::Throw(type_error_value(cx, message))
+    Err(type_error_value(cx, message))
 }
 
 pub fn reference_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    EvalResult::Throw(reference_error_value(cx, message))
+    Err(reference_error_value(cx, message))
 }
 
 pub fn range_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    EvalResult::Throw(range_error_value(cx, message))
+    Err(range_error_value(cx, message))
 }
 
 pub fn uri_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    EvalResult::Throw(uri_error_value(cx, message))
+    Err(uri_error_value(cx, message))
 }
 
 pub fn err_not_defined<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {

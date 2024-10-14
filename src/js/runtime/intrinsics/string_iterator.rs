@@ -3,8 +3,8 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     js::runtime::{
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
@@ -15,7 +15,7 @@ use crate::{
         string_value::{FlatString, SafeCodePointIterator},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -72,14 +72,14 @@ impl StringIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut string_iterator = maybe!(StringIterator::cast_from_value(cx, this_value));
+        let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
 
         match string_iterator.iter.next() {
-            None => create_iter_result_object(cx, cx.undefined(), true).into(),
+            None => Ok(create_iter_result_object(cx, cx.undefined(), true)),
             Some(next_code_point) => {
                 let code_point_string =
                     FlatString::from_code_point(cx, next_code_point).as_string();
-                create_iter_result_object(cx, code_point_string.into(), false).into()
+                Ok(create_iter_result_object(cx, code_point_string.into(), false))
             }
         }
     }

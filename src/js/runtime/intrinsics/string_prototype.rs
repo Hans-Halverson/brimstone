@@ -14,8 +14,8 @@ use crate::{
         runtime::{
             abstract_operations::{call_object, get_method, invoke},
             array_object::{array_create, create_array_from_list},
-            completion::EvalResult,
             error::{range_error, type_error},
+            eval_result::EvalResult,
             function::get_argument,
             get,
             interned_strings::InternedStrings,
@@ -39,7 +39,7 @@ use crate::{
             Context, Handle, HeapPtr, PropertyKey,
         },
     },
-    maybe, must,
+    must,
 };
 
 use super::regexp_constructor::{FlagsSource, RegExpObject};
@@ -51,8 +51,7 @@ impl StringPrototype {
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let mut object: Handle<ObjectValue> =
-            StringObject::new_with_proto(cx, object_proto, empty_string).into();
+        let mut object = StringObject::new_with_proto(cx, object_proto, empty_string).as_object();
 
         // Constructor property is added once StringConstructor has been created
         object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
@@ -116,15 +115,15 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let length = string.len() as i64;
 
         let index_arg = get_argument(cx, arguments, 0);
-        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+        let relative_index = to_integer_or_infinity(cx, index_arg)?;
         if relative_index == f64::INFINITY {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let index = if relative_index >= 0.0 {
@@ -134,12 +133,12 @@ impl StringPrototype {
         };
 
         if index < 0 || index >= length {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(index as u32))
-            .as_string()
-            .into()
+        let code_unit_string = FlatString::from_code_unit(cx, string.code_unit_at(index as u32));
+
+        Ok(code_unit_string.as_value())
     }
 
     /// String.prototype.charAt (https://tc39.es/ecma262/#sec-string.prototype.charat)
@@ -149,19 +148,19 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
-        let position = maybe!(to_integer_or_infinity(cx, position_arg));
+        let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        FlatString::from_code_unit(cx, string.code_unit_at(position as u32))
-            .as_string()
-            .into()
+        let char_string = FlatString::from_code_unit(cx, string.code_unit_at(position as u32));
+
+        Ok(char_string.as_value())
     }
 
     /// String.prototype.charCodeAt (https://tc39.es/ecma262/#sec-string.prototype.charcodeat)
@@ -171,18 +170,18 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
-        let position = maybe!(to_integer_or_infinity(cx, position_arg));
+        let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let code_unit = string.code_unit_at(position as u32);
-        Value::smi(code_unit as i32).to_handle(cx).into()
+        Ok(Value::smi(code_unit as i32).to_handle(cx))
     }
 
     /// String.prototype.codePointAt (https://tc39.es/ecma262/#sec-string.prototype.codepointat)
@@ -192,18 +191,18 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
-        let position = maybe!(to_integer_or_infinity(cx, position_arg));
+        let position = to_integer_or_infinity(cx, position_arg)?;
 
         if position < 0.0 || position >= string.len() as f64 {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let code_point = string.code_point_at(position as u32);
-        Value::smi(code_point as i32).to_handle(cx).into()
+        Ok(Value::smi(code_point as i32).to_handle(cx))
     }
 
     /// String.prototype.concat (https://tc39.es/ecma262/#sec-string.prototype.concat)
@@ -213,15 +212,15 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let mut concat_string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let mut concat_string = to_string(cx, object)?;
 
         for argument in arguments {
-            let string = maybe!(to_string(cx, *argument));
+            let string = to_string(cx, *argument)?;
             concat_string = StringValue::concat(cx, concat_string, string);
         }
 
-        concat_string.into()
+        Ok(concat_string.as_value())
     }
 
     /// String.prototype.endsWith (https://tc39.es/ecma262/#sec-string.prototype.endswith)
@@ -231,38 +230,38 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
-        if maybe!(is_regexp(cx, search_value)) {
+        if is_regexp(cx, search_value)? {
             return type_error(cx, "first argument to endsWith cannot be a RegExp");
         }
 
-        let search_string = maybe!(to_string(cx, search_value));
+        let search_string = to_string(cx, search_value)?;
 
         let end_index_argument = get_argument(cx, arguments, 1);
         let end_index = if end_index_argument.is_undefined() {
             length
         } else {
-            let end_index = maybe!(to_integer_or_infinity(cx, end_index_argument));
+            let end_index = to_integer_or_infinity(cx, end_index_argument)?;
             end_index.clamp(0.0, length as f64) as u32
         };
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let start_index = match end_index.checked_sub(search_length) {
             Some(start_index) => start_index,
-            None => return cx.bool(false).into(),
+            None => return Ok(cx.bool(false)),
         };
 
         let ends_with_string = string.substring_equals(search_string, start_index);
 
-        cx.bool(ends_with_string).into()
+        Ok(cx.bool(ends_with_string))
     }
 
     /// String.prototype.includes (https://tc39.es/ecma262/#sec-string.prototype.includes)
@@ -272,26 +271,26 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let search_string = get_argument(cx, arguments, 0);
-        if maybe!(is_regexp(cx, search_string)) {
+        if is_regexp(cx, search_string)? {
             return type_error(cx, "String.prototype.includes cannot take a regular expression");
         }
 
-        let search_string = maybe!(to_string(cx, search_string));
+        let search_string = to_string(cx, search_string)?;
 
         let pos_arg = get_argument(cx, arguments, 1);
-        let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
+        let pos = to_integer_or_infinity(cx, pos_arg)?;
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let found_search_string = string.find(search_string, pos).is_some();
-        cx.bool(found_search_string).into()
+        Ok(cx.bool(found_search_string))
     }
 
     /// String.prototype.indexOf (https://tc39.es/ecma262/#sec-string.prototype.indexof)
@@ -301,23 +300,23 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let search_arg = get_argument(cx, arguments, 0);
-        let search_string = maybe!(to_string(cx, search_arg));
+        let search_string = to_string(cx, search_arg)?;
 
         let pos_arg = get_argument(cx, arguments, 1);
-        let pos = maybe!(to_integer_or_infinity(cx, pos_arg));
+        let pos = to_integer_or_infinity(cx, pos_arg)?;
         let pos = pos.clamp(0.0, string.len() as f64) as u32;
 
         if pos > string.len() {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         match string.find(search_string, pos) {
-            None => Value::smi(-1).to_handle(cx).into(),
-            Some(index) => Value::from(index).to_handle(cx).into(),
+            None => Ok(Value::smi(-1).to_handle(cx)),
+            Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
 
@@ -328,10 +327,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        cx.bool(string.is_well_formed()).into()
+        Ok(cx.bool(string.is_well_formed()))
     }
 
     /// String.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-string.prototype.lastindexof)
@@ -341,26 +340,26 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let search_arg = get_argument(cx, arguments, 0);
-        let search_string = maybe!(to_string(cx, search_arg));
+        let search_string = to_string(cx, search_arg)?;
 
         let pos_arg = get_argument(cx, arguments, 1);
-        let num_pos = maybe!(to_number(cx, pos_arg));
+        let num_pos = to_number(cx, pos_arg)?;
 
         let pos = if num_pos.is_nan() {
             f64::INFINITY
         } else {
-            maybe!(to_integer_or_infinity(cx, num_pos))
+            to_integer_or_infinity(cx, num_pos)?
         };
 
         let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
         match string.rfind(search_string, string_end) {
-            None => Value::smi(-1).to_handle(cx).into(),
-            Some(index) => Value::from(index).to_handle(cx).into(),
+            None => Ok(Value::smi(-1).to_handle(cx)),
+            Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
     }
 
@@ -371,11 +370,11 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let other_arg = get_argument(cx, arguments, 0);
-        let other_string = maybe!(to_string(cx, other_arg));
+        let other_string = to_string(cx, other_arg)?;
 
         let wtf8_string = string.to_wtf8_string();
         let wtf8_other_string = other_string.to_wtf8_string();
@@ -389,7 +388,7 @@ impl StringPrototype {
             Ordering::Greater => 1,
         };
 
-        Value::smi(comparison_number).to_handle(cx).into()
+        Ok(Value::smi(comparison_number).to_handle(cx))
     }
 
     /// String.prototype.match (https://tc39.es/ecma262/#sec-string.prototype.match)
@@ -399,24 +398,24 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let this_object = maybe!(require_object_coercible(cx, this_value));
+        let this_object = require_object_coercible(cx, this_value)?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
         if !regexp_arg.is_nullish() {
-            let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_()));
+            let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_())?;
             if let Some(matcher) = matcher {
                 return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
         }
 
-        let this_string = maybe!(to_string(cx, this_object));
+        let this_string = to_string(cx, this_object)?;
 
         let regexp_source = RegExpSource::PatternAndFlags(
             regexp_arg,
             FlagsSource::RegExpFlags(RegExpFlags::empty()),
         );
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
+        let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_(), &[this_string.into()])
     }
@@ -428,18 +427,18 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let this_object = maybe!(require_object_coercible(cx, this_value));
+        let this_object = require_object_coercible(cx, this_value)?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
         if !regexp_arg.is_nullish() {
-            if maybe!(is_regexp(cx, regexp_arg)) {
+            if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
                 let has_global_flag = if regexp_object.is_regexp_object() {
                     regexp_object.cast::<RegExpObject>().flags().is_global()
                 } else {
-                    let flags_string = maybe!(get(cx, regexp_object, cx.names.flags()));
-                    maybe!(require_object_coercible(cx, flags_string));
-                    let flags_string = maybe!(to_string(cx, flags_string));
+                    let flags_string = get(cx, regexp_object, cx.names.flags())?;
+                    require_object_coercible(cx, flags_string)?;
+                    let flags_string = to_string(cx, flags_string)?;
 
                     flags_string_contains(flags_string, 'g' as u32)
                 };
@@ -452,20 +451,20 @@ impl StringPrototype {
                 }
             }
 
-            let matcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.match_all()));
+            let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_all())?;
             if let Some(matcher) = matcher {
                 return call_object(cx, matcher, regexp_arg, &[this_object]);
             }
         }
 
-        let this_string = maybe!(to_string(cx, this_object));
+        let this_string = to_string(cx, this_object)?;
 
         let regexp_source = RegExpSource::PatternAndFlags(
             regexp_arg,
             FlagsSource::RegExpFlags(RegExpFlags::GLOBAL),
         );
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
+        let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.match_all(), &[this_string.into()])
     }
@@ -477,14 +476,14 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let form_arg = get_argument(cx, arguments, 0);
         let form = if form_arg.is_undefined() {
             NormalizationForm::NFC
         } else {
-            let form_string = maybe!(to_string(cx, form_arg)).flatten().get_();
+            let form_string = to_string(cx, form_arg)?.flatten().get_();
             if form_string == cx.names.nfc.as_string().as_flat() {
                 NormalizationForm::NFC
             } else if form_string == cx.names.nfd.as_string().as_flat() {
@@ -516,7 +515,7 @@ impl StringPrototype {
             }
         };
 
-        normalized_string.into()
+        Ok(normalized_string.as_value())
     }
 
     /// String.prototype.padEnd (https://tc39.es/ecma262/#sec-string.prototype.padend)
@@ -552,15 +551,15 @@ impl StringPrototype {
         fill_string_arg: Handle<Value>,
         is_start: bool,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        let int_max_length = maybe!(to_length(cx, max_length_arg));
+        let int_max_length = to_length(cx, max_length_arg)?;
         let string_length = string.len();
 
         // No need to pad as string already has max length
         if int_max_length <= string_length as u64 {
-            return string.into();
+            return Ok(string.as_value());
         } else if int_max_length > u32::MAX as u64 {
             return range_error(cx, "target string length exceeds maximum string size");
         }
@@ -570,7 +569,7 @@ impl StringPrototype {
         let fill_string = if fill_string_arg.is_undefined() {
             InternedStrings::get_str(cx, " ")
         } else {
-            maybe!(to_string(cx, fill_string_arg))
+            to_string(cx, fill_string_arg)?
         };
 
         let fill_length = int_max_length - string_length;
@@ -578,7 +577,7 @@ impl StringPrototype {
 
         // Check for an empty padding string which would have no effect
         if fill_string_length == 0 {
-            return string.into();
+            return Ok(string.as_value());
         }
 
         // Find the number of whole pad strings we can fit into the padding length
@@ -593,9 +592,9 @@ impl StringPrototype {
         }
 
         if is_start {
-            StringValue::concat(cx, pad_string, string).into()
+            Ok(StringValue::concat(cx, pad_string, string).as_value())
         } else {
-            StringValue::concat(cx, string, pad_string).into()
+            Ok(StringValue::concat(cx, string, pad_string).as_value())
         }
     }
 
@@ -606,18 +605,18 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let n_arg = get_argument(cx, arguments, 0);
-        let n = maybe!(to_integer_or_infinity(cx, n_arg));
+        let n = to_integer_or_infinity(cx, n_arg)?;
         if !(0.0..=MAX_U32_AS_F64).contains(&n) {
             return range_error(cx, "count must be a finite, positive number that does not exceed the maximum string size");
         } else if n == 0.0 {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        string.repeat(cx, n as u32).as_string().into()
+        Ok(string.repeat(cx, n as u32).as_value())
     }
 
     /// String.prototype.replace (https://tc39.es/ecma262/#sec-string.prototype.replace)
@@ -627,26 +626,26 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
+        let object = require_object_coercible(cx, this_value)?;
 
         let search_arg = get_argument(cx, arguments, 0);
         let replace_arg = get_argument(cx, arguments, 1);
 
         // Use the @@replace method of the argument if one exists
         if !search_arg.is_nullish() {
-            let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
+            let replacer = get_method(cx, search_arg, cx.well_known_symbols.replace())?;
             if let Some(replacer) = replacer {
                 return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
         }
 
-        let target_string = maybe!(to_string(cx, object));
-        let search_string = maybe!(to_string(cx, search_arg));
+        let target_string = to_string(cx, object)?;
+        let search_string = to_string(cx, search_arg)?;
 
         let replace_value = if is_callable(replace_arg) {
             ReplaceValue::Function(replace_arg.as_object())
         } else {
-            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+            ReplaceValue::String(to_string(cx, replace_arg)?)
         };
 
         // Find the first match of the search string in the target string
@@ -654,25 +653,25 @@ impl StringPrototype {
         let matched_position = if let Some(matched_position) = matched_position {
             matched_position
         } else {
-            return target_string.into();
+            return Ok(target_string.as_value());
         };
 
         let replacement_string = match replace_value {
             // If replace argument is a function, replacement is the result of calling that function
             ReplaceValue::Function(replace_function) => {
                 let matched_position_value = Value::from(matched_position).to_handle(cx);
-                let replacement = maybe!(call_object(
+                let replacement = call_object(
                     cx,
                     replace_function,
                     cx.undefined(),
                     &[
                         search_string.into(),
                         matched_position_value,
-                        target_string.into()
-                    ]
-                ));
+                        target_string.into(),
+                    ],
+                )?;
 
-                maybe!(to_string(cx, replacement))
+                to_string(cx, replacement)?
             }
             // Otherwise replacement is the result of calling GetSubstitution
             ReplaceValue::String(replace_string) => {
@@ -695,8 +694,10 @@ impl StringPrototype {
             .substring(cx, matched_position + search_string.len(), target_string.len())
             .as_string();
 
-        StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string])
-            .into()
+        let result_string =
+            StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string]);
+
+        Ok(result_string.as_value())
     }
 
     /// String.prototype.replaceAll (https://tc39.es/ecma262/#sec-string.prototype.replaceall)
@@ -706,7 +707,7 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
+        let object = require_object_coercible(cx, this_value)?;
 
         let search_arg = get_argument(cx, arguments, 0);
         let replace_arg = get_argument(cx, arguments, 1);
@@ -714,13 +715,13 @@ impl StringPrototype {
         // Use the @@replace method of the argument if one exists
         if !search_arg.is_nullish() {
             // If search argument is a RegExp, check that it has the global flag
-            if maybe!(is_regexp(cx, search_arg)) {
+            if is_regexp(cx, search_arg)? {
                 let search_regexp = search_arg.as_object();
-                let flags_value = maybe!(get(cx, search_regexp, cx.names.flags()));
+                let flags_value = get(cx, search_regexp, cx.names.flags())?;
 
-                maybe!(require_object_coercible(cx, flags_value));
+                require_object_coercible(cx, flags_value)?;
 
-                let flags_string = maybe!(to_string(cx, flags_value));
+                let flags_string = to_string(cx, flags_value)?;
 
                 if !flags_string_contains(flags_string, 'g' as u32) {
                     return type_error(
@@ -730,19 +731,19 @@ impl StringPrototype {
                 }
             }
 
-            let replacer = maybe!(get_method(cx, search_arg, cx.well_known_symbols.replace()));
+            let replacer = get_method(cx, search_arg, cx.well_known_symbols.replace())?;
             if let Some(replacer) = replacer {
                 return call_object(cx, replacer, search_arg, &[object, replace_arg]);
             }
         }
 
-        let target_string = maybe!(to_string(cx, object));
-        let search_string = maybe!(to_string(cx, search_arg));
+        let target_string = to_string(cx, object)?;
+        let search_string = to_string(cx, search_arg)?;
 
         let replace_value = if is_callable(replace_arg) {
             ReplaceValue::Function(replace_arg.as_object())
         } else {
-            ReplaceValue::String(maybe!(to_string(cx, replace_arg)))
+            ReplaceValue::String(to_string(cx, replace_arg)?)
         };
 
         // Collect positions of all matches of the search string in the target string
@@ -770,18 +771,18 @@ impl StringPrototype {
                 // If replace argument is a function, replacement is the result of calling that function
                 ReplaceValue::Function(replace_function) => {
                     let matched_position_value = Value::from(matched_position).to_handle(cx);
-                    let replacement = maybe!(call_object(
+                    let replacement = call_object(
                         cx,
                         replace_function,
                         cx.undefined(),
                         &[
                             search_string.into(),
                             matched_position_value,
-                            target_string.into()
-                        ]
-                    ));
+                            target_string.into(),
+                        ],
+                    )?;
 
-                    maybe!(to_string(cx, replacement))
+                    to_string(cx, replacement)?
                 }
                 // Otherwise replacement is the result of calling GetSubstitution
                 ReplaceValue::String(replace_string) => {
@@ -811,7 +812,7 @@ impl StringPrototype {
             string_parts.push(preserved_substring);
         }
 
-        StringValue::concat_all(cx, &string_parts).into()
+        Ok(StringValue::concat_all(cx, &string_parts).as_value())
     }
 
     /// String.prototype.search (https://tc39.es/ecma262/#sec-string.prototype.search)
@@ -821,18 +822,18 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
+        let object = require_object_coercible(cx, this_value)?;
 
         // Use the @@search method of the argument if one exists
         let regexp_arg = get_argument(cx, arguments, 0);
         if !regexp_arg.is_nullish() {
-            let searcher = maybe!(get_method(cx, regexp_arg, cx.well_known_symbols.search()));
+            let searcher = get_method(cx, regexp_arg, cx.well_known_symbols.search())?;
             if let Some(searcher) = searcher {
                 return call_object(cx, searcher, regexp_arg, &[object]);
             }
         }
 
-        let string = maybe!(to_string(cx, object));
+        let string = to_string(cx, object)?;
 
         // Otherwise create a RegExp from input string and use its @@search method
         let regexp_source = RegExpSource::PatternAndFlags(
@@ -840,7 +841,7 @@ impl StringPrototype {
             FlagsSource::RegExpFlags(RegExpFlags::empty()),
         );
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
-        let regexp_object = maybe!(regexp_create(cx, regexp_source, regexp_constructor));
+        let regexp_object = regexp_create(cx, regexp_source, regexp_constructor)?;
 
         invoke(cx, regexp_object, cx.well_known_symbols.search(), &[string.into()])
     }
@@ -852,12 +853,12 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
         let length = string.len();
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -870,7 +871,7 @@ impl StringPrototype {
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -886,12 +887,10 @@ impl StringPrototype {
         };
 
         if start_index >= end_index {
-            return cx.names.empty_string().as_string().into();
+            return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        let substring = string.substring(cx, start_index, end_index).as_string();
-
-        substring.into()
+        Ok(string.substring(cx, start_index, end_index).as_value())
     }
 
     /// String.prototype.split (https://tc39.es/ecma262/#sec-string.prototype.split)
@@ -901,7 +900,7 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
+        let object = require_object_coercible(cx, this_value)?;
 
         let separator_argument = get_argument(cx, arguments, 0);
         let limit_argument = get_argument(cx, arguments, 1);
@@ -909,29 +908,29 @@ impl StringPrototype {
         // Use the @@split method of the separator if one exists
         if !separator_argument.is_nullish() {
             let split_key = cx.well_known_symbols.split();
-            let splitter = maybe!(get_method(cx, separator_argument, split_key));
+            let splitter = get_method(cx, separator_argument, split_key)?;
 
             if let Some(splitter) = splitter {
                 return call_object(cx, splitter, separator_argument, &[object, limit_argument]);
             }
         }
 
-        let string = maybe!(to_string(cx, object));
+        let string = to_string(cx, object)?;
 
         // Limit defaults to 2^32 - 1
         let limit = if limit_argument.is_undefined() {
             u32::MAX
         } else {
-            maybe!(to_uint32(cx, limit_argument))
+            to_uint32(cx, limit_argument)?
         };
 
-        let separator = maybe!(to_string(cx, separator_argument));
+        let separator = to_string(cx, separator_argument)?;
 
         if limit == 0 {
-            let array_object = maybe!(array_create(cx, 0, None));
-            return array_object.into();
+            let array_object = array_create(cx, 0, None)?;
+            return Ok(array_object.as_value());
         } else if separator_argument.is_undefined() {
-            return create_array_from_list(cx, &[string.into()]).into();
+            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
         }
 
         // If separator is empty then return each code unit individually, up to the given limit
@@ -945,13 +944,13 @@ impl StringPrototype {
                 code_unit_strings.push(substring.into());
             }
 
-            return create_array_from_list(cx, &code_unit_strings).into();
+            return Ok(create_array_from_list(cx, &code_unit_strings).as_value());
         }
 
         // If the string is empty then it is the only substring
         let string_length = string.len();
         if string_length == 0 {
-            return create_array_from_list(cx, &[string.into()]).into();
+            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
         }
 
         let mut substrings = vec![];
@@ -967,7 +966,7 @@ impl StringPrototype {
 
             // If we have reached the limit of substrings then return them
             if substrings.len() == limit as usize {
-                return create_array_from_list(cx, &substrings).into();
+                return Ok(create_array_from_list(cx, &substrings).as_value());
             }
 
             // Find and skip the next separator
@@ -986,7 +985,7 @@ impl StringPrototype {
         let last_substring = string.substring(cx, i, string.len()).as_string();
         substrings.push(last_substring.into());
 
-        create_array_from_list(cx, &substrings).into()
+        Ok(create_array_from_list(cx, &substrings).as_value())
     }
 
     /// String.prototype.startsWith (https://tc39.es/ecma262/#sec-string.prototype.startswith)
@@ -996,22 +995,22 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
-        if maybe!(is_regexp(cx, search_value)) {
+        if is_regexp(cx, search_value)? {
             return type_error(cx, "first argument to startsWith cannot be a RegExp");
         }
 
-        let search_string = maybe!(to_string(cx, search_value));
+        let search_string = to_string(cx, search_value)?;
 
         let start_index_argument = get_argument(cx, arguments, 1);
         let start_index = if start_index_argument.is_undefined() {
             0
         } else {
-            let start_index = maybe!(to_integer_or_infinity(cx, start_index_argument));
+            let start_index = to_integer_or_infinity(cx, start_index_argument)?;
 
             if start_index < 0.0 {
                 0
@@ -1024,17 +1023,17 @@ impl StringPrototype {
 
         let search_length = search_string.len();
         if search_length == 0 {
-            return cx.bool(true).into();
+            return Ok(cx.bool(true));
         }
 
         let end_index = start_index + search_length;
         if end_index > length {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let starts_with_string = string.substring_equals(search_string, start_index);
 
-        cx.bool(starts_with_string).into()
+        Ok(cx.bool(starts_with_string))
     }
 
     /// String.prototype.substring (https://tc39.es/ecma262/#sec-string.prototype.substring)
@@ -1044,19 +1043,19 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
         let length = string.len();
 
         let start_arg = get_argument(cx, arguments, 0);
-        let start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let start = to_integer_or_infinity(cx, start_arg)?;
         let mut int_start = f64::max(0.0, f64::min(start, length as f64)) as u32;
 
         let end_argument = get_argument(cx, arguments, 1);
         let mut int_end = if end_argument.is_undefined() {
             length
         } else {
-            let end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let end = to_integer_or_infinity(cx, end_argument)?;
             f64::max(0.0, f64::min(end, length as f64)) as u32
         };
 
@@ -1064,9 +1063,7 @@ impl StringPrototype {
             std::mem::swap(&mut int_start, &mut int_end);
         }
 
-        let substring = string.substring(cx, int_start, int_end).as_string();
-
-        substring.into()
+        Ok(string.substring(cx, int_start, int_end).as_value())
     }
 
     /// String.prototype.toLocaleLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolocalelowercase)
@@ -1076,10 +1073,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.to_lower_case(cx).as_string().into()
+        Ok(string.to_lower_case(cx).as_value())
     }
 
     /// String.prototype.toLocaleUpperCase (https://tc39.es/ecma262/#sec-string.prototype.tolocaleuppercase)
@@ -1089,10 +1086,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.to_upper_case(cx).as_string().into()
+        Ok(string.to_upper_case(cx).as_value())
     }
 
     /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
@@ -1102,10 +1099,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.to_lower_case(cx).as_string().into()
+        Ok(string.to_lower_case(cx).as_value())
     }
 
     /// String.prototype.toString (https://tc39.es/ecma262/#sec-string.prototype.tostring)
@@ -1125,10 +1122,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.to_upper_case(cx).as_string().into()
+        Ok(string.to_upper_case(cx).as_value())
     }
 
     /// String.prototype.toWellFormed (https://tc39.es/ecma262/#sec-string.prototype.towellformed)
@@ -1138,10 +1135,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.to_well_formed(cx).as_string().to_handle().into()
+        Ok(string.to_well_formed(cx).to_handle().as_value())
     }
 
     /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
@@ -1151,10 +1148,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.trim(cx, true, true).into()
+        Ok(string.trim(cx, true, true).as_value())
     }
 
     /// String.prototype.trimEnd (https://tc39.es/ecma262/#sec-string.prototype.trimend)
@@ -1164,10 +1161,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.trim(cx, false, true).into()
+        Ok(string.trim(cx, false, true).as_value())
     }
 
     /// String.prototype.trimStart (https://tc39.es/ecma262/#sec-string.prototype.trimstart)
@@ -1177,10 +1174,10 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
-        string.trim(cx, true, false).into()
+        Ok(string.trim(cx, true, false).as_value())
     }
 
     /// String.prototype.valueOf (https://tc39.es/ecma262/#sec-string.prototype.valueof)
@@ -1200,24 +1197,24 @@ impl StringPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(require_object_coercible(cx, this_value));
-        let string = maybe!(to_string(cx, object));
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
 
         let flat_string = string.flatten();
 
-        StringIterator::new(cx, flat_string).into()
+        Ok(StringIterator::new(cx, flat_string).as_value())
     }
 }
 
 fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_string() {
-        return value.into();
+        return Ok(value);
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_string_object() {
-            return object_value.cast::<StringObject>().string_data().into();
+            return Ok(object_value.cast::<StringObject>().string_data().as_value());
         }
     }
 
@@ -1567,10 +1564,10 @@ impl SubstitutionTemplate {
                 SubstitutionPart::NamedCapture(name) => {
                     if let Some(named_captures) = named_captures {
                         let key = PropertyKey::string(cx, *name).to_handle(cx);
-                        let captured_string = maybe!(get(cx, named_captures, key));
+                        let captured_string = get(cx, named_captures, key)?;
 
                         if !captured_string.is_undefined() {
-                            let captured_string = maybe!(to_string(cx, captured_string));
+                            let captured_string = to_string(cx, captured_string)?;
                             string_parts.push(captured_string);
                         }
                     }
@@ -1578,6 +1575,6 @@ impl SubstitutionTemplate {
             }
         }
 
-        StringValue::concat_all(cx, &string_parts).into()
+        Ok(StringValue::concat_all(cx, &string_parts))
     }
 }

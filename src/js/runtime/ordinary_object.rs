@@ -1,8 +1,8 @@
-use crate::{extend_object, maybe, must};
+use crate::{extend_object, must};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
-    completion::EvalResult,
+    eval_result::EvalResult,
     gc::{Handle, HeapPtr},
     intrinsics::intrinsics::Intrinsic,
     object_descriptor::{ObjectDescriptor, ObjectKind},
@@ -32,18 +32,18 @@ impl From<OrdinaryObject> for ObjectValue {
 impl ObjectValue {
     /// OrdinaryGetPrototypeOf (https://tc39.es/ecma262/#sec-ordinarygetprototypeof)
     pub fn ordinary_get_prototype_of(&self) -> EvalResult<Option<Handle<ObjectValue>>> {
-        self.prototype().map(|p| p.to_handle()).into()
+        Ok(self.prototype().map(|p| p.to_handle()))
     }
 
     /// OrdinaryIsExtensible (https://tc39.es/ecma262/#sec-ordinaryisextensible)
     pub fn ordinary_is_extensible(&self) -> EvalResult<bool> {
-        self.is_extensible_field().into()
+        Ok(self.is_extensible_field())
     }
 
     /// OrdinaryPreventExtensions (https://tc39.es/ecma262/#sec-ordinarypreventextensions)
     pub fn ordinary_prevent_extensions(&mut self) -> EvalResult<bool> {
         self.set_is_extensible_field(false);
-        true.into()
+        Ok(true)
     }
 }
 
@@ -55,18 +55,18 @@ impl Handle<ObjectValue> {
         new_prototype: Option<Handle<ObjectValue>>,
     ) -> EvalResult<bool> {
         if same_opt_object_value(self.prototype(), new_prototype.map(|p| p.get_())) {
-            return true.into();
+            return Ok(true);
         }
 
         // Inlined SetImmutablePrototype (https://tc39.es/ecma262/#sec-set-immutable-prototype,)
         // currently only applies to object prototypes. If the prototypes differ, then a set
         // immutable prototype always fails.
         if self.is_object_prototype() {
-            return false.into();
+            return Ok(false);
         }
 
         if !self.is_extensible_field() {
-            return false.into();
+            return Ok(false);
         }
 
         let mut current_prototype = new_prototype;
@@ -75,7 +75,7 @@ impl Handle<ObjectValue> {
                 None => break,
                 Some(current_proto) => {
                     if same_object_value_handles(current_proto, *self) {
-                        return false.into();
+                        return Ok(false);
                     }
 
                     if current_proto.is_proxy() {
@@ -89,7 +89,7 @@ impl Handle<ObjectValue> {
 
         self.set_prototype(new_prototype.map(|p| p.get_()));
 
-        true.into()
+        Ok(true)
     }
 }
 
@@ -100,7 +100,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
         cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        ordinary_get_own_property(cx, self.object(), key).into()
+        Ok(ordinary_get_own_property(cx, self.as_object(), key))
     }
 
     /// [[DefineOwnProperty]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-defineownproperty-p-desc)
@@ -110,12 +110,12 @@ impl VirtualObject for Handle<OrdinaryObject> {
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        ordinary_define_own_property(cx, self.object(), key, desc)
+        ordinary_define_own_property(cx, self.as_object(), key, desc)
     }
 
     /// [[HasProperty]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-hasproperty-p)
     fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-        ordinary_has_property(cx, self.object(), key)
+        ordinary_has_property(cx, self.as_object(), key)
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-get-p-receiver)
@@ -125,7 +125,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
         key: Handle<PropertyKey>,
         receiver: Handle<Value>,
     ) -> EvalResult<Handle<Value>> {
-        ordinary_get(cx, self.object(), key, receiver)
+        ordinary_get(cx, self.as_object(), key, receiver)
     }
 
     /// [[Set]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-set-p-v-receiver)
@@ -136,17 +136,17 @@ impl VirtualObject for Handle<OrdinaryObject> {
         value: Handle<Value>,
         receiver: Handle<Value>,
     ) -> EvalResult<bool> {
-        ordinary_set(cx, self.object(), key, value, receiver)
+        ordinary_set(cx, self.as_object(), key, value, receiver)
     }
 
     /// [[Delete]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-delete-p)
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-        ordinary_delete(cx, self.object(), key)
+        ordinary_delete(cx, self.as_object(), key)
     }
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-ownpropertykeys)
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
-        ordinary_own_property_keys(cx, self.object()).into()
+        Ok(ordinary_own_property_keys(cx, self.as_object()))
     }
 }
 
@@ -186,11 +186,17 @@ pub fn ordinary_define_own_property(
     key: Handle<PropertyKey>,
     desc: PropertyDescriptor,
 ) -> EvalResult<bool> {
-    let current_desc = maybe!(object.get_own_property(cx, key));
-    let is_extensible = maybe!(object.is_extensible(cx));
+    let current_desc = object.get_own_property(cx, key)?;
+    let is_extensible = object.is_extensible(cx)?;
 
-    validate_and_apply_property_descriptor(cx, Some(object), key, is_extensible, desc, current_desc)
-        .into()
+    Ok(validate_and_apply_property_descriptor(
+        cx,
+        Some(object),
+        key,
+        is_extensible,
+        desc,
+        current_desc,
+    ))
 }
 
 /// IsCompatiblePropertyDescriptor (https://tc39.es/ecma262/#sec-iscompatiblepropertydescriptor)
@@ -384,15 +390,15 @@ pub fn ordinary_has_property(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let own_property = maybe!(object.get_own_property(cx, key));
+    let own_property = object.get_own_property(cx, key)?;
     if own_property.is_some() {
-        return true.into();
+        return Ok(true);
     }
 
-    let parent = maybe!(object.get_prototype_of(cx));
+    let parent = object.get_prototype_of(cx)?;
     match parent {
         Some(parent) => parent.has_property(cx, key),
-        None => false.into(),
+        None => Ok(false),
     }
 }
 
@@ -403,17 +409,17 @@ pub fn ordinary_get(
     key: Handle<PropertyKey>,
     receiver: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let desc = maybe!(object.get_own_property(cx, key));
+    let desc = object.get_own_property(cx, key)?;
     match desc {
         None => {
-            let parent = maybe!(object.get_prototype_of(cx));
+            let parent = object.get_prototype_of(cx)?;
             match parent {
-                None => cx.undefined().into(),
+                None => Ok(cx.undefined()),
                 Some(parent) => parent.get(cx, key, receiver),
             }
         }
-        Some(desc) if desc.is_data_descriptor() => desc.value.unwrap().into(),
-        Some(PropertyDescriptor { get: None, .. }) => cx.undefined().into(),
+        Some(desc) if desc.is_data_descriptor() => Ok(desc.value.unwrap()),
+        Some(PropertyDescriptor { get: None, .. }) => Ok(cx.undefined()),
         Some(PropertyDescriptor { get: Some(getter), .. }) => {
             call_object(cx, getter, receiver, &[])
         }
@@ -429,10 +435,10 @@ pub fn ordinary_set(
     value: Handle<Value>,
     receiver: Handle<Value>,
 ) -> EvalResult<bool> {
-    let own_desc = maybe!(object.get_own_property(cx, key));
+    let own_desc = object.get_own_property(cx, key)?;
     let own_desc = match own_desc {
         None => {
-            let parent = maybe!(object.get_prototype_of(cx));
+            let parent = object.get_prototype_of(cx)?;
             match parent {
                 None => PropertyDescriptor::data(cx.undefined(), true, true, true),
                 Some(mut parent) => return parent.set(cx, key, value, receiver),
@@ -443,21 +449,19 @@ pub fn ordinary_set(
 
     if own_desc.is_data_descriptor() {
         if let Some(false) = own_desc.is_writable {
-            return false.into();
+            return Ok(false);
         }
 
         if !receiver.is_object() {
-            return false.into();
+            return Ok(false);
         }
 
         let mut receiver = receiver.as_object();
-        let existing_descriptor = maybe!(receiver.get_own_property(cx, key));
+        let existing_descriptor = receiver.get_own_property(cx, key)?;
         match existing_descriptor {
             None => create_data_property(cx, receiver, key, value),
-            Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => {
-                false.into()
-            }
-            Some(PropertyDescriptor { is_writable: Some(false), .. }) => false.into(),
+            Some(existing_descriptor) if existing_descriptor.is_accessor_descriptor() => Ok(false),
+            Some(PropertyDescriptor { is_writable: Some(false), .. }) => Ok(false),
             Some(_) => {
                 let value_desc = PropertyDescriptor::data_value_only(value);
                 receiver.define_own_property(cx, key, value_desc)
@@ -465,10 +469,10 @@ pub fn ordinary_set(
         }
     } else {
         match own_desc.set {
-            None => false.into(),
+            None => Ok(false),
             Some(setter) => {
-                maybe!(call_object(cx, setter, receiver, &[value]));
-                true.into()
+                call_object(cx, setter, receiver, &[value])?;
+                Ok(true)
             }
         }
     }
@@ -480,15 +484,15 @@ pub fn ordinary_delete(
     mut object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
 ) -> EvalResult<bool> {
-    let desc = maybe!(object.get_own_property(cx, key));
+    let desc = object.get_own_property(cx, key)?;
     match desc {
-        None => true.into(),
+        None => Ok(true),
         Some(desc) => {
             if desc.is_configurable() {
                 object.remove_property(key);
-                true.into()
+                Ok(true)
             } else {
-                false.into()
+                Ok(false)
             }
         }
     }
@@ -658,14 +662,14 @@ where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
     // May allocate, so call before allocating object
-    let proto = maybe!(get_prototype_from_constructor(cx, constructor, intrinsic_default_proto));
+    let proto = get_prototype_from_constructor(cx, constructor, intrinsic_default_proto)?;
 
     let object = cx.alloc_uninit::<T>();
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto.get_()));
 
-    EvalResult::Ok(object)
+    Ok(object)
 }
 
 /// GetPrototypeFromConstructor (https://tc39.es/ecma262/#sec-getprototypefromconstructor)
@@ -675,11 +679,11 @@ pub fn get_prototype_from_constructor(
     constructor: Handle<ObjectValue>,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let proto = maybe!(get(cx, constructor, cx.names.prototype()));
+    let proto = get(cx, constructor, cx.names.prototype())?;
     if proto.is_object() {
-        proto.as_object().into()
+        Ok(proto.as_object())
     } else {
-        let realm = maybe!(get_function_realm(cx, constructor));
-        realm.get_intrinsic(intrinsic_default_proto).into()
+        let realm = get_function_realm(cx, constructor)?;
+        Ok(realm.get_intrinsic(intrinsic_default_proto))
     }
 }

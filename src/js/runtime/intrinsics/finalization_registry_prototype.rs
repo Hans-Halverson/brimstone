@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    completion::EvalResult, error::type_error, function::get_argument,
+    error::type_error, eval_result::EvalResult, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, type_utilities::same_value, Context, Handle, Value,
 };
@@ -81,7 +81,7 @@ impl FinalizationRegistryPrototype {
                 unregister_token: unregister_token.map(|t| t.get()),
             });
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// FinalizationRegistry.prototype.unregister (https://tc39.es/ecma262/#sec-finalization-registry.prototype.unregister)
@@ -109,7 +109,7 @@ impl FinalizationRegistryPrototype {
 
         let did_remove = registry_object.cells().remove(unregister_token.get());
 
-        cx.bool(did_remove).into()
+        Ok(cx.bool(did_remove))
     }
 }
 

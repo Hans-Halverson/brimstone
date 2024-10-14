@@ -1,19 +1,16 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::define_property_or_throw,
-        bytecode::function::Closure,
-        completion::EvalResult,
-        function::get_argument,
-        generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        ordinary_object::object_create,
-        property::Property,
-        realm::Realm,
-        value::Value,
-        Context, Handle, PropertyDescriptor,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::define_property_or_throw,
+    bytecode::function::Closure,
+    eval_result::EvalResult,
+    function::get_argument,
+    generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
+    object_descriptor::ObjectKind,
+    object_value::ObjectValue,
+    ordinary_object::object_create,
+    property::Property,
+    realm::Realm,
+    value::Value,
+    Context, Handle, PropertyDescriptor,
 };
 
 use super::intrinsics::Intrinsic;
@@ -87,8 +84,8 @@ impl GeneratorPrototype {
         .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);
-        maybe!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc));
+        define_property_or_throw(cx, closure.into(), cx.names.prototype(), proto_desc)?;
 
-        ().into()
+        Ok(())
     }
 }

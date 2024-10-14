@@ -1,16 +1,13 @@
-use crate::{
-    js::runtime::{
-        completion::EvalResult,
-        error::{range_error, type_error},
-        function::get_argument,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::to_integer_or_infinity,
-        value::BigIntValue,
-        Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    error::{range_error, type_error},
+    eval_result::EvalResult,
+    function::get_argument,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::to_integer_or_infinity,
+    value::BigIntValue,
+    Context, Handle, Value,
 };
 
 use super::{bigint_constructor::BigIntObject, intrinsics::Intrinsic};
@@ -45,13 +42,13 @@ impl BigIntPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let bigint_value = maybe!(this_bigint_value(cx, this_value));
+        let bigint_value = this_bigint_value(cx, this_value)?;
 
         let radix = get_argument(cx, arguments, 0);
         let radix = if radix.is_undefined() {
             10
         } else {
-            let radix_int = maybe!(to_integer_or_infinity(cx, radix));
+            let radix_int = to_integer_or_infinity(cx, radix)?;
             if !(2.0..=36.0).contains(&radix_int) {
                 return range_error(cx, "radix must be an integer between 2 and 36");
             }
@@ -59,9 +56,9 @@ impl BigIntPrototype {
             radix_int as u32
         };
 
-        cx.alloc_string(&bigint_value.bigint().to_str_radix(radix))
-            .as_string()
-            .into()
+        Ok(cx
+            .alloc_string(&bigint_value.bigint().to_str_radix(radix))
+            .as_value())
     }
 
     /// BigInt.prototype.valueOf (https://tc39.es/ecma262/#sec-bigint.prototype.valueof)
@@ -71,19 +68,19 @@ impl BigIntPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        maybe!(this_bigint_value(cx, this_value)).into()
+        Ok(this_bigint_value(cx, this_value)?.into())
     }
 }
 
 fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
-        return value.as_bigint().into();
+        return Ok(value.as_bigint());
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_bigint_object() {
-            return object_value.cast::<BigIntObject>().bigint_data().into();
+            return Ok(object_value.cast::<BigIntObject>().bigint_data());
         }
     }
 

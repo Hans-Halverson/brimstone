@@ -1,10 +1,6 @@
-use crate::{
-    js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult,
-        eval::create_dynamic_function::create_dynamic_function, object_value::ObjectValue,
-        realm::Realm, Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    builtin_function::BuiltinFunction, eval::create_dynamic_function::create_dynamic_function,
+    eval_result::EvalResult, object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -43,14 +39,14 @@ impl GeneratorFunctionConstructor {
         new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
-        maybe!(create_dynamic_function(
+        Ok(create_dynamic_function(
             cx,
             constructor,
             new_target,
             arguments,
             /* is_async */ false,
-            /* is_generator */ true
-        ))
-        .into()
+            /* is_generator */ true,
+        )?
+        .as_value())
     }
 }

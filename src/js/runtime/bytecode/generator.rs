@@ -858,13 +858,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 let module_scope = self.module.unwrap().module_scope();
                 let realm = self.module.unwrap().program_function_ptr().realm();
 
-                let closure: Handle<ObjectValue> = Closure::new_in_realm(
+                let closure = Closure::new_in_realm(
                     self.cx,
                     emit_result.bytecode_function,
                     module_scope,
                     realm,
                 )
-                .into();
+                .as_object();
 
                 // And place inside boxed value in the module scope
                 let mut boxed_value = module_scope.get_module_slot(slot_index);

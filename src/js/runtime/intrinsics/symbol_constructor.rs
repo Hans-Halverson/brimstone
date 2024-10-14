@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         collections::BsHashMapField,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -17,7 +17,7 @@ use crate::{
         value::SymbolValue,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -130,10 +130,10 @@ impl SymbolConstructor {
         let description_value = if description_arg.is_undefined() {
             None
         } else {
-            Some(maybe!(to_string(cx, description_arg)))
+            Some(to_string(cx, description_arg)?)
         };
 
-        SymbolValue::new(cx, description_value, /* is_private */ false).into()
+        Ok(SymbolValue::new(cx, description_value, /* is_private */ false).into())
     }
 
     /// Symbol.for (https://tc39.es/ecma262/#sec-symbol.for)
@@ -144,9 +144,9 @@ impl SymbolConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let string_key = maybe!(to_string(cx, argument)).flatten();
+        let string_key = to_string(cx, argument)?.flatten();
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key.get_()) {
-            return symbol_value.to_handle().into();
+            return Ok(symbol_value.to_handle().into());
         }
 
         let new_symbol =
@@ -155,7 +155,7 @@ impl SymbolConstructor {
             .maybe_grow_for_insertion(cx)
             .insert_without_growing(string_key.get_(), new_symbol.get_());
 
-        new_symbol.into()
+        Ok(new_symbol.into())
     }
 
     /// Symbol.keyFor (https://tc39.es/ecma262/#sec-symbol.keyfor)
@@ -173,12 +173,11 @@ impl SymbolConstructor {
 
         for (string, symbol) in cx.global_symbol_registry().iter_gc_unsafe() {
             if symbol.ptr_eq(&symbol_value) {
-                let string_value: Value = string.as_string().into();
-                return string_value.to_handle(cx).into();
+                return Ok(string.to_handle().as_value());
             }
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }
 

@@ -3,8 +3,8 @@ use crate::{
         abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         get,
         iterator::iter_iterator_values,
@@ -15,7 +15,7 @@ use crate::{
         value::Value,
         Context, Handle,
     },
-    maybe, must,
+    must,
 };
 
 use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_this};
@@ -62,22 +62,21 @@ impl MapConstructor {
             return type_error(cx, "Map constructor must be called with new");
         };
 
-        let map_object: Handle<ObjectValue> =
-            maybe!(MapObject::new_from_constructor(cx, new_target)).into();
+        let map_object = MapObject::new_from_constructor(cx, new_target)?.as_object();
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return map_object.into();
+            return Ok(map_object.as_value());
         }
 
-        let adder = maybe!(get(cx, map_object, cx.names.set_()));
+        let adder = get(cx, map_object, cx.names.set_())?;
         if !is_callable(adder) {
             return type_error(cx, "map must contain a set method");
         }
 
         add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {
-            maybe!(call_object(cx, adder.as_object(), map_object.into(), &[key, value]));
-            ().into()
+            call_object(cx, adder.as_object(), map_object.into(), &[key, value])?;
+            Ok(())
         })
     }
 
@@ -91,7 +90,7 @@ impl MapConstructor {
         let items = get_argument(cx, arguments, 0);
         let callback = get_argument(cx, arguments, 1);
 
-        let groups = maybe!(group_by(cx, items, callback, GroupByKeyCoercion::Collection));
+        let groups = group_by(cx, items, callback, GroupByKeyCoercion::Collection)?;
 
         let map_constructor = cx.get_intrinsic(Intrinsic::MapConstructor);
         let map = must!(construct(cx, map_constructor, &[], None));
@@ -102,7 +101,7 @@ impl MapConstructor {
             map.cast::<MapObject>().insert(cx, group.key, items);
         }
 
-        map.into()
+        Ok(map.as_value())
     }
 }
 
@@ -116,7 +115,7 @@ pub fn add_entries_from_iterable(
     let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
     let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
 
-    maybe!(iter_iterator_values(cx, iterable, &mut |cx, entry| {
+    iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {
             return Some(type_error(cx, "entry must be an object"));
         }
@@ -126,24 +125,24 @@ pub fn add_entries_from_iterable(
         // Extract key from entry, returning throw completion on error
         let key_result = get(cx, entry, key_index);
         let key = match key_result {
-            EvalResult::Ok(key) => key,
-            EvalResult::Throw(_) => return Some(key_result),
+            Ok(key) => key,
+            Err(_) => return Some(key_result),
         };
 
         // Extract value from entry, returning throw completion on error
         let value_result = get(cx, entry, value_index);
         let value = match value_result {
-            EvalResult::Ok(value) => value,
-            EvalResult::Throw(_) => return Some(value_result),
+            Ok(value) => value,
+            Err(_) => return Some(value_result),
         };
 
         // Add key and value to target
         let result = adder(cx, key, value);
         match result {
-            EvalResult::Ok(_) => None,
-            EvalResult::Throw(thrown_value) => Some(EvalResult::Throw(thrown_value)),
+            Ok(_) => None,
+            Err(thrown_value) => Some(Err(thrown_value)),
         }
-    }));
+    })?;
 
-    target.into()
+    Ok(target)
 }

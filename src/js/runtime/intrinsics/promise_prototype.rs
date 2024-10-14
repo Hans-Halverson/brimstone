@@ -1,17 +1,14 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::{call_object, invoke, species_constructor},
-        builtin_function::BuiltinFunction,
-        error::type_error,
-        function::get_argument,
-        object_value::ObjectValue,
-        promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
-        property::Property,
-        realm::Realm,
-        type_utilities::is_callable,
-        Context, EvalResult, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::{call_object, invoke, species_constructor},
+    builtin_function::BuiltinFunction,
+    error::type_error,
+    function::get_argument,
+    object_value::ObjectValue,
+    promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
+    property::Property,
+    realm::Realm,
+    type_utilities::is_callable,
+    Context, EvalResult, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -66,8 +63,7 @@ impl PromisePrototype {
 
         let on_finally = get_argument(cx, arguments, 0);
 
-        let constructor =
-            maybe!(species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor));
+        let constructor = species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor)?;
 
         let then_finally;
         let catch_finally;
@@ -158,8 +154,8 @@ impl PromisePrototype {
         let constructor = Self::get_constructor(cx, current_function);
         let on_finally = Self::get_on_finally(cx, current_function);
 
-        let result = maybe!(call_object(cx, on_finally, cx.undefined(), &[]));
-        let promise = maybe!(promise_resolve(cx, constructor.into(), result));
+        let result = call_object(cx, on_finally, cx.undefined(), &[])?;
+        let promise = promise_resolve(cx, constructor.into(), result)?;
 
         // Continue to a function that returns the value
         let continue_function = BuiltinFunction::create(
@@ -185,9 +181,7 @@ impl PromisePrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
-        let value = Self::get_value(cx, current_function);
-
-        value.into()
+        Ok(Self::get_value(cx, current_function))
     }
 
     pub fn finally_catch(
@@ -201,8 +195,8 @@ impl PromisePrototype {
         let constructor = Self::get_constructor(cx, current_function);
         let on_finally = Self::get_on_finally(cx, current_function);
 
-        let result = maybe!(call_object(cx, on_finally, cx.undefined(), &[]));
-        let promise = maybe!(promise_resolve(cx, constructor.into(), result));
+        let result = call_object(cx, on_finally, cx.undefined(), &[])?;
+        let promise = promise_resolve(cx, constructor.into(), result)?;
 
         // Continue to a function that throws the value
         let continue_function = BuiltinFunction::create(
@@ -230,7 +224,7 @@ impl PromisePrototype {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
 
-        EvalResult::Throw(value)
+        Err(value)
     }
 
     /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)
@@ -245,14 +239,13 @@ impl PromisePrototype {
         }
         let promise = this_value.as_object().cast::<PromiseObject>();
 
-        let constructor =
-            maybe!(species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor));
-        let capability = maybe!(PromiseCapability::new(cx, constructor.into()));
+        let constructor = species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor)?;
+        let capability = PromiseCapability::new(cx, constructor.into())?;
 
         let on_fulfilled = get_argument(cx, arguments, 0);
         let on_rejected = get_argument(cx, arguments, 1);
 
-        perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)).into()
+        Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)))
     }
 }
 

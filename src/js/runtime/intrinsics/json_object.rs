@@ -25,7 +25,7 @@ use crate::{
             Context, EvalResult, Handle, PropertyKey, Realm, Value,
         },
     },
-    maybe, must,
+    must,
 };
 
 use super::intrinsics::Intrinsic;
@@ -61,7 +61,7 @@ impl JSONObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let text_arg = get_argument(cx, arguments, 0);
-        let text_string = maybe!(to_string(cx, text_arg));
+        let text_string = to_string(cx, text_arg)?;
 
         let mut lexer = StringLexer::new(text_string);
 
@@ -86,7 +86,7 @@ impl JSONObject {
             return Self::internalize_json_property(cx, root, root_name, reviver);
         }
 
-        value.into()
+        Ok(value)
     }
 
     /// InternalizeJSONProperty (https://tc39.es/ecma262/#sec-internalizejsonproperty)
@@ -96,7 +96,7 @@ impl JSONObject {
         holder_key: Handle<PropertyKey>,
         reviver: Handle<ObjectValue>,
     ) -> EvalResult<Handle<Value>> {
-        let value = maybe!(get(cx, holder, holder_key));
+        let value = get(cx, holder, holder_key)?;
 
         if value.is_object() {
             let mut value = value.as_object();
@@ -104,33 +104,31 @@ impl JSONObject {
             // Key is shared between iterations
             let mut key = PropertyKey::uninit().to_handle(cx);
 
-            if maybe!(is_array(cx, value.into())) {
-                let length = maybe!(length_of_array_like(cx, value));
+            if is_array(cx, value.into())? {
+                let length = length_of_array_like(cx, value)?;
 
                 for i in 0..length {
                     key.replace(PropertyKey::from_u64(cx, i));
 
-                    let new_element =
-                        maybe!(Self::internalize_json_property(cx, value, key, reviver));
+                    let new_element = Self::internalize_json_property(cx, value, key, reviver)?;
 
                     if new_element.is_undefined() {
-                        maybe!(value.delete(cx, key));
+                        value.delete(cx, key)?;
                     } else {
-                        maybe!(create_data_property(cx, value, key, new_element));
+                        create_data_property(cx, value, key, new_element)?;
                     }
                 }
             } else {
-                let key_values = maybe!(enumerable_own_property_names(cx, value, KeyOrValue::Key));
+                let key_values = enumerable_own_property_names(cx, value, KeyOrValue::Key)?;
                 for key_value in key_values {
-                    key.replace(maybe!(PropertyKey::from_value(cx, key_value)));
+                    key.replace(PropertyKey::from_value(cx, key_value)?);
 
-                    let new_element =
-                        maybe!(Self::internalize_json_property(cx, value, key, reviver));
+                    let new_element = Self::internalize_json_property(cx, value, key, reviver)?;
 
                     if new_element.is_undefined() {
-                        maybe!(value.delete(cx, key));
+                        value.delete(cx, key)?;
                     } else {
-                        maybe!(create_data_property(cx, value, key, new_element));
+                        create_data_property(cx, value, key, new_element)?;
                     }
                 }
             }
@@ -157,7 +155,7 @@ impl JSONObject {
         if replacer_arg.is_object() {
             if is_callable(replacer_arg) {
                 replacer_function = Some(replacer_arg.as_object())
-            } else if maybe!(is_array(cx, replacer_arg)) {
+            } else if is_array(cx, replacer_arg)? {
                 // Use set and array to collect property keys but preserve insertion order
                 let mut property_keys_set = HashSet::new();
                 let mut property_keys = vec![];
@@ -166,13 +164,13 @@ impl JSONObject {
                 let mut key = PropertyKey::uninit().to_handle(cx);
 
                 let replacer_array = replacer_arg.as_object();
-                let length = maybe!(length_of_array_like(cx, replacer_array));
+                let length = length_of_array_like(cx, replacer_array)?;
 
                 for i in 0..length {
                     key.replace(PropertyKey::from_u64(cx, i));
 
                     // Property may be a number of string primitive
-                    let array_element = maybe!(get(cx, replacer_array, key));
+                    let array_element = get(cx, replacer_array, key)?;
                     if array_element.is_number() {
                         let string = must!(to_string(cx, array_element));
                         let property_key = PropertyKey::string(cx, string).to_handle(cx);
@@ -193,7 +191,7 @@ impl JSONObject {
                         if array_element_object.is_number_object()
                             || array_element_object.is_string_object()
                         {
-                            let string = maybe!(to_string(cx, array_element_object.into()));
+                            let string = to_string(cx, array_element_object.into())?;
                             let property_key = PropertyKey::string(cx, string).to_handle(cx);
 
                             if property_keys_set.insert(property_key) {
@@ -214,9 +212,9 @@ impl JSONObject {
         let space_value = if space_arg.is_object() {
             let space_object = space_arg.as_object();
             if space_object.is_number_object() {
-                maybe!(to_number(cx, space_object.into()))
+                to_number(cx, space_object.into())?
             } else if space_object.is_string_object() {
-                maybe!(to_string(cx, space_object.into())).into()
+                to_string(cx, space_object.into())?.into()
             } else {
                 space_arg
             }
@@ -226,7 +224,7 @@ impl JSONObject {
 
         // Convert space arg to a string gap
         let gap = if space_value.is_number() {
-            let space_number = maybe!(to_integer_or_infinity(cx, space_value));
+            let space_number = to_integer_or_infinity(cx, space_value)?;
             let space_number = f64::min(space_number, 10.0);
             if space_number < 1.0 {
                 Wtf8String::new()
@@ -250,11 +248,11 @@ impl JSONObject {
         must!(create_data_property_or_throw(cx, wrapper, cx.names.empty_string(), value));
 
         let mut serializer = JSONSerializer::new(replacer_function, property_list, gap);
-        if !maybe!(serializer.serialize_json_property(cx, cx.names.empty_string(), wrapper)) {
-            return cx.undefined().into();
+        if !serializer.serialize_json_property(cx, cx.names.empty_string(), wrapper)? {
+            return Ok(cx.undefined());
         }
 
-        serializer.build(cx).into()
+        Ok(serializer.build(cx).as_value())
     }
 }
 
@@ -482,7 +480,7 @@ impl JSONValue {
                 for (i, value) in values.iter().enumerate() {
                     key.replace(PropertyKey::from_u64(cx, i as u64));
                     let desc = Property::data(value.to_js_value(cx), true, true, true);
-                    array.object().set_property(cx, key, desc);
+                    array.as_object().set_property(cx, key, desc);
                 }
 
                 array.into()
@@ -550,30 +548,30 @@ impl JSONSerializer {
         key: Handle<PropertyKey>,
         holder: Handle<ObjectValue>,
     ) -> EvalResult<bool> {
-        let mut value = maybe!(get(cx, holder, key));
+        let mut value = get(cx, holder, key)?;
 
         // Call toJSON method if one is present
         if value.is_object() || value.is_bigint() {
-            let to_json = maybe!(get_v(cx, value, cx.names.to_json()));
+            let to_json = get_v(cx, value, cx.names.to_json())?;
             if is_callable(to_json) {
                 let key_value = key.to_value(cx);
-                value = maybe!(call(cx, to_json, value, &[key_value]));
+                value = call(cx, to_json, value, &[key_value])?;
             }
         }
 
         // Call replacer function if one was provided
         if let Some(replacer_function) = self.replacer_function {
             let key_value = key.to_value(cx);
-            value = maybe!(call_object(cx, replacer_function, holder.into(), &[key_value, value]));
+            value = call_object(cx, replacer_function, holder.into(), &[key_value, value])?;
         }
 
         // Convert primitive wrapper objects to their underlying primitive value
         if value.is_object() {
             let value_object = value.as_object();
             if value_object.is_number_object() {
-                value = maybe!(to_number(cx, value));
+                value = to_number(cx, value)?;
             } else if value_object.is_string_object() {
-                value = maybe!(to_string(cx, value)).into();
+                value = to_string(cx, value)?.into();
             } else if value_object.is_bool_object() {
                 let bool = value_object.cast::<BooleanObject>().boolean_data();
                 value = cx.bool(bool);
@@ -603,16 +601,16 @@ impl JSONSerializer {
         } else if value.is_bigint() {
             return type_error(cx, "BigInt value can't be serialized to JSON");
         } else if value.is_object() && !is_callable(value) {
-            if maybe!(is_array(cx, value)) {
-                maybe!(self.serialize_json_array(cx, value.as_object()));
+            if is_array(cx, value)? {
+                self.serialize_json_array(cx, value.as_object())?;
             } else {
-                maybe!(self.serialize_json_object(cx, value.as_object()));
+                self.serialize_json_object(cx, value.as_object())?;
             }
         } else {
-            return false.into();
+            return Ok(false);
         }
 
-        true.into()
+        Ok(true)
     }
 
     /// QuoteJSONString (https://tc39.es/ecma262/#sec-quotejsonstring)
@@ -662,7 +660,7 @@ impl JSONSerializer {
         if has_cycle {
             type_error(cx, "Cyclic object can't be serialized to JSON")
         } else {
-            ().into()
+            Ok(())
         }
     }
 
@@ -672,16 +670,15 @@ impl JSONSerializer {
         cx: Context,
         object: Handle<ObjectValue>,
     ) -> EvalResult<()> {
-        maybe!(self.check_for_cycle(cx, object));
+        self.check_for_cycle(cx, object)?;
 
         let mut keys = vec![];
         if let Some(property_list) = &self.property_list {
             keys.extend_from_slice(property_list);
         } else {
-            let property_key_values =
-                maybe!(enumerable_own_property_names(cx, object, KeyOrValue::Key));
+            let property_key_values = enumerable_own_property_names(cx, object, KeyOrValue::Key)?;
             for property_key_value in property_key_values {
-                let property_key = maybe!(PropertyKey::from_value(cx, property_key_value));
+                let property_key = PropertyKey::from_value(cx, property_key_value)?;
                 keys.push(property_key.to_handle(cx));
             }
         };
@@ -722,7 +719,7 @@ impl JSONSerializer {
                 self.builder.push_char(' ');
             }
 
-            if maybe!(self.serialize_json_property(cx, key, object)) {
+            if self.serialize_json_property(cx, key, object)? {
                 has_property = true;
             } else {
                 // If we cannot serialize property, undo back to before this property was added
@@ -741,12 +738,12 @@ impl JSONSerializer {
 
         self.builder.push_char('}');
 
-        ().into()
+        Ok(())
     }
 
     /// SerializeJSONArray (https://tc39.es/ecma262/#sec-serializejsonarray)
     fn serialize_json_array(&mut self, cx: Context, array: Handle<ObjectValue>) -> EvalResult<()> {
-        maybe!(self.check_for_cycle(cx, array));
+        self.check_for_cycle(cx, array)?;
 
         self.builder.push_char('[');
 
@@ -756,7 +753,7 @@ impl JSONSerializer {
         // Share key between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
 
-        let length = maybe!(length_of_array_like(cx, array));
+        let length = length_of_array_like(cx, array)?;
         for i in 0..length {
             key.replace(PropertyKey::from_u64(cx, i));
 
@@ -775,7 +772,7 @@ impl JSONSerializer {
             }
 
             // Serialize each element, replacing with null if it cannot be serialized
-            if !maybe!(self.serialize_json_property(cx, key, array)) {
+            if !self.serialize_json_property(cx, key, array)? {
                 self.builder.push_str("null");
             }
         }
@@ -791,6 +788,6 @@ impl JSONSerializer {
 
         self.builder.push_char(']');
 
-        ().into()
+        Ok(())
     }
 }

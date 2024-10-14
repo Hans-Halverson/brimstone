@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     js::{parser::scope_tree::REALM_SCOPE_SLOT_NAME, runtime::gc::HandleScope},
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -134,9 +134,9 @@ impl Realm {
             let mut global_scope = self.global_scopes.get(location.global_scope_index);
             global_scope.set_slot(location.slot_index as usize, value);
 
-            true.into()
+            Ok(true)
         } else {
-            false.into()
+            Ok(false)
         }
     }
 }
@@ -176,7 +176,7 @@ impl Handle<Realm> {
         for name in names {
             key.replace(PropertyKey::string(cx, name.as_string()));
 
-            let is_global_var_name = maybe!(has_restricted_global_property(cx, global_object, key));
+            let is_global_var_name = has_restricted_global_property(cx, global_object, key)?;
             let is_global_lex_name = self.get_lexical_name(name.get_()).is_some();
 
             if is_global_var_name || is_global_lex_name {
@@ -184,7 +184,7 @@ impl Handle<Realm> {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Check if a set of var names can be declared in the realm. A var name cannot be declared if
@@ -200,7 +200,7 @@ impl Handle<Realm> {
             }
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Create a new global scope within this realm. Each script has its own global scope with its

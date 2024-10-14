@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         array_object::create_array_from_list,
         collections::{index_map::GcSafeEntriesIter, BsIndexMap},
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
@@ -17,7 +17,7 @@ use crate::{
         value::ValueCollectionKey,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, set_object::SetObject};
@@ -101,11 +101,11 @@ impl SetIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut set_iterator = maybe!(SetIterator::cast_from_value(cx, this_value));
+        let mut set_iterator = SetIterator::cast_from_value(cx, this_value)?;
 
         // Check if iterator is already done
         if set_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
@@ -125,7 +125,7 @@ impl SetIteratorPrototype {
         match iter_result {
             None => {
                 set_iterator.is_done = true;
-                create_iter_result_object(cx, cx.undefined(), true).into()
+                Ok(create_iter_result_object(cx, cx.undefined(), true))
             }
             Some((value, _)) => {
                 let value_value: Value = value.into();
@@ -133,11 +133,11 @@ impl SetIteratorPrototype {
 
                 match set_iterator.kind {
                     SetIteratorKind::Value => {
-                        create_iter_result_object(cx, value_handle, false).into()
+                        Ok(create_iter_result_object(cx, value_handle, false))
                     }
                     SetIteratorKind::KeyAndValue => {
                         let result_pair = create_array_from_list(cx, &[value_handle, value_handle]);
-                        create_iter_result_object(cx, result_pair.into(), false).into()
+                        Ok(create_iter_result_object(cx, result_pair.into(), false))
                     }
                 }
             }

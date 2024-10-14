@@ -3,8 +3,8 @@ use crate::{
         abstract_operations::{call_object, create_data_property_or_throw, invoke},
         array_object::{array_create, ArrayObject},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         get,
         intrinsics::{
@@ -18,7 +18,7 @@ use crate::{
         type_utilities::is_callable,
         Context, Handle, PropertyKey, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::return_this};
@@ -31,10 +31,10 @@ macro_rules! if_abrupt_reject_promise {
         let capability = $capability;
 
         match completion {
-            EvalResult::Ok(value) => value,
-            EvalResult::Throw(error) => {
-                maybe!(call_object($cx, capability.reject(), $cx.undefined(), &[error]));
-                return capability.promise().into();
+            Ok(value) => value,
+            Err(error) => {
+                call_object($cx, capability.reject(), $cx.undefined(), &[error])?;
+                return Ok(capability.promise().into());
             }
         }
     }};
@@ -95,7 +95,7 @@ impl PromiseConstructor {
         }
         let executor = executor.as_object();
 
-        let promise = maybe!(PromiseObject::new_from_constructor(cx, new_target));
+        let promise = PromiseObject::new_from_constructor(cx, new_target)?;
 
         execute_then(cx, executor, cx.undefined(), promise)
     }
@@ -112,7 +112,7 @@ impl PromiseConstructor {
             Handle<ObjectValue>,
         ) -> EvalResult<Handle<Value>>,
     ) -> EvalResult<Handle<Value>> {
-        let capability = maybe!(PromiseCapability::new(cx, constructor));
+        let capability = PromiseCapability::new(cx, constructor)?;
         let constructor = constructor.as_object();
 
         let resolve_completion = get_promise_resolve(cx, constructor);
@@ -123,12 +123,12 @@ impl PromiseConstructor {
 
         let mut completion = f(cx, &mut iterator, constructor, capability, resolve);
 
-        if let EvalResult::Throw(_) = completion {
+        if completion.is_err() {
             if !iterator.is_done {
                 completion = iterator_close(cx, &iterator, completion);
             }
 
-            if_abrupt_reject_promise!(cx, completion.clone(), capability);
+            if_abrupt_reject_promise!(cx, completion, capability);
         }
 
         completion
@@ -245,7 +245,7 @@ impl PromiseConstructor {
         let mut index = 0;
 
         loop {
-            let next_value = maybe!(iterator_step_value(cx, iterator));
+            let next_value = iterator_step_value(cx, iterator)?;
             let next_value = match next_value {
                 None => {
                     // Increment number of remaining elements
@@ -254,15 +254,10 @@ impl PromiseConstructor {
 
                     // Resolve the outer promise if all promises have resolved
                     if remaining_elements.number_data() == 0.0 {
-                        maybe!(call_object(
-                            cx,
-                            capability.resolve(),
-                            cx.undefined(),
-                            &[values.into()]
-                        ));
+                        call_object(cx, capability.resolve(), cx.undefined(), &[values.into()])?;
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -289,10 +284,10 @@ impl PromiseConstructor {
             remaining_elements.set_number_data(num_remaining + 1.0);
 
             // Call the promise's `then` with the custom resolve and default reject functions
-            let next_promise = maybe!(call_object(cx, resolve, constructor.into(), &[next_value]));
+            let next_promise = call_object(cx, resolve, constructor.into(), &[next_value])?;
 
             let arguments = &[promise_all_resolve.into(), capability.reject().into()];
-            maybe!(invoke(cx, next_promise, cx.names.then(), arguments));
+            invoke(cx, next_promise, cx.names.then(), arguments)?;
 
             index += 1;
         }
@@ -309,7 +304,7 @@ impl PromiseConstructor {
 
         // Check if already called and mark as called
         if Self::get_already_called_or_false(cx, function) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         Self::set_already_called(cx, function, cx.bool(true));
@@ -319,7 +314,7 @@ impl PromiseConstructor {
         let index = Self::get_index(cx, function);
         let values = Self::get_values(cx, function);
 
-        let key = maybe!(PropertyKey::from_value(cx, index)).to_handle(cx);
+        let key = PropertyKey::from_value(cx, index)?.to_handle(cx);
         must!(create_data_property_or_throw(cx, values.into(), key, resolved_value));
 
         // Decrement the number of remaining elements
@@ -333,7 +328,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.allSettled (https://tc39.es/ecma262/#sec-promise.allsettled)
@@ -360,7 +355,7 @@ impl PromiseConstructor {
         let mut index = 0;
 
         loop {
-            let next_value = maybe!(iterator_step_value(cx, iterator));
+            let next_value = iterator_step_value(cx, iterator)?;
             let next_value = match next_value {
                 None => {
                     // Increment number of remaining elements
@@ -369,15 +364,10 @@ impl PromiseConstructor {
 
                     // Resolve the outer promise if all promises have resolved
                     if remaining_elements.number_data() == 0.0 {
-                        maybe!(call_object(
-                            cx,
-                            capability.resolve(),
-                            cx.undefined(),
-                            &[values.into()]
-                        ));
+                        call_object(cx, capability.resolve(), cx.undefined(), &[values.into()])?;
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -426,13 +416,13 @@ impl PromiseConstructor {
             remaining_elements.set_number_data(num_remaining + 1.0);
 
             // Call the promise's `then` with the custom resolve and reject functions
-            let next_promise = maybe!(call_object(cx, resolve, constructor.into(), &[next_value]));
+            let next_promise = call_object(cx, resolve, constructor.into(), &[next_value])?;
 
             let arguments = &[
                 promise_all_settled_resolve.into(),
                 promise_all_settled_reject.into(),
             ];
-            maybe!(invoke(cx, next_promise, cx.names.then(), arguments));
+            invoke(cx, next_promise, cx.names.then(), arguments)?;
 
             index += 1;
         }
@@ -450,7 +440,7 @@ impl PromiseConstructor {
         // Check if already called and mark as called
         let mut already_called = Self::get_already_called_object(cx, function);
         if already_called.boolean_data() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         already_called.set_boolean_data(true);
@@ -475,7 +465,7 @@ impl PromiseConstructor {
         let index = Self::get_index(cx, function);
         let values = Self::get_values(cx, function);
 
-        let key = maybe!(PropertyKey::from_value(cx, index)).to_handle(cx);
+        let key = PropertyKey::from_value(cx, index)?.to_handle(cx);
         must!(create_data_property_or_throw(cx, values.into(), key, result_object.into()));
 
         // Decrement the number of remaining elements
@@ -489,7 +479,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.allSettled Reject (https://tc39.es/ecma262/#sec-promise.allsettled-reject-element-functions)
@@ -504,7 +494,7 @@ impl PromiseConstructor {
         // Check if already called and mark as called
         let mut already_called = Self::get_already_called_object(cx, function);
         if already_called.boolean_data() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         already_called.set_boolean_data(true);
@@ -529,7 +519,7 @@ impl PromiseConstructor {
         let index = Self::get_index(cx, function);
         let values = Self::get_values(cx, function);
 
-        let key = maybe!(PropertyKey::from_value(cx, index)).to_handle(cx);
+        let key = PropertyKey::from_value(cx, index)?.to_handle(cx);
         must!(create_data_property_or_throw(cx, values.into(), key, result_object.into()));
 
         // Decrement the number of remaining elements
@@ -543,7 +533,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.resolve(), cx.undefined(), &[values.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.any (https://tc39.es/ecma262/#sec-promise.any)
@@ -570,7 +560,7 @@ impl PromiseConstructor {
         let mut index = 0;
 
         loop {
-            let next_value = maybe!(iterator_step_value(cx, iterator));
+            let next_value = iterator_step_value(cx, iterator)?;
             let next_value = match next_value {
                 None => {
                     // Increment number of remaining elements
@@ -581,15 +571,10 @@ impl PromiseConstructor {
                     // rejected.
                     if remaining_elements.number_data() == 0.0 {
                         let error = AggregateErrorObject::new(cx, errors.into());
-                        maybe!(call_object(
-                            cx,
-                            capability.reject(),
-                            cx.undefined(),
-                            &[error.into()]
-                        ));
+                        call_object(cx, capability.reject(), cx.undefined(), &[error.into()])?;
                     }
 
-                    return capability.promise().into();
+                    return Ok(capability.promise().as_value());
                 }
                 Some(next_value) => next_value,
             };
@@ -616,10 +601,10 @@ impl PromiseConstructor {
             remaining_elements.set_number_data(num_remaining + 1.0);
 
             // Call the promise's `then` with the default resolve and custom reject functions
-            let next_promise = maybe!(call_object(cx, resolve, constructor.into(), &[next_value]));
+            let next_promise = call_object(cx, resolve, constructor.into(), &[next_value])?;
 
             let arguments = &[capability.resolve().into(), promise_any_reject.into()];
-            maybe!(invoke(cx, next_promise, cx.names.then(), arguments));
+            invoke(cx, next_promise, cx.names.then(), arguments)?;
 
             index += 1;
         }
@@ -636,7 +621,7 @@ impl PromiseConstructor {
 
         // Check if already called and mark as called
         if Self::get_already_called_or_false(cx, function) {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         Self::set_already_called(cx, function, cx.bool(true));
@@ -646,7 +631,7 @@ impl PromiseConstructor {
         let index = Self::get_index(cx, function);
         let errors = Self::get_values(cx, function);
 
-        let key = maybe!(PropertyKey::from_value(cx, index)).to_handle(cx);
+        let key = PropertyKey::from_value(cx, index)?.to_handle(cx);
         must!(create_data_property_or_throw(cx, errors.into(), key, rejected_value));
 
         // Decrement the number of remaining elements
@@ -661,7 +646,7 @@ impl PromiseConstructor {
             return call_object(cx, capability.reject(), cx.undefined(), &[error.into()]);
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Promise.race (https://tc39.es/ecma262/#sec-promise.race)
@@ -684,15 +669,14 @@ impl PromiseConstructor {
         resolve: Handle<ObjectValue>,
     ) -> EvalResult<Handle<Value>> {
         loop {
-            let next_value = maybe!(iterator_step_value(cx, iterator));
+            let next_value = iterator_step_value(cx, iterator)?;
             match next_value {
-                None => return capability.promise().into(),
+                None => return Ok(capability.promise().as_value()),
                 Some(next_value) => {
-                    let next_promise =
-                        maybe!(call_object(cx, resolve, constructor.into(), &[next_value]));
+                    let next_promise = call_object(cx, resolve, constructor.into(), &[next_value])?;
 
                     let arguments = &[capability.resolve().into(), capability.reject().into()];
-                    maybe!(invoke(cx, next_promise, cx.names.then(), arguments));
+                    invoke(cx, next_promise, cx.names.then(), arguments)?;
                 }
             }
         }
@@ -708,10 +692,10 @@ impl PromiseConstructor {
         let result = get_argument(cx, arguments, 0);
 
         // Create a new promise and immediately reject it
-        let capability = maybe!(PromiseCapability::new(cx, this_value));
-        maybe!(call_object(cx, capability.reject(), cx.undefined(), &[result]));
+        let capability = PromiseCapability::new(cx, this_value)?;
+        call_object(cx, capability.reject(), cx.undefined(), &[result])?;
 
-        capability.promise().into()
+        Ok(capability.promise().as_value())
     }
 
     /// Promise.resolve (https://tc39.es/ecma262/#sec-promise.resolve)
@@ -726,7 +710,7 @@ impl PromiseConstructor {
         }
 
         let result = get_argument(cx, arguments, 0);
-        maybe!(promise_resolve(cx, this_value, result)).into()
+        Ok(promise_resolve(cx, this_value, result)?.as_value())
     }
 
     /// Promise.withResolvers (https://tc39.es/ecma262/#sec-promise.withResolvers)
@@ -736,7 +720,7 @@ impl PromiseConstructor {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let capability = maybe!(PromiseCapability::new(cx, this_value));
+        let capability = PromiseCapability::new(cx, this_value)?;
 
         let object = ordinary_object_create(cx);
 
@@ -759,7 +743,7 @@ impl PromiseConstructor {
             capability.reject().into()
         ));
 
-        object.into()
+        Ok(object.as_value())
     }
 }
 
@@ -779,11 +763,11 @@ pub fn execute_then(
         call_object(cx, executor, this_value, &[resolve_function.into(), reject_function.into()]);
 
     // Reject if the executor function throws
-    if let EvalResult::Throw(error) = completion {
-        maybe!(call_object(cx, reject_function, cx.undefined(), &[error]));
+    if let Err(error) = completion {
+        call_object(cx, reject_function, cx.undefined(), &[error])?;
     }
 
-    promise.into()
+    Ok(promise.as_value())
 }
 
 fn create_resolve_function(cx: Context, promise: Handle<PromiseObject>) -> Handle<ObjectValue> {
@@ -837,7 +821,7 @@ pub fn resolve_builtin_function(
 
     resolve(cx, promise, resolution);
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// Promise Reject Functions (https://tc39.es/ecma262/#sec-promise-reject-functions)
@@ -857,7 +841,7 @@ pub fn reject_builtin_function(
         promise.reject(cx, resolution.get());
     }
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }
 
 /// GetPromiseResolve (https://tc39.es/ecma262/#sec-getpromiseresolve)
@@ -865,10 +849,10 @@ fn get_promise_resolve(
     cx: Context,
     constructor: Handle<ObjectValue>,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let resolve = maybe!(get(cx, constructor, cx.names.resolve()));
+    let resolve = get(cx, constructor, cx.names.resolve())?;
     if !is_callable(resolve) {
         return type_error(cx, "resolve property must be a function");
     }
 
-    resolve.as_object().into()
+    Ok(resolve.as_object())
 }

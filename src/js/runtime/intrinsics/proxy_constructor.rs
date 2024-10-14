@@ -2,8 +2,8 @@ use crate::{
     js::runtime::{
         abstract_operations::create_data_property_or_throw,
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         function::get_argument,
         gc::Handle,
         object_value::ObjectValue,
@@ -12,7 +12,7 @@ use crate::{
         realm::Realm,
         Context, Value,
     },
-    maybe, must,
+    must,
 };
 
 pub struct ProxyConstructor;
@@ -48,7 +48,7 @@ impl ProxyConstructor {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
 
-        maybe!(proxy_create(cx, target, handler)).into()
+        Ok(proxy_create(cx, target, handler)?.as_value())
     }
 
     /// Proxy.revocable (https://tc39.es/ecma262/#sec-proxy.revocable)
@@ -60,7 +60,7 @@ impl ProxyConstructor {
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
-        let proxy = maybe!(proxy_create(cx, target, handler));
+        let proxy = proxy_create(cx, target, handler)?;
 
         let realm = cx.current_realm();
         let mut revoker =
@@ -78,7 +78,7 @@ impl ProxyConstructor {
         must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));
         must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));
 
-        result.into()
+        Ok(result.as_value())
     }
 }
 
@@ -101,5 +101,5 @@ pub fn revoke(
         proxy_object.revoke();
     }
 
-    cx.undefined().into()
+    Ok(cx.undefined())
 }

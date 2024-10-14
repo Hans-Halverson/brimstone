@@ -7,8 +7,8 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -21,7 +21,7 @@ use crate::{
         value::BigIntValue,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -87,7 +87,7 @@ impl BigIntConstructor {
         }
 
         let value = get_argument(cx, arguments, 0);
-        let primitive = maybe!(to_primitive(cx, value, ToPrimitivePreferredType::Number));
+        let primitive = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
 
         if primitive.is_number() {
             if !is_integral_number(primitive.get()) {
@@ -95,14 +95,14 @@ impl BigIntConstructor {
             }
 
             if primitive.is_smi() {
-                BigIntValue::new(cx, primitive.as_smi().into()).into()
+                Ok(BigIntValue::new(cx, primitive.as_smi().into()).into())
             } else {
                 // Safe to unwrap since we know the primitive is finite
                 let bigint = BigInt::from_f64(primitive.as_double()).unwrap();
-                BigIntValue::new(cx, bigint).into()
+                Ok(BigIntValue::new(cx, bigint).into())
             }
         } else {
-            maybe!(to_bigint(cx, primitive)).into()
+            Ok(to_bigint(cx, primitive)?.into())
         }
     }
 
@@ -114,10 +114,10 @@ impl BigIntConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
-        let bits = maybe!(to_index(cx, bits_arg));
+        let bits = to_index(cx, bits_arg)?;
 
         let bigint_arg = get_argument(cx, arguments, 1);
-        let bigint = maybe!(to_bigint(cx, bigint_arg));
+        let bigint = to_bigint(cx, bigint_arg)?;
 
         // Convert BigInt to its representation as bits
         let mut bytes = bigint.bigint().to_signed_bytes_le();
@@ -138,7 +138,7 @@ impl BigIntConstructor {
         }
 
         let new_bigint = BigInt::from_signed_bytes_le(&bytes);
-        BigIntValue::new(cx, new_bigint).into()
+        Ok(BigIntValue::new(cx, new_bigint).into())
     }
 
     /// BigInt.asUintN (https://tc39.es/ecma262/#sec-bigint.asuintn)
@@ -149,10 +149,10 @@ impl BigIntConstructor {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
-        let bits = maybe!(to_index(cx, bits_arg));
+        let bits = to_index(cx, bits_arg)?;
 
         let bigint_arg = get_argument(cx, arguments, 1);
-        let bigint = maybe!(to_bigint(cx, bigint_arg));
+        let bigint = to_bigint(cx, bigint_arg)?;
 
         // Convert BigInt to its representation as bits
         let mut bytes = bigint.bigint().to_signed_bytes_le();
@@ -172,7 +172,7 @@ impl BigIntConstructor {
         }
 
         let new_bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
-        BigIntValue::new(cx, new_bigint).into()
+        Ok(BigIntValue::new(cx, new_bigint).into())
     }
 }
 

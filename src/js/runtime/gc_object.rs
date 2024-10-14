@@ -1,6 +1,6 @@
 use super::{
-    completion::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
-    realm::Realm, Context, Handle, Value,
+    eval_result::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic,
+    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 pub struct GcObject;
@@ -22,6 +22,6 @@ impl GcObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Heap::run_gc(cx);
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }

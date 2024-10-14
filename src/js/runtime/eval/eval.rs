@@ -1,31 +1,28 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::{
-    js::{
-        parser::{
-            analyze::{analyze_for_eval, PrivateNameUsage},
-            ast, parse_script_for_eval,
-            scope_tree::BindingKind,
-            source::Source,
-        },
-        runtime::{
-            abstract_operations::call_object,
-            bytecode::{
-                function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
-            },
-            error::{syntax_error, syntax_parse_error, type_error},
-            global_names::{
-                can_declare_global_function, can_declare_global_var,
-                create_global_function_binding, create_global_var_binding,
-            },
-            interned_strings::InternedStrings,
-            property::Property,
-            scope::{Scope, ScopeKind},
-            string_value::FlatString,
-            Context, EvalResult, Handle, HeapPtr, Value,
-        },
+use crate::js::{
+    parser::{
+        analyze::{analyze_for_eval, PrivateNameUsage},
+        ast, parse_script_for_eval,
+        scope_tree::BindingKind,
+        source::Source,
     },
-    maybe,
+    runtime::{
+        abstract_operations::call_object,
+        bytecode::{
+            function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
+        },
+        error::{syntax_error, syntax_parse_error, type_error},
+        global_names::{
+            can_declare_global_function, can_declare_global_var, create_global_function_binding,
+            create_global_var_binding,
+        },
+        interned_strings::InternedStrings,
+        property::Property,
+        scope::{Scope, ScopeKind},
+        string_value::FlatString,
+        Context, EvalResult, Handle, HeapPtr, Value,
+    },
 };
 
 pub fn perform_eval(
@@ -36,7 +33,7 @@ pub fn perform_eval(
     flags: EvalFlags,
 ) -> EvalResult<Handle<Value>> {
     if !code.is_string() {
-        return code.into();
+        return Ok(code);
     }
     let code = code.as_string();
 
@@ -81,7 +78,7 @@ pub fn perform_eval(
     // be placed in the parent var scope. Strict direct evals do not need to call EDI as var scoped
     // bindings are handled normally when setting up a call frame in the VM.
     if !parse_result.program.is_strict_mode {
-        maybe!(eval_declaration_instantiation(cx, &parse_result.program));
+        eval_declaration_instantiation(cx, &parse_result.program)?;
     }
 
     // Generate bytecode for the program
@@ -162,7 +159,7 @@ fn check_eval_var_name_conflicts(
             }
         }
 
-        return ().into();
+        return Ok(());
     }
 
     // Otherwise walk scopes up to the parent var scope
@@ -199,7 +196,7 @@ fn check_eval_var_name_conflicts(
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 /// EvalDeclarationInstantiation (https://tc39.es/ecma262/#sec-evaldeclarationinstantiation)
@@ -223,7 +220,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         .map(|(name, _)| InternedStrings::get_str(cx, name).as_flat())
         .collect::<Vec<_>>();
 
-    maybe!(check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names));
+    check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names)?;
 
     // Find the enclosing var scope
     let mut var_scope = cx.vm().scope().to_handle();
@@ -237,7 +234,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     // If in global scope, check if we can declare the var or function binding
     if is_global_scope {
         for func_name in &eval_func_names {
-            if !maybe!(can_declare_global_function(cx, scope_object, func_name.cast())) {
+            if !can_declare_global_function(cx, scope_object, func_name.cast())? {
                 return type_error(
                     cx,
                     &format!("cannot declare global function {}", func_name.get_()),
@@ -246,7 +243,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         }
 
         for var_name in &eval_var_names {
-            if !maybe!(can_declare_global_var(cx, scope_object, var_name.cast())) {
+            if !can_declare_global_var(cx, scope_object, var_name.cast())? {
                 return type_error(cx, &format!("cannot declare global var {}", var_name.get_()));
             }
         }
@@ -255,12 +252,12 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     // Create and initialize bindings for all functions
     for name in &eval_func_names {
         if is_global_scope {
-            maybe!(create_global_function_binding(
+            create_global_function_binding(
                 cx,
                 scope_object,
                 name.cast(),
-                /* can_delete */ true
-            ));
+                /* can_delete */ true,
+            )?;
         } else {
             // All functions initialized to undefined, overwriting existing if already declared
             let desc = Property::data(cx.undefined(), true, true, true);
@@ -271,22 +268,17 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     // Create and initialize bindings for all vars
     for name in &eval_var_names {
         if is_global_scope {
-            maybe!(create_global_var_binding(
-                cx,
-                scope_object,
-                name.cast(),
-                /* can_delete */ true
-            ));
+            create_global_var_binding(cx, scope_object, name.cast(), /* can_delete */ true)?;
         } else {
             // Vars only initialized to undefined if the do not have been declared yet
-            if !maybe!(scope_object.has_property(cx, name.cast())) {
+            if !scope_object.has_property(cx, name.cast())? {
                 let desc = Property::data(cx.undefined(), true, true, true);
                 scope_object.set_property(cx, name.cast(), desc);
             }
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {

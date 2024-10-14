@@ -15,8 +15,8 @@ use crate::{
         runtime::{
             abstract_operations::{define_property_or_throw, set},
             builtin_function::BuiltinFunction,
-            completion::EvalResult,
             error::syntax_parse_error,
+            eval_result::EvalResult,
             function::get_argument,
             gc::{Handle, HeapObject, HeapVisitor},
             get,
@@ -32,7 +32,7 @@ use crate::{
             Context, HeapPtr, PropertyDescriptor, Value,
         },
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
@@ -49,12 +49,12 @@ impl RegExpObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<RegExpObject>> {
-        let mut object = maybe!(object_create_from_constructor::<RegExpObject>(
+        let mut object = object_create_from_constructor::<RegExpObject>(
             cx,
             constructor,
             ObjectKind::RegExpObject,
-            Intrinsic::RegExpPrototype
-        ));
+            Intrinsic::RegExpPrototype,
+        )?;
 
         // Initialize with default values as allocation may occur before real values are set, so
         // we must ensure the RegExpObject is in a valid state.
@@ -64,7 +64,7 @@ impl RegExpObject {
 
         Self::define_last_index_property(cx, object);
 
-        object.into()
+        Ok(object)
     }
 
     pub fn new_from_compiled_regexp(
@@ -87,9 +87,9 @@ impl RegExpObject {
 
         // Initialize last index property
         let zero_value = Value::from(0).to_handle(cx);
-        maybe!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
+        set(cx, object.into(), cx.names.last_index(), zero_value, true)?;
 
-        object.into()
+        Ok(object)
     }
 
     fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {
@@ -155,7 +155,7 @@ impl RegExpConstructor {
         let pattern_arg = get_argument(cx, arguments, 0);
         let flags_arg = get_argument(cx, arguments, 1);
 
-        let pattern_is_regexp = maybe!(is_regexp(cx, pattern_arg));
+        let pattern_is_regexp = is_regexp(cx, pattern_arg)?;
 
         let new_target = match new_target {
             None => {
@@ -163,10 +163,10 @@ impl RegExpConstructor {
 
                 if pattern_is_regexp && flags_arg.is_undefined() {
                     let pattern_constructor =
-                        maybe!(get(cx, pattern_arg.as_object(), cx.names.constructor()));
+                        get(cx, pattern_arg.as_object(), cx.names.constructor())?;
 
                     if same_value(new_target.into(), pattern_constructor) {
-                        return pattern_arg.into();
+                        return Ok(pattern_arg);
                     }
                 }
 
@@ -190,11 +190,11 @@ impl RegExpConstructor {
             }
         } else if pattern_is_regexp {
             // Construction from a pattern object that has a [Symbol.match] property
-            let pattern = maybe!(get(cx, pattern_arg.as_object(), cx.names.source()));
+            let pattern = get(cx, pattern_arg.as_object(), cx.names.source())?;
 
             // Use flags argument if one is provided, otherwise default to pattern's flags property
             let flags_value = if flags_arg.is_undefined() {
-                maybe!(get(cx, pattern_arg.as_object(), cx.names.flags()))
+                get(cx, pattern_arg.as_object(), cx.names.flags())?
             } else {
                 flags_arg
             };
@@ -230,7 +230,7 @@ pub fn regexp_create(
     regexp_source: RegExpSource,
     constructor: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Value>> {
-    let mut regexp_object = maybe!(RegExpObject::new_from_constructor(cx, constructor));
+    let mut regexp_object = RegExpObject::new_from_constructor(cx, constructor)?;
 
     match regexp_source {
         RegExpSource::RegExpObject(old_regexp_object) => {
@@ -239,19 +239,19 @@ pub fn regexp_create(
         RegExpSource::PatternAndFlags(pattern_value, flags_source) => {
             // Make sure to call ToString on pattern before flags, following order in spec
             let pattern = value_or_empty_string(cx, pattern_value);
-            let pattern_string = maybe!(to_string(cx, pattern));
+            let pattern_string = to_string(cx, pattern)?;
 
             let flags = match flags_source {
                 FlagsSource::RegExpFlags(flags) => flags,
                 FlagsSource::Value(flags_value) => {
                     let flags_value = value_or_empty_string(cx, flags_value);
-                    let flags_string = maybe!(to_string(cx, flags_value));
+                    let flags_string = to_string(cx, flags_value)?;
 
-                    maybe!(parse_flags(cx, flags_string))
+                    parse_flags(cx, flags_string)?
                 }
             };
 
-            let regexp = maybe!(parse_pattern(cx, pattern_string, flags));
+            let regexp = parse_pattern(cx, pattern_string, flags)?;
             let source = escape_pattern_string(cx, pattern_string);
 
             let compiled_regexp = compile_regexp(cx, &regexp, source);
@@ -262,9 +262,9 @@ pub fn regexp_create(
 
     // Initialize last index property
     let zero_value = Value::from(0).to_handle(cx);
-    maybe!(set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true));
+    set(cx, regexp_object.into(), cx.names.last_index(), zero_value, true)?;
 
-    regexp_object.into()
+    Ok(regexp_object.as_value())
 }
 
 fn value_or_empty_string(cx: Context, value: Handle<Value>) -> Handle<Value> {
@@ -278,7 +278,7 @@ fn value_or_empty_string(cx: Context, value: Handle<Value>) -> Handle<Value> {
 fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<RegExpFlags> {
     fn parse_lexer_stream(cx: Context, lexer_stream: impl LexerStream) -> EvalResult<RegExpFlags> {
         match RegExpParser::parse_flags(lexer_stream) {
-            Ok(flags) => flags.into(),
+            Ok(flags) => Ok(flags),
             Err(error) => syntax_parse_error(cx, &error),
         }
     }
@@ -309,7 +309,7 @@ fn parse_pattern(
         flags: RegExpFlags,
     ) -> EvalResult<RegExp> {
         match RegExpParser::parse_regexp(lexer_stream, flags) {
-            Ok(regexp) => regexp.into(),
+            Ok(regexp) => Ok(regexp),
             Err(error) => syntax_parse_error(cx, &error),
         }
     }

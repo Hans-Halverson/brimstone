@@ -12,7 +12,7 @@ use crate::{
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, EvalResult, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 // Set Objects (https://tc39.es/ecma262/#sec-set-objects)
@@ -32,16 +32,16 @@ impl SetObject {
         // Allocate and place behind handle before allocating object
         let set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
 
-        let mut object = maybe!(object_create_from_constructor::<SetObject>(
+        let mut object = object_create_from_constructor::<SetObject>(
             cx,
             constructor,
             ObjectKind::SetObject,
-            Intrinsic::SetPrototype
-        ));
+            Intrinsic::SetPrototype,
+        )?;
 
         set_uninit!(object.set_data, set_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     /// Create a new SetObject with the provided set data.

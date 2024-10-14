@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::call_object,
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error,
-        function::get_argument,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::is_callable,
-        value::{Value, ValueCollectionKey},
-        Context, Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::call_object,
+    builtin_function::BuiltinFunction,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::is_callable,
+    value::{Value, ValueCollectionKey},
+    Context, Handle,
 };
 
 use super::{
@@ -76,7 +73,7 @@ impl MapPrototype {
 
         map.map_data().clear();
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Map.prototype.delete (https://tc39.es/ecma262/#sec-map.prototype.delete)
@@ -95,7 +92,7 @@ impl MapPrototype {
         let key = get_argument(cx, arguments, 0);
         let existed = map.map_data().remove(&ValueCollectionKey::from(key));
 
-        cx.bool(existed).into()
+        Ok(cx.bool(existed))
     }
 
     /// Map.prototype.entries (https://tc39.es/ecma262/#sec-map.prototype.entries)
@@ -111,7 +108,7 @@ impl MapPrototype {
             return type_error(cx, "entries method must be called on map");
         };
 
-        MapIterator::new(cx, map, MapIteratorKind::KeyAndValue).into()
+        Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue).as_value())
     }
 
     /// Map.prototype.forEach (https://tc39.es/ecma262/#sec-map.prototype.foreach)
@@ -146,10 +143,10 @@ impl MapPrototype {
             value_handle.replace(value);
 
             let arguments = [value_handle, key_handle, this_value];
-            maybe!(call_object(cx, callback_function, this_arg, &arguments));
+            call_object(cx, callback_function, this_arg, &arguments)?;
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Map.prototype.get (https://tc39.es/ecma262/#sec-map.prototype.get)
@@ -168,8 +165,8 @@ impl MapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         match map.map_data().get(&ValueCollectionKey::from(key)) {
-            Some(value) => value.to_handle(cx).into(),
-            None => cx.undefined().into(),
+            Some(value) => Ok(value.to_handle(cx)),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -188,8 +185,7 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        cx.bool(map.map_data().contains_key(&ValueCollectionKey::from(key)))
-            .into()
+        Ok(cx.bool(map.map_data().contains_key(&ValueCollectionKey::from(key))))
     }
 
     /// Map.prototype.keys (https://tc39.es/ecma262/#sec-map.prototype.keys)
@@ -205,7 +201,7 @@ impl MapPrototype {
             return type_error(cx, "keys method must be called on map");
         };
 
-        MapIterator::new(cx, map, MapIteratorKind::Key).into()
+        Ok(MapIterator::new(cx, map, MapIteratorKind::Key).as_value())
     }
 
     /// Map.prototype.set (https://tc39.es/ecma262/#sec-map.prototype.set)
@@ -231,7 +227,7 @@ impl MapPrototype {
 
         map.insert(cx, key, value);
 
-        this_value.into()
+        Ok(this_value)
     }
 
     /// get Map.prototype.size (https://tc39.es/ecma262/#sec-get-map.prototype.size)
@@ -247,9 +243,7 @@ impl MapPrototype {
             return type_error(cx, "size accessor must be called on map");
         };
 
-        Value::from(map.map_data().num_entries_occupied())
-            .to_handle(cx)
-            .into()
+        Ok(Value::from(map.map_data().num_entries_occupied()).to_handle(cx))
     }
 
     /// Map.prototype.values (https://tc39.es/ecma262/#sec-map.prototype.values)
@@ -265,7 +259,7 @@ impl MapPrototype {
             return type_error(cx, "values method must be called on map");
         };
 
-        MapIterator::new(cx, map, MapIteratorKind::Value).into()
+        Ok(MapIterator::new(cx, map, MapIteratorKind::Value).as_value())
     }
 }
 

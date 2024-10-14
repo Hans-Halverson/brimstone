@@ -3,8 +3,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{call_object, get_method},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::type_error_value,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         intrinsics::promise_prototype::perform_promise_then,
@@ -18,7 +18,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -130,9 +130,9 @@ impl AsyncFromSyncIteratorPrototype {
         if return_method.is_none() {
             let value = get_argument(cx, arguments, 0);
             let iter_result = create_iter_result_object(cx, value, true);
-            must!(call_object(cx, capability.resolve(), cx.undefined(), &[iter_result.into()]));
+            must!(call_object(cx, capability.resolve(), cx.undefined(), &[iter_result]));
 
-            return capability.promise().into();
+            return Ok(capability.promise().as_value());
         }
 
         // If return method is present then call it, passing in value if necessary
@@ -150,7 +150,7 @@ impl AsyncFromSyncIteratorPrototype {
             let error = type_error_value(cx, "return method must return an object");
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
-            return capability.promise().into();
+            return Ok(capability.promise().as_value());
         }
 
         async_from_sync_iterator_continuation(cx, return_result.as_object(), capability)
@@ -177,7 +177,7 @@ impl AsyncFromSyncIteratorPrototype {
             let error = get_argument(cx, arguments, 0);
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
-            return capability.promise().into();
+            return Ok(capability.promise().as_value());
         }
 
         // If throw method is present then call it, passing in value if necessary
@@ -195,7 +195,7 @@ impl AsyncFromSyncIteratorPrototype {
             let error = type_error_value(cx, "throw method must return an object");
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
-            return capability.promise().into();
+            return Ok(capability.promise().as_value());
         }
 
         async_from_sync_iterator_continuation(cx, throw_result.as_object(), capability)
@@ -236,7 +236,7 @@ fn async_from_sync_iterator_continuation(
 
     perform_promise_then(cx, value_promise, on_fulfilled.into(), cx.undefined(), Some(capability));
 
-    capability.promise().into()
+    Ok(capability.promise().as_value())
 }
 
 pub fn create_continuing_iter_result_object(
@@ -246,7 +246,7 @@ pub fn create_continuing_iter_result_object(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
-    create_iter_result_object(cx, value, /* is_done */ false).into()
+    Ok(create_iter_result_object(cx, value, /* is_done */ false))
 }
 
 pub fn create_done_iter_result_object(
@@ -256,5 +256,5 @@ pub fn create_done_iter_result_object(
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
-    create_iter_result_object(cx, value, /* is_done */ true).into()
+    Ok(create_iter_result_object(cx, value, /* is_done */ true))
 }

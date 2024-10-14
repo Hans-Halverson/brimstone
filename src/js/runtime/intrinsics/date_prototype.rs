@@ -1,20 +1,17 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::invoke,
-        builtin_function::BuiltinFunction,
-        error::{range_error, type_error},
-        function::get_argument,
-        interned_strings::InternedStrings,
-        intrinsics::date_object::{day, make_date, make_time, time_clip},
-        object_value::ObjectValue,
-        property::Property,
-        string_value::StringValue,
-        type_utilities::{
-            ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
-        },
-        Context, EvalResult, Handle, Realm, Value,
+use crate::js::runtime::{
+    abstract_operations::invoke,
+    builtin_function::BuiltinFunction,
+    error::{range_error, type_error},
+    function::get_argument,
+    interned_strings::InternedStrings,
+    intrinsics::date_object::{day, make_date, make_time, time_clip},
+    object_value::ObjectValue,
+    property::Property,
+    string_value::StringValue,
+    type_utilities::{
+        ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
     },
-    maybe,
+    Context, EvalResult, Handle, Realm, Value,
 };
 
 use super::{
@@ -144,12 +141,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date = date_from_time(local_time(date_value));
 
-        Value::from(date).to_handle(cx).into()
+        Ok(Value::from(date).to_handle(cx))
     }
 
     /// Date.prototype.getDay (https://tc39.es/ecma262/#sec-date.prototype.getday)
@@ -166,12 +163,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let day = week_day(local_time(date_value));
 
-        Value::from(day).to_handle(cx).into()
+        Ok(Value::from(day).to_handle(cx))
     }
 
     /// Date.prototype.getFullYear (https://tc39.es/ecma262/#sec-date.prototype.getfullyear)
@@ -191,12 +188,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let year = year_from_time(local_time(date_value));
 
-        Value::from(year).to_handle(cx).into()
+        Ok(Value::from(year).to_handle(cx))
     }
 
     /// Date.prototype.getHours (https://tc39.es/ecma262/#sec-date.prototype.gethours)
@@ -213,12 +210,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let hour = hour_from_time(local_time(date_value));
 
-        Value::from(hour).to_handle(cx).into()
+        Ok(Value::from(hour).to_handle(cx))
     }
 
     /// Date.prototype.getMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getmilliseconds)
@@ -238,12 +235,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let millisecond = millisecond_from_time(local_time(date_value));
 
-        Value::from(millisecond).to_handle(cx).into()
+        Ok(Value::from(millisecond).to_handle(cx))
     }
 
     /// Date.prototype.getMinutes (https://tc39.es/ecma262/#sec-date.prototype.getminutes)
@@ -263,12 +260,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let minute = minute_from_time(local_time(date_value));
 
-        Value::from(minute).to_handle(cx).into()
+        Ok(Value::from(minute).to_handle(cx))
     }
 
     /// Date.prototype.getMonth (https://tc39.es/ecma262/#sec-date.prototype.getmonth)
@@ -285,12 +282,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let month = month_from_time(local_time(date_value));
 
-        Value::from(month).to_handle(cx).into()
+        Ok(Value::from(month).to_handle(cx))
     }
 
     /// Date.prototype.getSeconds (https://tc39.es/ecma262/#sec-date.prototype.getseconds)
@@ -310,12 +307,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let second = second_from_time(local_time(date_value));
 
-        Value::from(second).to_handle(cx).into()
+        Ok(Value::from(second).to_handle(cx))
     }
 
     /// Date.prototype.getTime (https://tc39.es/ecma262/#sec-date.prototype.gettime)
@@ -326,7 +323,7 @@ impl DatePrototype {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(date_value) = this_date_value(this_value) {
-            Value::from(date_value).to_handle(cx).into()
+            Ok(Value::from(date_value).to_handle(cx))
         } else {
             type_error(cx, "getTime method must be called on date object")
         }
@@ -346,12 +343,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let timezone_offset = (date_value - local_time(date_value)) / MS_PER_MINUTE;
 
-        Value::from(timezone_offset).to_handle(cx).into()
+        Ok(Value::from(timezone_offset).to_handle(cx))
     }
 
     /// Date.prototype.getUTCDate (https://tc39.es/ecma262/#sec-date.prototype.getutcdate)
@@ -368,12 +365,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date = date_from_time(date_value);
 
-        Value::from(date).to_handle(cx).into()
+        Ok(Value::from(date).to_handle(cx))
     }
 
     /// Date.prototype.getUTCDay (https://tc39.es/ecma262/#sec-date.prototype.getutcday)
@@ -390,12 +387,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let hour = week_day(date_value);
 
-        Value::from(hour).to_handle(cx).into()
+        Ok(Value::from(hour).to_handle(cx))
     }
 
     /// Date.prototype.getUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.getutcfullyear)
@@ -412,12 +409,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let year = year_from_time(date_value);
 
-        Value::from(year).to_handle(cx).into()
+        Ok(Value::from(year).to_handle(cx))
     }
 
     /// Date.prototype.getUTCHours (https://tc39.es/ecma262/#sec-date.prototype.getutchours)
@@ -434,12 +431,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let hour = hour_from_time(date_value);
 
-        Value::from(hour).to_handle(cx).into()
+        Ok(Value::from(hour).to_handle(cx))
     }
 
     /// Date.prototype.getUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.getutcmilliseconds)
@@ -459,12 +456,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let millisecond = millisecond_from_time(date_value);
 
-        Value::from(millisecond).to_handle(cx).into()
+        Ok(Value::from(millisecond).to_handle(cx))
     }
 
     /// Date.prototype.getUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.getutcminutes)
@@ -484,12 +481,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let minute = minute_from_time(date_value);
 
-        Value::from(minute).to_handle(cx).into()
+        Ok(Value::from(minute).to_handle(cx))
     }
 
     /// Date.prototype.getUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.getutcmonth)
@@ -509,12 +506,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let month = month_from_time(date_value);
 
-        Value::from(month).to_handle(cx).into()
+        Ok(Value::from(month).to_handle(cx))
     }
 
     /// Date.prototype.getUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.getutcseconds)
@@ -534,12 +531,12 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let second = second_from_time(date_value);
 
-        Value::from(second).to_handle(cx).into()
+        Ok(Value::from(second).to_handle(cx))
     }
 
     /// Date.prototype.setDate (https://tc39.es/ecma262/#sec-date.prototype.setdate)
@@ -556,10 +553,10 @@ impl DatePrototype {
         };
 
         let date_arg = get_argument(cx, arguments, 0);
-        let date = maybe!(to_number(cx, date_arg)).as_number();
+        let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -571,7 +568,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setFullYear (https://tc39.es/ecma262/#sec-date.prototype.setfullyear)
@@ -591,7 +588,7 @@ impl DatePrototype {
         };
 
         let year_arg = get_argument(cx, arguments, 0);
-        let year = maybe!(to_number(cx, year_arg)).as_number();
+        let year = to_number(cx, year_arg)?.as_number();
 
         if date_value.is_nan() {
             date_value = 0.0;
@@ -601,14 +598,14 @@ impl DatePrototype {
 
         let month = if arguments.len() >= 2 {
             let month_arg = get_argument(cx, arguments, 1);
-            maybe!(to_number(cx, month_arg)).as_number()
+            to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
             let date_arg = get_argument(cx, arguments, 2);
-            maybe!(to_number(cx, date_arg)).as_number()
+            to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
         };
@@ -618,7 +615,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setHours (https://tc39.es/ecma262/#sec-date.prototype.sethours)
@@ -635,7 +632,7 @@ impl DatePrototype {
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
-        let hours = maybe!(to_number(cx, hours_arg)).as_number();
+        let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
         let mut minutes = 0.0;
@@ -648,21 +645,21 @@ impl DatePrototype {
 
         if has_minutes {
             let minutes_arg = get_argument(cx, arguments, 1);
-            minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+            minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 2);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 3);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -686,7 +683,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setmilliseconds)
@@ -706,10 +703,10 @@ impl DatePrototype {
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
-        let milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+        let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -726,7 +723,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setMinutes (https://tc39.es/ecma262/#sec-date.prototype.setminutes)
@@ -746,7 +743,7 @@ impl DatePrototype {
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
-        let minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+        let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
         let mut seconds = 0.0;
@@ -756,16 +753,16 @@ impl DatePrototype {
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 1);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 2);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -785,7 +782,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setMonth (https://tc39.es/ecma262/#sec-date.prototype.setmonth)
@@ -802,18 +799,18 @@ impl DatePrototype {
         };
 
         let month_arg = get_argument(cx, arguments, 0);
-        let month = maybe!(to_number(cx, month_arg)).as_number();
+        let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
             let date_arg = get_argument(cx, arguments, 1);
-            date = maybe!(to_number(cx, date_arg)).as_number();
+            date = to_number(cx, date_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -829,7 +826,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setSeconds (https://tc39.es/ecma262/#sec-date.prototype.setseconds)
@@ -849,18 +846,18 @@ impl DatePrototype {
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
-        let seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+        let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 1);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let date_value = local_time(date_value);
@@ -881,7 +878,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setTime (https://tc39.es/ecma262/#sec-date.prototype.settime)
@@ -896,11 +893,11 @@ impl DatePrototype {
         };
 
         let time_arg = get_argument(cx, arguments, 0);
-        let time_num = time_clip(maybe!(to_number(cx, time_arg)).as_number());
+        let time_num = time_clip(to_number(cx, time_arg)?.as_number());
 
         set_date_value(this_value, time_num);
 
-        Value::from(time_num).to_handle(cx).into()
+        Ok(Value::from(time_num).to_handle(cx))
     }
 
     /// Date.prototype.setUTCDate (https://tc39.es/ecma262/#sec-date.prototype.setutcdate)
@@ -920,10 +917,10 @@ impl DatePrototype {
         };
 
         let date_arg = get_argument(cx, arguments, 0);
-        let date = maybe!(to_number(cx, date_arg)).as_number();
+        let date = to_number(cx, date_arg)?.as_number();
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let new_date = time_clip(make_date(
@@ -933,7 +930,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCFullYear (https://tc39.es/ecma262/#sec-date.prototype.setutcfullyear)
@@ -957,18 +954,18 @@ impl DatePrototype {
         }
 
         let year_arg = get_argument(cx, arguments, 0);
-        let year = maybe!(to_number(cx, year_arg)).as_number();
+        let year = to_number(cx, year_arg)?.as_number();
 
         let month = if arguments.len() >= 2 {
             let month_arg = get_argument(cx, arguments, 1);
-            maybe!(to_number(cx, month_arg)).as_number()
+            to_number(cx, month_arg)?.as_number()
         } else {
             month_from_time(date_value)
         };
 
         let date = if arguments.len() >= 3 {
             let date_arg = get_argument(cx, arguments, 2);
-            maybe!(to_number(cx, date_arg)).as_number()
+            to_number(cx, date_arg)?.as_number()
         } else {
             date_from_time(date_value)
         };
@@ -978,7 +975,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCHours (https://tc39.es/ecma262/#sec-date.prototype.setutchours)
@@ -998,7 +995,7 @@ impl DatePrototype {
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
-        let hours = maybe!(to_number(cx, hours_arg)).as_number();
+        let hours = to_number(cx, hours_arg)?.as_number();
 
         let has_minutes = arguments.len() >= 2;
         let mut minutes = 0.0;
@@ -1011,21 +1008,21 @@ impl DatePrototype {
 
         if has_minutes {
             let minutes_arg = get_argument(cx, arguments, 1);
-            minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+            minutes = to_number(cx, minutes_arg)?.as_number();
         }
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 2);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 3);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         if !has_minutes {
@@ -1045,7 +1042,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCMilliseconds (https://tc39.es/ecma262/#sec-date.prototype.setutcmilliseconds)
@@ -1065,10 +1062,10 @@ impl DatePrototype {
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
-        let milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+        let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
         if milliseconds.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         let new_date = time_clip(make_date(
@@ -1083,7 +1080,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCMinutes (https://tc39.es/ecma262/#sec-date.prototype.setutcminutes)
@@ -1103,7 +1100,7 @@ impl DatePrototype {
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
-        let minutes = maybe!(to_number(cx, minutes_arg)).as_number();
+        let minutes = to_number(cx, minutes_arg)?.as_number();
 
         let has_seconds = arguments.len() >= 2;
         let mut seconds = 0.0;
@@ -1113,16 +1110,16 @@ impl DatePrototype {
 
         if has_seconds {
             let seconds_arg = get_argument(cx, arguments, 1);
-            seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+            seconds = to_number(cx, seconds_arg)?.as_number();
         }
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 2);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         if !has_seconds {
@@ -1140,7 +1137,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCMonth (https://tc39.es/ecma262/#sec-date.prototype.setutcmonth)
@@ -1160,18 +1157,18 @@ impl DatePrototype {
         };
 
         let month_arg = get_argument(cx, arguments, 0);
-        let month = maybe!(to_number(cx, month_arg)).as_number();
+        let month = to_number(cx, month_arg)?.as_number();
 
         let has_date = arguments.len() >= 2;
         let mut date = 1.0;
 
         if has_date {
             let date_arg = get_argument(cx, arguments, 1);
-            date = maybe!(to_number(cx, date_arg)).as_number();
+            date = to_number(cx, date_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         if !has_date {
@@ -1185,7 +1182,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.setUTCSeconds (https://tc39.es/ecma262/#sec-date.prototype.setutcseconds)
@@ -1205,18 +1202,18 @@ impl DatePrototype {
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
-        let seconds = maybe!(to_number(cx, seconds_arg)).as_number();
+        let seconds = to_number(cx, seconds_arg)?.as_number();
 
         let has_milliseconds = arguments.len() >= 2;
         let mut milliseconds = 0.0;
 
         if has_milliseconds {
             let milliseconds_arg = get_argument(cx, arguments, 1);
-            milliseconds = maybe!(to_number(cx, milliseconds_arg)).as_number();
+            milliseconds = to_number(cx, milliseconds_arg)?.as_number();
         }
 
         if date_value.is_nan() {
-            return Value::nan().to_handle(cx).into();
+            return Ok(Value::nan().to_handle(cx));
         }
 
         if !has_milliseconds {
@@ -1235,7 +1232,7 @@ impl DatePrototype {
 
         set_date_value(this_value, new_date);
 
-        Value::from(new_date).to_handle(cx).into()
+        Ok(Value::from(new_date).to_handle(cx))
     }
 
     /// Date.prototype.toDateString (https://tc39.es/ecma262/#sec-date.prototype.todatestring)
@@ -1259,7 +1256,7 @@ impl DatePrototype {
 
     fn to_date_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return InternedStrings::get_str(cx, "Invalid Date").into();
+            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
         }
 
         let date_value = local_time(date_value);
@@ -1267,7 +1264,7 @@ impl DatePrototype {
         let mut string = String::new();
         date_string(&mut string, date_value);
 
-        cx.alloc_string(&string).as_string().into()
+        Ok(cx.alloc_string(&string).as_value())
     }
 
     /// Date.prototype.toISOString (https://tc39.es/ecma262/#sec-date.prototype.toisostring)
@@ -1310,7 +1307,7 @@ impl DatePrototype {
             millisecond_from_time(date_value) as i64
         );
 
-        cx.alloc_string(&string).as_string().into()
+        Ok(cx.alloc_string(&string).as_value())
     }
 
     /// Date.prototype.toJSON (https://tc39.es/ecma262/#sec-date.prototype.tojson)
@@ -1320,12 +1317,12 @@ impl DatePrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
+        let object = to_object(cx, this_value)?;
 
-        let time_value = maybe!(to_primitive(cx, object.into(), ToPrimitivePreferredType::Number));
+        let time_value = to_primitive(cx, object.into(), ToPrimitivePreferredType::Number)?;
 
         if time_value.is_number() && !time_value.as_number().is_finite() {
-            return cx.null().into();
+            return Ok(cx.null());
         }
 
         invoke(cx, object.into(), cx.names.to_iso_string(), &[])
@@ -1366,7 +1363,7 @@ impl DatePrototype {
             );
         };
 
-        to_date_string(cx, date_value).into()
+        Ok(to_date_string(cx, date_value).as_value())
     }
 
     /// Date.prototype.toLocaleTimeString (https://tc39.es/ecma262/#sec-date.prototype.tolocaletimestring)
@@ -1401,7 +1398,7 @@ impl DatePrototype {
             return type_error(cx, "Date.prototype.toString method must be called on Date object");
         };
 
-        to_date_string(cx, date_value).into()
+        Ok(to_date_string(cx, date_value).as_value())
     }
 
     /// Date.prototype.toTimeString (https://tc39.es/ecma262/#sec-date.prototype.totimestring)
@@ -1425,7 +1422,7 @@ impl DatePrototype {
 
     fn to_time_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return InternedStrings::get_str(cx, "Invalid Date").into();
+            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
         }
 
         let local_date_value = local_time(date_value);
@@ -1435,7 +1432,7 @@ impl DatePrototype {
         time_string(&mut string, local_date_value);
         time_zone_string(&mut string, date_value);
 
-        cx.alloc_string(&string).as_string().into()
+        Ok(cx.alloc_string(&string).as_value())
     }
 
     /// Date.prototype.toUTCString (https://tc39.es/ecma262/#sec-date.prototype.toutcstring)
@@ -1455,7 +1452,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return InternedStrings::get_str(cx, "Invalid Date").into();
+            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
         }
 
         let year = year_from_time(date_value);
@@ -1472,7 +1469,7 @@ impl DatePrototype {
 
         time_string(&mut string, date_value);
 
-        cx.alloc_string(&string).as_string().into()
+        Ok(cx.alloc_string(&string).as_value())
     }
 
     /// Date.prototype.valueOf (https://tc39.es/ecma262/#sec-date.prototype.valueof)
@@ -1488,7 +1485,7 @@ impl DatePrototype {
             return type_error(cx, "Date.prototype.valueOf method must be called on Date object");
         };
 
-        Value::from(date_value).to_handle(cx).into()
+        Ok(Value::from(date_value).to_handle(cx))
     }
 
     /// Date.prototype [ @@toPrimitive ] (https://tc39.es/ecma262/#sec-date.prototype-%symbol.toprimitive%)

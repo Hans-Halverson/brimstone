@@ -26,7 +26,7 @@ use super::{
     string_value::FlatString,
     tasks::TaskQueue,
     value::SymbolValue,
-    Handle, HeapPtr, Value,
+    EvalResult, Handle, HeapPtr, Value,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.
@@ -171,25 +171,23 @@ impl Context {
     }
 
     /// Execute a program, running until the task queue is empty.
-    pub fn run_script(&mut self, bytecode_script: BytecodeScript) -> Result<(), Handle<Value>> {
+    pub fn run_script(&mut self, bytecode_script: BytecodeScript) -> EvalResult<()> {
         self.vm().execute_script(bytecode_script)?;
-        self.run_all_tasks().into_rust_result()?;
+        self.run_all_tasks()?;
 
         Ok(())
     }
 
     /// Execute a module, loading and executing all dependencies. Run until the task queue is empty.
-    pub fn run_module(&mut self, module: Handle<SourceTextModule>) -> Result<(), Handle<Value>> {
+    pub fn run_module(&mut self, module: Handle<SourceTextModule>) -> EvalResult<()> {
         // Loading, linking, and evaluation should all have a current realm set as some objects
         // needing a realm will be created.
         let realm = module.program_function_ptr().realm_ptr();
-        self.vm()
-            .push_initial_realm_stack_frame(realm)
-            .into_rust_result()?;
+        self.vm().push_initial_realm_stack_frame(realm)?;
 
         let promise = execute_module(*self, module);
 
-        self.run_all_tasks().into_rust_result()?;
+        self.run_all_tasks()?;
 
         debug_assert!(!promise.is_pending());
 

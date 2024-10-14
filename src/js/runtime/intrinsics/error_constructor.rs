@@ -5,7 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -16,7 +16,6 @@ use crate::{
         type_utilities::to_string,
         Context, Handle, HeapPtr, Value,
     },
-    maybe,
 };
 
 use super::intrinsics::Intrinsic;
@@ -30,14 +29,14 @@ impl ErrorObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ErrorObject>> {
-        let object = maybe!(object_create_from_constructor::<ErrorObject>(
+        let object = object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
             ObjectKind::ErrorObject,
-            Intrinsic::ErrorPrototype
-        ));
+            Intrinsic::ErrorPrototype,
+        )?;
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 }
 
@@ -77,11 +76,11 @@ impl ErrorConstructor {
             cx.current_function()
         };
 
-        let object = maybe!(ErrorObject::new_from_constructor(cx, new_target));
+        let object = ErrorObject::new_from_constructor(cx, new_target)?;
 
         let message = get_argument(cx, arguments, 0);
         if !message.is_undefined() {
-            let message_string = maybe!(to_string(cx, message));
+            let message_string = to_string(cx, message)?;
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object.into(),
@@ -93,9 +92,9 @@ impl ErrorConstructor {
         attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         let options_arg = get_argument(cx, arguments, 1);
-        maybe!(install_error_cause(cx, object, options_arg));
+        install_error_cause(cx, object, options_arg)?;
 
-        object.into()
+        Ok(object.as_value())
     }
 }
 
@@ -107,8 +106,8 @@ pub fn install_error_cause(
 ) -> EvalResult<()> {
     if options.is_object() {
         let options = options.as_object();
-        if maybe!(has_property(cx, options, cx.names.cause())) {
-            let cause = maybe!(get(cx, options, cx.names.cause()));
+        if has_property(cx, options, cx.names.cause())? {
+            let cause = get(cx, options, cx.names.cause())?;
             create_non_enumerable_data_property_or_throw(
                 cx,
                 object.into(),
@@ -118,7 +117,7 @@ pub fn install_error_cause(
         }
     }
 
-    ().into()
+    Ok(())
 }
 
 impl HeapObject for HeapPtr<ErrorObject> {

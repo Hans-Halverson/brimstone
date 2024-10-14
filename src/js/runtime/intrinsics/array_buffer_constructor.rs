@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         builtin_function::BuiltinFunction,
         collections::{array::ByteArray, BsArray},
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         get,
@@ -17,7 +17,7 @@ use crate::{
         type_utilities::to_index,
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
@@ -53,12 +53,12 @@ impl ArrayBufferObject {
             }
         }
 
-        let mut object = maybe!(object_create_from_constructor::<ArrayBufferObject>(
+        let mut object = object_create_from_constructor::<ArrayBufferObject>(
             cx,
             constructor,
             ObjectKind::ArrayBufferObject,
-            Intrinsic::ArrayBufferPrototype
-        ));
+            Intrinsic::ArrayBufferPrototype,
+        )?;
 
         // Temporarily fill default values so object is fully initialized before GC may be triggered
         set_uninit!(object.byte_length, byte_length);
@@ -88,7 +88,7 @@ impl ArrayBufferObject {
             Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
         };
 
-        object.into()
+        Ok(object)
     }
 
     pub fn byte_length(&self) -> usize {
@@ -178,19 +178,19 @@ impl ArrayBufferConstructor {
         };
 
         let byte_length_arg = get_argument(cx, arguments, 0);
-        let byte_length = maybe!(to_index(cx, byte_length_arg));
+        let byte_length = to_index(cx, byte_length_arg)?;
 
         let options_arg = get_argument(cx, arguments, 1);
-        let max_byte_length = maybe!(get_array_buffer_max_byte_length_option(cx, options_arg));
+        let max_byte_length = get_array_buffer_max_byte_length_option(cx, options_arg)?;
 
-        maybe!(ArrayBufferObject::new(
+        Ok(ArrayBufferObject::new(
             cx,
             new_target,
             byte_length,
             max_byte_length,
-            /* data */ None
-        ))
-        .into()
+            /* data */ None,
+        )?
+        .as_value())
     }
 
     /// ArrayBuffer.isView (https://tc39.es/ecma262/#sec-arraybuffer.isview)
@@ -202,13 +202,13 @@ impl ArrayBufferConstructor {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let object = value.as_object();
         let is_view = object.is_data_view() || object.is_typed_array();
 
-        cx.bool(is_view).into()
+        Ok(cx.bool(is_view))
     }
 }
 
@@ -222,10 +222,10 @@ pub fn array_buffer_copy_and_detach(
     let new_byte_length = if new_length.is_undefined() {
         array_buffer.byte_length()
     } else {
-        maybe!(to_index(cx, new_length))
+        to_index(cx, new_length)?
     };
 
-    maybe!(throw_if_detached(cx, array_buffer.get_()));
+    throw_if_detached(cx, array_buffer.get_())?;
 
     // Can only remain auto-resizable if ArrayBuffer was already resizable and we are not forced
     // to fix the length.
@@ -237,18 +237,18 @@ pub fn array_buffer_copy_and_detach(
 
     // Create a new ArrayBuffer with the new length and a direct reference to the old buffer's data
     let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-    let new_buffer = maybe!(ArrayBufferObject::new(
+    let new_buffer = ArrayBufferObject::new(
         cx,
         array_buffer_constructor,
         new_byte_length,
         new_max_byte_length,
         array_buffer.data_opt(),
-    ));
+    )?;
 
     // Finally detach the original buffer
     array_buffer.detach();
 
-    new_buffer.into()
+    Ok(new_buffer)
 }
 
 /// CloneArrayBuffer (https://tc39.es/ecma262/#sec-clonearraybuffer)
@@ -259,13 +259,13 @@ pub fn clone_array_buffer(
     source_length: usize,
 ) -> EvalResult<Handle<ArrayBufferObject>> {
     let array_buffer_constructor = cx.get_intrinsic(Intrinsic::ArrayBufferConstructor);
-    let mut target_buffer = maybe!(ArrayBufferObject::new(
+    let mut target_buffer = ArrayBufferObject::new(
         cx,
         array_buffer_constructor,
         source_length,
         /* max_byte_length */ None,
         /* data */ None,
-    ));
+    )?;
 
     // Copy a portion of the source buffer after the given offset to the target buffer
     let source_buffer_view =
@@ -273,7 +273,7 @@ pub fn clone_array_buffer(
 
     target_buffer.data().copy_from_slice(source_buffer_view);
 
-    target_buffer.into()
+    Ok(target_buffer)
 }
 
 /// GetArrayBufferMaxByteLengthOption (https://tc39.es/ecma262/#sec-getarraybuffermaxbytelengthoption)
@@ -282,17 +282,17 @@ fn get_array_buffer_max_byte_length_option(
     options: Handle<Value>,
 ) -> EvalResult<Option<usize>> {
     if !options.is_object() {
-        return None.into();
+        return Ok(None);
     }
 
     let options = options.as_object();
-    let max_byte_length = maybe!(get(cx, options, cx.names.max_byte_length()));
+    let max_byte_length = get(cx, options, cx.names.max_byte_length())?;
 
     if max_byte_length.is_undefined() {
-        return None.into();
+        return Ok(None);
     }
 
-    Some(maybe!(to_index(cx, max_byte_length))).into()
+    Ok(Some(to_index(cx, max_byte_length)?))
 }
 
 #[inline]
@@ -300,7 +300,7 @@ pub fn throw_if_detached(cx: Context, array_buffer: HeapPtr<ArrayBufferObject>) 
     if array_buffer.is_detached() {
         type_error(cx, "array buffer is detached")
     } else {
-        ().into()
+        Ok(())
     }
 }
 

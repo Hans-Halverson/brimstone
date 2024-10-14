@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
+        eval_result::EvalResult,
         function::get_argument,
         gc::{Handle, HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
@@ -16,7 +16,7 @@ use crate::{
         type_utilities::to_boolean,
         Context, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -47,16 +47,16 @@ impl BooleanObject {
         constructor: Handle<ObjectValue>,
         boolean_data: bool,
     ) -> EvalResult<Handle<BooleanObject>> {
-        let mut object = maybe!(object_create_from_constructor::<BooleanObject>(
+        let mut object = object_create_from_constructor::<BooleanObject>(
             cx,
             constructor,
             ObjectKind::BooleanObject,
-            Intrinsic::BooleanPrototype
-        ));
+            Intrinsic::BooleanPrototype,
+        )?;
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn new_with_proto(
@@ -114,9 +114,9 @@ impl BooleanConstructor {
         let bool_value = to_boolean(get_argument(cx, arguments, 0).get());
 
         match new_target {
-            None => cx.bool(bool_value).into(),
+            None => Ok(cx.bool(bool_value)),
             Some(new_target) => {
-                maybe!(BooleanObject::new_from_constructor(cx, new_target, bool_value)).into()
+                Ok(BooleanObject::new_from_constructor(cx, new_target, bool_value)?.as_value())
             }
         }
     }

@@ -5,7 +5,7 @@ use crate::{
         parser::{analyze::analyze, parse_script, source::Source},
         runtime::{bytecode::generator::BytecodeProgramGenerator, get},
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -82,12 +82,12 @@ impl Test262Object {
         cx: Context,
         global_object: Handle<ObjectValue>,
     ) -> EvalResult<Handle<StringValue>> {
-        let print_log = maybe!(get(cx, global_object, Self::print_log_key(cx)));
+        let print_log = get(cx, global_object, Self::print_log_key(cx))?;
         if !print_log.is_string() {
             return type_error(cx, "printLog must be a string");
         }
 
-        print_log.as_string().into()
+        Ok(print_log.as_string())
     }
 
     fn set_print_log(
@@ -112,11 +112,11 @@ impl Test262Object {
 
         let global_object = cx.current_realm_ptr().global_object();
 
-        let old_print_log = maybe!(Self::get_print_log(cx, global_object));
+        let old_print_log = Self::get_print_log(cx, global_object)?;
         let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string());
-        maybe!(Self::set_print_log(cx, global_object, new_print_log));
+        Self::set_print_log(cx, global_object, new_print_log)?;
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     pub fn create_realm(
@@ -127,15 +127,15 @@ impl Test262Object {
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm
         let realm = Realm::new_uninit(cx);
-        maybe!(set_default_global_bindings(
-            cx, realm, /* expose_gc */ false, /* expose_test262 */ false
-        ));
+        set_default_global_bindings(
+            cx, realm, /* expose_gc */ false, /* expose_test262 */ false,
+        )?;
 
         // Add $262 object to new global object
         let test_262_object = Test262Object::new(cx, realm);
         Test262Object::install(cx, realm, test_262_object);
 
-        test_262_object.into()
+        Ok(test_262_object.as_value())
     }
 
     pub fn eval_script(
@@ -179,10 +179,7 @@ impl Test262Object {
             Err(error) => return syntax_error(cx, &error.to_string()),
         };
 
-        match cx.vm().execute_script(bytecode_script) {
-            Ok(value) => EvalResult::Ok(value),
-            Err(error) => EvalResult::Throw(error),
-        }
+        cx.vm().execute_script(bytecode_script)
     }
 
     pub fn detach_array_buffer(
@@ -193,17 +190,17 @@ impl Test262Object {
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let object = value.as_object();
         if !object.is_array_buffer() {
-            return cx.undefined().into();
+            return Ok(cx.undefined());
         }
 
         let mut array_buffer = object.cast::<ArrayBufferObject>();
         array_buffer.detach();
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }

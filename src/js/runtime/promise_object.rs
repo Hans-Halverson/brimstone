@@ -15,7 +15,7 @@ use crate::{
         value::Value,
         Context, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -102,19 +102,19 @@ impl PromiseObject {
         cx: Context,
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<PromiseObject>> {
-        let mut object = maybe!(object_create_from_constructor::<PromiseObject>(
+        let mut object = object_create_from_constructor::<PromiseObject>(
             cx,
             constructor,
             ObjectKind::Promise,
-            Intrinsic::PromisePrototype
-        ));
+            Intrinsic::PromisePrototype,
+        )?;
 
         set_uninit!(
             object.state,
             PromiseState::Pending { reactions: None, already_resolved: false }
         );
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn is_pending(&self) -> bool {
@@ -219,8 +219,8 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
     // Otherwise look for a "then" property on the resolution object
     let then_completion = get(cx, resolution.as_object(), cx.names.then());
     let then_value = match then_completion {
-        EvalResult::Ok(value) => value,
-        EvalResult::Throw(error) => {
+        Ok(value) => value,
+        Err(error) => {
             promise.reject(cx, error.get());
             return;
         }
@@ -350,19 +350,19 @@ pub fn coerce_to_ordinary_promise(
     if is_promise(value.get()) {
         let value = value.cast::<PromiseObject>();
 
-        let value_constructor = maybe!(get(cx, value.into(), cx.names.constructor()));
+        let value_constructor = get(cx, value.into(), cx.names.constructor())?;
         let promise_constructor = cx.get_intrinsic_ptr(Intrinsic::PromiseConstructor);
         if value_constructor.is_object()
             && same_object_value(value_constructor.as_object().get_(), promise_constructor)
         {
-            return value.into();
+            return Ok(value);
         }
     }
 
     let promise = PromiseObject::new_pending(cx).to_handle();
     resolve(cx, promise, value);
 
-    promise.into()
+    Ok(promise)
 }
 
 /// Creates a new promise with the provided constructor and immediately resolves it with a result.
@@ -376,17 +376,17 @@ pub fn promise_resolve(
     // If result is already a promise, return it if it was constructed with the same constructor.
     if is_promise(result.get()) {
         let result = result.as_object();
-        let value_constructor = maybe!(get(cx, result, cx.names.constructor()));
+        let value_constructor = get(cx, result, cx.names.constructor())?;
         if same_value(value_constructor, constructor) {
-            return result.into();
+            return Ok(result);
         }
     }
 
     // Create a new promise and immediately resolve it
-    let capability = maybe!(PromiseCapability::new(cx, constructor));
-    maybe!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
+    let capability = PromiseCapability::new(cx, constructor)?;
+    call_object(cx, capability.resolve(), cx.undefined(), &[result])?;
 
-    capability.promise().into()
+    Ok(capability.promise())
 }
 
 fn enqueue_promise_then_reaction_task(
@@ -501,7 +501,7 @@ impl PromiseCapability {
 
         // Construct the promise using the provided constructor. This will fill the resolve and
         // reject fields of the capability.
-        let promise = maybe!(construct(cx, constructor, &[executor.into()], None));
+        let promise = construct(cx, constructor, &[executor.into()], None)?;
 
         if !is_callable(capability.resolve.to_handle(cx)) {
             return type_error(cx, "resolve must be callable");
@@ -512,7 +512,7 @@ impl PromiseCapability {
         // Finally store the promise in the capability record, completing it
         capability.promise = Some(promise.get_());
 
-        capability.into()
+        Ok(capability)
     }
 
     pub fn promise(&self) -> Handle<ObjectValue> {
@@ -555,7 +555,7 @@ impl PromiseCapability {
         capability.resolve = resolve.get();
         capability.reject = reject.get();
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 }
 

@@ -310,7 +310,7 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
 
     let eval_result = execute_script_as_bytecode(cx, realm, &ast);
 
-    if let EvalResult::Throw(_) = eval_result {
+    if let Err(_) = eval_result {
         panic!("Failed to evaluate test harness file {}", full_path.display())
     }
 }
@@ -326,14 +326,11 @@ fn execute_script_as_bytecode(
         Ok(bytecode_script) => bytecode_script,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
-            return EvalResult::Throw(err_string.into());
+            return Err(err_string.into());
         }
     };
 
-    match cx.run_script(bytecode_script) {
-        Ok(_) => EvalResult::Ok(()),
-        Err(error_value) => EvalResult::Throw(error_value),
-    }
+    cx.run_script(bytecode_script)
 }
 
 fn execute_module_as_bytecode(
@@ -347,15 +344,11 @@ fn execute_module_as_bytecode(
         Ok(module) => module,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
-            return EvalResult::Throw(err_string.into());
+            return Err(err_string.into());
         }
     };
 
-    // Panic on rejection, which will be caught by the test runner
-    match cx.run_module(module) {
-        Ok(_) => EvalResult::Ok(()),
-        Err(error_value) => EvalResult::Throw(error_value),
-    }
+    cx.run_module(module)
 }
 
 /// Determine whether the evaluation completion for a test corresponds to that test passing or
@@ -369,15 +362,15 @@ fn check_expected_completion(
 ) -> TestResult {
     match completion {
         // A normal completion is a success only if the test was expected to not throw
-        EvalResult::Ok(_) => match &test.expected_result {
+        Ok(_) => match &test.expected_result {
             ExpectedResult::Positive => {
                 // Async tests determine success by looking at the output logged to print()
                 if test.is_async {
                     // Get the print log stored on the global object
                     let print_log = Test262Object::get_print_log(cx, global_object);
                     let print_log = match print_log {
-                        EvalResult::Ok(log) => log.to_string(),
-                        EvalResult::Throw(_) => {
+                        Ok(log) => log.to_string(),
+                        Err(_) => {
                             return TestResult::failure(
                                 test,
                                 "failed to access print log".to_owned(),
@@ -415,7 +408,7 @@ fn check_expected_completion(
         },
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
-        EvalResult::Throw(thrown_value) => match &test.expected_result {
+        Err(thrown_value) => match &test.expected_result {
             ExpectedResult::Negative {
                 phase: phase @ (TestPhase::Resolution | TestPhase::Runtime),
                 type_,
@@ -426,7 +419,7 @@ fn check_expected_completion(
                     if thrown_object.is_error() {
                         // Check if thrown error type has the same name as the expected error
                         match get(cx, thrown_object, cx.names.name()) {
-                            EvalResult::Ok(name_value) if name_value.is_string() => {
+                            Ok(name_value) if name_value.is_string() => {
                                 &name_value.as_string().to_string() == type_
                             }
                             _ => false,
@@ -435,7 +428,7 @@ fn check_expected_completion(
                         // The Test262Error does not extend the Error type or have a name property,
                         // so check the if the message starts with "Test262Error".
                         match to_string(cx, thrown_value) {
-                            EvalResult::Ok(message_value) => {
+                            Ok(message_value) => {
                                 message_value.to_string().starts_with("Test262Error")
                             }
                             _ => false,
@@ -495,14 +488,11 @@ fn is_error_in_expected_phase(cx: Context, test: &Test, expected_phase: TestPhas
 fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
     // Extract message for Test262Error, otherwise print to console normally
     if value.is_object() {
-        match to_string(cx, value) {
-            EvalResult::Ok(message_value) => {
-                let message = message_value.to_string();
-                if message.starts_with("Test262Error") {
-                    return String::from(message);
-                }
+        if let Ok(message_value) = to_string(cx, value) {
+            let message = message_value.to_string();
+            if message.starts_with("Test262Error") {
+                return String::from(message);
             }
-            _ => {}
         }
     }
 

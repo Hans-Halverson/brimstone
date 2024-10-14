@@ -1,18 +1,15 @@
 use rand::Rng;
 
-use crate::{
-    js::runtime::{
-        completion::EvalResult,
-        function::get_argument,
-        numeric_operations::number_exponentiate,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::{to_number, to_uint32},
-        value::Value,
-        Context, Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    eval_result::EvalResult,
+    function::get_argument,
+    numeric_operations::number_exponentiate,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::{to_number, to_uint32},
+    value::Value,
+    Context, Handle,
 };
 
 use super::intrinsics::Intrinsic;
@@ -106,12 +103,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
+        let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            Value::smi(i32::abs(n.as_smi())).to_handle(cx).into()
+            Ok(Value::smi(i32::abs(n.as_smi())).to_handle(cx))
         } else {
-            Value::number(f64::abs(n.as_double())).to_handle(cx).into()
+            Ok(Value::number(f64::abs(n.as_double())).to_handle(cx))
         }
     }
 
@@ -123,8 +120,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::acos(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::acos(n.as_number())).to_handle(cx))
     }
 
     /// Math.acosh (https://tc39.es/ecma262/#sec-math.acosh)
@@ -135,10 +132,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::acosh(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::acosh(n.as_number())).to_handle(cx))
     }
 
     /// Math.asin (https://tc39.es/ecma262/#sec-math.asin)
@@ -149,8 +144,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::asin(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::asin(n.as_number())).to_handle(cx))
     }
 
     /// Math.asinh (https://tc39.es/ecma262/#sec-math.asinh)
@@ -161,10 +156,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::asinh(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::asinh(n.as_number())).to_handle(cx))
     }
 
     /// Math.atan (https://tc39.es/ecma262/#sec-math.atan)
@@ -175,8 +168,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::atan(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::atan(n.as_number())).to_handle(cx))
     }
 
     /// Math.atanh (https://tc39.es/ecma262/#sec-math.atanh)
@@ -187,10 +180,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::atanh(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::atanh(n.as_number())).to_handle(cx))
     }
 
     /// Math.atan2 (https://tc39.es/ecma262/#sec-math.atan2)
@@ -201,14 +192,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let y_arg = get_argument(cx, arguments, 0);
-        let y = maybe!(to_number(cx, y_arg));
+        let y = to_number(cx, y_arg)?;
 
         let x_arg = get_argument(cx, arguments, 1);
-        let x = maybe!(to_number(cx, x_arg));
+        let x = to_number(cx, x_arg)?;
 
-        Value::number(y.as_number().atan2(x.as_number()))
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(y.as_number().atan2(x.as_number())).to_handle(cx))
     }
 
     /// Math.cbrt (https://tc39.es/ecma262/#sec-math.cbrt)
@@ -219,8 +208,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::cbrt(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::cbrt(n.as_number())).to_handle(cx))
     }
 
     /// Math.ceil (https://tc39.es/ecma262/#sec-math.ceil)
@@ -231,12 +220,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
+        let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            n.into()
+            Ok(n)
         } else {
-            Value::number(f64::ceil(n.as_double())).to_handle(cx).into()
+            Ok(Value::number(f64::ceil(n.as_double())).to_handle(cx))
         }
     }
 
@@ -248,8 +237,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_uint32(cx, argument));
-        Value::smi(n.leading_zeros() as i32).to_handle(cx).into()
+        let n = to_uint32(cx, argument)?;
+        Ok(Value::smi(n.leading_zeros() as i32).to_handle(cx))
     }
 
     /// Math.cos (https://tc39.es/ecma262/#sec-math.cos)
@@ -260,8 +249,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::cos(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::cos(n.as_number())).to_handle(cx))
     }
 
     /// Math.cosh (https://tc39.es/ecma262/#sec-math.cosh)
@@ -272,8 +261,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::cosh(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::cosh(n.as_number())).to_handle(cx))
     }
 
     /// Math.exp (https://tc39.es/ecma262/#sec-math.exp)
@@ -284,8 +273,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::exp(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::exp(n.as_number())).to_handle(cx))
     }
 
     /// Math.expm1 (https://tc39.es/ecma262/#sec-math.expm1)
@@ -296,10 +285,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::exp_m1(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::exp_m1(n.as_number())).to_handle(cx))
     }
 
     /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)
@@ -310,14 +297,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
+        let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            n.into()
+            Ok(n)
         } else {
-            Value::number(f64::floor(n.as_double()))
-                .to_handle(cx)
-                .into()
+            Ok(Value::number(f64::floor(n.as_double())).to_handle(cx))
         }
     }
 
@@ -329,10 +314,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number((n.as_number() as f32) as f64)
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number((n.as_number() as f32) as f64).to_handle(cx))
     }
 
     /// Math.hypot (https://tc39.es/ecma262/#sec-math.hypot)
@@ -347,7 +330,7 @@ impl MathObject {
         let mut has_nan: bool = false;
 
         for arg in arguments {
-            let n = maybe!(to_number(cx, *arg)).get();
+            let n = to_number(cx, *arg)?.get();
 
             if has_infinity {
                 continue;
@@ -374,12 +357,10 @@ impl MathObject {
         }
 
         if has_infinity || has_nan {
-            return sum.to_handle(cx).into();
+            return Ok(sum.to_handle(cx));
         }
 
-        Value::number(f64::sqrt(sum.as_number()))
-            .to_handle(cx)
-            .into()
+        Ok(Value::number(f64::sqrt(sum.as_number())).to_handle(cx))
     }
 
     /// Math.imul (https://tc39.es/ecma262/#sec-math.imul)
@@ -390,14 +371,14 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let x_arg = get_argument(cx, arguments, 0);
-        let x = maybe!(to_uint32(cx, x_arg));
+        let x = to_uint32(cx, x_arg)?;
 
         let y_arg = get_argument(cx, arguments, 1);
-        let y = maybe!(to_uint32(cx, y_arg));
+        let y = to_uint32(cx, y_arg)?;
 
         let mod_mul = ((x as u64) * (y as u64)) as u32;
 
-        Value::smi(mod_mul as i32).to_handle(cx).into()
+        Ok(Value::smi(mod_mul as i32).to_handle(cx))
     }
 
     /// Math.log (https://tc39.es/ecma262/#sec-math.log)
@@ -408,8 +389,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::ln(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::ln(n.as_number())).to_handle(cx))
     }
 
     /// Math.log1p (https://tc39.es/ecma262/#sec-math.log1p)
@@ -420,10 +401,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::ln_1p(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::ln_1p(n.as_number())).to_handle(cx))
     }
 
     /// Math.log10 (https://tc39.es/ecma262/#sec-math.log10)
@@ -434,10 +413,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::log10(n.as_number()))
-            .to_handle(cx)
-            .into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::log10(n.as_number())).to_handle(cx))
     }
 
     /// Math.log2 (https://tc39.es/ecma262/#sec-math.log2)
@@ -448,8 +425,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::log2(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::log2(n.as_number())).to_handle(cx))
     }
 
     /// Math.max (https://tc39.es/ecma262/#sec-math.max)
@@ -463,7 +440,7 @@ impl MathObject {
         let mut found_nan = false;
 
         for arg in arguments {
-            let n = maybe!(to_number(cx, *arg)).get();
+            let n = to_number(cx, *arg)?.get();
 
             if found_nan || n.is_nan() {
                 if !found_nan {
@@ -483,7 +460,7 @@ impl MathObject {
             }
         }
 
-        highest.to_handle(cx).into()
+        Ok(highest.to_handle(cx))
     }
 
     /// Math.min (https://tc39.es/ecma262/#sec-math.min)
@@ -497,7 +474,7 @@ impl MathObject {
         let mut found_nan = false;
 
         for arg in arguments {
-            let n = maybe!(to_number(cx, *arg)).get();
+            let n = to_number(cx, *arg)?.get();
 
             if found_nan || n.is_nan() {
                 if !found_nan {
@@ -517,7 +494,7 @@ impl MathObject {
             }
         }
 
-        lowest.to_handle(cx).into()
+        Ok(lowest.to_handle(cx))
     }
 
     /// Math.pow (https://tc39.es/ecma262/#sec-math.pow)
@@ -528,14 +505,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let base_arg = get_argument(cx, arguments, 0);
-        let base = maybe!(to_number(cx, base_arg));
+        let base = to_number(cx, base_arg)?;
 
         let exponent_arg = get_argument(cx, arguments, 1);
-        let exponent = maybe!(to_number(cx, exponent_arg));
+        let exponent = to_number(cx, exponent_arg)?;
 
-        Value::from(number_exponentiate(base.as_number(), exponent.as_number()))
-            .to_handle(cx)
-            .into()
+        Ok(Value::from(number_exponentiate(base.as_number(), exponent.as_number())).to_handle(cx))
     }
 
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)
@@ -546,7 +521,7 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let n = rand::thread_rng().gen::<f64>();
-        Value::number(n).to_handle(cx).into()
+        Ok(Value::number(n).to_handle(cx))
     }
 
     /// Math.round (https://tc39.es/ecma262/#sec-math.round)
@@ -557,10 +532,10 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
+        let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            n.into()
+            Ok(n)
         } else {
             let n = n.as_double();
 
@@ -571,7 +546,7 @@ impl MathObject {
                 f64::ceil(n)
             };
 
-            Value::number(rounded).to_handle(cx).into()
+            Ok(Value::number(rounded).to_handle(cx))
         }
     }
 
@@ -583,7 +558,7 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument)).get();
+        let n = to_number(cx, argument)?.get();
 
         let value = if n.is_smi() {
             let n_smi = n.as_smi();
@@ -606,7 +581,7 @@ impl MathObject {
             }
         };
 
-        value.to_handle(cx).into()
+        Ok(value.to_handle(cx))
     }
 
     /// Math.sin (https://tc39.es/ecma262/#sec-math.sin)
@@ -617,8 +592,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::sin(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::sin(n.as_number())).to_handle(cx))
     }
 
     /// Math.sinh (https://tc39.es/ecma262/#sec-math.sinh)
@@ -629,8 +604,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::sinh(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::sinh(n.as_number())).to_handle(cx))
     }
 
     /// Math.sqrt (https://tc39.es/ecma262/#sec-math.sqrt)
@@ -641,8 +616,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::sqrt(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::sqrt(n.as_number())).to_handle(cx))
     }
 
     /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
@@ -653,8 +628,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::tan(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::tan(n.as_number())).to_handle(cx))
     }
 
     /// Math.tanh (https://tc39.es/ecma262/#sec-math.tanh)
@@ -665,8 +640,8 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
-        Value::number(f64::tanh(n.as_number())).to_handle(cx).into()
+        let n = to_number(cx, argument)?;
+        Ok(Value::number(f64::tanh(n.as_number())).to_handle(cx))
     }
 
     /// Math.trunc (https://tc39.es/ecma262/#sec-math.trunc)
@@ -677,14 +652,12 @@ impl MathObject {
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let n = maybe!(to_number(cx, argument));
+        let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            n.into()
+            Ok(n)
         } else {
-            Value::number(f64::trunc(n.as_double()))
-                .to_handle(cx)
-                .into()
+            Ok(Value::number(f64::trunc(n.as_double())).to_handle(cx))
         }
     }
 }

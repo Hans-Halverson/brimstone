@@ -4,8 +4,8 @@ use crate::{
     extend_object,
     js::runtime::{
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         intrinsics::array_buffer_constructor::throw_if_detached,
@@ -16,7 +16,6 @@ use crate::{
         type_utilities::to_index,
         Context, Handle, HeapPtr, Value,
     },
-    maybe,
 };
 
 use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
@@ -39,12 +38,12 @@ impl DataViewObject {
         byte_length: Option<usize>,
         byte_offset: usize,
     ) -> EvalResult<Handle<DataViewObject>> {
-        let mut object = maybe!(object_create_from_constructor::<DataViewObject>(
+        let mut object = object_create_from_constructor::<DataViewObject>(
             cx,
             constructor,
             ObjectKind::DataViewObject,
-            Intrinsic::DataViewPrototype
-        ));
+            Intrinsic::DataViewPrototype,
+        )?;
 
         let viewed_array_buffer = viewed_array_buffer.get_();
 
@@ -52,7 +51,7 @@ impl DataViewObject {
         object.byte_length = byte_length;
         object.byte_offset = byte_offset;
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn viewed_array_buffer_ptr(&self) -> HeapPtr<ArrayBufferObject> {
@@ -121,9 +120,9 @@ impl DataViewConstructor {
         let buffer_object = buffer_object.cast::<ArrayBufferObject>();
 
         let offset_arg = get_argument(cx, arguments, 1);
-        let offset = maybe!(to_index(cx, offset_arg));
+        let offset = to_index(cx, offset_arg)?;
 
-        maybe!(throw_if_detached(cx, buffer_object.get_()));
+        throw_if_detached(cx, buffer_object.get_())?;
 
         let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
@@ -144,7 +143,7 @@ impl DataViewConstructor {
                 None
             }
         } else {
-            let view_byte_length = maybe!(to_index(cx, byte_length_argument));
+            let view_byte_length = to_index(cx, byte_length_argument)?;
 
             if offset + view_byte_length > buffer_byte_length {
                 return range_error(cx, "data view byte length is too large for this buffer");
@@ -153,16 +152,16 @@ impl DataViewConstructor {
             Some(view_byte_length)
         };
 
-        let data_view = maybe!(DataViewObject::new_from_constructor(
+        let data_view = DataViewObject::new_from_constructor(
             cx,
             new_target,
             buffer_object,
             view_byte_length,
             offset,
-        ));
+        )?;
 
         // Be sure to check for array buffer detachment since constructor may invoke user code
-        maybe!(throw_if_detached(cx, buffer_object.get_()));
+        throw_if_detached(cx, buffer_object.get_())?;
 
         // Also check if underlying buffer was resized during construction and redo bounds checks
         let buffer_byte_length = buffer_object.byte_length();
@@ -176,7 +175,7 @@ impl DataViewConstructor {
             }
         }
 
-        data_view.into()
+        Ok(data_view.as_value())
     }
 }
 

@@ -1,9 +1,9 @@
 use crate::must;
 
 use super::{
-    abstract_operations::define_property_or_throw, completion::EvalResult,
-    object_value::ObjectValue, property_descriptor::PropertyDescriptor, property_key::PropertyKey,
-    string_value::StringValue, value::Value, Context, Handle,
+    abstract_operations::define_property_or_throw, object_value::ObjectValue,
+    property_descriptor::PropertyDescriptor, property_key::PropertyKey, string_value::StringValue,
+    value::Value, Context, Handle,
 };
 
 /// SetFunctionName (https://tc39.es/ecma262/#sec-setfunctionname)

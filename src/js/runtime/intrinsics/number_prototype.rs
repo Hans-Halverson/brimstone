@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        completion::EvalResult,
-        error::{range_error, type_error},
-        function::get_argument,
-        interned_strings::InternedStrings,
-        object_value::ObjectValue,
-        realm::Realm,
-        string_value::FlatString,
-        to_string,
-        type_utilities::{number_to_string, to_integer_or_infinity},
-        value::Value,
-        Context, Handle,
-    },
-    maybe,
+use crate::js::runtime::{
+    error::{range_error, type_error},
+    eval_result::EvalResult,
+    function::get_argument,
+    interned_strings::InternedStrings,
+    object_value::ObjectValue,
+    realm::Realm,
+    string_value::FlatString,
+    to_string,
+    type_utilities::{number_to_string, to_integer_or_infinity},
+    value::Value,
+    Context, Handle,
 };
 
 use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
@@ -23,8 +20,7 @@ impl NumberPrototype {
     /// Properties of the Number Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-number-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut object: Handle<ObjectValue> =
-            NumberObject::new_with_proto(cx, object_proto, 0.0).into();
+        let mut object = NumberObject::new_with_proto(cx, object_proto, 0.0).as_object();
 
         // Constructor property is added once NumberConstructor has been created
         object.intrinsic_func(cx, cx.names.to_exponential(), Self::to_exponential, 1, realm);
@@ -44,14 +40,14 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
-        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
+        let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
 
         if !number.is_finite() {
-            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
         if !(0.0..=100.0).contains(&num_fraction_digits) {
@@ -70,7 +66,7 @@ impl NumberPrototype {
                 formatted.insert(exponent_index + 1, '+');
             }
 
-            return cx.alloc_string(&formatted).as_string().into();
+            return Ok(cx.alloc_string(&formatted).as_value());
         }
 
         // Otherwise format string ourselves so that we control rounding to precision. We cannot
@@ -114,7 +110,7 @@ impl NumberPrototype {
 
         result.push_str(&exponent.to_string());
 
-        cx.alloc_string(&result).as_string().into()
+        Ok(cx.alloc_string(&result).as_value())
     }
 
     /// Number.prototype.toFixed (https://tc39.es/ecma262/#sec-number.prototype.tofixed)
@@ -124,11 +120,11 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
-        let num_fraction_digits = maybe!(to_integer_or_infinity(cx, fraction_digits_arg));
+        let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
         if !num_fraction_digits.is_finite() || !(0.0..=100.0).contains(&num_fraction_digits) {
             return range_error(cx, "number of fraction digits must between 0 and 100");
         }
@@ -136,10 +132,7 @@ impl NumberPrototype {
         let num_fraction_digits = num_fraction_digits as u8;
 
         if !number.is_finite() {
-            return cx
-                .alloc_string(&number_to_string(number))
-                .as_string()
-                .into();
+            return Ok(cx.alloc_string(&number_to_string(number)).as_value());
         }
 
         let is_negative = number < 0.0;
@@ -163,7 +156,7 @@ impl NumberPrototype {
             m = format!("-{}", m);
         }
 
-        cx.alloc_string(&m).as_string().into()
+        Ok(cx.alloc_string(&m).as_value())
     }
 
     /// Number.prototype.toLocaleString (https://tc39.es/ecma262/#sec-number.prototype.tolocalestring)
@@ -183,16 +176,16 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
 
         let precision_arg = get_argument(cx, arguments, 0);
         if precision_arg.is_undefined() {
-            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
-        let precision = maybe!(to_integer_or_infinity(cx, precision_arg));
+        let precision = to_integer_or_infinity(cx, precision_arg)?;
         if !number_value.as_number().is_finite() {
-            return maybe!(to_string(cx, number_value.to_handle(cx))).into();
+            return Ok(to_string(cx, number_value.to_handle(cx))?.as_value());
         }
 
         let precision = precision as i64;
@@ -241,7 +234,7 @@ impl NumberPrototype {
                 result.push(sign);
                 result.push_str(&exponent.to_string());
 
-                return cx.alloc_string(&result).as_string().into();
+                return Ok(cx.alloc_string(&result).as_value());
             }
         }
 
@@ -258,7 +251,7 @@ impl NumberPrototype {
             result.push_str(&mantissa);
         }
 
-        cx.alloc_string(&result).as_string().into()
+        Ok(cx.alloc_string(&result).as_value())
     }
 
     /// Number.prototype.toString (https://tc39.es/ecma262/#sec-number.prototype.tostring)
@@ -268,7 +261,7 @@ impl NumberPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
+        let number_value = this_number_value(cx, this_value)?;
 
         let radix = get_argument(cx, arguments, 0);
 
@@ -284,7 +277,7 @@ impl NumberPrototype {
 
                 radix
             } else {
-                let radix = maybe!(to_integer_or_infinity(cx, radix));
+                let radix = to_integer_or_infinity(cx, radix)?;
 
                 if !(2.0..=36.0).contains(&radix) {
                     return range_error(cx, "radix must be between 2 and 36");
@@ -295,14 +288,14 @@ impl NumberPrototype {
         };
 
         if number_value.is_nan() {
-            return cx.names.nan.as_string().to_handle().into();
+            return Ok(cx.names.nan().as_string().as_value());
         } else if number_value.is_zero() {
-            return InternedStrings::get_str(cx, "0").into();
+            return Ok(InternedStrings::get_str(cx, "0").as_value());
         } else if number_value.is_infinity() {
             return if number_value.as_number() == f64::INFINITY {
-                cx.names.infinity.as_string().to_handle().into()
+                Ok(cx.names.infinity().as_string().as_value())
             } else {
-                InternedStrings::get_str(cx, "-Infinity").into()
+                Ok(InternedStrings::get_str(cx, "-Infinity").as_value())
             };
         }
 
@@ -313,7 +306,7 @@ impl NumberPrototype {
                 number_value.as_double().to_string()
             };
 
-            return cx.alloc_string(&str).as_string().into();
+            return Ok(cx.alloc_string(&str).as_value());
         }
 
         // Float to string conversion based on SerenityOS's LibJS
@@ -362,10 +355,9 @@ impl NumberPrototype {
             }
         }
 
-        FlatString::from_one_byte_slice(cx, &result_bytes)
-            .as_string()
+        Ok(FlatString::from_one_byte_slice(cx, &result_bytes)
             .to_handle()
-            .into()
+            .as_value())
     }
 
     /// Number.prototype.valueOf (https://tc39.es/ecma262/#sec-number.prototype.valueof)
@@ -375,8 +367,8 @@ impl NumberPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let number_value = maybe!(this_number_value(cx, this_value));
-        number_value.to_handle(cx).into()
+        let number_value = this_number_value(cx, this_value)?;
+        Ok(number_value.to_handle(cx))
     }
 }
 
@@ -392,13 +384,14 @@ const RADIX_TO_PRECISION: [u8; 37] = [
 fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Value> {
     let value = value_handle.get();
     if value.is_number() {
-        return value.into();
+        return Ok(value);
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_number_object() {
-            return object_value.cast::<NumberObject>().number_data().into();
+            let number_f64 = object_value.cast::<NumberObject>().number_data();
+            return Ok(Value::number(number_f64));
         }
     }
 

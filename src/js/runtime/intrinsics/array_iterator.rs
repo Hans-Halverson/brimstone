@@ -5,8 +5,8 @@ use crate::{
     js::runtime::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
-        completion::EvalResult,
         error::type_error,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         iterator::create_iter_result_object,
         object_descriptor::ObjectKind,
@@ -18,7 +18,7 @@ use crate::{
         value::Value,
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -87,7 +87,7 @@ impl ArrayIterator {
             return type_error(cx, "typed array is out of bounds");
         }
 
-        (typed_array_length(&typed_array_record) as u64).into()
+        Ok(typed_array_length(&typed_array_record) as u64)
     }
 
     fn get_array_like_length(cx: Context, array: Handle<ObjectValue>) -> EvalResult<u64> {
@@ -127,21 +127,21 @@ impl ArrayIteratorPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut array_iterator = maybe!(ArrayIterator::cast_from_value(cx, this_value));
+        let mut array_iterator = ArrayIterator::cast_from_value(cx, this_value)?;
         let array = array_iterator.array();
 
         // Early return if iterator is already done, before potential failure during `get_length`
         if array_iterator.is_done {
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         // Dispatches based on whether this is array or typed array
-        let length = maybe!((array_iterator.get_length)(cx, array));
+        let length = (array_iterator.get_length)(cx, array)?;
 
         let current_index = array_iterator.current_index as u64;
         if array_iterator.is_done || current_index >= length {
             array_iterator.is_done = true;
-            return create_iter_result_object(cx, cx.undefined(), true).into();
+            return Ok(create_iter_result_object(cx, cx.undefined(), true));
         }
 
         array_iterator.current_index += 1;
@@ -149,20 +149,20 @@ impl ArrayIteratorPrototype {
         match array_iterator.kind {
             ArrayIteratorKind::Key => {
                 let key = Value::from(current_index).to_handle(cx);
-                create_iter_result_object(cx, key, false).into()
+                Ok(create_iter_result_object(cx, key, false))
             }
             ArrayIteratorKind::Value => {
                 let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
-                let value = maybe!(array.get(cx, property_key, array.into()));
-                create_iter_result_object(cx, value, false).into()
+                let value = array.get(cx, property_key, array.into())?;
+                Ok(create_iter_result_object(cx, value, false))
             }
             ArrayIteratorKind::KeyAndValue => {
                 let key = Value::from(current_index).to_handle(cx);
                 let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
-                let value = maybe!(array.get(cx, property_key, array.into()));
+                let value = array.get(cx, property_key, array.into())?;
 
                 let result_pair = create_array_from_list(cx, &[key, value]);
-                create_iter_result_object(cx, result_pair.into(), false).into()
+                Ok(create_iter_result_object(cx, result_pair.into(), false))
             }
         }
     }

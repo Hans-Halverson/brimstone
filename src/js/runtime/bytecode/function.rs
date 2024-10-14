@@ -19,7 +19,7 @@ use crate::{
             scope::Scope,
             source_file::SourceFile,
             string_value::StringValue,
-            Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+            Context, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
         },
     },
     must, set_uninit,
@@ -184,7 +184,7 @@ impl Handle<Closure> {
     /// added but defaulted to the empty string.
     pub fn set_lazy_function_name(&mut self, cx: Context, name: Handle<StringValue>) {
         let property = Property::data(name.into(), false, false, true);
-        self.object().set_property(cx, cx.names.name(), property);
+        self.as_object().set_property(cx, cx.names.name(), property);
     }
 }
 

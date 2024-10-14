@@ -8,8 +8,8 @@ use crate::{
     js::runtime::{
         abstract_operations::{get, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
-        completion::EvalResult,
         error::{range_error, type_error},
+        eval_result::EvalResult,
         function::get_argument,
         gc::{HeapObject, HeapVisitor},
         iterator::iter_iterator_method_values,
@@ -31,7 +31,7 @@ use crate::{
         value::{BigIntValue, Value},
         Context, Handle, HeapPtr,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -293,15 +293,15 @@ create_typed_array!(
 
 #[inline]
 pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64> {
-    let bigint = maybe!(to_big_int64(cx, value));
+    let bigint = to_big_int64(cx, value)?;
 
     // Guaranteed to have a single u64 component in i64 range from checks in to_big_int64
     let (sign, digits) = bigint.to_u64_digits();
 
     match sign {
-        Sign::Plus => (digits[0] as i64).into(),
-        Sign::NoSign => 0.into(),
-        Sign::Minus => (-(digits[0] as i64)).into(),
+        Sign::Plus => Ok(digits[0] as i64),
+        Sign::NoSign => Ok(0),
+        Sign::Minus => Ok(-(digits[0] as i64)),
     }
 }
 
@@ -324,15 +324,15 @@ create_typed_array!(
 
 #[inline]
 pub fn to_big_uint64_element(cx: Context, value: Handle<Value>) -> EvalResult<u64> {
-    let bigint = maybe!(to_big_uint64(cx, value));
+    let bigint = to_big_uint64(cx, value)?;
 
     // Guaranteed to have a single u64 component from checks in to_big_uint64
     let (sign, digits) = bigint.to_u64_digits();
 
     if sign == Sign::NoSign {
-        0.into()
+        Ok(0)
     } else {
-        digits[0].into()
+        Ok(digits[0])
     }
 }
 
@@ -355,8 +355,8 @@ create_typed_array!(
 
 #[inline]
 pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> {
-    let number = maybe!(to_number(cx, value));
-    (number.as_number() as f32).into()
+    let number = to_number(cx, value)?;
+    Ok(number.as_number() as f32)
 }
 
 #[inline]
@@ -377,8 +377,8 @@ create_typed_array!(
 
 #[inline]
 pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> {
-    let number = maybe!(to_number(cx, value));
-    number.as_number().into()
+    let number = to_number(cx, value)?;
+    Ok(number.as_number())
 }
 
 #[inline]

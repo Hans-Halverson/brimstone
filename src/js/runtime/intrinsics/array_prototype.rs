@@ -27,7 +27,7 @@ use crate::{
         },
         Context, EvalResult, Handle, Value,
     },
-    maybe, must,
+    must,
 };
 
 use super::{
@@ -42,7 +42,7 @@ impl ArrayPrototype {
     /// Properties of the Array Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-array-prototype-object)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut array: Handle<ObjectValue> = ArrayObject::new(cx, object_proto).into();
+        let mut array = ArrayObject::new(cx, object_proto).as_object();
 
         // Create values function as it is referenced by multiple properties
         let values_function =
@@ -108,21 +108,21 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let index_arg = get_argument(cx, arguments, 0);
-        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+        let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         let key = if relative_index >= 0.0 {
             if relative_index >= length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
         } else {
             if -relative_index > length as f64 {
-                return cx.undefined().into();
+                return Ok(cx.undefined());
             }
 
             PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
@@ -138,34 +138,34 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let array = maybe!(array_species_create(cx, object, 0));
+        let object = to_object(cx, this_value)?;
+        let array = array_species_create(cx, object, 0)?;
 
         let mut n = 0;
 
-        maybe!(Self::apply_concat_to_element(cx, object.into(), array, &mut n));
+        Self::apply_concat_to_element(cx, object.into(), array, &mut n)?;
 
         for element in arguments {
-            maybe!(Self::apply_concat_to_element(cx, *element, array, &mut n));
+            Self::apply_concat_to_element(cx, *element, array, &mut n)?;
         }
 
         let new_length_value = Value::from(n).to_handle(cx);
-        maybe!(set(cx, array, cx.names.length(), new_length_value, true));
+        set(cx, array, cx.names.length(), new_length_value, true)?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// IsConcatSpreadable (https://tc39.es/ecma262/#sec-isconcatspreadable)
     pub fn is_concat_spreadable(cx: Context, object: Handle<Value>) -> EvalResult<bool> {
         if !object.is_object() {
-            return false.into();
+            return Ok(false);
         }
 
         let is_spreadable =
-            maybe!(get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable()));
+            get(cx, object.as_object(), cx.well_known_symbols.is_concat_spreadable())?;
 
         if !is_spreadable.is_undefined() {
-            return to_boolean(is_spreadable.get()).into();
+            return Ok(to_boolean(is_spreadable.get()));
         }
 
         is_array(cx, object)
@@ -178,9 +178,9 @@ impl ArrayPrototype {
         array: Handle<ObjectValue>,
         n: &mut u64,
     ) -> EvalResult<()> {
-        if maybe!(Self::is_concat_spreadable(cx, element)) {
+        if Self::is_concat_spreadable(cx, element)? {
             let element = element.as_object();
-            let length = maybe!(length_of_array_like(cx, element));
+            let length = length_of_array_like(cx, element)?;
 
             if *n + length > MAX_SAFE_INTEGER_U64 {
                 return type_error(cx, "array is too large");
@@ -192,14 +192,14 @@ impl ArrayPrototype {
             for i in 0..length {
                 element_index_key.replace(PropertyKey::from_u64(cx, i));
 
-                if maybe!(has_property(cx, element, element_index_key)) {
-                    let sub_element = maybe!(get(cx, element, element_index_key));
+                if has_property(cx, element, element_index_key)? {
+                    let sub_element = get(cx, element, element_index_key)?;
 
                     // Share property key, since element_index_key is no longer used
                     let mut array_index_key = element_index_key;
                     array_index_key.replace(PropertyKey::from_u64(cx, *n));
 
-                    maybe!(create_data_property_or_throw(cx, array, array_index_key, sub_element))
+                    create_data_property_or_throw(cx, array, array_index_key, sub_element)?
                 }
 
                 *n += 1;
@@ -210,12 +210,12 @@ impl ArrayPrototype {
             }
 
             let index_key = PropertyKey::from_u64(cx, *n).to_handle(cx).to_handle(cx);
-            maybe!(create_data_property_or_throw(cx, array, index_key, element));
+            create_data_property_or_throw(cx, array, index_key, element)?;
 
             *n += 1;
         }
 
-        ().into()
+        Ok(())
     }
 
     /// Array.prototype.copyWithin (https://tc39.es/ecma262/#sec-array.prototype.copywithin)
@@ -225,11 +225,11 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let target_arg = get_argument(cx, arguments, 0);
-        let relative_target = maybe!(to_integer_or_infinity(cx, target_arg));
+        let relative_target = to_integer_or_infinity(cx, target_arg)?;
         let mut to_index = if relative_target < 0.0 {
             if relative_target == f64::NEG_INFINITY {
                 0
@@ -241,7 +241,7 @@ impl ArrayPrototype {
         };
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let mut from_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -254,7 +254,7 @@ impl ArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -273,7 +273,7 @@ impl ArrayPrototype {
             i64::min(from_end_index as i64 - from_index as i64, length as i64 - to_index as i64);
 
         if count <= 0 {
-            return object.into();
+            return Ok(object.as_value());
         }
 
         let mut count = count as u64;
@@ -292,11 +292,11 @@ impl ArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, from_index as u64));
                 to_key.replace(PropertyKey::from_u64(cx, to_index as u64));
 
-                if maybe!(has_property(cx, object, from_key)) {
-                    let from_value = maybe!(get(cx, object, from_key));
-                    maybe!(set(cx, object, to_key, from_value, true));
+                if has_property(cx, object, from_key)? {
+                    let from_value = get(cx, object, from_key)?;
+                    set(cx, object, to_key, from_value, true)?;
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, to_key));
+                    delete_property_or_throw(cx, object, to_key)?;
                 }
 
                 from_index -= 1;
@@ -308,11 +308,11 @@ impl ArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, from_index));
                 to_key.replace(PropertyKey::from_u64(cx, to_index));
 
-                if maybe!(has_property(cx, object, from_key)) {
-                    let from_value = maybe!(get(cx, object, from_key));
-                    maybe!(set(cx, object, to_key, from_value, true));
+                if has_property(cx, object, from_key)? {
+                    let from_value = get(cx, object, from_key)?;
+                    set(cx, object, to_key, from_value, true)?;
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, to_key));
+                    delete_property_or_throw(cx, object, to_key)?;
                 }
 
                 from_index += 1;
@@ -321,7 +321,7 @@ impl ArrayPrototype {
             }
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.entries (https://tc39.es/ecma262/#sec-array.prototype.entries)
@@ -331,8 +331,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).into()
+        let object = to_object(cx, this_value)?;
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).as_value())
     }
 
     /// Array.prototype.every (https://tc39.es/ecma262/#sec-array.prototype.every)
@@ -342,8 +342,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -359,20 +359,20 @@ impl ArrayPrototype {
 
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [value, index_value, object.into()];
 
-                let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+                let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
                 if !to_boolean(test_result.get()) {
-                    return cx.bool(false).into();
+                    return Ok(cx.bool(false));
                 }
             }
         }
 
-        cx.bool(true).into()
+        Ok(cx.bool(true))
     }
 
     /// Array.prototype.fill (https://tc39.es/ecma262/#sec-array.prototype.fill)
@@ -382,13 +382,13 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let value = get_argument(cx, arguments, 0);
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -401,7 +401,7 @@ impl ArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -421,10 +421,10 @@ impl ArrayPrototype {
 
         for i in start_index..end_index {
             key.replace(PropertyKey::from_u64(cx, i));
-            maybe!(set(cx, object, key, value, true));
+            set(cx, object, key, value, true)?;
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.filter (https://tc39.es/ecma262/#sec-array.prototype.filter)
@@ -434,8 +434,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -445,7 +445,7 @@ impl ArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let array = maybe!(array_species_create(cx, object, 0));
+        let array = array_species_create(cx, object, 0)?;
 
         let mut result_index = 0;
 
@@ -455,27 +455,27 @@ impl ArrayPrototype {
 
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [value, index_value, object.into()];
 
-                let is_selected = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+                let is_selected = call_object(cx, callback_function, this_arg, &arguments)?;
 
                 if to_boolean(is_selected.get()) {
                     // Reuse index_key handle as it is never referenced again
                     let mut result_index_key = index_key;
 
                     result_index_key.replace(PropertyKey::from_u64(cx, result_index));
-                    maybe!(create_data_property_or_throw(cx, array, result_index_key, value));
+                    create_data_property_or_throw(cx, array, result_index_key, value)?;
 
                     result_index += 1;
                 }
             }
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.find (https://tc39.es/ecma262/#sec-array.prototype.find)
@@ -485,8 +485,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
@@ -496,12 +496,11 @@ impl ArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let find_result =
-            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
+        let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -512,8 +511,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
@@ -523,12 +522,11 @@ impl ArrayPrototype {
         let predicate_function = predicate_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let find_result =
-            maybe!(find_via_predicate(cx, object, 0..length, predicate_function, this_arg));
+        let find_result = find_via_predicate(cx, object, 0..length, predicate_function, this_arg)?;
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -539,8 +537,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
@@ -551,11 +549,11 @@ impl ArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let find_result =
-            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+            find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
 
         match find_result {
-            Some((value, _)) => value.into(),
-            None => cx.undefined().into(),
+            Some((value, _)) => Ok(value),
+            None => Ok(cx.undefined()),
         }
     }
 
@@ -566,8 +564,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
@@ -578,11 +576,11 @@ impl ArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let find_result =
-            maybe!(find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg));
+            find_via_predicate(cx, object, (0..length).rev(), predicate_function, this_arg)?;
 
         match find_result {
-            Some((_, index_value)) => index_value.into(),
-            None => Value::smi(-1).to_handle(cx).into(),
+            Some((_, index_value)) => Ok(index_value),
+            None => Ok(Value::smi(-1).to_handle(cx)),
         }
     }
 
@@ -593,31 +591,22 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let depth = get_argument(cx, arguments, 0);
         let depth = if depth.is_undefined() {
             1.0
         } else {
-            let depth = maybe!(to_integer_or_infinity(cx, depth));
+            let depth = to_integer_or_infinity(cx, depth)?;
             f64::max(depth, 0.0)
         };
 
-        let array = maybe!(array_species_create(cx, object, 0));
+        let array = array_species_create(cx, object, 0)?;
 
-        maybe!(Self::flatten_into_array(
-            cx,
-            array,
-            object,
-            length,
-            0,
-            depth,
-            None,
-            cx.undefined()
-        ));
+        Self::flatten_into_array(cx, array, object, length, 0, depth, None, cx.undefined())?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// FlattenIntoArray (https://tc39.es/ecma262/#sec-flattenintoarray)
@@ -639,17 +628,17 @@ impl ArrayPrototype {
 
         for i in 0..source_length {
             source_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, source, source_key)) {
-                let mut element = maybe!(get(cx, source, source_key));
+            if has_property(cx, source, source_key)? {
+                let mut element = get(cx, source, source_key)?;
 
                 if let Some(mapper_function) = mapper_function {
                     let index_value = Value::from(i).to_handle(cx);
                     let arguments = [element, index_value, source.into()];
-                    element = maybe!(call(cx, mapper_function, this_arg, &arguments));
+                    element = call(cx, mapper_function, this_arg, &arguments)?;
                 }
 
                 let should_flatten = if depth > 0.0 {
-                    maybe!(is_array(cx, element))
+                    is_array(cx, element)?
                 } else {
                     false
                 };
@@ -662,9 +651,9 @@ impl ArrayPrototype {
                     };
 
                     let element_object = element.as_object();
-                    let element_length = maybe!(length_of_array_like(cx, element_object));
+                    let element_length = length_of_array_like(cx, element_object)?;
 
-                    target_index = maybe!(Self::flatten_into_array(
+                    target_index = Self::flatten_into_array(
                         cx,
                         target,
                         element_object,
@@ -672,22 +661,22 @@ impl ArrayPrototype {
                         target_index,
                         new_depth,
                         None,
-                        this_arg
-                    ));
+                        this_arg,
+                    )?;
                 } else {
                     if target_index >= MAX_SAFE_INTEGER_U64 {
                         return type_error(cx, "array is too large");
                     }
 
                     target_key.replace(PropertyKey::from_u64(cx, target_index));
-                    maybe!(create_data_property_or_throw(cx, target, target_key, element));
+                    create_data_property_or_throw(cx, target, target_key, element)?;
 
                     target_index += 1;
                 }
             }
         }
 
-        target_index.into()
+        Ok(target_index)
     }
 
     /// Array.prototype.flatMap (https://tc39.es/ecma262/#sec-array.prototype.flatmap)
@@ -697,8 +686,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let mapper_function = get_argument(cx, arguments, 0);
         let this_arg = get_argument(cx, arguments, 1);
@@ -707,9 +696,9 @@ impl ArrayPrototype {
             return type_error(cx, "Array.prototype.flatMap expected function");
         }
 
-        let array = maybe!(array_species_create(cx, object, 0));
+        let array = array_species_create(cx, object, 0)?;
 
-        maybe!(Self::flatten_into_array(
+        Self::flatten_into_array(
             cx,
             array,
             object,
@@ -717,10 +706,10 @@ impl ArrayPrototype {
             0,
             1.0,
             Some(mapper_function),
-            this_arg
-        ));
+            this_arg,
+        )?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.forEach (https://tc39.es/ecma262/#sec-array.prototype.foreach)
@@ -730,8 +719,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -747,17 +736,17 @@ impl ArrayPrototype {
 
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [value, index_value, object.into()];
 
-                maybe!(call_object(cx, callback_function, this_arg, &arguments));
+                call_object(cx, callback_function, this_arg, &arguments)?;
             }
         }
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// Array.prototype.includes (https://tc39.es/ecma262/#sec-array.prototype.includes)
@@ -767,19 +756,19 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         }
 
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
+        let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
-            return cx.bool(false).into();
+            return Ok(cx.bool(false));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -795,14 +784,14 @@ impl ArrayPrototype {
 
         for i in start_index..length {
             key.replace(PropertyKey::from_u64(cx, i));
-            let element = maybe!(get(cx, object, key));
+            let element = get(cx, object, key)?;
 
             if same_value_zero(search_element, element) {
-                return cx.bool(true).into();
+                return Ok(cx.bool(true));
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// Array.prototype.indexOf (https://tc39.es/ecma262/#sec-array.prototype.indexof)
@@ -812,19 +801,19 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = maybe!(to_integer_or_infinity(cx, n_arg));
+        let mut n = to_integer_or_infinity(cx, n_arg)?;
         if n == f64::INFINITY {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         } else if n == f64::NEG_INFINITY {
             n = 0.0;
         }
@@ -840,15 +829,15 @@ impl ArrayPrototype {
 
         for i in start_index..length {
             key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, key)) {
-                let element = maybe!(get(cx, object, key));
+            if has_property(cx, object, key)? {
+                let element = get(cx, object, key)?;
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// Array.prototype.join (https://tc39.es/ecma262/#sec-array.prototype.join)
@@ -858,14 +847,14 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let separator = get_argument(cx, arguments, 0);
         let separator = if separator.is_undefined() {
             InternedStrings::get_str(cx, ",")
         } else {
-            maybe!(to_string(cx, separator))
+            to_string(cx, separator)?
         };
 
         let mut joined = cx.names.empty_string().as_string();
@@ -879,15 +868,15 @@ impl ArrayPrototype {
             }
 
             key.replace(PropertyKey::from_u64(cx, i));
-            let element = maybe!(get(cx, object, key));
+            let element = get(cx, object, key)?;
 
             if !element.is_nullish() {
-                let next = maybe!(to_string(cx, element));
+                let next = to_string(cx, element)?;
                 joined = StringValue::concat(cx, joined, next);
             }
         }
 
-        joined.into()
+        Ok(joined.as_value())
     }
 
     /// Array.prototype.keys (https://tc39.es/ecma262/#sec-array.prototype.keys)
@@ -897,8 +886,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::Key).into()
+        let object = to_object(cx, this_value)?;
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key).as_value())
     }
 
     /// Array.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-array.prototype.lastindexof)
@@ -908,20 +897,20 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
-            return Value::smi(-1).to_handle(cx).into();
+            return Ok(Value::smi(-1).to_handle(cx));
         }
 
         let search_element = get_argument(cx, arguments, 0);
 
         let start_index = if arguments.len() >= 2 {
             let start_arg = get_argument(cx, arguments, 1);
-            let n = maybe!(to_integer_or_infinity(cx, start_arg));
+            let n = to_integer_or_infinity(cx, start_arg)?;
             if n == f64::NEG_INFINITY {
-                return Value::smi(-1).to_handle(cx).into();
+                return Ok(Value::smi(-1).to_handle(cx));
             }
 
             if n >= 0.0 {
@@ -930,7 +919,7 @@ impl ArrayPrototype {
                 let start_index = length as i64 + n as i64;
 
                 if start_index < 0 {
-                    return Value::smi(-1).to_handle(cx).into();
+                    return Ok(Value::smi(-1).to_handle(cx));
                 }
 
                 start_index as u64
@@ -944,15 +933,15 @@ impl ArrayPrototype {
 
         for i in (0..=start_index).rev() {
             key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, key)) {
-                let element = maybe!(get(cx, object, key));
+            if has_property(cx, object, key)? {
+                let element = get(cx, object, key)?;
                 if is_strictly_equal(search_element, element) {
-                    return Value::from(i).to_handle(cx).into();
+                    return Ok(Value::from(i).to_handle(cx));
                 }
             }
         }
 
-        Value::smi(-1).to_handle(cx).into()
+        Ok(Value::smi(-1).to_handle(cx))
     }
 
     /// Array.prototype.map (https://tc39.es/ecma262/#sec-array.prototype.map)
@@ -962,8 +951,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -973,7 +962,7 @@ impl ArrayPrototype {
         let callback_function = callback_function.as_object();
         let this_arg = get_argument(cx, arguments, 1);
 
-        let array = maybe!(array_species_create(cx, object, length));
+        let array = array_species_create(cx, object, length)?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -981,18 +970,18 @@ impl ArrayPrototype {
 
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [value, index_value, object.into()];
 
-                let mapped_value = maybe!(call_object(cx, callback_function, this_arg, &arguments));
-                maybe!(create_data_property_or_throw(cx, array, index_key, mapped_value));
+                let mapped_value = call_object(cx, callback_function, this_arg, &arguments)?;
+                create_data_property_or_throw(cx, array, index_key, mapped_value)?;
             }
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.pop (https://tc39.es/ecma262/#sec-array.prototype.pop)
@@ -1002,25 +991,25 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
             let length_zero = Value::smi(0).to_handle(cx);
-            maybe!(set(cx, object, cx.names.length(), length_zero, true));
-            return cx.undefined().into();
+            set(cx, object, cx.names.length(), length_zero, true)?;
+            return Ok(cx.undefined());
         }
 
         let new_length = length - 1;
         let index_key = PropertyKey::from_u64(cx, new_length).to_handle(cx);
 
-        let element = maybe!(get(cx, object, index_key));
-        maybe!(delete_property_or_throw(cx, object, index_key));
+        let element = get(cx, object, index_key)?;
+        delete_property_or_throw(cx, object, index_key)?;
 
         let new_length_value = Value::from(new_length).to_handle(cx);
-        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
+        set(cx, object, cx.names.length(), new_length_value, true)?;
 
-        element.into()
+        Ok(element)
     }
 
     /// Array.prototype.push (https://tc39.es/ecma262/#sec-array.prototype.push)
@@ -1030,8 +1019,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let new_length = length + arguments.len() as u64;
         if new_length > MAX_SAFE_INTEGER_U64 {
@@ -1043,13 +1032,13 @@ impl ArrayPrototype {
 
         for (i, argument) in arguments.iter().enumerate() {
             key.replace(PropertyKey::from_u64(cx, length + i as u64));
-            maybe!(set(cx, object, key, *argument, true));
+            set(cx, object, key, *argument, true)?;
         }
 
         let new_length_value = Value::from(new_length).to_handle(cx);
-        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
+        set(cx, object, cx.names.length(), new_length_value, true)?;
 
-        new_length_value.into()
+        Ok(new_length_value)
     }
 
     /// Array.prototype.reduce (https://tc39.es/ecma262/#sec-array.prototype.reduce)
@@ -1059,8 +1048,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -1087,8 +1076,8 @@ impl ArrayPrototype {
                 index_key.replace(PropertyKey::from_u64(cx, initial_index));
                 initial_index += 1;
 
-                if maybe!(has_property(cx, object, index_key)) {
-                    break maybe!(get(cx, object, index_key));
+                if has_property(cx, object, index_key)? {
+                    break get(cx, object, index_key)?;
                 }
             }
         };
@@ -1099,18 +1088,17 @@ impl ArrayPrototype {
 
         for i in initial_index..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [accumulator, value, index_value, object.into()];
 
-                accumulator =
-                    maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
+                accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
             }
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// Array.prototype.reduceRight (https://tc39.es/ecma262/#sec-array.prototype.reduceright)
@@ -1120,8 +1108,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -1147,8 +1135,8 @@ impl ArrayPrototype {
                 index_key.replace(PropertyKey::from_u64(cx, initial_index as u64));
                 initial_index -= 1;
 
-                if maybe!(has_property(cx, object, index_key)) {
-                    break maybe!(get(cx, object, index_key));
+                if has_property(cx, object, index_key)? {
+                    break get(cx, object, index_key)?;
                 }
             }
         };
@@ -1159,18 +1147,17 @@ impl ArrayPrototype {
 
         for i in (0..=initial_index).rev() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [accumulator, value, index_value, object.into()];
 
-                accumulator =
-                    maybe!(call_object(cx, callback_function, cx.undefined(), &arguments));
+                accumulator = call_object(cx, callback_function, cx.undefined(), &arguments)?;
             }
         }
 
-        accumulator.into()
+        Ok(accumulator)
     }
 
     /// Array.prototype.reverse (https://tc39.es/ecma262/#sec-array.prototype.reverse)
@@ -1180,8 +1167,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let middle = length / 2;
         let mut lower = 0;
@@ -1196,30 +1183,30 @@ impl ArrayPrototype {
             lower_key.replace(PropertyKey::from_u64(cx, lower));
             upper_key.replace(PropertyKey::from_u64(cx, upper));
 
-            let lower_value = if maybe!(has_property(cx, object, lower_key)) {
-                Some(maybe!(get(cx, object, lower_key)))
+            let lower_value = if has_property(cx, object, lower_key)? {
+                Some(get(cx, object, lower_key)?)
             } else {
                 None
             };
 
-            let upper_value = if maybe!(has_property(cx, object, upper_key)) {
-                Some(maybe!(get(cx, object, upper_key)))
+            let upper_value = if has_property(cx, object, upper_key)? {
+                Some(get(cx, object, upper_key)?)
             } else {
                 None
             };
 
             match (lower_value, upper_value) {
                 (Some(lower_value), Some(upper_value)) => {
-                    maybe!(set(cx, object, lower_key, upper_value, true));
-                    maybe!(set(cx, object, upper_key, lower_value, true));
+                    set(cx, object, lower_key, upper_value, true)?;
+                    set(cx, object, upper_key, lower_value, true)?;
                 }
                 (Some(lower_value), None) => {
-                    maybe!(delete_property_or_throw(cx, object, lower_key));
-                    maybe!(set(cx, object, upper_key, lower_value, true));
+                    delete_property_or_throw(cx, object, lower_key)?;
+                    set(cx, object, upper_key, lower_value, true)?;
                 }
                 (None, Some(upper_value)) => {
-                    maybe!(set(cx, object, lower_key, upper_value, true));
-                    maybe!(delete_property_or_throw(cx, object, upper_key));
+                    set(cx, object, lower_key, upper_value, true)?;
+                    delete_property_or_throw(cx, object, upper_key)?;
                 }
                 (None, None) => {}
             }
@@ -1228,7 +1215,7 @@ impl ArrayPrototype {
             upper -= 1;
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.shift (https://tc39.es/ecma262/#sec-array.prototype.shift)
@@ -1238,17 +1225,17 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         if length == 0 {
             let zero_value = Value::smi(0).to_handle(cx);
-            maybe!(set(cx, object, cx.names.length(), zero_value, true));
-            return cx.undefined().into();
+            set(cx, object, cx.names.length(), zero_value, true)?;
+            return Ok(cx.undefined());
         }
 
         let first_key = PropertyKey::array_index(cx, 0).to_handle(cx);
-        let first = maybe!(get(cx, object, first_key));
+        let first = get(cx, object, first_key)?;
 
         // Shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1258,21 +1245,21 @@ impl ArrayPrototype {
             from_key.replace(PropertyKey::from_u64(cx, i));
             to_key.replace(PropertyKey::from_u64(cx, i - 1));
 
-            if maybe!(has_property(cx, object, from_key)) {
-                let from_value = maybe!(get(cx, object, from_key));
-                maybe!(set(cx, object, to_key, from_value, true));
+            if has_property(cx, object, from_key)? {
+                let from_value = get(cx, object, from_key)?;
+                set(cx, object, to_key, from_value, true)?;
             } else {
-                maybe!(delete_property_or_throw(cx, object, to_key));
+                delete_property_or_throw(cx, object, to_key)?;
             }
         }
 
         let last_key = PropertyKey::from_u64(cx, length - 1).to_handle(cx);
-        maybe!(delete_property_or_throw(cx, object, last_key));
+        delete_property_or_throw(cx, object, last_key)?;
 
         let new_length_value = Value::from(length - 1).to_handle(cx);
-        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
+        set(cx, object, cx.names.length(), new_length_value, true)?;
 
-        first.into()
+        Ok(first)
     }
 
     /// Array.prototype.slice (https://tc39.es/ecma262/#sec-array.prototype.slice)
@@ -1282,11 +1269,11 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1299,7 +1286,7 @@ impl ArrayPrototype {
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -1315,7 +1302,7 @@ impl ArrayPrototype {
         };
 
         let count = end_index.saturating_sub(start_index);
-        let array = maybe!(array_species_create(cx, object, count));
+        let array = array_species_create(cx, object, count)?;
 
         let mut to_index = 0;
 
@@ -1324,23 +1311,23 @@ impl ArrayPrototype {
 
         for i in start_index..end_index {
             from_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, from_key)) {
-                let value = maybe!(get(cx, object, from_key));
+            if has_property(cx, object, from_key)? {
+                let value = get(cx, object, from_key)?;
 
                 // Reuse from_key handle since it is no longer referenced
                 let mut to_key = from_key;
                 to_key.replace(PropertyKey::from_u64(cx, to_index));
 
-                maybe!(create_data_property_or_throw(cx, array, to_key, value));
+                create_data_property_or_throw(cx, array, to_key, value)?;
             }
 
             to_index += 1;
         }
 
         let to_index_value = Value::from(to_index).to_handle(cx);
-        maybe!(set(cx, array, cx.names.length(), to_index_value, true));
+        set(cx, array, cx.names.length(), to_index_value, true)?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.some (https://tc39.es/ecma262/#sec-array.prototype.some)
@@ -1350,8 +1337,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -1367,20 +1354,20 @@ impl ArrayPrototype {
 
         for i in 0..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            if maybe!(has_property(cx, object, index_key)) {
-                let value = maybe!(get(cx, object, index_key));
+            if has_property(cx, object, index_key)? {
+                let value = get(cx, object, index_key)?;
 
                 index_value.replace(Value::from(i));
                 let arguments = [value, index_value, object.into()];
 
-                let test_result = maybe!(call_object(cx, callback_function, this_arg, &arguments));
+                let test_result = call_object(cx, callback_function, this_arg, &arguments)?;
                 if to_boolean(test_result.get()) {
-                    return cx.bool(true).into();
+                    return Ok(cx.bool(true));
                 }
             }
         }
 
-        cx.bool(false).into()
+        Ok(cx.bool(false))
     }
 
     /// Array.prototype.sort (https://tc39.es/ecma262/#sec-array.prototype.sort)
@@ -1395,15 +1382,15 @@ impl ArrayPrototype {
             return type_error(cx, "Array.prototype.sort expects a function");
         };
 
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
-        let sorted_values = maybe!(sort_indexed_properties::<IGNORE_HOLES, REGULAR_ARRAY>(
+        let sorted_values = sort_indexed_properties::<IGNORE_HOLES, REGULAR_ARRAY>(
             cx,
             object,
             length,
-            compare_function_arg
-        ));
+            compare_function_arg,
+        )?;
 
         // Reuse handle between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1411,16 +1398,16 @@ impl ArrayPrototype {
         // Copy sorted values into start of array
         for (i, value) in sorted_values.iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(set(cx, object, index_key, *value, true));
+            set(cx, object, index_key, *value, true)?;
         }
 
         // If there were holes then delete that number of holes from the end of the array
         for i in (sorted_values.len() as u64)..length {
             index_key.replace(PropertyKey::from_u64(cx, i));
-            maybe!(delete_property_or_throw(cx, object, index_key));
+            delete_property_or_throw(cx, object, index_key)?;
         }
 
-        object.into()
+        Ok(object.as_value())
     }
 
     /// Array.prototype.splice (https://tc39.es/ecma262/#sec-array.prototype.splice)
@@ -1430,11 +1417,11 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1453,7 +1440,7 @@ impl ArrayPrototype {
             length - start_index
         } else {
             let delete_count_arg = get_argument(cx, arguments, 1);
-            let delete_count = maybe!(to_integer_or_infinity(cx, delete_count_arg));
+            let delete_count = to_integer_or_infinity(cx, delete_count_arg)?;
             f64::min(f64::max(delete_count, 0.0), (length - start_index) as f64) as u64
         };
 
@@ -1463,7 +1450,7 @@ impl ArrayPrototype {
         }
 
         // Create array containing deleted elements, which will be return value
-        let array = maybe!(array_species_create(cx, object, actual_delete_count));
+        let array = array_species_create(cx, object, actual_delete_count)?;
 
         // Shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1471,15 +1458,15 @@ impl ArrayPrototype {
 
         for i in 0..actual_delete_count {
             from_key.replace(PropertyKey::from_u64(cx, start_index + i));
-            if maybe!(has_property(cx, object, from_key)) {
-                let from_value = maybe!(get(cx, object, from_key));
+            if has_property(cx, object, from_key)? {
+                let from_value = get(cx, object, from_key)?;
                 to_key.replace(PropertyKey::from_u64(cx, i));
-                maybe!(create_data_property_or_throw(cx, array, to_key, from_value));
+                create_data_property_or_throw(cx, array, to_key, from_value)?;
             }
         }
 
         let actual_delete_count_value = Value::from(actual_delete_count).to_handle(cx);
-        maybe!(set(cx, array, cx.names.length(), actual_delete_count_value, true));
+        set(cx, array, cx.names.length(), actual_delete_count_value, true)?;
 
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {
@@ -1487,28 +1474,28 @@ impl ArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count));
                 to_key.replace(PropertyKey::from_u64(cx, i + insert_count));
 
-                if maybe!(has_property(cx, object, from_key)) {
-                    let from_value = maybe!(get(cx, object, from_key));
-                    maybe!(set(cx, object, to_key, from_value, true));
+                if has_property(cx, object, from_key)? {
+                    let from_value = get(cx, object, from_key)?;
+                    set(cx, object, to_key, from_value, true)?;
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, to_key));
+                    delete_property_or_throw(cx, object, to_key)?;
                 }
             }
 
             for i in (new_length..length).rev() {
                 from_key.replace(PropertyKey::from_u64(cx, i));
-                maybe!(delete_property_or_throw(cx, object, from_key));
+                delete_property_or_throw(cx, object, from_key)?;
             }
         } else if insert_count > actual_delete_count {
             for i in (start_index..(length - actual_delete_count)).rev() {
                 from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count));
                 to_key.replace(PropertyKey::from_u64(cx, i + insert_count));
 
-                if maybe!(has_property(cx, object, from_key)) {
-                    let from_value = maybe!(get(cx, object, from_key));
-                    maybe!(set(cx, object, to_key, from_value, true));
+                if has_property(cx, object, from_key)? {
+                    let from_value = get(cx, object, from_key)?;
+                    set(cx, object, to_key, from_value, true)?;
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, to_key));
+                    delete_property_or_throw(cx, object, to_key)?;
                 }
             }
         }
@@ -1516,13 +1503,13 @@ impl ArrayPrototype {
         // Insert items into array
         for (i, item) in arguments.iter().skip(2).enumerate() {
             to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64));
-            maybe!(set(cx, object, to_key, *item, true));
+            set(cx, object, to_key, *item, true)?;
         }
 
         let new_length_value = Value::from(new_length).to_handle(cx);
-        maybe!(set(cx, object, cx.names.length(), new_length_value, true));
+        set(cx, object, cx.names.length(), new_length_value, true)?;
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toLocaleString (https://tc39.es/ecma262/#sec-array.prototype.tolocalestring)
@@ -1532,8 +1519,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let mut result = cx.names.empty_string().as_string();
         let separator = InternedStrings::get_str(cx, ",");
@@ -1547,18 +1534,17 @@ impl ArrayPrototype {
             }
 
             key.replace(PropertyKey::from_u64(cx, i));
-            let next_element = maybe!(get(cx, object, key));
+            let next_element = get(cx, object, key)?;
 
             if !next_element.is_nullish() {
-                let string_result =
-                    maybe!(invoke(cx, next_element, cx.names.to_locale_string(), &[]));
-                let string_result = maybe!(to_string(cx, string_result));
+                let string_result = invoke(cx, next_element, cx.names.to_locale_string(), &[])?;
+                let string_result = to_string(cx, string_result)?;
 
                 result = StringValue::concat(cx, result, string_result);
             }
         }
 
-        result.into()
+        Ok(result.as_value())
     }
 
     /// Array.prototype.toReversed (https://tc39.es/ecma262/#sec-array.prototype.toreversed)
@@ -1568,10 +1554,10 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
-        let array = maybe!(array_create(cx, length, None));
+        let array = array_create(cx, length, None)?;
 
         // Keys are shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1581,11 +1567,11 @@ impl ArrayPrototype {
             from_key.replace(PropertyKey::from_u64(cx, length - i - 1));
             to_key.replace(PropertyKey::from_u64(cx, i));
 
-            let value = maybe!(get(cx, object, from_key));
+            let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toSorted (https://tc39.es/ecma262/#sec-array.prototype.tosorted)
@@ -1600,17 +1586,17 @@ impl ArrayPrototype {
             return type_error(cx, "Array.prototype.toSorted expects a function");
         };
 
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
-        let sorted_array = maybe!(array_create(cx, length, None));
+        let sorted_array = array_create(cx, length, None)?;
 
-        let sorted_values = maybe!(sort_indexed_properties::<INCLUDE_HOLES, REGULAR_ARRAY>(
+        let sorted_values = sort_indexed_properties::<INCLUDE_HOLES, REGULAR_ARRAY>(
             cx,
             object,
             length,
-            compare_function_arg
-        ));
+            compare_function_arg,
+        )?;
 
         // Reuse handle between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1618,10 +1604,10 @@ impl ArrayPrototype {
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
             index_key.replace(PropertyKey::from_u64(cx, i as u64));
-            maybe!(create_data_property_or_throw(cx, sorted_array.into(), index_key, *value));
+            create_data_property_or_throw(cx, sorted_array.into(), index_key, *value)?;
         }
 
-        sorted_array.into()
+        Ok(sorted_array.as_value())
     }
 
     /// Array.prototype.toSpliced (https://tc39.es/ecma262/#sec-array.prototype.tospliced)
@@ -1631,12 +1617,12 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         // Determine absolute start index from the relative index argument
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let actual_start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -1656,7 +1642,7 @@ impl ArrayPrototype {
             length - actual_start_index
         } else {
             let skip_count_arg = get_argument(cx, arguments, 1);
-            let skip_count = maybe!(to_integer_or_infinity(cx, skip_count_arg));
+            let skip_count = to_integer_or_infinity(cx, skip_count_arg)?;
             f64::min(f64::max(skip_count, 0.0), (length - actual_start_index) as f64) as u64
         };
 
@@ -1666,7 +1652,7 @@ impl ArrayPrototype {
             return type_error(cx, "TypedArray.prototype.toSpliced result array is too large");
         }
 
-        let array = maybe!(array_create(cx, new_length, None));
+        let array = array_create(cx, new_length, None)?;
 
         // Keys are shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1675,14 +1661,14 @@ impl ArrayPrototype {
         // Elements before the start index are unchanged and can be copied
         for i in 0..actual_start_index {
             from_key.replace(PropertyKey::from_u64(cx, i));
-            let value = maybe!(get(cx, object, from_key));
+            let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), from_key, value));
         }
 
         // Insert every element of provided items
         for (i, item) in arguments.iter().skip(2).enumerate() {
             to_key.replace(PropertyKey::from_u64(cx, actual_start_index + i as u64));
-            maybe!(create_data_property_or_throw(cx, array.into(), to_key, *item));
+            create_data_property_or_throw(cx, array.into(), to_key, *item)?;
         }
 
         // All remaining elements after the skip count are copied
@@ -1690,11 +1676,11 @@ impl ArrayPrototype {
             to_key.replace(PropertyKey::from_u64(cx, i));
             from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count));
 
-            let value = maybe!(get(cx, object, from_key));
+            let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype.toString (https://tc39.es/ecma262/#sec-array.prototype.tostring)
@@ -1704,8 +1690,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array = maybe!(to_object(cx, this_value));
-        let func = maybe!(get(cx, array, cx.names.join()));
+        let array = to_object(cx, this_value)?;
+        let func = get(cx, array, cx.names.join())?;
 
         let func = if is_callable(func) {
             func.as_object()
@@ -1723,8 +1709,8 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let num_arguments = arguments.len() as u64;
         if num_arguments > 0 {
@@ -1740,24 +1726,24 @@ impl ArrayPrototype {
                 from_key.replace(PropertyKey::from_u64(cx, i));
                 to_key.replace(PropertyKey::from_u64(cx, i + num_arguments));
 
-                if maybe!(has_property(cx, object, from_key)) {
-                    let from_value = maybe!(get(cx, object, from_key));
-                    maybe!(set(cx, object, to_key, from_value, true));
+                if has_property(cx, object, from_key)? {
+                    let from_value = get(cx, object, from_key)?;
+                    set(cx, object, to_key, from_value, true)?;
                 } else {
-                    maybe!(delete_property_or_throw(cx, object, to_key));
+                    delete_property_or_throw(cx, object, to_key)?;
                 }
             }
 
             for (i, argument) in arguments.iter().enumerate() {
                 to_key.replace(PropertyKey::from_u64(cx, i as u64));
-                maybe!(set(cx, object, to_key, *argument, true));
+                set(cx, object, to_key, *argument, true)?;
             }
         }
 
         let new_length = Value::from(length + num_arguments).to_handle(cx);
-        maybe!(set(cx, object, cx.names.length(), new_length, true));
+        set(cx, object, cx.names.length(), new_length, true)?;
 
-        new_length.into()
+        Ok(new_length)
     }
 
     /// Array.prototype.values (https://tc39.es/ecma262/#sec-array.prototype.values)
@@ -1767,8 +1753,8 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        ArrayIterator::new(cx, object, ArrayIteratorKind::Value).into()
+        let object = to_object(cx, this_value)?;
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value).as_value())
     }
 
     /// Array.prototype.with (https://tc39.es/ecma262/#sec-array.prototype.with)
@@ -1778,11 +1764,11 @@ impl ArrayPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let object = maybe!(to_object(cx, this_value));
-        let length = maybe!(length_of_array_like(cx, object));
+        let object = to_object(cx, this_value)?;
+        let length = length_of_array_like(cx, object)?;
 
         let index_arg = get_argument(cx, arguments, 0);
-        let relative_index = maybe!(to_integer_or_infinity(cx, index_arg));
+        let relative_index = to_integer_or_infinity(cx, index_arg)?;
 
         // Convert from relative to actual index, making sure index is in range
         let actual_index = if relative_index >= 0.0 {
@@ -1800,7 +1786,7 @@ impl ArrayPrototype {
             actual_index as u64
         };
 
-        let array = maybe!(array_create(cx, length, None));
+        let array = array_create(cx, length, None)?;
         let new_value = get_argument(cx, arguments, 1);
 
         // Key is shared between iterations
@@ -1813,13 +1799,13 @@ impl ArrayPrototype {
             let value = if i == actual_index {
                 new_value
             } else {
-                maybe!(get(cx, object, key))
+                get(cx, object, key)?
             };
 
             must!(create_data_property_or_throw(cx, array.into(), key, value));
         }
 
-        array.into()
+        Ok(array.as_value())
     }
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
@@ -1866,18 +1852,18 @@ pub fn find_via_predicate(
 
     for i in indices_iter {
         index_key.replace(PropertyKey::from_u64(cx, i));
-        let value = maybe!(get(cx, object, index_key));
+        let value = get(cx, object, index_key)?;
 
         index_value.replace(Value::from(i));
         let arguments = [value, index_value, object.into()];
 
-        let test_result = maybe!(call_object(cx, predicate, this_arg, &arguments));
+        let test_result = call_object(cx, predicate, this_arg, &arguments)?;
         if to_boolean(test_result.get()) {
-            return Some((value, index_value)).into();
+            return Ok(Some((value, index_value)));
         }
     }
 
-    None.into()
+    Ok(None)
 }
 
 // Whether to exclude holes from the sorted output or not
@@ -1903,8 +1889,8 @@ pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: b
 
     for i in 0..length {
         index_key.replace(PropertyKey::from_u64(cx, i));
-        if !IGNORE_HOLES || maybe!(has_property(cx, object, index_key)) {
-            let value = maybe!(get(cx, object, index_key));
+        if !IGNORE_HOLES || has_property(cx, object, index_key)? {
+            let value = get(cx, object, index_key)?;
             values.push(value);
         }
     }
@@ -1928,44 +1914,44 @@ fn compare_array_elements(
     let v1_is_undefined = v1.is_undefined();
     let v2_is_undefined = v2.is_undefined();
     if v1_is_undefined && v2_is_undefined {
-        return Ordering::Equal.into();
+        return Ok(Ordering::Equal);
     } else if v1_is_undefined {
-        return Ordering::Greater.into();
+        return Ok(Ordering::Greater);
     } else if v2_is_undefined {
-        return Ordering::Less.into();
+        return Ok(Ordering::Less);
     }
 
     // Use the compare function if provided
     if !compare_function.is_undefined() {
         let result_value =
-            maybe!(call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2]));
+            call_object(cx, compare_function.as_object(), cx.undefined(), &[v1, v2])?;
         if result_value.is_nan() {
-            return Ordering::Equal.into();
+            return Ok(Ordering::Equal);
         }
 
-        let result_number = maybe!(to_number(cx, result_value));
+        let result_number = to_number(cx, result_value)?;
         let result_number = result_number.as_number();
 
         // Covert from positive/negative/equal number result to Ordering
         return if result_number == 0.0 {
-            Ordering::Equal.into()
+            Ok(Ordering::Equal)
         } else if result_number < 0.0 {
-            Ordering::Less.into()
+            Ok(Ordering::Less)
         } else {
-            Ordering::Greater.into()
+            Ok(Ordering::Greater)
         };
     }
 
     // Otherwise convert to strings and compare
-    let v1_string = maybe!(to_string(cx, v1));
-    let v2_string = maybe!(to_string(cx, v2));
+    let v1_string = to_string(cx, v1)?;
+    let v2_string = to_string(cx, v2)?;
 
     if must!(is_less_than(cx, v1_string.into(), v2_string.into())).is_true() {
-        Ordering::Less.into()
+        Ok(Ordering::Less)
     } else if must!(is_less_than(cx, v2_string.into(), v1_string.into())).is_true() {
-        Ordering::Greater.into()
+        Ok(Ordering::Greater)
     } else {
-        Ordering::Equal.into()
+        Ok(Ordering::Equal)
     }
 }
 
@@ -1977,12 +1963,12 @@ where
     F: FnMut(Context, Handle<Value>, Handle<Value>) -> EvalResult<Ordering>,
 {
     if items.len() <= 1 {
-        return items.to_vec().into();
+        return Ok(items.to_vec());
     }
 
     let (first_half, second_half) = items.split_at(items.len() / 2);
-    let merged_first_half = maybe!(merge_sort(cx, first_half, f));
-    let merged_second_half = maybe!(merge_sort(cx, second_half, f));
+    let merged_first_half = merge_sort(cx, first_half, f)?;
+    let merged_second_half = merge_sort(cx, second_half, f)?;
 
     let mut result = vec![];
     result.reserve_exact(merged_first_half.len() + merged_second_half.len());
@@ -1994,7 +1980,7 @@ where
         let v1 = merged_first_half[i];
         let v2 = merged_second_half[j];
 
-        let ordering = maybe!(f(cx, v1, v2));
+        let ordering = f(cx, v1, v2)?;
 
         if ordering.is_gt() {
             result.push(v2);
@@ -2015,5 +2001,5 @@ where
         j += 1;
     }
 
-    result.into()
+    Ok(result)
 }

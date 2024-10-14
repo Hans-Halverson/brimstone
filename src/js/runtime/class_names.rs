@@ -7,7 +7,7 @@ use crate::{
         ordinary_object::object_create_with_optional_proto, type_utilities::is_constructor_value,
         PropertyDescriptor, PropertyKey,
     },
-    maybe, must, set_uninit,
+    must, set_uninit,
 };
 
 use super::{
@@ -176,7 +176,7 @@ pub fn new_class(
             return type_error(cx, "super class must be a constructor");
         } else {
             let super_class = super_class.as_object();
-            let proto_parent = maybe!(get(cx, super_class, cx.names.prototype()));
+            let proto_parent = get(cx, super_class, cx.names.prototype())?;
 
             if proto_parent.is_object() {
                 (Some(proto_parent.as_object()), super_class)
@@ -209,7 +209,7 @@ pub fn new_class(
 
     // Define a `prototype` property on the constructor
     let desc = PropertyDescriptor::data(prototype.into(), false, false, false);
-    maybe!(define_property_or_throw(cx, constructor.into(), cx.names.prototype(), desc));
+    define_property_or_throw(cx, constructor.into(), cx.names.prototype(), desc)?;
 
     // Store the prototype as the home object if needed
     if let Some(home_object) = &class_names.home_object {
@@ -279,8 +279,8 @@ pub fn new_class(
             PropertyDescriptor::data(closure.into(), !method.is_private, false, true)
         };
 
-        maybe!(define_property_or_throw(cx, target, name, desc));
+        define_property_or_throw(cx, target, name, desc)?;
     }
 
-    constructor.into()
+    Ok(constructor)
 }

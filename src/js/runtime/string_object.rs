@@ -5,7 +5,7 @@ use wrap_ordinary_object::wrap_ordinary_object;
 use crate::{
     extend_object,
     js::runtime::{
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{Handle, HeapPtr},
         intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind,
@@ -22,7 +22,7 @@ use crate::{
         value::Value,
         Context, PropertyKey,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::{
@@ -64,12 +64,12 @@ impl StringObject {
         constructor: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
     ) -> EvalResult<Handle<StringObject>> {
-        let mut object = maybe!(object_create_from_constructor::<StringObject>(
+        let mut object = object_create_from_constructor::<StringObject>(
             cx,
             constructor,
             ObjectKind::StringObject,
-            Intrinsic::StringPrototype
-        ));
+            Intrinsic::StringPrototype,
+        )?;
 
         let string_data = string_data_handle.get_();
         let string_length = string_data.len();
@@ -80,7 +80,7 @@ impl StringObject {
 
         Self::set_length_property(object, cx, string_length);
 
-        object.into()
+        Ok(object)
     }
 
     pub fn new_with_proto(
@@ -106,7 +106,7 @@ impl StringObject {
     fn set_length_property(string: Handle<StringObject>, cx: Context, length: u32) {
         // String objects have an immutable length property
         let length_value = Value::from(length).to_handle(cx);
-        string.object().set_property(
+        string.as_object().set_property(
             cx,
             cx.names.length(),
             Property::data(length_value, false, false, false),
@@ -147,11 +147,11 @@ impl VirtualObject for Handle<StringObject> {
         cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        let desc = ordinary_get_own_property(cx, self.object(), key);
+        let desc = ordinary_get_own_property(cx, self.as_object(), key);
         if desc.is_none() {
-            self.string_get_own_property(cx, key).into()
+            Ok(self.string_get_own_property(cx, key))
         } else {
-            desc.into()
+            Ok(desc)
         }
     }
 
@@ -164,10 +164,10 @@ impl VirtualObject for Handle<StringObject> {
     ) -> EvalResult<bool> {
         let string_desc = self.string_get_own_property(cx, key);
         if string_desc.is_some() {
-            let is_extensible = self.object().is_extensible_field();
-            is_compatible_property_descriptor(cx, is_extensible, desc, string_desc).into()
+            let is_extensible = self.as_object().is_extensible_field();
+            Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_desc))
         } else {
-            ordinary_define_own_property(cx, self.object(), key, desc)
+            ordinary_define_own_property(cx, self.as_object(), key, desc)
         }
     }
 
@@ -181,13 +181,13 @@ impl VirtualObject for Handle<StringObject> {
             keys.push(index_string.into());
         }
 
-        ordinary_filtered_own_indexed_property_keys(cx, self.object(), &mut keys, |index| {
+        ordinary_filtered_own_indexed_property_keys(cx, self.as_object(), &mut keys, |index| {
             index >= (length as usize)
         });
 
-        ordinary_own_string_symbol_property_keys(self.object(), &mut keys);
+        ordinary_own_string_symbol_property_keys(self.as_object(), &mut keys);
 
-        keys.into()
+        Ok(keys)
     }
 }
 

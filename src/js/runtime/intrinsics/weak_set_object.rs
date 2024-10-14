@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     js::runtime::{
         collections::{BsHashSet, BsHashSetField},
-        completion::EvalResult,
+        eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -12,7 +12,7 @@ use crate::{
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
         Context, Handle, HeapPtr, Value,
     },
-    maybe, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;
@@ -38,16 +38,16 @@ impl WeakSetObject {
         let weak_set_data =
             WeakValueSet::new_initial(cx, ObjectKind::WeakSetObjectWeakValueSet).to_handle();
 
-        let mut object = maybe!(object_create_from_constructor::<WeakSetObject>(
+        let mut object = object_create_from_constructor::<WeakSetObject>(
             cx,
             constructor,
             ObjectKind::WeakSetObject,
-            Intrinsic::WeakSetPrototype
-        ));
+            Intrinsic::WeakSetPrototype,
+        )?;
 
         set_uninit!(object.weak_set_data, weak_set_data.get_());
 
-        object.to_handle().into()
+        Ok(object.to_handle())
     }
 
     pub fn weak_set_data(&self) -> HeapPtr<WeakValueSet> {

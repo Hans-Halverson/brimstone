@@ -1,17 +1,14 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::{call_object, get},
-        builtin_function::BuiltinFunction,
-        completion::EvalResult,
-        error::type_error,
-        function::get_argument,
-        iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
-        object_value::ObjectValue,
-        realm::Realm,
-        type_utilities::is_callable,
-        Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::{call_object, get},
+    builtin_function::BuiltinFunction,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
+    object_value::ObjectValue,
+    realm::Realm,
+    type_utilities::is_callable,
+    Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
@@ -52,31 +49,31 @@ impl WeakSetConstructor {
             return type_error(cx, "WeakSet constructor must be called with new");
         };
 
-        let weak_set = maybe!(WeakSetObject::new_from_constructor(cx, new_target));
+        let weak_set = WeakSetObject::new_from_constructor(cx, new_target)?;
 
         let iterable = get_argument(cx, arguments, 0);
         if iterable.is_nullish() {
-            return weak_set.into();
+            return Ok(weak_set.as_value());
         }
 
-        let adder = maybe!(get(cx, weak_set.into(), cx.names.add()));
+        let adder = get(cx, weak_set.into(), cx.names.add())?;
         if !is_callable(adder) {
             return type_error(cx, "WeakSet adder is not callable");
         }
 
-        let iterator = maybe!(get_iterator(cx, iterable, IteratorHint::Sync, None));
+        let iterator = get_iterator(cx, iterable, IteratorHint::Sync, None)?;
 
         loop {
-            let next = maybe!(iterator_step(cx, &iterator));
+            let next = iterator_step(cx, &iterator)?;
             match next {
-                None => return weak_set.into(),
+                None => return Ok(weak_set.as_value()),
                 Some(next) => {
-                    let next_value = maybe!(iterator_value(cx, next));
+                    let next_value = iterator_value(cx, next)?;
 
                     let add_result =
                         call_object(cx, adder.as_object(), weak_set.into(), &[next_value]);
 
-                    if let EvalResult::Throw(_) = add_result {
+                    if add_result.is_err() {
                         return iterator_close(cx, &iterator, add_result);
                     }
                 }

@@ -11,8 +11,8 @@ use super::{
     array_properties::ArrayProperties,
     builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
     collections::{BsIndexMap, BsIndexMapField},
-    completion::EvalResult,
     error::type_error,
+    eval_result::EvalResult,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::typed_array::DynTypedArray,
     object_descriptor::ObjectKind,
@@ -74,10 +74,24 @@ macro_rules! extend_object_without_conversions {
             }
         }
 
+        impl $(<$($generics),*>)? $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
+            #[allow(dead_code)]
+            #[inline]
+            pub fn as_object(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
+                self.cast()
+            }
+        }
+
         impl $(<$($generics),*>)? $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
             #[allow(dead_code)]
             #[inline]
-            pub fn object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
+            pub fn as_object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
+                self.cast()
+            }
+
+            #[allow(dead_code)]
+            #[inline]
+            pub fn as_value(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::Value> {
                 self.cast()
             }
 
@@ -452,7 +466,8 @@ impl Handle<ObjectValue> {
             self.named_properties_field()
                 .maybe_grow_for_insertion(cx)
                 .insert_without_growing(property_key.get(), private_property.to_heap());
-            ().into()
+
+            Ok(())
         }
     }
 
@@ -707,7 +722,7 @@ pub trait VirtualObject {
     }
 
     fn get_realm(&self, cx: Context) -> EvalResult<HeapPtr<Realm>> {
-        cx.current_realm_ptr().into()
+        Ok(cx.current_realm_ptr())
     }
 
     fn as_typed_array(&self) -> DynTypedArray {

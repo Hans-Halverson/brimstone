@@ -1,18 +1,15 @@
-use crate::{
-    js::runtime::{
-        abstract_operations::{construct, species_constructor},
-        collections::BsArray,
-        error::{range_error, type_error},
-        function::get_argument,
-        intrinsics::array_buffer_constructor::throw_if_detached,
-        object_descriptor::ObjectKind,
-        object_value::ObjectValue,
-        property::Property,
-        realm::Realm,
-        type_utilities::{to_index, to_integer_or_infinity},
-        Context, EvalResult, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    abstract_operations::{construct, species_constructor},
+    collections::BsArray,
+    error::{range_error, type_error},
+    function::get_argument,
+    intrinsics::array_buffer_constructor::throw_if_detached,
+    object_descriptor::ObjectKind,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::{to_index, to_integer_or_infinity},
+    Context, EvalResult, Handle, Value,
 };
 
 use super::{
@@ -62,10 +59,10 @@ impl ArrayBufferPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "byteLength"));
+        let array_buffer = require_array_buffer(cx, this_value, "byteLength")?;
 
         // Detached array buffers have byte length set to 0
-        Value::from(array_buffer.byte_length()).to_handle(cx).into()
+        Ok(Value::from(array_buffer.byte_length()).to_handle(cx))
     }
 
     /// get ArrayBuffer.prototype.detached (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.detached)
@@ -75,8 +72,8 @@ impl ArrayBufferPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "detached"));
-        cx.bool(array_buffer.is_detached()).into()
+        let array_buffer = require_array_buffer(cx, this_value, "detached")?;
+        Ok(cx.bool(array_buffer.is_detached()))
     }
 
     /// get ArrayBuffer.prototype.maxByteLength (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.maxbytelength)
@@ -86,14 +83,14 @@ impl ArrayBufferPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "maxByteLength"));
+        let array_buffer = require_array_buffer(cx, this_value, "maxByteLength")?;
 
         // Detached array buffers have max byte length set to 0
         let max_byte_length = array_buffer
             .max_byte_length()
             .unwrap_or(array_buffer.byte_length());
 
-        Value::from(max_byte_length).to_handle(cx).into()
+        Ok(Value::from(max_byte_length).to_handle(cx))
     }
 
     /// get ArrayBuffer.prototype.resizable (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.resizable)
@@ -103,8 +100,8 @@ impl ArrayBufferPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "resizable"));
-        cx.bool(!array_buffer.is_fixed_length()).into()
+        let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
+        Ok(cx.bool(!array_buffer.is_fixed_length()))
     }
 
     /// ArrayBuffer.prototype.resize (https://tc39.es/ecma262/#sec-arraybuffer.prototype.resize)
@@ -114,7 +111,7 @@ impl ArrayBufferPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut array_buffer = maybe!(require_array_buffer(cx, this_value, "resize"));
+        let mut array_buffer = require_array_buffer(cx, this_value, "resize")?;
 
         let max_byte_length = if let Some(max_byte_length) = array_buffer.max_byte_length() {
             max_byte_length
@@ -123,9 +120,9 @@ impl ArrayBufferPrototype {
         };
 
         let new_length_arg = get_argument(cx, arguments, 0);
-        let new_byte_length = maybe!(to_index(cx, new_length_arg));
+        let new_byte_length = to_index(cx, new_length_arg)?;
 
-        maybe!(throw_if_detached(cx, array_buffer.get_()));
+        throw_if_detached(cx, array_buffer.get_())?;
 
         if new_byte_length > max_byte_length {
             return range_error(cx, "new length exceeds max byte length");
@@ -157,7 +154,7 @@ impl ArrayBufferPrototype {
         array_buffer.set_data(new_data);
         array_buffer.set_byte_length(new_byte_length);
 
-        cx.undefined().into()
+        Ok(cx.undefined())
     }
 
     /// ArrayBuffer.prototype.slice (https://tc39.es/ecma262/#sec-arraybuffer.prototype.slice)
@@ -167,15 +164,15 @@ impl ArrayBufferPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let mut array_buffer = maybe!(require_array_buffer(cx, this_value, "slice"));
+        let mut array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
-        maybe!(throw_if_detached(cx, array_buffer.get_()));
+        throw_if_detached(cx, array_buffer.get_())?;
 
         let length = array_buffer.byte_length() as u64;
 
         // Calculate the start index of the slice
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = maybe!(to_integer_or_infinity(cx, start_arg));
+        let relative_start = to_integer_or_infinity(cx, start_arg)?;
         let start_index = if relative_start < 0.0 {
             if relative_start == f64::NEG_INFINITY {
                 0
@@ -189,7 +186,7 @@ impl ArrayBufferPrototype {
         // Calculate the end index of the slice
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = maybe!(to_integer_or_infinity(cx, end_argument));
+            let relative_end = to_integer_or_infinity(cx, end_argument)?;
 
             if relative_end < 0.0 {
                 if relative_end == f64::NEG_INFINITY {
@@ -209,8 +206,8 @@ impl ArrayBufferPrototype {
 
         // Call species constructor to create new array buffer with the given length
         let constructor =
-            maybe!(species_constructor(cx, array_buffer.into(), Intrinsic::ArrayBufferConstructor));
-        let new_object = maybe!(construct(cx, constructor, &[new_length_value], None));
+            species_constructor(cx, array_buffer.into(), Intrinsic::ArrayBufferConstructor)?;
+        let new_object = construct(cx, constructor, &[new_length_value], None)?;
 
         // Check type of object returned from constructor
         let mut new_array_buffer = if new_object.is_array_buffer() {
@@ -221,7 +218,7 @@ impl ArrayBufferPrototype {
             return type_error(cx, "expected array buffer");
         };
 
-        maybe!(throw_if_detached(cx, new_array_buffer.get_()));
+        throw_if_detached(cx, new_array_buffer.get_())?;
 
         if new_array_buffer.ptr_eq(&array_buffer) {
             return type_error(cx, "constructor cannot return same array buffer");
@@ -230,7 +227,7 @@ impl ArrayBufferPrototype {
         }
 
         // Original array buffer may have become detached during previous calls
-        maybe!(throw_if_detached(cx, array_buffer.get_()));
+        throw_if_detached(cx, array_buffer.get_())?;
 
         // Copy data from original array buffer to new array buffer
         unsafe {
@@ -240,7 +237,7 @@ impl ArrayBufferPrototype {
             std::ptr::copy_nonoverlapping(source, target, new_length as usize)
         }
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 
     /// ArrayBuffer.prototype.transfer (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfer)
@@ -250,17 +247,13 @@ impl ArrayBufferPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "transfer"));
+        let array_buffer = require_array_buffer(cx, this_value, "transfer")?;
         let new_length = get_argument(cx, arguments, 0);
 
-        let new_array_buffer = maybe!(array_buffer_copy_and_detach(
-            cx,
-            array_buffer,
-            new_length,
-            /* to_fixed */ false
-        ));
+        let new_array_buffer =
+            array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ false)?;
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 
     /// ArrayBuffer.prototype.transferToFixedLength (https://tc39.es/ecma262/#sec-arraybuffer.prototype.transfertofixedlength)
@@ -270,17 +263,13 @@ impl ArrayBufferPrototype {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let array_buffer = maybe!(require_array_buffer(cx, this_value, "transferToFixedLength"));
+        let array_buffer = require_array_buffer(cx, this_value, "transferToFixedLength")?;
         let new_length = get_argument(cx, arguments, 0);
 
-        let new_array_buffer = maybe!(array_buffer_copy_and_detach(
-            cx,
-            array_buffer,
-            new_length,
-            /* to_fixed */ true
-        ));
+        let new_array_buffer =
+            array_buffer_copy_and_detach(cx, array_buffer, new_length, /* to_fixed */ true)?;
 
-        new_array_buffer.into()
+        Ok(new_array_buffer.as_value())
     }
 }
 
@@ -292,7 +281,7 @@ fn require_array_buffer(
     if value.is_object() {
         let object = value.as_object();
         if object.is_array_buffer() {
-            return object.cast::<ArrayBufferObject>().into();
+            return Ok(object.cast::<ArrayBufferObject>());
         }
     }
 

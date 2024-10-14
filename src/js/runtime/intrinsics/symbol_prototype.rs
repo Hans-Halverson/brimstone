@@ -1,10 +1,7 @@
-use crate::{
-    js::runtime::{
-        builtin_function::BuiltinFunction, completion::EvalResult, error::type_error,
-        object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
-        value::SymbolValue, Context, Handle, Value,
-    },
-    maybe,
+use crate::js::runtime::{
+    builtin_function::BuiltinFunction, error::type_error, eval_result::EvalResult,
+    object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
+    value::SymbolValue, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, symbol_constructor::SymbolObject};
@@ -58,10 +55,10 @@ impl SymbolPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = maybe!(this_symbol_value(cx, this_value));
+        let symbol_value = this_symbol_value(cx, this_value)?;
         match symbol_value.as_symbol().description() {
-            None => cx.undefined().into(),
-            Some(desc) => desc.as_string().into(),
+            None => Ok(cx.undefined()),
+            Some(desc) => Ok(desc.as_value()),
         }
     }
 
@@ -72,8 +69,8 @@ impl SymbolPrototype {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = maybe!(this_symbol_value(cx, this_value));
-        symbol_descriptive_string(cx, symbol_value.as_symbol()).into()
+        let symbol_value = this_symbol_value(cx, this_value)?;
+        Ok(symbol_descriptive_string(cx, symbol_value.as_symbol()).as_value())
     }
 
     /// Symbol.prototype.valueOf (https://tc39.es/ecma262/#sec-symbol.prototype.valueof)
@@ -99,13 +96,13 @@ impl SymbolPrototype {
 
 fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_symbol() {
-        return value.into();
+        return Ok(value);
     }
 
     if value.is_object() {
         let object_value = value.as_object();
         if object_value.is_symbol_object() {
-            return object_value.cast::<SymbolObject>().symbol_data().into();
+            return Ok(object_value.cast::<SymbolObject>().symbol_data().into());
         }
     }
 

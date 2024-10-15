@@ -2907,8 +2907,9 @@ impl<'a> Parser<'a> {
 
             // Start position of pattern is offset by one to account for the leading `/`
             let pattern_start_pos = start_pos + 1;
-            let lexer_stream = Utf8LexerStream::new(pattern_start_pos, source, pattern.as_bytes());
-            let regexp = p(RegExpParser::parse_regexp(lexer_stream, flags)?);
+            let create_lexer_stream =
+                || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
+            let regexp = p(RegExpParser::parse_regexp(&create_lexer_stream, flags)?);
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {

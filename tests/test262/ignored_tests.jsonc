@@ -2,6 +2,10 @@
   // Tests that are known to fail but should count against test262 progress.
   "known_failures": {
     "tests": [
+      // Test includes annex-B features (tests contain RegExp identity escape for characters in
+      // the ID_Continue Unicode class).
+      "built-ins/String/prototype/split/separator-regexp.js",
+
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
       "language/expressions/assignment/target-member-computed-reference-null.js",

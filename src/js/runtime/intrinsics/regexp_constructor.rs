@@ -309,12 +309,12 @@ fn parse_pattern(
     pattern_string: Handle<StringValue>,
     flags: RegExpFlags,
 ) -> EvalResult<RegExp> {
-    fn parse_lexer_stream(
+    fn parse_lexer_stream<T: LexerStream>(
         cx: Context,
-        lexer_stream: impl LexerStream,
+        create_lexer_stream: &dyn Fn() -> T,
         flags: RegExpFlags,
     ) -> EvalResult<RegExp> {
-        match RegExpParser::parse_regexp(lexer_stream, flags) {
+        match RegExpParser::parse_regexp(create_lexer_stream, flags) {
             Ok(regexp) => Ok(regexp),
             Err(error) => syntax_parse_error(cx, &error),
         }
@@ -323,18 +323,19 @@ fn parse_pattern(
     let flat_string = pattern_string.flatten();
     match flat_string.width() {
         StringWidth::OneByte => {
-            let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-            parse_lexer_stream(cx, lexer_stream, flags)
+            let create_lexer_stream =
+                || HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
+            parse_lexer_stream(cx, &create_lexer_stream, flags)
         }
         StringWidth::TwoByte => {
             if flags.has_any_unicode_flag() {
-                let lexer_stream =
-                    HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                parse_lexer_stream(cx, lexer_stream, flags)
+                let create_lexer_stream =
+                    || HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
+                parse_lexer_stream(cx, &create_lexer_stream, flags)
             } else {
-                let lexer_stream =
-                    HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
-                parse_lexer_stream(cx, lexer_stream, flags)
+                let create_lexer_stream =
+                    || HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+                parse_lexer_stream(cx, &create_lexer_stream, flags)
             }
         }
     }

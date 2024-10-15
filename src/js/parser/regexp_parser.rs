@@ -49,6 +49,8 @@ pub struct RegExpParser<T: LexerStream> {
     current_capture_group_name_scope: Vec<String>,
     // Whether the RegExp has any duplicate named capture groups.
     has_duplicate_named_capture_groups: bool,
+    // Whether we should be parsing named capture groups or not.
+    parse_named_capture_groups: bool,
     // All named backreferences encountered. Saves the name, source position, and a reference to the
     // backreference node itself.
     named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
@@ -59,7 +61,7 @@ pub struct RegExpParser<T: LexerStream> {
 }
 
 impl<T: LexerStream> RegExpParser<T> {
-    fn new(lexer_stream: T, flags: RegExpFlags) -> Self {
+    fn new(lexer_stream: T, flags: RegExpFlags, parse_named_capture_groups: bool) -> Self {
         RegExpParser {
             lexer_stream,
             flags,
@@ -69,6 +71,7 @@ impl<T: LexerStream> RegExpParser<T> {
             current_capture_group_names: HashSet::new(),
             current_capture_group_name_scope: vec![],
             has_duplicate_named_capture_groups: false,
+            parse_named_capture_groups,
             named_backreferences: vec![],
             indexed_backreferences: vec![],
             group_depth: 0,
@@ -185,10 +188,32 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(index as u32)
     }
 
-    pub fn parse_regexp(lexer_stream: T, flags: RegExpFlags) -> ParseResult<RegExp> {
-        let mut parser = Self::new(lexer_stream, flags);
+    pub fn parse_regexp(
+        create_lexer_stream: &dyn Fn() -> T,
+        flags: RegExpFlags,
+    ) -> ParseResult<RegExp> {
+        // First try to parse without named capture groups. Only reparse if a named capture group
+        // was encountered.
+        let lexer_stream = create_lexer_stream();
+        let mut parser =
+            Self::new(lexer_stream, flags, /* parse_named_capture_groups */ false);
+        let parse_result = parser.parse_disjunction();
 
-        let disjunction = parser.parse_disjunction()?;
+        let disjunction = match parse_result {
+            Ok(disjunction) => disjunction,
+            Err(error) => {
+                // If we encountered a named capture group then reparse with named capture groups
+                if matches!(error.error, ParseError::NamedCaptureGroupEncountered) {
+                    let lexer_stream = create_lexer_stream();
+                    parser =
+                        Self::new(lexer_stream, flags, /* parse_named_capture_groups */ true);
+                    parser.parse_disjunction()?
+                } else {
+                    return Err(error);
+                }
+            }
+        };
+
         let regexp = RegExp {
             disjunction,
             flags,
@@ -406,8 +431,9 @@ impl<T: LexerStream> RegExpParser<T> {
                             return self.error(start_pos, ParseError::InvalidBackreferenceIndex);
                         }
                     }
-                    // Named backreferences
-                    'k' => {
+                    // Named backreferences. Can only parse when we are in parse named capture
+                    // groups mode (i.e. when reparsing because we saw a named capture group).
+                    'k' if self.parse_named_capture_groups => {
                         self.advance2();
 
                         self.expect('<')?;
@@ -649,6 +675,13 @@ impl<T: LexerStream> RegExpParser<T> {
 
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
+
+                            // The first parse assumes there are no named capture groups. Throw a
+                            // marker error to signal that a named capture group was encountered.
+                            if !self.parse_named_capture_groups {
+                                return self
+                                    .error(self.pos(), ParseError::NamedCaptureGroupEncountered);
+                            }
 
                             Ok(Term::CaptureGroup(CaptureGroup {
                                 name: Some(name),

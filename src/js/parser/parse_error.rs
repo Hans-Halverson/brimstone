@@ -107,6 +107,8 @@ pub enum ParseError {
     InvalidQuantifierBounds,
     NonQuantifiableAssertion,
     InvalidUnicodeProperty,
+    // RegExp parsing marker error to signal a named capture group was encountered
+    NamedCaptureGroupEncountered,
 }
 
 #[derive(Debug)]
@@ -431,6 +433,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidUnicodeProperty => {
                 write!(f, "Invalid unicode property in regular expression")
+            }
+            ParseError::NamedCaptureGroupEncountered => {
+                panic!("Marker error should have been caught")
             }
         }
     }

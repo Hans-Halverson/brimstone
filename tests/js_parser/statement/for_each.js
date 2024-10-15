@@ -12,6 +12,7 @@ for (a in b) {}
 
 async function foo() {
   for await (a of b) {}
+  for await (async of b) {}
 }
 
 // Sequence expression allowed in for-in

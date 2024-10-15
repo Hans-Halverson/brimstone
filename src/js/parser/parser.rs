@@ -1215,10 +1215,21 @@ impl<'a> Parser<'a> {
             // Otherwise init is an expression
             let expr_start_pos = self.current_start_pos();
 
-            // Restrict "in" when parsing for init
-            let old_allow_in = swap_and_save(&mut self.allow_in, false);
-            let expr = self.parse_outer_expression()?;
-            self.allow_in = old_allow_in;
+            // For-await statements should allow `async of` to be treated as the identifier `async`
+            // followed by the `of` keyword. This requires a special check.
+            //
+            // If parsed normally `async of` would be interpreted as the start of an async arrow
+            // function and parsing would fail to force a backtrack.
+            let expr = if is_await && self.token == Token::Async && self.peek()? == Token::Of {
+                Expression::Id(self.parse_identifier_reference()?).into_outer()
+            } else {
+                // Restrict "in" when parsing for init
+                let old_allow_in = swap_and_save(&mut self.allow_in, false);
+                let expr = self.parse_outer_expression()?;
+                self.allow_in = old_allow_in;
+
+                expr
+            };
 
             match (self.token.clone(), expr.expr) {
                 // If this is a for each loop the parsed expression must actually be a pattern

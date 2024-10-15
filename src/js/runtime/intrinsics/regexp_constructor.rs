@@ -314,7 +314,7 @@ fn parse_pattern(
         create_lexer_stream: &dyn Fn() -> T,
         flags: RegExpFlags,
     ) -> EvalResult<RegExp> {
-        match RegExpParser::parse_regexp(create_lexer_stream, flags) {
+        match RegExpParser::parse_regexp(create_lexer_stream, flags, cx.options.as_ref()) {
             Ok(regexp) => Ok(regexp),
             Err(error) => syntax_parse_error(cx, &error),
         }

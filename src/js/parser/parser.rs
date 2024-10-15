@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use bitflags::bitflags;
 
+use crate::js::common::options::Options;
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
@@ -98,6 +99,8 @@ struct Parser<'a> {
     scope_builder: ScopeTree,
     /// The program kind that is currently being parsed - script vs module.
     program_kind: ProgramKind,
+    /// Options set for the compiler
+    options: Rc<Options>,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -2909,7 +2912,8 @@ impl<'a> Parser<'a> {
             let pattern_start_pos = start_pos + 1;
             let create_lexer_stream =
                 || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
-            let regexp = p(RegExpParser::parse_regexp(&create_lexer_stream, flags)?);
+            let regexp =
+                p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options.as_ref())?);
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {

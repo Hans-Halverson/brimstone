@@ -367,13 +367,13 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(value);
                 }
             } else {
-                let mut accessor_value = Accessor::from_value(property.value());
-
                 if desc.has_get {
+                    let mut accessor_value = Accessor::from_value(property.value());
                     accessor_value.get = desc.get.map(|x| *x);
                 }
 
                 if desc.has_set {
+                    let mut accessor_value = Accessor::from_value(property.value());
                     accessor_value.set = desc.set.map(|x| *x);
                 }
             }

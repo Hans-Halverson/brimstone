@@ -7,12 +7,16 @@
       // Bugs (We intend to fix these)
       //
       ////////////////////////////////////////
+
+      // Bug regarding capture groups in lookaheads
       "built-ins/RegExp/lookahead-quantifier-match-groups.js",
+
       ////////////////////////////////////////
       //
       // Known divergences (Do not plan on fixing)
       //
       ////////////////////////////////////////
+
       // These tests are an artifact of the cover expression CoverParenthesizedExpressionAndArrowParameterList
       // which we do not implement directly. They are errors when first parsing the cover
       // expression, but are not actually errors after refining to arrow function parameters.
@@ -22,9 +26,11 @@
       "language/expressions/async-arrow-function/await-as-param-nested-arrow-body-position.js",
       "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
       "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
+
       // Test includes annex-B features (tests contain RegExp identity escape for characters in
       // the ID_Continue Unicode class).
       "built-ins/String/prototype/split/separator-regexp.js",
+
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
       "language/expressions/assignment/target-member-computed-reference-null.js",
@@ -62,18 +68,23 @@
       "language/expressions/prefix-decrement/S11.4.5_A6_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
+
       // Calls to properties of the target object of a `with` statements must use the target object
       // as the receiver.
       "language/expressions/call/with-base-obj.js",
+
       // Does not evaluate unscopables when first resolving to reference then get/put the value for
       // the reference, when evaluating unscopables could modify reference.
       "language/statements/with/get-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
       "language/statements/with/set-mutable-binding-binding-deleted-in-get-unscopables-strict-mode.js",
+
       // The errors returned from a derived constructor's [[Construct]] if the constructor's 
       // return value is invalid or uninitialized must be in the callee's realm.
       "built-ins/Function/internals/Construct/derived-this-uninitialized-realm.js",
+
       // Does not evaluate ToPropertyKey in key of object destructuring before evaluating the RHS
       "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
+
       // Does not evaluate LHS of assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/assignment/S11.13.1_A5_T1.js",
       "language/expressions/assignment/S11.13.1_A5_T2.js",
@@ -84,9 +95,11 @@
       "language/identifier-resolution/assign-to-global-undefined.js",
       "language/statements/variable/binding-resolution.js",
       "language/statements/with/set-mutable-binding-binding-deleted-with-typed-array-in-proto-chain-strict-mode.js",
+
       // Does not evaluate LHS of compound assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/compound-assignment/S11.13.2_A5.*",
       "language/expressions/compound-assignment/S11.13.2_A6.*",
+
       // Does not evaluate update expression to reference before calling GetValue, when GetValue can modify reference
       "language/expressions/postfix-increment/S11.3.1_A5_T1.js",
       "language/expressions/postfix-increment/S11.3.1_A5_T2.js",
@@ -100,11 +113,13 @@
       "language/expressions/prefix-increment/S11.4.4_A5_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A5_T2.js",
       "language/expressions/prefix-increment/S11.4.4_A5_T3.js",
+
       // Update member expressions call ToPropertyKey on key twice
       "language/expressions/postfix-decrement/S11.3.2_A6_T3.js",
       "language/expressions/postfix-increment/S11.3.1_A6_T3.js",
       "language/expressions/prefix-decrement/S11.4.5_A6_T3.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T3.js",
+
       // Compound member assignment expressions call ToPropertyKey on key twice
       "language/expressions/compound-assignment/S11.13.2_A7.10_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.11_T4.js",
@@ -117,11 +132,13 @@
       "language/expressions/compound-assignment/S11.13.2_A7.7_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.8_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.9_T4.js",
+
       // Update expressions call GetValue on reference twice 
       "language/statements/with/unscopables-inc-dec.js"
     ],
     "features": [
-      // Always skip tail-call-optimization tests as they cause stack overflow
+      // Tail call optimizations are not implemented. Always skip tail-call-optimization tests as
+      // they cause stack overflow.
       "tail-call-optimization"
     ]
   },
@@ -146,12 +163,14 @@
     "tests": [
       // Annex B
       "annexB/*",
+
       // The ECMA-402 Internationalization API is not part of ECMA-262
       "intl402/*"
     ],
     "features": [
       // Non-standard extensions
       "caller",
+
       // Stage < 4 proposals
       "decorators",
       "explicit-resource-management",
@@ -223,6 +242,7 @@
       "built-ins/encodeURIComponent/S15.1.3.4_A2.4_T1.js",
       "built-ins/encodeURIComponent/S15.1.3.4_A2.4_T2.js",
       "built-ins/encodeURIComponent/S15.1.3.4_A2.5_T1.js",
+
       // Slow array tests - all passing but could be improved by special casing sparse Array objects
       "built-ins/Array/prototype/every/15.4.4.16-7-c-ii-2.js",
       "built-ins/Array/prototype/filter/15.4.4.20-9-c-ii-1.js",
@@ -234,6 +254,7 @@
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-end-detached-prototype.js",
       "built-ins/TypedArray/prototype/copyWithin/coerced-values-start-detached.js",
+
       // All passing except for built-ins/RegExp/property-escapes/generated/strings/* which require
       // unicode sets support.
       "built-ins/RegExp/property-escapes/generated/*.js"

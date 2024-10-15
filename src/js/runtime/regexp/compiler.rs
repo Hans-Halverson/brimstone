@@ -527,12 +527,7 @@ impl CompiledRegExpBuilder {
                 // Character classes always consume a character
                 SubExpressionInfo::no_captures(true)
             }
-            Term::Lookaround(lookaround) => {
-                self.emit_lookaround(lookaround);
-
-                // Lookaround never consumes any characters
-                SubExpressionInfo::no_captures(false)
-            }
+            Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
                 self.emit_backreference_instruction(backreference.index);
 
@@ -617,6 +612,13 @@ impl CompiledRegExpBuilder {
             self.enter_repitition_context();
         }
 
+        // Start a new block, saving a reference to the block before the quantifier so we can
+        // potentially patch in instructions later.
+        let quantifier_patch_block = self.new_block();
+        let quantifier_start_block = self.new_block();
+        self.emit_jump_instruction(quantifier_patch_block);
+        self.set_current_block(quantifier_start_block);
+
         // Quantifier always has the same captures as its wrapped term. But quantifier only has the
         // same always consume status as its wrapped term when there are minimum repititions.
         // Otherwise the quantifier is never guaranteed to consume.
@@ -663,6 +665,11 @@ impl CompiledRegExpBuilder {
 
             // Exact number of repititions
             if num_remaining_repititions == 0 {
+                // Clean up any necessary contexts
+                if is_repitition {
+                    self.exit_repitition_context();
+                }
+
                 return quantifier_info;
             }
 
@@ -818,6 +825,47 @@ impl CompiledRegExpBuilder {
             self.exit_repitition_context();
         }
 
+        // If we are in a quantifier with a minimum of 0 repititions, then 0-length matches of that
+        // quantifier should not set captures. This is implemented by detecting this case with a
+        // progress instruction to make sure the quantifier consumed, and if not clearing all
+        // captures in the subexpression.
+        //
+        // Note that the progress instruction must be patched before the start of the quantifier.
+        if quantifier.min == 0
+            && !quantifier_info.always_consumes
+            && !quantifier_info.captures.is_empty()
+        {
+            // Emit a progress instruction before the quantifier starts
+            let progress_index = self.new_progress_point();
+            self.in_block(quantifier_patch_block, |this| {
+                this.emit_progress_instruction(progress_index);
+            });
+
+            // Then after the quantifier completes
+            let check_progress_and_continue_block = self.new_block();
+            let clear_captures_block = self.new_block();
+            let join_block = self.new_block();
+            self.emit_branch_instruction(check_progress_and_continue_block, clear_captures_block);
+
+            // Start by checking progress, and if we pass then proceed to the join block with
+            // captures intact.
+            self.in_block(check_progress_and_continue_block, |this| {
+                this.emit_progress_instruction(progress_index);
+                this.emit_jump_instruction(join_block);
+            });
+
+            // If checking progress failed then we will end up in this path and shold clear all
+            // captures before proceeding.
+            self.in_block(clear_captures_block, |this| {
+                for capture_index in &quantifier_info.captures {
+                    this.emit_clear_capture_instruction(*capture_index);
+                }
+                this.emit_jump_instruction(join_block);
+            });
+
+            self.set_current_block(join_block);
+        }
+
         quantifier_info
     }
 
@@ -944,7 +992,7 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn emit_lookaround(&mut self, lookaround: &Lookaround) {
+    fn emit_lookaround(&mut self, lookaround: &Lookaround) -> SubExpressionInfo {
         let body_block_id = self.new_block();
         self.emit_lookaround_instruction(
             lookaround.is_ahead,
@@ -965,12 +1013,18 @@ impl CompiledRegExpBuilder {
         let current_block_id = self.current_block_id;
         self.set_current_block(body_block_id);
 
-        self.emit_disjunction(&lookaround.disjunction);
+        // Emit the body of the lookaround, keeping track of captures
+        let mut info = self.emit_disjunction(&lookaround.disjunction);
         self.emit_accept_instruction();
 
         self.exit_direction_context();
 
         self.set_current_block(current_block_id);
+
+        // Lookaround never consumes any characters
+        info.always_consumes = false;
+
+        info
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions

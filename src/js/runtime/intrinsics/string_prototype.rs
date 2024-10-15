@@ -433,12 +433,14 @@ impl StringPrototype {
         if !regexp_arg.is_nullish() {
             if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
+
+                let flags_string = get(cx, regexp_object, cx.names.flags())?;
+                require_object_coercible(cx, flags_string)?;
+
                 let has_global_flag = if let Some(regexp_object) = regexp_object.as_regexp_object()
                 {
                     regexp_object.flags().is_global()
                 } else {
-                    let flags_string = get(cx, regexp_object, cx.names.flags())?;
-                    require_object_coercible(cx, flags_string)?;
                     let flags_string = to_string(cx, flags_string)?;
 
                     flags_string_contains(flags_string, 'g' as u32)

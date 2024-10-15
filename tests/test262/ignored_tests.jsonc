@@ -2,10 +2,29 @@
   // Tests that are known to fail but should count against test262 progress.
   "known_failures": {
     "tests": [
+      ////////////////////////////////////////
+      //
+      // Bugs (We intend to fix these)
+      //
+      ////////////////////////////////////////
+      "built-ins/RegExp/lookahead-quantifier-match-groups.js",
+      ////////////////////////////////////////
+      //
+      // Known divergences (Do not plan on fixing)
+      //
+      ////////////////////////////////////////
+      // These tests are an artifact of the cover expression CoverParenthesizedExpressionAndArrowParameterList
+      // which we do not implement directly. They are errors when first parsing the cover
+      // expression, but are not actually errors after refining to arrow function parameters.
+      "language/expressions/arrow-function/static-init-await-binding.js",
+      "language/expressions/arrow-function/static-init-await-reference.js",
+      "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
+      "language/expressions/async-arrow-function/await-as-param-nested-arrow-body-position.js",
+      "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
+      "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
       // Test includes annex-B features (tests contain RegExp identity escape for characters in
       // the ID_Continue Unicode class).
       "built-ins/String/prototype/split/separator-regexp.js",
-
       // Incorrect tests due to changed base/property evaluation order
       // https://github.com/tc39/test262/issues/3407
       "language/expressions/assignment/target-member-computed-reference-null.js",

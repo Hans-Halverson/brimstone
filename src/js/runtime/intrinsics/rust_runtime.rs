@@ -203,6 +203,7 @@ rust_runtime_functions!(
     ArrayPrototype::unshift,
     ArrayPrototype::values,
     ArrayPrototype::with,
+    async_from_sync_iterator_prototype::async_from_sync_iterator_continuation_on_reject,
     async_from_sync_iterator_prototype::create_continuing_iter_result_object,
     async_from_sync_iterator_prototype::create_done_iter_result_object,
     AsyncFromSyncIteratorPrototype::next,

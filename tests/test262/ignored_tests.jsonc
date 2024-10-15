@@ -8,8 +8,7 @@
       //
       ////////////////////////////////////////
 
-      // Bug regarding capture groups in lookaheads
-      "built-ins/RegExp/lookahead-quantifier-match-groups.js",
+      // None!
 
       ////////////////////////////////////////
       //

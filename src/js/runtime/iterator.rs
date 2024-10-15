@@ -126,13 +126,13 @@ pub fn iterator_step(cx: Context, iterator: &Iterator) -> EvalResult<Option<Hand
 /// IteratorClose (https://tc39.es/ecma262/#sec-iteratorclose)
 pub fn iterator_close(
     cx: Context,
-    iterator: &Iterator,
+    iterator: Handle<ObjectValue>,
     completion: EvalResult<Handle<Value>>,
 ) -> EvalResult<Handle<Value>> {
-    let inner_result = get_method(cx, iterator.iterator.into(), cx.names.return_());
+    let inner_result = get_method(cx, iterator.into(), cx.names.return_());
     let inner_result = match inner_result {
         Ok(None) => return completion,
-        Ok(Some(return_)) => call_object(cx, return_, iterator.iterator.into(), &[]),
+        Ok(Some(return_)) => call_object(cx, return_, iterator.into(), &[]),
         Err(thrown_value) => Err(thrown_value),
     };
 
@@ -227,7 +227,7 @@ pub fn iter_iterator_values<
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return iterator_close(cx, &iterator, completion);
+                    return iterator_close(cx, iterator.iterator, completion);
                 }
             }
         }
@@ -254,7 +254,7 @@ pub fn iter_iterator_method_values<
                 let completion = f(cx, value);
 
                 if let Some(completion) = completion {
-                    return iterator_close(cx, &iterator, completion);
+                    return iterator_close(cx, iterator.iterator, completion);
                 }
             }
         }

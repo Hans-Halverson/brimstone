@@ -74,7 +74,7 @@ impl WeakSetConstructor {
                         call_object(cx, adder.as_object(), weak_set.into(), &[next_value]);
 
                     if add_result.is_err() {
-                        return iterator_close(cx, &iterator, add_result);
+                        return iterator_close(cx, iterator.iterator, add_result);
                     }
                 }
             }

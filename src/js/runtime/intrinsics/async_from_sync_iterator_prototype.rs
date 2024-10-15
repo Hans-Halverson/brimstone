@@ -9,7 +9,8 @@ use crate::{
         gc::{HeapObject, HeapVisitor},
         intrinsics::promise_prototype::perform_promise_then,
         iterator::{
-            create_iter_result_object, iterator_complete, iterator_next, iterator_value, Iterator,
+            create_iter_result_object, iterator_close, iterator_complete, iterator_next,
+            iterator_value, Iterator,
         },
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -95,7 +96,9 @@ impl AsyncFromSyncIteratorPrototype {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
-        let iterator = this_value.as_object().cast::<AsyncFromSyncIterator>();
+        let async_iterator = this_value.as_object().cast::<AsyncFromSyncIterator>();
+        let sync_iterator = async_iterator.iterator();
+
         let value = if arguments.is_empty() {
             None
         } else {
@@ -103,11 +106,17 @@ impl AsyncFromSyncIteratorPrototype {
         };
 
         let iter_result_completion =
-            iterator_next(cx, iterator.iterator(), iterator.next_method(cx), value);
+            iterator_next(cx, async_iterator.iterator(), async_iterator.next_method(cx), value);
 
         let iter_result = if_abrupt_reject_promise!(cx, iter_result_completion, capability);
 
-        async_from_sync_iterator_continuation(cx, iter_result, capability)
+        async_from_sync_iterator_continuation(
+            cx,
+            iter_result,
+            capability,
+            sync_iterator,
+            /* close_on_rejection */ true,
+        )
     }
 
     /// %AsyncFromSyncIteratorPrototype%.return (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.return)
@@ -153,7 +162,13 @@ impl AsyncFromSyncIteratorPrototype {
             return Ok(capability.promise().as_value());
         }
 
-        async_from_sync_iterator_continuation(cx, return_result.as_object(), capability)
+        async_from_sync_iterator_continuation(
+            cx,
+            return_result.as_object(),
+            capability,
+            sync_iterator,
+            /* close_on_rejection */ false,
+        )
     }
 
     /// %AsyncFromSyncIteratorPrototype%.throw (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.throw)
@@ -174,7 +189,12 @@ impl AsyncFromSyncIteratorPrototype {
 
         // If there is no throw method the promise can immediately be rejected
         if throw_method.is_none() {
-            let error = get_argument(cx, arguments, 0);
+            // First close the iterator to give it a chance to clean up before we reject the promise
+            let close_result = iterator_close(cx, sync_iterator, Ok(cx.empty()));
+            if_abrupt_reject_promise!(cx, close_result, capability);
+
+            // Reject the promise with a new TypeError
+            let error = type_error_value(cx, "throw method is not present");
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -198,7 +218,13 @@ impl AsyncFromSyncIteratorPrototype {
             return Ok(capability.promise().as_value());
         }
 
-        async_from_sync_iterator_continuation(cx, throw_result.as_object(), capability)
+        async_from_sync_iterator_continuation(
+            cx,
+            throw_result.as_object(),
+            capability,
+            sync_iterator,
+            /* close_on_rejection */ true,
+        )
     }
 }
 
@@ -207,6 +233,8 @@ fn async_from_sync_iterator_continuation(
     cx: Context,
     iter_result: Handle<ObjectValue>,
     capability: Handle<PromiseCapability>,
+    sync_iterator: Handle<ObjectValue>,
+    close_on_rejection: bool,
 ) -> EvalResult<Handle<Value>> {
     let is_done_completion = iterator_complete(cx, iter_result);
     let is_done = if_abrupt_reject_promise!(cx, is_done_completion, capability);
@@ -215,6 +243,15 @@ fn async_from_sync_iterator_continuation(
     let value = if_abrupt_reject_promise!(cx, value_completion, capability);
 
     let value_promise_completion = coerce_to_ordinary_promise(cx, value);
+
+    if value_promise_completion.is_err() && !is_done && close_on_rejection {
+        if let Err(error) = value_promise_completion {
+            // Can ignore result since passing in an Err completion guarantees that same completion
+            // will be returned, which is a no-op when reassigned as the `value_promise_completion`.
+            let _ = iterator_close(cx, sync_iterator, Err(error));
+        }
+    }
+
     let value_promise = if_abrupt_reject_promise!(cx, value_promise_completion, capability);
 
     // Create a function that turns a value into an iter result object
@@ -234,7 +271,25 @@ fn async_from_sync_iterator_continuation(
         None,
     );
 
-    perform_promise_then(cx, value_promise, on_fulfilled.into(), cx.undefined(), Some(capability));
+    let on_reject = if is_done || !close_on_rejection {
+        cx.undefined()
+    } else {
+        // Create the reject function with the sync iterator attached
+        let on_reject = BuiltinFunction::create(
+            cx,
+            async_from_sync_iterator_continuation_on_reject,
+            1,
+            cx.names.empty_string(),
+            cx.current_realm(),
+            None,
+            None,
+        );
+        set_sync_iterator(cx, on_reject, sync_iterator);
+
+        on_reject.as_value()
+    };
+
+    perform_promise_then(cx, value_promise, on_fulfilled.into(), on_reject, Some(capability));
 
     Ok(capability.promise().as_value())
 }
@@ -257,4 +312,31 @@ pub fn create_done_iter_result_object(
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ true))
+}
+
+pub fn async_from_sync_iterator_continuation_on_reject(
+    mut cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+    _: Option<Handle<ObjectValue>>,
+) -> EvalResult<Handle<Value>> {
+    // Fetch the iterator passed from the caller
+    let current_function = cx.current_function();
+    let sync_iterator = get_sync_iterator(cx, current_function);
+
+    let error = get_argument(cx, arguments, 0);
+
+    iterator_close(cx, sync_iterator, Err(error))
+}
+
+fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
+    function
+        .private_element_find(cx, cx.well_known_symbols.index().as_symbol())
+        .unwrap()
+        .value()
+        .as_object()
+}
+
+fn set_sync_iterator(cx: Context, mut function: Handle<ObjectValue>, value: Handle<ObjectValue>) {
+    function.private_element_set(cx, cx.well_known_symbols.index().as_symbol(), value.into());
 }

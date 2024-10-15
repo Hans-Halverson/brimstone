@@ -125,7 +125,7 @@ impl PromiseConstructor {
 
         if completion.is_err() {
             if !iterator.is_done {
-                completion = iterator_close(cx, &iterator, completion);
+                completion = iterator_close(cx, iterator.iterator, completion);
             }
 
             if_abrupt_reject_promise!(cx, completion, capability);

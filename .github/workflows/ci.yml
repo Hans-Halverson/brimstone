@@ -19,7 +19,7 @@ jobs:
       - name: Run clippy
         run: cargo clippy -- -D warnings
 
-  test:
+  snapshot-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,3 +27,51 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+  # Run all test262 tests for implemented features with debug build.
+  test262-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Checkout test262 repo
+        run: ./tests/test262/install_test262.sh
+
+      - name: Run test262 tests
+        run: |
+          cd tests/test262
+          cargo run -- --reindex
+          cargo run -- --ignore-unimplemented
+
+  # Run all test262 tests for implemented features with release build.
+  test262-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Checkout test262 repo
+        run: ./tests/test262/install_test262.sh
+
+      - name: Run test262 tests
+        run: |
+          cd tests/test262
+          cargo run -- --reindex
+          cargo run --release -- --ignore-unimplemented
+
+  # Run all test262 tests for implemented features with GC stress test mode on.
+  test262-gc-stress-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Checkout test262 repo
+        run: ./tests/test262/install_test262.sh
+
+      - name: Run test262 tests
+        run: |
+          cd tests/test262
+          cargo run -- --reindex
+          cargo run --release --features gc_stress_test -- --ignore-unimplemented

@@ -48,9 +48,9 @@ fn evaluate_file(
 ) -> Result<(), Box<dyn Error>> {
     let source = Rc::new(js::parser::source::Source::new_from_file(file)?);
     let mut parse_result = if args.module {
-        js::parser::parse_module(&source)?
+        js::parser::parse_module(&source, cx.options.as_ref())?
     } else {
-        js::parser::parse_script(&source)?
+        js::parser::parse_script(&source, cx.options.as_ref())?
     };
 
     js::parser::analyze::analyze(&mut parse_result)?;

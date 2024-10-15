@@ -22,6 +22,10 @@ pub struct Args {
     #[arg(short, long, default_value_t = false)]
     pub module: bool,
 
+    /// Enable Annex B extensions
+    #[arg(long, default_value_t = false)]
+    pub annex_b: bool,
+
     /// Expose global gc methods
     #[arg(long, default_value_t = false)]
     pub expose_gc: bool,
@@ -36,6 +40,8 @@ pub struct Args {
 
 /// Options passed throughout the program.
 pub struct Options {
+    /// Whether Annex B extensions are enabled
+    pub annex_b: bool,
     /// Print each AST to the console
     pub print_ast: bool,
     /// Print the bytecode to the console
@@ -50,6 +56,7 @@ impl Options {
     /// Create a new options struct from the command line arguments.
     pub fn new_from_args(args: &Args) -> Self {
         Self {
+            annex_b: args.annex_b,
             print_ast: args.print_ast,
             print_bytecode: args.print_bytecode,
             print_regexp_bytecode: args.print_regexp_bytecode,
@@ -69,6 +76,7 @@ impl Default for Options {
     /// Create a new options struct with default values.
     fn default() -> Self {
         Self {
+            annex_b: false,
             print_ast: false,
             print_bytecode: false,
             print_regexp_bytecode: false,

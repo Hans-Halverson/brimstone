@@ -50,7 +50,8 @@ pub fn perform_eval(
         Err(error) => return syntax_parse_error(cx, &error),
     };
 
-    let parse_result = parse_script_for_eval(&source, is_direct, is_strict_caller);
+    let parse_result =
+        parse_script_for_eval(&source, cx.options.as_ref(), is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),

@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use bitflags::bitflags;
 
+use crate::js::common::options::Options;
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
@@ -98,6 +99,8 @@ struct Parser<'a> {
     scope_builder: ScopeTree,
     /// The program kind that is currently being parsed - script vs module.
     program_kind: ProgramKind,
+    /// Options set for the compiler
+    options: &'a Options,
 }
 
 /// A save point for the parser, can be used to restore the parser to a particular position.
@@ -121,7 +124,7 @@ fn swap_and_save<T: Copy>(reference: &mut T, new_value: T) -> T {
 
 impl<'a> Parser<'a> {
     // Must prime parser by calling advance before using.
-    fn new(lexer: Lexer<'a>, scope_builder: ScopeTree) -> Parser<'a> {
+    fn new(lexer: Lexer<'a>, scope_builder: ScopeTree, options: &'a Options) -> Parser<'a> {
         Parser {
             lexer,
             token: Token::Eof,
@@ -133,6 +136,7 @@ impl<'a> Parser<'a> {
             allow_in: true,
             scope_builder,
             program_kind: ProgramKind::Script,
+            options,
         }
     }
 
@@ -2909,7 +2913,7 @@ impl<'a> Parser<'a> {
             let pattern_start_pos = start_pos + 1;
             let create_lexer_stream =
                 || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
-            let regexp = p(RegExpParser::parse_regexp(&create_lexer_stream, flags)?);
+            let regexp = p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?);
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {
@@ -4646,10 +4650,10 @@ pub struct ParseFunctionResult {
     pub source: Rc<Source>,
 }
 
-pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
+pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
 
     let initial_state = parser.save();
     parser.advance()?;
@@ -4657,10 +4661,10 @@ pub fn parse_script(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
     parser.parse_script(initial_state)
 }
 
-pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
+pub fn parse_module(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_module());
+    let mut parser = Parser::new(lexer, ScopeTree::new_module(), options);
     parser.advance()?;
 
     parser.parse_module()
@@ -4668,12 +4672,13 @@ pub fn parse_module(source: &Rc<Source>) -> ParseResult<ParseProgramResult> {
 
 pub fn parse_script_for_eval(
     source: &Rc<Source>,
+    options: &Options,
     is_direct: bool,
     inherit_strict_mode: bool,
 ) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct));
+    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct), options);
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);
@@ -4686,12 +4691,13 @@ pub fn parse_script_for_eval(
 
 pub fn parse_function_params_for_function_constructor(
     source: &Rc<Source>,
+    options: &Options,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4706,12 +4712,13 @@ pub fn parse_function_params_for_function_constructor(
 
 pub fn parse_function_body_for_function_constructor(
     source: &Rc<Source>,
+    options: &Options,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4727,10 +4734,11 @@ pub fn parse_function_body_for_function_constructor(
 
 pub fn parse_function_for_function_constructor(
     source: &Rc<Source>,
+    options: &Options,
 ) -> ParseResult<ParseFunctionResult> {
     // Create and prime parser
     let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global());
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
     parser.advance()?;
 
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;

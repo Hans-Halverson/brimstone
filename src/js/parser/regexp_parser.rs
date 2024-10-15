@@ -6,6 +6,7 @@ use std::{
 use match_u32::match_u32;
 
 use crate::js::common::{
+    options::Options,
     unicode::{
         as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
         is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_unit, is_id_continue_unicode,
@@ -191,26 +192,31 @@ impl<T: LexerStream> RegExpParser<T> {
     pub fn parse_regexp(
         create_lexer_stream: &dyn Fn() -> T,
         flags: RegExpFlags,
+        options: &Options,
     ) -> ParseResult<RegExp> {
         // First try to parse without named capture groups. Only reparse if a named capture group
         // was encountered.
         let lexer_stream = create_lexer_stream();
-        let mut parser =
-            Self::new(lexer_stream, flags, /* parse_named_capture_groups */ false);
-        let parse_result = parser.parse_disjunction();
+        let mut parser;
 
-        let disjunction = match parse_result {
-            Ok(disjunction) => disjunction,
-            Err(error) => {
+        let disjunction = if !options.annex_b {
+            // Always parse with named capture groups if Annex B is not enabled
+            parser = Self::new(lexer_stream, flags, /* parse_named_capture_groups */ true);
+            parser.parse_disjunction()?
+        } else {
+            // If Annex B is enabled then first try to parse without named capture groups. Only
+            // reparse if a named capture group was encountered.
+            parser = Self::new(lexer_stream, flags, /* parse_named_capture_groups */ false);
+            match parser.parse_disjunction() {
+                Ok(disjunction) => disjunction,
                 // If we encountered a named capture group then reparse with named capture groups
-                if matches!(error.error, ParseError::NamedCaptureGroupEncountered) {
+                Err(error) if matches!(error.error, ParseError::NamedCaptureGroupEncountered) => {
                     let lexer_stream = create_lexer_stream();
                     parser =
                         Self::new(lexer_stream, flags, /* parse_named_capture_groups */ true);
                     parser.parse_disjunction()?
-                } else {
-                    return Err(error);
                 }
+                Err(error) => return Err(error),
             }
         };
 
@@ -432,7 +438,7 @@ impl<T: LexerStream> RegExpParser<T> {
                         }
                     }
                     // Named backreferences. Can only parse when we are in parse named capture
-                    // groups mode (i.e. when reparsing because we saw a named capture group).
+                    // groups mode.
                     'k' if self.parse_named_capture_groups => {
                         self.advance2();
 
@@ -676,8 +682,8 @@ impl<T: LexerStream> RegExpParser<T> {
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
 
-                            // The first parse assumes there are no named capture groups. Throw a
-                            // marker error to signal that a named capture group was encountered.
+                            // In Annex B the first parse assumes there are no named capture groups.
+                            // Throw a marker error to signal that a named capture group was found.
                             if !self.parse_named_capture_groups {
                                 return self
                                     .error(self.pos(), ParseError::NamedCaptureGroupEncountered);

@@ -181,7 +181,7 @@ pub fn host_load_imported_module(
     }
 
     // Parse the file at the given path, returning AST
-    let mut parse_result = match parse_file_at_path(new_module_path.as_path()) {
+    let mut parse_result = match parse_file_at_path(cx, new_module_path.as_path()) {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
     };
@@ -213,7 +213,7 @@ pub fn host_load_imported_module(
     Ok(module)
 }
 
-fn parse_file_at_path(path: &Path) -> ParseResult<ParseProgramResult> {
+fn parse_file_at_path(cx: Context, path: &Path) -> ParseResult<ParseProgramResult> {
     let source = Rc::new(Source::new_from_file(path.to_str().unwrap())?);
-    parse_module(&source)
+    parse_module(&source, cx.options.as_ref())
 }

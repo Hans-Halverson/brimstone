@@ -168,7 +168,7 @@ fn run_single_test(
     let options = Rc::new(Options::default());
 
     // Each test is executed in its own realm
-    let (cx, realm) = Context::new(options, |cx| {
+    let (cx, realm) = Context::new(options.clone(), |cx| {
         // Allocate the realm's built-ins in the permanent heap
         initialize_host_defined_realm(
             cx, /* expose_gc */ false, /* expose_test262 */ true,
@@ -199,7 +199,8 @@ fn run_single_test(
         }
 
         // Try to parse file
-        let parse_result = parse_file(&test.path, Some(test), test262_root, force_strict_mode);
+        let parse_result =
+            parse_file(&test.path, options.as_ref(), Some(test), test262_root, force_strict_mode);
         let mut ast = match parse_result {
             Ok(ast) => ast,
             // An error during parse may be a success or failure depending on the expected result of
@@ -270,6 +271,7 @@ fn run_single_test(
 
 fn parse_file(
     file: &str,
+    options: &Options,
     test: Option<&Test>,
     test262_root: &str,
     force_strict_mode: bool,
@@ -280,7 +282,7 @@ fn parse_file(
 
     if let Some(Test { mode: TestMode::Module, .. }) = test {
         let source = Rc::new(source);
-        let parse_result = js::parser::parse_module(&source)?;
+        let parse_result = js::parser::parse_module(&source, options)?;
 
         Ok(parse_result)
     } else {
@@ -293,7 +295,7 @@ fn parse_file(
         }
 
         let source = Rc::new(source);
-        let parse_result = js::parser::parse_script(&source)?;
+        let parse_result = js::parser::parse_script(&source, options)?;
 
         Ok(parse_result)
     }
@@ -302,8 +304,9 @@ fn parse_file(
 fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let mut ast = parse_file(full_path.to_str().unwrap(), None, test262_root, false)
-        .expect(&format!("Failed to parse test harness file {}", full_path.display()));
+    let mut ast =
+        parse_file(full_path.to_str().unwrap(), cx.options.as_ref(), None, test262_root, false)
+            .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
     js::parser::analyze::analyze(&mut ast)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));

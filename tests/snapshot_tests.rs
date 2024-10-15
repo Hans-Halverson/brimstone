@@ -21,12 +21,13 @@ struct TestEnv {
 
 #[test]
 fn js_parser_snapshot_tests() -> GenericResult<()> {
+    let options = Options::default();
     let parser_tests_dir = Path::new(file!()).parent().unwrap().join("js_parser");
-    run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path))
+    run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path, &options))
 }
 
-fn print_ast(path: &str) -> GenericResult<String> {
-    let parse_result = parse_script_or_module(path)?;
+fn print_ast(path: &str, options: &Options) -> GenericResult<String> {
+    let parse_result = parse_script_or_module(path, options)?;
     Ok(parser::print_program(&parse_result.program))
 }
 
@@ -83,7 +84,7 @@ fn generate_bytecode(
     realm: Handle<Realm>,
     path: &str,
 ) -> GenericResult<BytecodeResult> {
-    let mut parse_result = parse_script_or_module(path)?;
+    let mut parse_result = parse_script_or_module(path, cx.options.as_ref())?;
     parser::analyze::analyze(&mut parse_result)?;
 
     match parse_result.program.kind {
@@ -118,13 +119,16 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     })
 }
 
-fn parse_script_or_module(path: &str) -> GenericResult<parser::parser::ParseProgramResult> {
+fn parse_script_or_module(
+    path: &str,
+    options: &Options,
+) -> GenericResult<parser::parser::ParseProgramResult> {
     let source = Rc::new(parser::source::Source::new_from_file(path)?);
 
     let parse_result = if path.contains("module") {
-        parser::parse_module(&source)?
+        parser::parse_module(&source, options)?
     } else {
-        parser::parse_script(&source)?
+        parser::parse_script(&source, options)?
     };
 
     Ok(parse_result)

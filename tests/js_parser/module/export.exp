@@ -1,37 +1,37 @@
 {
   type: "Program",
-  loc: "1:0-34:29",
+  loc: "1:1-34:30",
   body: [
     {
       type: "ExportNamedDeclaration",
-      loc: "1:0-1:10",
+      loc: "1:1-1:11",
       declaration: null,
       specifiers: [],
       source: null,
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "2:0-2:19",
+      loc: "2:1-2:20",
       declaration: null,
       specifiers: [],
       source: {
         type: "Literal",
-        loc: "2:15-2:18",
+        loc: "2:16-2:19",
         value: "a",
       },
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "4:0-4:10",
+      loc: "4:1-4:11",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "4:8-4:9",
+          loc: "4:9-4:10",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "4:8-4:9",
+            loc: "4:9-4:10",
             name: "a",
           },
         },
@@ -40,16 +40,16 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "5:0-5:11",
+      loc: "5:1-5:12",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "5:8-5:9",
+          loc: "5:9-5:10",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "5:8-5:9",
+            loc: "5:9-5:10",
             name: "a",
           },
         },
@@ -58,36 +58,36 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "6:0-6:16",
+      loc: "6:1-6:17",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "6:8-6:9",
+          loc: "6:9-6:10",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "6:8-6:9",
+            loc: "6:9-6:10",
             name: "a",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "6:11-6:12",
+          loc: "6:12-6:13",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "6:11-6:12",
+            loc: "6:12-6:13",
             name: "b",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "6:14-6:15",
+          loc: "6:15-6:16",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "6:14-6:15",
+            loc: "6:15-6:16",
             name: "c",
           },
         },
@@ -96,36 +96,36 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "7:0-7:17",
+      loc: "7:1-7:18",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "7:8-7:9",
+          loc: "7:9-7:10",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "7:8-7:9",
+            loc: "7:9-7:10",
             name: "a",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "7:11-7:12",
+          loc: "7:12-7:13",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "7:11-7:12",
+            loc: "7:12-7:13",
             name: "b",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "7:14-7:15",
+          loc: "7:15-7:16",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "7:14-7:15",
+            loc: "7:15-7:16",
             name: "c",
           },
         },
@@ -134,66 +134,66 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "8:0-8:19",
+      loc: "8:1-8:20",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "8:8-8:9",
+          loc: "8:9-8:10",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "8:8-8:9",
+            loc: "8:9-8:10",
             name: "a",
           },
         },
       ],
       source: {
         type: "Literal",
-        loc: "8:16-8:19",
+        loc: "8:17-8:20",
         value: "b",
       },
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "10:0-10:26",
+      loc: "10:1-10:27",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "10:8-10:14",
+          loc: "10:9-10:15",
           exported: {
             type: "Identifier",
-            loc: "10:13-10:14",
+            loc: "10:14-10:15",
             name: "b",
           },
           local: {
             type: "Identifier",
-            loc: "10:8-10:9",
+            loc: "10:9-10:10",
             name: "a",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "10:16-10:17",
+          loc: "10:17-10:18",
           exported: null,
           local: {
             type: "Identifier",
-            loc: "10:16-10:17",
+            loc: "10:17-10:18",
             name: "c",
           },
         },
         {
           type: "ExportSpecifier",
-          loc: "10:19-10:25",
+          loc: "10:20-10:26",
           exported: {
             type: "Identifier",
-            loc: "10:24-10:25",
+            loc: "10:25-10:26",
             name: "e",
           },
           local: {
             type: "Identifier",
-            loc: "10:19-10:20",
+            loc: "10:20-10:21",
             name: "d",
           },
         },
@@ -202,20 +202,20 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "13:0-13:18",
+      loc: "13:1-13:19",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "13:8-13:16",
+          loc: "13:9-13:17",
           exported: {
             type: "Literal",
-            loc: "13:13-13:16",
+            loc: "13:14-13:17",
             value: "b",
           },
           local: {
             type: "Identifier",
-            loc: "13:8-13:9",
+            loc: "13:9-13:10",
             name: "a",
           },
         },
@@ -224,20 +224,20 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "14:0-14:17",
+      loc: "14:1-14:18",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "14:8-14:15",
+          loc: "14:9-14:16",
           exported: {
             type: "Identifier",
-            loc: "14:13-14:15",
+            loc: "14:14-14:16",
             name: "if",
           },
           local: {
             type: "Identifier",
-            loc: "14:8-14:9",
+            loc: "14:9-14:10",
             name: "a",
           },
         },
@@ -246,75 +246,75 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "17:0-17:33",
+      loc: "17:1-17:34",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "17:8-17:18",
+          loc: "17:9-17:19",
           exported: {
             type: "Literal",
-            loc: "17:15-17:18",
+            loc: "17:16-17:19",
             value: "b",
           },
           local: {
             type: "Literal",
-            loc: "17:8-17:11",
+            loc: "17:9-17:12",
             value: "a",
           },
         },
       ],
       source: {
         type: "Literal",
-        loc: "17:25-17:32",
+        loc: "17:26-17:33",
         value: "other",
       },
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "18:0-18:31",
+      loc: "18:1-18:32",
       declaration: null,
       specifiers: [
         {
           type: "ExportSpecifier",
-          loc: "18:8-18:16",
+          loc: "18:9-18:17",
           exported: {
             type: "Identifier",
-            loc: "18:14-18:16",
+            loc: "18:15-18:17",
             name: "if",
           },
           local: {
             type: "Identifier",
-            loc: "18:8-18:10",
+            loc: "18:9-18:11",
             name: "if",
           },
         },
       ],
       source: {
         type: "Literal",
-        loc: "18:23-18:30",
+        loc: "18:24-18:31",
         value: "other",
       },
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "20:0-20:17",
+      loc: "20:1-20:18",
       declaration: {
         type: "VariableDeclaration",
-        loc: "20:7-20:17",
+        loc: "20:8-20:18",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "20:11-20:16",
+            loc: "20:12-20:17",
             id: {
               type: "Identifier",
-              loc: "20:11-20:12",
+              loc: "20:12-20:13",
               name: "a",
             },
             init: {
               type: "Literal",
-              loc: "20:15-20:16",
+              loc: "20:16-20:17",
               value: 1,
             },
           },
@@ -325,23 +325,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "21:0-21:18",
+      loc: "21:1-21:19",
       declaration: {
         type: "VariableDeclaration",
-        loc: "21:7-21:18",
+        loc: "21:8-21:19",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "21:11-21:17",
+            loc: "21:12-21:18",
             id: {
               type: "Identifier",
-              loc: "21:11-21:13",
+              loc: "21:12-21:14",
               name: "a2",
             },
             init: {
               type: "Literal",
-              loc: "21:16-21:17",
+              loc: "21:17-21:18",
               value: 1,
             },
           },
@@ -352,23 +352,23 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "22:0-22:20",
+      loc: "22:1-22:21",
       declaration: {
         type: "VariableDeclaration",
-        loc: "22:7-22:20",
+        loc: "22:8-22:21",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "22:13-22:19",
+            loc: "22:14-22:20",
             id: {
               type: "Identifier",
-              loc: "22:13-22:15",
+              loc: "22:14-22:16",
               name: "a3",
             },
             init: {
               type: "Literal",
-              loc: "22:18-22:19",
+              loc: "22:19-22:20",
               value: 1,
             },
           },
@@ -379,34 +379,34 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "23:0-23:26",
+      loc: "23:1-23:27",
       declaration: {
         type: "VariableDeclaration",
-        loc: "23:7-23:26",
+        loc: "23:8-23:27",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "23:13-23:25",
+            loc: "23:14-23:26",
             id: {
               type: "ArrayPattern",
-              loc: "23:13-23:21",
+              loc: "23:14-23:22",
               elements: [
                 {
                   type: "Identifier",
-                  loc: "23:14-23:16",
+                  loc: "23:15-23:17",
                   name: "a4",
                 },
                 {
                   type: "Identifier",
-                  loc: "23:18-23:20",
+                  loc: "23:19-23:21",
                   name: "b5",
                 },
               ],
             },
             init: {
               type: "Literal",
-              loc: "23:24-23:25",
+              loc: "23:25-23:26",
               value: 1,
             },
           },
@@ -417,19 +417,19 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "25:0-25:17",
+      loc: "25:1-25:18",
       declaration: {
         type: "ClassDeclaration",
-        loc: "25:7-25:17",
+        loc: "25:8-25:18",
         id: {
           type: "Identifier",
-          loc: "25:13-25:14",
+          loc: "25:14-25:15",
           name: "C",
         },
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "25:7-25:17",
+          loc: "25:8-25:18",
           body: [],
         },
       },
@@ -438,23 +438,23 @@
     },
     {
       type: "EmptyStatement",
-      loc: "25:17-25:18",
+      loc: "25:18-25:19",
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "27:0-27:24",
+      loc: "27:1-27:25",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "27:7-27:24",
+        loc: "27:8-27:25",
         id: {
           type: "Identifier",
-          loc: "27:16-27:19",
+          loc: "27:17-27:20",
           name: "foo",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "27:22-27:24",
+          loc: "27:23-27:25",
           body: [],
         },
         async: false,
@@ -466,19 +466,19 @@
     },
     {
       type: "ExportNamedDeclaration",
-      loc: "28:0-28:31",
+      loc: "28:1-28:32",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "28:7-28:31",
+        loc: "28:8-28:32",
         id: {
           type: "Identifier",
-          loc: "28:22-28:26",
+          loc: "28:23-28:27",
           name: "foo2",
         },
         params: [],
         body: {
           type: "Block",
-          loc: "28:29-28:31",
+          loc: "28:30-28:32",
           body: [],
         },
         async: true,
@@ -490,48 +490,48 @@
     },
     {
       type: "ExportDefaultDeclaration",
-      loc: "30:0-30:18",
+      loc: "30:1-30:19",
       declaration: {
         type: "Identifier",
-        loc: "30:15-30:17",
+        loc: "30:16-30:18",
         name: "a6",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "32:0-32:22",
+      loc: "32:1-32:23",
       exported: null,
       source: {
         type: "Literal",
-        loc: "32:14-32:21",
+        loc: "32:15-32:22",
         value: "other",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "33:0-33:27",
+      loc: "33:1-33:28",
       exported: {
         type: "Identifier",
-        loc: "33:12-33:13",
+        loc: "33:13-33:14",
         name: "a",
       },
       source: {
         type: "Literal",
-        loc: "33:19-33:26",
+        loc: "33:20-33:27",
         value: "other",
       },
     },
     {
       type: "ExportAllDeclaration",
-      loc: "34:0-34:29",
+      loc: "34:1-34:30",
       exported: {
         type: "Literal",
-        loc: "34:12-34:15",
+        loc: "34:13-34:16",
         value: "a",
       },
       source: {
         type: "Literal",
-        loc: "34:21-34:28",
+        loc: "34:22-34:29",
         value: "other",
       },
     },

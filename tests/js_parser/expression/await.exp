@@ -1,45 +1,45 @@
 {
   type: "Program",
-  loc: "1:0-6:25",
+  loc: "1:1-6:26",
   body: [
     {
       type: "FunctionDeclaration",
-      loc: "1:0-4:1",
+      loc: "1:1-4:2",
       id: {
         type: "Identifier",
-        loc: "1:15-1:18",
+        loc: "1:16-1:19",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "1:21-4:1",
+        loc: "1:22-4:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "2:2-2:10",
+            loc: "2:3-2:11",
             kind: {
               type: "AwaitExpression",
-              loc: "2:2-2:9",
+              loc: "2:3-2:10",
               argument: {
                 type: "Literal",
-                loc: "2:8-2:9",
+                loc: "2:9-2:10",
                 value: 1,
               },
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "3:2-3:16",
+            loc: "3:3-3:17",
             kind: {
               type: "AwaitExpression",
-              loc: "3:2-3:15",
+              loc: "3:3-3:16",
               argument: {
                 type: "AwaitExpression",
-                loc: "3:8-3:15",
+                loc: "3:9-3:16",
                 argument: {
                   type: "Literal",
-                  loc: "3:14-3:15",
+                  loc: "3:15-3:16",
                   value: 1,
                 },
               },
@@ -53,16 +53,16 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "6:0-6:25",
+      loc: "6:1-6:26",
       id: {
         type: "Identifier",
-        loc: "6:15-6:20",
+        loc: "6:16-6:21",
         name: "await",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "6:23-6:25",
+        loc: "6:24-6:26",
         body: [],
       },
       async: true,

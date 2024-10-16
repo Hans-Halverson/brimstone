@@ -1,21 +1,21 @@
 {
   type: "Program",
-  loc: "1:0-19:25",
+  loc: "1:1-19:26",
   body: [
     {
       type: "ForOfStatement",
-      loc: "1:0-1:19",
+      loc: "1:1-1:20",
       left: {
         type: "VariableDeclaration",
-        loc: "1:5-1:10",
+        loc: "1:6-1:11",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "1:9-1:10",
+            loc: "1:10-1:11",
             id: {
               type: "Identifier",
-              loc: "1:9-1:10",
+              loc: "1:10-1:11",
               name: "a",
             },
             init: null,
@@ -24,30 +24,30 @@
       },
       right: {
         type: "Identifier",
-        loc: "1:14-1:15",
+        loc: "1:15-1:16",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "1:17-1:19",
+        loc: "1:18-1:20",
         body: [],
       },
       await: false,
     },
     {
       type: "ForInStatement",
-      loc: "3:0-3:19",
+      loc: "3:1-3:20",
       left: {
         type: "VariableDeclaration",
-        loc: "3:5-3:10",
+        loc: "3:6-3:11",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "3:9-3:10",
+            loc: "3:10-3:11",
             id: {
               type: "Identifier",
-              loc: "3:9-3:10",
+              loc: "3:10-3:11",
               name: "a",
             },
             init: null,
@@ -56,29 +56,29 @@
       },
       right: {
         type: "Identifier",
-        loc: "3:14-3:15",
+        loc: "3:15-3:16",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "3:17-3:19",
+        loc: "3:18-3:20",
         body: [],
       },
     },
     {
       type: "ForOfStatement",
-      loc: "5:0-5:19",
+      loc: "5:1-5:20",
       left: {
         type: "VariableDeclaration",
-        loc: "5:5-5:10",
+        loc: "5:6-5:11",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "5:9-5:10",
+            loc: "5:10-5:11",
             id: {
               type: "Identifier",
-              loc: "5:9-5:10",
+              loc: "5:10-5:11",
               name: "a",
             },
             init: null,
@@ -87,30 +87,30 @@
       },
       right: {
         type: "Identifier",
-        loc: "5:14-5:15",
+        loc: "5:15-5:16",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "5:17-5:19",
+        loc: "5:18-5:20",
         body: [],
       },
       await: false,
     },
     {
       type: "ForOfStatement",
-      loc: "7:0-7:21",
+      loc: "7:1-7:22",
       left: {
         type: "VariableDeclaration",
-        loc: "7:5-7:12",
+        loc: "7:6-7:13",
         kind: "const",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "7:11-7:12",
+            loc: "7:12-7:13",
             id: {
               type: "Identifier",
-              loc: "7:11-7:12",
+              loc: "7:12-7:13",
               name: "a",
             },
             init: null,
@@ -119,104 +119,104 @@
       },
       right: {
         type: "Identifier",
-        loc: "7:16-7:17",
+        loc: "7:17-7:18",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "7:19-7:21",
+        loc: "7:20-7:22",
         body: [],
       },
       await: false,
     },
     {
       type: "ForOfStatement",
-      loc: "9:0-9:15",
+      loc: "9:1-9:16",
       left: {
         type: "Identifier",
-        loc: "9:5-9:6",
+        loc: "9:6-9:7",
         name: "a",
       },
       right: {
         type: "Identifier",
-        loc: "9:10-9:11",
+        loc: "9:11-9:12",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "9:13-9:15",
+        loc: "9:14-9:16",
         body: [],
       },
       await: false,
     },
     {
       type: "ForInStatement",
-      loc: "11:0-11:15",
+      loc: "11:1-11:16",
       left: {
         type: "Identifier",
-        loc: "11:5-11:6",
+        loc: "11:6-11:7",
         name: "a",
       },
       right: {
         type: "Identifier",
-        loc: "11:10-11:11",
+        loc: "11:11-11:12",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "11:13-11:15",
+        loc: "11:14-11:16",
         body: [],
       },
     },
     {
       type: "FunctionDeclaration",
-      loc: "13:0-16:1",
+      loc: "13:1-16:2",
       id: {
         type: "Identifier",
-        loc: "13:15-13:18",
+        loc: "13:16-13:19",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "13:21-16:1",
+        loc: "13:22-16:2",
         body: [
           {
             type: "ForOfStatement",
-            loc: "14:2-14:23",
+            loc: "14:3-14:24",
             left: {
               type: "Identifier",
-              loc: "14:13-14:14",
+              loc: "14:14-14:15",
               name: "a",
             },
             right: {
               type: "Identifier",
-              loc: "14:18-14:19",
+              loc: "14:19-14:20",
               name: "b",
             },
             body: {
               type: "Block",
-              loc: "14:21-14:23",
+              loc: "14:22-14:24",
               body: [],
             },
             await: true,
           },
           {
             type: "ForOfStatement",
-            loc: "15:2-15:27",
+            loc: "15:3-15:28",
             left: {
               type: "Identifier",
-              loc: "15:13-15:18",
+              loc: "15:14-15:19",
               name: "async",
             },
             right: {
               type: "Identifier",
-              loc: "15:22-15:23",
+              loc: "15:23-15:24",
               name: "b",
             },
             body: {
               type: "Block",
-              loc: "15:25-15:27",
+              loc: "15:26-15:28",
               body: [],
             },
             await: true,
@@ -229,18 +229,18 @@
     },
     {
       type: "ForInStatement",
-      loc: "19:0-19:25",
+      loc: "19:1-19:26",
       left: {
         type: "VariableDeclaration",
-        loc: "19:5-19:10",
+        loc: "19:6-19:11",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "19:9-19:10",
+            loc: "19:10-19:11",
             id: {
               type: "Identifier",
-              loc: "19:9-19:10",
+              loc: "19:10-19:11",
               name: "a",
             },
             init: null,
@@ -249,28 +249,28 @@
       },
       right: {
         type: "SequenceExpression",
-        loc: "19:14-19:21",
+        loc: "19:15-19:22",
         expressions: [
           {
             type: "Literal",
-            loc: "19:14-19:15",
+            loc: "19:15-19:16",
             value: 1,
           },
           {
             type: "Literal",
-            loc: "19:17-19:18",
+            loc: "19:18-19:19",
             value: 2,
           },
           {
             type: "Literal",
-            loc: "19:20-19:21",
+            loc: "19:21-19:22",
             value: 3,
           },
         ],
       },
       body: {
         type: "Block",
-        loc: "19:23-19:25",
+        loc: "19:24-19:26",
         body: [],
       },
     },

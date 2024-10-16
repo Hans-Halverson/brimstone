@@ -1,23 +1,23 @@
 {
   type: "Program",
-  loc: "1:0-18:8",
+  loc: "1:1-18:9",
   body: [
     {
       type: "VariableDeclaration",
-      loc: "2:0-2:10",
+      loc: "2:1-2:11",
       kind: "var",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "2:4-2:9",
+          loc: "2:5-2:10",
           id: {
             type: "Identifier",
-            loc: "2:4-2:5",
+            loc: "2:5-2:6",
             name: "x",
           },
           init: {
             type: "Literal",
-            loc: "2:8-2:9",
+            loc: "2:9-2:10",
             value: 1,
           },
         },
@@ -25,45 +25,45 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "5:0-5:30",
+      loc: "5:1-5:31",
       id: {
         type: "Identifier",
-        loc: "5:9-5:13",
+        loc: "5:10-5:14",
         name: "test",
       },
       params: [
         {
           type: "AssignmentPattern",
-          loc: "5:14-5:19",
+          loc: "5:15-5:20",
           left: {
             type: "Identifier",
-            loc: "5:14-5:15",
+            loc: "5:15-5:16",
             name: "x",
           },
           right: {
             type: "Literal",
-            loc: "5:18-5:19",
+            loc: "5:19-5:20",
             value: 1,
           },
         },
         {
           type: "AssignmentPattern",
-          loc: "5:21-5:26",
+          loc: "5:22-5:27",
           left: {
             type: "Identifier",
-            loc: "5:21-5:22",
+            loc: "5:22-5:23",
             name: "y",
           },
           right: {
             type: "Literal",
-            loc: "5:25-5:26",
+            loc: "5:26-5:27",
             value: 2,
           },
         },
       ],
       body: {
         type: "Block",
-        loc: "5:28-5:30",
+        loc: "5:29-5:31",
         body: [],
       },
       async: false,
@@ -72,26 +72,26 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "8:0-8:12",
+      loc: "8:1-8:13",
       kind: "var",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "8:4-8:11",
+          loc: "8:5-8:12",
           id: {
             type: "ArrayPattern",
-            loc: "8:4-8:7",
+            loc: "8:5-8:8",
             elements: [
               {
                 type: "Identifier",
-                loc: "8:5-8:6",
+                loc: "8:6-8:7",
                 name: "a",
               },
             ],
           },
           init: {
             type: "Literal",
-            loc: "8:10-8:11",
+            loc: "8:11-8:12",
             value: 1,
           },
         },
@@ -99,20 +99,20 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "10:0-10:20",
+      loc: "10:1-10:21",
       id: {
         type: "Identifier",
-        loc: "10:9-10:12",
+        loc: "10:10-10:13",
         name: "foo",
       },
       params: [
         {
           type: "ArrayPattern",
-          loc: "10:13-10:16",
+          loc: "10:14-10:17",
           elements: [
             {
               type: "Identifier",
-              loc: "10:14-10:15",
+              loc: "10:15-10:16",
               name: "a",
             },
           ],
@@ -120,7 +120,7 @@
       ],
       body: {
         type: "Block",
-        loc: "10:18-10:20",
+        loc: "10:19-10:21",
         body: [],
       },
       async: false,
@@ -129,22 +129,22 @@
     },
     {
       type: "ForOfStatement",
-      loc: "12:0-12:21",
+      loc: "12:1-12:22",
       left: {
         type: "VariableDeclaration",
-        loc: "12:5-12:12",
+        loc: "12:6-12:13",
         kind: "var",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "12:9-12:12",
+            loc: "12:10-12:13",
             id: {
               type: "ArrayPattern",
-              loc: "12:9-12:12",
+              loc: "12:10-12:13",
               elements: [
                 {
                   type: "Identifier",
-                  loc: "12:10-12:11",
+                  loc: "12:11-12:12",
                   name: "a",
                 },
               ],
@@ -155,41 +155,41 @@
       },
       right: {
         type: "Literal",
-        loc: "12:16-12:17",
+        loc: "12:17-12:18",
         value: 1,
       },
       body: {
         type: "Block",
-        loc: "12:19-12:21",
+        loc: "12:20-12:22",
         body: [],
       },
       await: false,
     },
     {
       type: "TryStatement",
-      loc: "14:0-14:21",
+      loc: "14:1-14:22",
       block: {
         type: "Block",
-        loc: "14:4-14:6",
+        loc: "14:5-14:7",
         body: [],
       },
       handler: {
         type: "CatchClause",
-        loc: "14:7-14:21",
+        loc: "14:8-14:22",
         param: {
           type: "ArrayPattern",
-          loc: "14:14-14:17",
+          loc: "14:15-14:18",
           elements: [
             {
               type: "Identifier",
-              loc: "14:15-14:16",
+              loc: "14:16-14:17",
               name: "a",
             },
           ],
         },
         body: {
           type: "Block",
-          loc: "14:19-14:21",
+          loc: "14:20-14:22",
           body: [],
         },
       },
@@ -197,51 +197,51 @@
     },
     {
       type: "ForOfStatement",
-      loc: "16:0-16:17",
+      loc: "16:1-16:18",
       left: {
         type: "ArrayPattern",
-        loc: "16:5-16:8",
+        loc: "16:6-16:9",
         elements: [
           {
             type: "Identifier",
-            loc: "16:6-16:7",
+            loc: "16:7-16:8",
             name: "a",
           },
         ],
       },
       right: {
         type: "Literal",
-        loc: "16:12-16:13",
+        loc: "16:13-16:14",
         value: 1,
       },
       body: {
         type: "Block",
-        loc: "16:15-16:17",
+        loc: "16:16-16:18",
         body: [],
       },
       await: false,
     },
     {
       type: "ExpressionStatement",
-      loc: "18:0-18:8",
+      loc: "18:1-18:9",
       kind: {
         type: "AssignmentExpression",
-        loc: "18:0-18:7",
+        loc: "18:1-18:8",
         operator: "=",
         left: {
           type: "ArrayPattern",
-          loc: "18:0-18:3",
+          loc: "18:1-18:4",
           elements: [
             {
               type: "Identifier",
-              loc: "18:1-18:2",
+              loc: "18:2-18:3",
               name: "a",
             },
           ],
         },
         right: {
           type: "Literal",
-          loc: "18:6-18:7",
+          loc: "18:7-18:8",
           value: 1,
         },
       },

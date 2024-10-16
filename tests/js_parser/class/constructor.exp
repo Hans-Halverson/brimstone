@@ -1,36 +1,36 @@
 {
   type: "Program",
-  loc: "1:0-18:1",
+  loc: "1:1-18:2",
   body: [
     {
       type: "ClassDeclaration",
-      loc: "1:0-18:1",
+      loc: "1:1-18:2",
       id: {
         type: "Identifier",
-        loc: "1:6-1:7",
+        loc: "1:7-1:8",
         name: "C",
       },
       superClass: null,
       body: {
         type: "ClassBody",
-        loc: "1:0-18:1",
+        loc: "1:1-18:2",
         body: [
           {
             type: "MethodDefinition",
-            loc: "3:2-3:18",
+            loc: "3:3-3:19",
             key: {
               type: "Identifier",
-              loc: "3:2-3:13",
+              loc: "3:3-3:14",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "3:2-3:18",
+              loc: "3:3-3:19",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "3:16-3:18",
+                loc: "3:17-3:19",
                 body: [],
               },
               async: false,
@@ -43,20 +43,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "4:2-4:20",
+            loc: "4:3-4:21",
             key: {
               type: "Literal",
-              loc: "4:2-4:15",
+              loc: "4:3-4:16",
               value: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "4:2-4:20",
+              loc: "4:3-4:21",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "4:18-4:20",
+                loc: "4:19-4:21",
                 body: [],
               },
               async: false,
@@ -69,20 +69,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "7:2-7:24",
+            loc: "7:3-7:25",
             key: {
               type: "Identifier",
-              loc: "7:8-7:19",
+              loc: "7:9-7:20",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "7:2-7:24",
+              loc: "7:3-7:25",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "7:22-7:24",
+                loc: "7:23-7:25",
                 body: [],
               },
               async: true,
@@ -95,20 +95,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "8:2-8:19",
+            loc: "8:3-8:20",
             key: {
               type: "Identifier",
-              loc: "8:3-8:14",
+              loc: "8:4-8:15",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "8:2-8:19",
+              loc: "8:3-8:20",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "8:17-8:19",
+                loc: "8:18-8:20",
                 body: [],
               },
               async: false,
@@ -121,20 +121,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "9:2-9:25",
+            loc: "9:3-9:26",
             key: {
               type: "Identifier",
-              loc: "9:9-9:20",
+              loc: "9:10-9:21",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "9:2-9:25",
+              loc: "9:3-9:26",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "9:23-9:25",
+                loc: "9:24-9:26",
                 body: [],
               },
               async: true,
@@ -147,10 +147,10 @@
           },
           {
             type: "PropertyDefinition",
-            loc: "12:2-12:13",
+            loc: "12:3-12:14",
             key: {
               type: "Identifier",
-              loc: "12:2-12:13",
+              loc: "12:3-12:14",
               name: "constructor",
             },
             value: null,
@@ -159,20 +159,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "13:2-13:25",
+            loc: "13:3-13:26",
             key: {
               type: "Identifier",
-              loc: "13:9-13:20",
+              loc: "13:10-13:21",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "13:9-13:25",
+              loc: "13:10-13:26",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "13:23-13:25",
+                loc: "13:24-13:26",
                 body: [],
               },
               async: false,
@@ -185,20 +185,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "14:2-14:20",
+            loc: "14:3-14:21",
             key: {
               type: "Identifier",
-              loc: "14:3-14:14",
+              loc: "14:4-14:15",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "14:2-14:20",
+              loc: "14:3-14:21",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "14:18-14:20",
+                loc: "14:19-14:21",
                 body: [],
               },
               async: false,
@@ -211,20 +211,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "15:2-15:22",
+            loc: "15:3-15:23",
             key: {
               type: "Literal",
-              loc: "15:3-15:16",
+              loc: "15:4-15:17",
               value: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "15:2-15:22",
+              loc: "15:3-15:23",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "15:20-15:22",
+                loc: "15:21-15:23",
                 body: [],
               },
               async: false,
@@ -237,20 +237,20 @@
           },
           {
             type: "MethodDefinition",
-            loc: "16:2-16:22",
+            loc: "16:3-16:23",
             key: {
               type: "Identifier",
-              loc: "16:6-16:17",
+              loc: "16:7-16:18",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "16:2-16:22",
+              loc: "16:3-16:23",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "16:20-16:22",
+                loc: "16:21-16:23",
                 body: [],
               },
               async: false,
@@ -263,26 +263,26 @@
           },
           {
             type: "MethodDefinition",
-            loc: "17:2-17:23",
+            loc: "17:3-17:24",
             key: {
               type: "Identifier",
-              loc: "17:6-17:17",
+              loc: "17:7-17:18",
               name: "constructor",
             },
             value: {
               type: "FunctionExpression",
-              loc: "17:2-17:23",
+              loc: "17:3-17:24",
               id: null,
               params: [
                 {
                   type: "Identifier",
-                  loc: "17:18-17:19",
+                  loc: "17:19-17:20",
                   name: "a",
                 },
               ],
               body: {
                 type: "Block",
-                loc: "17:21-17:23",
+                loc: "17:22-17:24",
                 body: [],
               },
               async: false,

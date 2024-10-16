@@ -42,7 +42,8 @@ pub fn calculate_line_offsets(source: &[u8]) -> Vec<u32> {
     line_offsets
 }
 
-/// Return the 1-indexed line and 0-indexed column number for a Pos, given the set of line start offsets.
+/// Return the line and column number to report for a Pos. Line and column number are intended for
+/// display and are 1-indexed.
 pub fn find_line_col_for_pos(pos: Pos, line_offsets: &[u32]) -> (usize, usize) {
     // Binary search to find the largest line start offset that is smaller than the pos. This is
     // the line number.
@@ -51,7 +52,7 @@ pub fn find_line_col_for_pos(pos: Pos, line_offsets: &[u32]) -> (usize, usize) {
     // Column is the byte offset from the line (col is number of bytes since Unicode is not yet supported)
     let col = pos - line_offsets[line] as usize;
 
-    (line + 1, col)
+    (line + 1, col + 1)
 }
 
 fn find_largest_offset_less_than_or_equal(target: Pos, line_offsets: &[u32]) -> Pos {

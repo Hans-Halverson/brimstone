@@ -1,29 +1,29 @@
 {
   type: "Program",
-  loc: "1:0-5:6",
+  loc: "1:1-5:7",
   body: [
     {
       type: "ImportDeclaration",
-      loc: "1:0-1:11",
+      loc: "1:1-1:12",
       specifiers: [],
       source: {
         type: "Literal",
-        loc: "1:7-1:10",
+        loc: "1:8-1:11",
         value: "a",
       },
     },
     {
       type: "FunctionDeclaration",
-      loc: "3:0-3:17",
+      loc: "3:1-3:18",
       id: {
         type: "Identifier",
-        loc: "3:9-3:12",
+        loc: "3:10-3:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "3:15-3:17",
+        loc: "3:16-3:18",
         body: [],
       },
       async: false,
@@ -32,19 +32,19 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:6",
+      loc: "5:1-5:7",
       kind: {
         type: "BinaryExpression",
-        loc: "5:0-5:5",
+        loc: "5:1-5:6",
         operator: "+",
         left: {
           type: "Literal",
-          loc: "5:0-5:1",
+          loc: "5:1-5:2",
           value: 1,
         },
         right: {
           type: "Literal",
-          loc: "5:4-5:5",
+          loc: "5:5-5:6",
           value: 2,
         },
       },

@@ -1,18 +1,18 @@
 {
   type: "Program",
-  loc: "1:0-1:29",
+  loc: "1:1-1:30",
   body: [
     {
       type: "ExportDefaultDeclaration",
-      loc: "1:0-1:29",
+      loc: "1:1-1:30",
       declaration: {
         type: "FunctionDeclaration",
-        loc: "1:15-1:29",
+        loc: "1:16-1:30",
         id: null,
         params: [],
         body: {
           type: "Block",
-          loc: "1:27-1:29",
+          loc: "1:28-1:30",
           body: [],
         },
         async: false,

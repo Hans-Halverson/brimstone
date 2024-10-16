@@ -1,25 +1,25 @@
 {
   type: "Program",
-  loc: "1:0-6:32",
+  loc: "1:1-6:33",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:8",
+      loc: "1:1-1:9",
       kind: {
         type: "TaggedTemplateExpression",
-        loc: "1:0-1:7",
+        loc: "1:1-1:8",
         tag: {
           type: "Identifier",
-          loc: "1:0-1:1",
+          loc: "1:1-1:2",
           name: "a",
         },
         quasi: {
           type: "TemplateLiteral",
-          loc: "1:1-1:7",
+          loc: "1:2-1:8",
           quasis: [
             {
               type: "TemplateElement",
-              loc: "1:1-1:7",
+              loc: "1:2-1:8",
               value: {
                 cooked: "text",
                 raw: "text",
@@ -33,21 +33,21 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "2:0-2:10",
+      loc: "2:1-2:11",
       kind: {
         type: "TaggedTemplateExpression",
-        loc: "2:0-2:9",
+        loc: "2:1-2:10",
         tag: {
           type: "MemberExpression",
-          loc: "2:0-2:3",
+          loc: "2:1-2:4",
           object: {
             type: "Identifier",
-            loc: "2:0-2:1",
+            loc: "2:1-2:2",
             name: "a",
           },
           property: {
             type: "Identifier",
-            loc: "2:2-2:3",
+            loc: "2:3-2:4",
             name: "b",
           },
           computed: false,
@@ -55,11 +55,11 @@
         },
         quasi: {
           type: "TemplateLiteral",
-          loc: "2:3-2:9",
+          loc: "2:4-2:10",
           quasis: [
             {
               type: "TemplateElement",
-              loc: "2:3-2:9",
+              loc: "2:4-2:10",
               value: {
                 cooked: "text",
                 raw: "text",
@@ -73,31 +73,31 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "3:0-3:12",
+      loc: "3:1-3:13",
       kind: {
         type: "BinaryExpression",
-        loc: "3:0-3:11",
+        loc: "3:1-3:12",
         operator: "+",
         left: {
           type: "Identifier",
-          loc: "3:0-3:1",
+          loc: "3:1-3:2",
           name: "a",
         },
         right: {
           type: "TaggedTemplateExpression",
-          loc: "3:4-3:11",
+          loc: "3:5-3:12",
           tag: {
             type: "Identifier",
-            loc: "3:4-3:5",
+            loc: "3:5-3:6",
             name: "b",
           },
           quasi: {
             type: "TemplateLiteral",
-            loc: "3:5-3:11",
+            loc: "3:6-3:12",
             quasis: [
               {
                 type: "TemplateElement",
-                loc: "3:5-3:11",
+                loc: "3:6-3:12",
                 value: {
                   cooked: "text",
                   raw: "text",
@@ -112,22 +112,22 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "6:0-6:32",
+      loc: "6:1-6:33",
       kind: {
         type: "TaggedTemplateExpression",
-        loc: "6:0-6:31",
+        loc: "6:1-6:32",
         tag: {
           type: "Identifier",
-          loc: "6:0-6:1",
+          loc: "6:1-6:2",
           name: "a",
         },
         quasi: {
           type: "TemplateLiteral",
-          loc: "6:1-6:31",
+          loc: "6:2-6:32",
           quasis: [
             {
               type: "TemplateElement",
-              loc: "6:1-6:11",
+              loc: "6:2-6:12",
               value: {
                 cooked: null,
                 raw: "text\01",
@@ -136,7 +136,7 @@
             },
             {
               type: "TemplateElement",
-              loc: "6:12-6:21",
+              loc: "6:13-6:22",
               value: {
                 cooked: null,
                 raw: "foo\uX",
@@ -145,7 +145,7 @@
             },
             {
               type: "TemplateElement",
-              loc: "6:22-6:31",
+              loc: "6:23-6:32",
               value: {
                 cooked: "allowed",
                 raw: "allowed",
@@ -156,12 +156,12 @@
           expressions: [
             {
               type: "Literal",
-              loc: "6:11-6:12",
+              loc: "6:12-6:13",
               value: 2,
             },
             {
               type: "Literal",
-              loc: "6:21-6:22",
+              loc: "6:22-6:23",
               value: 3,
             },
           ],

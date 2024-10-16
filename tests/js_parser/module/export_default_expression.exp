@@ -1,22 +1,22 @@
 {
   type: "Program",
-  loc: "1:0-1:21",
+  loc: "1:1-1:22",
   body: [
     {
       type: "ExportDefaultDeclaration",
-      loc: "1:0-1:21",
+      loc: "1:1-1:22",
       declaration: {
         type: "BinaryExpression",
-        loc: "1:15-1:20",
+        loc: "1:16-1:21",
         operator: "+",
         left: {
           type: "Literal",
-          loc: "1:15-1:16",
+          loc: "1:16-1:17",
           value: 1,
         },
         right: {
           type: "Literal",
-          loc: "1:19-1:20",
+          loc: "1:20-1:21",
           value: 2,
         },
       },

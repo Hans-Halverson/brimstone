@@ -34,7 +34,6 @@ pub trait Instruction: fmt::Display {
 ///
 /// All this does is return the second argument. But if the first argument is set to an optional
 /// macro variable while inside a $( ... )? block, the second argument will be written instead.
-#[allow(unused)]
 macro_rules! if_set {
     ($x:tt, $y:tt) => {
         $y
@@ -365,6 +364,7 @@ define_instructions!(
     LoadGlobal {
         camel_case: LoadGlobalInstruction,
         snake_case: load_global_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
@@ -376,6 +376,7 @@ define_instructions!(
     LoadGlobalOrUnresolved {
         camel_case: LoadGlobalOrUnresolvedInstruction,
         snake_case: load_global_or_unresolved_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
@@ -387,6 +388,7 @@ define_instructions!(
     StoreGlobal {
         camel_case: StoreGlobalInstruction,
         snake_case: store_global_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] constant_index: ConstantIndex,
@@ -399,6 +401,7 @@ define_instructions!(
     LoadDynamic {
         camel_case: LoadDynamicInstruction,
         snake_case: load_dynamic_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_index: ConstantIndex,
@@ -411,6 +414,7 @@ define_instructions!(
     LoadDynamicOrUnresolved {
         camel_case: LoadDynamicOrUnresolvedInstruction,
         snake_case: load_dynamic_or_unresolved_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_index: ConstantIndex,
@@ -422,6 +426,7 @@ define_instructions!(
     StoreDynamic {
         camel_case: StoreDynamicInstruction,
         snake_case: store_dynamic_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] name_index: ConstantIndex,
@@ -433,6 +438,7 @@ define_instructions!(
     Call {
         camel_case: CallInstruction,
         snake_case: call_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -506,6 +512,7 @@ define_instructions!(
     Construct {
         camel_case: ConstructInstruction,
         snake_case: construct_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -1519,6 +1526,7 @@ define_instructions!(
     LoadFromModule {
         camel_case: LoadFromModuleInstruction,
         snake_case: load_from_module_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] scope_index: UInt,

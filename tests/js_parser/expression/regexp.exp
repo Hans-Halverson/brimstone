@@ -1,13 +1,13 @@
 {
   type: "Program",
-  loc: "1:0-8:9",
+  loc: "1:1-8:10",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:4",
+      loc: "1:1-1:5",
       kind: {
         type: "Literal",
-        loc: "1:0-1:3",
+        loc: "1:1-1:4",
         raw: "/a/",
         value: {
           pattern: "a",
@@ -31,10 +31,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "2:0-2:6",
+      loc: "2:1-2:7",
       kind: {
         type: "Literal",
-        loc: "2:0-2:5",
+        loc: "2:1-2:6",
         raw: "/a/sm",
         value: {
           pattern: "a",
@@ -58,10 +58,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "4:0-4:13",
+      loc: "4:1-4:14",
       kind: {
         type: "Literal",
-        loc: "4:0-4:12",
+        loc: "4:1-4:13",
         raw: "/[asdf]asdf/",
         value: {
           pattern: "[asdf]asdf",
@@ -95,10 +95,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:14",
+      loc: "5:1-5:15",
       kind: {
         type: "Literal",
-        loc: "5:0-5:13",
+        loc: "5:1-5:14",
         raw: "/[asdf\[f\]]/",
         value: {
           pattern: "[asdf\[f\]]",
@@ -131,10 +131,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "7:0-7:5",
+      loc: "7:1-7:6",
       kind: {
         type: "Literal",
-        loc: "7:0-7:4",
+        loc: "7:1-7:5",
         raw: "/\//",
         value: {
           pattern: "\/",
@@ -158,10 +158,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "8:0-8:9",
+      loc: "8:1-8:10",
       kind: {
         type: "Literal",
-        loc: "8:0-8:8",
+        loc: "8:1-8:9",
         raw: "/\:\b\@/",
         value: {
           pattern: "\:\b\@",

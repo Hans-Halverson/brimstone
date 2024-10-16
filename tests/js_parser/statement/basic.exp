@@ -1,14 +1,10 @@
 {
   type: "Program",
-  loc: "1:0-42:17",
+  loc: "1:1-42:18",
   body: [
     {
       type: "EmptyStatement",
-      loc: "3:0-3:1",
-    },
-    {
-      type: "EmptyStatement",
-      loc: "5:0-5:1",
+      loc: "3:1-3:2",
     },
     {
       type: "EmptyStatement",
@@ -19,33 +15,37 @@
       loc: "5:2-5:3",
     },
     {
+      type: "EmptyStatement",
+      loc: "5:3-5:4",
+    },
+    {
       type: "DebuggerStatement",
-      loc: "7:0-7:9",
+      loc: "7:1-7:10",
     },
     {
       type: "Block",
-      loc: "11:0-11:2",
+      loc: "11:1-11:3",
       body: [],
     },
     {
       type: "Block",
-      loc: "13:0-16:1",
+      loc: "13:1-16:2",
       body: [
         {
           type: "ExpressionStatement",
-          loc: "14:2-14:4",
+          loc: "14:3-14:5",
           kind: {
             type: "Identifier",
-            loc: "14:2-14:3",
+            loc: "14:3-14:4",
             name: "a",
           },
         },
         {
           type: "ExpressionStatement",
-          loc: "15:2-15:4",
+          loc: "15:3-15:5",
           kind: {
             type: "Identifier",
-            loc: "15:2-15:3",
+            loc: "15:3-15:4",
             name: "b",
           },
         },
@@ -53,40 +53,40 @@
     },
     {
       type: "WithStatement",
-      loc: "20:0-20:11",
+      loc: "20:1-20:12",
       object: {
         type: "Identifier",
-        loc: "20:6-20:7",
+        loc: "20:7-20:8",
         name: "a",
       },
       body: {
         type: "ExpressionStatement",
-        loc: "20:9-20:11",
+        loc: "20:10-20:12",
         kind: {
           type: "Identifier",
-          loc: "20:9-20:10",
+          loc: "20:10-20:11",
           name: "b",
         },
       },
     },
     {
       type: "WithStatement",
-      loc: "22:0-22:15",
+      loc: "22:1-22:16",
       object: {
         type: "Identifier",
-        loc: "22:6-22:7",
+        loc: "22:7-22:8",
         name: "a",
       },
       body: {
         type: "Block",
-        loc: "22:9-22:15",
+        loc: "22:10-22:16",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "22:11-22:13",
+            loc: "22:12-22:14",
             kind: {
               type: "Identifier",
-              loc: "22:11-22:12",
+              loc: "22:12-22:13",
               name: "b",
             },
           },
@@ -95,79 +95,79 @@
     },
     {
       type: "ReturnStatement",
-      loc: "26:0-26:7",
+      loc: "26:1-26:8",
       argument: null,
     },
     {
       type: "ReturnStatement",
-      loc: "28:0-28:9",
+      loc: "28:1-28:10",
       argument: {
         type: "Identifier",
-        loc: "28:7-28:8",
+        loc: "28:8-28:9",
         name: "a",
       },
     },
     {
       type: "BreakStatement",
-      loc: "30:0-30:6",
+      loc: "30:1-30:7",
       label: null,
     },
     {
       type: "BreakStatement",
-      loc: "32:0-32:8",
+      loc: "32:1-32:9",
       label: {
         type: "Identifier",
-        loc: "32:6-32:7",
+        loc: "32:7-32:8",
         name: "a",
       },
     },
     {
       type: "ContinueStatement",
-      loc: "34:0-34:9",
+      loc: "34:1-34:10",
       label: null,
     },
     {
       type: "ContinueStatement",
-      loc: "36:0-36:11",
+      loc: "36:1-36:12",
       label: {
         type: "Identifier",
-        loc: "36:9-36:10",
+        loc: "36:10-36:11",
         name: "a",
       },
     },
     {
       type: "LabeledStatement",
-      loc: "40:0-40:12",
+      loc: "40:1-40:13",
       label: {
         type: "Identifier",
-        loc: "40:0-40:3",
+        loc: "40:1-40:4",
         name: "foo",
       },
       body: {
         type: "ReturnStatement",
-        loc: "40:5-40:12",
+        loc: "40:6-40:13",
         argument: null,
       },
     },
     {
       type: "LabeledStatement",
-      loc: "42:0-42:17",
+      loc: "42:1-42:18",
       label: {
         type: "Identifier",
-        loc: "42:0-42:3",
+        loc: "42:1-42:4",
         name: "foo",
       },
       body: {
         type: "LabeledStatement",
-        loc: "42:5-42:17",
+        loc: "42:6-42:18",
         label: {
           type: "Identifier",
-          loc: "42:5-42:8",
+          loc: "42:6-42:9",
           name: "bar",
         },
         body: {
           type: "ReturnStatement",
-          loc: "42:10-42:17",
+          loc: "42:11-42:18",
           argument: null,
         },
       },

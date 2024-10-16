@@ -1,13 +1,13 @@
 {
   type: "Program",
-  loc: "1:0-3:27",
+  loc: "1:1-3:28",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:12",
+      loc: "1:1-1:13",
       kind: {
         type: "Literal",
-        loc: "1:0-1:11",
+        loc: "1:1-1:12",
         raw: "/(?<name>)/",
         value: {
           pattern: "(?<name>)",
@@ -38,10 +38,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "2:0-2:22",
+      loc: "2:1-2:23",
       kind: {
         type: "Literal",
-        loc: "2:0-2:21",
+        loc: "2:1-2:22",
         raw: "/(?<\u0061\u0062ab>)/",
         value: {
           pattern: "(?<\u0061\u0062ab>)",
@@ -72,10 +72,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "3:0-3:27",
+      loc: "3:1-3:28",
       kind: {
         type: "Literal",
-        loc: "3:0-3:26",
+        loc: "3:1-3:27",
         raw: "/(?<\u{0061}\u{0062}ab>)/u",
         value: {
           pattern: "(?<\u{0061}\u{0062}ab>)",

@@ -1,16 +1,16 @@
 {
   type: "Program",
-  loc: "1:0-17:10",
+  loc: "1:1-17:11",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:6",
+      loc: "1:1-1:7",
       kind: {
         type: "CallExpression",
-        loc: "1:0-1:5",
+        loc: "1:1-1:6",
         callee: {
           type: "Identifier",
-          loc: "1:0-1:3",
+          loc: "1:1-1:4",
           name: "foo",
         },
         arguments: [],
@@ -19,16 +19,16 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "3:0-3:8",
+      loc: "3:1-3:9",
       kind: {
         type: "CallExpression",
-        loc: "3:0-3:7",
+        loc: "3:1-3:8",
         callee: {
           type: "CallExpression",
-          loc: "3:0-3:5",
+          loc: "3:1-3:6",
           callee: {
             type: "Identifier",
-            loc: "3:0-3:3",
+            loc: "3:1-3:4",
             name: "foo",
           },
           arguments: [],
@@ -40,19 +40,19 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:7",
+      loc: "5:1-5:8",
       kind: {
         type: "CallExpression",
-        loc: "5:0-5:6",
+        loc: "5:1-5:7",
         callee: {
           type: "Identifier",
-          loc: "5:0-5:3",
+          loc: "5:1-5:4",
           name: "foo",
         },
         arguments: [
           {
             type: "Identifier",
-            loc: "5:4-5:5",
+            loc: "5:5-5:6",
             name: "a",
           },
         ],
@@ -61,19 +61,19 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "7:0-7:8",
+      loc: "7:1-7:9",
       kind: {
         type: "CallExpression",
-        loc: "7:0-7:7",
+        loc: "7:1-7:8",
         callee: {
           type: "Identifier",
-          loc: "7:0-7:3",
+          loc: "7:1-7:4",
           name: "foo",
         },
         arguments: [
           {
             type: "Identifier",
-            loc: "7:4-7:5",
+            loc: "7:5-7:6",
             name: "a",
           },
         ],
@@ -82,29 +82,29 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:13",
+      loc: "9:1-9:14",
       kind: {
         type: "CallExpression",
-        loc: "9:0-9:12",
+        loc: "9:1-9:13",
         callee: {
           type: "Identifier",
-          loc: "9:0-9:3",
+          loc: "9:1-9:4",
           name: "foo",
         },
         arguments: [
           {
             type: "Identifier",
-            loc: "9:4-9:5",
+            loc: "9:5-9:6",
             name: "a",
           },
           {
             type: "Identifier",
-            loc: "9:7-9:8",
+            loc: "9:8-9:9",
             name: "b",
           },
           {
             type: "Identifier",
-            loc: "9:10-9:11",
+            loc: "9:11-9:12",
             name: "c",
           },
         ],
@@ -113,29 +113,29 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:14",
+      loc: "11:1-11:15",
       kind: {
         type: "CallExpression",
-        loc: "11:0-11:13",
+        loc: "11:1-11:14",
         callee: {
           type: "Identifier",
-          loc: "11:0-11:3",
+          loc: "11:1-11:4",
           name: "foo",
         },
         arguments: [
           {
             type: "Identifier",
-            loc: "11:4-11:5",
+            loc: "11:5-11:6",
             name: "a",
           },
           {
             type: "Identifier",
-            loc: "11:7-11:8",
+            loc: "11:8-11:9",
             name: "b",
           },
           {
             type: "Identifier",
-            loc: "11:10-11:11",
+            loc: "11:11-11:12",
             name: "c",
           },
         ],
@@ -144,36 +144,36 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "13:0-13:19",
+      loc: "13:1-13:20",
       kind: {
         type: "CallExpression",
-        loc: "13:0-13:18",
+        loc: "13:1-13:19",
         callee: {
           type: "Identifier",
-          loc: "13:0-13:3",
+          loc: "13:1-13:4",
           name: "foo",
         },
         arguments: [
           {
             type: "Identifier",
-            loc: "13:4-13:5",
+            loc: "13:5-13:6",
             name: "a",
           },
           {
             type: "SpreadElement",
-            loc: "13:7-13:11",
+            loc: "13:8-13:12",
             argument: {
               type: "Identifier",
-              loc: "13:10-13:11",
+              loc: "13:11-13:12",
               name: "b",
             },
           },
           {
             type: "SpreadElement",
-            loc: "13:13-13:17",
+            loc: "13:14-13:18",
             argument: {
               type: "Identifier",
-              loc: "13:16-13:17",
+              loc: "13:17-13:18",
               name: "c",
             },
           },
@@ -183,31 +183,31 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "15:0-15:17",
+      loc: "15:1-15:18",
       kind: {
         type: "CallExpression",
-        loc: "15:0-15:16",
+        loc: "15:1-15:17",
         callee: {
           type: "Identifier",
-          loc: "15:0-15:3",
+          loc: "15:1-15:4",
           name: "foo",
         },
         arguments: [
           {
             type: "SpreadElement",
-            loc: "15:4-15:8",
+            loc: "15:5-15:9",
             argument: {
               type: "Identifier",
-              loc: "15:7-15:8",
+              loc: "15:8-15:9",
               name: "a",
             },
           },
           {
             type: "SpreadElement",
-            loc: "15:10-15:14",
+            loc: "15:11-15:15",
             argument: {
               type: "Identifier",
-              loc: "15:13-15:14",
+              loc: "15:14-15:15",
               name: "b",
             },
           },
@@ -217,27 +217,27 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "17:0-17:10",
+      loc: "17:1-17:11",
       kind: {
         type: "CallExpression",
-        loc: "17:0-17:9",
+        loc: "17:1-17:10",
         callee: {
           type: "MemberExpression",
-          loc: "17:0-17:7",
+          loc: "17:1-17:8",
           object: {
             type: "CallExpression",
-            loc: "17:0-17:5",
+            loc: "17:1-17:6",
             callee: {
               type: "MemberExpression",
-              loc: "17:0-17:3",
+              loc: "17:1-17:4",
               object: {
                 type: "Identifier",
-                loc: "17:0-17:1",
+                loc: "17:1-17:2",
                 name: "a",
               },
               property: {
                 type: "Identifier",
-                loc: "17:2-17:3",
+                loc: "17:3-17:4",
                 name: "b",
               },
               computed: false,
@@ -248,7 +248,7 @@
           },
           property: {
             type: "Identifier",
-            loc: "17:6-17:7",
+            loc: "17:7-17:8",
             name: "c",
           },
           computed: false,

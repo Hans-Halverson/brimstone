@@ -1,43 +1,43 @@
 {
   type: "Program",
-  loc: "1:0-7:20",
+  loc: "1:1-7:21",
   body: [
     {
       type: "WhileStatement",
-      loc: "1:0-1:12",
+      loc: "1:1-1:13",
       test: {
         type: "Identifier",
-        loc: "1:7-1:8",
+        loc: "1:8-1:9",
         name: "a",
       },
       body: {
         type: "ExpressionStatement",
-        loc: "1:10-1:12",
+        loc: "1:11-1:13",
         kind: {
           type: "Identifier",
-          loc: "1:10-1:11",
+          loc: "1:11-1:12",
           name: "b",
         },
       },
     },
     {
       type: "WhileStatement",
-      loc: "3:0-3:16",
+      loc: "3:1-3:17",
       test: {
         type: "Identifier",
-        loc: "3:7-3:8",
+        loc: "3:8-3:9",
         name: "a",
       },
       body: {
         type: "Block",
-        loc: "3:10-3:16",
+        loc: "3:11-3:17",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "3:12-3:14",
+            loc: "3:13-3:15",
             kind: {
               type: "Identifier",
-              loc: "3:12-3:13",
+              loc: "3:13-3:14",
               name: "b",
             },
           },
@@ -46,40 +46,40 @@
     },
     {
       type: "DoWhileStatement",
-      loc: "5:0-5:16",
+      loc: "5:1-5:17",
       test: {
         type: "Identifier",
-        loc: "5:13-5:14",
+        loc: "5:14-5:15",
         name: "b",
       },
       body: {
         type: "ExpressionStatement",
-        loc: "5:3-5:5",
+        loc: "5:4-5:6",
         kind: {
           type: "Identifier",
-          loc: "5:3-5:4",
+          loc: "5:4-5:5",
           name: "a",
         },
       },
     },
     {
       type: "DoWhileStatement",
-      loc: "7:0-7:20",
+      loc: "7:1-7:21",
       test: {
         type: "Identifier",
-        loc: "7:17-7:18",
+        loc: "7:18-7:19",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "7:3-7:9",
+        loc: "7:4-7:10",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "7:5-7:7",
+            loc: "7:6-7:8",
             kind: {
               type: "Identifier",
-              loc: "7:5-7:6",
+              loc: "7:6-7:7",
               name: "a",
             },
           },

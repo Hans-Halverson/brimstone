@@ -1,170 +1,170 @@
 {
   type: "Program",
-  loc: "1:0-26:1",
+  loc: "1:1-26:2",
   body: [
     {
       type: "ClassDeclaration",
-      loc: "1:0-1:10",
+      loc: "1:1-1:11",
       id: {
         type: "Identifier",
-        loc: "1:6-1:7",
+        loc: "1:7-1:8",
         name: "A",
       },
       superClass: null,
       body: {
         type: "ClassBody",
-        loc: "1:0-1:10",
+        loc: "1:1-1:11",
         body: [],
       },
     },
     {
       type: "ClassDeclaration",
-      loc: "3:0-3:21",
+      loc: "3:1-3:22",
       id: {
         type: "Identifier",
-        loc: "3:6-3:8",
+        loc: "3:7-3:9",
         name: "A2",
       },
       superClass: {
         type: "Identifier",
-        loc: "3:17-3:18",
+        loc: "3:18-3:19",
         name: "B",
       },
       body: {
         type: "ClassBody",
-        loc: "3:0-3:21",
+        loc: "3:1-3:22",
         body: [],
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:13",
+      loc: "5:1-5:14",
       kind: {
         type: "ClassExpression",
-        loc: "5:1-5:11",
+        loc: "5:2-5:12",
         id: {
           type: "Identifier",
-          loc: "5:7-5:8",
+          loc: "5:8-5:9",
           name: "A",
         },
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "5:1-5:11",
+          loc: "5:2-5:12",
           body: [],
         },
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "7:0-7:23",
+      loc: "7:1-7:24",
       kind: {
         type: "ClassExpression",
-        loc: "7:1-7:21",
+        loc: "7:2-7:22",
         id: {
           type: "Identifier",
-          loc: "7:7-7:8",
+          loc: "7:8-7:9",
           name: "A",
         },
         superClass: {
           type: "Identifier",
-          loc: "7:17-7:18",
+          loc: "7:18-7:19",
           name: "B",
         },
         body: {
           type: "ClassBody",
-          loc: "7:1-7:21",
+          loc: "7:2-7:22",
           body: [],
         },
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:11",
+      loc: "9:1-9:12",
       kind: {
         type: "ClassExpression",
-        loc: "9:1-9:9",
+        loc: "9:2-9:10",
         id: null,
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "9:1-9:9",
+          loc: "9:2-9:10",
           body: [],
         },
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:21",
+      loc: "11:1-11:22",
       kind: {
         type: "ClassExpression",
-        loc: "11:1-11:19",
+        loc: "11:2-11:20",
         id: null,
         superClass: {
           type: "Identifier",
-          loc: "11:15-11:16",
+          loc: "11:16-11:17",
           name: "B",
         },
         body: {
           type: "ClassBody",
-          loc: "11:1-11:19",
+          loc: "11:2-11:20",
           body: [],
         },
       },
     },
     {
       type: "ClassDeclaration",
-      loc: "13:0-15:1",
+      loc: "13:1-15:2",
       id: {
         type: "Identifier",
-        loc: "13:6-13:7",
+        loc: "13:7-13:8",
         name: "C",
       },
       superClass: null,
       body: {
         type: "ClassBody",
-        loc: "13:0-15:1",
+        loc: "13:1-15:2",
         body: [],
       },
     },
     {
       type: "ClassDeclaration",
-      loc: "19:0-26:1",
+      loc: "19:1-26:2",
       id: {
         type: "Identifier",
-        loc: "19:6-19:8",
+        loc: "19:7-19:9",
         name: "C2",
       },
       superClass: null,
       body: {
         type: "ClassBody",
-        loc: "19:0-26:1",
+        loc: "19:1-26:2",
         body: [
           {
             type: "StaticBlock",
-            loc: "20:2-20:11",
+            loc: "20:3-20:12",
             body: [],
           },
           {
             type: "StaticBlock",
-            loc: "22:2-25:3",
+            loc: "22:3-25:4",
             body: [
               {
                 type: "VariableDeclaration",
-                loc: "23:4-23:14",
+                loc: "23:5-23:15",
                 kind: "let",
                 declarations: [
                   {
                     type: "VariableDeclarator",
-                    loc: "23:8-23:13",
+                    loc: "23:9-23:14",
                     id: {
                       type: "Identifier",
-                      loc: "23:8-23:9",
+                      loc: "23:9-23:10",
                       name: "i",
                     },
                     init: {
                       type: "Literal",
-                      loc: "23:12-23:13",
+                      loc: "23:13-23:14",
                       value: 0,
                     },
                   },
@@ -172,10 +172,10 @@
               },
               {
                 type: "ExpressionStatement",
-                loc: "24:4-24:6",
+                loc: "24:5-24:7",
                 kind: {
                   type: "Identifier",
-                  loc: "24:4-24:5",
+                  loc: "24:5-24:6",
                   name: "b",
                 },
               },

@@ -1,23 +1,23 @@
 {
   type: "Program",
-  loc: "1:0-26:17",
+  loc: "1:1-26:18",
   body: [
     {
       type: "VariableDeclaration",
-      loc: "2:0-2:10",
+      loc: "2:1-2:11",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "2:4-2:9",
+          loc: "2:5-2:10",
           id: {
             type: "Identifier",
-            loc: "2:4-2:5",
+            loc: "2:5-2:6",
             name: "a",
           },
           init: {
             type: "Literal",
-            loc: "2:8-2:9",
+            loc: "2:9-2:10",
             value: 1,
           },
         },
@@ -25,26 +25,26 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "3:0-3:13",
+      loc: "3:1-3:14",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "3:4-3:12",
+          loc: "3:5-3:13",
           id: {
             type: "ArrayPattern",
-            loc: "3:4-3:8",
+            loc: "3:5-3:9",
             elements: [
               {
                 type: "Identifier",
-                loc: "3:5-3:7",
+                loc: "3:6-3:8",
                 name: "a2",
               },
             ],
           },
           init: {
             type: "Literal",
-            loc: "3:11-3:12",
+            loc: "3:12-3:13",
             value: 1,
           },
         },
@@ -52,23 +52,23 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "4:0-4:13",
+      loc: "4:1-4:14",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "4:4-4:12",
+          loc: "4:5-4:13",
           id: {
             type: "ObjectPattern",
-            loc: "4:4-4:8",
+            loc: "4:5-4:9",
             properties: [
               {
                 type: "Property",
-                loc: "4:5-4:7",
+                loc: "4:6-4:8",
                 key: null,
                 value: {
                   type: "Identifier",
-                  loc: "4:5-4:7",
+                  loc: "4:6-4:8",
                   name: "a3",
                 },
                 computed: false,
@@ -77,7 +77,7 @@
           },
           init: {
             type: "Literal",
-            loc: "4:11-4:12",
+            loc: "4:12-4:13",
             value: 1,
           },
         },
@@ -85,20 +85,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "5:0-5:15",
+      loc: "5:1-5:16",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "5:4-5:14",
+          loc: "5:5-5:15",
           id: {
             type: "Identifier",
-            loc: "5:4-5:10",
+            loc: "5:5-5:11",
             name: "static",
           },
           init: {
             type: "Literal",
-            loc: "5:13-5:14",
+            loc: "5:14-5:15",
             value: 1,
           },
         },
@@ -106,20 +106,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "6:0-6:14",
+      loc: "6:1-6:15",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "6:4-6:13",
+          loc: "6:5-6:14",
           id: {
             type: "Identifier",
-            loc: "6:4-6:9",
+            loc: "6:5-6:10",
             name: "async",
           },
           init: {
             type: "Literal",
-            loc: "6:12-6:13",
+            loc: "6:13-6:14",
             value: 1,
           },
         },
@@ -127,20 +127,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "7:0-7:14",
+      loc: "7:1-7:15",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "7:4-7:13",
+          loc: "7:5-7:14",
           id: {
             type: "Identifier",
-            loc: "7:4-7:9",
+            loc: "7:5-7:10",
             name: "await",
           },
           init: {
             type: "Literal",
-            loc: "7:12-7:13",
+            loc: "7:13-7:14",
             value: 1,
           },
         },
@@ -148,20 +148,20 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "8:0-8:14",
+      loc: "8:1-8:15",
       kind: "let",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "8:4-8:13",
+          loc: "8:5-8:14",
           id: {
             type: "Identifier",
-            loc: "8:4-8:9",
+            loc: "8:5-8:10",
             name: "yield",
           },
           init: {
             type: "Literal",
-            loc: "8:12-8:13",
+            loc: "8:13-8:14",
             value: 1,
           },
         },
@@ -169,47 +169,47 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:4",
+      loc: "11:1-11:5",
       kind: {
         type: "Identifier",
-        loc: "11:0-11:3",
+        loc: "11:1-11:4",
         name: "let",
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "12:0-12:8",
+      loc: "12:1-12:9",
       kind: {
         type: "BinaryExpression",
-        loc: "12:0-12:7",
+        loc: "12:1-12:8",
         operator: "+",
         left: {
           type: "Identifier",
-          loc: "12:0-12:3",
+          loc: "12:1-12:4",
           name: "let",
         },
         right: {
           type: "Literal",
-          loc: "12:6-12:7",
+          loc: "12:7-12:8",
           value: 1,
         },
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "13:0-13:7",
+      loc: "13:1-13:8",
       kind: {
         type: "CallExpression",
-        loc: "13:0-13:6",
+        loc: "13:1-13:7",
         callee: {
           type: "Identifier",
-          loc: "13:0-13:3",
+          loc: "13:1-13:4",
           name: "let",
         },
         arguments: [
           {
             type: "Literal",
-            loc: "13:4-13:5",
+            loc: "13:5-13:6",
             value: 1,
           },
         ],
@@ -218,41 +218,41 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "16:0-16:3",
+      loc: "16:1-16:4",
       kind: {
         type: "Identifier",
-        loc: "16:0-16:3",
+        loc: "16:1-16:4",
         name: "let",
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "17:0-17:2",
+      loc: "17:1-17:3",
       kind: {
         type: "Literal",
-        loc: "17:0-17:1",
+        loc: "17:1-17:2",
         value: 1,
       },
     },
     {
       type: "ForStatement",
-      loc: "20:0-20:20",
+      loc: "20:1-20:21",
       init: {
         type: "VariableDeclaration",
-        loc: "20:5-20:14",
+        loc: "20:6-20:15",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "20:9-20:14",
+            loc: "20:10-20:15",
             id: {
               type: "Identifier",
-              loc: "20:9-20:10",
+              loc: "20:10-20:11",
               name: "a",
             },
             init: {
               type: "Literal",
-              loc: "20:13-20:14",
+              loc: "20:14-20:15",
               value: 1,
             },
           },
@@ -262,24 +262,24 @@
       update: null,
       body: {
         type: "Block",
-        loc: "20:18-20:20",
+        loc: "20:19-20:21",
         body: [],
       },
     },
     {
       type: "ForInStatement",
-      loc: "21:0-21:19",
+      loc: "21:1-21:20",
       left: {
         type: "VariableDeclaration",
-        loc: "21:5-21:10",
+        loc: "21:6-21:11",
         kind: "let",
         declarations: [
           {
             type: "VariableDeclarator",
-            loc: "21:9-21:10",
+            loc: "21:10-21:11",
             id: {
               type: "Identifier",
-              loc: "21:9-21:10",
+              loc: "21:10-21:11",
               name: "a",
             },
             init: null,
@@ -288,46 +288,46 @@
       },
       right: {
         type: "Identifier",
-        loc: "21:14-21:15",
+        loc: "21:15-21:16",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "21:17-21:19",
+        loc: "21:18-21:20",
         body: [],
       },
     },
     {
       type: "ForStatement",
-      loc: "24:0-24:14",
+      loc: "24:1-24:15",
       init: {
         type: "Identifier",
-        loc: "24:5-24:8",
+        loc: "24:6-24:9",
         name: "let",
       },
       test: null,
       update: null,
       body: {
         type: "Block",
-        loc: "24:12-24:14",
+        loc: "24:13-24:15",
         body: [],
       },
     },
     {
       type: "ForStatement",
-      loc: "25:0-25:18",
+      loc: "25:1-25:19",
       init: {
         type: "BinaryExpression",
-        loc: "25:5-25:12",
+        loc: "25:6-25:13",
         operator: "+",
         left: {
           type: "Identifier",
-          loc: "25:5-25:8",
+          loc: "25:6-25:9",
           name: "let",
         },
         right: {
           type: "Literal",
-          loc: "25:11-25:12",
+          loc: "25:12-25:13",
           value: 1,
         },
       },
@@ -335,26 +335,26 @@
       update: null,
       body: {
         type: "Block",
-        loc: "25:16-25:18",
+        loc: "25:17-25:19",
         body: [],
       },
     },
     {
       type: "ForInStatement",
-      loc: "26:0-26:17",
+      loc: "26:1-26:18",
       left: {
         type: "Identifier",
-        loc: "26:5-26:8",
+        loc: "26:6-26:9",
         name: "let",
       },
       right: {
         type: "Identifier",
-        loc: "26:12-26:13",
+        loc: "26:13-26:14",
         name: "b",
       },
       body: {
         type: "Block",
-        loc: "26:15-26:17",
+        loc: "26:16-26:18",
         body: [],
       },
     },

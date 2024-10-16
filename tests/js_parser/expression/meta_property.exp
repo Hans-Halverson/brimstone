@@ -1,21 +1,21 @@
 {
   type: "Program",
-  loc: "1:0-1:11",
+  loc: "1:1-1:12",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:11",
+      loc: "1:1-1:12",
       kind: {
         type: "MetaProperty",
-        loc: "1:0-1:10",
+        loc: "1:1-1:11",
         meta: {
           type: "Identifier",
-          loc: "1:0-1:10",
+          loc: "1:1-1:11",
           name: "new",
         },
         property: {
           type: "Identifier",
-          loc: "1:0-1:10",
+          loc: "1:1-1:11",
           name: "target",
         },
       },

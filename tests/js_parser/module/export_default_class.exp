@@ -1,22 +1,22 @@
 {
   type: "Program",
-  loc: "1:0-1:25",
+  loc: "1:1-1:26",
   body: [
     {
       type: "ExportDefaultDeclaration",
-      loc: "1:0-1:25",
+      loc: "1:1-1:26",
       declaration: {
         type: "ClassDeclaration",
-        loc: "1:15-1:25",
+        loc: "1:16-1:26",
         id: {
           type: "Identifier",
-          loc: "1:21-1:22",
+          loc: "1:22-1:23",
           name: "C",
         },
         superClass: null,
         body: {
           type: "ClassBody",
-          loc: "1:15-1:25",
+          loc: "1:16-1:26",
           body: [],
         },
       },

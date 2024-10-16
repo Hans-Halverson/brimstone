@@ -1,13 +1,13 @@
 {
   type: "Program",
-  loc: "1:0-17:19",
+  loc: "1:1-17:20",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:8",
+      loc: "1:1-1:9",
       kind: {
         type: "Literal",
-        loc: "1:0-1:7",
+        loc: "1:1-1:8",
         raw: "/(abc)/",
         value: {
           pattern: "(abc)",
@@ -43,10 +43,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "2:0-2:8",
+      loc: "2:1-2:9",
       kind: {
         type: "Literal",
-        loc: "2:0-2:7",
+        loc: "2:1-2:8",
         raw: "/(a|b)/",
         value: {
           pattern: "(a|b)",
@@ -91,10 +91,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "5:0-5:10",
+      loc: "5:1-5:11",
       kind: {
         type: "Literal",
-        loc: "5:0-5:9",
+        loc: "5:1-5:10",
         raw: "/(?:abc)/",
         value: {
           pattern: "(?:abc)",
@@ -128,10 +128,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "8:0-8:10",
+      loc: "8:1-8:11",
       kind: {
         type: "Literal",
-        loc: "8:0-8:9",
+        loc: "8:1-8:10",
         raw: "/(?=abc)/",
         value: {
           pattern: "(?=abc)",
@@ -167,10 +167,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "9:0-9:10",
+      loc: "9:1-9:11",
       kind: {
         type: "Literal",
-        loc: "9:0-9:9",
+        loc: "9:1-9:10",
         raw: "/(?!abc)/",
         value: {
           pattern: "(?!abc)",
@@ -206,10 +206,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "10:0-10:11",
+      loc: "10:1-10:12",
       kind: {
         type: "Literal",
-        loc: "10:0-10:10",
+        loc: "10:1-10:11",
         raw: "/(?<=abc)/",
         value: {
           pattern: "(?<=abc)",
@@ -245,10 +245,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "11:0-11:11",
+      loc: "11:1-11:12",
       kind: {
         type: "Literal",
-        loc: "11:0-11:10",
+        loc: "11:1-11:11",
         raw: "/(?<!abc)/",
         value: {
           pattern: "(?<!abc)",
@@ -284,10 +284,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "14:0-14:15",
+      loc: "14:1-14:16",
       kind: {
         type: "Literal",
-        loc: "14:0-14:14",
+        loc: "14:1-14:15",
         raw: "/(?<name>abc)/",
         value: {
           pattern: "(?<name>abc)",
@@ -323,10 +323,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "17:0-17:19",
+      loc: "17:1-17:20",
       kind: {
         type: "Literal",
-        loc: "17:0-17:18",
+        loc: "17:1-17:19",
         raw: "/(a(?<name>b(c)))/",
         value: {
           pattern: "(a(?<name>b(c)))",

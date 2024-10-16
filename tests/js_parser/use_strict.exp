@@ -1,53 +1,53 @@
 {
   type: "Program",
-  loc: "1:0-42:1",
+  loc: "1:1-42:2",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:0-1:13",
+      loc: "1:1-1:14",
       kind: {
         type: "Literal",
-        loc: "1:0-1:12",
+        loc: "1:1-1:13",
         value: "use strict",
       },
     },
     {
       type: "ExpressionStatement",
-      loc: "4:0-4:13",
+      loc: "4:1-4:14",
       kind: {
         type: "Literal",
-        loc: "4:0-4:12",
+        loc: "4:1-4:13",
         value: "use strict",
       },
     },
     {
       type: "FunctionDeclaration",
-      loc: "6:0-9:1",
+      loc: "6:1-9:2",
       id: {
         type: "Identifier",
-        loc: "6:9-6:12",
+        loc: "6:10-6:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "6:15-9:1",
+        loc: "6:16-9:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "7:2-7:15",
+            loc: "7:3-7:16",
             kind: {
               type: "Literal",
-              loc: "7:2-7:14",
+              loc: "7:3-7:15",
               value: "use strict",
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "8:2-8:4",
+            loc: "8:3-8:5",
             kind: {
               type: "Literal",
-              loc: "8:2-8:3",
+              loc: "8:3-8:4",
               value: 1,
             },
           },
@@ -59,32 +59,32 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "11:0-14:1",
+      loc: "11:1-14:2",
       id: {
         type: "Identifier",
-        loc: "11:9-11:12",
+        loc: "11:10-11:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "11:15-14:1",
+        loc: "11:16-14:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "12:2-12:15",
+            loc: "12:3-12:16",
             kind: {
               type: "Literal",
-              loc: "12:2-12:14",
+              loc: "12:3-12:15",
               value: "use strict",
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "13:2-13:4",
+            loc: "13:3-13:5",
             kind: {
               type: "Literal",
-              loc: "13:2-13:3",
+              loc: "13:3-13:4",
               value: 1,
             },
           },
@@ -96,41 +96,41 @@
     },
     {
       type: "VariableDeclaration",
-      loc: "16:0-19:2",
+      loc: "16:1-19:3",
       kind: "const",
       declarations: [
         {
           type: "VariableDeclarator",
-          loc: "16:6-19:1",
+          loc: "16:7-19:2",
           id: {
             type: "Identifier",
-            loc: "16:6-16:7",
+            loc: "16:7-16:8",
             name: "a",
           },
           init: {
             type: "ArrowFunctionExpression",
-            loc: "16:10-19:1",
+            loc: "16:11-19:2",
             id: null,
             params: [],
             body: {
               type: "Block",
-              loc: "16:16-19:1",
+              loc: "16:17-19:2",
               body: [
                 {
                   type: "ExpressionStatement",
-                  loc: "17:2-17:15",
+                  loc: "17:3-17:16",
                   kind: {
                     type: "Literal",
-                    loc: "17:2-17:14",
+                    loc: "17:3-17:15",
                     value: "use strict",
                   },
                 },
                 {
                   type: "ExpressionStatement",
-                  loc: "18:2-18:4",
+                  loc: "18:3-18:5",
                   kind: {
                     type: "Literal",
-                    loc: "18:2-18:3",
+                    loc: "18:3-18:4",
                     value: 1,
                   },
                 },
@@ -145,43 +145,43 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "21:0-26:3",
+      loc: "21:1-26:4",
       kind: {
         type: "ObjectExpression",
-        loc: "21:1-26:1",
+        loc: "21:2-26:2",
         properties: [
           {
             type: "Property",
-            loc: "22:2-25:3",
+            loc: "22:3-25:4",
             key: {
               type: "Identifier",
-              loc: "22:2-22:8",
+              loc: "22:3-22:9",
               name: "method",
             },
             value: {
               type: "FunctionExpression",
-              loc: "22:2-25:3",
+              loc: "22:3-25:4",
               id: null,
               params: [],
               body: {
                 type: "Block",
-                loc: "22:11-25:3",
+                loc: "22:12-25:4",
                 body: [
                   {
                     type: "ExpressionStatement",
-                    loc: "23:4-23:17",
+                    loc: "23:5-23:18",
                     kind: {
                       type: "Literal",
-                      loc: "23:4-23:16",
+                      loc: "23:5-23:17",
                       value: "use strict",
                     },
                   },
                   {
                     type: "ExpressionStatement",
-                    loc: "24:4-24:6",
+                    loc: "24:5-24:7",
                     kind: {
                       type: "Literal",
-                      loc: "24:4-24:5",
+                      loc: "24:5-24:6",
                       value: 1,
                     },
                   },
@@ -201,32 +201,32 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "29:0-32:1",
+      loc: "29:1-32:2",
       id: {
         type: "Identifier",
-        loc: "29:9-29:12",
+        loc: "29:10-29:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "29:15-32:1",
+        loc: "29:16-32:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "30:2-30:14",
+            loc: "30:3-30:15",
             kind: {
               type: "Literal",
-              loc: "30:2-30:14",
+              loc: "30:3-30:15",
               value: "use strict",
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "31:2-31:4",
+            loc: "31:3-31:5",
             kind: {
               type: "Literal",
-              loc: "31:2-31:3",
+              loc: "31:3-31:4",
               value: 1,
             },
           },
@@ -238,32 +238,32 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "35:0-38:1",
+      loc: "35:1-38:2",
       id: {
         type: "Identifier",
-        loc: "35:9-35:12",
+        loc: "35:10-35:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "35:15-38:1",
+        loc: "35:16-38:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "36:2-36:4",
+            loc: "36:3-36:5",
             kind: {
               type: "Literal",
-              loc: "36:2-36:3",
+              loc: "36:3-36:4",
               value: 1,
             },
           },
           {
             type: "ExpressionStatement",
-            loc: "37:2-37:15",
+            loc: "37:3-37:16",
             kind: {
               type: "Literal",
-              loc: "37:2-37:14",
+              loc: "37:3-37:15",
               value: "use strict",
             },
           },
@@ -275,23 +275,23 @@
     },
     {
       type: "FunctionDeclaration",
-      loc: "40:0-42:1",
+      loc: "40:1-42:2",
       id: {
         type: "Identifier",
-        loc: "40:9-40:12",
+        loc: "40:10-40:13",
         name: "foo",
       },
       params: [],
       body: {
         type: "Block",
-        loc: "40:15-42:1",
+        loc: "40:16-42:2",
         body: [
           {
             type: "ExpressionStatement",
-            loc: "41:2-41:22",
+            loc: "41:3-41:23",
             kind: {
               type: "Literal",
-              loc: "41:2-41:21",
+              loc: "41:3-41:22",
               value: "use strict",
             },
           },

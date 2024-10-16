@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:0-1:0",
+  loc: "1:1-1:1",
   body: [],
   sourceType: "script",
   has_use_strict_directive: false,

@@ -59,9 +59,10 @@ fn run_and_return_bytecode(
     f: &mut impl FnMut(Context, Handle<Realm>) -> GenericResult<()>,
 ) -> GenericResult<String> {
     // Bytecode will be dumped to the internal dump buffer
-    let mut options = Options::default();
-    options.print_bytecode = true;
-    options.dump_buffer = Some(Mutex::new(String::new()));
+    let options = OptionsBuilder::new()
+        .print_bytecode(true)
+        .dump_buffer(Some(Mutex::new(String::new())))
+        .build();
     let options = Rc::new(options);
 
     let (cx, realm) =

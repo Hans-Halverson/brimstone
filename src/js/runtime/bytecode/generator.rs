@@ -27,6 +27,7 @@ use crate::js::{
         bytecode::{
             function::{dump_bytecode_function, BytecodeFunction},
             instruction::DefinePropertyFlags,
+            source_map::BytecodeSourceMap,
         },
         class_names::{ClassNames, HomeObjectLocation, Method},
         collections::{BsVec, BsVecField},
@@ -142,7 +143,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             self.all_functions
                 .unwrap()
                 .as_mut_slice()
-                .sort_by_key(|f| f.source_range().start);
+                .sort_by_key(|f| f.source_range().unwrap().start);
 
             for bytecode_function in self.all_functions.unwrap().as_slice() {
                 dump_bytecode_function(self.cx, *bytecode_function);
@@ -923,9 +924,6 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// Source file of the function that is being generated.
     source_file: Handle<SourceFile>,
 
-    /// Start and end position of the function in the source code.
-    source_range: Range<Pos>,
-
     /// Number of blocks currently allocated in the function.
     num_blocks: usize,
 
@@ -1021,8 +1019,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         is_base_constructor: bool,
         is_async: bool,
     ) -> Self {
+        // Source map begins with a header containing the entire source range of the function
+        let mut writer = BytecodeWriter::new();
+        writer.write_source_map_header(&source_range);
+
         Self {
-            writer: BytecodeWriter::new(),
+            writer,
             cx,
             scope_tree,
             realm,
@@ -1030,7 +1032,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_names_cache: HashMap::new(),
             name,
             source_file,
-            source_range,
             num_blocks: 0,
             block_offsets: HashMap::new(),
             unresolved_forward_jumps: HashMap::new(),
@@ -1870,7 +1871,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .name
             .as_ref()
             .map(|name| InternedStrings::get_wtf8_str(self.cx, name));
-        let bytecode = self.writer.finish();
+        let (bytecode, source_positions) = self.writer.finish();
+
+        let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions);
 
         let bytecode_function = BytecodeFunction::new(
             self.cx,
@@ -1889,8 +1892,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.new_target_index,
             self.generator_index,
             name,
-            Some(self.source_file),
-            self.source_range,
+            self.source_file,
+            source_positions_object,
         );
 
         EmitFunctionResult {

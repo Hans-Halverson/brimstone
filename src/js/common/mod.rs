@@ -8,4 +8,5 @@ pub mod options;
 pub mod time;
 pub mod unicode;
 pub mod unicode_property;
+pub mod varint;
 pub mod wtf_8;

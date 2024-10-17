@@ -154,7 +154,7 @@ impl VM {
     }
 
     #[inline]
-    fn pc(&self) -> *const u8 {
+    pub fn pc(&self) -> *const u8 {
         // Volatile read needed since PC could be have been changed during a GC
         unsafe { std::ptr::read_volatile(&self.pc as *const *const u8) }
     }

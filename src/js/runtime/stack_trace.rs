@@ -1,7 +1,11 @@
+use crate::js::parser::loc::find_line_col_for_pos;
+
 use super::{
     abstract_operations::create_non_enumerable_data_property_or_throw,
+    bytecode::source_map::BytecodeSourceMap,
     console::format_error_one_line,
     intrinsics::{error_constructor::ErrorObject, rust_runtime::return_undefined},
+    source_file::SourceFile,
     Context, Handle,
 };
 
@@ -14,15 +18,19 @@ pub fn attach_stack_trace_to_error(
     error: Handle<ErrorObject>,
     skip_current_frame: bool,
 ) {
+    // Do any preparatory work that may allocate
+    prepare_for_stack_trace(cx);
+
     // Stack trace starts with the error itself
     let mut stack_trace = format_error_one_line(cx, error.into());
     stack_trace.push('\n');
 
     // We may want to skip the first stack frame e.g. when in an error constructor
-    let mut stack_frame_opt = if skip_current_frame {
-        cx.vm().stack_frame().previous_frame()
+    let (mut stack_frame_opt, mut pc) = if skip_current_frame {
+        let stack_frame = cx.vm().stack_frame();
+        (stack_frame.previous_frame(), stack_frame.return_address())
     } else {
-        Some(cx.vm().stack_frame())
+        (Some(cx.vm().stack_frame()), cx.vm().pc())
     };
 
     while let Some(stack_frame) = stack_frame_opt {
@@ -56,9 +64,32 @@ pub fn attach_stack_trace_to_error(
             stack_trace.push_str("<native>");
         }
 
+        // If we have source code positions for this function, add the line and column
+        if let Some(source_map) = func.source_map_ptr() {
+            // First find the bytecode offset of the pc or saved return address
+            let bytecode_offset = pc as usize - func.bytecode().as_ptr() as usize;
+
+            // Map that bytecode offset to a source position using the source map
+            let source_position =
+                BytecodeSourceMap::get_source_position(source_map, bytecode_offset);
+
+            if let Some(source_position) = source_position {
+                // Get the line and column number for the source position. Will not allocate since
+                // line offsets were already generated in `prepare_for_stack_trace`.
+                let source_file = func.source_file_ptr().unwrap();
+                let line_offsets = source_file.line_offsets_ptr_raw().unwrap();
+                let (line, column) =
+                    find_line_col_for_pos(source_position, line_offsets.as_slice());
+
+                // Append the line and column to the function name
+                stack_trace.push_str(&format!(":{}:{}", line, column));
+            }
+        }
+
         stack_trace.push_str(")\n");
 
         // Move to the parent stack frame
+        pc = stack_frame.return_address();
         stack_frame_opt = stack_frame.previous_frame();
     }
 
@@ -70,4 +101,20 @@ pub fn attach_stack_trace_to_error(
         cx.names.stack(),
         stack_trace_string.into(),
     )
+}
+
+/// Prepare for a stack trace to be formatted. Perform any allocations that will be needed, such as
+/// calculating line offsets for all source files.
+fn prepare_for_stack_trace(mut cx: Context) {
+    // Handle is shared between iterations
+    let mut source_file_handle: Handle<SourceFile> = Handle::empty(cx);
+
+    // Generate the line offsets for all source files referenced in the stack trace. This may
+    // allocate if line offsets have not been generated yet.
+    for stack_frame in cx.vm().stack_frame().iter() {
+        if let Some(source_file) = stack_frame.closure().function_ptr().source_file_ptr() {
+            source_file_handle.replace(source_file);
+            source_file_handle.line_offsets_ptr(cx);
+        }
+    }
 }

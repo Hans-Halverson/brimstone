@@ -71,14 +71,18 @@ impl SourceFile {
     }
 
     #[inline]
+    pub fn line_offsets_ptr_raw(&self) -> Option<HeapPtr<LineOffsetArray>> {
+        self.line_offsets
+    }
+
+    #[inline]
     pub fn contents_as_slice(&self) -> &[u8] {
         self.contents.as_slice()
     }
 }
 
 impl Handle<SourceFile> {
-    #[allow(unused)]
-    fn line_offsets_ptr(&mut self, cx: Context) -> HeapPtr<LineOffsetArray> {
+    pub fn line_offsets_ptr(&mut self, cx: Context) -> HeapPtr<LineOffsetArray> {
         if let Some(line_offsets) = self.line_offsets {
             return line_offsets;
         }

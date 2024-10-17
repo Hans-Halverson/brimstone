@@ -251,6 +251,12 @@ impl StackFrame {
         }
     }
 
+    /// Iterate upwards through stack frames, starting at this stack frame.
+    #[inline]
+    pub fn iter(&self) -> StackFrameIter {
+        StackFrameIter { current_frame: Some(*self) }
+    }
+
     /// Visit all pointers in the stack frame, potentially updating them.
     ///
     /// The only stack slot that is not updated is the return address, as this is calculated
@@ -268,6 +274,25 @@ impl StackFrame {
         visitor.visit_pointer(self.closure_mut());
         visitor.visit_pointer(self.constant_table_mut());
         visitor.visit_pointer(self.scope_mut());
+    }
+}
+
+pub struct StackFrameIter {
+    /// The next frame to return from the iterator.
+    current_frame: Option<StackFrame>,
+}
+
+impl Iterator for StackFrameIter {
+    type Item = StackFrame;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current_frame {
+            None => None,
+            Some(current_frame) => {
+                self.current_frame = current_frame.previous_frame();
+                Some(current_frame)
+            }
+        }
     }
 }
 

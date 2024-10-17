@@ -7,7 +7,7 @@ use crate::{
         runtime::{
             abstract_operations::define_property_or_throw,
             builtin_function::BuiltinFunctionPtr,
-            collections::InlineArray,
+            collections::{array::ByteArray, InlineArray},
             debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
             function::{set_function_length, set_function_name},
             gc::{HeapObject, HeapVisitor},
@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
-    instruction::debug_format_instructions,
+    instruction::debug_format_instructions, source_map::BytecodeSourceMap,
 };
 
 // A closure is a pair of a function and its scope. Represents the instantiation of a function's
@@ -237,8 +237,11 @@ pub struct BytecodeFunction {
     name: Option<HeapPtr<StringValue>>,
     /// Source file this function was defined in. None if there is no source file, like for builtins
     source_file: Option<HeapPtr<SourceFile>>,
-    /// Start and end position of this function in the source file. Zero for builtins.
-    source_range: Range<Pos>,
+    /// The source map that maps from bytecode offsets to source code positions. None if there is
+    /// no source file, like for builtins.
+    ///
+    /// `source_map` is None iff `source_file` is None
+    source_map: Option<HeapPtr<ByteArray>>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
     /// function has an empty bytecode array and default values for many other fields.
     rust_runtime_function_id: Option<RustRuntimeFunctionId>,
@@ -264,8 +267,8 @@ impl BytecodeFunction {
         new_target_index: Option<u32>,
         generator_index: Option<u32>,
         name: Option<Handle<StringValue>>,
-        source_file: Option<Handle<SourceFile>>,
-        source_range: Range<Pos>,
+        source_file: Handle<SourceFile>,
+        source_map: Handle<ByteArray>,
     ) -> Handle<BytecodeFunction> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
@@ -285,8 +288,8 @@ impl BytecodeFunction {
         set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.generator_index, generator_index);
         set_uninit!(object.name, name.map(|n| *n));
-        set_uninit!(object.source_file, source_file.map(|f| *f));
-        set_uninit!(object.source_range, source_range);
+        set_uninit!(object.source_file, Some(*source_file));
+        set_uninit!(object.source_map, Some(*source_map));
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_slice(&bytecode);
 
@@ -321,7 +324,7 @@ impl BytecodeFunction {
         set_uninit!(object.generator_index, None);
         set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, None);
-        set_uninit!(object.source_range, 0..0);
+        set_uninit!(object.source_map, None);
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
         object.bytecode.init_from_slice(&[]);
 
@@ -415,8 +418,13 @@ impl BytecodeFunction {
     }
 
     #[inline]
-    pub fn source_range(&self) -> Range<Pos> {
-        self.source_range.clone()
+    pub fn source_map_ptr(&self) -> Option<HeapPtr<ByteArray>> {
+        self.source_map
+    }
+
+    #[inline]
+    pub fn source_range(&self) -> Option<Range<Pos>> {
+        self.source_map.map(BytecodeSourceMap::get_function_range)
     }
 
     #[inline]
@@ -507,5 +515,6 @@ impl HeapObject for HeapPtr<BytecodeFunction> {
         visitor.visit_pointer(&mut self.realm);
         visitor.visit_pointer_opt(&mut self.name);
         visitor.visit_pointer_opt(&mut self.source_file);
+        visitor.visit_pointer_opt(&mut self.source_map);
     }
 }

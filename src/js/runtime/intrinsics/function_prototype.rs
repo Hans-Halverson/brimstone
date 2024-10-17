@@ -220,7 +220,7 @@ impl FunctionPrototype {
             }
 
             // Non-builtin functions return their original slice of the source code
-            let source_range = function.source_range();
+            let source_range = function.source_range().unwrap();
             let source_file = function.source_file_ptr().unwrap();
             let source_contents = source_file.contents_as_slice();
 

@@ -45,9 +45,18 @@ pub struct Realm {
 const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 
 impl Realm {
+    /// InitializeHostDefinedRealm (https://tc39.es/ecma262/#sec-initializehostdefinedrealm)
+    pub fn new(cx: Context) -> Handle<Realm> {
+        HandleScope::new(cx, |cx| {
+            let realm = Realm::new_uninit(cx);
+            must!(set_default_global_bindings(cx, realm));
+            realm
+        })
+    }
+
     /// Realm initializes intrinsics but leaves other properties uninitialized. Must call
     /// `initialize` before using.
-    pub fn new_uninit(cx: Context) -> Handle<Realm> {
+    fn new_uninit(cx: Context) -> Handle<Realm> {
         HandleScope::new(cx, |cx| {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
             // during intrinsic creation.
@@ -273,20 +282,6 @@ impl Handle<Realm> {
         );
         self.empty_function = *empty_function;
     }
-}
-
-/// InitializeHostDefinedRealm (https://tc39.es/ecma262/#sec-initializehostdefinedrealm)
-pub fn initialize_host_defined_realm(
-    cx: Context,
-    expose_gc: bool,
-    expose_test262: bool,
-) -> Handle<Realm> {
-    HandleScope::new(cx, |cx| {
-        let realm = Realm::new_uninit(cx);
-        must!(set_default_global_bindings(cx, realm, expose_gc, expose_test262));
-
-        realm
-    })
 }
 
 impl HeapObject for HeapPtr<Realm> {

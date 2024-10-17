@@ -11,19 +11,14 @@ use js::{
         options::{Args, Options},
     },
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, error::print_eval_error_and_exit, Context,
-        Handle, Realm,
+        bytecode::generator::BytecodeProgramGenerator, error::print_eval_error_and_exit,
+        gc_object::GcObject, test_262_object::Test262Object, Context, ContextBuilder,
     },
 };
 
 fn main_impl() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let options = Rc::new(Options::new_from_args(&args));
-
-    let (cx, realm) = Context::new(options.clone(), |cx| {
-        // Allocate the realm's built-ins in the permanent heap
-        js::runtime::initialize_host_defined_realm(cx, args.expose_gc, args.expose_test262)
-    });
+    let cx = create_context(&args);
 
     #[cfg(feature = "gc_stress_test")]
     {
@@ -33,19 +28,32 @@ fn main_impl() -> Result<(), Box<dyn Error>> {
 
     cx.execute_then_drop(|cx| {
         for file in &args.files {
-            evaluate_file(cx, realm, &args, file)?;
+            evaluate_file(cx, &args, file)?;
         }
 
         Ok(())
     })
 }
 
-fn evaluate_file(
-    mut cx: Context,
-    realm: Handle<Realm>,
-    args: &Args,
-    file: &str,
-) -> Result<(), Box<dyn Error>> {
+fn create_context(args: &Args) -> Context {
+    let options = Rc::new(Options::new_from_args(args));
+
+    let cx = ContextBuilder::new().set_options(options).build();
+
+    if args.expose_gc {
+        GcObject::install(cx, cx.initial_realm());
+    }
+
+    if args.expose_test_262 {
+        Test262Object::install(cx, cx.initial_realm());
+    }
+
+    cx
+}
+
+fn evaluate_file(mut cx: Context, args: &Args, file: &str) -> Result<(), Box<dyn Error>> {
+    let realm = cx.initial_realm();
+
     let source = Rc::new(js::parser::source::Source::new_from_file(file)?);
     let mut parse_result = if args.module {
         js::parser::parse_module(&source, cx.options.as_ref())?

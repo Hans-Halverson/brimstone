@@ -20,9 +20,8 @@ use brimstone::js::{
     self,
     common::{options::Options, wtf_8::Wtf8String},
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, get, initialize_host_defined_realm,
-        object_value::ObjectValue, test_262_object::Test262Object, to_console_string, to_string,
-        Context, EvalResult, Handle, Realm, Value,
+        bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
+        to_console_string, to_string, Context, EvalResult, Handle, Value,
     },
 };
 
@@ -164,23 +163,15 @@ fn run_single_test(
     force_strict_mode: bool,
     start_timestamp: SystemTime,
 ) -> TestResult {
-    // Set up options
-    let options = Rc::new(Options::default());
-
     // Each test is executed in its own realm
-    let (cx, realm) = Context::new(options.clone(), |cx| {
-        // Allocate the realm's built-ins in the permanent heap
-        initialize_host_defined_realm(
-            cx, /* expose_gc */ false, /* expose_test262 */ true,
-        )
-    });
+    let cx = Context::default();
+    let options = cx.options.clone();
+
+    // Each realm has access to the test262 object
+    Test262Object::install(cx, cx.initial_realm());
 
     // Wrap in catch_unwind so that we can clean up the context in the event of a panic
     let panic_result = panic::catch_unwind(AssertUnwindSafe(|| {
-        // Add $262 object to the realm's global object
-        let test_262_object = Test262Object::new(cx, realm);
-        Test262Object::install(cx, realm, test_262_object);
-
         #[cfg(feature = "gc_stress_test")]
         {
             let mut cx = cx;
@@ -189,13 +180,13 @@ fn run_single_test(
 
         // Default harness files are loaded unless running in raw mode
         if test.mode != TestMode::Raw {
-            load_harness_test_file(cx, realm, test262_root, "assert.js");
-            load_harness_test_file(cx, realm, test262_root, "sta.js");
+            load_harness_test_file(cx, test262_root, "assert.js");
+            load_harness_test_file(cx, test262_root, "sta.js");
         }
 
         // Load all other specified harness files
         for include in &test.includes {
-            load_harness_test_file(cx, realm, test262_root, include);
+            load_harness_test_file(cx, test262_root, include);
         }
 
         // Try to parse file
@@ -250,15 +241,14 @@ fn run_single_test(
         }
 
         let completion = if test.mode == TestMode::Module {
-            execute_module_as_bytecode(cx, realm, &ast)
+            execute_module_as_bytecode(cx, &ast)
         } else {
-            execute_script_as_bytecode(cx, realm, &ast)
+            execute_script_as_bytecode(cx, &ast)
         };
 
         let duration = start_timestamp.elapsed().unwrap();
 
-        let global_object = realm.global_object();
-        check_expected_completion(cx, test, completion, global_object, duration)
+        check_expected_completion(cx, test, completion, duration)
     }));
 
     cx.drop();
@@ -301,7 +291,7 @@ fn parse_file(
     }
 }
 
-fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str, file: &str) {
+fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
     let mut ast =
@@ -311,7 +301,7 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
     js::parser::analyze::analyze(&mut ast)
         .expect(&format!("Failed to parse test harness file {}", full_path.display()));
 
-    let eval_result = execute_script_as_bytecode(cx, realm, &ast);
+    let eval_result = execute_script_as_bytecode(cx, &ast);
 
     if let Err(_) = eval_result {
         panic!("Failed to evaluate test harness file {}", full_path.display())
@@ -320,9 +310,9 @@ fn load_harness_test_file(cx: Context, realm: Handle<Realm>, test262_root: &str,
 
 fn execute_script_as_bytecode(
     mut cx: Context,
-    realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
 ) -> EvalResult<()> {
+    let realm = cx.initial_realm();
     let generate_result =
         BytecodeProgramGenerator::generate_from_parse_script_result(cx, parse_result, realm);
     let bytecode_script = match generate_result {
@@ -338,9 +328,9 @@ fn execute_script_as_bytecode(
 
 fn execute_module_as_bytecode(
     mut cx: Context,
-    realm: Handle<Realm>,
     parse_result: &js::parser::parser::ParseProgramResult,
 ) -> EvalResult<()> {
+    let realm = cx.initial_realm();
     let generate_result =
         BytecodeProgramGenerator::generate_from_parse_module_result(cx, parse_result, realm);
     let module = match generate_result {
@@ -360,7 +350,6 @@ fn check_expected_completion(
     cx: Context,
     test: &Test,
     completion: EvalResult<()>,
-    global_object: Handle<ObjectValue>,
     duration: Duration,
 ) -> TestResult {
     match completion {
@@ -370,6 +359,7 @@ fn check_expected_completion(
                 // Async tests determine success by looking at the output logged to print()
                 if test.is_async {
                     // Get the print log stored on the global object
+                    let global_object = cx.initial_realm().global_object();
                     let print_log = Test262Object::get_print_log(cx, global_object);
                     let print_log = match print_log {
                         Ok(log) => log.to_string(),

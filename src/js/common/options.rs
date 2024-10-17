@@ -32,7 +32,7 @@ pub struct Args {
 
     /// Expose the test262 object
     #[arg(long, default_value_t = false)]
-    pub expose_test262: bool,
+    pub expose_test_262: bool,
 
     #[arg(required = true)]
     pub files: Vec<String>,

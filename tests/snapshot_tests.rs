@@ -3,9 +3,8 @@ use brimstone::js::{
     parser::{self, ast},
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
-        initialize_host_defined_realm,
         module::source_text_module::SourceTextModule,
-        Context, Handle, Realm,
+        Context, Handle,
     },
 };
 
@@ -48,15 +47,15 @@ fn print_bytecode(path: &str) -> GenericResult<String> {
     }
 
     // Otherwise only need to generate bytecode
-    run_and_return_bytecode(&mut |cx, realm| {
-        generate_bytecode(cx, realm, path)?;
+    run_and_return_bytecode(&mut |cx| {
+        generate_bytecode(cx, path)?;
         Ok(())
     })
 }
 
 /// Create a fresh context to be used for bytecode tests.
 fn run_and_return_bytecode(
-    f: &mut impl FnMut(Context, Handle<Realm>) -> GenericResult<()>,
+    f: &mut impl FnMut(Context) -> GenericResult<()>,
 ) -> GenericResult<String> {
     // Bytecode will be dumped to the internal dump buffer
     let options = OptionsBuilder::new()
@@ -65,10 +64,9 @@ fn run_and_return_bytecode(
         .build();
     let options = Rc::new(options);
 
-    let (cx, realm) =
-        Context::new(options.clone(), |cx| initialize_host_defined_realm(cx, false, false));
+    let cx = ContextBuilder::new().set_options(options.clone()).build();
 
-    f(cx, realm)?;
+    f(cx)?;
 
     let dump_buffer = options.dump_buffer().unwrap().clone();
 
@@ -80,11 +78,9 @@ enum BytecodeResult {
     Module(Handle<SourceTextModule>),
 }
 
-fn generate_bytecode(
-    cx: Context,
-    realm: Handle<Realm>,
-    path: &str,
-) -> GenericResult<BytecodeResult> {
+fn generate_bytecode(cx: Context, path: &str) -> GenericResult<BytecodeResult> {
+    let realm = cx.initial_realm();
+
     let mut parse_result = parse_script_or_module(path, cx.options.as_ref())?;
     parser::analyze::analyze(&mut parse_result)?;
 
@@ -107,8 +103,8 @@ fn generate_bytecode(
 }
 
 fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
-    run_and_return_bytecode(&mut |mut cx, realm| {
-        let bytecode_program = generate_bytecode(cx, realm, path)?;
+    run_and_return_bytecode(&mut |mut cx| {
+        let bytecode_program = generate_bytecode(cx, path)?;
 
         // Execute bytecode. Can ignore return result since we only care about the dumped bytecode.
         let _ = match bytecode_program {

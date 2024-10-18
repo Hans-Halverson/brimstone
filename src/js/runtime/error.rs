@@ -1,11 +1,63 @@
-use crate::js::{common::error::print_error_message_and_exit, parser::LocalizedParseError};
+use crate::js::parser::{LocalizedParseError, LocalizedParseErrors};
 
 use super::{
+    bytecode::generator::EmitError,
     eval_result::EvalResult,
     intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
     string_value::{FlatString, StringValue},
     to_console_string, Context, Handle, HeapPtr, Value,
 };
+
+/// Top level error type for the JS engine. Encapsulates all possible errors types that can occur
+/// during parsing, analysis, or evaluation.
+pub enum BsError {
+    /// A single parse error can be returned from parsing.
+    Parse(LocalizedParseError),
+    /// Multiple parse errors can be returned from analysis.
+    Analyze(LocalizedParseErrors),
+    /// An error during bytecode generation.
+    Emit(EmitError),
+    /// Any value can be thrown as an error during evaluation.
+    Eval(Handle<Value>),
+}
+
+impl From<LocalizedParseError> for BsError {
+    fn from(error: LocalizedParseError) -> Self {
+        BsError::Parse(error)
+    }
+}
+
+impl From<LocalizedParseErrors> for BsError {
+    fn from(errors: LocalizedParseErrors) -> Self {
+        BsError::Analyze(errors)
+    }
+}
+
+impl From<EmitError> for BsError {
+    fn from(error: EmitError) -> Self {
+        BsError::Emit(error)
+    }
+}
+
+impl From<Handle<Value>> for BsError {
+    fn from(error: Handle<Value>) -> Self {
+        BsError::Eval(error)
+    }
+}
+
+impl BsError {
+    pub fn to_error_message(&self, cx: Context) -> String {
+        match self {
+            BsError::Parse(error) => error.to_string(),
+            BsError::Analyze(errors) => errors.to_string(),
+            BsError::Emit(error) => error.to_string(),
+            BsError::Eval(value) => to_console_string(cx, *value),
+        }
+    }
+}
+
+/// Generic result type from the JS engine.
+pub type BsResult<T> = Result<T, BsError>;
 
 pub fn syntax_error_value(cx: Context, message: &str) -> Handle<Value> {
     SyntaxError::new_with_message(cx, message.to_owned()).into()
@@ -57,11 +109,6 @@ pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalRes
 
 pub fn err_cannot_set_property<T>(cx: Context, name: impl std::fmt::Display) -> EvalResult<T> {
     type_error(cx, &format!("can't set property {}", name))
-}
-
-pub fn print_eval_error_and_exit(cx: Context, error: Handle<Value>) {
-    let error_string = to_console_string(cx, error);
-    print_error_message_and_exit(&error_string);
 }
 
 pub fn syntax_parse_error<T>(cx: Context, error: &LocalizedParseError) -> EvalResult<T> {

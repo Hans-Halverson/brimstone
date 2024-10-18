@@ -1,10 +1,10 @@
 use brimstone::js::{
-    common::options::Options,
+    common::options::{Options, OptionsBuilder},
     parser::{self, ast},
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         module::source_text_module::SourceTextModule,
-        Context, Handle,
+        Context, ContextBuilder, Handle,
     },
 };
 

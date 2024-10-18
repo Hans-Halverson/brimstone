@@ -8,14 +8,19 @@ use std::{
 
 use crate::js::{
     common::{options::Options, wtf_8::Wtf8String},
+    parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
     runtime::gc::HandleScope,
 };
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_names::{BuiltinNames, BuiltinSymbols},
-    bytecode::{generator::BytecodeScript, vm::VM},
+    bytecode::{
+        generator::{BytecodeProgramGenerator, BytecodeScript},
+        vm::VM,
+    },
     collections::{BsHashMap, BsHashMapField},
+    error::BsResult,
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
@@ -184,6 +189,50 @@ impl Context {
 
     pub fn initial_realm(&self) -> Handle<Realm> {
         self.initial_realm.to_handle()
+    }
+
+    pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
+        // Parse script and perform semantic analysis
+        let mut parse_result = parse_script(&source, self.options.as_ref())?;
+        analyze(&mut parse_result)?;
+
+        if self.options.print_ast {
+            println!("{}", print_program(&parse_result.program));
+        }
+
+        // Generate bytecode for the program
+        let bytecode_script = BytecodeProgramGenerator::generate_from_parse_script_result(
+            *self,
+            &parse_result,
+            self.initial_realm(),
+        )?;
+
+        // Execute in the bytecode interpreter
+        self.run_script(bytecode_script)?;
+
+        Ok(())
+    }
+
+    pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
+        // Parse module and perform semantic analysis
+        let mut parse_result = parse_module(&source, self.options.as_ref())?;
+        analyze(&mut parse_result)?;
+
+        if self.options.print_ast {
+            println!("{}", print_program(&parse_result.program));
+        }
+
+        // Generate bytecode for the program
+        let module = BytecodeProgramGenerator::generate_from_parse_module_result(
+            *self,
+            &parse_result,
+            self.initial_realm(),
+        )?;
+
+        // Load modules and execute in the bytecode interpreter
+        self.run_module(module)?;
+
+        Ok(())
     }
 
     /// Execute a program, running until the task queue is empty.

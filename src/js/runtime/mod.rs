@@ -54,6 +54,7 @@ mod value;
 pub use abstract_operations::get;
 pub use console::to_console_string;
 pub use context::{Context, ContextBuilder};
+pub use error::BsResult;
 pub use eval_result::EvalResult;
 pub use gc::{Handle, HeapPtr};
 pub use property_descriptor::PropertyDescriptor;

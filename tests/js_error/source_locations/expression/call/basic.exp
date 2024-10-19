@@ -1,0 +1,5 @@
+Error: This is an error
+  at baz (tests/js_error/source_locations/expression/call/basic.js:10:9)
+  at bar (tests/js_error/source_locations/expression/call/basic.js:6:3)
+  at foo (tests/js_error/source_locations/expression/call/basic.js:2:3)
+  at <global> (tests/js_error/source_locations/expression/call/basic.js:13:1)

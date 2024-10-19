@@ -1,0 +1,3 @@
+ReferenceError: x is not defined
+  at test (tests/js_error/source_locations/loads/load_global_unresolved.js:3:3)
+  at <global> (tests/js_error/source_locations/loads/load_global_unresolved.js:6:1)

@@ -12,10 +12,8 @@ use super::{
     abstract_operations::set,
     error::{syntax_error, syntax_parse_error, type_error},
     function::get_argument,
-    intrinsics::{
-        array_buffer_constructor::ArrayBufferObject, global_object::set_default_global_bindings,
-        intrinsics::Intrinsic,
-    },
+    gc::HandleScope,
+    intrinsics::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic},
     object_value::ObjectValue,
     string_value::StringValue,
     Context, EvalResult, Handle, PropertyKey, Realm, Value,
@@ -26,7 +24,7 @@ use super::{
 pub struct Test262Object;
 
 impl Test262Object {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
@@ -50,27 +48,30 @@ impl Test262Object {
         object.to_handle()
     }
 
-    pub fn install(mut cx: Context, realm: Handle<Realm>, test_262_object: Handle<ObjectValue>) {
-        // Install the the "$262" property on the global object
-        let test_262_string = cx.alloc_string("$262").as_string();
-        let test_262_key = PropertyKey::string(cx, test_262_string).to_handle(cx);
-        realm
-            .global_object()
-            .intrinsic_data_prop(cx, test_262_key, test_262_object.into());
+    pub fn install(cx: Context, realm: Handle<Realm>) {
+        HandleScope::new(cx, |mut cx| {
+            // Create the test262 object
+            let test_262_object = Test262Object::new(cx, realm);
 
-        // Also install a global print function needed in tests
-        let print_string = cx.alloc_string("print").as_string();
-        let print_key = PropertyKey::string(cx, print_string).to_handle(cx);
-        realm
-            .global_object()
-            .intrinsic_func(cx, print_key, Self::print, 1, realm);
+            // Install the the "$262" property on the global object
+            realm
+                .global_object()
+                .intrinsic_data_prop(cx, test_262_key(cx), test_262_object.into());
 
-        // Install the global print log property
-        must!(Self::set_print_log(
-            cx,
-            realm.global_object(),
-            cx.names.empty_string().as_string()
-        ));
+            // Also install a global print function needed in tests
+            let print_string = cx.alloc_string("print").as_string();
+            let print_key = PropertyKey::string(cx, print_string).to_handle(cx);
+            realm
+                .global_object()
+                .intrinsic_func(cx, print_key, Self::print, 1, realm);
+
+            // Install the global print log property
+            must!(Self::set_print_log(
+                cx,
+                realm.global_object(),
+                cx.names.empty_string().as_string()
+            ));
+        });
     }
 
     fn print_log_key(mut cx: Context) -> Handle<PropertyKey> {
@@ -125,17 +126,11 @@ impl Test262Object {
         _: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        // Create a new realm
-        let realm = Realm::new_uninit(cx);
-        set_default_global_bindings(
-            cx, realm, /* expose_gc */ false, /* expose_test262 */ false,
-        )?;
+        // Create a new realm that also has the test262 object installed
+        let realm = Realm::new(cx);
+        Test262Object::install(cx, realm);
 
-        // Add $262 object to new global object
-        let test_262_object = Test262Object::new(cx, realm);
-        Test262Object::install(cx, realm, test_262_object);
-
-        Ok(test_262_object.as_value())
+        get(cx, realm.global_object(), test_262_key(cx))
     }
 
     pub fn eval_script(
@@ -203,4 +198,9 @@ impl Test262Object {
 
         Ok(cx.undefined())
     }
+}
+
+fn test_262_key(mut cx: Context) -> Handle<PropertyKey> {
+    let test_262_string = cx.alloc_string("$262").as_string();
+    PropertyKey::string(cx, test_262_string).to_handle(cx)
 }

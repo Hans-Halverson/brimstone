@@ -12,12 +12,10 @@ use crate::js::{
         eval::eval::perform_eval,
         function::get_argument,
         gc::HandleScope,
-        gc_object::GcObject,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
         string_value::{FlatString, StringValue},
-        test_262_object::Test262Object,
         to_string,
         type_utilities::{to_int32, to_number},
         Context, EvalResult, Handle, Realm, Value,
@@ -27,12 +25,7 @@ use crate::js::{
 use super::intrinsics::Intrinsic;
 
 /// SetDefaultGlobalBindings (https://tc39.es/ecma262/#sec-setdefaultglobalbindings)
-pub fn set_default_global_bindings(
-    cx: Context,
-    realm: Handle<Realm>,
-    expose_gc: bool,
-    expose_test262: bool,
-) -> EvalResult<()> {
+pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalResult<()> {
     HandleScope::new(cx, |cx| {
         macro_rules! value_prop {
             ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
@@ -140,16 +133,6 @@ pub fn set_default_global_bindings(
         // Non-standard, environment specific properties of global object
         let console_object = ConsoleObject::new(cx, realm).into();
         value_prop!(cx.names.console(), console_object, true, false, true);
-
-        if expose_gc {
-            let gc_object = GcObject::new(cx, realm).into();
-            value_prop!(cx.names.gc(), gc_object, true, false, true);
-        }
-
-        if expose_test262 {
-            let test_262_object = Test262Object::new(cx, realm);
-            Test262Object::install(cx, realm, test_262_object);
-        }
 
         Ok(())
     })

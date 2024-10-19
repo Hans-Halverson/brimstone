@@ -8,14 +8,19 @@ use std::{
 
 use crate::js::{
     common::{options::Options, wtf_8::Wtf8String},
+    parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
     runtime::gc::HandleScope,
 };
 
 use super::{
     array_properties::{ArrayProperties, DenseArrayProperties},
     builtin_names::{BuiltinNames, BuiltinSymbols},
-    bytecode::{generator::BytecodeScript, vm::VM},
+    bytecode::{
+        generator::{BytecodeProgramGenerator, BytecodeScript},
+        vm::VM,
+    },
     collections::{BsHashMap, BsHashMapField},
+    error::BsResult,
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
@@ -58,6 +63,10 @@ pub struct ContextCell {
     /// The virtual machine used to execute bytecode.
     pub vm: Option<Box<VM>>,
 
+    /// The initial realm for this context. Either provided by the host environment or set up during
+    /// context initialization.
+    initial_realm: HeapPtr<Realm>,
+
     /// The task queue of all pending tasks.
     task_queue: TaskQueue,
 
@@ -97,9 +106,7 @@ pub struct ContextCell {
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
 
 impl Context {
-    /// Create a context. All allocations that occur during the init callback will be placed in
-    /// the permanent heap.
-    pub fn new<R>(options: Rc<Options>, mut init: impl FnMut(Context) -> R) -> (Context, R) {
+    fn new(options: Rc<Options>) -> Context {
         let cx_cell = Box::new(ContextCell {
             heap: Heap::new(),
             global_symbol_registry: HeapPtr::uninit(),
@@ -108,6 +115,7 @@ impl Context {
             base_descriptors: BaseDescriptors::uninit(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
+            initial_realm: HeapPtr::uninit(),
             task_queue: TaskQueue::new(),
             undefined: Value::undefined(),
             null: Value::null(),
@@ -146,13 +154,14 @@ impl Context {
             cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
             cx.default_named_properties =
                 NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, 0);
+
+            cx.initial_realm = *Realm::new(cx);
         });
 
-        // Execute the init callback, and turn its allocations into the permanent heap
-        let result = init(cx);
+        // Stop allocating into the permanent heap
         cx.heap.mark_current_semispace_as_permanent();
 
-        (cx, result)
+        cx
     }
 
     pub fn from_ptr(ptr: NonNull<ContextCell>) -> Context {
@@ -176,6 +185,54 @@ impl Context {
 
     pub fn task_queue(&mut self) -> &mut TaskQueue {
         &mut self.task_queue
+    }
+
+    pub fn initial_realm(&self) -> Handle<Realm> {
+        self.initial_realm.to_handle()
+    }
+
+    pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
+        // Parse script and perform semantic analysis
+        let mut parse_result = parse_script(&source, self.options.as_ref())?;
+        analyze(&mut parse_result)?;
+
+        if self.options.print_ast {
+            println!("{}", print_program(&parse_result.program));
+        }
+
+        // Generate bytecode for the program
+        let bytecode_script = BytecodeProgramGenerator::generate_from_parse_script_result(
+            *self,
+            &parse_result,
+            self.initial_realm(),
+        )?;
+
+        // Execute in the bytecode interpreter
+        self.run_script(bytecode_script)?;
+
+        Ok(())
+    }
+
+    pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
+        // Parse module and perform semantic analysis
+        let mut parse_result = parse_module(&source, self.options.as_ref())?;
+        analyze(&mut parse_result)?;
+
+        if self.options.print_ast {
+            println!("{}", print_program(&parse_result.program));
+        }
+
+        // Generate bytecode for the program
+        let module = BytecodeProgramGenerator::generate_from_parse_module_result(
+            *self,
+            &parse_result,
+            self.initial_realm(),
+        )?;
+
+        // Load modules and execute in the bytecode interpreter
+        self.run_module(module)?;
+
+        Ok(())
     }
 
     /// Execute a program, running until the task queue is empty.
@@ -369,6 +426,35 @@ impl Deref for Context {
 impl DerefMut for Context {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
+    }
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        ContextBuilder::new().build()
+    }
+}
+
+pub struct ContextBuilder {
+    options: Option<Rc<Options>>,
+}
+
+impl ContextBuilder {
+    pub fn new() -> Self {
+        Self { options: None }
+    }
+
+    pub fn build(self) -> Context {
+        // Create default options if none were provided
+        let options = self.options.unwrap_or_else(|| Rc::new(Options::default()));
+
+        // Create default realm if one was not provided
+        Context::new(options)
+    }
+
+    pub fn set_options(mut self, options: Rc<Options>) -> Self {
+        self.options = Some(options);
+        self
     }
 }
 

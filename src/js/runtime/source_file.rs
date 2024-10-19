@@ -107,5 +107,6 @@ impl HeapObject for HeapPtr<SourceFile> {
         visitor.visit_pointer(&mut self.descriptor);
         visitor.visit_pointer(&mut self.path);
         visitor.visit_pointer_opt(&mut self.display_name);
+        visitor.visit_pointer_opt(&mut self.line_offsets);
     }
 }

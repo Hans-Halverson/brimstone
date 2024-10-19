@@ -1,0 +1,2 @@
+Error: This is an error
+  at <global> (tests/js_error/error_types/eval.js)

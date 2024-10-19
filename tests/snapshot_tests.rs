@@ -1,6 +1,6 @@
 use brimstone::js::{
     common::options::{Options, OptionsBuilder},
-    parser::{self, ast},
+    parser::{self, ast, source::Source},
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         module::source_text_module::SourceTextModule,
@@ -28,6 +28,30 @@ fn js_parser_snapshot_tests() -> GenericResult<()> {
 fn print_ast(path: &str, options: &Options) -> GenericResult<String> {
     let parse_result = parse_script_or_module(path, options)?;
     Ok(parser::print_program(&parse_result.program))
+}
+
+#[test]
+fn js_error_snapshot_tests() -> GenericResult<()> {
+    let error_tests_dir = Path::new(file!()).parent().unwrap().join("js_error");
+    run_snapshot_tests(&error_tests_dir, &mut |path| print_error(path))
+}
+
+fn print_error(path: &str) -> GenericResult<String> {
+    let source = Rc::new(Source::new_from_file(path)?);
+    let cx = Context::default();
+
+    cx.execute_then_drop(|mut cx| {
+        let result = if path.contains("module") {
+            cx.evaluate_module(source)
+        } else {
+            cx.evaluate_script(source)
+        };
+
+        match result {
+            Ok(_) => Err("Expected an error".into()),
+            Err(err) => Ok(err.to_error_message(cx)),
+        }
+    })
 }
 
 #[test]
@@ -120,7 +144,7 @@ fn parse_script_or_module(
     path: &str,
     options: &Options,
 ) -> GenericResult<parser::parser::ParseProgramResult> {
-    let source = Rc::new(parser::source::Source::new_from_file(path)?);
+    let source = Rc::new(Source::new_from_file(path)?);
 
     let parse_result = if path.contains("module") {
         parser::parse_module(&source, options)?

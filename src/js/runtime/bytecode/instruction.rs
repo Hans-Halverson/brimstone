@@ -30,6 +30,16 @@ pub trait Instruction: fmt::Display {
     fn byte_length(&self) -> usize;
 }
 
+/// A utility macro for optionally including a term in a macro expansion.
+///
+/// All this does is return the second argument. But if the first argument is set to an optional
+/// macro variable while inside a $( ... )? block, the second argument will be written instead.
+macro_rules! if_set {
+    ($x:tt, $y:tt) => {
+        $y
+    };
+}
+
 /// Generate bytecode instructions using a custom DSL.
 ///
 /// Instructions are defined using the following syntax:
@@ -43,6 +53,10 @@ pub trait Instruction: fmt::Display {
 ///   // The full instruction name in snake case
 ///   snake_case: instruction_name_instruction,
 ///
+///   // (Optional) Marks that this instruction can throw an error. Source code positions are only
+///   // recorded in the source map for instructions that can throw.
+///   can_throw: true,
+///
 ///   // The operands of the instruction in the form `[operand_index] operand_name: operand_type`
 ///   operands: {
 ///     [0] operand_name_1: OperandType1,
@@ -55,12 +69,18 @@ macro_rules! define_instructions {
         $(#[$($attrs:tt)*])* $short_name:ident {
             camel_case: $instr_name_camel:ident,
             snake_case: $instr_name_snake:ident,
+            $(can_throw: $can_throw:ident,)?
             operands: {
                 $([$operand_idx:expr] $operand_name:ident: $operand_type:ident,)*
             }
         }
     )*) => {
         $(
+            // Statically verify that only "true" can be passed to the "can_throw" property
+            $(
+                const _: () = assert!($can_throw, "Only 'true' is allowed for the 'can_throw' property");
+            )?
+
             $(#[$($attrs)*])*
             #[repr(C)]
             pub struct $instr_name_camel<W: Width>([W::UInt; count!($($operand_name)*)]);
@@ -85,10 +105,18 @@ macro_rules! define_instructions {
                 const BYTE_LENGTH: usize = Self::NUM_OPERANDS * W::NUM_BYTES;
 
                 /// Write the instruction into the given bytecode stream.
-                pub fn write(writer: &mut BytecodeWriter, $($operand_name: $operand_type<W>,)*) {
+                pub fn write(
+                    writer: &mut BytecodeWriter,
+                    $($operand_name: $operand_type<W>,)*
+                    $(if_set!($can_throw, pos): usize, )?
+                ) {
+                    // Write instruction to bytecode buffer
                     writer.write_width_prefix(W::ENUM);
                     writer.write_opcode(Self::OPCODE);
                     $(writer.write_operand($operand_name);)*
+
+                    // Write a source map entry if this instruction can throw
+                    $(if_set!($can_throw, writer).write_source_map_entry(pos);)?
                 }
             }
 
@@ -172,6 +200,7 @@ macro_rules! define_instructions {
                 pub fn $instr_name_snake(
                     &mut self,
                     $($operand_name: $operand_type<ExtraWide>,)*
+                    $(if_set!($can_throw, pos): usize,)?
                 ) {
                     // Calculate the width needed to fit all operands
                     let mut width = WidthEnum::Narrow;
@@ -182,14 +211,17 @@ macro_rules! define_instructions {
                         WidthEnum::Narrow => $instr_name_camel::<Narrow>::write(
                             self,
                             $($operand_name.to_narrow(),)*
+                            $(if_set!($can_throw, pos),)?
                         ),
                         WidthEnum::Wide => $instr_name_camel::<Wide>::write(
                             self,
                             $($operand_name.to_wide(),)*
+                            $(if_set!($can_throw, pos),)?
                         ),
                         WidthEnum::ExtraWide => $instr_name_camel::<ExtraWide>::write(
                             self,
                             $($operand_name,)*
+                            $(if_set!($can_throw, pos),)?
                         ),
                     }
                 }
@@ -332,6 +364,7 @@ define_instructions!(
     LoadGlobal {
         camel_case: LoadGlobalInstruction,
         snake_case: load_global_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
@@ -343,6 +376,7 @@ define_instructions!(
     LoadGlobalOrUnresolved {
         camel_case: LoadGlobalOrUnresolvedInstruction,
         snake_case: load_global_or_unresolved_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] constant_index: ConstantIndex,
@@ -354,6 +388,7 @@ define_instructions!(
     StoreGlobal {
         camel_case: StoreGlobalInstruction,
         snake_case: store_global_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] constant_index: ConstantIndex,
@@ -366,6 +401,7 @@ define_instructions!(
     LoadDynamic {
         camel_case: LoadDynamicInstruction,
         snake_case: load_dynamic_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_index: ConstantIndex,
@@ -378,6 +414,7 @@ define_instructions!(
     LoadDynamicOrUnresolved {
         camel_case: LoadDynamicOrUnresolvedInstruction,
         snake_case: load_dynamic_or_unresolved_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_index: ConstantIndex,
@@ -389,6 +426,7 @@ define_instructions!(
     StoreDynamic {
         camel_case: StoreDynamicInstruction,
         snake_case: store_dynamic_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] name_index: ConstantIndex,
@@ -400,6 +438,7 @@ define_instructions!(
     Call {
         camel_case: CallInstruction,
         snake_case: call_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -473,6 +512,7 @@ define_instructions!(
     Construct {
         camel_case: ConstructInstruction,
         snake_case: construct_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -1486,6 +1526,7 @@ define_instructions!(
     LoadFromModule {
         camel_case: LoadFromModuleInstruction,
         snake_case: load_from_module_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] scope_index: UInt,

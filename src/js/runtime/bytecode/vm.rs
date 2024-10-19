@@ -1026,7 +1026,7 @@ impl VM {
                             dispatch_or_throw!(LoadFromModuleInstruction, execute_load_from_module)
                         }
                         OpCode::StoreToModule => {
-                            dispatch_or_throw!(StoreToModuleInstruction, execute_store_to_module)
+                            dispatch!(StoreToModuleInstruction, execute_store_to_module)
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::RestParameter => {
@@ -3905,10 +3905,7 @@ impl VM {
     }
 
     #[inline]
-    fn execute_store_to_module<W: Width>(
-        &mut self,
-        instr: &StoreToModuleInstruction<W>,
-    ) -> EvalResult<()> {
+    fn execute_store_to_module<W: Width>(&mut self, instr: &StoreToModuleInstruction<W>) {
         let scope_index = instr.scope_index().value().to_usize();
         let parent_depth = instr.parent_depth().value().to_usize();
         let value = self.read_register(instr.value());
@@ -3918,8 +3915,6 @@ impl VM {
         let mut boxed_value = self.load_from_module_scope_at_depth(scope_index, parent_depth);
 
         boxed_value.set(value);
-
-        Ok(())
     }
 
     #[inline]

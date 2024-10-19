@@ -1,0 +1,4 @@
+Error: Error on get
+  at get (tests/js_error/source_locations/expression/typeof/load_dynamic_throws.js:3:11)
+  at <eval> (<eval>:1:8)
+  at <global> (tests/js_error/source_locations/expression/typeof/load_dynamic_throws.js:7:1)

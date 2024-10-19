@@ -18,6 +18,9 @@ impl Loc {
 
 pub const EMPTY_LOC: Loc = Loc { start: 0, end: 0 };
 
+/// Pos to use as a sentinel value when a Pos is not available.
+pub const NO_POS: Pos = usize::MAX;
+
 /// Calculate the byte offsets of the start of each line.
 pub fn calculate_line_offsets(source: &[u8]) -> Vec<u32> {
     let mut line_offsets = vec![0];

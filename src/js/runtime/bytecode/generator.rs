@@ -13,7 +13,7 @@ use crate::js::{
     common::wtf_8::Wtf8String,
     parser::{
         ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
-        loc::Pos,
+        loc::{Pos, NO_POS},
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
             AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
@@ -1664,12 +1664,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // overwritten and the function name does not need to be stored.
                 let binding = id.get_binding();
                 if binding.kind().is_function_expression_name() {
-                    self.gen_store_binding(
-                        &id.name,
-                        binding,
-                        Register::closure(),
-                        StoreFlags::INITIALIZATION,
-                    )?;
+                    self.gen_initialize_binding(&id.name, binding, Register::closure())?;
                 }
             }
         }
@@ -1689,11 +1684,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Set the closure itself as the derived constructor if necessary
         if func_scope.has_binding(DERIVED_CONSTRUCTOR_BINDING_NAME) {
-            self.gen_store_binding(
+            self.gen_initialize_binding(
                 DERIVED_CONSTRUCTOR_BINDING_NAME,
                 func_scope.get_binding(DERIVED_CONSTRUCTOR_BINDING_NAME),
                 Register::closure(),
-                StoreFlags::INITIALIZATION,
             )?;
         }
 
@@ -1719,7 +1713,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     .new_unmapped_arguments_instruction(arguments_object);
             }
 
-            self.gen_store_binding("arguments", arguments_binding, arguments_object, store_flags)?;
+            self.gen_initialize_binding("arguments", arguments_binding, arguments_object)?;
             self.register_allocator.release(arguments_object);
         }
 
@@ -2245,10 +2239,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         id: &ast::Identifier,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let pos = id.loc.start;
         match id.scope.kind() {
-            ResolvedScope::UnresolvedGlobal => self.gen_load_global_identifier(&id.name, dest),
-            ResolvedScope::UnresolvedDynamic => self.gen_load_dynamic_identifier(&id.name, dest),
-            ResolvedScope::Resolved => self.gen_load_binding(&id.name, id.get_binding(), dest),
+            ResolvedScope::UnresolvedGlobal => self.gen_load_global_identifier(&id.name, pos, dest),
+            ResolvedScope::UnresolvedDynamic => {
+                self.gen_load_dynamic_identifier(&id.name, pos, dest)
+            }
+            ResolvedScope::Resolved => self.gen_load_binding(&id.name, id.get_binding(), pos, dest),
         }
     }
 
@@ -2256,6 +2253,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         name: &str,
         binding: &Binding,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // For bindings that could be accessed during their TDZ we must generate a TDZ check. Must
@@ -2278,7 +2276,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Global variables must first be loaded to a register
             VMLocation::Global => {
                 self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
-                    this.gen_load_global_identifier(name, dest)
+                    this.gen_load_global_identifier(name, pos, dest)
                 })
             }
             // Scope variables must be loaded to a register from the scope at the specified index
@@ -2291,12 +2289,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // at the specified index.
             VMLocation::ModuleScope { scope_id, index } => {
                 self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
-                    this.gen_load_module_scope_binding(scope_id, index, dest)
+                    this.gen_load_module_scope_binding(scope_id, index, pos, dest)
                 })
             }
             // Eval or with variables must be loaded to a register from a scope chain lookup
             VMLocation::EvalVar | VMLocation::WithVar => {
-                self.gen_load_dynamic_identifier(name, dest)
+                self.gen_load_dynamic_identifier(name, pos, dest)
             }
         }
     }
@@ -2372,12 +2370,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_load_global_identifier(
         &mut self,
         name: &str,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
         let constant_index = self.add_string_constant(name)?;
 
-        self.writer.load_global_instruction(dest, constant_index);
+        self.writer
+            .load_global_instruction(dest, constant_index, pos);
 
         Ok(dest)
     }
@@ -2415,6 +2415,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         scope_id: usize,
         scope_index: usize,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let parent_depth = self.find_scope_depth(scope_id)?;
@@ -2423,7 +2424,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let dest = self.allocate_destination(dest)?;
         self.writer
-            .load_from_module_instruction(dest, scope_index, parent_depth);
+            .load_from_module_instruction(dest, scope_index, parent_depth, pos);
 
         Ok(dest)
     }
@@ -2431,12 +2432,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_load_dynamic_identifier(
         &mut self,
         name: &str,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
         let constant_index = self.add_string_constant(name)?;
 
-        self.writer.load_dynamic_instruction(dest, constant_index);
+        self.writer
+            .load_dynamic_instruction(dest, constant_index, pos);
 
         Ok(dest)
     }
@@ -2447,14 +2450,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         value: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
+        let pos = id.loc.start;
         match id.scope.kind() {
-            ResolvedScope::UnresolvedGlobal => self.gen_store_global_identifier(&id.name, value),
-            ResolvedScope::UnresolvedDynamic => self.gen_store_dynamic_identifier(&id.name, value),
+            ResolvedScope::UnresolvedGlobal => {
+                self.gen_store_global_identifier(&id.name, value, pos)
+            }
+            ResolvedScope::UnresolvedDynamic => {
+                self.gen_store_dynamic_identifier(&id.name, value, pos)
+            }
             ResolvedScope::Resolved => {
                 let binding = id.get_binding();
-                self.gen_store_binding(&id.name, binding, value, flags)
+                self.gen_store_binding(&id.name, binding, value, flags, pos)
             }
         }
+    }
+
+    #[inline]
+    fn gen_initialize_binding(
+        &mut self,
+        name: &str,
+        binding: &Binding,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        // Source position not needed since initialization cannot fail
+        self.gen_store_binding(name, binding, value, StoreFlags::INITIALIZATION, NO_POS)
     }
 
     fn gen_store_binding(
@@ -2463,6 +2482,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         binding: &Binding,
         value: GenRegister,
         flags: StoreFlags,
+        pos: Pos,
     ) -> EmitResult<()> {
         if self.is_immutable_reassignment(binding, flags) {
             // Error if we are trying to reassign an immutable binding
@@ -2476,7 +2496,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // If this binding may be stored during its TDZ we must first load the binding and perform
         // a TDZ check. Loaded value can be ignored since it is only used for TDZ check.
         if flags.contains(StoreFlags::NEEDS_TDZ_CHECK) && binding.needs_tdz_check() {
-            let value = self.gen_load_binding(name, binding, ExprDest::Any)?;
+            let value = self.gen_load_binding(name, binding, pos, ExprDest::Any)?;
             self.register_allocator.release(value);
         }
 
@@ -2492,7 +2512,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.write_mov_instruction(local_reg, value);
             }
             // Globals must be stored with name appearing in the constant table
-            VMLocation::Global => self.gen_store_global_identifier(name, value)?,
+            VMLocation::Global => self.gen_store_global_identifier(name, value, pos)?,
             // Scope variables must be stored in the scope at the specified index
             VMLocation::Scope { scope_id, index } => {
                 self.gen_store_scope_binding(scope_id, index, value)?
@@ -2505,16 +2525,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Eval or with vars are dynamically stored in parent scope at runtime, so they must be
             // dynamically stored to.
             VMLocation::EvalVar | VMLocation::WithVar => {
-                self.gen_store_dynamic_identifier(name, value)?
+                self.gen_store_dynamic_identifier(name, value, pos)?
             }
         }
 
         Ok(())
     }
 
-    fn gen_store_global_identifier(&mut self, name: &str, value: GenRegister) -> EmitResult<()> {
+    fn gen_store_global_identifier(
+        &mut self,
+        name: &str,
+        value: GenRegister,
+        pos: Pos,
+    ) -> EmitResult<()> {
         let constant_index = self.add_string_constant(name)?;
-        self.writer.store_global_instruction(value, constant_index);
+        self.writer
+            .store_global_instruction(value, constant_index, pos);
 
         Ok(())
     }
@@ -2551,9 +2577,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_store_dynamic_identifier(&mut self, name: &str, value: GenRegister) -> EmitResult<()> {
+    fn gen_store_dynamic_identifier(
+        &mut self,
+        name: &str,
+        value: GenRegister,
+        pos: Pos,
+    ) -> EmitResult<()> {
         let constant_index = self.add_string_constant(name)?;
-        self.writer.store_dynamic_instruction(value, constant_index);
+        self.writer
+            .store_dynamic_instruction(value, constant_index, pos);
 
         Ok(())
     }
@@ -2932,8 +2964,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let argument = self.register_allocator.allocate()?;
                     let constant_index = self.add_string_constant(&id.name)?;
 
-                    self.writer
-                        .load_global_or_unresolved_instruction(argument, constant_index);
+                    self.writer.load_global_or_unresolved_instruction(
+                        argument,
+                        constant_index,
+                        id.loc.start,
+                    );
 
                     argument
                 }
@@ -2942,8 +2977,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let argument = self.register_allocator.allocate()?;
                     let constant_index = self.add_string_constant(&id.name)?;
 
-                    self.writer
-                        .load_dynamic_or_unresolved_instruction(argument, constant_index);
+                    self.writer.load_dynamic_or_unresolved_instruction(
+                        argument,
+                        constant_index,
+                        id.loc.start,
+                    );
 
                     argument
                 }
@@ -3348,7 +3386,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .call_varargs_instruction(dest, callee, receiver, args);
                 }
                 CallArgs::Normal { argv, argc } => {
-                    self.writer.call_instruction(dest, callee, argv, argc);
+                    self.writer
+                        .call_instruction(dest, callee, argv, argc, expr.loc.start);
                 }
             }
         }
@@ -3443,7 +3482,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer
                 .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
         } else {
-            self.writer.call_instruction(dest, callee, argv, argc);
+            self.writer
+                .call_instruction(dest, callee, argv, argc, expr.loc.start);
         }
 
         Ok(dest)
@@ -3636,8 +3676,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match args {
             CallArgs::Normal { argv, argc } => {
-                self.writer
-                    .construct_instruction(dest, callee, new_target, argv, argc);
+                self.writer.construct_instruction(
+                    dest,
+                    callee,
+                    new_target,
+                    argv,
+                    argc,
+                    expr.loc.start,
+                );
             }
             CallArgs::Varargs { args, .. } => {
                 self.writer
@@ -4121,8 +4167,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let private_name_index = self.add_string_constant(&private_name)?;
 
                 let dest = self.register_allocator.allocate()?;
-                self.writer
-                    .load_dynamic_instruction(dest, private_name_index);
+                self.writer.load_dynamic_instruction(
+                    dest,
+                    private_name_index,
+                    private_id.loc.start,
+                );
 
                 Ok(dest)
             }
@@ -5281,7 +5330,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let home_object_name = expr.home_object_name();
-        self.gen_resolved_or_dynamic_binding(expr.home_object_scope, home_object_name, dest)
+        self.gen_load_internal_binding(expr.home_object_scope, home_object_name, dest)
     }
 
     fn gen_super_call_expression(
@@ -5290,7 +5339,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Super calls implicitly use the surrounding derived constructor, so load it to register
-        let derived_constructor = self.gen_resolved_or_dynamic_binding(
+        let derived_constructor = self.gen_load_internal_binding(
             super_call.constructor_scope,
             DERIVED_CONSTRUCTOR_BINDING_NAME,
             ExprDest::Any,
@@ -5335,6 +5384,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     new_target,
                     argv,
                     argc,
+                    super_call.loc.start,
                 );
             }
         }
@@ -5500,20 +5550,25 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_mov_reg_to_dest(acc, dest)
     }
 
-    fn gen_resolved_or_dynamic_binding(
+    /// Load an "internal" binding, i.e. a binding that is known to exist but invisible to the user
+    /// such as the "%new.target" or "%homeObject" binding.
+    fn gen_load_internal_binding(
         &mut self,
         scope: TaggedResolvedScope,
         name: &str,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        // Source position not needed since this load cannot fail, as binding is guaranteed to exist
+        let pos = NO_POS;
+
         match scope.kind() {
             ResolvedScope::UnresolvedGlobal => {
                 unreachable!("cannot be resolved to UnresolvedGlobal")
             }
-            ResolvedScope::UnresolvedDynamic => self.gen_load_dynamic_identifier(name, dest),
+            ResolvedScope::UnresolvedDynamic => self.gen_load_dynamic_identifier(name, pos, dest),
             ResolvedScope::Resolved => {
                 let binding = scope.unwrap_resolved().get_binding(name);
-                self.gen_load_binding(name, binding, dest)
+                self.gen_load_binding(name, binding, pos, dest)
             }
         }
     }
@@ -5523,7 +5578,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: TaggedResolvedScope,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_resolved_or_dynamic_binding(scope, NEW_TARGET_BINDING_NAME, dest)
+        self.gen_load_internal_binding(scope, NEW_TARGET_BINDING_NAME, dest)
     }
 
     /// Determine the location where a new.target binding should be stored, given a function scope.
@@ -6539,12 +6594,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let class_name = &class_id.name;
             if let Some(binding) = body_scope.get_binding_opt(class_name) {
                 if let Some(VMLocation::Scope { .. }) = binding.vm_location() {
-                    self.gen_store_binding(
-                        class_name,
-                        binding,
-                        constructor_reg,
-                        StoreFlags::INITIALIZATION,
-                    )?;
+                    self.gen_initialize_binding(class_name, binding, constructor_reg)?;
                 }
             }
         }
@@ -6590,7 +6640,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             }
             GenClassKind::Export { name, binding } => {
-                self.gen_store_binding(name, binding, constructor_reg, store_flags)?;
+                self.gen_initialize_binding(name, binding, constructor_reg)?;
             }
             // Does not store constructor in parent scope
             GenClassKind::Expression => {}
@@ -6879,12 +6929,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_named_outer_expression(AnyStr::Str("default"), expr, ExprDest::Any)?;
 
                 let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
-                self.gen_store_binding(
-                    "default",
-                    anonymous_binding,
-                    value,
-                    StoreFlags::INITIALIZATION,
-                )?;
+                self.gen_initialize_binding("default", anonymous_binding, value)?;
 
                 self.register_allocator.release(value);
 
@@ -6975,7 +7020,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     VMLocation::Global => {
                         let temporary_reg = self.register_allocator.allocate()?;
                         self.writer.load_empty_instruction(temporary_reg);
-                        self.gen_store_global_identifier(name, temporary_reg)?;
+                        self.gen_store_global_identifier(
+                            name,
+                            temporary_reg,
+                            // Source position not needed since TDZ initialization cannot fail
+                            NO_POS,
+                        )?;
                         self.register_allocator.release(temporary_reg)
                     }
                     // Bindings stored in scopes must first load empty to a temporary register

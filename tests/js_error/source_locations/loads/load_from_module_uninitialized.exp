@@ -1,0 +1,4 @@
+ReferenceError: module value is not initialized
+  at <module> (tests/js_error/source_locations/loads/load_from_module_uninitialized.js:1:1)
+  at <anonymous> (<native>)
+  at <anonymous> (<native>)

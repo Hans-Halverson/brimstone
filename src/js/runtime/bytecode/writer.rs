@@ -1,6 +1,9 @@
 use std::ops::Range;
 
-use crate::js::{common::varint::encode_varint, parser::loc::Pos};
+use crate::js::{
+    common::varint::encode_varint,
+    parser::loc::{Pos, NO_POS},
+};
 
 use super::{
     instruction::{
@@ -22,7 +25,7 @@ pub struct BytecodeWriter {
 
 impl BytecodeWriter {
     pub fn new() -> Self {
-        Self { bytes: vec![], source_map: vec![], last_pos: 0 }
+        Self { bytes: vec![], source_map: vec![], last_pos: NO_POS }
     }
 
     pub fn finish(self) -> (Vec<u8>, Vec<u8>) {
@@ -110,10 +113,9 @@ impl BytecodeWriter {
     /// source position.
     ///
     /// Should be called after writing the instruction that corresponds to the source position.
-    #[allow(unused)]
     pub fn write_source_map_entry(&mut self, source_position: Pos) {
         // No need to write runs of the same source position
-        if source_position == self.last_pos {
+        if source_position == NO_POS || source_position == self.last_pos {
             return;
         } else {
             self.last_pos = source_position;

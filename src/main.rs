@@ -15,22 +15,6 @@ use js::{
     },
 };
 
-fn evaluate(cx: Context, args: &Args) -> BsResult<()> {
-    cx.execute_then_drop(|mut cx| {
-        for file in &args.files {
-            let source = Rc::new(Source::new_from_file(file)?);
-
-            if args.module {
-                cx.evaluate_module(source)?;
-            } else {
-                cx.evaluate_script(source)?;
-            }
-        }
-
-        Ok(())
-    })
-}
-
 fn create_context(args: &Args) -> Context {
     let options = Rc::new(Options::new_from_args(args));
 
@@ -53,13 +37,27 @@ fn create_context(args: &Args) -> Context {
     cx
 }
 
+fn evaluate(mut cx: Context, args: &Args) -> BsResult<()> {
+    for file in &args.files {
+        let source = Rc::new(Source::new_from_file(file)?);
+
+        if args.module {
+            cx.evaluate_module(source)?;
+        } else {
+            cx.evaluate_script(source)?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Wrapper to pretty print errors
 fn main() {
     let args = Args::parse();
     let cx = create_context(&args);
 
-    match evaluate(cx, &args) {
+    cx.execute_then_drop(|cx| match evaluate(cx, &args) {
         Ok(_) => (),
         Err(err) => print_error_message_and_exit(&err.to_error_message(cx)),
-    }
+    })
 }

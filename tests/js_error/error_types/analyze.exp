@@ -1,0 +1,1 @@
+SyntaxError: tests/js_error/error_types/analyze.js:4:7 Redeclaration of let x

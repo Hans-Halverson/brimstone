@@ -544,6 +544,7 @@ define_instructions!(
     DefaultSuperCall {
         camel_case: DefaultSuperCallInstruction,
         snake_case: default_super_call_instruction,
+        can_throw: true,
         operands: {}
     }
 

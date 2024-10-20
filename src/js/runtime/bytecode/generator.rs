@@ -1901,7 +1901,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn generate_default_constructor(mut self, class_pos: Pos) -> EmitResult<EmitFunctionResult> {
         // Call super constructor if necessary
         if self.is_derived_constructor() {
-            self.writer.default_super_call_instruction();
+            self.writer.default_super_call_instruction(class_pos);
         }
 
         // Initialize fields if any exist, defined onto the `this` value

@@ -3382,11 +3382,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match args {
                 CallArgs::Varargs { args, .. } => {
                     self.writer
-                        .call_maybe_eval_varargs_instruction(dest, callee, args, flags);
+                        .call_maybe_eval_varargs_instruction(dest, callee, args, flags, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer
-                        .call_maybe_eval_instruction(dest, callee, argv, argc, flags);
+                        .call_maybe_eval_instruction(dest, callee, argv, argc, flags, call_pos);
                 }
             }
         } else {

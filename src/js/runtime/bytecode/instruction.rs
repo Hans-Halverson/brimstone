@@ -484,6 +484,7 @@ define_instructions!(
     CallMaybeEval {
         camel_case: CallMaybeEvalInstruction,
         snake_case: call_maybe_eval_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -501,6 +502,7 @@ define_instructions!(
     CallMaybeEvalVarargs {
         camel_case: CallMaybeEvalVarargsInstruction,
         snake_case: call_maybe_eval_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,

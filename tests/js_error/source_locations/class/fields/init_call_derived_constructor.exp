@@ -1,0 +1,4 @@
+TypeError: BigInt cannot be converted to number
+  at fieldsInitializer (tests/js_error/source_locations/class/fields/init_call_derived_constructor.js:4:13)
+  at C (tests/js_error/source_locations/class/fields/init_call_derived_constructor.js:8:5)
+  at <global> (tests/js_error/source_locations/class/fields/init_call_derived_constructor.js:12:1)

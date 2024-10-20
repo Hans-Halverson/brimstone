@@ -452,6 +452,7 @@ define_instructions!(
     CallWithReceiver {
         camel_case: CallWithReceiverInstruction,
         snake_case: call_with_receiver_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,

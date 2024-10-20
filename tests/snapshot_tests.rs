@@ -48,7 +48,7 @@ fn print_error(path: &str) -> GenericResult<String> {
         };
 
         match result {
-            Ok(_) => Err("Expected an error".into()),
+            Ok(_) => Err(format!("{}: Expected an error", path).into()),
             Err(err) => Ok(err.to_error_message(cx)),
         }
     })

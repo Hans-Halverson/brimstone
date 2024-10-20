@@ -555,6 +555,7 @@ define_instructions!(
     Add {
         camel_case: AddInstruction,
         snake_case: add_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -566,6 +567,7 @@ define_instructions!(
     Sub {
         camel_case: SubInstruction,
         snake_case: sub_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -577,6 +579,7 @@ define_instructions!(
     Mul {
         camel_case: MulInstruction,
         snake_case: mul_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -588,6 +591,7 @@ define_instructions!(
     Div {
         camel_case: DivInstruction,
         snake_case: div_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -600,6 +604,7 @@ define_instructions!(
     Rem {
         camel_case: RemInstruction,
         snake_case: rem_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -611,6 +616,7 @@ define_instructions!(
     Exp {
         camel_case: ExpInstruction,
         snake_case: exp_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -622,6 +628,7 @@ define_instructions!(
     BitAnd {
         camel_case: BitAndInstruction,
         snake_case: bit_and_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -633,6 +640,7 @@ define_instructions!(
     BitOr {
         camel_case: BitOrInstruction,
         snake_case: bit_or_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -644,6 +652,7 @@ define_instructions!(
     BitXor {
         camel_case: BitXorInstruction,
         snake_case: bit_xor_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -655,6 +664,7 @@ define_instructions!(
     ShiftLeft {
         camel_case: ShiftLeftInstruction,
         snake_case: shift_left_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -667,6 +677,7 @@ define_instructions!(
     ShiftRightArithmetic {
         camel_case: ShiftRightArithmeticInstruction,
         snake_case: shift_right_arithmetic_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -679,6 +690,7 @@ define_instructions!(
     ShiftRightLogical {
         camel_case: ShiftRightLogicalInstruction,
         snake_case: shift_right_logical_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -690,6 +702,7 @@ define_instructions!(
     LooseEqual {
         camel_case: LooseEqualInstruction,
         snake_case: loose_equal_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -702,6 +715,7 @@ define_instructions!(
     LooseNotEqual {
         camel_case: LooseNotEqualInstruction,
         snake_case: loose_not_equal_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -737,6 +751,7 @@ define_instructions!(
     LessThan {
         camel_case: LessThanInstruction,
         snake_case: less_than_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -749,6 +764,7 @@ define_instructions!(
     LessThanOrEqual {
         camel_case: LessThanOrEqualInstruction,
         snake_case: less_than_or_equal_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -760,6 +776,7 @@ define_instructions!(
     GreaterThan {
         camel_case: GreaterThanInstruction,
         snake_case: greater_than_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -772,6 +789,7 @@ define_instructions!(
     GreaterThanOrEqual {
         camel_case: GreaterThanOrEqualInstruction,
         snake_case: greater_than_or_equal_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] left: Register,
@@ -845,6 +863,7 @@ define_instructions!(
     In {
         camel_case: InInstruction,
         snake_case: in_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -856,6 +875,7 @@ define_instructions!(
     InstanceOf {
         camel_case: InstanceOfInstruction,
         snake_case: instance_of_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

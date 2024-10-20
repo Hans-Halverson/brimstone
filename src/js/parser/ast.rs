@@ -11,7 +11,7 @@ use num_bigint::BigInt;
 use crate::js::{common::wtf_8::Wtf8String, runtime::eval_result::EvalResult};
 
 use super::{
-    loc::{Loc, EMPTY_LOC},
+    loc::{Loc, Pos, EMPTY_LOC},
     regexp::RegExp,
     scope_tree::{
         AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
@@ -934,6 +934,9 @@ pub struct BinaryExpression {
     pub operator: BinaryOperator,
     pub left: P<Expression>,
     pub right: P<Expression>,
+
+    /// Source position of the start of the operator
+    pub operator_pos: Pos,
 }
 
 #[derive(PartialEq)]
@@ -986,7 +989,11 @@ pub struct AssignmentExpression {
     pub operator: AssignmentOperator,
     pub left: P<Pattern>,
     pub right: P<Expression>,
-    // Needed for reparsing into a pattern
+
+    /// Source position of the start of the operator
+    pub operator_pos: Pos,
+
+    /// Needed for reparsing into a pattern
     pub is_parenthesized: bool,
 }
 

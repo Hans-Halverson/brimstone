@@ -467,6 +467,7 @@ define_instructions!(
     CallVarargs {
         camel_case: CallVarargsInstruction,
         snake_case: call_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -528,6 +529,7 @@ define_instructions!(
     ConstructVarargs {
         camel_case: ConstructVarargsInstruction,
         snake_case: construct_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,

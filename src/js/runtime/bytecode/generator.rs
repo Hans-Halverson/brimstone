@@ -3367,7 +3367,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match args {
                 CallArgs::Varargs { args, receiver } => {
                     self.writer
-                        .call_varargs_instruction(dest, callee, receiver, args);
+                        .call_varargs_instruction(dest, callee, receiver, args, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer.call_with_receiver_instruction(
@@ -3396,7 +3396,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // receiver.
                     self.writer.load_undefined_instruction(receiver);
                     self.writer
-                        .call_varargs_instruction(dest, callee, receiver, args);
+                        .call_varargs_instruction(dest, callee, receiver, args, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer
@@ -3688,21 +3688,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // new.target is set to the callee
         let new_target = callee;
+        let new_pos = expr.loc.start;
 
         match args {
             CallArgs::Normal { argv, argc } => {
-                self.writer.construct_instruction(
-                    dest,
-                    callee,
-                    new_target,
-                    argv,
-                    argc,
-                    expr.loc.start,
-                );
+                self.writer
+                    .construct_instruction(dest, callee, new_target, argv, argc, new_pos);
             }
             CallArgs::Varargs { args, .. } => {
                 self.writer
-                    .construct_varargs_instruction(dest, callee, new_target, args);
+                    .construct_varargs_instruction(dest, callee, new_target, args, new_pos);
             }
         }
 
@@ -5408,6 +5403,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     super_constructor,
                     new_target,
                     args,
+                    super_pos,
                 );
             }
             CallArgs::Normal { argv, argc } => {

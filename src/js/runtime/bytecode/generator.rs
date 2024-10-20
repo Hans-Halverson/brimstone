@@ -717,6 +717,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 source_range,
             } = func_node
             {
+                let class_pos = source_range.start;
                 let generator = BytecodeFunctionGenerator::new_for_default_constructor(
                     self.cx,
                     self.scope_tree,
@@ -729,7 +730,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     /* is_base_constructor */ is_base,
                 )?;
 
-                emit_result = generator.generate_default_constructor()?;
+                emit_result = generator.generate_default_constructor(class_pos)?;
             } else if let PendingFunctionNode::ClassFieldsInitializer {
                 scope: init_func_scope,
                 fields,
@@ -1612,7 +1613,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
         // Base constructors initialize class fields immediately
         if !self.is_derived_constructor() {
-            self.gen_initialize_class_fields(Register::this())?;
+            self.gen_initialize_class_fields(Register::this(), func.loc.start)?;
         }
 
         // Async functions reserve a register for the promise object
@@ -1897,14 +1898,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a default constructor.
-    fn generate_default_constructor(mut self) -> EmitResult<EmitFunctionResult> {
+    fn generate_default_constructor(mut self, class_pos: Pos) -> EmitResult<EmitFunctionResult> {
         // Call super constructor if necessary
         if self.is_derived_constructor() {
-            self.writer.default_super_call_instruction();
+            self.writer.default_super_call_instruction(class_pos);
         }
 
         // Initialize fields if any exist, defined onto the `this` value
-        self.gen_initialize_class_fields(Register::this())?;
+        self.gen_initialize_class_fields(Register::this(), class_pos)?;
 
         // Return undefined for a base constructor and `this` for a derived constructor. No default
         // constructor scope is needed since it is only needed if `this` is captured.
@@ -3357,6 +3358,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(this_value);
         }
 
+        let call_pos = expr.loc.start;
+
         // Generate the call itself, optionally with receiver
         let dest = self.allocate_destination(dest)?;
 
@@ -3364,11 +3367,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match args {
                 CallArgs::Varargs { args, receiver } => {
                     self.writer
-                        .call_varargs_instruction(dest, callee, receiver, args);
+                        .call_varargs_instruction(dest, callee, receiver, args, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
-                    self.writer
-                        .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+                    self.writer.call_with_receiver_instruction(
+                        dest, callee, this_value, argv, argc, call_pos,
+                    );
                 }
             }
         } else if is_maybe_direct_eval {
@@ -3378,11 +3382,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match args {
                 CallArgs::Varargs { args, .. } => {
                     self.writer
-                        .call_maybe_eval_varargs_instruction(dest, callee, args, flags);
+                        .call_maybe_eval_varargs_instruction(dest, callee, args, flags, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer
-                        .call_maybe_eval_instruction(dest, callee, argv, argc, flags);
+                        .call_maybe_eval_instruction(dest, callee, argv, argc, flags, call_pos);
                 }
             }
         } else {
@@ -3392,11 +3396,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // receiver.
                     self.writer.load_undefined_instruction(receiver);
                     self.writer
-                        .call_varargs_instruction(dest, callee, receiver, args);
+                        .call_varargs_instruction(dest, callee, receiver, args, call_pos);
                 }
                 CallArgs::Normal { argv, argc } => {
                     self.writer
-                        .call_instruction(dest, callee, argv, argc, expr.loc.start);
+                        .call_instruction(dest, callee, argv, argc, call_pos);
                 }
             }
         }
@@ -3484,15 +3488,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(this_value);
         }
 
+        let call_pos = expr.loc.start;
+
         // Generate the call itself, optionally with receiver
         let dest = self.allocate_destination(dest)?;
 
         if let Some(this_value) = this_value {
             self.writer
-                .call_with_receiver_instruction(dest, callee, this_value, argv, argc);
+                .call_with_receiver_instruction(dest, callee, this_value, argv, argc, call_pos);
         } else {
             self.writer
-                .call_instruction(dest, callee, argv, argc, expr.loc.start);
+                .call_instruction(dest, callee, argv, argc, call_pos);
         }
 
         Ok(dest)
@@ -3682,21 +3688,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // new.target is set to the callee
         let new_target = callee;
+        let new_pos = expr.loc.start;
 
         match args {
             CallArgs::Normal { argv, argc } => {
-                self.writer.construct_instruction(
-                    dest,
-                    callee,
-                    new_target,
-                    argv,
-                    argc,
-                    expr.loc.start,
-                );
+                self.writer
+                    .construct_instruction(dest, callee, new_target, argv, argc, new_pos);
             }
             CallArgs::Varargs { args, .. } => {
                 self.writer
-                    .construct_varargs_instruction(dest, callee, new_target, args);
+                    .construct_varargs_instruction(dest, callee, new_target, args, new_pos);
             }
         }
 
@@ -4917,8 +4918,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             yield_value
         };
 
+        let pos = expr.loc.start;
+
         if expr.is_delegate {
-            self.gen_yield_star(yield_value, dest)
+            self.gen_yield_star(yield_value, pos, dest)
         } else if self.is_async() {
             self.gen_async_yield(yield_value, dest)
         } else {
@@ -5023,7 +5026,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(completion_value)
     }
 
-    fn gen_yield_star(&mut self, argument: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+    fn gen_yield_star(
+        &mut self,
+        argument: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
@@ -5071,6 +5079,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             iterator,
             completion_value,
             UInt::new(1),
+            pos,
         );
 
         if self.is_async() {
@@ -5122,6 +5131,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             iterator,
             completion_value,
             UInt::new(1),
+            pos,
         );
         self.register_allocator.release(return_method);
 
@@ -5179,6 +5189,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             iterator,
             completion_value,
             UInt::new(1),
+            pos,
         );
         self.register_allocator.release(throw_method);
 
@@ -5353,6 +5364,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         super_call: &ast::SuperCallExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let super_pos = super_call.loc.start;
+
         // Super calls implicitly use the surrounding derived constructor, so load it to register
         let derived_constructor = self.gen_load_internal_binding(
             super_call.constructor_scope,
@@ -5390,6 +5403,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     super_constructor,
                     new_target,
                     args,
+                    super_pos,
                 );
             }
             CallArgs::Normal { argv, argc } => {
@@ -5399,7 +5413,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     new_target,
                     argv,
                     argc,
-                    super_call.loc.start,
+                    super_pos,
                 );
             }
         }
@@ -5433,14 +5447,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Derived constructors initialize fields after the super call
         if self.is_derived_constructor() {
-            self.gen_initialize_class_fields(call_result)?;
+            self.gen_initialize_class_fields(call_result, super_pos)?;
         }
 
         Ok(call_result)
     }
 
     /// Initialize class fields in a constructor, defined onto the `this` value.
-    fn gen_initialize_class_fields(&mut self, this_reg: GenRegister) -> EmitResult<()> {
+    fn gen_initialize_class_fields(&mut self, this_reg: GenRegister, pos: Pos) -> EmitResult<()> {
         let initializer = std::mem::replace(&mut self.class_fields, ClassFieldsInitializer::none());
 
         // Check if a class fields initializer is needed
@@ -5468,6 +5482,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             this_reg,
             /* dummy value */ fields_init_value,
             UInt::new(0),
+            pos,
         );
 
         self.register_allocator.release(fields_init_value);
@@ -6352,6 +6367,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let store_flags = StoreFlags::INITIALIZATION;
         let mut constructor_dest = dest;
 
+        let class_pos = class.loc.start;
+
         if let Some(id) = class.id.as_ref() {
             if matches!(kind, GenClassKind::Declaration) {
                 constructor_dest = self.expr_dest_for_id(id, store_flags);
@@ -6640,6 +6657,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 constructor_reg,
                 /* dummy value */ static_init_value,
                 UInt::new(0),
+                class_pos,
             );
 
             self.register_allocator.release(static_init_value);
@@ -7494,6 +7512,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Dummy argv since no args are provided
                 iterator,
                 UInt::new(0),
+                stmt.in_of_pos,
             );
 
             let awaited_result = self.gen_await(iterator_result, ExprDest::Any)?;

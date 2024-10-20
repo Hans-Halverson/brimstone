@@ -1,0 +1,4 @@
+Error: 
+  at B (tests/js_error/source_locations/expression/super_call/default_super_call.js:3:11)
+  at C (tests/js_error/source_locations/expression/super_call/default_super_call.js:7:1)
+  at <global> (tests/js_error/source_locations/expression/super_call/default_super_call.js:10:1)

@@ -648,6 +648,9 @@ pub struct ForEachStatement {
     pub body: P<Statement>,
     pub is_await: bool,
 
+    /// Source position of start of the `in` or `of` keyword.
+    pub in_of_pos: Pos,
+
     /// Block scope node that contains the for statement variable declarations and the body.
     pub scope: AstPtr<AstScopeNode>,
 }

@@ -1248,6 +1248,7 @@ impl<'a> Parser<'a> {
                     _,
                     Expression::Binary(BinaryExpression {
                         operator: BinaryOperator::In,
+                        operator_pos,
                         left,
                         right,
                         ..
@@ -1267,6 +1268,7 @@ impl<'a> Parser<'a> {
                         right: right.into_outer(),
                         body,
                         is_await: false,
+                        in_of_pos: operator_pos,
                         scope,
                     })
                 }
@@ -1328,6 +1330,9 @@ impl<'a> Parser<'a> {
             _ => unreachable!(),
         };
 
+        // Save the source location of the `in` or `of` keyword
+        let in_of_pos = self.loc.start;
+
         self.advance()?;
 
         let right = match kind {
@@ -1356,6 +1361,7 @@ impl<'a> Parser<'a> {
             right,
             body,
             is_await,
+            in_of_pos,
             scope,
         }))
     }

@@ -1,0 +1,3 @@
+Error: 
+  at foo (tests/js_error/source_locations/expression/template/tagged_template_call_with_receiver.js:3:11)
+  at <global> (tests/js_error/source_locations/expression/template/tagged_template_call_with_receiver.js:7:1)

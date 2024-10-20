@@ -452,6 +452,7 @@ define_instructions!(
     CallWithReceiver {
         camel_case: CallWithReceiverInstruction,
         snake_case: call_with_receiver_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -466,6 +467,7 @@ define_instructions!(
     CallVarargs {
         camel_case: CallVarargsInstruction,
         snake_case: call_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -482,6 +484,7 @@ define_instructions!(
     CallMaybeEval {
         camel_case: CallMaybeEvalInstruction,
         snake_case: call_maybe_eval_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -499,6 +502,7 @@ define_instructions!(
     CallMaybeEvalVarargs {
         camel_case: CallMaybeEvalVarargsInstruction,
         snake_case: call_maybe_eval_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -527,6 +531,7 @@ define_instructions!(
     ConstructVarargs {
         camel_case: ConstructVarargsInstruction,
         snake_case: construct_varargs_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] function: Register,
@@ -539,6 +544,7 @@ define_instructions!(
     DefaultSuperCall {
         camel_case: DefaultSuperCallInstruction,
         snake_case: default_super_call_instruction,
+        can_throw: true,
         operands: {}
     }
 

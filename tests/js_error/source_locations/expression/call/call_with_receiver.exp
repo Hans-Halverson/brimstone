@@ -1,0 +1,3 @@
+Error: 
+  at method (tests/js_error/source_locations/expression/call/call_with_receiver.js:3:11)
+  at <global> (tests/js_error/source_locations/expression/call/call_with_receiver.js:7:1)

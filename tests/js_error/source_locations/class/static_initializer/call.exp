@@ -1,0 +1,3 @@
+Error: 
+  at staticInitializer (tests/js_error/source_locations/class/static_initializer/call.js:4:11)
+  at <global> (tests/js_error/source_locations/class/static_initializer/call.js:2:1)

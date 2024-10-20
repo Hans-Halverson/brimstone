@@ -2899,7 +2899,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
-        self.writer.neg_instruction(dest, argument);
+        self.writer.neg_instruction(dest, argument, expr.loc.start);
 
         Ok(dest)
     }
@@ -2947,7 +2947,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
-        self.writer.bit_not_instruction(dest, argument);
+        self.writer
+            .bit_not_instruction(dest, argument, expr.loc.start);
 
         Ok(dest)
     }

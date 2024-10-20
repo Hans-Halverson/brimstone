@@ -807,6 +807,7 @@ define_instructions!(
     Neg {
         camel_case: NegInstruction,
         snake_case: neg_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -849,6 +850,7 @@ define_instructions!(
     BitNot {
         camel_case: BitNotInstruction,
         snake_case: bit_not_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,

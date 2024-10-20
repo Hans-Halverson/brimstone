@@ -1,0 +1,2 @@
+TypeError: BigInt cannot be converted to number
+  at <global> (tests/js_error/source_locations/expression/assign_op/bit_and.js:2:3)

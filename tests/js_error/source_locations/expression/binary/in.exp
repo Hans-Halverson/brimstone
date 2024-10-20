@@ -1,0 +1,2 @@
+TypeError: right side of 'in' must be an object
+  at <global> (tests/js_error/source_locations/expression/binary/in.js:1:3)

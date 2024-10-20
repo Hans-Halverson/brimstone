@@ -3164,6 +3164,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return self.gen_private_in_expression(expr, dest);
         }
 
+        let pos = expr.operator_pos;
+
         let left = self.gen_expression(&expr.left)?;
         let right = self.gen_expression(&expr.right)?;
 
@@ -3172,44 +3174,50 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         match expr.operator {
-            ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right),
-            ast::BinaryOperator::Subtract => self.writer.sub_instruction(dest, left, right),
-            ast::BinaryOperator::Multiply => self.writer.mul_instruction(dest, left, right),
-            ast::BinaryOperator::Divide => self.writer.div_instruction(dest, left, right),
-            ast::BinaryOperator::Remainder => self.writer.rem_instruction(dest, left, right),
-            ast::BinaryOperator::Exponent => self.writer.exp_instruction(dest, left, right),
-            ast::BinaryOperator::EqEq => self.writer.loose_equal_instruction(dest, left, right),
-            ast::BinaryOperator::NotEq => {
-                self.writer.loose_not_equal_instruction(dest, left, right)
+            ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Subtract => self.writer.sub_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Multiply => self.writer.mul_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Divide => self.writer.div_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Remainder => self.writer.rem_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Exponent => self.writer.exp_instruction(dest, left, right, pos),
+            ast::BinaryOperator::EqEq => {
+                self.writer.loose_equal_instruction(dest, left, right, pos)
             }
+            ast::BinaryOperator::NotEq => self
+                .writer
+                .loose_not_equal_instruction(dest, left, right, pos),
             ast::BinaryOperator::EqEqEq => self.writer.strict_equal_instruction(dest, left, right),
             ast::BinaryOperator::NotEqEq => {
                 self.writer.strict_not_equal_instruction(dest, left, right)
             }
-            ast::BinaryOperator::LessThan => self.writer.less_than_instruction(dest, left, right),
+            ast::BinaryOperator::LessThan => {
+                self.writer.less_than_instruction(dest, left, right, pos)
+            }
             ast::BinaryOperator::LessThanOrEqual => self
                 .writer
-                .less_than_or_equal_instruction(dest, left, right),
+                .less_than_or_equal_instruction(dest, left, right, pos),
             ast::BinaryOperator::GreaterThan => {
-                self.writer.greater_than_instruction(dest, left, right)
+                self.writer.greater_than_instruction(dest, left, right, pos)
             }
             ast::BinaryOperator::GreaterThanOrEqual => self
                 .writer
-                .greater_than_or_equal_instruction(dest, left, right),
-            ast::BinaryOperator::And => self.writer.bit_and_instruction(dest, left, right),
-            ast::BinaryOperator::Or => self.writer.bit_or_instruction(dest, left, right),
-            ast::BinaryOperator::Xor => self.writer.bit_xor_instruction(dest, left, right),
-            ast::BinaryOperator::ShiftLeft => self.writer.shift_left_instruction(dest, left, right),
+                .greater_than_or_equal_instruction(dest, left, right, pos),
+            ast::BinaryOperator::And => self.writer.bit_and_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Or => self.writer.bit_or_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Xor => self.writer.bit_xor_instruction(dest, left, right, pos),
+            ast::BinaryOperator::ShiftLeft => {
+                self.writer.shift_left_instruction(dest, left, right, pos)
+            }
             ast::BinaryOperator::ShiftRightArithmetic => self
                 .writer
-                .shift_right_arithmetic_instruction(dest, left, right),
+                .shift_right_arithmetic_instruction(dest, left, right, pos),
             ast::BinaryOperator::ShiftRightLogical => self
                 .writer
-                .shift_right_logical_instruction(dest, left, right),
-            ast::BinaryOperator::In => self.writer.in_instruction(dest, right, left),
+                .shift_right_logical_instruction(dest, left, right, pos),
+            ast::BinaryOperator::In => self.writer.in_instruction(dest, right, left, pos),
             ast::BinaryOperator::InPrivate => unreachable!(),
             ast::BinaryOperator::InstanceOf => {
-                self.writer.instance_of_instruction(dest, left, right)
+                self.writer.instance_of_instruction(dest, left, right, pos)
             }
         }
 
@@ -3228,7 +3236,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(key);
         let dest = self.allocate_destination(dest)?;
 
-        self.writer.in_instruction(dest, object, key);
+        self.writer
+            .in_instruction(dest, object, key, expr.operator_pos);
 
         Ok(dest)
     }
@@ -4290,12 +4299,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(old_value);
                     let stored_value = self.allocate_destination(stored_value_dest)?;
 
-                    self.gen_assignment_operator(
-                        expr.operator,
-                        stored_value,
-                        old_value,
-                        right_value,
-                    );
+                    self.gen_assignment_operator(expr, stored_value, old_value, right_value);
 
                     stored_value
                 } else {
@@ -4413,7 +4417,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         // If this is an operator assignment, generate right then apply operator
                         let right_value = self.gen_expression(&expr.right)?;
 
-                        self.gen_assignment_operator(expr.operator, temp, temp, right_value);
+                        self.gen_assignment_operator(expr, temp, temp, right_value);
 
                         self.register_allocator.release(right_value);
                     } else {
@@ -4480,30 +4484,41 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_assignment_operator(
         &mut self,
-        operator: ast::AssignmentOperator,
+        expr: &ast::AssignmentExpression,
         dest: GenRegister,
         left: GenRegister,
         right: GenRegister,
     ) {
+        let operator = expr.operator;
+        let pos = expr.operator_pos;
+
         match operator {
-            ast::AssignmentOperator::Add => self.writer.add_instruction(dest, left, right),
-            ast::AssignmentOperator::Subtract => self.writer.sub_instruction(dest, left, right),
-            ast::AssignmentOperator::Multiply => self.writer.mul_instruction(dest, left, right),
-            ast::AssignmentOperator::Divide => self.writer.div_instruction(dest, left, right),
-            ast::AssignmentOperator::Remainder => self.writer.rem_instruction(dest, left, right),
-            ast::AssignmentOperator::Exponent => self.writer.exp_instruction(dest, left, right),
-            ast::AssignmentOperator::And => self.writer.bit_and_instruction(dest, left, right),
-            ast::AssignmentOperator::Or => self.writer.bit_or_instruction(dest, left, right),
-            ast::AssignmentOperator::Xor => self.writer.bit_xor_instruction(dest, left, right),
+            ast::AssignmentOperator::Add => self.writer.add_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Subtract => {
+                self.writer.sub_instruction(dest, left, right, pos)
+            }
+            ast::AssignmentOperator::Multiply => {
+                self.writer.mul_instruction(dest, left, right, pos)
+            }
+            ast::AssignmentOperator::Divide => self.writer.div_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Remainder => {
+                self.writer.rem_instruction(dest, left, right, pos)
+            }
+            ast::AssignmentOperator::Exponent => {
+                self.writer.exp_instruction(dest, left, right, pos)
+            }
+            ast::AssignmentOperator::And => self.writer.bit_and_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Or => self.writer.bit_or_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Xor => self.writer.bit_xor_instruction(dest, left, right, pos),
             ast::AssignmentOperator::ShiftLeft => {
-                self.writer.shift_left_instruction(dest, left, right)
+                self.writer.shift_left_instruction(dest, left, right, pos)
             }
             ast::AssignmentOperator::ShiftRightArithmetic => self
                 .writer
-                .shift_right_arithmetic_instruction(dest, left, right),
+                .shift_right_arithmetic_instruction(dest, left, right, pos),
             ast::AssignmentOperator::ShiftRightLogical => self
                 .writer
-                .shift_right_logical_instruction(dest, left, right),
+                .shift_right_logical_instruction(dest, left, right, pos),
             ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
             ast::AssignmentOperator::LogicalAnd
             | ast::AssignmentOperator::LogicalOr
@@ -5521,7 +5536,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     };
 
                     self.writer.to_string_instruction(temp, expression);
-                    self.writer.add_instruction(acc, acc, temp);
+
+                    // Cannot throw since both values are guaranteed to be strings
+                    self.writer.add_instruction(acc, acc, temp, NO_POS);
 
                     self.register_allocator.release(temp);
                 }
@@ -5543,7 +5560,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.register_allocator.release(temp);
 
                 self.writer.load_constant_instruction(temp, constant_index);
-                self.writer.add_instruction(acc, acc, temp);
+
+                // Cannot throw since both values are guaranteed to be strings
+                self.writer.add_instruction(acc, acc, temp, NO_POS);
             }
         }
 

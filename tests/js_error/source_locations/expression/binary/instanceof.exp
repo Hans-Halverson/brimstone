@@ -1,0 +1,2 @@
+TypeError: invalid instanceof operand
+  at <global> (tests/js_error/source_locations/expression/binary/instanceof.js:1:6)

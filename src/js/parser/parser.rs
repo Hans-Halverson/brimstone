@@ -1613,6 +1613,8 @@ impl<'a> Parser<'a> {
         let result = match assignment_op {
             None => Ok(expr),
             Some(operator) => {
+                let operator_pos = self.current_start_pos();
+
                 let left = if operator == AssignmentOperator::Equals {
                     p(self.reparse_expression_as_assignment_left_hand_side(*expr, start_pos)?)
                 } else {
@@ -1630,6 +1632,7 @@ impl<'a> Parser<'a> {
                     left,
                     right,
                     operator,
+                    operator_pos,
                     is_parenthesized: false,
                 })))
             }
@@ -2093,11 +2096,19 @@ impl<'a> Parser<'a> {
         operator: BinaryOperator,
         precedence: Precedence,
     ) -> ParseResult<P<Expression>> {
+        let operator_pos = self.current_start_pos();
+
         self.advance()?;
         let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Binary(BinaryExpression { loc, left, right, operator })))
+        Ok(p(Expression::Binary(BinaryExpression {
+            loc,
+            left,
+            right,
+            operator,
+            operator_pos,
+        })))
     }
 
     fn parse_logical_expression(
@@ -4599,6 +4610,7 @@ impl<'a> Parser<'a> {
                 left,
                 right,
                 is_parenthesized,
+                operator_pos: _,
             }) => {
                 // Parenthesized assignment expressions are invalid as pattern elements
                 if is_parenthesized {

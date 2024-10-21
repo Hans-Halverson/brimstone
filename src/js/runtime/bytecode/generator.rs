@@ -2490,7 +2490,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if self.is_immutable_reassignment(binding, flags) {
             // Error if we are trying to reassign an immutable binding
             let name_constant_index = self.add_string_constant(name)?;
-            self.writer.error_const_instruction(name_constant_index);
+            self.writer
+                .error_const_instruction(name_constant_index, pos);
         } else if self.is_noop_reassignment(binding, flags) {
             // Ignore noop reassignments
             return Ok(());
@@ -4708,7 +4709,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // observable.
                 if self.is_immutable_reassignment(binding, store_flags) {
                     let name_constant_index = self.add_string_constant(&id.name)?;
-                    self.writer.error_const_instruction(name_constant_index);
+                    self.writer
+                        .error_const_instruction(name_constant_index, id.loc.start);
                 }
 
                 // Exclusively use temporary registers instead of potentially operating in place on

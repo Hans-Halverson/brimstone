@@ -1,0 +1,3 @@
+TypeError: can't assign constant `x`
+  at test (tests/js_error/source_locations/stores/error_const.js:3:3)
+  at <global> (tests/js_error/source_locations/stores/error_const.js:6:1)

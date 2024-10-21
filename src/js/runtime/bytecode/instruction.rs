@@ -1661,6 +1661,7 @@ define_instructions!(
     ErrorConst {
         camel_case: ErrorConstInstruction,
         snake_case: error_const_instruction,
+        can_throw: true,
         operands: {
             [0] name_constant_index: ConstantIndex,
         }

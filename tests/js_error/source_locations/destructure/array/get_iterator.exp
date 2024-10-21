@@ -1,0 +1,3 @@
+Error: 
+  at <anonymous> (tests/js_error/source_locations/destructure/array/get_iterator.js:3:11)
+  at <global> (tests/js_error/source_locations/destructure/array/get_iterator.js:7:5)

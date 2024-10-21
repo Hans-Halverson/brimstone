@@ -3792,11 +3792,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ArrayElement::Spread(spread_element) => {
                     // Evaluate the spread argument and get its iterator
                     let iterable = self.gen_expression(&spread_element.argument)?;
+                    let iterable_pos = spread_element.loc.start;
 
                     let iterator = self.register_allocator.allocate()?;
                     let next_method = self.register_allocator.allocate()?;
-                    self.writer
-                        .get_iterator_instruction(iterator, next_method, iterable);
+                    self.writer.get_iterator_instruction(
+                        iterator,
+                        next_method,
+                        iterable,
+                        iterable_pos,
+                    );
 
                     let value = self.register_allocator.allocate()?;
                     let is_done = self.register_allocator.allocate()?;
@@ -5062,7 +5067,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .get_async_iterator_instruction(iterator, next_method, argument);
         } else {
             self.writer
-                .get_iterator_instruction(iterator, next_method, argument);
+                .get_iterator_instruction(iterator, next_method, argument, pos);
         }
 
         let done_constant_index = self.add_string_constant("done")?;
@@ -6090,9 +6095,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let value = self.register_allocator.allocate()?;
 
         let mut exception_handlers = vec![];
+        let pattern_pos = array_pattern.loc.start;
 
         self.writer
-            .get_iterator_instruction(iterator, next_method, iterable);
+            .get_iterator_instruction(iterator, next_method, iterable, pattern_pos);
 
         // Call `next` on iterator for each element of the array pttern
         for (i, element) in array_pattern.elements.iter().enumerate() {
@@ -7519,6 +7525,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let right_pos = stmt.right.pos();
+
         let iterator = self.register_allocator.allocate()?;
         let next_method = self.register_allocator.allocate()?;
 
@@ -7530,7 +7538,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 .get_async_iterator_instruction(iterator, next_method, iterable);
         } else {
             self.writer
-                .get_iterator_instruction(iterator, next_method, iterable);
+                .get_iterator_instruction(iterator, next_method, iterable, right_pos);
         }
 
         self.register_allocator.release(iterable);

@@ -1714,6 +1714,7 @@ define_instructions!(
     GetIterator {
         camel_case: GetIteratorInstruction,
         snake_case: get_iterator_instruction,
+        can_throw: true,
         operands: {
             [0] iterator: Register,
             [1] next_method: Register,

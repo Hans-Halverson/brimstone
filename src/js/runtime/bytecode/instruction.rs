@@ -1641,6 +1641,7 @@ define_instructions!(
     CheckSuperAlreadyCalled {
         camel_case: CheckSuperAlreadyCalledInstruction,
         snake_case: check_super_already_called_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }

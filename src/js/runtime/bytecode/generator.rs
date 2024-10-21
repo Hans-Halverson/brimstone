@@ -5448,7 +5448,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if super was already called and initialized `this` value, erroring if so
         self.writer
-            .check_super_already_called_instruction(this_value);
+            .check_super_already_called_instruction(this_value, super_pos);
 
         self.register_allocator.release(this_value);
 

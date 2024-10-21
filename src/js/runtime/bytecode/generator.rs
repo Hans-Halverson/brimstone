@@ -3027,6 +3027,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UnaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let delete_pos = expr.loc.start;
+
         match expr.argument.as_ref() {
             ast::Expression::Member(member_expr) => {
                 let object = self.gen_maybe_chain_part_expression(
@@ -3127,7 +3129,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(property);
                 }
 
-                self.writer.error_delete_super_property_instruction();
+                self.writer
+                    .error_delete_super_property_instruction(delete_pos);
 
                 // No need to initialize dest since it will not be used
                 self.allocate_destination(dest)

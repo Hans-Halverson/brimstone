@@ -1671,6 +1671,7 @@ define_instructions!(
     ErrorDeleteSuperProperty {
         camel_case: ErrorDeleteSuperPropertyInstruction,
         snake_case: error_delete_super_property_instruction,
+        can_throw: true,
         operands: {}
     }
 

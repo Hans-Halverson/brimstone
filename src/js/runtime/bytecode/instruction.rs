@@ -1766,6 +1766,7 @@ define_instructions!(
     IteratorClose {
         camel_case: IteratorCloseInstruction,
         snake_case: iterator_close_instruction,
+        can_throw: true,
         operands: {
             [0] iterator: Register,
         }

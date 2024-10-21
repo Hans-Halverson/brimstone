@@ -1,0 +1,3 @@
+Error: 
+  at get return (tests/js_error/source_locations/destructure/array/iterator_close_empty.js:8:15)
+  at <global> (tests/js_error/source_locations/destructure/array/iterator_close_empty.js:14:5)

@@ -5205,7 +5205,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if self.is_async() {
             self.gen_async_iterator_close(iterator)?;
         } else {
-            self.writer.iterator_close_instruction(iterator);
+            self.writer.iterator_close_instruction(iterator, pos);
         }
 
         self.writer.error_iterator_no_throw_method_instruction(pos);
@@ -6240,7 +6240,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // need to be swallowed.
             //
             // Iterator is only closed if we are not done, which is enforced by the JumpTrue above.
-            self.writer.iterator_close_instruction(iterator);
+            self.writer
+                .iterator_close_instruction(iterator, pattern_pos);
 
             // Exit the finally scope and release all of its registers
             let finally_scope = self.pop_finally_scope();
@@ -6281,7 +6282,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // already done.
             self.write_jump_true_instruction(is_done, finally_footer_block)?;
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
-                this.writer.iterator_close_instruction(iterator);
+                this.writer
+                    .iterator_close_instruction(iterator, pattern_pos);
                 Ok(())
             })?;
 
@@ -7653,7 +7655,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 if stmt.is_await {
                     this.gen_async_iterator_close(iterator)
                 } else {
-                    this.writer.iterator_close_instruction(iterator);
+                    this.writer.iterator_close_instruction(iterator, of_pos);
                     Ok(())
                 }
             })?;

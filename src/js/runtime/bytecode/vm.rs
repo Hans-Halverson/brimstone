@@ -889,18 +889,15 @@ impl VM {
                             dispatch!(NewAsyncClosureInstruction, execute_new_async_closure)
                         }
                         OpCode::NewGenerator => {
-                            dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
+                            dispatch!(NewGeneratorInstruction, execute_new_generator)
                         }
                         OpCode::NewAsyncGenerator => {
-                            dispatch_or_throw!(
-                                NewAsyncGeneratorInstruction,
-                                execute_new_async_generator
-                            )
+                            dispatch!(NewAsyncGeneratorInstruction, execute_new_async_generator)
                         }
                         OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
                         OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
                         OpCode::NewRegExp => {
-                            dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
+                            dispatch!(NewRegExpInstruction, execute_new_regexp)
                         }
                         OpCode::NewMappedArguments => {
                             dispatch!(NewMappedArgumentsInstruction, execute_new_mapped_arguments)
@@ -3092,10 +3089,7 @@ impl VM {
     }
 
     #[inline]
-    fn execute_new_generator<W: Width>(
-        &mut self,
-        instr: &NewGeneratorInstruction<W>,
-    ) -> EvalResult<()> {
+    fn execute_new_generator<W: Width>(&mut self, instr: &NewGeneratorInstruction<W>) {
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3108,18 +3102,13 @@ impl VM {
             .get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
         let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
 
-        GeneratorPrototype::install_on_generator_function(self.cx(), closure)?;
+        must!(GeneratorPrototype::install_on_generator_function(self.cx(), closure));
 
         self.write_register(dest, *closure.as_value());
-
-        Ok(())
     }
 
     #[inline]
-    fn execute_new_async_generator<W: Width>(
-        &mut self,
-        instr: &NewAsyncGeneratorInstruction<W>,
-    ) -> EvalResult<()> {
+    fn execute_new_async_generator<W: Width>(&mut self, instr: &NewAsyncGeneratorInstruction<W>) {
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3132,11 +3121,9 @@ impl VM {
             .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
         let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
 
-        AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure)?;
+        must!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure));
 
         self.write_register(dest, *closure.as_value());
-
-        Ok(())
     }
 
     #[inline]
@@ -3160,7 +3147,7 @@ impl VM {
     }
 
     #[inline]
-    fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) -> EvalResult<()> {
+    fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) {
         let compiled_regexp = self.get_constant(instr.regexp_index());
         let compiled_regexp = compiled_regexp
             .to_handle(self.cx())
@@ -3169,11 +3156,9 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let regexp = RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp)?;
+        let regexp = RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp);
 
         self.write_register(dest, *regexp.as_value());
-
-        Ok(())
     }
 
     #[inline]

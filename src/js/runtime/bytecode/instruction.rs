@@ -1223,6 +1223,7 @@ define_instructions!(
     NewClass {
         camel_case: NewClassInstruction,
         snake_case: new_class_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] class_names_index: ConstantIndex,

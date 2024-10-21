@@ -6646,6 +6646,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ConstantIndex::new(constructor_index),
             super_class,
             first_argument_reg,
+            class_pos,
         );
 
         // Initialize the class itself in the body scope if necessary.

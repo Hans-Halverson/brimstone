@@ -7590,7 +7590,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(awaited_result);
 
             self.writer
-                .iterator_unpack_result_instruction(value, is_done, awaited_result);
+                .iterator_unpack_result_instruction(value, is_done, awaited_result, of_pos);
         } else {
             // Synchronous for-of can use a combined IteratorNext instruction
             self.writer

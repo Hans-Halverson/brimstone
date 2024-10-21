@@ -1754,6 +1754,7 @@ define_instructions!(
     IteratorUnpackResult {
         camel_case: IteratorUnpackResultInstruction,
         snake_case: iterator_unpack_result_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] is_done: Register,

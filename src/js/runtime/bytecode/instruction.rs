@@ -1297,6 +1297,7 @@ define_instructions!(
     GetNamedProperty {
         camel_case: GetNamedPropertyInstruction,
         snake_case: get_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

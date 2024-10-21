@@ -4160,8 +4160,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer
-                .get_named_property_instruction(dest, object, name_constant_index);
+            self.writer.get_named_property_instruction(
+                dest,
+                object,
+                name_constant_index,
+                operator_pos,
+            );
 
             Ok(dest)
         }
@@ -4435,9 +4439,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             self.writer
                                 .get_property_instruction(temp, object, key, operator_pos)
                         }
-                        Property::Named(name_constant_index) => self
-                            .writer
-                            .get_named_property_instruction(temp, object, name_constant_index),
+                        Property::Named(name_constant_index) => {
+                            self.writer.get_named_property_instruction(
+                                temp,
+                                object,
+                                name_constant_index,
+                                operator_pos,
+                            )
+                        }
                         Property::Private(key) => self
                             .writer
                             .get_private_property_instruction(temp, object, key),
@@ -4659,8 +4668,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Must be a named access
                     let name = member.property.to_id();
                     let name_constant_index = self.add_string_constant(&name.name)?;
-                    self.writer
-                        .get_named_property_instruction(temp, object, name_constant_index);
+                    self.writer.get_named_property_instruction(
+                        temp,
+                        object,
+                        name_constant_index,
+                        operator_pos,
+                    );
 
                     Property::Named(name_constant_index)
                 }
@@ -5131,8 +5144,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5141,8 +5158,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer
-            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.writer.get_named_property_instruction(
+            dest,
+            iterator_result,
+            value_constant_index,
+            pos,
+        );
         self.write_jump_instruction(join_block)?;
 
         // Yield had an abnormal completion - check if this is a return or throw
@@ -5184,8 +5205,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5199,6 +5224,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return_value,
             iterator_result,
             value_constant_index,
+            pos,
         );
         self.gen_return(Some(return_value), /* derived_constructor_scope */ None)?;
         self.register_allocator.release(return_value);
@@ -5242,8 +5268,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5252,8 +5282,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer
-            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.writer.get_named_property_instruction(
+            dest,
+            iterator_result,
+            value_constant_index,
+            pos,
+        );
         self.write_jump_instruction(join_block)?;
 
         // If the iterator is not done we end here, performing a yield then starting another
@@ -5278,6 +5312,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 value,
                 iterator_result,
                 value_constant_index,
+                pos,
             );
 
             self.writer
@@ -6005,6 +6040,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         property_value,
                         object_value,
                         name_constant_index,
+                        property_start_pos,
                     );
                 }
                 Property::Computed(key, key_pos) => {

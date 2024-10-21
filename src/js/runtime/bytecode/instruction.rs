@@ -1680,6 +1680,7 @@ define_instructions!(
     ErrorIteratorNoThrowMethod {
         camel_case: ErrorIteratorNoThrowMethodInstruction,
         snake_case: error_iterator_no_throw_method_instruction,
+        can_throw: true,
         operands: {}
     }
 

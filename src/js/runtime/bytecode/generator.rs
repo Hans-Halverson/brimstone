@@ -5198,7 +5198,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.iterator_close_instruction(iterator);
         }
 
-        self.writer.error_iterator_no_throw_method_instruction();
+        self.writer.error_iterator_no_throw_method_instruction(pos);
 
         // If throw method does exist then call it
         self.start_block(has_throw_method_block);

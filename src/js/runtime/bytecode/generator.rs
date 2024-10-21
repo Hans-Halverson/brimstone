@@ -7743,6 +7743,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let right_pos = stmt.right.pos();
+
         // Entire for-in statement is skipped if right hand side is nullish
         let object = self.gen_outer_expression(&stmt.right)?;
         self.write_jump_nullish_instruction(object, loop_end_block)?;
@@ -7751,7 +7753,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(object);
         let iterator = self.register_allocator.allocate()?;
         self.writer
-            .new_for_in_iterator_instruction(iterator, object);
+            .new_for_in_iterator_instruction(iterator, object, right_pos);
 
         // End of scope for evaluating the right hand side
         self.gen_scope_end(for_scope);

@@ -1690,6 +1690,7 @@ define_instructions!(
     NewForInIterator {
         camel_case: NewForInIteratorInstruction,
         snake_case: new_for_in_iterator_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

@@ -1,0 +1,5 @@
+Error: 
+  at get return (tests/js_error/source_locations/expression/yield_star/async_iterator_close_start_throws_module.js:8:15)
+  at generator (tests/js_error/source_locations/expression/yield_star/async_iterator_close_start_throws_module.js:15:3)
+  at throw (<native>)
+  at <module> (tests/js_error/source_locations/expression/yield_star/async_iterator_close_start_throws_module.js:20:7)

@@ -1778,6 +1778,7 @@ define_instructions!(
     AsyncIteratorCloseStart {
         camel_case: AsyncIteratorCloseStartInstruction,
         snake_case: async_iterator_close_start_instruction,
+        can_throw: true,
         operands: {
             [0] return_result: Register,
             [1] has_return_method: Register,
@@ -1790,6 +1791,7 @@ define_instructions!(
     AsyncIteratorCloseFinish {
         camel_case: AsyncIteratorCloseFinishInstruction,
         snake_case: async_iterator_close_finish_instruction,
+        can_throw: true,
         operands: {
             [0] return_result: Register,
         }

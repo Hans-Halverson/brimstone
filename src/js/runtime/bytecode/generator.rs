@@ -5203,7 +5203,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_not_undefined_instruction(throw_method, has_throw_method_block)?;
 
         if self.is_async() {
-            self.gen_async_iterator_close(iterator)?;
+            self.gen_async_iterator_close(iterator, pos)?;
         } else {
             self.writer.iterator_close_instruction(iterator, pos);
         }
@@ -7653,7 +7653,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // try to close the iterator. Catch exceptions when closing the iterator.
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
                 if stmt.is_await {
-                    this.gen_async_iterator_close(iterator)
+                    this.gen_async_iterator_close(iterator, of_pos)
                 } else {
                     this.writer.iterator_close_instruction(iterator, of_pos);
                     Ok(())
@@ -7852,7 +7852,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_async_iterator_close(&mut self, iterator: GenRegister) -> EmitResult<()> {
+    fn gen_async_iterator_close(&mut self, iterator: GenRegister, pos: Pos) -> EmitResult<()> {
         let has_return_method = self.register_allocator.allocate()?;
         let return_result = self.register_allocator.allocate()?;
 
@@ -7862,6 +7862,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return_result,
             has_return_method,
             iterator,
+            pos,
         );
 
         // If there was no return method then there is no return result and we are done closing
@@ -7873,7 +7874,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // And then finish the AsyncIteratorClosure using the stored intermediate results
         self.writer
-            .async_iterator_close_finish_instruction(awaited_return_result);
+            .async_iterator_close_finish_instruction(awaited_return_result, pos);
 
         self.start_block(join_block);
 

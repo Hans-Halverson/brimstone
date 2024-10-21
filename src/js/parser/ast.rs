@@ -1070,6 +1070,9 @@ pub struct MemberExpression {
     pub is_computed: bool,
     pub is_optional: bool,
     pub is_private: bool,
+
+    /// Source position of the `.` or `[` token
+    pub operator_pos: Pos,
 }
 
 pub struct ChainExpression {
@@ -1239,10 +1242,19 @@ pub struct SuperMemberExpression {
     /// super expression, or tagged as unresolved dynamic if the scope could not be statically
     /// determined.
     pub home_object_scope: TaggedResolvedScope,
+
+    /// Source position of the `.` or `[` token
+    pub operator_pos: Pos,
 }
 
 impl SuperMemberExpression {
-    pub fn new(loc: Loc, super_: Loc, property: P<Expression>, is_computed: bool) -> Self {
+    pub fn new(
+        loc: Loc,
+        super_: Loc,
+        operator_pos: Pos,
+        property: P<Expression>,
+        is_computed: bool,
+    ) -> Self {
         Self {
             loc,
             super_,
@@ -1251,6 +1263,7 @@ impl SuperMemberExpression {
             is_static: false,
             this_scope: None,
             home_object_scope: TaggedResolvedScope::unresolved_global(),
+            operator_pos,
         }
     }
 

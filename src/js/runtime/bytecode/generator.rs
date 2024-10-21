@@ -4122,6 +4122,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_object: bool,
     ) -> EmitResult<GenRegister> {
+        let operator_pos = expr.operator_pos;
+
         if expr.is_computed {
             let key = self.gen_expression(&expr.property)?;
 
@@ -4131,7 +4133,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer.get_property_instruction(dest, object, key);
+            self.writer
+                .get_property_instruction(dest, object, key, operator_pos);
 
             Ok(dest)
         } else if expr.is_private {
@@ -4368,10 +4371,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let temp = self.allocate_destination(temp_dest)?;
 
                 // Evaluate the object expression, or find the home object if `super`
-                let object = match member {
-                    ast::Pattern::Member(member) => self.gen_expression(&member.object)?,
+                let (object, operator_pos) = match member {
+                    ast::Pattern::Member(member) => {
+                        let object = self.gen_expression(&member.object)?;
+                        (object, member.operator_pos)
+                    }
                     ast::Pattern::SuperMember(member) => {
-                        self.gen_load_home_object(member, ExprDest::Any)?
+                        let object = self.gen_load_home_object(member, ExprDest::Any)?;
+                        (object, member.operator_pos)
                     }
                     _ => unreachable!("must be a member or super member pattern"),
                 };
@@ -4425,7 +4432,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // overwritten with the result of the operator.
                     match property {
                         Property::Computed(key) => {
-                            self.writer.get_property_instruction(temp, object, key)
+                            self.writer
+                                .get_property_instruction(temp, object, key, operator_pos)
                         }
                         Property::Named(name_constant_index) => self
                             .writer
@@ -4597,10 +4605,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let temp = self.allocate_destination(temp_dest)?;
 
             // Evaluate the object expression, or find the home object if `super`
-            let object = match member {
-                ast::Expression::Member(member) => self.gen_expression(&member.object)?,
+            let (object, operator_pos) = match member {
+                ast::Expression::Member(member) => {
+                    let object = self.gen_expression(&member.object)?;
+                    (object, member.operator_pos)
+                }
                 ast::Expression::SuperMember(member) => {
-                    self.gen_load_home_object(member, ExprDest::Any)?
+                    let object = self.gen_load_home_object(member, ExprDest::Any)?;
+                    (object, member.operator_pos)
                 }
                 _ => unreachable!("must be a member or super member pattern"),
             };
@@ -4633,7 +4645,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Load the property to the temporary register
                 if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
-                    self.writer.get_property_instruction(temp, object, key);
+                    self.writer
+                        .get_property_instruction(temp, object, key, operator_pos);
 
                     Property::Computed(key)
                 } else if member.is_private {
@@ -5971,6 +5984,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
+            let property_start_pos = property.loc.start;
+
             // Evaluate to reference before evaluating property key
             let reference = self.gen_pattern_to_reference(&property.value)?;
 
@@ -6001,8 +6016,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
 
                     // Read computed property from object
-                    self.writer
-                        .get_property_instruction(property_value, object_value, *key);
+                    self.writer.get_property_instruction(
+                        property_value,
+                        object_value,
+                        *key,
+                        property_start_pos,
+                    );
                 }
             }
 

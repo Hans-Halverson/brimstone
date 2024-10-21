@@ -1261,6 +1261,7 @@ define_instructions!(
     GetProperty {
         camel_case: GetPropertyInstruction,
         snake_case: get_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

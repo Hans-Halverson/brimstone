@@ -3849,9 +3849,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
             // arbitrary argv, meaning no property keys are excluded.
             if let ast::PropertyKind::Spread(_) = property.kind {
+                let property_pos = property.loc.start;
                 let source = self.gen_expression(&property.key)?;
                 self.writer
-                    .copy_data_properties(object, source, source, UInt::new(0));
+                    .copy_data_properties(object, source, source, UInt::new(0), property_pos);
                 self.register_allocator.release(source);
                 continue;
             }
@@ -5994,7 +5995,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Emit the rest element if one was included
         if has_rest_element {
-            let rest_element_pattern = pattern.properties.last().unwrap().value.as_ref();
+            let rest_element_node = pattern.properties.last().unwrap();
+            let rest_element_pos = rest_element_node.loc.start;
+            let rest_element_pattern = rest_element_node.value.as_ref();
+
             let rest_element_dest =
                 self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
             let rest_element = self.allocate_destination(rest_element_dest)?;
@@ -6024,7 +6028,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // to the stack.
             self.writer.new_object_instruction(rest_element);
             self.writer
-                .copy_data_properties(rest_element, object_value, argv, argc);
+                .copy_data_properties(rest_element, object_value, argv, argc, rest_element_pos);
 
             self.gen_store_to_reference(reference, rest_element, store_flags)?;
             self.register_allocator.release(rest_element);

@@ -1455,12 +1455,13 @@ define_instructions!(
     CopyDataProperties {
         camel_case: CopyDataPropertiesInstruction,
         snake_case: copy_data_properties,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] source: Register,
             [2] argv: Register,
             [3] argc: UInt,
-    }
+        }
     }
 
     /// Lookup a method with the given name on a value, storing the result in dest. If there is no

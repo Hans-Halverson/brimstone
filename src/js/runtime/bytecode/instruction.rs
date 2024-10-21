@@ -1651,6 +1651,7 @@ define_instructions!(
     CheckIteratorResultObject {
         camel_case: CheckIteratorResultObjectInstruction,
         snake_case: check_iterator_result_object_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }

@@ -5102,7 +5102,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 
@@ -5155,7 +5155,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 
@@ -5213,7 +5213,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 

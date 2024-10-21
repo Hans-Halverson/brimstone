@@ -1,0 +1,4 @@
+TypeError: iterator result must be an object
+  at generator (tests/js_error/source_locations/expression/yield_star/next_check_iterator_result_object_throws.js:12:3)
+  at next (<native>)
+  at <global> (tests/js_error/source_locations/expression/yield_star/next_check_iterator_result_object_throws.js:16:1)

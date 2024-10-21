@@ -2268,28 +2268,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Fixed registers may directly reference the register
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
-                self.gen_load_fixed_register_identifier(name, arg_reg, add_tdz_check, dest)
+                self.gen_load_fixed_register_identifier(name, arg_reg, add_tdz_check, pos, dest)
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
-                self.gen_load_fixed_register_identifier(name, local_reg, add_tdz_check, dest)
+                self.gen_load_fixed_register_identifier(name, local_reg, add_tdz_check, pos, dest)
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_global_identifier(name, pos, dest)
                 })
             }
             // Scope variables must be loaded to a register from the scope at the specified index
             VMLocation::Scope { scope_id, index } => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_scope_binding(scope_id, index, dest)
                 })
             }
             // Module scope variables must be loaded to a register from the BoxedValue in the scope
             // at the specified index.
             VMLocation::ModuleScope { scope_id, index } => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_module_scope_binding(scope_id, index, pos, dest)
                 })
             }
@@ -2307,12 +2307,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: &str,
         fixed_reg: GenRegister,
         add_tdz_check: bool,
+        pos: Pos,
         mut dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
             let name_constant_index = self.add_string_constant(name)?;
             self.writer
-                .check_tdz_instruction(fixed_reg, name_constant_index);
+                .check_tdz_instruction(fixed_reg, name_constant_index, pos);
         }
 
         // Avoid assignment hazards in "has assignment expression" contexts by ensuring that
@@ -2336,6 +2337,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         name: &str,
         add_tdz_check: bool,
+        pos: Pos,
         dest: ExprDest,
         load_binding_fn: impl FnOnce(&mut Self, ExprDest) -> EmitResult<GenRegister>,
     ) -> EmitResult<GenRegister> {
@@ -2349,7 +2351,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 if !self.register_allocator.is_temporary_register(dest_reg) {
                     let temporary_reg = load_binding_fn(self, ExprDest::Any)?;
                     self.writer
-                        .check_tdz_instruction(temporary_reg, name_constant_index);
+                        .check_tdz_instruction(temporary_reg, name_constant_index, pos);
 
                     return self.gen_mov_reg_to_dest(temporary_reg, dest);
                 }
@@ -2359,7 +2361,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // loaded value.
             let value = load_binding_fn(self, dest)?;
             self.writer
-                .check_tdz_instruction(value, name_constant_index);
+                .check_tdz_instruction(value, name_constant_index, pos);
 
             return Ok(value);
         }

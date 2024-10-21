@@ -1621,6 +1621,7 @@ define_instructions!(
     CheckTdz {
         camel_case: CheckTdzInstruction,
         snake_case: check_tdz_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] name_constant_index: ConstantIndex,

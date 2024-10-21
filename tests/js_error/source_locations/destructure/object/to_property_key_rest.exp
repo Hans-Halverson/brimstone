@@ -1,0 +1,3 @@
+Error: 
+  at toString (tests/js_error/source_locations/destructure/object/to_property_key_rest.js:1:37)
+  at <global> (tests/js_error/source_locations/destructure/object/to_property_key_rest.js:3:8)

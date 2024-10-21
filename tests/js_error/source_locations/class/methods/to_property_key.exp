@@ -1,0 +1,3 @@
+Error: 
+  at toString (tests/js_error/source_locations/class/methods/to_property_key.js:1:37)
+  at <global> (tests/js_error/source_locations/class/methods/to_property_key.js:4:4)

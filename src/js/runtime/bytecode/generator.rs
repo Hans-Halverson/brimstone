@@ -7922,7 +7922,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let vm_scope_id = with_scope.vm_scope_id().unwrap();
         let scope_names_index = self.gen_scope_names(with_scope, ScopeFlags::empty())?;
         self.writer
-            .push_with_scope_instruction(object, scope_names_index);
+            .push_with_scope_instruction(object, scope_names_index, stmt.loc.start);
         self.push_scope_stack_node(vm_scope_id);
 
         self.register_allocator.release(object);

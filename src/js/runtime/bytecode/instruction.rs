@@ -1513,6 +1513,7 @@ define_instructions!(
     PushWithScope {
         camel_case: PushWithScopeInstruction,
         snake_case: push_with_scope_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] scope_names_index: ConstantIndex,

@@ -1,0 +1,2 @@
+TypeError: null has no properties
+  at <global> (tests/js_error/source_locations/statement/with/push_with_scope_throws.js:2:1)

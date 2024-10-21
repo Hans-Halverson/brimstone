@@ -3738,7 +3738,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|element| match element {
                 ast::ArrayElement::Expression(expr) => ArrayElement::Expression(expr),
                 ast::ArrayElement::Spread(spread) => ArrayElement::Spread(spread),
-                ast::ArrayElement::Hole => ArrayElement::Hole,
+                ast::ArrayElement::Hole(_) => ArrayElement::Hole,
             })
             .collect::<Vec<_>>();
 
@@ -3792,7 +3792,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ArrayElement::Spread(spread_element) => {
                     // Evaluate the spread argument and get its iterator
                     let iterable = self.gen_expression(&spread_element.argument)?;
-                    let iterable_pos = spread_element.loc.start;
+                    let spread_pos = spread_element.loc.start;
 
                     let iterator = self.register_allocator.allocate()?;
                     let next_method = self.register_allocator.allocate()?;
@@ -3800,7 +3800,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         iterator,
                         next_method,
                         iterable,
-                        iterable_pos,
+                        spread_pos,
                     );
 
                     let value = self.register_allocator.allocate()?;
@@ -3811,8 +3811,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     // Each iteration starts by calling `next` and checking if we are done
                     self.start_block(iteration_start_block);
-                    self.writer
-                        .iterator_next_instruction(value, is_done, iterator, next_method);
+                    self.writer.iterator_next_instruction(
+                        value,
+                        is_done,
+                        iterator,
+                        next_method,
+                        spread_pos,
+                    );
                     self.write_jump_true_instruction(is_done, done_block)?;
 
                     // If we are not done then write append value to array
@@ -6103,7 +6108,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Call `next` on iterator for each element of the array pttern
         for (i, element) in array_pattern.elements.iter().enumerate() {
             // Rest element creates a new array with remaining values until iterator is done
-            if let ast::ArrayPatternElement::Rest(rest) = element {
+            let (reference, element_pos) = if let ast::ArrayPatternElement::Rest(rest) = element {
                 let array = self.register_allocator.allocate()?;
                 self.writer.new_array_instruction(array);
 
@@ -6127,11 +6132,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.write_jump_true_instruction(is_done, is_done_block)?;
                 }
 
+                let rest_pos = rest.loc.start;
+
                 // Each iteration only starts if we are not done. Each iteration calls `next` and
                 // then checks if iterator is done.
                 self.start_block(iteration_start_block);
-                self.writer
-                    .iterator_next_instruction(value, is_done, iterator, next_method);
+                self.writer.iterator_next_instruction(
+                    value,
+                    is_done,
+                    iterator,
+                    next_method,
+                    rest_pos,
+                );
                 self.write_jump_true_instruction(is_done, is_done_block)?;
 
                 // If not done, store value to next index in array and start next iteration
@@ -6156,10 +6168,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
 
                 continue;
-            }
-
-            // Evaluate to reference before calling `next`
-            let reference = if let ast::ArrayPatternElement::Pattern(pattern) = element {
+            } else if let ast::ArrayPatternElement::Pattern(pattern) = element {
+                // Evaluate to reference before calling `next`
                 let (exception_handler, reference) =
                     self.gen_in_exception_handler(|this| this.gen_pattern_to_reference(pattern))?;
 
@@ -6167,10 +6177,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     exception_handlers.push(exception_handler);
                 }
 
-                Some(reference)
-            } else {
+                (Some(reference), pattern.pos())
+            } else if let ast::ArrayPatternElement::Hole(hole_pos) = element {
                 // Otherwise must be a hole
-                None
+                (None, *hole_pos)
+            } else {
+                unreachable!("all variants handled")
             };
 
             let is_done_block = self.new_block();
@@ -6181,8 +6193,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             // Call `next` method, and if done then continue to done block
-            self.writer
-                .iterator_next_instruction(value, is_done, iterator, next_method);
+            self.writer.iterator_next_instruction(
+                value,
+                is_done,
+                iterator,
+                next_method,
+                element_pos,
+            );
 
             // Patterns will be destructured so value from iterator can be assigned
             if let Some(reference) = reference {
@@ -7525,6 +7542,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let of_pos = stmt.in_of_pos;
         let right_pos = stmt.right.pos();
 
         let iterator = self.register_allocator.allocate()?;
@@ -7576,7 +7594,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Synchronous for-of can use a combined IteratorNext instruction
             self.writer
-                .iterator_next_instruction(value, is_done, iterator, next_method);
+                .iterator_next_instruction(value, is_done, iterator, next_method, of_pos);
         }
 
         // If we are done then exit the loop, closing the iterator is not needed

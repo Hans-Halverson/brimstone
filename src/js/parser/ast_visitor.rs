@@ -704,7 +704,7 @@ pub fn default_visit_array_expression<V: AstVisitor>(visitor: &mut V, expr: &mut
         match element {
             ArrayElement::Expression(expr) => visitor.visit_expression(expr),
             ArrayElement::Spread(spread) => visitor.visit_spread_element(spread),
-            ArrayElement::Hole => {}
+            ArrayElement::Hole(_) => {}
         }
     }
 }
@@ -792,7 +792,7 @@ pub fn default_visit_array_pattern<V: AstVisitor>(visitor: &mut V, patt: &mut Ar
         match element {
             ArrayPatternElement::Pattern(pattern) => visitor.visit_pattern(pattern),
             ArrayPatternElement::Rest(rest) => visitor.visit_rest_element(rest),
-            ArrayPatternElement::Hole => {}
+            ArrayPatternElement::Hole(_) => {}
         }
     }
 }

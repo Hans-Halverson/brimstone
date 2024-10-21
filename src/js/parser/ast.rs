@@ -1160,7 +1160,7 @@ pub struct ArrayExpression {
 pub enum ArrayElement {
     Expression(Expression),
     Spread(SpreadElement),
-    Hole,
+    Hole(Pos),
 }
 
 pub struct SpreadElement {
@@ -1373,7 +1373,7 @@ impl Pattern {
                     match element {
                         ArrayPatternElement::Pattern(pattern) => pattern.iter_patterns(f),
                         ArrayPatternElement::Rest(rest) => rest.argument.iter_patterns(f),
-                        ArrayPatternElement::Hole => {}
+                        ArrayPatternElement::Hole(_) => {}
                     }
                 }
             }
@@ -1399,6 +1399,22 @@ impl Pattern {
             Pattern::Member(_) | Pattern::SuperMember(_) => Ok(()),
         }
     }
+
+    pub fn loc(&self) -> Loc {
+        match self {
+            Pattern::Id(patt) => patt.loc,
+            Pattern::Array(patt) => patt.loc,
+            Pattern::Object(patt) => patt.loc,
+            Pattern::Assign(patt) => patt.loc,
+            Pattern::Member(expr) => expr.loc,
+            Pattern::SuperMember(expr) => expr.loc,
+        }
+    }
+
+    /// The source position of the start of the pattern.
+    pub fn pos(&self) -> Pos {
+        self.loc().start
+    }
 }
 
 pub struct ArrayPattern {
@@ -1409,7 +1425,7 @@ pub struct ArrayPattern {
 pub enum ArrayPatternElement {
     Pattern(Pattern),
     Rest(RestElement),
-    Hole,
+    Hole(Pos),
 }
 
 impl ArrayPattern {
@@ -1423,7 +1439,7 @@ impl ArrayPattern {
                 ArrayPatternElement::Rest(RestElement { argument, .. }) => {
                     argument.iter_bound_names(f)?
                 }
-                ArrayPatternElement::Hole => {}
+                ArrayPatternElement::Hole(_) => {}
             }
         }
 

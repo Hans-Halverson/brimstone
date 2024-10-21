@@ -1740,6 +1740,7 @@ define_instructions!(
     IteratorNext {
         camel_case: IteratorNextInstruction,
         snake_case: iterator_next_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] is_done: Register,

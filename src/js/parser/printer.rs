@@ -801,7 +801,7 @@ impl<'a> Printer<'a> {
         match element {
             ArrayElement::Expression(expr) => self.print_expression(expr),
             ArrayElement::Spread(spread) => self.print_spread_element(spread),
-            ArrayElement::Hole => self.print_null(),
+            ArrayElement::Hole(_) => self.print_null(),
         }
     }
 
@@ -985,7 +985,7 @@ impl<'a> Printer<'a> {
         match element {
             ArrayPatternElement::Pattern(pattern) => self.print_pattern(pattern),
             ArrayPatternElement::Rest(rest) => self.print_rest_element(rest),
-            ArrayPatternElement::Hole => self.print_null(),
+            ArrayPatternElement::Hole(_) => self.print_null(),
         }
     }
 

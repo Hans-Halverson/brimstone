@@ -2899,7 +2899,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
-        self.writer.neg_instruction(dest, argument);
+        self.writer.neg_instruction(dest, argument, expr.loc.start);
 
         Ok(dest)
     }
@@ -2919,7 +2919,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
-        self.writer.to_number_instruction(dest, argument);
+        self.writer
+            .to_number_instruction(dest, argument, expr.loc.start);
 
         Ok(dest)
     }
@@ -2947,7 +2948,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(argument);
 
         let dest = self.allocate_destination(dest)?;
-        self.writer.bit_not_instruction(dest, argument);
+        self.writer
+            .bit_not_instruction(dest, argument, expr.loc.start);
 
         Ok(dest)
     }
@@ -4554,6 +4556,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UpdateExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let pos = expr.loc.start;
+
         if let member @ (ast::Expression::Member(_) | ast::Expression::SuperMember(_)) =
             expr.argument.as_ref()
         {
@@ -4628,7 +4632,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             };
 
             // Perform the converstion and inc/dec operation in place on the temporary register
-            self.writer.to_numeric_instruction(temp, temp);
+            self.writer.to_numeric_instruction(temp, temp, pos);
 
             // Get a register to hold the new, modified value.
             //
@@ -4718,7 +4722,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(old_value);
                     let dest = self.allocate_destination(dest)?;
 
-                    self.writer.to_numeric_instruction(dest, old_value);
+                    self.writer.to_numeric_instruction(dest, old_value, pos);
                     self.write_inc_or_dec(expr.operator, dest);
                     self.gen_store_identifier(id, dest, store_flags)?;
 
@@ -4727,7 +4731,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // If the target value is in a param or non-temporary local register then can
                     // perform all operations in place. Safe to overwrite with ToNumeric since
                     // inc/dec cannot fail.
-                    self.writer.to_numeric_instruction(old_value, old_value);
+                    self.writer
+                        .to_numeric_instruction(old_value, old_value, pos);
                     self.write_inc_or_dec(expr.operator, old_value);
                     self.gen_mov_reg_to_dest(old_value, dest)
                 }
@@ -4736,7 +4741,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
                 let dest = self.allocate_destination(dest)?;
                 let old_value = self.gen_load_identifier(id, old_value_dest)?;
-                self.writer.to_numeric_instruction(old_value, old_value);
+                self.writer
+                    .to_numeric_instruction(old_value, old_value, pos);
 
                 // If id is at a fixed register which matches the destination then writing the
                 // modified value to the id's location would clobber the old value. But in this case
@@ -5510,11 +5516,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             && template.quasis[0].cooked.as_ref().unwrap().is_empty()
             && template.quasis[1].cooked.as_ref().unwrap().is_empty()
         {
-            let expression = self.gen_expression(&template.expressions[0])?;
-            self.register_allocator.release(expression);
+            let expression = &template.expressions[0];
+            let expression_reg = self.gen_expression(expression)?;
+            self.register_allocator.release(expression_reg);
 
             let dest = self.allocate_destination(dest)?;
-            self.writer.to_string_instruction(dest, expression);
+            self.writer
+                .to_string_instruction(dest, expression_reg, expression.pos());
 
             return Ok(dest);
         }
@@ -5532,25 +5540,32 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // Each quasi but the first is preceded by an expression
             if i > 0 {
-                let expression = self.gen_expression(&template.expressions[i - 1])?;
+                let expression = &template.expressions[i - 1];
+                let expression_reg = self.gen_expression(expression)?;
+                let expression_pos = expression.pos();
 
                 if is_first_part {
                     // If this is the first non-empty string, load it directly into the accumulator
                     // and mark all later elements to be added via a temporary.
-                    self.writer.to_string_instruction(acc, expression);
-                    self.register_allocator.release(expression);
+                    self.writer
+                        .to_string_instruction(acc, expression_reg, expression_pos);
+                    self.register_allocator.release(expression_reg);
                     is_first_part = false;
                 } else {
                     // The expression value must be converted to a string and added to the
                     // accumulator. Make sure not to clobber the expression's register if it
                     // is a non-temporary.
-                    let temp = if self.register_allocator.is_temporary_register(expression) {
-                        expression
+                    let temp = if self
+                        .register_allocator
+                        .is_temporary_register(expression_reg)
+                    {
+                        expression_reg
                     } else {
                         self.register_allocator.allocate()?
                     };
 
-                    self.writer.to_string_instruction(temp, expression);
+                    self.writer
+                        .to_string_instruction(temp, expression_reg, expression_pos);
 
                     // Cannot throw since both values are guaranteed to be strings
                     self.writer.add_instruction(acc, acc, temp, NO_POS);
@@ -5892,8 +5907,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         enum Property<'a> {
             Named(&'a ast::Identifier),
-            Computed(GenRegister),
+            Computed(GenRegister, Pos),
         }
+
+        let pattern_pos = pattern.loc.start;
 
         // If there is a rest element all keys must be saved in a contiguous sequence of temporary
         // registers so they can be passed to the CopyDataProperties instruction.
@@ -5926,7 +5943,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Some(ast::Expression::Id(id)) if !property.is_computed => Property::Named(id),
                 Some(expr) => {
                     let key = self.gen_expression(expr)?;
-                    Property::Computed(key)
+                    let key_pos = expr.pos();
+                    Property::Computed(key, key_pos)
                 }
             };
 
@@ -5951,11 +5969,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         name_constant_index,
                     );
                 }
-                Property::Computed(key) => {
+                Property::Computed(key, key_pos) => {
                     // If there is a rest element then we must ensure key is a property key and save
                     // it in the reserved registers.
                     if has_rest_element {
-                        self.writer.to_property_key_instruction(saved_keys[i], *key);
+                        self.writer
+                            .to_property_key_instruction(saved_keys[i], *key, *key_pos);
                     }
 
                     // Read computed property from object
@@ -5966,7 +5985,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             self.gen_store_to_reference(reference, property_value, store_flags)?;
 
-            if let Property::Computed(key) = key {
+            if let Property::Computed(key, _) = key {
                 self.register_allocator.release(key);
             }
 
@@ -5997,7 +6016,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Perform a ToObject so that we error on nullish values beforce calling
             // CopyDataProperties, which silently ignores nullish values.
             let scratch = self.register_allocator.allocate()?;
-            self.writer.to_object_instruction(scratch, object_value);
+            self.writer
+                .to_object_instruction(scratch, object_value, pattern_pos);
             self.register_allocator.release(scratch);
 
             // Create a new object and copy all data properties, except for the property keys saved
@@ -6018,7 +6038,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // case perform a ToObject (but discard the result) to error if necessary.
         if pattern.properties.is_empty() {
             let scratch = self.register_allocator.allocate()?;
-            self.writer.to_object_instruction(scratch, object_value);
+            self.writer
+                .to_object_instruction(scratch, object_value, pattern_pos);
             self.register_allocator.release(scratch);
         }
 
@@ -6536,7 +6557,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     } else {
                         // Evaluate key to a property key
                         let key_reg = self.gen_outer_expression(&property.key)?;
-                        self.writer.to_property_key_instruction(key_reg, key_reg);
+                        let key_pos = property.key.pos();
+                        self.writer
+                            .to_property_key_instruction(key_reg, key_reg, key_pos);
 
                         // And store in scope at the next available index
                         let scope_index = field_scope_index;
@@ -6705,18 +6728,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<(Method, GenRegister)> {
         enum Name<'a> {
             Named(AnyStr<'a>),
-            Computed(GenRegister),
+            Computed(GenRegister, Pos),
         }
 
         // Evaluate class element name
         let key = if method.is_computed {
-            Name::Computed(self.gen_outer_expression(&method.key)?)
+            Name::Computed(self.gen_outer_expression(&method.key)?, method.key.pos())
         } else {
             match &method.key.expr {
                 ast::Expression::Id(id) => Name::Named(AnyStr::from_id(id)),
                 ast::Expression::String(string) => Name::Named(AnyStr::Wtf8(&string.value)),
                 expr @ (ast::Expression::Number(_) | ast::Expression::BigInt(_)) => {
-                    Name::Computed(self.gen_expression(expr)?)
+                    Name::Computed(self.gen_expression(expr)?, expr.pos())
                 }
                 _ => unreachable!("invalid class element name"),
             }
@@ -6747,12 +6770,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Some(name)
                 }
             }
-            Name::Computed(name_register) => {
+            Name::Computed(name_register, name_pos) => {
                 // If computed then name will be passed as an argument to the NewClass instruction.
                 // First convert to a property key.
                 if !method.is_private {
                     self.writer
-                        .to_property_key_instruction(name_register, name_register);
+                        .to_property_key_instruction(name_register, name_register, name_pos);
                 }
 
                 new_class_arguments.push(name_register);

@@ -807,6 +807,7 @@ define_instructions!(
     Neg {
         camel_case: NegInstruction,
         snake_case: neg_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -849,6 +850,7 @@ define_instructions!(
     BitNot {
         camel_case: BitNotInstruction,
         snake_case: bit_not_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -893,6 +895,7 @@ define_instructions!(
     ToNumber {
         camel_case: ToNumberInstruction,
         snake_case: to_number_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -903,6 +906,7 @@ define_instructions!(
     ToNumeric {
         camel_case: ToNumericInstruction,
         snake_case: to_numeric_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -913,6 +917,7 @@ define_instructions!(
     ToString {
         camel_case: ToStringInstruction,
         snake_case: to_string_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -923,6 +928,7 @@ define_instructions!(
     ToPropertyKey {
         camel_case: ToPropertyKeyInstruction,
         snake_case: to_property_key_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,
@@ -933,6 +939,7 @@ define_instructions!(
     ToObject {
         camel_case: ToObjectInstruction,
         snake_case: to_object_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] value: Register,

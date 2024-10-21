@@ -807,6 +807,13 @@ pub struct OuterExpression {
     pub has_assign_expr: bool,
 }
 
+impl OuterExpression {
+    /// The source position of the start of the expression.
+    pub fn pos(&self) -> Pos {
+        self.expr.loc().start
+    }
+}
+
 pub enum Expression {
     Id(Identifier),
     Null(Loc),
@@ -855,6 +862,49 @@ impl Expression {
             Expression::Id(id) => id,
             _ => panic!("Expected identifier expression"),
         }
+    }
+
+    /// The source location of the expression.
+    pub fn loc(&self) -> Loc {
+        match self {
+            Expression::Id(id) => id.loc,
+            Expression::Null(loc) => *loc,
+            Expression::Boolean(lit) => lit.loc,
+            Expression::Number(lit) => lit.loc,
+            Expression::String(lit) => lit.loc,
+            Expression::BigInt(lit) => lit.loc,
+            Expression::RegExp(lit) => lit.loc,
+            Expression::Unary(expr) => expr.loc,
+            Expression::Binary(expr) => expr.loc,
+            Expression::Logical(expr) => expr.loc,
+            Expression::Assign(expr) => expr.loc,
+            Expression::Update(expr) => expr.loc,
+            Expression::Member(expr) => expr.loc,
+            Expression::Chain(expr) => expr.loc,
+            Expression::Conditional(expr) => expr.loc,
+            Expression::Call(expr) => expr.loc,
+            Expression::New(expr) => expr.loc,
+            Expression::Sequence(expr) => expr.loc,
+            Expression::Array(expr) => expr.loc,
+            Expression::Object(expr) => expr.loc,
+            Expression::Function(expr) => expr.loc,
+            Expression::ArrowFunction(expr) => expr.loc,
+            Expression::Class(expr) => expr.loc,
+            Expression::This(expr) => expr.loc,
+            Expression::Await(expr) => expr.loc,
+            Expression::Yield(expr) => expr.loc,
+            Expression::SuperMember(expr) => expr.loc,
+            Expression::SuperCall(expr) => expr.loc,
+            Expression::Template(expr) => expr.loc,
+            Expression::TaggedTemplate(expr) => expr.loc,
+            Expression::MetaProperty(expr) => expr.loc,
+            Expression::Import(expr) => expr.loc,
+        }
+    }
+
+    /// The source position of the start of the expression.
+    pub fn pos(&self) -> Pos {
+        self.loc().start
     }
 }
 

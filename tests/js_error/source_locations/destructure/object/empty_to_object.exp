@@ -1,0 +1,2 @@
+TypeError: null has no properties
+  at <global> (tests/js_error/source_locations/destructure/object/empty_to_object.js:1:5)

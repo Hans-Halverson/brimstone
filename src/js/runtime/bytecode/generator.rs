@@ -4147,7 +4147,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let dest = self.allocate_destination(dest)?;
             self.writer
-                .get_private_property_instruction(dest, object, key);
+                .get_private_property_instruction(dest, object, key, operator_pos);
 
             Ok(dest)
         } else {
@@ -4447,9 +4447,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                                 operator_pos,
                             )
                         }
-                        Property::Private(key) => self
-                            .writer
-                            .get_private_property_instruction(temp, object, key),
+                        Property::Private(key) => self.writer.get_private_property_instruction(
+                            temp,
+                            object,
+                            key,
+                            operator_pos,
+                        ),
                         Property::Super { key, this_value } => {
                             self.writer.get_super_property_instruction(
                                 temp,
@@ -4667,7 +4670,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 } else if member.is_private {
                     let key = self.gen_load_private_symbol(member.property.to_id())?;
                     self.writer
-                        .get_private_property_instruction(temp, object, key);
+                        .get_private_property_instruction(temp, object, key, operator_pos);
 
                     Property::Private(key)
                 } else {
@@ -5434,6 +5437,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 home_object,
                 receiver,
                 name_constant_index,
+                operand_pos,
             );
 
             Ok(dest)

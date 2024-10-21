@@ -1348,6 +1348,7 @@ define_instructions!(
     GetNamedSuperProperty {
         camel_case: GetNamedSuperPropertyInstruction,
         snake_case: get_named_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] home_object: Register,
@@ -1397,6 +1398,7 @@ define_instructions!(
     GetPrivateProperty {
         camel_case: GetPrivatePropertyInstruction,
         snake_case: get_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

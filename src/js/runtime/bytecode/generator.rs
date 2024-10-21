@@ -2268,28 +2268,28 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Fixed registers may directly reference the register
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
-                self.gen_load_fixed_register_identifier(name, arg_reg, add_tdz_check, dest)
+                self.gen_load_fixed_register_identifier(name, arg_reg, add_tdz_check, pos, dest)
             }
             VMLocation::LocalRegister(index) => {
                 let local_reg = Register::local(index);
-                self.gen_load_fixed_register_identifier(name, local_reg, add_tdz_check, dest)
+                self.gen_load_fixed_register_identifier(name, local_reg, add_tdz_check, pos, dest)
             }
             // Global variables must first be loaded to a register
             VMLocation::Global => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_global_identifier(name, pos, dest)
                 })
             }
             // Scope variables must be loaded to a register from the scope at the specified index
             VMLocation::Scope { scope_id, index } => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_scope_binding(scope_id, index, dest)
                 })
             }
             // Module scope variables must be loaded to a register from the BoxedValue in the scope
             // at the specified index.
             VMLocation::ModuleScope { scope_id, index } => {
-                self.gen_load_non_fixed_identifier(name, add_tdz_check, dest, |this, dest| {
+                self.gen_load_non_fixed_identifier(name, add_tdz_check, pos, dest, |this, dest| {
                     this.gen_load_module_scope_binding(scope_id, index, pos, dest)
                 })
             }
@@ -2307,12 +2307,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: &str,
         fixed_reg: GenRegister,
         add_tdz_check: bool,
+        pos: Pos,
         mut dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
             let name_constant_index = self.add_string_constant(name)?;
             self.writer
-                .check_tdz_instruction(fixed_reg, name_constant_index);
+                .check_tdz_instruction(fixed_reg, name_constant_index, pos);
         }
 
         // Avoid assignment hazards in "has assignment expression" contexts by ensuring that
@@ -2336,6 +2337,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         name: &str,
         add_tdz_check: bool,
+        pos: Pos,
         dest: ExprDest,
         load_binding_fn: impl FnOnce(&mut Self, ExprDest) -> EmitResult<GenRegister>,
     ) -> EmitResult<GenRegister> {
@@ -2349,7 +2351,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 if !self.register_allocator.is_temporary_register(dest_reg) {
                     let temporary_reg = load_binding_fn(self, ExprDest::Any)?;
                     self.writer
-                        .check_tdz_instruction(temporary_reg, name_constant_index);
+                        .check_tdz_instruction(temporary_reg, name_constant_index, pos);
 
                     return self.gen_mov_reg_to_dest(temporary_reg, dest);
                 }
@@ -2359,7 +2361,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // loaded value.
             let value = load_binding_fn(self, dest)?;
             self.writer
-                .check_tdz_instruction(value, name_constant_index);
+                .check_tdz_instruction(value, name_constant_index, pos);
 
             return Ok(value);
         }
@@ -2488,7 +2490,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if self.is_immutable_reassignment(binding, flags) {
             // Error if we are trying to reassign an immutable binding
             let name_constant_index = self.add_string_constant(name)?;
-            self.writer.error_const_instruction(name_constant_index);
+            self.writer
+                .error_const_instruction(name_constant_index, pos);
         } else if self.is_noop_reassignment(binding, flags) {
             // Ignore noop reassignments
             return Ok(());
@@ -3024,6 +3027,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::UnaryExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
+        let delete_pos = expr.loc.start;
+
         match expr.argument.as_ref() {
             ast::Expression::Member(member_expr) => {
                 let object = self.gen_maybe_chain_part_expression(
@@ -3124,7 +3129,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(property);
                 }
 
-                self.writer.error_delete_super_property_instruction();
+                self.writer
+                    .error_delete_super_property_instruction(delete_pos);
 
                 // No need to initialize dest since it will not be used
                 self.allocate_destination(dest)
@@ -4706,7 +4712,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // observable.
                 if self.is_immutable_reassignment(binding, store_flags) {
                     let name_constant_index = self.add_string_constant(&id.name)?;
-                    self.writer.error_const_instruction(name_constant_index);
+                    self.writer
+                        .error_const_instruction(name_constant_index, id.loc.start);
                 }
 
                 // Exclusively use temporary registers instead of potentially operating in place on
@@ -5100,7 +5107,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 
@@ -5153,7 +5160,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 
@@ -5191,7 +5198,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.iterator_close_instruction(iterator);
         }
 
-        self.writer.error_iterator_no_throw_method_instruction();
+        self.writer.error_iterator_no_throw_method_instruction(pos);
 
         // If throw method does exist then call it
         self.start_block(has_throw_method_block);
@@ -5211,7 +5218,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the iterator result is valid then check if iterator is done
         self.writer
-            .check_iterator_result_object_instruction(iterator_result);
+            .check_iterator_result_object_instruction(iterator_result, pos);
         self.writer
             .get_named_property_instruction(is_done, iterator_result, done_constant_index);
 
@@ -5446,7 +5453,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if super was already called and initialized `this` value, erroring if so
         self.writer
-            .check_super_already_called_instruction(this_value);
+            .check_super_already_called_instruction(this_value, super_pos);
 
         self.register_allocator.release(this_value);
 

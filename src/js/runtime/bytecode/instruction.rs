@@ -1621,6 +1621,7 @@ define_instructions!(
     CheckTdz {
         camel_case: CheckTdzInstruction,
         snake_case: check_tdz_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
             [1] name_constant_index: ConstantIndex,
@@ -1640,6 +1641,7 @@ define_instructions!(
     CheckSuperAlreadyCalled {
         camel_case: CheckSuperAlreadyCalledInstruction,
         snake_case: check_super_already_called_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }
@@ -1649,6 +1651,7 @@ define_instructions!(
     CheckIteratorResultObject {
         camel_case: CheckIteratorResultObjectInstruction,
         snake_case: check_iterator_result_object_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }
@@ -1658,6 +1661,7 @@ define_instructions!(
     ErrorConst {
         camel_case: ErrorConstInstruction,
         snake_case: error_const_instruction,
+        can_throw: true,
         operands: {
             [0] name_constant_index: ConstantIndex,
         }
@@ -1667,6 +1671,7 @@ define_instructions!(
     ErrorDeleteSuperProperty {
         camel_case: ErrorDeleteSuperPropertyInstruction,
         snake_case: error_delete_super_property_instruction,
+        can_throw: true,
         operands: {}
     }
 
@@ -1675,6 +1680,7 @@ define_instructions!(
     ErrorIteratorNoThrowMethod {
         camel_case: ErrorIteratorNoThrowMethodInstruction,
         snake_case: error_iterator_no_throw_method_instruction,
+        can_throw: true,
         operands: {}
     }
 

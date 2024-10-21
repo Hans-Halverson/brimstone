@@ -1470,6 +1470,7 @@ define_instructions!(
     GetMethod {
         camel_case: GetMethodInstruction,
         snake_case: get_method_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,

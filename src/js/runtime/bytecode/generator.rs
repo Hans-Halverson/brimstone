@@ -3851,8 +3851,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             if let ast::PropertyKind::Spread(_) = property.kind {
                 let property_pos = property.loc.start;
                 let source = self.gen_expression(&property.key)?;
-                self.writer
-                    .copy_data_properties(object, source, source, UInt::new(0), property_pos);
+                self.writer.copy_data_properties(
+                    object,
+                    source,
+                    source,
+                    UInt::new(0),
+                    property_pos,
+                );
                 self.register_allocator.release(source);
                 continue;
             }
@@ -5118,7 +5123,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // method if it exists.
         let return_method = self.register_allocator.allocate()?;
         self.writer
-            .get_method_instruction(return_method, iterator, return_constant_index);
+            .get_method_instruction(return_method, iterator, return_constant_index, pos);
 
         // If return method does not exist then return the (awaited) completion value
         let has_return_method_block = self.new_block();
@@ -5174,7 +5179,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Extract the throw method from the iterator if one exists
         let throw_method = self.register_allocator.allocate()?;
         self.writer
-            .get_method_instruction(throw_method, iterator, throw_constant_index);
+            .get_method_instruction(throw_method, iterator, throw_constant_index, pos);
 
         // If throw method does not exist then close the iterator and throw an error
         let has_throw_method_block = self.new_block();
@@ -6027,8 +6032,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Create a new object and copy all data properties, except for the property keys saved
             // to the stack.
             self.writer.new_object_instruction(rest_element);
-            self.writer
-                .copy_data_properties(rest_element, object_value, argv, argc, rest_element_pos);
+            self.writer.copy_data_properties(
+                rest_element,
+                object_value,
+                argv,
+                argc,
+                rest_element_pos,
+            );
 
             self.gen_store_to_reference(reference, rest_element, store_flags)?;
             self.register_allocator.release(rest_element);

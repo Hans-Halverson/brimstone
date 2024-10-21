@@ -1030,10 +1030,7 @@ impl VM {
                             dispatch!(RestParameterInstruction, execute_rest_parameter)
                         }
                         OpCode::GetSuperConstructor => {
-                            dispatch_or_throw!(
-                                GetSuperConstructorInstruction,
-                                execute_get_super_constructor
-                            )
+                            dispatch!(GetSuperConstructorInstruction, execute_get_super_constructor)
                         }
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
@@ -3940,7 +3937,7 @@ impl VM {
     fn execute_get_super_constructor<W: Width>(
         &mut self,
         instr: &GetSuperConstructorInstruction<W>,
-    ) -> EvalResult<()> {
+    ) {
         let derived_constructor = self
             .read_register_to_handle(instr.derived_constructor())
             .as_object();
@@ -3955,8 +3952,6 @@ impl VM {
             .unwrap_or(Value::null());
 
         self.write_register(dest, super_constructor);
-
-        Ok(())
     }
 
     #[inline]

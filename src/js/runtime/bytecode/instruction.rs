@@ -1727,6 +1727,7 @@ define_instructions!(
     GetAsyncIterator {
         camel_case: GetAsyncIteratorInstruction,
         snake_case: get_async_iterator_instruction,
+        can_throw: true,
         operands: {
             [0] iterator: Register,
             [1] next_method: Register,

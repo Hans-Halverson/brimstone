@@ -5064,7 +5064,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         if self.is_async() {
             self.writer
-                .get_async_iterator_instruction(iterator, next_method, argument);
+                .get_async_iterator_instruction(iterator, next_method, argument, pos);
         } else {
             self.writer
                 .get_iterator_instruction(iterator, next_method, argument, pos);
@@ -7535,7 +7535,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         if stmt.is_await {
             self.writer
-                .get_async_iterator_instruction(iterator, next_method, iterable);
+                .get_async_iterator_instruction(iterator, next_method, iterable, right_pos);
         } else {
             self.writer
                 .get_iterator_instruction(iterator, next_method, iterable, right_pos);

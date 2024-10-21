@@ -1223,6 +1223,7 @@ define_instructions!(
     NewClass {
         camel_case: NewClassInstruction,
         snake_case: new_class_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] class_names_index: ConstantIndex,
@@ -1454,12 +1455,13 @@ define_instructions!(
     CopyDataProperties {
         camel_case: CopyDataPropertiesInstruction,
         snake_case: copy_data_properties,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] source: Register,
             [2] argv: Register,
             [3] argc: UInt,
-    }
+        }
     }
 
     /// Lookup a method with the given name on a value, storing the result in dest. If there is no
@@ -1468,6 +1470,7 @@ define_instructions!(
     GetMethod {
         camel_case: GetMethodInstruction,
         snake_case: get_method_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1510,6 +1513,7 @@ define_instructions!(
     PushWithScope {
         camel_case: PushWithScopeInstruction,
         snake_case: push_with_scope_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] scope_names_index: ConstantIndex,

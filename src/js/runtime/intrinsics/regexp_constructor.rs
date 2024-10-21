@@ -70,7 +70,7 @@ impl RegExpObject {
     pub fn new_from_compiled_regexp(
         cx: Context,
         compiled_regexp: Handle<CompiledRegExpObject>,
-    ) -> EvalResult<Handle<RegExpObject>> {
+    ) -> Handle<RegExpObject> {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let mut object = must!(object_create_from_constructor::<RegExpObject>(
             cx,
@@ -87,9 +87,9 @@ impl RegExpObject {
 
         // Initialize last index property
         let zero_value = cx.zero();
-        set(cx, object.into(), cx.names.last_index(), zero_value, true)?;
+        must!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
 
-        Ok(object)
+        object
     }
 
     fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {

@@ -1,0 +1,3 @@
+Error: 
+  at getOwnPropertyDescriptor (tests/js_error/source_locations/expression/object/literal_copy_data_properties.js:3:11)
+  at <global> (tests/js_error/source_locations/expression/object/literal_copy_data_properties.js:10:4)

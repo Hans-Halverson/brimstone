@@ -3849,9 +3849,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
             // arbitrary argv, meaning no property keys are excluded.
             if let ast::PropertyKind::Spread(_) = property.kind {
+                let property_pos = property.loc.start;
                 let source = self.gen_expression(&property.key)?;
-                self.writer
-                    .copy_data_properties(object, source, source, UInt::new(0));
+                self.writer.copy_data_properties(
+                    object,
+                    source,
+                    source,
+                    UInt::new(0),
+                    property_pos,
+                );
                 self.register_allocator.release(source);
                 continue;
             }
@@ -5117,7 +5123,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // method if it exists.
         let return_method = self.register_allocator.allocate()?;
         self.writer
-            .get_method_instruction(return_method, iterator, return_constant_index);
+            .get_method_instruction(return_method, iterator, return_constant_index, pos);
 
         // If return method does not exist then return the (awaited) completion value
         let has_return_method_block = self.new_block();
@@ -5173,7 +5179,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Extract the throw method from the iterator if one exists
         let throw_method = self.register_allocator.allocate()?;
         self.writer
-            .get_method_instruction(throw_method, iterator, throw_constant_index);
+            .get_method_instruction(throw_method, iterator, throw_constant_index, pos);
 
         // If throw method does not exist then close the iterator and throw an error
         let has_throw_method_block = self.new_block();
@@ -5994,7 +6000,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Emit the rest element if one was included
         if has_rest_element {
-            let rest_element_pattern = pattern.properties.last().unwrap().value.as_ref();
+            let rest_element_node = pattern.properties.last().unwrap();
+            let rest_element_pos = rest_element_node.loc.start;
+            let rest_element_pattern = rest_element_node.value.as_ref();
+
             let rest_element_dest =
                 self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
             let rest_element = self.allocate_destination(rest_element_dest)?;
@@ -6023,8 +6032,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Create a new object and copy all data properties, except for the property keys saved
             // to the stack.
             self.writer.new_object_instruction(rest_element);
-            self.writer
-                .copy_data_properties(rest_element, object_value, argv, argc);
+            self.writer.copy_data_properties(
+                rest_element,
+                object_value,
+                argv,
+                argc,
+                rest_element_pos,
+            );
 
             self.gen_store_to_reference(reference, rest_element, store_flags)?;
             self.register_allocator.release(rest_element);
@@ -6646,6 +6660,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ConstantIndex::new(constructor_index),
             super_class,
             first_argument_reg,
+            class_pos,
         );
 
         // Initialize the class itself in the body scope if necessary.
@@ -7907,7 +7922,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let vm_scope_id = with_scope.vm_scope_id().unwrap();
         let scope_names_index = self.gen_scope_names(with_scope, ScopeFlags::empty())?;
         self.writer
-            .push_with_scope_instruction(object, scope_names_index);
+            .push_with_scope_instruction(object, scope_names_index, stmt.loc.start);
         self.push_scope_stack_node(vm_scope_id);
 
         self.register_allocator.release(object);

@@ -1,0 +1,1 @@
+(class C extends 1 {})

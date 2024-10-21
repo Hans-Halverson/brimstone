@@ -1702,6 +1702,7 @@ define_instructions!(
     ForInNext {
         camel_case: ForInNextInstruction,
         snake_case: for_in_next_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] iterator: Register,

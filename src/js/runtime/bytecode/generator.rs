@@ -7743,6 +7743,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let in_pos = stmt.in_of_pos;
         let right_pos = stmt.right.pos();
 
         // Entire for-in statement is skipped if right hand side is nullish
@@ -7771,7 +7772,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Iteration starts by calling the for-in iterator's `next` method
         let next_result = self.gen_for_each_next_result_dest(stmt, store_flags)?;
-        self.writer.for_in_next_instruction(next_result, iterator);
+        self.writer
+            .for_in_next_instruction(next_result, iterator, in_pos);
 
         // An undefined result from `next` means there are no more keys, jump out of the loop
         self.write_jump_nullish_instruction(next_result, loop_end_block)?;

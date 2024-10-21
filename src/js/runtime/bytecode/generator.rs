@@ -4450,9 +4450,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         Property::Private(key) => self
                             .writer
                             .get_private_property_instruction(temp, object, key),
-                        Property::Super { key, this_value } => self
-                            .writer
-                            .get_super_property_instruction(temp, object, this_value, key),
+                        Property::Super { key, this_value } => {
+                            self.writer.get_super_property_instruction(
+                                temp,
+                                object,
+                                this_value,
+                                key,
+                                operator_pos,
+                            )
+                        }
                     }
 
                     if !expr.operator.is_logical() {
@@ -5391,6 +5397,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_receiver: bool,
     ) -> EmitResult<GenRegister> {
+        let operand_pos = expr.operator_pos;
+
         if expr.is_computed {
             let key = self.gen_expression(&expr.property)?;
 
@@ -5401,8 +5409,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer
-                .get_super_property_instruction(dest, home_object, receiver, key);
+            self.writer.get_super_property_instruction(
+                dest,
+                home_object,
+                receiver,
+                key,
+                operand_pos,
+            );
 
             Ok(dest)
         } else {

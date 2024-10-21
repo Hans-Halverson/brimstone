@@ -1334,6 +1334,7 @@ define_instructions!(
     GetSuperProperty {
         camel_case: GetSuperPropertyInstruction,
         snake_case: get_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] home_object: Register,

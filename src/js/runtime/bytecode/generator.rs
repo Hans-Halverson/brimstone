@@ -3862,10 +3862,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         for property in &expr.properties {
+            let property_pos = property.loc.start;
+
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
             // arbitrary argv, meaning no property keys are excluded.
             if let ast::PropertyKind::Spread(_) = property.kind {
-                let property_pos = property.loc.start;
                 let source = self.gen_expression(&property.key)?;
                 self.writer.copy_data_properties(
                     object,
@@ -4019,13 +4020,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match key {
                 Property::Computed(key) => {
                     let flags = UInt::new(flags.bits() as u32);
-                    self.writer
-                        .define_property_instruction(object, key, value, flags);
+                    self.writer.define_property_instruction(
+                        object,
+                        key,
+                        value,
+                        flags,
+                        property_pos,
+                    );
                     self.register_allocator.release(key);
                 }
                 Property::Named { constant_index, .. } => {
-                    self.writer
-                        .define_named_property_instruction(object, constant_index, value);
+                    self.writer.define_named_property_instruction(
+                        object,
+                        constant_index,
+                        value,
+                        property_pos,
+                    );
                 }
             }
         }
@@ -7007,6 +7017,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ..
         } = field
         {
+            let name_pos = name.as_ref().loc.start;
+
             // Load the private symbol from the constant table
             let name = self.gen_load_private_symbol(name.as_ref())?;
 
@@ -7027,7 +7039,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let flags = UInt::new(flags.bits() as u32);
 
             self.writer
-                .define_private_property_instruction(target, name, value, flags);
+                .define_private_property_instruction(target, name, value, flags, name_pos);
 
             self.register_allocator.release(value);
             self.register_allocator.release(name);
@@ -7041,6 +7053,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ClassField::PrivateField { field, .. } => field.as_ref(),
             ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
         };
+
+        let field_pos = field_node.loc.start;
 
         // Evaluate the initializer, otherwise field is set to undefined
         let value = if let Some(initializer) = field_node.value.as_deref() {
@@ -7064,8 +7078,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match field {
             ClassField::Named { name, .. } => {
                 let name_constant_index = self.add_wtf8_string_constant(name)?;
-                self.writer
-                    .define_named_property_instruction(target, name_constant_index, value);
+                self.writer.define_named_property_instruction(
+                    target,
+                    name_constant_index,
+                    value,
+                    field_pos,
+                );
             }
             ClassField::Computed { scope_id, scope_index, .. } => {
                 // Load the field name from the current class scope
@@ -7081,7 +7099,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let flags = UInt::new(flags.bits() as u32);
 
                 self.writer
-                    .define_property_instruction(target, name, value, flags);
+                    .define_property_instruction(target, name, value, flags, field_pos);
 
                 self.register_allocator.release(name);
             }
@@ -7093,7 +7111,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let flags = UInt::new(DefinePrivatePropertyFlags::empty().bits() as u32);
 
                 self.writer
-                    .define_private_property_instruction(target, name, value, flags);
+                    .define_private_property_instruction(target, name, value, flags, field_pos);
 
                 self.register_allocator.release(name);
             }

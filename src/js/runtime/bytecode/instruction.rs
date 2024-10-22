@@ -1285,6 +1285,7 @@ define_instructions!(
     DefineProperty {
         camel_case: DefinePropertyInstruction,
         snake_case: define_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,
@@ -1324,6 +1325,7 @@ define_instructions!(
     DefineNamedProperty {
         camel_case: DefineNamedPropertyInstruction,
         snake_case: define_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] name_constant_index: ConstantIndex,
@@ -1426,6 +1428,7 @@ define_instructions!(
     DefinePrivateProperty {
         camel_case: DefinePrivatePropertyInstruction,
         snake_case: define_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,

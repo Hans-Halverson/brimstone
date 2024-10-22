@@ -1,7 +1,10 @@
 var obj = {
+  get foo() {
+    return 1
+  },
   set foo(_) {
     throw new Error();
   }
 };
 
-({ x: obj['fo' + 'o'] } = { x: 1 });
+obj.foo = 1;

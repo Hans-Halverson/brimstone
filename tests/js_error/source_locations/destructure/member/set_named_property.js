@@ -4,4 +4,4 @@ var obj = {
   }
 };
 
-({ x: obj['fo' + 'o'] } = { x: 1 });
+({ x: obj.foo } = { x: 1 });

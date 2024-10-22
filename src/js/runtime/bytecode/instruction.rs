@@ -1311,6 +1311,7 @@ define_instructions!(
     SetNamedProperty {
         camel_case: SetNamedPropertyInstruction,
         snake_case: set_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] name_constant_index: ConstantIndex,

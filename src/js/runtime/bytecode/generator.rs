@@ -4501,6 +4501,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             object,
                             name_constant_index,
                             temp,
+                            member_operator_pos,
                         );
                     }
                     Property::Private(key) => {
@@ -4733,6 +4734,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         object,
                         name_constant_index,
                         modified_temp,
+                        member_operator_pos,
                     );
                 }
                 Property::Private(key) => {
@@ -5023,14 +5025,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Iterator result object holds the yielded value
         let value_constant_index = self.add_string_constant("value")?;
-        self.writer
-            .set_named_property_instruction(iter_result, value_constant_index, temp_value);
+        // No source position needed since instruction cannot throw - it is a set on a fresh object
+        self.writer.set_named_property_instruction(
+            iter_result,
+            value_constant_index,
+            temp_value,
+            NO_POS,
+        );
 
         // Iterator result object is marked as not done
         let done_constant_index = self.add_string_constant("done")?;
         self.writer.load_false_instruction(temp_value);
-        self.writer
-            .set_named_property_instruction(iter_result, done_constant_index, temp_value);
+        // No source position needed since instruction cannot throw - it is a set on a fresh object
+        self.writer.set_named_property_instruction(
+            iter_result,
+            done_constant_index,
+            temp_value,
+            NO_POS,
+        );
 
         // Find the generator register from the stored index
         let generator = Register::local(self.generator_index.unwrap() as usize);
@@ -5886,10 +5898,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         member: &'b ast::MemberExpression,
     ) -> EmitResult<Reference<'b>> {
         let object = self.gen_expression(&member.object)?;
+        let operator_pos = member.operator_pos;
 
         if member.is_computed {
             let property = self.gen_expression(&member.property)?;
-            let operator_pos = member.operator_pos;
             Ok(Reference::new(ReferenceKind::ComputedProperty {
                 object,
                 property,
@@ -5902,7 +5914,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Must be a named access
             let name = member.property.to_id();
             let property = self.add_string_constant(&name.name)?;
-            Ok(Reference::new(ReferenceKind::NamedProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::NamedProperty { object, property, operator_pos }))
         }
     }
 
@@ -5958,9 +5970,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match &reference.kind {
             ReferenceKind::Id(id) => self.gen_store_identifier(id, value, flags),
-            ReferenceKind::NamedProperty { object, property } => {
-                self.writer
-                    .set_named_property_instruction(*object, *property, value);
+            ReferenceKind::NamedProperty { object, property, operator_pos } => {
+                self.writer.set_named_property_instruction(
+                    *object,
+                    *property,
+                    value,
+                    *operator_pos,
+                );
 
                 self.register_allocator.release(*object);
 
@@ -9200,6 +9216,7 @@ enum ReferenceKind<'a> {
     NamedProperty {
         object: GenRegister,
         property: GenConstantIndex,
+        operator_pos: Pos,
     },
     ComputedProperty {
         object: GenRegister,

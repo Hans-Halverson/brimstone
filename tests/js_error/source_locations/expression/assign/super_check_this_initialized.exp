@@ -1,0 +1,3 @@
+ReferenceError: this is not initialized
+  at C (tests/js_error/source_locations/expression/assign/super_check_this_initialized.js:7:5)
+  at <global> (tests/js_error/source_locations/expression/assign/super_check_this_initialized.js:11:1)

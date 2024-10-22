@@ -1646,6 +1646,7 @@ define_instructions!(
     CheckThisInitialized {
         camel_case: CheckThisInitializedInstruction,
         snake_case: check_this_initialized_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }

@@ -993,6 +993,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// constructor.
     class_fields: ClassFieldsInitializer,
 
+    /// End position of the derived constructor, if this is a derived constructor. Used to report
+    /// errors if the super constructor was not called.
+    derived_constructor_end_pos: Option<Pos>,
+
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
     exception_handler_builder: ExceptionHandlersBuilder,
@@ -1010,6 +1014,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<Wtf8String>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
+        derived_constructor_end_pos: Option<Pos>,
         class_fields: ClassFieldsInitializer,
         num_parameters: u32,
         function_length: u32,
@@ -1051,6 +1056,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             statement_completion_dest: None,
             has_assign_expr: false,
             class_fields,
+            derived_constructor_end_pos,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
@@ -1110,6 +1116,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|id| Wtf8String::from_str(&id.name))
             .or_else(|| default_name.cloned());
 
+        let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
+            Some(func.loc.end)
+        } else {
+            None
+        };
+
         Ok(Self::new(
             cx,
             scope_tree,
@@ -1118,6 +1130,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             source_file,
             source_range,
+            derived_constructor_end_pos,
             class_fields,
             num_parameters as u32,
             function_length as u32,
@@ -1157,6 +1170,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(Wtf8String::from_str(name)),
             source_file,
             program.loc.to_range(),
+            /* derived_constructor_end_pos */ None,
             ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -1191,6 +1205,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(name.clone()),
             source_file,
             source_range,
+            /* derived_constructor_end_pos */ None,
             class_fields,
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -1237,6 +1252,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(Wtf8String::from_str(name)),
             source_file,
             source_range,
+            /* derived_constructor_end_pos */ None,
             ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -2844,12 +2860,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ThisExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_load_this(expr.scope, dest)
+        self.gen_load_this(expr.scope, expr.loc.start, dest)
     }
 
     fn gen_load_this(
         &mut self,
         scope: Option<AstPtr<AstScopeNode>>,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let mut needs_init_check = false;
@@ -2884,7 +2901,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if this was initialized
         if needs_init_check {
-            self.writer.check_this_initialized_instruction(this_value);
+            self.writer
+                .check_this_initialized_instruction(this_value, pos);
         }
 
         Ok(this_value)
@@ -4404,7 +4422,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Emit the property itself, which may be a computed expression or literal name
                 let property = if let ast::Pattern::SuperMember(member) = member {
-                    let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+                    let super_pos = member.loc.start;
+                    let this_value =
+                        self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
                     if member.is_computed {
                         let key = self.gen_expression(&member.property)?;
@@ -4668,7 +4688,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             };
 
             let property = if let ast::Expression::SuperMember(member) = member {
-                let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+                let super_pos = member.loc.start;
+                let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
                 if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
@@ -5444,8 +5465,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
     ) -> EmitResult<GenRegister> {
+        let super_pos = expr.loc.start;
+
         // Load `this` value and home object
-        let this_value = self.gen_load_this(expr.this_scope, ExprDest::Any)?;
+        let this_value = self.gen_load_this(expr.this_scope, super_pos, ExprDest::Any)?;
         let home_object = self.gen_load_home_object(expr, ExprDest::Any)?;
 
         // Store `this` value in the CallReceiver if one is provided
@@ -5973,8 +5996,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         member: &'b ast::SuperMemberExpression,
     ) -> EmitResult<Reference<'b>> {
+        let super_pos = member.loc.start;
+
         let home_object = self.gen_load_home_object(member, ExprDest::Any)?;
-        let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+        let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
         let property = if member.is_computed {
             self.gen_expression(&member.property)?
@@ -8710,6 +8735,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Ok(Register::this())
                 };
 
+                // CheckThisInitialized instructions point to the end of the current function.
+                // Must adjust from one beyond end of function to the end of the function.
+                let check_this_pos = self
+                    .derived_constructor_end_pos
+                    .map(|pos| pos.saturating_sub(1))
+                    .unwrap_or(NO_POS);
+
                 if let Some(return_arg) = return_arg {
                     let return_value = self.register_allocator.allocate()?;
                     let return_block = self.new_block();
@@ -8722,7 +8754,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.write_jump_not_undefined_instruction(return_arg, return_block)?;
 
                     let this_value = gen_this_value(self, ExprDest::Fixed(return_value))?;
-                    self.writer.check_this_initialized_instruction(this_value);
+                    self.writer
+                        .check_this_initialized_instruction(this_value, check_this_pos);
                     self.write_mov_instruction(return_value, this_value);
 
                     self.start_block(return_block);
@@ -8734,7 +8767,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // If no return argument is provided then derived constructor returns `this`.
                     // Must first assert that `this` was initialized.
                     let this_value = gen_this_value(self, ExprDest::Any)?;
-                    self.writer.check_this_initialized_instruction(this_value);
+                    self.writer
+                        .check_this_initialized_instruction(this_value, check_this_pos);
                     self.writer.ret_instruction(this_value);
                     self.register_allocator.release(this_value);
 

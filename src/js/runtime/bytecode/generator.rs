@@ -1611,9 +1611,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
+        let func_pos = func.loc.start;
+
         // Base constructors initialize class fields immediately
         if !self.is_derived_constructor() {
-            self.gen_initialize_class_fields(Register::this(), func.loc.start)?;
+            self.gen_initialize_class_fields(Register::this(), func_pos)?;
         }
 
         // Async functions reserve a register for the promise object
@@ -1796,7 +1798,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // If function is a generator then run GeneratorStart once body is ready to be
                 // evaluated.
                 if let Some(generator_reg) = generator_reg {
-                    self.writer.generator_start_instruction(generator_reg);
+                    self.writer
+                        .generator_start_instruction(generator_reg, func_pos);
                 }
 
                 // Continue to the function body
@@ -5826,9 +5829,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
+        let import_pos = expr.loc.start;
 
         let specifier = self.gen_expression(&expr.source)?;
-        self.writer.dynamic_import_instruction(dest, specifier);
+        self.writer
+            .dynamic_import_instruction(dest, specifier, import_pos);
 
         self.register_allocator.release(specifier);
 

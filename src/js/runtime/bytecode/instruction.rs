@@ -1816,6 +1816,7 @@ define_instructions!(
     GeneratorStart {
         camel_case: GeneratorStartInstruction,
         snake_case: generator_start_instruction,
+        can_throw: true,
         operands: {
             [0] generator: Register,
         }
@@ -1902,6 +1903,7 @@ define_instructions!(
     DynamicImport {
         camel_case: DynamicImportInstruction,
         snake_case: dynamic_import_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] specifier: Register,

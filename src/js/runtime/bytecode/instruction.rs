@@ -1273,6 +1273,7 @@ define_instructions!(
     SetProperty {
         camel_case: SetPropertyInstruction,
         snake_case: set_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,

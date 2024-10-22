@@ -1364,6 +1364,7 @@ define_instructions!(
     SetSuperProperty {
         camel_case: SetSuperPropertyInstruction,
         snake_case: set_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] home_object: Register,
             [1] receiver: Register,

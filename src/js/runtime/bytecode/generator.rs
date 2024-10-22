@@ -4510,8 +4510,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         self.register_allocator.release(key);
                     }
                     Property::Super { key, this_value } => {
-                        self.writer
-                            .set_super_property_instruction(object, this_value, key, temp);
+                        self.writer.set_super_property_instruction(
+                            object,
+                            this_value,
+                            key,
+                            temp,
+                            member_operator_pos,
+                        );
                         self.register_allocator.release(key);
                         self.register_allocator.release(this_value);
                     }
@@ -4748,6 +4753,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         this_value,
                         key,
                         modified_temp,
+                        member_operator_pos,
                     );
                     self.register_allocator.release(key);
                     self.register_allocator.release(this_value);
@@ -5943,6 +5949,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             home_object,
             this_value,
             property,
+            operator_pos: member.operator_pos,
         }))
     }
 
@@ -6000,12 +6007,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok(())
             }
-            ReferenceKind::SuperProperty { home_object, this_value, property } => {
+            ReferenceKind::SuperProperty { home_object, this_value, property, operator_pos } => {
                 self.writer.set_super_property_instruction(
                     *home_object,
                     *this_value,
                     *property,
                     value,
+                    *operator_pos,
                 );
 
                 self.register_allocator.release(*property);
@@ -9231,6 +9239,7 @@ enum ReferenceKind<'a> {
         home_object: GenRegister,
         this_value: GenRegister,
         property: GenRegister,
+        operator_pos: Pos,
     },
     ArrayPattern(&'a ast::ArrayPattern),
     ObjectPattern(&'a ast::ObjectPattern),

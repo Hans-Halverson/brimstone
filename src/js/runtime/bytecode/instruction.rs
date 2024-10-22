@@ -1413,6 +1413,7 @@ define_instructions!(
     SetPrivateProperty {
         camel_case: SetPrivatePropertyInstruction,
         snake_case: set_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,

@@ -4505,8 +4505,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         );
                     }
                     Property::Private(key) => {
-                        self.writer
-                            .set_private_property_instruction(object, key, temp);
+                        self.writer.set_private_property_instruction(
+                            object,
+                            key,
+                            temp,
+                            member_operator_pos,
+                        );
                         self.register_allocator.release(key);
                     }
                     Property::Super { key, this_value } => {
@@ -4743,8 +4747,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     );
                 }
                 Property::Private(key) => {
-                    self.writer
-                        .set_private_property_instruction(object, key, modified_temp);
+                    self.writer.set_private_property_instruction(
+                        object,
+                        key,
+                        modified_temp,
+                        member_operator_pos,
+                    );
                     self.register_allocator.release(key);
                 }
                 Property::Super { key, this_value } => {
@@ -5915,7 +5923,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }))
         } else if member.is_private {
             let property = self.gen_load_private_symbol(member.property.to_id())?;
-            Ok(Reference::new(ReferenceKind::PrivateProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::PrivateProperty {
+                object,
+                property,
+                operator_pos,
+            }))
         } else {
             // Must be a named access
             let name = member.property.to_id();
@@ -5998,9 +6010,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok(())
             }
-            ReferenceKind::PrivateProperty { object, property } => {
-                self.writer
-                    .set_private_property_instruction(*object, *property, value);
+            ReferenceKind::PrivateProperty { object, property, operator_pos } => {
+                self.writer.set_private_property_instruction(
+                    *object,
+                    *property,
+                    value,
+                    *operator_pos,
+                );
 
                 self.register_allocator.release(*property);
                 self.register_allocator.release(*object);
@@ -9234,6 +9250,7 @@ enum ReferenceKind<'a> {
     PrivateProperty {
         object: GenRegister,
         property: GenRegister,
+        operator_pos: Pos,
     },
     SuperProperty {
         home_object: GenRegister,

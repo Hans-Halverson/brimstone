@@ -1,0 +1,4 @@
+Error: 
+  at set #foo (tests/js_error/source_locations/destructure/member/set_private_property.js:3:11)
+  at test (tests/js_error/source_locations/destructure/member/set_private_property.js:7:15)
+  at <global> (tests/js_error/source_locations/destructure/member/set_private_property.js:12:1)

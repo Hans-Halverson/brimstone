@@ -1380,6 +1380,7 @@ define_instructions!(
     DeleteProperty {
         camel_case: DeletePropertyInstruction,
         snake_case: delete_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1392,6 +1393,7 @@ define_instructions!(
     DeleteBinding {
         camel_case: DeleteBindingInstruction,
         snake_case: delete_binding_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_constant_index: ConstantIndex,

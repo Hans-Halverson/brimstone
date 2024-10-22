@@ -3046,7 +3046,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.register_allocator.release(object);
                 let dest = self.allocate_destination(dest)?;
 
-                self.writer.delete_property_instruction(dest, object, key);
+                self.writer
+                    .delete_property_instruction(dest, object, key, delete_pos);
 
                 Ok(dest)
             }
@@ -3083,7 +3084,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let dest = self.allocate_destination(dest)?;
 
                 // Write the delete property instruction
-                self.writer.delete_property_instruction(dest, object, key);
+                self.writer
+                    .delete_property_instruction(dest, object, key, delete_pos);
                 self.write_jump_instruction(join_block)?;
 
                 // If object is nullish (or short circuits), then entire delete will evaluate to
@@ -3117,7 +3119,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let name_constant_index = self.add_string_constant(&id.name)?;
                 self.writer
-                    .delete_binding_instruction(dest, name_constant_index);
+                    .delete_binding_instruction(dest, name_constant_index, delete_pos);
 
                 Ok(dest)
             }

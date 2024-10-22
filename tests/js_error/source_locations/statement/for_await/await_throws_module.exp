@@ -1,0 +1,6 @@
+Error: 
+  at get (tests/js_error/source_locations/statement/for_await/await_throws_module.js:2:63)
+  at foo (tests/js_error/source_locations/statement/for_await/await_throws_module.js:15:20)
+  at <module> (tests/js_error/source_locations/statement/for_await/await_throws_module.js:18:7)
+  at <anonymous> (<native>)
+  at <anonymous> (<native>)

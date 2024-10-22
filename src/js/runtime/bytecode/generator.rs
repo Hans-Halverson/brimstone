@@ -4978,10 +4978,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let argument = self.gen_expression(&expr.argument)?;
-        self.gen_await(argument, dest)
+        self.gen_await(argument, expr.loc.start, dest)
     }
 
-    fn gen_await(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+    fn gen_await(
+        &mut self,
+        value: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         // Only release if destination is not the same as the source register
         if !matches!(dest, ExprDest::Fixed(dest) if dest == value) {
             self.register_allocator.release(value);
@@ -4998,8 +5003,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Register::local(self.generator_index.unwrap() as usize)
         };
 
-        self.writer
-            .await_instruction(completion_value, completion_type, return_promise, value);
+        self.writer.await_instruction(
+            completion_value,
+            completion_type,
+            return_promise,
+            value,
+            pos,
+        );
 
         // Check the completion type, and if normal then continue execution using the completion
         // value as the value of the await expression.
@@ -5033,7 +5043,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if expr.is_delegate {
             self.gen_yield_star(yield_value, pos, dest)
         } else if self.is_async() {
-            self.gen_async_yield(yield_value, dest)
+            self.gen_async_yield(yield_value, pos, dest)
         } else {
             self.gen_yield(yield_value, dest)
         }
@@ -5107,8 +5117,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(completion_value)
     }
 
-    fn gen_async_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
-        let awaited_value = self.gen_await(value, ExprDest::Any)?;
+    fn gen_async_yield(
+        &mut self,
+        value: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let awaited_value = self.gen_await(value, pos, ExprDest::Any)?;
 
         self.register_allocator.release(awaited_value);
         let completion_value = self.allocate_destination(dest)?;
@@ -5134,7 +5149,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Must be a return completion if execution falls through. Must await the completion and
         // then return it.
-        self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+        self.gen_await(completion_value, pos, ExprDest::Fixed(completion_value))?;
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
 
         // Otherwise is a throw completion
@@ -5203,7 +5218,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5246,7 +5261,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_not_undefined_instruction(return_method, has_return_method_block)?;
 
         if self.is_async() {
-            self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+            self.gen_await(completion_value, pos, ExprDest::Fixed(completion_value))?;
         }
 
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
@@ -5264,7 +5279,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(return_method);
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5327,7 +5342,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(throw_method);
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5394,6 +5409,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 completion_type,
                 generator,
                 completion_value,
+                pos,
             );
 
             // If completion is now a throw, use it directly as the new completion for next
@@ -7745,7 +7761,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 stmt.in_of_pos,
             );
 
-            let awaited_result = self.gen_await(iterator_result, ExprDest::Any)?;
+            let awaited_result = self.gen_await(iterator_result, stmt.in_of_pos, ExprDest::Any)?;
             self.register_allocator.release(awaited_result);
 
             self.writer
@@ -8027,7 +8043,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_false_instruction(has_return_method, join_block)?;
 
         // Otherwise there was a return result so await it
-        let awaited_return_result = self.gen_await(return_result, ExprDest::Any)?;
+        let awaited_return_result = self.gen_await(return_result, pos, ExprDest::Any)?;
 
         // And then finish the AsyncIteratorClosure using the stored intermediate results
         self.writer
@@ -8658,7 +8674,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Async generators must await the return argument before returning it
         if self.is_async() && self.is_generator() {
-            return_arg = self.gen_await(return_arg, ExprDest::Any)?;
+            let return_pos = stmt.loc.start;
+            return_arg = self.gen_await(return_arg, return_pos, ExprDest::Any)?;
         }
 
         self.gen_return(Some(return_arg), derived_constructor_scope)?;

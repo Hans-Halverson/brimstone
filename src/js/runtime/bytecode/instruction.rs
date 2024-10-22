@@ -1862,6 +1862,7 @@ define_instructions!(
     Await {
         camel_case: AwaitInstruction,
         snake_case: await_instruction,
+        can_throw: true,
         operands: {
             [0] completion_value_dest: Register,
             [1] completion_type_dest: Register,

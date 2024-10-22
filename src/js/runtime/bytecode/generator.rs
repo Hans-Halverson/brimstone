@@ -993,6 +993,10 @@ pub struct BytecodeFunctionGenerator<'a> {
     /// constructor.
     class_fields: ClassFieldsInitializer,
 
+    /// End position of the derived constructor, if this is a derived constructor. Used to report
+    /// errors if the super constructor was not called.
+    derived_constructor_end_pos: Option<Pos>,
+
     constant_table_builder: ConstantTableBuilder,
     register_allocator: TemporaryRegisterAllocator,
     exception_handler_builder: ExceptionHandlersBuilder,
@@ -1010,6 +1014,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         name: Option<Wtf8String>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
+        derived_constructor_end_pos: Option<Pos>,
         class_fields: ClassFieldsInitializer,
         num_parameters: u32,
         function_length: u32,
@@ -1051,6 +1056,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             statement_completion_dest: None,
             has_assign_expr: false,
             class_fields,
+            derived_constructor_end_pos,
             constant_table_builder: ConstantTableBuilder::new(),
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
@@ -1110,6 +1116,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|id| Wtf8String::from_str(&id.name))
             .or_else(|| default_name.cloned());
 
+        let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
+            Some(func.loc.end)
+        } else {
+            None
+        };
+
         Ok(Self::new(
             cx,
             scope_tree,
@@ -1118,6 +1130,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             source_file,
             source_range,
+            derived_constructor_end_pos,
             class_fields,
             num_parameters as u32,
             function_length as u32,
@@ -1157,6 +1170,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(Wtf8String::from_str(name)),
             source_file,
             program.loc.to_range(),
+            /* derived_constructor_end_pos */ None,
             ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -1191,6 +1205,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(name.clone()),
             source_file,
             source_range,
+            /* derived_constructor_end_pos */ None,
             class_fields,
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -1237,6 +1252,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Some(Wtf8String::from_str(name)),
             source_file,
             source_range,
+            /* derived_constructor_end_pos */ None,
             ClassFieldsInitializer::none(),
             /* num_parameters */ 0,
             /* function_length */ 0,
@@ -1611,9 +1627,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the bytecode for a function.
     fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
+        let func_pos = func.loc.start;
+
         // Base constructors initialize class fields immediately
         if !self.is_derived_constructor() {
-            self.gen_initialize_class_fields(Register::this(), func.loc.start)?;
+            self.gen_initialize_class_fields(Register::this(), func_pos)?;
         }
 
         // Async functions reserve a register for the promise object
@@ -1796,7 +1814,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // If function is a generator then run GeneratorStart once body is ready to be
                 // evaluated.
                 if let Some(generator_reg) = generator_reg {
-                    self.writer.generator_start_instruction(generator_reg);
+                    self.writer
+                        .generator_start_instruction(generator_reg, func_pos);
                 }
 
                 // Continue to the function body
@@ -2841,12 +2860,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ThisExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_load_this(expr.scope, dest)
+        self.gen_load_this(expr.scope, expr.loc.start, dest)
     }
 
     fn gen_load_this(
         &mut self,
         scope: Option<AstPtr<AstScopeNode>>,
+        pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let mut needs_init_check = false;
@@ -2881,7 +2901,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if this was initialized
         if needs_init_check {
-            self.writer.check_this_initialized_instruction(this_value);
+            self.writer
+                .check_this_initialized_instruction(this_value, pos);
         }
 
         Ok(this_value)
@@ -4401,7 +4422,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Emit the property itself, which may be a computed expression or literal name
                 let property = if let ast::Pattern::SuperMember(member) = member {
-                    let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+                    let super_pos = member.loc.start;
+                    let this_value =
+                        self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
                     if member.is_computed {
                         let key = self.gen_expression(&member.property)?;
@@ -4665,7 +4688,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             };
 
             let property = if let ast::Expression::SuperMember(member) = member {
-                let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+                let super_pos = member.loc.start;
+                let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
                 if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
@@ -4975,10 +4999,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let argument = self.gen_expression(&expr.argument)?;
-        self.gen_await(argument, dest)
+        self.gen_await(argument, expr.loc.start, dest)
     }
 
-    fn gen_await(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+    fn gen_await(
+        &mut self,
+        value: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         // Only release if destination is not the same as the source register
         if !matches!(dest, ExprDest::Fixed(dest) if dest == value) {
             self.register_allocator.release(value);
@@ -4995,8 +5024,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Register::local(self.generator_index.unwrap() as usize)
         };
 
-        self.writer
-            .await_instruction(completion_value, completion_type, return_promise, value);
+        self.writer.await_instruction(
+            completion_value,
+            completion_type,
+            return_promise,
+            value,
+            pos,
+        );
 
         // Check the completion type, and if normal then continue execution using the completion
         // value as the value of the await expression.
@@ -5030,7 +5064,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if expr.is_delegate {
             self.gen_yield_star(yield_value, pos, dest)
         } else if self.is_async() {
-            self.gen_async_yield(yield_value, dest)
+            self.gen_async_yield(yield_value, pos, dest)
         } else {
             self.gen_yield(yield_value, dest)
         }
@@ -5104,8 +5138,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(completion_value)
     }
 
-    fn gen_async_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
-        let awaited_value = self.gen_await(value, ExprDest::Any)?;
+    fn gen_async_yield(
+        &mut self,
+        value: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let awaited_value = self.gen_await(value, pos, ExprDest::Any)?;
 
         self.register_allocator.release(awaited_value);
         let completion_value = self.allocate_destination(dest)?;
@@ -5131,7 +5170,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Must be a return completion if execution falls through. Must await the completion and
         // then return it.
-        self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+        self.gen_await(completion_value, pos, ExprDest::Fixed(completion_value))?;
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
 
         // Otherwise is a throw completion
@@ -5200,7 +5239,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5243,7 +5282,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_not_undefined_instruction(return_method, has_return_method_block)?;
 
         if self.is_async() {
-            self.gen_await(completion_value, ExprDest::Fixed(completion_value))?;
+            self.gen_await(completion_value, pos, ExprDest::Fixed(completion_value))?;
         }
 
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
@@ -5261,7 +5300,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(return_method);
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5324,7 +5363,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(throw_method);
 
         if self.is_async() {
-            self.gen_await(iterator_result, ExprDest::Fixed(iterator_result))?;
+            self.gen_await(iterator_result, pos, ExprDest::Fixed(iterator_result))?;
         }
 
         // Check if the iterator result is valid then check if iterator is done
@@ -5391,6 +5430,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 completion_type,
                 generator,
                 completion_value,
+                pos,
             );
 
             // If completion is now a throw, use it directly as the new completion for next
@@ -5425,8 +5465,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
     ) -> EmitResult<GenRegister> {
+        let super_pos = expr.loc.start;
+
         // Load `this` value and home object
-        let this_value = self.gen_load_this(expr.this_scope, ExprDest::Any)?;
+        let this_value = self.gen_load_this(expr.this_scope, super_pos, ExprDest::Any)?;
         let home_object = self.gen_load_home_object(expr, ExprDest::Any)?;
 
         // Store `this` value in the CallReceiver if one is provided
@@ -5826,9 +5868,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
+        let import_pos = expr.loc.start;
 
         let specifier = self.gen_expression(&expr.source)?;
-        self.writer.dynamic_import_instruction(dest, specifier);
+        self.writer
+            .dynamic_import_instruction(dest, specifier, import_pos);
 
         self.register_allocator.release(specifier);
 
@@ -5952,8 +5996,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         member: &'b ast::SuperMemberExpression,
     ) -> EmitResult<Reference<'b>> {
+        let super_pos = member.loc.start;
+
         let home_object = self.gen_load_home_object(member, ExprDest::Any)?;
-        let this_value = self.gen_load_this(member.this_scope, ExprDest::Any)?;
+        let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
 
         let property = if member.is_computed {
             self.gen_expression(&member.property)?
@@ -7740,7 +7786,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 stmt.in_of_pos,
             );
 
-            let awaited_result = self.gen_await(iterator_result, ExprDest::Any)?;
+            let awaited_result = self.gen_await(iterator_result, stmt.in_of_pos, ExprDest::Any)?;
             self.register_allocator.release(awaited_result);
 
             self.writer
@@ -8022,7 +8068,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_false_instruction(has_return_method, join_block)?;
 
         // Otherwise there was a return result so await it
-        let awaited_return_result = self.gen_await(return_result, ExprDest::Any)?;
+        let awaited_return_result = self.gen_await(return_result, pos, ExprDest::Any)?;
 
         // And then finish the AsyncIteratorClosure using the stored intermediate results
         self.writer
@@ -8653,7 +8699,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Async generators must await the return argument before returning it
         if self.is_async() && self.is_generator() {
-            return_arg = self.gen_await(return_arg, ExprDest::Any)?;
+            let return_pos = stmt.loc.start;
+            return_arg = self.gen_await(return_arg, return_pos, ExprDest::Any)?;
         }
 
         self.gen_return(Some(return_arg), derived_constructor_scope)?;
@@ -8688,6 +8735,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     Ok(Register::this())
                 };
 
+                // CheckThisInitialized instructions point to the end of the current function.
+                // Must adjust from one beyond end of function to the end of the function.
+                let check_this_pos = self
+                    .derived_constructor_end_pos
+                    .map(|pos| pos.saturating_sub(1))
+                    .unwrap_or(NO_POS);
+
                 if let Some(return_arg) = return_arg {
                     let return_value = self.register_allocator.allocate()?;
                     let return_block = self.new_block();
@@ -8700,7 +8754,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.write_jump_not_undefined_instruction(return_arg, return_block)?;
 
                     let this_value = gen_this_value(self, ExprDest::Fixed(return_value))?;
-                    self.writer.check_this_initialized_instruction(this_value);
+                    self.writer
+                        .check_this_initialized_instruction(this_value, check_this_pos);
                     self.write_mov_instruction(return_value, this_value);
 
                     self.start_block(return_block);
@@ -8712,7 +8767,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // If no return argument is provided then derived constructor returns `this`.
                     // Must first assert that `this` was initialized.
                     let this_value = gen_this_value(self, ExprDest::Any)?;
-                    self.writer.check_this_initialized_instruction(this_value);
+                    self.writer
+                        .check_this_initialized_instruction(this_value, check_this_pos);
                     self.writer.ret_instruction(this_value);
                     self.register_allocator.release(this_value);
 

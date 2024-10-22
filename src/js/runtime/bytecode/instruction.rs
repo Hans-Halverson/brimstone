@@ -1646,6 +1646,7 @@ define_instructions!(
     CheckThisInitialized {
         camel_case: CheckThisInitializedInstruction,
         snake_case: check_this_initialized_instruction,
+        can_throw: true,
         operands: {
             [0] value: Register,
         }
@@ -1816,6 +1817,7 @@ define_instructions!(
     GeneratorStart {
         camel_case: GeneratorStartInstruction,
         snake_case: generator_start_instruction,
+        can_throw: true,
         operands: {
             [0] generator: Register,
         }
@@ -1861,6 +1863,7 @@ define_instructions!(
     Await {
         camel_case: AwaitInstruction,
         snake_case: await_instruction,
+        can_throw: true,
         operands: {
             [0] completion_value_dest: Register,
             [1] completion_type_dest: Register,
@@ -1902,6 +1905,7 @@ define_instructions!(
     DynamicImport {
         camel_case: DynamicImportInstruction,
         snake_case: dynamic_import_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] specifier: Register,

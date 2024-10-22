@@ -1,0 +1,4 @@
+Error: 
+  at set foo (tests/js_error/source_locations/expression/assign/set_super_property.js:3:11)
+  at test (tests/js_error/source_locations/expression/assign/set_super_property.js:9:10)
+  at <global> (tests/js_error/source_locations/expression/assign/set_super_property.js:14:1)

@@ -2286,9 +2286,11 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<P<Expression>> {
         match &self.token {
             Token::Period => {
+                let operator_pos = self.current_start_pos();
                 self.advance()?;
 
-                let member_expr = self.parse_property_member_expression(expr, start_pos, false)?;
+                let member_expr =
+                    self.parse_property_member_expression(expr, start_pos, operator_pos, false)?;
 
                 self.parse_call_expression(member_expr, start_pos, allow_call, in_optional_chain)
             }
@@ -2333,6 +2335,7 @@ impl<'a> Parser<'a> {
             }
             // Start of an optional chain
             Token::QuestionDot => {
+                let operator_pos = self.current_start_pos();
                 self.advance()?;
 
                 match self.token {
@@ -2374,8 +2377,14 @@ impl<'a> Parser<'a> {
                     }
                     // Optional simple property access
                     _ => {
-                        let member_expr =
-                            self.parse_property_member_expression(expr, start_pos, true)?;
+                        // Operator pos should point to the `.`, not the start of `?.`
+                        let operator_pos = operator_pos + 1;
+                        let member_expr = self.parse_property_member_expression(
+                            expr,
+                            start_pos,
+                            operator_pos,
+                            true,
+                        )?;
 
                         let full_expr =
                             self.parse_call_expression(member_expr, start_pos, allow_call, true)?;
@@ -2398,6 +2407,7 @@ impl<'a> Parser<'a> {
         &mut self,
         object: P<Expression>,
         start_pos: Pos,
+        operator_pos: Pos,
         is_optional: bool,
     ) -> ParseResult<P<Expression>> {
         let is_private = self.token == Token::Hash;
@@ -2425,6 +2435,7 @@ impl<'a> Parser<'a> {
             is_computed: false,
             is_optional,
             is_private,
+            operator_pos,
         })))
     }
 
@@ -2434,6 +2445,8 @@ impl<'a> Parser<'a> {
         start_pos: Pos,
         is_optional: bool,
     ) -> ParseResult<P<Expression>> {
+        let operator_pos = self.current_start_pos();
+
         self.advance()?;
         let property = self.parse_expression()?;
         self.expect(Token::RightBracket)?;
@@ -2446,6 +2459,7 @@ impl<'a> Parser<'a> {
             is_computed: true,
             is_optional,
             is_private: false,
+            operator_pos,
         })))
     }
 
@@ -2497,7 +2511,9 @@ impl<'a> Parser<'a> {
 
         match self.token {
             Token::Period => {
+                let operator_pos = self.current_start_pos();
                 self.advance()?;
+
                 let id = match self.parse_identifier_name()? {
                     Some(id) => id,
                     None => return self.error_unexpected_token(self.loc, &self.token),
@@ -2508,18 +2524,25 @@ impl<'a> Parser<'a> {
                 Ok(p(Expression::SuperMember(SuperMemberExpression::new(
                     loc,
                     super_loc,
+                    operator_pos,
                     p(Expression::Id(id)),
                     /* is_computed */ false,
                 ))))
             }
             Token::LeftBracket => {
+                let operator_pos = self.current_start_pos();
                 self.advance()?;
+
                 let property = self.parse_expression()?;
                 self.expect(Token::RightBracket)?;
                 let loc = self.mark_loc(start_pos);
 
                 Ok(p(Expression::SuperMember(SuperMemberExpression::new(
-                    loc, super_loc, property, /* is_computed */ true,
+                    loc,
+                    super_loc,
+                    operator_pos,
+                    property,
+                    /* is_computed */ true,
                 ))))
             }
             Token::LeftParen if allow_call => {

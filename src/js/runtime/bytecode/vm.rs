@@ -3646,7 +3646,7 @@ impl VM {
             Property::private_setter(self.cx(), value.as_object())
         };
 
-        object.property_property_add(self.cx(), key, property)
+        object.private_property_add(self.cx(), key, property)
     }
 
     #[inline]

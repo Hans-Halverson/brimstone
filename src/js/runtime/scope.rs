@@ -1,7 +1,7 @@
 use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, set_uninit};
 
 use super::{
-    abstract_operations::{has_own_property, has_property},
+    abstract_operations::has_property,
     boxed_value::BoxedValue,
     collections::InlineArray,
     error::{err_assign_constant, err_cannot_set_property},
@@ -350,7 +350,7 @@ impl Handle<Scope> {
                 let key = name.cast::<PropertyKey>();
 
                 // If the property is found, delete it
-                if has_own_property(cx, object_handle, key)? {
+                if has_property(cx, object_handle, key)? {
                     return object_handle.delete(cx, key);
                 }
             }

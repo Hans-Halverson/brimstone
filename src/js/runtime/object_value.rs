@@ -389,7 +389,7 @@ impl Handle<ObjectValue> {
 
     /// PrivateFieldAdd (https://tc39.es/ecma262/#sec-privatefieldadd)
     /// PrivateMethodOrAccessorAdd (https://tc39.es/ecma262/#sec-privatemethodoraccessoradd)
-    pub fn property_property_add(
+    pub fn private_property_add(
         &mut self,
         cx: Context,
         private_name: Handle<SymbolValue>,

@@ -3046,7 +3046,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.register_allocator.release(object);
                 let dest = self.allocate_destination(dest)?;
 
-                self.writer.delete_property_instruction(dest, object, key);
+                self.writer
+                    .delete_property_instruction(dest, object, key, delete_pos);
 
                 Ok(dest)
             }
@@ -3083,7 +3084,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let dest = self.allocate_destination(dest)?;
 
                 // Write the delete property instruction
-                self.writer.delete_property_instruction(dest, object, key);
+                self.writer
+                    .delete_property_instruction(dest, object, key, delete_pos);
                 self.write_jump_instruction(join_block)?;
 
                 // If object is nullish (or short circuits), then entire delete will evaluate to
@@ -3117,7 +3119,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let name_constant_index = self.add_string_constant(&id.name)?;
                 self.writer
-                    .delete_binding_instruction(dest, name_constant_index);
+                    .delete_binding_instruction(dest, name_constant_index, delete_pos);
 
                 Ok(dest)
             }
@@ -3862,10 +3864,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         for property in &expr.properties {
+            let property_pos = property.loc.start;
+
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
             // arbitrary argv, meaning no property keys are excluded.
             if let ast::PropertyKind::Spread(_) = property.kind {
-                let property_pos = property.loc.start;
                 let source = self.gen_expression(&property.key)?;
                 self.writer.copy_data_properties(
                     object,
@@ -4019,13 +4022,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             match key {
                 Property::Computed(key) => {
                     let flags = UInt::new(flags.bits() as u32);
-                    self.writer
-                        .define_property_instruction(object, key, value, flags);
+                    self.writer.define_property_instruction(
+                        object,
+                        key,
+                        value,
+                        flags,
+                        property_pos,
+                    );
                     self.register_allocator.release(key);
                 }
                 Property::Named { constant_index, .. } => {
-                    self.writer
-                        .define_named_property_instruction(object, constant_index, value);
+                    self.writer.define_named_property_instruction(
+                        object,
+                        constant_index,
+                        value,
+                        property_pos,
+                    );
                 }
             }
         }
@@ -4122,6 +4134,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_object: bool,
     ) -> EmitResult<GenRegister> {
+        let operator_pos = expr.operator_pos;
+
         if expr.is_computed {
             let key = self.gen_expression(&expr.property)?;
 
@@ -4131,7 +4145,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer.get_property_instruction(dest, object, key);
+            self.writer
+                .get_property_instruction(dest, object, key, operator_pos);
 
             Ok(dest)
         } else if expr.is_private {
@@ -4144,7 +4159,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let dest = self.allocate_destination(dest)?;
             self.writer
-                .get_private_property_instruction(dest, object, key);
+                .get_private_property_instruction(dest, object, key, operator_pos);
 
             Ok(dest)
         } else {
@@ -4157,8 +4172,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer
-                .get_named_property_instruction(dest, object, name_constant_index);
+            self.writer.get_named_property_instruction(
+                dest,
+                object,
+                name_constant_index,
+                operator_pos,
+            );
 
             Ok(dest)
         }
@@ -4368,10 +4387,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let temp = self.allocate_destination(temp_dest)?;
 
                 // Evaluate the object expression, or find the home object if `super`
-                let object = match member {
-                    ast::Pattern::Member(member) => self.gen_expression(&member.object)?,
+                let (object, member_operator_pos) = match member {
+                    ast::Pattern::Member(member) => {
+                        let object = self.gen_expression(&member.object)?;
+                        (object, member.operator_pos)
+                    }
                     ast::Pattern::SuperMember(member) => {
-                        self.gen_load_home_object(member, ExprDest::Any)?
+                        let object = self.gen_load_home_object(member, ExprDest::Any)?;
+                        (object, member.operator_pos)
                     }
                     _ => unreachable!("must be a member or super member pattern"),
                 };
@@ -4424,18 +4447,35 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // For operator assignments the old value is placed in the dest register, then
                     // overwritten with the result of the operator.
                     match property {
-                        Property::Computed(key) => {
-                            self.writer.get_property_instruction(temp, object, key)
+                        Property::Computed(key) => self.writer.get_property_instruction(
+                            temp,
+                            object,
+                            key,
+                            member_operator_pos,
+                        ),
+                        Property::Named(name_constant_index) => {
+                            self.writer.get_named_property_instruction(
+                                temp,
+                                object,
+                                name_constant_index,
+                                member_operator_pos,
+                            )
                         }
-                        Property::Named(name_constant_index) => self
-                            .writer
-                            .get_named_property_instruction(temp, object, name_constant_index),
-                        Property::Private(key) => self
-                            .writer
-                            .get_private_property_instruction(temp, object, key),
-                        Property::Super { key, this_value } => self
-                            .writer
-                            .get_super_property_instruction(temp, object, this_value, key),
+                        Property::Private(key) => self.writer.get_private_property_instruction(
+                            temp,
+                            object,
+                            key,
+                            member_operator_pos,
+                        ),
+                        Property::Super { key, this_value } => {
+                            self.writer.get_super_property_instruction(
+                                temp,
+                                object,
+                                this_value,
+                                key,
+                                member_operator_pos,
+                            )
+                        }
                     }
 
                     if !expr.operator.is_logical() {
@@ -4460,7 +4500,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Write the value back to the property
                 match property {
                     Property::Computed(key) => {
-                        self.writer.set_property_instruction(object, key, temp);
+                        self.writer.set_property_instruction(
+                            object,
+                            key,
+                            temp,
+                            member_operator_pos,
+                        );
                         self.register_allocator.release(key);
                     }
                     Property::Named(name_constant_index) => {
@@ -4468,16 +4513,26 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                             object,
                             name_constant_index,
                             temp,
+                            member_operator_pos,
                         );
                     }
                     Property::Private(key) => {
-                        self.writer
-                            .set_private_property_instruction(object, key, temp);
+                        self.writer.set_private_property_instruction(
+                            object,
+                            key,
+                            temp,
+                            member_operator_pos,
+                        );
                         self.register_allocator.release(key);
                     }
                     Property::Super { key, this_value } => {
-                        self.writer
-                            .set_super_property_instruction(object, this_value, key, temp);
+                        self.writer.set_super_property_instruction(
+                            object,
+                            this_value,
+                            key,
+                            temp,
+                            member_operator_pos,
+                        );
                         self.register_allocator.release(key);
                         self.register_allocator.release(this_value);
                     }
@@ -4597,10 +4652,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let temp = self.allocate_destination(temp_dest)?;
 
             // Evaluate the object expression, or find the home object if `super`
-            let object = match member {
-                ast::Expression::Member(member) => self.gen_expression(&member.object)?,
+            let (object, member_operator_pos) = match member {
+                ast::Expression::Member(member) => {
+                    let object = self.gen_expression(&member.object)?;
+                    (object, member.operator_pos)
+                }
                 ast::Expression::SuperMember(member) => {
-                    self.gen_load_home_object(member, ExprDest::Any)?
+                    let object = self.gen_load_home_object(member, ExprDest::Any)?;
+                    (object, member.operator_pos)
                 }
                 _ => unreachable!("must be a member or super member pattern"),
             };
@@ -4633,21 +4692,30 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Load the property to the temporary register
                 if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
-                    self.writer.get_property_instruction(temp, object, key);
+                    self.writer
+                        .get_property_instruction(temp, object, key, member_operator_pos);
 
                     Property::Computed(key)
                 } else if member.is_private {
                     let key = self.gen_load_private_symbol(member.property.to_id())?;
-                    self.writer
-                        .get_private_property_instruction(temp, object, key);
+                    self.writer.get_private_property_instruction(
+                        temp,
+                        object,
+                        key,
+                        member_operator_pos,
+                    );
 
                     Property::Private(key)
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
                     let name_constant_index = self.add_string_constant(&name.name)?;
-                    self.writer
-                        .get_named_property_instruction(temp, object, name_constant_index);
+                    self.writer.get_named_property_instruction(
+                        temp,
+                        object,
+                        name_constant_index,
+                        member_operator_pos,
+                    );
 
                     Property::Named(name_constant_index)
                 }
@@ -4674,8 +4742,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Then write modified value back to the property
             match property {
                 Property::Computed(key) => {
-                    self.writer
-                        .set_property_instruction(object, key, modified_temp);
+                    self.writer.set_property_instruction(
+                        object,
+                        key,
+                        modified_temp,
+                        member_operator_pos,
+                    );
                     self.register_allocator.release(key);
                 }
                 Property::Named(name_constant_index) => {
@@ -4683,11 +4755,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         object,
                         name_constant_index,
                         modified_temp,
+                        member_operator_pos,
                     );
                 }
                 Property::Private(key) => {
-                    self.writer
-                        .set_private_property_instruction(object, key, modified_temp);
+                    self.writer.set_private_property_instruction(
+                        object,
+                        key,
+                        modified_temp,
+                        member_operator_pos,
+                    );
                     self.register_allocator.release(key);
                 }
                 Property::Super { key, this_value } => {
@@ -4696,6 +4773,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         this_value,
                         key,
                         modified_temp,
+                        member_operator_pos,
                     );
                     self.register_allocator.release(key);
                     self.register_allocator.release(this_value);
@@ -4973,14 +5051,24 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Iterator result object holds the yielded value
         let value_constant_index = self.add_string_constant("value")?;
-        self.writer
-            .set_named_property_instruction(iter_result, value_constant_index, temp_value);
+        // No source position needed since instruction cannot throw - it is a set on a fresh object
+        self.writer.set_named_property_instruction(
+            iter_result,
+            value_constant_index,
+            temp_value,
+            NO_POS,
+        );
 
         // Iterator result object is marked as not done
         let done_constant_index = self.add_string_constant("done")?;
         self.writer.load_false_instruction(temp_value);
-        self.writer
-            .set_named_property_instruction(iter_result, done_constant_index, temp_value);
+        // No source position needed since instruction cannot throw - it is a set on a fresh object
+        self.writer.set_named_property_instruction(
+            iter_result,
+            done_constant_index,
+            temp_value,
+            NO_POS,
+        );
 
         // Find the generator register from the stored index
         let generator = Register::local(self.generator_index.unwrap() as usize);
@@ -5118,8 +5206,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5128,8 +5220,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer
-            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.writer.get_named_property_instruction(
+            dest,
+            iterator_result,
+            value_constant_index,
+            pos,
+        );
         self.write_jump_instruction(join_block)?;
 
         // Yield had an abnormal completion - check if this is a return or throw
@@ -5171,8 +5267,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5186,6 +5286,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return_value,
             iterator_result,
             value_constant_index,
+            pos,
         );
         self.gen_return(Some(return_value), /* derived_constructor_scope */ None)?;
         self.register_allocator.release(return_value);
@@ -5229,8 +5330,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the iterator result is valid then check if iterator is done
         self.writer
             .check_iterator_result_object_instruction(iterator_result, pos);
-        self.writer
-            .get_named_property_instruction(is_done, iterator_result, done_constant_index);
+        self.writer.get_named_property_instruction(
+            is_done,
+            iterator_result,
+            done_constant_index,
+            pos,
+        );
 
         // If iterator is not done then continue to yield
         let done_block = self.new_block();
@@ -5239,8 +5344,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If iterator is done then yield* evaluates to the result object's current value
         self.start_block(done_block);
-        self.writer
-            .get_named_property_instruction(dest, iterator_result, value_constant_index);
+        self.writer.get_named_property_instruction(
+            dest,
+            iterator_result,
+            value_constant_index,
+            pos,
+        );
         self.write_jump_instruction(join_block)?;
 
         // If the iterator is not done we end here, performing a yield then starting another
@@ -5265,6 +5374,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 value,
                 iterator_result,
                 value_constant_index,
+                pos,
             );
 
             self.writer
@@ -5343,6 +5453,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
         release_receiver: bool,
     ) -> EmitResult<GenRegister> {
+        let operand_pos = expr.operator_pos;
+
         if expr.is_computed {
             let key = self.gen_expression(&expr.property)?;
 
@@ -5353,8 +5465,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             let dest = self.allocate_destination(dest)?;
-            self.writer
-                .get_super_property_instruction(dest, home_object, receiver, key);
+            self.writer.get_super_property_instruction(
+                dest,
+                home_object,
+                receiver,
+                key,
+                operand_pos,
+            );
 
             Ok(dest)
         } else {
@@ -5373,6 +5490,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 home_object,
                 receiver,
                 name_constant_index,
+                operand_pos,
             );
 
             Ok(dest)
@@ -5806,18 +5924,27 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         member: &'b ast::MemberExpression,
     ) -> EmitResult<Reference<'b>> {
         let object = self.gen_expression(&member.object)?;
+        let operator_pos = member.operator_pos;
 
         if member.is_computed {
             let property = self.gen_expression(&member.property)?;
-            Ok(Reference::new(ReferenceKind::ComputedProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::ComputedProperty {
+                object,
+                property,
+                operator_pos,
+            }))
         } else if member.is_private {
             let property = self.gen_load_private_symbol(member.property.to_id())?;
-            Ok(Reference::new(ReferenceKind::PrivateProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::PrivateProperty {
+                object,
+                property,
+                operator_pos,
+            }))
         } else {
             // Must be a named access
             let name = member.property.to_id();
             let property = self.add_string_constant(&name.name)?;
-            Ok(Reference::new(ReferenceKind::NamedProperty { object, property }))
+            Ok(Reference::new(ReferenceKind::NamedProperty { object, property, operator_pos }))
         }
     }
 
@@ -5846,6 +5973,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             home_object,
             this_value,
             property,
+            operator_pos: member.operator_pos,
         }))
     }
 
@@ -5873,38 +6001,47 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match &reference.kind {
             ReferenceKind::Id(id) => self.gen_store_identifier(id, value, flags),
-            ReferenceKind::NamedProperty { object, property } => {
-                self.writer
-                    .set_named_property_instruction(*object, *property, value);
+            ReferenceKind::NamedProperty { object, property, operator_pos } => {
+                self.writer.set_named_property_instruction(
+                    *object,
+                    *property,
+                    value,
+                    *operator_pos,
+                );
 
                 self.register_allocator.release(*object);
 
                 Ok(())
             }
-            ReferenceKind::ComputedProperty { object, property } => {
+            ReferenceKind::ComputedProperty { object, property, operator_pos } => {
                 self.writer
-                    .set_property_instruction(*object, *property, value);
+                    .set_property_instruction(*object, *property, value, *operator_pos);
 
                 self.register_allocator.release(*property);
                 self.register_allocator.release(*object);
 
                 Ok(())
             }
-            ReferenceKind::PrivateProperty { object, property } => {
-                self.writer
-                    .set_private_property_instruction(*object, *property, value);
+            ReferenceKind::PrivateProperty { object, property, operator_pos } => {
+                self.writer.set_private_property_instruction(
+                    *object,
+                    *property,
+                    value,
+                    *operator_pos,
+                );
 
                 self.register_allocator.release(*property);
                 self.register_allocator.release(*object);
 
                 Ok(())
             }
-            ReferenceKind::SuperProperty { home_object, this_value, property } => {
+            ReferenceKind::SuperProperty { home_object, this_value, property, operator_pos } => {
                 self.writer.set_super_property_instruction(
                     *home_object,
                     *this_value,
                     *property,
                     value,
+                    *operator_pos,
                 );
 
                 self.register_allocator.release(*property);
@@ -5971,6 +6108,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
+            let property_start_pos = property.loc.start;
+
             // Evaluate to reference before evaluating property key
             let reference = self.gen_pattern_to_reference(&property.value)?;
 
@@ -5990,6 +6129,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         property_value,
                         object_value,
                         name_constant_index,
+                        property_start_pos,
                     );
                 }
                 Property::Computed(key, key_pos) => {
@@ -6001,8 +6141,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
 
                     // Read computed property from object
-                    self.writer
-                        .get_property_instruction(property_value, object_value, *key);
+                    self.writer.get_property_instruction(
+                        property_value,
+                        object_value,
+                        *key,
+                        property_start_pos,
+                    );
                 }
             }
 
@@ -6875,6 +7019,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ..
         } = field
         {
+            let name_pos = name.as_ref().loc.start;
+
             // Load the private symbol from the constant table
             let name = self.gen_load_private_symbol(name.as_ref())?;
 
@@ -6895,7 +7041,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let flags = UInt::new(flags.bits() as u32);
 
             self.writer
-                .define_private_property_instruction(target, name, value, flags);
+                .define_private_property_instruction(target, name, value, flags, name_pos);
 
             self.register_allocator.release(value);
             self.register_allocator.release(name);
@@ -6909,6 +7055,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ClassField::PrivateField { field, .. } => field.as_ref(),
             ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
         };
+
+        let field_pos = field_node.loc.start;
 
         // Evaluate the initializer, otherwise field is set to undefined
         let value = if let Some(initializer) = field_node.value.as_deref() {
@@ -6932,8 +7080,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match field {
             ClassField::Named { name, .. } => {
                 let name_constant_index = self.add_wtf8_string_constant(name)?;
-                self.writer
-                    .define_named_property_instruction(target, name_constant_index, value);
+                self.writer.define_named_property_instruction(
+                    target,
+                    name_constant_index,
+                    value,
+                    field_pos,
+                );
             }
             ClassField::Computed { scope_id, scope_index, .. } => {
                 // Load the field name from the current class scope
@@ -6949,7 +7101,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let flags = UInt::new(flags.bits() as u32);
 
                 self.writer
-                    .define_property_instruction(target, name, value, flags);
+                    .define_property_instruction(target, name, value, flags, field_pos);
 
                 self.register_allocator.release(name);
             }
@@ -6961,7 +7113,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let flags = UInt::new(DefinePrivatePropertyFlags::empty().bits() as u32);
 
                 self.writer
-                    .define_private_property_instruction(target, name, value, flags);
+                    .define_private_property_instruction(target, name, value, flags, field_pos);
 
                 self.register_allocator.release(name);
             }
@@ -9108,19 +9260,23 @@ enum ReferenceKind<'a> {
     NamedProperty {
         object: GenRegister,
         property: GenConstantIndex,
+        operator_pos: Pos,
     },
     ComputedProperty {
         object: GenRegister,
         property: GenRegister,
+        operator_pos: Pos,
     },
     PrivateProperty {
         object: GenRegister,
         property: GenRegister,
+        operator_pos: Pos,
     },
     SuperProperty {
         home_object: GenRegister,
         this_value: GenRegister,
         property: GenRegister,
+        operator_pos: Pos,
     },
     ArrayPattern(&'a ast::ArrayPattern),
     ObjectPattern(&'a ast::ObjectPattern),

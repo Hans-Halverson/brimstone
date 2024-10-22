@@ -1261,6 +1261,7 @@ define_instructions!(
     GetProperty {
         camel_case: GetPropertyInstruction,
         snake_case: get_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1272,6 +1273,7 @@ define_instructions!(
     SetProperty {
         camel_case: SetPropertyInstruction,
         snake_case: set_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,
@@ -1283,6 +1285,7 @@ define_instructions!(
     DefineProperty {
         camel_case: DefinePropertyInstruction,
         snake_case: define_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,
@@ -1296,6 +1299,7 @@ define_instructions!(
     GetNamedProperty {
         camel_case: GetNamedPropertyInstruction,
         snake_case: get_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1308,6 +1312,7 @@ define_instructions!(
     SetNamedProperty {
         camel_case: SetNamedPropertyInstruction,
         snake_case: set_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] name_constant_index: ConstantIndex,
@@ -1320,6 +1325,7 @@ define_instructions!(
     DefineNamedProperty {
         camel_case: DefineNamedPropertyInstruction,
         snake_case: define_named_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] name_constant_index: ConstantIndex,
@@ -1332,6 +1338,7 @@ define_instructions!(
     GetSuperProperty {
         camel_case: GetSuperPropertyInstruction,
         snake_case: get_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] home_object: Register,
@@ -1345,6 +1352,7 @@ define_instructions!(
     GetNamedSuperProperty {
         camel_case: GetNamedSuperPropertyInstruction,
         snake_case: get_named_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] home_object: Register,
@@ -1358,6 +1366,7 @@ define_instructions!(
     SetSuperProperty {
         camel_case: SetSuperPropertyInstruction,
         snake_case: set_super_property_instruction,
+        can_throw: true,
         operands: {
             [0] home_object: Register,
             [1] receiver: Register,
@@ -1371,6 +1380,7 @@ define_instructions!(
     DeleteProperty {
         camel_case: DeletePropertyInstruction,
         snake_case: delete_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1383,6 +1393,7 @@ define_instructions!(
     DeleteBinding {
         camel_case: DeleteBindingInstruction,
         snake_case: delete_binding_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] name_constant_index: ConstantIndex,
@@ -1394,6 +1405,7 @@ define_instructions!(
     GetPrivateProperty {
         camel_case: GetPrivatePropertyInstruction,
         snake_case: get_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] dest: Register,
             [1] object: Register,
@@ -1405,6 +1417,7 @@ define_instructions!(
     SetPrivateProperty {
         camel_case: SetPrivatePropertyInstruction,
         snake_case: set_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,
@@ -1417,6 +1430,7 @@ define_instructions!(
     DefinePrivateProperty {
         camel_case: DefinePrivatePropertyInstruction,
         snake_case: define_private_property_instruction,
+        can_throw: true,
         operands: {
             [0] object: Register,
             [1] key: Register,

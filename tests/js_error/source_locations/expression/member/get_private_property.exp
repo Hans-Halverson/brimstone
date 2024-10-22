@@ -1,0 +1,4 @@
+Error: 
+  at get #foo (tests/js_error/source_locations/expression/member/get_private_property.js:3:11)
+  at test (tests/js_error/source_locations/expression/member/get_private_property.js:7:9)
+  at <global> (tests/js_error/source_locations/expression/member/get_private_property.js:12:1)

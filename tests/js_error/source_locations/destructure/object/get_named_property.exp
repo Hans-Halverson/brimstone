@@ -1,0 +1,3 @@
+Error: 
+  at get foo (tests/js_error/source_locations/destructure/object/get_named_property.js:3:11)
+  at <global> (tests/js_error/source_locations/destructure/object/get_named_property.js:7:7)

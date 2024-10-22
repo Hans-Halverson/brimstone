@@ -1,0 +1,3 @@
+Error: 
+  at get foo (tests/js_error/source_locations/expression/member/get_named_property_optional.js:3:11)
+  at <global> (tests/js_error/source_locations/expression/member/get_named_property_optional.js:7:5)

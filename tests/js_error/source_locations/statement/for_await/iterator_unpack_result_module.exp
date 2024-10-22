@@ -1,0 +1,6 @@
+TypeError: iterator's next method must return an object
+  at next (<native>)
+  at foo (tests/js_error/source_locations/statement/for_await/iterator_unpack_result_module.js:12:20)
+  at <module> (tests/js_error/source_locations/statement/for_await/iterator_unpack_result_module.js:15:7)
+  at <anonymous> (<native>)
+  at <anonymous> (<native>)

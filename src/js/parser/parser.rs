@@ -3020,8 +3020,9 @@ impl<'a> Parser<'a> {
         while self.token != Token::RightBracket {
             match self.token {
                 Token::Comma => {
+                    let hole_pos = self.current_start_pos();
                     self.advance()?;
-                    elements.push(ArrayElement::Hole);
+                    elements.push(ArrayElement::Hole(hole_pos));
                     continue;
                 }
                 Token::Spread => {
@@ -3930,8 +3931,9 @@ impl<'a> Parser<'a> {
         while self.token != Token::RightBracket {
             match self.token {
                 Token::Comma => {
+                    let hole_pos = self.current_start_pos();
                     self.advance()?;
-                    elements.push(ArrayPatternElement::Hole);
+                    elements.push(ArrayPatternElement::Hole(hole_pos));
                 }
                 Token::Spread => {
                     let rest_element = self.parse_rest_element(binding_kind)?;
@@ -4587,7 +4589,7 @@ impl<'a> Parser<'a> {
                     let pattern = self.reparse_expression_as_maybe_assignment_pattern(expr)?;
                     ArrayPatternElement::Pattern(pattern)
                 }
-                ArrayElement::Hole => ArrayPatternElement::Hole,
+                ArrayElement::Hole(pos) => ArrayPatternElement::Hole(pos),
                 ArrayElement::Spread(spread) => {
                     // Trailing commas (or properties after) are not allowed on rest element
                     if spread.has_trailing_comma {

@@ -3738,7 +3738,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|element| match element {
                 ast::ArrayElement::Expression(expr) => ArrayElement::Expression(expr),
                 ast::ArrayElement::Spread(spread) => ArrayElement::Spread(spread),
-                ast::ArrayElement::Hole => ArrayElement::Hole,
+                ast::ArrayElement::Hole(_) => ArrayElement::Hole,
             })
             .collect::<Vec<_>>();
 
@@ -3792,11 +3792,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ArrayElement::Spread(spread_element) => {
                     // Evaluate the spread argument and get its iterator
                     let iterable = self.gen_expression(&spread_element.argument)?;
+                    let spread_pos = spread_element.loc.start;
 
                     let iterator = self.register_allocator.allocate()?;
                     let next_method = self.register_allocator.allocate()?;
-                    self.writer
-                        .get_iterator_instruction(iterator, next_method, iterable);
+                    self.writer.get_iterator_instruction(
+                        iterator,
+                        next_method,
+                        iterable,
+                        spread_pos,
+                    );
 
                     let value = self.register_allocator.allocate()?;
                     let is_done = self.register_allocator.allocate()?;
@@ -3806,8 +3811,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     // Each iteration starts by calling `next` and checking if we are done
                     self.start_block(iteration_start_block);
-                    self.writer
-                        .iterator_next_instruction(value, is_done, iterator, next_method);
+                    self.writer.iterator_next_instruction(
+                        value,
+                        is_done,
+                        iterator,
+                        next_method,
+                        spread_pos,
+                    );
                     self.write_jump_true_instruction(is_done, done_block)?;
 
                     // If we are not done then write append value to array
@@ -5059,10 +5069,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         if self.is_async() {
             self.writer
-                .get_async_iterator_instruction(iterator, next_method, argument);
+                .get_async_iterator_instruction(iterator, next_method, argument, pos);
         } else {
             self.writer
-                .get_iterator_instruction(iterator, next_method, argument);
+                .get_iterator_instruction(iterator, next_method, argument, pos);
         }
 
         let done_constant_index = self.add_string_constant("done")?;
@@ -5193,9 +5203,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_not_undefined_instruction(throw_method, has_throw_method_block)?;
 
         if self.is_async() {
-            self.gen_async_iterator_close(iterator)?;
+            self.gen_async_iterator_close(iterator, pos)?;
         } else {
-            self.writer.iterator_close_instruction(iterator);
+            self.writer.iterator_close_instruction(iterator, pos);
         }
 
         self.writer.error_iterator_no_throw_method_instruction(pos);
@@ -6090,14 +6100,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let value = self.register_allocator.allocate()?;
 
         let mut exception_handlers = vec![];
+        let pattern_pos = array_pattern.loc.start;
 
         self.writer
-            .get_iterator_instruction(iterator, next_method, iterable);
+            .get_iterator_instruction(iterator, next_method, iterable, pattern_pos);
 
         // Call `next` on iterator for each element of the array pttern
         for (i, element) in array_pattern.elements.iter().enumerate() {
             // Rest element creates a new array with remaining values until iterator is done
-            if let ast::ArrayPatternElement::Rest(rest) = element {
+            let (reference, element_pos) = if let ast::ArrayPatternElement::Rest(rest) = element {
                 let array = self.register_allocator.allocate()?;
                 self.writer.new_array_instruction(array);
 
@@ -6121,11 +6132,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.write_jump_true_instruction(is_done, is_done_block)?;
                 }
 
+                let rest_pos = rest.loc.start;
+
                 // Each iteration only starts if we are not done. Each iteration calls `next` and
                 // then checks if iterator is done.
                 self.start_block(iteration_start_block);
-                self.writer
-                    .iterator_next_instruction(value, is_done, iterator, next_method);
+                self.writer.iterator_next_instruction(
+                    value,
+                    is_done,
+                    iterator,
+                    next_method,
+                    rest_pos,
+                );
                 self.write_jump_true_instruction(is_done, is_done_block)?;
 
                 // If not done, store value to next index in array and start next iteration
@@ -6150,10 +6168,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
 
                 continue;
-            }
-
-            // Evaluate to reference before calling `next`
-            let reference = if let ast::ArrayPatternElement::Pattern(pattern) = element {
+            } else if let ast::ArrayPatternElement::Pattern(pattern) = element {
+                // Evaluate to reference before calling `next`
                 let (exception_handler, reference) =
                     self.gen_in_exception_handler(|this| this.gen_pattern_to_reference(pattern))?;
 
@@ -6161,10 +6177,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     exception_handlers.push(exception_handler);
                 }
 
-                Some(reference)
-            } else {
+                (Some(reference), pattern.pos())
+            } else if let ast::ArrayPatternElement::Hole(hole_pos) = element {
                 // Otherwise must be a hole
-                None
+                (None, *hole_pos)
+            } else {
+                unreachable!("all variants handled")
             };
 
             let is_done_block = self.new_block();
@@ -6175,8 +6193,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             // Call `next` method, and if done then continue to done block
-            self.writer
-                .iterator_next_instruction(value, is_done, iterator, next_method);
+            self.writer.iterator_next_instruction(
+                value,
+                is_done,
+                iterator,
+                next_method,
+                element_pos,
+            );
 
             // Patterns will be destructured so value from iterator can be assigned
             if let Some(reference) = reference {
@@ -6217,7 +6240,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // need to be swallowed.
             //
             // Iterator is only closed if we are not done, which is enforced by the JumpTrue above.
-            self.writer.iterator_close_instruction(iterator);
+            self.writer
+                .iterator_close_instruction(iterator, pattern_pos);
 
             // Exit the finally scope and release all of its registers
             let finally_scope = self.pop_finally_scope();
@@ -6258,7 +6282,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // already done.
             self.write_jump_true_instruction(is_done, finally_footer_block)?;
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
-                this.writer.iterator_close_instruction(iterator);
+                this.writer
+                    .iterator_close_instruction(iterator, pattern_pos);
                 Ok(())
             })?;
 
@@ -7519,6 +7544,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let of_pos = stmt.in_of_pos;
+        let right_pos = stmt.right.pos();
+
         let iterator = self.register_allocator.allocate()?;
         let next_method = self.register_allocator.allocate()?;
 
@@ -7527,10 +7555,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         if stmt.is_await {
             self.writer
-                .get_async_iterator_instruction(iterator, next_method, iterable);
+                .get_async_iterator_instruction(iterator, next_method, iterable, right_pos);
         } else {
             self.writer
-                .get_iterator_instruction(iterator, next_method, iterable);
+                .get_iterator_instruction(iterator, next_method, iterable, right_pos);
         }
 
         self.register_allocator.release(iterable);
@@ -7564,11 +7592,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(awaited_result);
 
             self.writer
-                .iterator_unpack_result_instruction(value, is_done, awaited_result);
+                .iterator_unpack_result_instruction(value, is_done, awaited_result, of_pos);
         } else {
             // Synchronous for-of can use a combined IteratorNext instruction
             self.writer
-                .iterator_next_instruction(value, is_done, iterator, next_method);
+                .iterator_next_instruction(value, is_done, iterator, next_method, of_pos);
         }
 
         // If we are done then exit the loop, closing the iterator is not needed
@@ -7625,9 +7653,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // try to close the iterator. Catch exceptions when closing the iterator.
             let (mut close_handler, _) = self.gen_in_exception_handler(|this| {
                 if stmt.is_await {
-                    this.gen_async_iterator_close(iterator)
+                    this.gen_async_iterator_close(iterator, of_pos)
                 } else {
-                    this.writer.iterator_close_instruction(iterator);
+                    this.writer.iterator_close_instruction(iterator, of_pos);
                     Ok(())
                 }
             })?;
@@ -7743,6 +7771,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        let in_pos = stmt.in_of_pos;
+        let right_pos = stmt.right.pos();
+
         // Entire for-in statement is skipped if right hand side is nullish
         let object = self.gen_outer_expression(&stmt.right)?;
         self.write_jump_nullish_instruction(object, loop_end_block)?;
@@ -7751,7 +7782,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(object);
         let iterator = self.register_allocator.allocate()?;
         self.writer
-            .new_for_in_iterator_instruction(iterator, object);
+            .new_for_in_iterator_instruction(iterator, object, right_pos);
 
         // End of scope for evaluating the right hand side
         self.gen_scope_end(for_scope);
@@ -7769,7 +7800,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Iteration starts by calling the for-in iterator's `next` method
         let next_result = self.gen_for_each_next_result_dest(stmt, store_flags)?;
-        self.writer.for_in_next_instruction(next_result, iterator);
+        self.writer
+            .for_in_next_instruction(next_result, iterator, in_pos);
 
         // An undefined result from `next` means there are no more keys, jump out of the loop
         self.write_jump_nullish_instruction(next_result, loop_end_block)?;
@@ -7820,7 +7852,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_async_iterator_close(&mut self, iterator: GenRegister) -> EmitResult<()> {
+    fn gen_async_iterator_close(&mut self, iterator: GenRegister, pos: Pos) -> EmitResult<()> {
         let has_return_method = self.register_allocator.allocate()?;
         let return_result = self.register_allocator.allocate()?;
 
@@ -7830,6 +7862,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             return_result,
             has_return_method,
             iterator,
+            pos,
         );
 
         // If there was no return method then there is no return result and we are done closing
@@ -7841,7 +7874,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // And then finish the AsyncIteratorClosure using the stored intermediate results
         self.writer
-            .async_iterator_close_finish_instruction(awaited_return_result);
+            .async_iterator_close_finish_instruction(awaited_return_result, pos);
 
         self.start_block(join_block);
 

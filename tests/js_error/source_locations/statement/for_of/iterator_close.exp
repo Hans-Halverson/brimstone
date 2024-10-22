@@ -1,0 +1,3 @@
+Error: 
+  at get return (tests/js_error/source_locations/statement/for_of/iterator_close.js:8:15)
+  at <global> (tests/js_error/source_locations/statement/for_of/iterator_close.js:14:12)

@@ -68,6 +68,7 @@ use crate::js::runtime::{
     scope::Scope,
     scope_names::ScopeNames,
     source_file::SourceFile,
+    stack_trace::{stack_frame_info_array_byte_size, stack_frame_info_array_visit_pointers},
     string_object::StringObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
@@ -186,6 +187,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
             ObjectKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
+            ObjectKind::StackFrameInfoArray => stack_frame_info_array_byte_size(self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
@@ -330,6 +332,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ModuleRequestArray => {
                 module_request_array_visit_pointers(self.cast_mut(), visitor)
+            }
+            ObjectKind::StackFrameInfoArray => {
+                stack_frame_info_array_visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()

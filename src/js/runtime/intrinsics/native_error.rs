@@ -7,11 +7,8 @@ use crate::js::runtime::{
         error_constructor::{install_error_cause, ErrorObject},
         intrinsics::Intrinsic,
     },
-    object_descriptor::ObjectKind,
     object_value::ObjectValue,
-    ordinary_object::{object_create, object_create_from_constructor},
     realm::Realm,
-    stack_trace::attach_stack_trace_to_error,
     type_utilities::to_string,
     Context, Handle, HeapPtr, Value,
 };
@@ -26,35 +23,17 @@ macro_rules! create_native_error {
                 // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(&message).into();
 
-                let object = object_create::<ErrorObject>(
+                let object = ErrorObject::new(
                     cx,
-                    ObjectKind::ErrorObject,
                     Intrinsic::$prototype,
+                    /* skip_current_frame */ false,
                 );
-
-                let object = object.to_handle();
 
                 object
                     .as_object()
                     .intrinsic_data_prop(cx, cx.names.message(), message_value);
 
-                attach_stack_trace_to_error(cx, object, /* skip_current_frame */ false);
-
                 object
-            }
-
-            fn new_from_constructor(
-                cx: Context,
-                constructor: Handle<ObjectValue>,
-            ) -> EvalResult<Handle<ErrorObject>> {
-                let object = object_create_from_constructor::<ErrorObject>(
-                    cx,
-                    constructor,
-                    ObjectKind::ErrorObject,
-                    Intrinsic::$prototype,
-                )?;
-
-                Ok(object.to_handle())
             }
 
             #[allow(dead_code)]
@@ -106,7 +85,12 @@ macro_rules! create_native_error {
                     cx.current_function()
                 };
 
-                let object = $native_error::new_from_constructor(cx, new_target)?;
+                let object = ErrorObject::new_from_constructor(
+                    cx,
+                    new_target,
+                    Intrinsic::$prototype,
+                    /* skip_current_frame */ true,
+                )?;
 
                 let message = get_argument(cx, arguments, 0);
                 if !message.is_undefined() {
@@ -118,8 +102,6 @@ macro_rules! create_native_error {
                         message_string.into(),
                     );
                 }
-
-                attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
                 let options_arg = get_argument(cx, arguments, 1);
                 install_error_cause(cx, object, options_arg)?;

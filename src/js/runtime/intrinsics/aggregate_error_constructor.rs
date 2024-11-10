@@ -10,12 +10,9 @@ use crate::{
         function::get_argument,
         intrinsics::error_constructor::install_error_cause,
         iterator::iter_iterator_values,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_from_constructor},
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        stack_trace::attach_stack_trace_to_error,
         type_utilities::to_string,
         Context, Handle, Value,
     },
@@ -28,31 +25,14 @@ use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 pub struct AggregateErrorObject;
 
 impl AggregateErrorObject {
-    fn new_from_constructor(
-        cx: Context,
-        constructor: Handle<ObjectValue>,
-    ) -> EvalResult<Handle<ErrorObject>> {
-        let object = object_create_from_constructor::<ErrorObject>(
-            cx,
-            constructor,
-            ObjectKind::ErrorObject,
-            Intrinsic::AggregateErrorPrototype,
-        )?;
-
-        Ok(object.to_handle())
-    }
-
     pub fn new(cx: Context, errors: Handle<Value>) -> Handle<ErrorObject> {
-        let object = object_create::<ErrorObject>(
+        let object = ErrorObject::new(
             cx,
-            ObjectKind::ErrorObject,
             Intrinsic::AggregateErrorPrototype,
-        )
-        .to_handle();
+            /* skip_current_frame */ true,
+        );
 
         must!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
-
-        attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         object
     }
@@ -97,7 +77,12 @@ impl AggregateErrorConstructor {
             cx.current_function()
         };
 
-        let object = AggregateErrorObject::new_from_constructor(cx, new_target)?;
+        let object = ErrorObject::new_from_constructor(
+            cx,
+            new_target,
+            Intrinsic::AggregateErrorPrototype,
+            /* skip_current_frame */ true,
+        )?;
 
         let errors = get_argument(cx, arguments, 0);
         let message = get_argument(cx, arguments, 1);
@@ -110,8 +95,6 @@ impl AggregateErrorConstructor {
                 message_string.into(),
             );
         }
-
-        attach_stack_trace_to_error(cx, object, /* skip_current_frame */ true);
 
         let options_arg = get_argument(cx, arguments, 2);
         install_error_cause(cx, object, options_arg)?;

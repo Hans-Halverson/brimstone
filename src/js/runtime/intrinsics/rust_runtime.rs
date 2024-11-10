@@ -300,6 +300,7 @@ rust_runtime_functions!(
     DatePrototype::to_utc_string,
     DatePrototype::value_of,
     ErrorConstructor::construct,
+    ErrorPrototype::get_stack,
     ErrorPrototype::to_string,
     EvalErrorConstructor::construct,
     FinalizationRegistryConstructor::construct,

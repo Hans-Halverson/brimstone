@@ -8,7 +8,29 @@
       //
       ////////////////////////////////////////
 
-      // None!
+      // A variety of failures in introduced SpiderMonkey tests
+      "staging/sm/*",
+
+      // Unicode 16
+      "language/identifiers/part-unicode-16.0.0-class-escaped.js",
+      "language/identifiers/part-unicode-16.0.0-class.js",
+      "language/identifiers/part-unicode-16.0.0-escaped.js",
+      "language/identifiers/part-unicode-16.0.0.js",
+      "language/identifiers/start-unicode-16.0.0-class-escaped.js",
+      "language/identifiers/start-unicode-16.0.0-class.js",
+      "language/identifiers/start-unicode-16.0.0-escaped.js",
+      "language/identifiers/start-unicode-16.0.0.js",
+
+      // Missing call to `has` during dynamic lookup of proxy
+      "language/statements/with/get-binding-value-call-with-proxy-env.js",
+      "language/statements/with/get-binding-value-idref-with-proxy-env.js",
+      "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
+      "language/statements/with/set-mutable-binding-idref-with-proxy-env.js",
+
+      // Misc bugs
+      "built-ins/Date/prototype/setUTCMilliseconds/date-value-read-before-tonumber-when-date-is-invalid.js",
+      "built-ins/Object/freeze/typedarray-backed-by-resizable-buffer.js",
+      "built-ins/String/prototype/replace/regexp-capture-by-index.js",
 
       ////////////////////////////////////////
       //
@@ -82,7 +104,10 @@
       "built-ins/Function/internals/Construct/derived-this-uninitialized-realm.js",
 
       // Does not evaluate ToPropertyKey in key of object destructuring before evaluating the RHS
+      "language/destructuring/binding/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js",
       "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
+      "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js",
+      "language/expressions/object/computed-property-name-topropertykey-before-value-evaluation.js",
 
       // Does not evaluate LHS of assignment to reference before evaluating the RHS, when RHS can modify reference
       "language/expressions/assignment/S11.13.1_A5_T1.js",
@@ -133,7 +158,16 @@
       "language/expressions/compound-assignment/S11.13.2_A7.9_T4.js",
 
       // Update expressions call GetValue on reference twice 
-      "language/statements/with/unscopables-inc-dec.js"
+      "language/statements/with/unscopables-inc-dec.js",
+
+      // Delete computed super key should not be evaluated if this is uninitialized
+      "language/expressions/delete/super-property-uninitialized-this.js",
+
+      // GetSuperBase should be performed before ToPropertyKey
+      "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-getvalue.js",
+      "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-compound-assign.js",
+      "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-increment.js",
+      "language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue.js"
     ],
     "features": [
       // Tail call optimizations are not implemented. Always skip tail-call-optimization tests as
@@ -144,6 +178,13 @@
   // Tests for unimplemented features. Counts against test262 progress.
   "unimplemented": {
     "features": [
+      // Stage 4 proposals
+      "import-attributes",
+      "iterator-helpers",
+      "json-modules",
+      "promise-try",
+      "regexp-modifiers",
+
       // Other unimplemented features
       "regexp-v-flag",
       "SharedArrayBuffer",
@@ -174,17 +215,15 @@
       "decorators",
       "explicit-resource-management",
       "import-assertions",
-      "import-attributes",
-      "iterator-helpers",
-      "json-modules",
+      "import-defer",
+      "iterator-sequencing",
       "json-parse-with-source",
       "legacy-regexp",
-      "promise-try",
-      "regexp-modifiers",
       "source-phase-imports",
       "uint8array-base64",
       "Array.fromAsync",
       "Atomics.pause",
+      "Error.isError",
       "FinalizationRegistry.prototype.cleanupSome",
       "Float16Array",
       "Intl.DurationFormat",

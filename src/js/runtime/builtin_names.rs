@@ -52,7 +52,6 @@ builtin_names!(
     (__lookup_getter__, "__lookupGetter__"),
     (__lookup_setter__, "__lookupSetter__"),
     (__proto__, "__proto__"),
-    (symbol_to_primitive, "[Symbol.toPrimitive]"),
     (bytes_per_element, "BYTES_PER_ELEMENT"),
     (e, "E"),
     (epsilon, "EPSILON"),

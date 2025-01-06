@@ -435,6 +435,7 @@ rust_runtime_functions!(
     PromiseConstructor::race,
     PromiseConstructor::reject,
     PromiseConstructor::resolve,
+    PromiseConstructor::try_,
     PromiseConstructor::with_resolvers,
     promise_constructor::reject_builtin_function,
     promise_constructor::resolve_builtin_function,

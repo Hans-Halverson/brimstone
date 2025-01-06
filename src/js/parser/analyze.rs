@@ -923,6 +923,27 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 }
             }
         }
+
+        if let Some(attributes) = &mut import.attributes {
+            self.visit_import_attributes(attributes);
+        }
+    }
+
+    fn visit_import_attributes(&mut self, attributes: &mut ImportAttributes) {
+        // Check for duplicate keys
+        let mut seen_keys: HashSet<&[u8]> = HashSet::new();
+
+        for attribute in &attributes.attributes {
+            let name_slice = match attribute.key.as_ref() {
+                Expression::Id(id) => id.name.as_bytes(),
+                Expression::String(literal) => literal.value.as_bytes(),
+                _ => unreachable!("import attribute key must be id or string"),
+            };
+
+            if !seen_keys.insert(name_slice) {
+                self.emit_error(attribute.loc, ParseError::DuplicateImportAttribute);
+            }
+        }
     }
 
     fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration) {
@@ -966,6 +987,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
                 .unwrap_or(specifier.local.as_ref());
             self.add_exported_name(export_name);
         }
+
+        if let Some(attributes) = &mut export.source_attributes {
+            self.visit_import_attributes(attributes);
+        }
     }
 
     fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration) {
@@ -973,6 +998,10 @@ impl<'a> AstVisitor for Analyzer<'a> {
 
         if let Some(export_name) = export.exported.as_deref() {
             self.add_exported_name(export_name);
+        }
+
+        if let Some(attributes) = &mut export.source_attributes {
+            self.visit_import_attributes(attributes);
         }
     }
 }

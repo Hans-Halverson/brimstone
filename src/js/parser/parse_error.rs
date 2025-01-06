@@ -93,6 +93,7 @@ pub enum ParseError {
     DuplicateExport(Box<Wtf8String>),
     ImportAttributeInvalidKey,
     ImportAttributeInvalidValue,
+    DuplicateImportAttribute,
     // RegExp parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
@@ -396,6 +397,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::ImportAttributeInvalidValue => {
                 write!(f, "Import attribute value must be a string")
+            }
+            ParseError::DuplicateImportAttribute => {
+                write!(f, "Import attribute with that key already exists")
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

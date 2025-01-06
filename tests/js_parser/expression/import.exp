@@ -1,18 +1,19 @@
 {
   type: "Program",
-  loc: "1:1-3:15",
+  loc: "1:1-11:15",
   body: [
     {
       type: "ExpressionStatement",
-      loc: "1:1-1:11",
+      loc: "2:1-2:11",
       kind: {
         type: "ImportExpression",
-        loc: "1:1-1:10",
+        loc: "2:1-2:10",
         source: {
           type: "Identifier",
-          loc: "1:8-1:9",
+          loc: "2:8-2:9",
           name: "a",
         },
+        options: null,
       },
     },
     {
@@ -35,6 +36,85 @@
             loc: "3:12-3:13",
             name: "b",
           },
+        },
+        options: null,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:14",
+      kind: {
+        type: "ImportExpression",
+        loc: "6:1-6:13",
+        source: {
+          type: "Identifier",
+          loc: "6:8-6:9",
+          name: "a",
+        },
+        options: {
+          type: "Identifier",
+          loc: "6:11-6:12",
+          name: "b",
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:1-7:18",
+      kind: {
+        type: "ImportExpression",
+        loc: "7:1-7:17",
+        source: {
+          type: "Identifier",
+          loc: "7:8-7:9",
+          name: "a",
+        },
+        options: {
+          type: "BinaryExpression",
+          loc: "7:11-7:16",
+          operator: "+",
+          left: {
+            type: "Identifier",
+            loc: "7:11-7:12",
+            name: "b",
+          },
+          right: {
+            type: "Identifier",
+            loc: "7:15-7:16",
+            name: "c",
+          },
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:1-10:12",
+      kind: {
+        type: "ImportExpression",
+        loc: "10:1-10:11",
+        source: {
+          type: "Identifier",
+          loc: "10:8-10:9",
+          name: "a",
+        },
+        options: null,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:1-11:15",
+      kind: {
+        type: "ImportExpression",
+        loc: "11:1-11:14",
+        source: {
+          type: "Identifier",
+          loc: "11:8-11:9",
+          name: "a",
+        },
+        options: {
+          type: "Identifier",
+          loc: "11:11-11:12",
+          name: "b",
         },
       },
     },

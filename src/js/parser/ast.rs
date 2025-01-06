@@ -1353,6 +1353,7 @@ pub enum MetaPropertyKind {
 pub struct ImportExpression {
     pub loc: Loc,
     pub source: P<Expression>,
+    pub options: Option<P<Expression>>,
 }
 
 pub enum Pattern {
@@ -1511,6 +1512,18 @@ pub struct ImportDeclaration {
     pub loc: Loc,
     pub specifiers: Vec<ImportSpecifier>,
     pub source: P<StringLiteral>,
+    pub attributes: Option<P<ImportAttributes>>,
+}
+
+pub struct ImportAttributes {
+    pub attributes: Vec<ImportAttribute>,
+}
+
+pub struct ImportAttribute {
+    pub loc: Loc,
+    // Must be a string literal or identifier
+    pub key: P<Expression>,
+    pub value: P<StringLiteral>,
 }
 
 pub enum ImportSpecifier {
@@ -1541,6 +1554,7 @@ pub struct ExportNamedDeclaration {
     pub declaration: Option<P<Statement>>,
     pub specifiers: Vec<ExportSpecifier>,
     pub source: Option<P<StringLiteral>>,
+    pub source_attributes: Option<P<ImportAttributes>>,
 }
 
 impl ExportNamedDeclaration {
@@ -1603,6 +1617,7 @@ pub struct ExportAllDeclaration {
     pub loc: Loc,
     pub exported: Option<P<ExportName>>,
     pub source: P<StringLiteral>,
+    pub source_attributes: Option<P<ImportAttributes>>,
 }
 
 /// The name of an export that other modules must reference when importing. Must be well formed

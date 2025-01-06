@@ -169,7 +169,6 @@
   "unimplemented": {
     "features": [
       // Stage 4 proposals
-      "import-attributes",
       "iterator-helpers",
       "json-modules",
       "regexp-modifiers",

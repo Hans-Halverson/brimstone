@@ -2583,12 +2583,36 @@ impl<'a> Parser<'a> {
             // Otherwise must be a dynamic import expression
             _ if allow_call => {
                 self.expect(Token::LeftParen)?;
+
+                // First argument is required, is the module specifier string
                 let source = self.parse_assignment_expression()?;
+
+                // Second argument is optional, is the options object
+                let options = if self.token == Token::Comma {
+                    self.advance()?;
+
+                    // Allow a trailing comma after the source argument
+                    if self.token == Token::RightParen {
+                        None
+                    } else {
+                        let options = self.parse_assignment_expression()?;
+
+                        // Allow a trailing comma after options argument
+                        if self.token == Token::Comma {
+                            self.advance()?;
+                        }
+
+                        Some(options)
+                    }
+                } else {
+                    None
+                };
+
                 self.expect(Token::RightParen)?;
 
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::Import(ImportExpression { loc, source })))
+                Ok(p(Expression::Import(ImportExpression { loc, source, options })))
             }
             _ => {
                 let loc = self.mark_loc(start_pos);
@@ -2640,11 +2664,9 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(p(Expression::Number(NumberLiteral { loc, value })))
             }
-            Token::StringLiteral(value) => {
-                let loc = self.loc;
-                let value = value.clone();
-                self.advance()?;
-                Ok(p(Expression::String(StringLiteral { loc, value })))
+            Token::StringLiteral(_) => {
+                let string_literal = self.parse_string_literal()?;
+                Ok(p(Expression::String(string_literal)))
             }
             Token::BigIntLiteral(value) => {
                 let loc = self.loc;
@@ -2735,6 +2757,18 @@ impl<'a> Parser<'a> {
 
                 Ok(p(Expression::Id(self.parse_identifier_reference()?)))
             }
+        }
+    }
+
+    fn parse_string_literal(&mut self) -> ParseResult<StringLiteral> {
+        if let Token::StringLiteral(value) = &self.token {
+            let loc = self.loc;
+            let value = value.clone();
+            self.advance()?;
+
+            Ok(StringLiteral { loc, value })
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
         }
     }
 
@@ -4130,14 +4164,20 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         // No specifiers
-        if let Token::StringLiteral(value) = &self.token {
-            let source = p(StringLiteral { loc: self.loc, value: value.clone() });
-            self.advance()?;
+        if matches!(&self.token, Token::StringLiteral(_)) {
+            let source = p(self.parse_string_literal()?);
+
+            let attributes = self.parse_optional_import_attributes()?;
             self.expect_semicolon()?;
 
             let loc = self.mark_loc(start_pos);
 
-            return Ok(Toplevel::Import(ImportDeclaration { loc, specifiers: vec![], source }));
+            return Ok(Toplevel::Import(ImportDeclaration {
+                loc,
+                specifiers: vec![],
+                source,
+                attributes,
+            }));
         }
 
         // Check for default specifier, which must be at start
@@ -4160,10 +4200,66 @@ impl<'a> Parser<'a> {
             self.parse_import_named_or_namespace_specifier(&mut specifiers)?;
         }
 
-        let source = p(self.parse_source()?);
+        let (source, attributes) = self.parse_source_and_attributes()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Toplevel::Import(ImportDeclaration { loc, specifiers, source }))
+        Ok(Toplevel::Import(ImportDeclaration { loc, specifiers, source, attributes }))
+    }
+
+    fn parse_optional_import_attributes(&mut self) -> ParseResult<Option<P<ImportAttributes>>> {
+        if self.token != Token::With {
+            return Ok(None);
+        }
+
+        self.advance()?;
+        self.expect(Token::LeftBrace)?;
+
+        let mut attributes = vec![];
+
+        while self.token != Token::RightBrace {
+            let attribute = self.parse_import_attribute()?;
+            attributes.push(attribute);
+
+            if self.token == Token::Comma {
+                self.advance()?;
+            } else {
+                break;
+            }
+        }
+
+        self.expect(Token::RightBrace)?;
+
+        Ok(Some(p(ImportAttributes { attributes })))
+    }
+
+    fn parse_import_attribute(&mut self) -> ParseResult<ImportAttribute> {
+        let start_pos = self.current_start_pos();
+
+        let key = if matches!(&self.token, Token::StringLiteral(_)) {
+            let literal = self.parse_string_literal()?;
+            p(Expression::String(literal))
+        } else {
+            let id = self.parse_identifier_name()?;
+
+            if id.is_none() {
+                return self.error(self.loc, ParseError::ImportAttributeInvalidKey);
+            }
+
+            p(Expression::Id(id.unwrap()))
+        };
+
+        self.expect(Token::Colon)?;
+
+        // Value must be a string literal
+        let value = if matches!(&self.token, Token::StringLiteral(_)) {
+            p(self.parse_string_literal()?)
+        } else {
+            return self.error(self.loc, ParseError::ImportAttributeInvalidValue);
+        };
+
+        let loc = self.mark_loc(start_pos);
+
+        Ok(ImportAttribute { loc, key, value })
     }
 
     fn parse_import_named_or_namespace_specifier(
@@ -4295,8 +4391,9 @@ impl<'a> Parser<'a> {
 
                 self.expect(Token::RightBrace)?;
 
-                let source = if self.token == Token::From {
-                    Some(p(self.parse_source()?))
+                let (source, source_attributes) = if self.token == Token::From {
+                    let (source, attributes) = self.parse_source_and_attributes()?;
+                    (Some(source), attributes)
                 } else {
                     // If there is no `from` clause then the local name of each specifier must be an
                     // identifier that is not a reserved word.
@@ -4315,10 +4412,11 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    None
+                    self.expect_semicolon()?;
+
+                    (None, None)
                 };
 
-                self.expect_semicolon()?;
                 let loc = self.mark_loc(start_pos);
 
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
@@ -4326,6 +4424,7 @@ impl<'a> Parser<'a> {
                     declaration: None,
                     specifiers,
                     source,
+                    source_attributes,
                 }))
             }
             // Export all declaration
@@ -4341,10 +4440,15 @@ impl<'a> Parser<'a> {
                 };
 
                 // Required source
-                let source = p(self.parse_source()?);
+                let (source, source_attributes) = self.parse_source_and_attributes()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(Toplevel::ExportAll(ExportAllDeclaration { loc, exported, source }))
+                Ok(Toplevel::ExportAll(ExportAllDeclaration {
+                    loc,
+                    exported,
+                    source,
+                    source_attributes,
+                }))
             }
             // Export named declaration with a declaration statement
             Token::Function
@@ -4364,6 +4468,7 @@ impl<'a> Parser<'a> {
                     declaration,
                     specifiers: vec![],
                     source: None,
+                    source_attributes: None,
                 }))
             }
             // Export default declaration
@@ -4438,15 +4543,18 @@ impl<'a> Parser<'a> {
         ExportName::Id(Identifier::new(id.loc, id.name))
     }
 
-    fn parse_source(&mut self) -> ParseResult<StringLiteral> {
+    fn parse_source_and_attributes(
+        &mut self,
+    ) -> ParseResult<(P<StringLiteral>, Option<P<ImportAttributes>>)> {
         self.expect(Token::From)?;
 
-        if let Token::StringLiteral(value) = &self.token {
-            let source = StringLiteral { loc: self.loc, value: value.clone() };
-            self.advance()?;
+        if matches!(&self.token, Token::StringLiteral(_)) {
+            let source = p(self.parse_string_literal()?);
+
+            let attributes = self.parse_optional_import_attributes()?;
             self.expect_semicolon()?;
 
-            Ok(source)
+            Ok((source, attributes))
         } else {
             self.error_unexpected_token(self.loc, &self.token)
         }

@@ -8,14 +8,14 @@ CURRENT_DIR=$(cd "$(dirname "$0")" && pwd)
 DATA_DIR="$CURRENT_DIR/data"
 
 # This version must match the version of icu in Cargo.toml
-ICU_VERSION="1.5.0"
+ICU_VERSION="2.0.0-beta1"
 
-cargo install --version "$ICU_VERSION" icu_datagen
+cargo install --version "$ICU_VERSION" icu4x-datagen
 
 icu4x-datagen \
-  --key-file "$CURRENT_DIR/keys.txt" \
+  --markers $(cat "$CURRENT_DIR/markers.txt") \
   --locales en \
-  --format mod \
+  --format baked \
   --out "$DATA_DIR" \
   --overwrite \
   --pretty \

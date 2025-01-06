@@ -1,0 +1,79 @@
+// @generated
+/// Implement `DataProvider<CollationMetadataV1Marker>` on the given struct using the data
+/// hardcoded in this file. This allows the struct to be used with
+/// `icu`'s `_unstable` constructors.
+///
+/// Using this implementation will embed the following data in the binary's data segment:
+/// * 109B for the lookup data structure (10 data identifiers)
+/// * 12B[^1] for the actual data (3 unique structs)
+///
+/// [^1]: these numbers can be smaller in practice due to linker deduplication
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impl_collation_metadata_v1_marker {
+    ($ provider : ty) => {
+        #[clippy::msrv = "1.71.1"]
+        const _: () = <$provider>::MUST_USE_MAKE_PROVIDER_MACRO;
+        #[clippy::msrv = "1.71.1"]
+        impl $provider {
+            const DATA_COLLATION_METADATA_V1_MARKER: icu_provider_baked::zerotrie::Data<icu_collator::provider::CollationMetadataV1Marker> = icu_provider_baked::zerotrie::Data {
+                trie: icu_provider_baked::zerotrie::ZeroTrieSimpleAscii {
+                    store: b"\xC2eu\x0Bn-US-posix\x80nd\x81\xC2\x1E-\x0Be\xC2mo\x04oji\x81r\x81Han\xC3ist!\"\x1E\xC4psuz\x06\x0C\x12inyin\x82troke\x82nihan\x82huyin\x82\x82\x82",
+                },
+                values: &[icu_collator::provider::CollationMetadataV1 { bits: 9u32 }, icu_collator::provider::CollationMetadataV1 { bits: 1u32 }, icu_collator::provider::CollationMetadataV1 { bits: 41u32 }],
+            };
+        }
+        #[clippy::msrv = "1.71.1"]
+        impl icu_provider::DataProvider<icu_collator::provider::CollationMetadataV1Marker> for $provider {
+            fn load(&self, req: icu_provider::DataRequest) -> Result<icu_provider::DataResponse<icu_collator::provider::CollationMetadataV1Marker>, icu_provider::DataError> {
+                let mut metadata = icu_provider::DataResponseMetadata::default();
+                let payload = if let Some(payload) = icu_provider_baked::DataStore::get(
+                    &Self::DATA_COLLATION_METADATA_V1_MARKER,
+                    req.id,
+                    req.metadata.attributes_prefix_match,
+                ) {
+                    payload
+                } else {
+                    const FALLBACKER: icu_locale::fallback::LocaleFallbackerWithConfig<'static> = icu_locale::fallback::LocaleFallbacker::new().for_config(<icu_collator::provider::CollationMetadataV1Marker as icu_provider::DataMarker>::INFO.fallback_config);
+                    let mut fallback_iterator = FALLBACKER.fallback_for(req.id.locale.clone());
+                    loop {
+                        if let Some(payload) = icu_provider_baked::DataStore::get(
+                            &Self::DATA_COLLATION_METADATA_V1_MARKER,
+                            icu_provider::DataIdentifierBorrowed::for_marker_attributes_and_locale(req.id.marker_attributes, fallback_iterator.get()),
+                            req.metadata.attributes_prefix_match,
+                        ) {
+                            metadata.locale = Some(fallback_iterator.take());
+                            break payload;
+                        }
+                        if fallback_iterator.get().is_default() {
+                            return Err(icu_provider::DataErrorKind::IdentifierNotFound.with_req(
+                                <icu_collator::provider::CollationMetadataV1Marker as icu_provider::DataMarker>::INFO,
+                                req,
+                            ));
+                        }
+                        fallback_iterator.step();
+                    }
+                };
+                Ok(icu_provider::DataResponse {
+                    payload: icu_provider::DataPayload::from_static_ref(payload),
+                    metadata,
+                })
+            }
+        }
+    };
+    ($ provider : ty , ITER) => {
+        __impl_collation_metadata_v1_marker!($provider);
+        #[clippy::msrv = "1.71.1"]
+        impl icu_provider::IterableDataProvider<icu_collator::provider::CollationMetadataV1Marker> for $provider {
+            fn iter_ids(&self) -> Result<std::collections::BTreeSet<icu_provider::DataIdentifierCow<'static>>, icu_provider::DataError> {
+                Ok(icu_provider_baked::DataStore::iter(&Self::DATA_COLLATION_METADATA_V1_MARKER).collect())
+            }
+        }
+    };
+    ($ provider : ty , DRY) => {};
+    ($ provider : ty , DRY , ITER) => {
+        __impl_collation_metadata_v1_marker!($provider, ITER);
+    };
+}
+#[doc(inline)]
+pub use __impl_collation_metadata_v1_marker as impl_collation_metadata_v1_marker;

@@ -1,4 +1,4 @@
-use icu_properties::Script;
+use icu_properties::props::{GeneralCategoryGroup, Script};
 
 use super::{
     icu::ICU,
@@ -156,7 +156,7 @@ impl BinaryUnicodeProperty {
             Self::Any => true,
             // Note that the assigned property is not a regular property set and instead is treated
             // as the complement of the assigned general category `\P{C}`.
-            Self::Assigned => !ICU.general_categories.unassigned.contains32(code_point),
+            Self::Assigned => !in_category_group(code_point, GeneralCategoryGroup::Unassigned),
             Self::BidiControl => ICU.properties.bidi_control.contains32(code_point),
             Self::BidiMirrored => ICU.properties.bidi_mirrored.contains32(code_point),
             Self::CaseIgnorable => ICU.properties.case_ignorable.contains32(code_point),
@@ -368,94 +368,89 @@ impl GeneralCategoryProperty {
 
     pub fn is_match(&self, code_point: CodePoint) -> bool {
         match self {
-            Self::Other => ICU.general_categories.other.contains32(code_point),
-            Self::Control => ICU.general_categories.control.contains32(code_point),
-            Self::Format => ICU.general_categories.format.contains32(code_point),
-            Self::Unassigned => ICU.general_categories.unassigned.contains32(code_point),
-            Self::PrivateUse => ICU.general_categories.private_use.contains32(code_point),
-            Self::Surrogate => ICU.general_categories.surrogate.contains32(code_point),
-            Self::Letter => ICU.general_categories.letter.contains32(code_point),
-            Self::CasedLetter => ICU.general_categories.cased_letter.contains32(code_point),
-            Self::LowercaseLetter => ICU
-                .general_categories
-                .lowercase_letter
-                .contains32(code_point),
-            Self::ModifierLetter => ICU
-                .general_categories
-                .modifier_letter
-                .contains32(code_point),
-            Self::OtherLetter => ICU.general_categories.other_letter.contains32(code_point),
-            Self::TitlecaseLetter => ICU
-                .general_categories
-                .titlecase_letter
-                .contains32(code_point),
-            Self::UppercaseLetter => ICU
-                .general_categories
-                .uppercase_letter
-                .contains32(code_point),
-            Self::Mark => ICU.general_categories.mark.contains32(code_point),
-            Self::SpacingMark => ICU.general_categories.spacing_mark.contains32(code_point),
-            Self::EnclosingMark => ICU.general_categories.enclosing_mark.contains32(code_point),
-            Self::NonspacingMark => ICU
-                .general_categories
-                .nonspacing_mark
-                .contains32(code_point),
-            Self::Number => ICU.general_categories.number.contains32(code_point),
-            Self::DecimalNumber => ICU.general_categories.decimal_number.contains32(code_point),
-            Self::LetterNumber => ICU.general_categories.letter_number.contains32(code_point),
-            Self::OtherNumber => ICU.general_categories.other_number.contains32(code_point),
-            Self::Punctuation => ICU.general_categories.punctuation.contains32(code_point),
-            Self::ConnectorPunctuation => ICU
-                .general_categories
-                .connector_punctuation
-                .contains32(code_point),
-            Self::DashPunctuation => ICU
-                .general_categories
-                .dash_punctuation
-                .contains32(code_point),
-            Self::ClosePunctuation => ICU
-                .general_categories
-                .close_punctuation
-                .contains32(code_point),
-            Self::FinalPunctuation => ICU
-                .general_categories
-                .final_punctuation
-                .contains32(code_point),
-            Self::InitialPunctuation => ICU
-                .general_categories
-                .initial_punctuation
-                .contains32(code_point),
-            Self::OtherPunctuation => ICU
-                .general_categories
-                .other_punctuation
-                .contains32(code_point),
-            Self::OpenPunctuation => ICU
-                .general_categories
-                .open_punctuation
-                .contains32(code_point),
-            Self::Symbol => ICU.general_categories.symbol.contains32(code_point),
-            Self::CurrencySymbol => ICU
-                .general_categories
-                .currency_symbol
-                .contains32(code_point),
-            Self::ModifierSymbol => ICU
-                .general_categories
-                .modifier_symbol
-                .contains32(code_point),
-            Self::MathSymbol => ICU.general_categories.math_symbol.contains32(code_point),
-            Self::OtherSymbol => ICU.general_categories.other_symbol.contains32(code_point),
-            Self::Separator => ICU.general_categories.separator.contains32(code_point),
-            Self::LineSeparator => ICU.general_categories.line_separator.contains32(code_point),
-            Self::ParagraphSeparator => ICU
-                .general_categories
-                .paragraph_separator
-                .contains32(code_point),
-            Self::SpaceSeparator => ICU
-                .general_categories
-                .space_separator
-                .contains32(code_point),
+            Self::Other => in_category_group(code_point, GeneralCategoryGroup::Other),
+            Self::Control => in_category_group(code_point, GeneralCategoryGroup::Control),
+            Self::Format => in_category_group(code_point, GeneralCategoryGroup::Format),
+            Self::Unassigned => in_category_group(code_point, GeneralCategoryGroup::Unassigned),
+            Self::PrivateUse => in_category_group(code_point, GeneralCategoryGroup::PrivateUse),
+            Self::Surrogate => in_category_group(code_point, GeneralCategoryGroup::Surrogate),
+            Self::Letter => in_category_group(code_point, GeneralCategoryGroup::Letter),
+            Self::CasedLetter => in_category_group(code_point, GeneralCategoryGroup::CasedLetter),
+            Self::LowercaseLetter => {
+                in_category_group(code_point, GeneralCategoryGroup::LowercaseLetter)
+            }
+            Self::ModifierLetter => {
+                in_category_group(code_point, GeneralCategoryGroup::ModifierLetter)
+            }
+            Self::OtherLetter => in_category_group(code_point, GeneralCategoryGroup::OtherLetter),
+            Self::TitlecaseLetter => {
+                in_category_group(code_point, GeneralCategoryGroup::TitlecaseLetter)
+            }
+            Self::UppercaseLetter => {
+                in_category_group(code_point, GeneralCategoryGroup::UppercaseLetter)
+            }
+            Self::Mark => in_category_group(code_point, GeneralCategoryGroup::Mark),
+            Self::SpacingMark => in_category_group(code_point, GeneralCategoryGroup::SpacingMark),
+            Self::EnclosingMark => {
+                in_category_group(code_point, GeneralCategoryGroup::EnclosingMark)
+            }
+            Self::NonspacingMark => {
+                in_category_group(code_point, GeneralCategoryGroup::NonspacingMark)
+            }
+            Self::Number => in_category_group(code_point, GeneralCategoryGroup::Number),
+            Self::DecimalNumber => {
+                in_category_group(code_point, GeneralCategoryGroup::DecimalNumber)
+            }
+            Self::LetterNumber => in_category_group(code_point, GeneralCategoryGroup::LetterNumber),
+            Self::OtherNumber => in_category_group(code_point, GeneralCategoryGroup::OtherNumber),
+            Self::Punctuation => in_category_group(code_point, GeneralCategoryGroup::Punctuation),
+            Self::ConnectorPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::ConnectorPunctuation)
+            }
+            Self::DashPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::DashPunctuation)
+            }
+            Self::ClosePunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::ClosePunctuation)
+            }
+            Self::FinalPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::FinalPunctuation)
+            }
+            Self::InitialPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::InitialPunctuation)
+            }
+            Self::OtherPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::OtherPunctuation)
+            }
+            Self::OpenPunctuation => {
+                in_category_group(code_point, GeneralCategoryGroup::OpenPunctuation)
+            }
+            Self::Symbol => in_category_group(code_point, GeneralCategoryGroup::Symbol),
+            Self::CurrencySymbol => {
+                in_category_group(code_point, GeneralCategoryGroup::CurrencySymbol)
+            }
+            Self::ModifierSymbol => {
+                in_category_group(code_point, GeneralCategoryGroup::ModifierSymbol)
+            }
+            Self::MathSymbol => in_category_group(code_point, GeneralCategoryGroup::MathSymbol),
+            Self::OtherSymbol => in_category_group(code_point, GeneralCategoryGroup::OtherSymbol),
+            Self::Separator => in_category_group(code_point, GeneralCategoryGroup::Separator),
+            Self::LineSeparator => {
+                in_category_group(code_point, GeneralCategoryGroup::LineSeparator)
+            }
+            Self::ParagraphSeparator => {
+                in_category_group(code_point, GeneralCategoryGroup::ParagraphSeparator)
+            }
+            Self::SpaceSeparator => {
+                in_category_group(code_point, GeneralCategoryGroup::SpaceSeparator)
+            }
         }
     }
+}
+
+fn in_category_group(code_point: CodePoint, category_group: GeneralCategoryGroup) -> bool {
+    let category = ICU.general_categories.classifier.get32(code_point);
+    category_group.contains(category)
 }
 
 /// A script property with or without extensions
@@ -476,9 +471,9 @@ impl ScriptProperty {
 
     pub fn is_match(&self, code_point: CodePoint) -> bool {
         if self.with_extensions {
-            ICU.scripts.classifier.has_script(code_point, self.script)
+            ICU.scripts.classifier.has_script32(code_point, self.script)
         } else {
-            ICU.scripts.classifier.get_script_val(code_point) == self.script
+            ICU.scripts.classifier.get_script_val32(code_point) == self.script
         }
     }
 }

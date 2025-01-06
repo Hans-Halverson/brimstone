@@ -950,7 +950,7 @@ impl CompiledRegExpBuilder {
                         }
                     } else {
                         // Otherwise can add the range directly
-                        set_builder.add_range32(&(*start..=*end));
+                        set_builder.add_range32(*start..=*end);
                     }
                 }
                 // Shorthand char ranges have own instructions

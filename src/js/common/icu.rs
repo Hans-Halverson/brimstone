@@ -2,17 +2,17 @@ use std::sync::LazyLock;
 
 use icu_casemap::CaseMapper;
 use icu_collator::{Collator, CollatorOptions};
-use icu_locid::{locale, Locale};
-use icu_normalizer::{ComposingNormalizer, DecomposingNormalizer};
-use icu_properties::{
-    names::{PropertyValueNameToEnumMapper, PropertyValueNameToEnumMapperBorrowed},
-    script::ScriptWithExtensionsBorrowed,
-    script::{self, ScriptWithExtensions},
-    sets::{self, CodePointSetData, CodePointSetDataBorrowed},
-    GeneralCategoryGroup, Script,
+use icu_locale::{locale, Locale};
+use icu_normalizer::{
+    ComposingNormalizer, ComposingNormalizerBorrowed, DecomposingNormalizer,
+    DecomposingNormalizerBorrowed,
 };
-use icu_provider::DataLocale;
-use icu_provider_adapters::fallback::LocaleFallbackProvider;
+use icu_properties::{
+    props::*,
+    script::{ScriptWithExtensions, ScriptWithExtensionsBorrowed},
+    CodePointMapData, CodePointMapDataBorrowed, CodePointSetData, CodePointSetDataBorrowed,
+    PropertyParser, PropertyParserBorrowed,
+};
 
 use super::icu_data::BakedDataProvider;
 
@@ -29,89 +29,91 @@ pub struct ICU {
 }
 
 pub struct GeneralCategories {
-    /// The C general category
-    pub other: CodePointSetDataBorrowed<'static>,
-    /// The Cc general category
-    pub control: CodePointSetDataBorrowed<'static>,
-    /// The Cf general category
-    pub format: CodePointSetDataBorrowed<'static>,
-    /// The Cn general category
-    pub unassigned: CodePointSetDataBorrowed<'static>,
-    /// The Co general category
-    pub private_use: CodePointSetDataBorrowed<'static>,
-    /// The Cs general category
-    pub surrogate: CodePointSetDataBorrowed<'static>,
-    /// The L general category
-    pub letter: CodePointSetDataBorrowed<'static>,
-    /// The LC general category
-    pub cased_letter: CodePointSetDataBorrowed<'static>,
-    /// The Ll general category
-    pub lowercase_letter: CodePointSetDataBorrowed<'static>,
-    /// The Lm general category
-    pub modifier_letter: CodePointSetDataBorrowed<'static>,
-    /// The Lo general category
-    pub other_letter: CodePointSetDataBorrowed<'static>,
-    /// The Lt general category
-    pub titlecase_letter: CodePointSetDataBorrowed<'static>,
-    /// The Lu general category
-    pub uppercase_letter: CodePointSetDataBorrowed<'static>,
-    /// The M general category
-    pub mark: CodePointSetDataBorrowed<'static>,
-    /// The Mc general category
-    pub spacing_mark: CodePointSetDataBorrowed<'static>,
-    /// The Me general category
-    pub enclosing_mark: CodePointSetDataBorrowed<'static>,
-    /// The Mn general category
-    pub nonspacing_mark: CodePointSetDataBorrowed<'static>,
-    /// The N general category
-    pub number: CodePointSetDataBorrowed<'static>,
-    /// The Nd general category
-    pub decimal_number: CodePointSetDataBorrowed<'static>,
-    /// The Nl general category
-    pub letter_number: CodePointSetDataBorrowed<'static>,
-    /// The No general category
-    pub other_number: CodePointSetDataBorrowed<'static>,
-    /// The P general category
-    pub punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Pc general category
-    pub connector_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Pd general category
-    pub dash_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Pe general category
-    pub close_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Pf general category
-    pub final_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Pi general category
-    pub initial_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Po general category
-    pub other_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The Ps general category
-    pub open_punctuation: CodePointSetDataBorrowed<'static>,
-    /// The S general category
-    pub symbol: CodePointSetDataBorrowed<'static>,
-    /// The Sc general category
-    pub currency_symbol: CodePointSetDataBorrowed<'static>,
-    /// The Sk general category
-    pub modifier_symbol: CodePointSetDataBorrowed<'static>,
-    /// The Sm general category
-    pub math_symbol: CodePointSetDataBorrowed<'static>,
-    /// The So general category
-    pub other_symbol: CodePointSetDataBorrowed<'static>,
-    /// The Z general category
-    pub separator: CodePointSetDataBorrowed<'static>,
-    /// The Zl general category
-    pub line_separator: CodePointSetDataBorrowed<'static>,
-    /// The Zp general category
-    pub paragraph_separator: CodePointSetDataBorrowed<'static>,
-    /// The Zs general category
-    pub space_separator: CodePointSetDataBorrowed<'static>,
+    /// Classifier which maps code points to general categories
+    pub classifier: CodePointMapDataBorrowed<'static, GeneralCategory>,
+    //     /// The C general category
+    //     pub other: CodePointSetDataBorrowed<'static>,
+    //     /// The Cc general category
+    //     pub control: CodePointSetDataBorrowed<'static>,
+    //     /// The Cf general category
+    //     pub format: CodePointSetDataBorrowed<'static>,
+    //     /// The Cn general category
+    //     pub unassigned: CodePointSetDataBorrowed<'static>,
+    //     /// The Co general category
+    //     pub private_use: CodePointSetDataBorrowed<'static>,
+    //     /// The Cs general category
+    //     pub surrogate: CodePointSetDataBorrowed<'static>,
+    //     /// The L general category
+    //     pub letter: CodePointSetDataBorrowed<'static>,
+    //     /// The LC general category
+    //     pub cased_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The Ll general category
+    //     pub lowercase_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The Lm general category
+    //     pub modifier_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The Lo general category
+    //     pub other_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The Lt general category
+    //     pub titlecase_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The Lu general category
+    //     pub uppercase_letter: CodePointSetDataBorrowed<'static>,
+    //     /// The M general category
+    //     pub mark: CodePointSetDataBorrowed<'static>,
+    //     /// The Mc general category
+    //     pub spacing_mark: CodePointSetDataBorrowed<'static>,
+    //     /// The Me general category
+    //     pub enclosing_mark: CodePointSetDataBorrowed<'static>,
+    //     /// The Mn general category
+    //     pub nonspacing_mark: CodePointSetDataBorrowed<'static>,
+    //     /// The N general category
+    //     pub number: CodePointSetDataBorrowed<'static>,
+    //     /// The Nd general category
+    //     pub decimal_number: CodePointSetDataBorrowed<'static>,
+    //     /// The Nl general category
+    //     pub letter_number: CodePointSetDataBorrowed<'static>,
+    //     /// The No general category
+    //     pub other_number: CodePointSetDataBorrowed<'static>,
+    //     /// The P general category
+    //     pub punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Pc general category
+    //     pub connector_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Pd general category
+    //     pub dash_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Pe general category
+    //     pub close_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Pf general category
+    //     pub final_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Pi general category
+    //     pub initial_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Po general category
+    //     pub other_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The Ps general category
+    //     pub open_punctuation: CodePointSetDataBorrowed<'static>,
+    //     /// The S general category
+    //     pub symbol: CodePointSetDataBorrowed<'static>,
+    //     /// The Sc general category
+    //     pub currency_symbol: CodePointSetDataBorrowed<'static>,
+    //     /// The Sk general category
+    //     pub modifier_symbol: CodePointSetDataBorrowed<'static>,
+    //     /// The Sm general category
+    //     pub math_symbol: CodePointSetDataBorrowed<'static>,
+    //     /// The So general category
+    //     pub other_symbol: CodePointSetDataBorrowed<'static>,
+    //     /// The Z general category
+    //     pub separator: CodePointSetDataBorrowed<'static>,
+    //     /// The Zl general category
+    //     pub line_separator: CodePointSetDataBorrowed<'static>,
+    //     /// The Zp general category
+    //     pub paragraph_separator: CodePointSetDataBorrowed<'static>,
+    //     /// The Zs general category
+    //     pub space_separator: CodePointSetDataBorrowed<'static>,
 }
 
 pub struct Scripts {
     /// Classifier which maps code points to scripts or sets of scripts
     pub classifier: ScriptWithExtensionsBorrowed<'static>,
     /// Mapper which maps script name to script enum
-    pub names: PropertyValueNameToEnumMapperBorrowed<'static, Script>,
+    pub names: PropertyParserBorrowed<'static, Script>,
 }
 
 pub struct Properties {
@@ -219,176 +221,100 @@ pub struct Properties {
 
 pub struct Normalizers {
     /// Normalizer for the NFC normalization form.
-    pub nfc: ComposingNormalizer,
+    pub nfc: ComposingNormalizerBorrowed<'static>,
     /// Normalizer for the NFD normalization form.
-    pub nfd: DecomposingNormalizer,
+    pub nfd: DecomposingNormalizerBorrowed<'static>,
     /// Normalizer for the NFKC normalization form.
-    pub nfkc: ComposingNormalizer,
+    pub nfkc: ComposingNormalizerBorrowed<'static>,
     /// Normalizer for the NFKD normalization form.
-    pub nfkd: DecomposingNormalizer,
+    pub nfkd: DecomposingNormalizerBorrowed<'static>,
 }
 
 pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
-    // General category sets
-    macro_rules! general_category_static {
-        ($static_name:ident, $category_name:ident) => {
+    // General categories
+    static GENERAL_CATEGORIES_MAP: LazyLock<CodePointMapData<GeneralCategory>> =
+        LazyLock::new(|| {
+            CodePointMapData::<GeneralCategory>::try_new_unstable(&BakedDataProvider).unwrap()
+        });
+
+    // Binary property sets
+    macro_rules! binary_property_static {
+        ($static_name:ident, $property:ident) => {
             static $static_name: LazyLock<CodePointSetData> = LazyLock::new(|| {
-                sets::load_for_general_category_group(
-                    &BakedDataProvider,
-                    GeneralCategoryGroup::$category_name,
-                )
-                .unwrap()
+                CodePointSetData::try_new_unstable::<$property>(&BakedDataProvider).unwrap()
             });
         };
     }
 
-    general_category_static!(OTHER_SET, Other);
-    general_category_static!(CONTROL_SET, Control);
-    general_category_static!(FORMAT_SET, Format);
-    general_category_static!(UNASSIGNED_SET, Unassigned);
-    general_category_static!(PRIVATE_USE_SET, PrivateUse);
-    general_category_static!(SURROGATE_SET, Surrogate);
-    general_category_static!(LETTER_SET, Letter);
-    general_category_static!(CASED_LETTER_SET, CasedLetter);
-    general_category_static!(LOWERCASE_LETTER_SET, LowercaseLetter);
-    general_category_static!(MODIFIER_LETTER_SET, ModifierLetter);
-    general_category_static!(OTHER_LETTER_SET, OtherLetter);
-    general_category_static!(TITLECASE_LETTER_SET, TitlecaseLetter);
-    general_category_static!(UPPERCASE_LETTER_SET, UppercaseLetter);
-    general_category_static!(MARK_SET, Mark);
-    general_category_static!(SPACING_MARK_SET, SpacingMark);
-    general_category_static!(ENCLOSING_MARK_SET, EnclosingMark);
-    general_category_static!(NONSPACING_MARK_SET, NonspacingMark);
-    general_category_static!(NUMBER_SET, Number);
-    general_category_static!(DECIMAL_NUMBER_SET, DecimalNumber);
-    general_category_static!(LETTER_NUMBER_SET, LetterNumber);
-    general_category_static!(OTHER_NUMBER_SET, OtherNumber);
-    general_category_static!(PUNCTUATION_SET, Punctuation);
-    general_category_static!(CONNECTOR_PUNCTUATION_SET, ConnectorPunctuation);
-    general_category_static!(DASH_PUNCTUATION_SET, DashPunctuation);
-    general_category_static!(CLOSE_PUNCTUATION_SET, ClosePunctuation);
-    general_category_static!(FINAL_PUNCTUATION_SET, FinalPunctuation);
-    general_category_static!(INITIAL_PUNCTUATION_SET, InitialPunctuation);
-    general_category_static!(OTHER_PUNCTUATION_SET, OtherPunctuation);
-    general_category_static!(OPEN_PUNCTUATION_SET, OpenPunctuation);
-    general_category_static!(SYMBOL_SET, Symbol);
-    general_category_static!(CURRENCY_SYMBOL_SET, CurrencySymbol);
-    general_category_static!(MODIFIER_SYMBOL_SET, ModifierSymbol);
-    general_category_static!(MATH_SYMBOL_SET, MathSymbol);
-    general_category_static!(OTHER_SYMBOL_SET, OtherSymbol);
-    general_category_static!(SEPARATOR_SET, Separator);
-    general_category_static!(LINE_SEPARATOR_SET, LineSeparator);
-    general_category_static!(PARAGRAPH_SEPARATOR_SET, ParagraphSeparator);
-    general_category_static!(SPACE_SEPARATOR_SET, SpaceSeparator);
-
-    // Binary property sets
-    macro_rules! binary_property_static {
-        ($static_name:ident, $load_fn:ident) => {
-            static $static_name: LazyLock<CodePointSetData> =
-                LazyLock::new(|| sets::$load_fn(&BakedDataProvider).unwrap());
-        };
-    }
-
-    binary_property_static!(ASCII_HEX_DIGIT_SET, load_ascii_hex_digit);
-    binary_property_static!(ALPHABETIC_SET, load_alphabetic);
-    binary_property_static!(BIDI_CONTROL_SET, load_bidi_control);
-    binary_property_static!(BIDI_MIRRORED_SET, load_bidi_mirrored);
-    binary_property_static!(CASE_IGNORABLE_SET, load_case_ignorable);
-    binary_property_static!(CASED_SET, load_cased);
-    binary_property_static!(CHANGES_WHEN_CASEFOLDED_SET, load_changes_when_casefolded);
-    binary_property_static!(CHANGES_WHEN_CASEMAPPED_SET, load_changes_when_casemapped);
-    binary_property_static!(CHANGES_WHEN_LOWERCASED_SET, load_changes_when_lowercased);
-    binary_property_static!(CHANGES_WHEN_NFKC_CASEFOLDED_SET, load_changes_when_nfkc_casefolded);
-    binary_property_static!(CHANGES_WHEN_TITLECASED_SET, load_changes_when_titlecased);
-    binary_property_static!(CHANGES_WHEN_UPPERCASED_SET, load_changes_when_uppercased);
-    binary_property_static!(DASH_SET, load_dash);
-    binary_property_static!(DEFAULT_IGNORABLE_CODE_POINT_SET, load_default_ignorable_code_point);
-    binary_property_static!(DEPRECATED_SET, load_deprecated);
-    binary_property_static!(DIACRITIC_SET, load_diacritic);
-    binary_property_static!(EMOJI_SET, load_emoji);
-    binary_property_static!(EMOJI_COMPONENT_SET, load_emoji_component);
-    binary_property_static!(EMOJI_MODIFIER_SET, load_emoji_modifier);
-    binary_property_static!(EMOJI_MODIFIER_BASE_SET, load_emoji_modifier_base);
-    binary_property_static!(EMOJI_PRESENTATION_SET, load_emoji_presentation);
-    binary_property_static!(EXTENDED_PICTOGRAPHIC_SET, load_extended_pictographic);
-    binary_property_static!(EXTENDER_SET, load_extender);
-    binary_property_static!(GRAPHEME_BASE_SET, load_grapheme_base);
-    binary_property_static!(GRAPHEME_EXTEND_SET, load_grapheme_extend);
-    binary_property_static!(HEX_DIGIT_SET, load_hex_digit);
-    binary_property_static!(IDS_BINARY_OPERATOR_SET, load_ids_binary_operator);
-    binary_property_static!(IDS_TRINARY_OPERATOR_SET, load_ids_trinary_operator);
-    binary_property_static!(ID_START_SET, load_id_start);
-    binary_property_static!(ID_CONTINUE_SET, load_id_continue);
-    binary_property_static!(IDEOGRAPHIC_SET, load_ideographic);
-    binary_property_static!(JOIN_CONTROL_SET, load_join_control);
-    binary_property_static!(LOGICAL_ORDER_EXCEPTION_SET, load_logical_order_exception);
-    binary_property_static!(LOWERCASE_SET, load_lowercase);
-    binary_property_static!(MATH_SET, load_math);
-    binary_property_static!(NONCHARACTER_CODE_POINT_SET, load_noncharacter_code_point);
-    binary_property_static!(PATTERN_SYNTAX_SET, load_pattern_syntax);
-    binary_property_static!(PATTERN_WHITE_SPACE_SET, load_pattern_white_space);
-    binary_property_static!(QUOTATION_MARK_SET, load_quotation_mark);
-    binary_property_static!(RADICAL_SET, load_radical);
-    binary_property_static!(REGIONAL_INDICATOR_SET, load_regional_indicator);
-    binary_property_static!(SENTENCE_TERMINAL_SET, load_sentence_terminal);
-    binary_property_static!(SOFT_DOTTED_SET, load_soft_dotted);
-    binary_property_static!(TERMINAL_PUNCTUATION_SET, load_terminal_punctuation);
-    binary_property_static!(UNIFIED_IDEOGRAPH_SET, load_unified_ideograph);
-    binary_property_static!(UPPERCASE_SET, load_uppercase);
-    binary_property_static!(VARIATION_SELECTOR_SET, load_variation_selector);
-    binary_property_static!(WHITE_SPACE_SET, load_white_space);
-    binary_property_static!(XID_CONTINUE_SET, load_xid_continue);
-    binary_property_static!(XID_START_SET, load_xid_start);
+    binary_property_static!(ASCII_HEX_DIGIT_SET, AsciiHexDigit);
+    binary_property_static!(ALPHABETIC_SET, Alphabetic);
+    binary_property_static!(BIDI_CONTROL_SET, BidiControl);
+    binary_property_static!(BIDI_MIRRORED_SET, BidiMirrored);
+    binary_property_static!(CASE_IGNORABLE_SET, CaseIgnorable);
+    binary_property_static!(CASED_SET, Cased);
+    binary_property_static!(CHANGES_WHEN_CASEFOLDED_SET, ChangesWhenCasefolded);
+    binary_property_static!(CHANGES_WHEN_CASEMAPPED_SET, ChangesWhenCasemapped);
+    binary_property_static!(CHANGES_WHEN_LOWERCASED_SET, ChangesWhenLowercased);
+    binary_property_static!(CHANGES_WHEN_NFKC_CASEFOLDED_SET, ChangesWhenNfkcCasefolded);
+    binary_property_static!(CHANGES_WHEN_TITLECASED_SET, ChangesWhenTitlecased);
+    binary_property_static!(CHANGES_WHEN_UPPERCASED_SET, ChangesWhenUppercased);
+    binary_property_static!(DASH_SET, Dash);
+    binary_property_static!(DEFAULT_IGNORABLE_CODE_POINT_SET, DefaultIgnorableCodePoint);
+    binary_property_static!(DEPRECATED_SET, Deprecated);
+    binary_property_static!(DIACRITIC_SET, Diacritic);
+    binary_property_static!(EMOJI_SET, Emoji);
+    binary_property_static!(EMOJI_COMPONENT_SET, EmojiComponent);
+    binary_property_static!(EMOJI_MODIFIER_SET, EmojiModifier);
+    binary_property_static!(EMOJI_MODIFIER_BASE_SET, EmojiModifierBase);
+    binary_property_static!(EMOJI_PRESENTATION_SET, EmojiPresentation);
+    binary_property_static!(EXTENDED_PICTOGRAPHIC_SET, ExtendedPictographic);
+    binary_property_static!(EXTENDER_SET, Extender);
+    binary_property_static!(GRAPHEME_BASE_SET, GraphemeBase);
+    binary_property_static!(GRAPHEME_EXTEND_SET, GraphemeExtend);
+    binary_property_static!(HEX_DIGIT_SET, HexDigit);
+    binary_property_static!(IDS_BINARY_OPERATOR_SET, IdsBinaryOperator);
+    binary_property_static!(IDS_TRINARY_OPERATOR_SET, IdsTrinaryOperator);
+    binary_property_static!(ID_START_SET, IdStart);
+    binary_property_static!(ID_CONTINUE_SET, IdContinue);
+    binary_property_static!(IDEOGRAPHIC_SET, Ideographic);
+    binary_property_static!(JOIN_CONTROL_SET, JoinControl);
+    binary_property_static!(LOGICAL_ORDER_EXCEPTION_SET, LogicalOrderException);
+    binary_property_static!(LOWERCASE_SET, Lowercase);
+    binary_property_static!(MATH_SET, Math);
+    binary_property_static!(NONCHARACTER_CODE_POINT_SET, NoncharacterCodePoint);
+    binary_property_static!(PATTERN_SYNTAX_SET, PatternSyntax);
+    binary_property_static!(PATTERN_WHITE_SPACE_SET, PatternWhiteSpace);
+    binary_property_static!(QUOTATION_MARK_SET, QuotationMark);
+    binary_property_static!(RADICAL_SET, Radical);
+    binary_property_static!(REGIONAL_INDICATOR_SET, RegionalIndicator);
+    binary_property_static!(SENTENCE_TERMINAL_SET, SentenceTerminal);
+    binary_property_static!(SOFT_DOTTED_SET, SoftDotted);
+    binary_property_static!(TERMINAL_PUNCTUATION_SET, TerminalPunctuation);
+    binary_property_static!(UNIFIED_IDEOGRAPH_SET, UnifiedIdeograph);
+    binary_property_static!(UPPERCASE_SET, Uppercase);
+    binary_property_static!(VARIATION_SELECTOR_SET, VariationSelector);
+    binary_property_static!(WHITE_SPACE_SET, WhiteSpace);
+    binary_property_static!(XID_CONTINUE_SET, XidContinue);
+    binary_property_static!(XID_START_SET, XidStart);
 
     // Scripts
     static SCRIPT_CLASSIFIER: LazyLock<ScriptWithExtensions> =
-        LazyLock::new(|| script::load_script_with_extensions_unstable(&BakedDataProvider).unwrap());
-    static SCRIPT_NAMES: LazyLock<PropertyValueNameToEnumMapper<Script>> =
-        LazyLock::new(|| Script::get_name_to_enum_mapper(&BakedDataProvider).unwrap());
+        LazyLock::new(|| ScriptWithExtensions::try_new_unstable(&BakedDataProvider).unwrap());
+    static SCRIPT_NAMES: LazyLock<PropertyParser<Script>> =
+        LazyLock::new(|| PropertyParser::try_new_unstable(&BakedDataProvider).unwrap());
 
-    let locale_provider = LocaleFallbackProvider::try_new_unstable(BakedDataProvider).unwrap();
+    // Normalizers
+    static NFC: LazyLock<ComposingNormalizer> =
+        LazyLock::new(|| ComposingNormalizer::try_new_nfc_unstable(&BakedDataProvider).unwrap());
+    static NFD: LazyLock<DecomposingNormalizer> =
+        LazyLock::new(|| DecomposingNormalizer::try_new_nfd_unstable(&BakedDataProvider).unwrap());
+    static NFKC: LazyLock<ComposingNormalizer> =
+        LazyLock::new(|| ComposingNormalizer::try_new_nfkc_unstable(&BakedDataProvider).unwrap());
+    static NFKD: LazyLock<DecomposingNormalizer> =
+        LazyLock::new(|| DecomposingNormalizer::try_new_nfkd_unstable(&BakedDataProvider).unwrap());
 
     ICU {
-        general_categories: GeneralCategories {
-            other: OTHER_SET.as_borrowed(),
-            control: CONTROL_SET.as_borrowed(),
-            format: FORMAT_SET.as_borrowed(),
-            unassigned: UNASSIGNED_SET.as_borrowed(),
-            private_use: PRIVATE_USE_SET.as_borrowed(),
-            surrogate: SURROGATE_SET.as_borrowed(),
-            letter: LETTER_SET.as_borrowed(),
-            cased_letter: CASED_LETTER_SET.as_borrowed(),
-            lowercase_letter: LOWERCASE_LETTER_SET.as_borrowed(),
-            modifier_letter: MODIFIER_LETTER_SET.as_borrowed(),
-            other_letter: OTHER_LETTER_SET.as_borrowed(),
-            titlecase_letter: TITLECASE_LETTER_SET.as_borrowed(),
-            uppercase_letter: UPPERCASE_LETTER_SET.as_borrowed(),
-            mark: MARK_SET.as_borrowed(),
-            spacing_mark: SPACING_MARK_SET.as_borrowed(),
-            enclosing_mark: ENCLOSING_MARK_SET.as_borrowed(),
-            nonspacing_mark: NONSPACING_MARK_SET.as_borrowed(),
-            number: NUMBER_SET.as_borrowed(),
-            decimal_number: DECIMAL_NUMBER_SET.as_borrowed(),
-            letter_number: LETTER_NUMBER_SET.as_borrowed(),
-            other_number: OTHER_NUMBER_SET.as_borrowed(),
-            punctuation: PUNCTUATION_SET.as_borrowed(),
-            connector_punctuation: CONNECTOR_PUNCTUATION_SET.as_borrowed(),
-            dash_punctuation: DASH_PUNCTUATION_SET.as_borrowed(),
-            close_punctuation: CLOSE_PUNCTUATION_SET.as_borrowed(),
-            final_punctuation: FINAL_PUNCTUATION_SET.as_borrowed(),
-            initial_punctuation: INITIAL_PUNCTUATION_SET.as_borrowed(),
-            other_punctuation: OTHER_PUNCTUATION_SET.as_borrowed(),
-            open_punctuation: OPEN_PUNCTUATION_SET.as_borrowed(),
-            symbol: SYMBOL_SET.as_borrowed(),
-            currency_symbol: CURRENCY_SYMBOL_SET.as_borrowed(),
-            modifier_symbol: MODIFIER_SYMBOL_SET.as_borrowed(),
-            math_symbol: MATH_SYMBOL_SET.as_borrowed(),
-            other_symbol: OTHER_SYMBOL_SET.as_borrowed(),
-            separator: SEPARATOR_SET.as_borrowed(),
-            line_separator: LINE_SEPARATOR_SET.as_borrowed(),
-            paragraph_separator: PARAGRAPH_SEPARATOR_SET.as_borrowed(),
-            space_separator: SPACE_SEPARATOR_SET.as_borrowed(),
-        },
+        general_categories: GeneralCategories { classifier: GENERAL_CATEGORIES_MAP.as_borrowed() },
         scripts: Scripts {
             classifier: SCRIPT_CLASSIFIER.as_borrowed(),
             names: SCRIPT_NAMES.as_borrowed(),
@@ -446,15 +372,15 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
             xid_start: XID_START_SET.as_borrowed(),
         },
         normalizers: Normalizers {
-            nfc: ComposingNormalizer::try_new_nfc_unstable(&BakedDataProvider).unwrap(),
-            nfd: DecomposingNormalizer::try_new_nfd_unstable(&BakedDataProvider).unwrap(),
-            nfkc: ComposingNormalizer::try_new_nfkc_unstable(&BakedDataProvider).unwrap(),
-            nfkd: DecomposingNormalizer::try_new_nfkd_unstable(&BakedDataProvider).unwrap(),
+            nfc: NFC.as_borrowed(),
+            nfd: NFD.as_borrowed(),
+            nfkc: NFKC.as_borrowed(),
+            nfkd: NFKD.as_borrowed(),
         },
         collator: Collator::try_new_unstable(
-            &locale_provider,
-            &DataLocale::from(DEFAULT_LOCALE),
-            CollatorOptions::new(),
+            &BakedDataProvider,
+            DEFAULT_LOCALE.into(),
+            CollatorOptions::default(),
         )
         .unwrap(),
         case_mapper: CaseMapper::try_new_unstable(&BakedDataProvider).unwrap(),

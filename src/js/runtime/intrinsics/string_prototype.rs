@@ -380,6 +380,7 @@ impl StringPrototype {
         let wtf8_other_string = other_string.to_wtf8_string();
         let comparison = ICU
             .collator
+            .as_borrowed()
             .compare_utf8(wtf8_string.as_bytes(), wtf8_other_string.as_bytes());
 
         let comparison_number = match comparison {

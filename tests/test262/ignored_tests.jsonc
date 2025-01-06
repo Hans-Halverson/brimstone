@@ -172,7 +172,6 @@
       "import-attributes",
       "iterator-helpers",
       "json-modules",
-      "promise-try",
       "regexp-modifiers",
 
       // Other unimplemented features

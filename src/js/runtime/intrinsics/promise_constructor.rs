@@ -1,6 +1,6 @@
 use crate::{
     js::runtime::{
-        abstract_operations::{call_object, create_data_property_or_throw, invoke},
+        abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         array_object::{array_create, ArrayObject},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         error::type_error,
@@ -66,6 +66,7 @@ impl PromiseConstructor {
         func.intrinsic_func(cx, cx.names.race(), Self::race, 1, realm);
         func.intrinsic_func(cx, cx.names.reject(), Self::reject, 1, realm);
         func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm);
+        func.intrinsic_func(cx, cx.names.try_(), Self::try_, 1, realm);
         func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm);
 
         // get Promise [ @@species ] (https://tc39.es/ecma262/#sec-get-promise-%symbol.species%)
@@ -711,6 +712,30 @@ impl PromiseConstructor {
 
         let result = get_argument(cx, arguments, 0);
         Ok(promise_resolve(cx, this_value, result)?.as_value())
+    }
+
+    /// Promise.try (https://tc39.es/ecma262/#sec-promise.try)
+    pub fn try_(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Promise.try called on non-object");
+        }
+
+        let capability = PromiseCapability::new(cx, this_value)?;
+
+        let callback_arg = get_argument(cx, arguments, 0);
+        let completion = call(cx, callback_arg, cx.undefined(), &arguments[1..]);
+
+        match completion {
+            Ok(value) => call_object(cx, capability.resolve(), cx.undefined(), &[value])?,
+            Err(error) => call_object(cx, capability.reject(), cx.undefined(), &[error])?,
+        };
+
+        Ok(capability.promise().as_value())
     }
 
     /// Promise.withResolvers (https://tc39.es/ecma262/#sec-promise.withResolvers)

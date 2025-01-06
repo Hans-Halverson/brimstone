@@ -426,6 +426,7 @@ builtin_names!(
     (trim_end, "trimEnd"),
     (trim_start, "trimStart"),
     (trunc, "trunc"),
+    (try_, "try"),
     (undefined, "undefined"),
     (unicode, "unicode"),
     (unicode_sets, "unicodeSets"),

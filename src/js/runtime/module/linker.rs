@@ -143,7 +143,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
             let entry = ImportEntry::from_heap(heap_entry);
 
             let mut imported_module = module
-                .get_imported_module(*entry.module_request)
+                .get_imported_module(&entry.module_request.to_heap())
                 .to_handle();
 
             if let Some(import_name) = entry.import_name {

@@ -118,6 +118,7 @@ pub enum ObjectKind {
 
     SourceTextModule,
     ModuleNamespaceObject,
+    ImportAttributes,
 
     Generator,
     AsyncGenerator,
@@ -145,6 +146,7 @@ pub enum ObjectKind {
     // Arrays
     ValueArray,
     ByteArray,
+    ModuleRequestArray,
     FinalizationRegistryCells,
     GlobalScopes,
 
@@ -338,6 +340,7 @@ impl BaseDescriptors {
             ModuleNamespaceObject,
             DescFlags::IS_OBJECT
         );
+        other_heap_object_descriptor!(ObjectKind::ImportAttributes);
 
         ordinary_object_descriptor!(ObjectKind::Generator);
         ordinary_object_descriptor!(ObjectKind::AsyncGenerator);
@@ -363,6 +366,7 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);
+        other_heap_object_descriptor!(ObjectKind::ModuleRequestArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 

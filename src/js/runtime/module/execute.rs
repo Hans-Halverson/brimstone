@@ -6,6 +6,7 @@ use crate::{
         abstract_operations::call_object,
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
         function::get_argument,
+        interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
         module::linker::link,
         object_value::ObjectValue,
@@ -18,7 +19,7 @@ use crate::{
 
 use super::{
     loader::{host_load_imported_module, load_requested_modules},
-    source_text_module::{ModuleId, ModuleState, SourceTextModule},
+    source_text_module::{ModuleId, ModuleRequest, ModuleState, SourceTextModule},
 };
 
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
@@ -501,14 +502,16 @@ pub fn dynamic_import(
     let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
     let specifier_string_completion = to_string(cx, specifier);
-    let specifier_string = if_abrupt_reject_promise!(cx, specifier_string_completion, capability);
+    let specifier = if_abrupt_reject_promise!(cx, specifier_string_completion, capability);
 
-    let load_completion = host_load_imported_module(
-        cx,
-        source_file_path,
-        specifier_string.flatten(),
-        cx.current_realm(),
-    );
+    let specifier = specifier.flatten();
+    let specifier = InternedStrings::get(cx, *specifier).to_handle();
+
+    // TODO: Parse the attributes object
+    let module_request = ModuleRequest { specifier, attributes: None };
+
+    let load_completion =
+        host_load_imported_module(cx, source_file_path, module_request, cx.current_realm());
     continue_dynamic_import(cx, capability, load_completion);
 
     Ok(capability.promise())

@@ -1909,6 +1909,7 @@ define_instructions!(
         operands: {
             [0] dest: Register,
             [1] specifier: Register,
+            [2] options: Register,
         }
     }
 );

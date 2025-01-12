@@ -5937,9 +5937,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let import_pos = expr.loc.start;
 
         let specifier = self.gen_expression(&expr.source)?;
-        self.writer
-            .dynamic_import_instruction(dest, specifier, import_pos);
 
+        // Options argument is optional, treated as undefined if not provided
+        let options = match &expr.options {
+            Some(expr) => self.gen_expression(&expr)?,
+            None => {
+                let options = self.register_allocator.allocate()?;
+                self.writer.load_undefined_instruction(options);
+                options
+            }
+        };
+
+        self.writer
+            .dynamic_import_instruction(dest, specifier, options, import_pos);
+
+        self.register_allocator.release(options);
         self.register_allocator.release(specifier);
 
         Ok(dest)

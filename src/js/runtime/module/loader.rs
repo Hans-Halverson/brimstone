@@ -9,6 +9,7 @@ use crate::{
         runtime::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
+            context::ModuleCacheKey,
             error::{syntax_error, syntax_parse_error},
             eval_result::EvalResult,
             intrinsics::intrinsics::Intrinsic,
@@ -179,8 +180,13 @@ pub fn host_load_imported_module(
     let new_module_path_string = new_module_path.to_str().unwrap().to_string();
 
     // Use the cached module if it has already been loaded
-    if let Some(module) = cx.modules.get(&new_module_path_string) {
-        return Ok(module.to_handle());
+    {
+        let module_cache_key =
+            ModuleCacheKey::new(new_module_path_string.clone(), module_request.attributes);
+
+        if let Some(module) = cx.modules.get(&module_cache_key.to_heap()) {
+            return Ok(module.to_handle());
+        }
     }
 
     // Parse the file at the given path, returning AST
@@ -211,7 +217,8 @@ pub fn host_load_imported_module(
     };
 
     // Cache the module
-    cx.modules.insert(new_module_path_string, *module);
+    let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
+    cx.insert_module(module_cache_key, module);
 
     Ok(module)
 }

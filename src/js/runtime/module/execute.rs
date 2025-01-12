@@ -5,6 +5,7 @@ use crate::{
     js::runtime::{
         abstract_operations::call_object,
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+        context::ModuleCacheKey,
         function::get_argument,
         interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
@@ -36,7 +37,10 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
         .to_str()
         .unwrap()
         .to_string();
-    cx.modules.insert(source_file_path, *module);
+
+    // Modules executing directly are assumed to have no attributes
+    let module_cache_key = ModuleCacheKey::new(source_file_path, None);
+    cx.insert_module(module_cache_key, module);
 
     let promise = load_requested_modules(cx, module);
 

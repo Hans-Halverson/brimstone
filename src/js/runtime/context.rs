@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    hash::{Hash, Hasher},
     num::NonZeroUsize,
     ops::{Deref, DerefMut},
     ptr::NonNull,
@@ -24,7 +24,10 @@ use super::{
     gc::{Heap, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
-    module::{execute::execute_module, source_text_module::SourceTextModule},
+    module::{
+        execute::execute_module, import_attributes::ImportAttributes,
+        source_text_module::SourceTextModule,
+    },
     object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
@@ -84,8 +87,8 @@ pub struct ContextCell {
     /// Canonical string values for strings that appear in the AST
     pub interned_strings: InternedStrings,
 
-    /// Cache modules by their canonical absolute path
-    pub modules: HashMap<String, HeapPtr<SourceTextModule>>,
+    /// Cache modules by their canonical absolute path and import attributes
+    pub modules: HeapPtr<ModuleCache>,
 
     /// An empty named properties map to use as the initial value for named properties
     pub default_named_properties: HeapPtr<NamedPropertiesMap>,
@@ -127,7 +130,7 @@ impl Context {
             negative_one: Value::smi(-1),
             nan: Value::nan(),
             interned_strings: InternedStrings::uninit(),
-            modules: HashMap::new(),
+            modules: HeapPtr::uninit(),
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             options,
@@ -150,6 +153,7 @@ impl Context {
 
             cx.global_symbol_registry =
                 GlobalSymbolRegistry::new_initial(cx, ObjectKind::GlobalSymbolRegistryMap);
+            cx.modules = ModuleCache::new_initial(cx, ObjectKind::ModuleCacheMap);
 
             cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
             cx.default_named_properties =
@@ -263,6 +267,12 @@ impl Context {
         self.vm().pop_initial_realm_stack_frame();
 
         Ok(())
+    }
+
+    pub fn insert_module(&mut self, cache_key: ModuleCacheKey, module: Handle<SourceTextModule>) {
+        ModuleCacheField
+            .maybe_grow_for_insertion(*self)
+            .insert_without_growing(cache_key.to_heap(), *module);
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
@@ -391,10 +401,7 @@ impl Context {
         visitor.visit_pointer(&mut self.global_symbol_registry);
         self.task_queue.visit_roots(visitor);
         self.interned_strings.visit_roots(visitor);
-
-        for module in self.modules.values_mut() {
-            visitor.visit_pointer(module);
-        }
+        visitor.visit_pointer(&mut self.modules);
 
         if let Some(vm) = &mut self.vm {
             vm.visit_roots(visitor);
@@ -455,6 +462,74 @@ impl ContextBuilder {
     pub fn set_options(mut self, options: Rc<Options>) -> Self {
         self.options = Some(options);
         self
+    }
+}
+
+/// Modules are cached by their canonical path and import attributes.
+#[derive(Clone, Eq, PartialEq)]
+pub struct HeapModuleCacheKey {
+    path: String,
+    attributes: Option<HeapPtr<ImportAttributes>>,
+}
+
+pub struct ModuleCacheKey {
+    path: String,
+    attributes: Option<Handle<ImportAttributes>>,
+}
+
+impl ModuleCacheKey {
+    pub fn new(path: String, attributes: Option<Handle<ImportAttributes>>) -> Self {
+        Self { path, attributes }
+    }
+
+    pub fn to_heap(self) -> HeapModuleCacheKey {
+        HeapModuleCacheKey::new(self.path, self.attributes.map(|attr| *attr))
+    }
+}
+
+impl HeapModuleCacheKey {
+    pub fn new(path: String, attributes: Option<HeapPtr<ImportAttributes>>) -> Self {
+        Self { path, attributes }
+    }
+}
+
+impl Hash for HeapModuleCacheKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Attributes are intentionally not included in hash
+        self.path.hash(state);
+    }
+}
+
+type ModuleCache = BsHashMap<HeapModuleCacheKey, HeapPtr<SourceTextModule>>;
+
+pub struct ModuleCacheField;
+
+impl BsHashMapField<HeapModuleCacheKey, HeapPtr<SourceTextModule>> for ModuleCacheField {
+    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ModuleCache> {
+        ModuleCache::new(cx, ObjectKind::ModuleCacheMap, capacity)
+    }
+
+    fn get(&self, cx: Context) -> HeapPtr<ModuleCache> {
+        cx.modules
+    }
+
+    fn set(&mut self, mut cx: Context, map: HeapPtr<ModuleCache>) {
+        cx.modules = map;
+    }
+}
+
+impl ModuleCacheField {
+    pub fn byte_size(map: &HeapPtr<ModuleCache>) -> usize {
+        ModuleCache::calculate_size_in_bytes(map.capacity())
+    }
+
+    pub fn visit_pointers(map: &mut HeapPtr<ModuleCache>, visitor: &mut impl HeapVisitor) {
+        map.visit_pointers(visitor);
+
+        for (cache_key, module) in map.iter_mut_gc_unsafe() {
+            visitor.visit_pointer_opt(&mut cache_key.attributes);
+            visitor.visit_pointer(module);
+        }
     }
 }
 

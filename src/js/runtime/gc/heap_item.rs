@@ -18,7 +18,7 @@ use crate::js::runtime::{
         },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
     },
-    context::GlobalSymbolRegistryField,
+    context::{GlobalSymbolRegistryField, ModuleCacheField},
     for_in_iterator::ForInIterator,
     generator_object::GeneratorObject,
     global_names::GlobalNames,
@@ -182,6 +182,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsMap => InternedStringsMapField::byte_size(&self.cast()),
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
+            ObjectKind::ModuleCacheMap => ModuleCacheField::byte_size(&self.cast()),
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
             ObjectKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
@@ -321,6 +322,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::LexicalNamesMap => {
                 LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
+            }
+            ObjectKind::ModuleCacheMap => {
+                ModuleCacheField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),

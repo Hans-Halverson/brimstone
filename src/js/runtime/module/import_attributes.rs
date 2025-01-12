@@ -66,6 +66,8 @@ impl PartialEq for HeapPtr<ImportAttributes> {
     }
 }
 
+impl Eq for HeapPtr<ImportAttributes> {}
+
 impl HeapObject for HeapPtr<ImportAttributes> {
     fn byte_size(&self) -> usize {
         ImportAttributes::calculate_size_in_bytes(self.attribute_pairs.len())

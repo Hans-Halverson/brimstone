@@ -142,6 +142,7 @@ pub enum ObjectKind {
     InternedStringsMap,
     InternedStringsSet,
     LexicalNamesMap,
+    ModuleCacheMap,
 
     // Arrays
     ValueArray,
@@ -363,6 +364,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
+        other_heap_object_descriptor!(ObjectKind::ModuleCacheMap);
 
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);

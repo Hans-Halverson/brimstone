@@ -14,6 +14,9 @@ pub struct Test {
     pub expected_result: ExpectedResult,
     pub mode: TestMode,
     pub is_async: bool,
+    // Run test without modifying the source file or evaluating any other scripts from test harness.
+    // For scripts the test is run once, in non-strict mode.
+    pub is_raw: bool,
     // Files that must be evaluated in the global scope prior to test execution. Paths are
     // relative to the test262/harness directory.
     pub includes: Vec<String>,
@@ -46,9 +49,6 @@ pub enum TestMode {
     NonStrictScript,
     // Run test as module, which is always in strict mode
     Module,
-    // Run test once in non-strict mode, making sure to not modify the source file or evaluate any
-    // other scripts from test haarness.
-    Raw,
 }
 
 impl ExpectedResult {
@@ -155,6 +155,7 @@ impl TestIndex {
         };
 
         let mut is_async = false;
+        let mut is_raw = false;
         let mut includes = vec![];
 
         let mut mode = TestMode::Script;
@@ -171,7 +172,7 @@ impl TestIndex {
                         mode = TestMode::Module;
                     }
                     "raw" => {
-                        mode = TestMode::Raw;
+                        is_raw = true;
                     }
                     "async" => {
                         is_async = true;
@@ -206,6 +207,7 @@ impl TestIndex {
             expected_result,
             mode,
             is_async,
+            is_raw,
             includes,
             features,
         };

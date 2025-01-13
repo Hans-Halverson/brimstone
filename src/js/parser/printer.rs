@@ -5,7 +5,7 @@ use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
 use super::regexp::{
     Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
-    ClassRange, Disjunction, Lookaround, Quantifier, RegExp, Term,
+    ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
 };
 use super::source::Source;
 
@@ -1310,8 +1310,40 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_anonymous_group(&mut self, group: &AnonymousGroup) {
         self.start_regexp_node("AnonymousGroup");
+
+        if !group.positive_modifiers.is_empty() || !group.negative_modifiers.is_empty() {
+            self.property(
+                "modifiers",
+                (group.positive_modifiers, group.negative_modifiers),
+                Printer::print_regexp_modifiers,
+            );
+        }
+
         self.print_disjunction(&group.disjunction);
         self.end_node();
+    }
+
+    fn print_regexp_modifiers(&mut self, (positive, negative): (RegExpFlags, RegExpFlags)) {
+        self.buf.push_str("\"(+");
+        self.print_regexp_modifier(positive);
+        self.buf.push_str(", ");
+        self.buf.push('-');
+        self.print_regexp_modifier(negative);
+        self.buf.push_str(")\"");
+    }
+
+    fn print_regexp_modifier(&mut self, modifier: RegExpFlags) {
+        if modifier.is_case_insensitive() {
+            self.buf.push('i');
+        }
+
+        if modifier.is_multiline() {
+            self.buf.push('m');
+        }
+
+        if modifier.is_dot_all() {
+            self.buf.push('s');
+        }
     }
 
     fn print_regexp_character_class_range(&mut self, range: &ClassRange) {

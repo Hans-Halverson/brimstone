@@ -110,6 +110,8 @@ pub enum ParseError {
     InvalidQuantifierBounds,
     NonQuantifiableAssertion,
     InvalidUnicodeProperty,
+    DuplicateRegExpModifier,
+    EmptyRegExpModifiers,
     // RegExp parsing marker error to signal a named capture group was encountered
     NamedCaptureGroupEncountered,
 }
@@ -445,6 +447,12 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidUnicodeProperty => {
                 write!(f, "Invalid unicode property in regular expression")
+            }
+            ParseError::DuplicateRegExpModifier => {
+                write!(f, "Duplicate regular expression modifier")
+            }
+            ParseError::EmptyRegExpModifiers => {
+                write!(f, "No regular expression modifiers found")
             }
             ParseError::NamedCaptureGroupEncountered => {
                 panic!("Marker error should have been caught")

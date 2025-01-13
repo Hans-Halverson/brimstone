@@ -38,7 +38,9 @@ type BlockId = usize;
 
 struct CompiledRegExpBuilder {
     blocks: Vec<Vec<u32>>,
-    flags: RegExpFlags,
+    /// Stack of flags that are active in the current context. The topmost set of flags in the stack
+    /// is the current set of flags.
+    flags: Vec<RegExpFlags>,
     source: Handle<StringValue>,
     current_block_id: BlockId,
     num_progress_points: u32,
@@ -84,7 +86,7 @@ impl CompiledRegExpBuilder {
     fn new(regexp: &RegExp, source: Handle<StringValue>) -> Self {
         Self {
             blocks: vec![],
-            flags: regexp.flags,
+            flags: vec![regexp.flags],
             source,
             current_block_id: 0,
             num_progress_points: 0,
@@ -130,6 +132,10 @@ impl CompiledRegExpBuilder {
 
     fn current_block_buf(&mut self) -> &mut Vec<u32> {
         &mut self.blocks[self.current_block_id]
+    }
+
+    fn current_flags(&self) -> RegExpFlags {
+        *self.flags.last().unwrap()
     }
 
     fn emit_literal_instruction(&mut self, code_point: CodePoint) {
@@ -267,7 +273,7 @@ impl CompiledRegExpBuilder {
         self.new_block();
 
         // Emit preamble allowing match to start at any point in the string
-        if !self.flags.is_sticky() {
+        if !self.current_flags().is_sticky() {
             self.emit_preamble();
         }
 
@@ -506,7 +512,7 @@ impl CompiledRegExpBuilder {
             Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
                 self.emit_backreference_instruction(
-                    self.flags.is_case_insensitive(),
+                    self.current_flags().is_case_insensitive(),
                     backreference.index,
                 );
 
@@ -517,7 +523,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_code_point_literal(&mut self, code_point: CodePoint) {
-        if self.flags.is_case_insensitive() && !is_surrogate_code_point(code_point) {
+        if self.current_flags().is_case_insensitive() && !is_surrogate_code_point(code_point) {
             // Under case insensitive mode, emit a comparison against any code points in the case
             // insensitive closure of the code point. This will check for any code points which
             // canonicalize to the same value as the literal code point.
@@ -546,7 +552,7 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_wildcard(&mut self) {
-        if self.flags.is_dot_all() {
+        if self.current_flags().is_dot_all() {
             self.emit_wildcard_instruction()
         } else {
             self.emit_wildcard_no_newline_instruction()
@@ -556,14 +562,14 @@ impl CompiledRegExpBuilder {
     fn emit_assertion(&mut self, assertion: &Assertion) {
         match assertion {
             Assertion::Start => {
-                if self.flags.is_multiline() {
+                if self.current_flags().is_multiline() {
                     self.emit_assert_start_or_newline_instruction()
                 } else {
                     self.emit_assert_start_instruction()
                 }
             }
             Assertion::End => {
-                if self.flags.is_multiline() {
+                if self.current_flags().is_multiline() {
                     self.emit_assert_end_or_newline_instruction()
                 } else {
                     self.emit_assert_end_instruction()
@@ -589,7 +595,8 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_word_comparison(&mut self) {
-        let word_set = if self.flags.is_case_insensitive() && self.flags.has_any_unicode_flag() {
+        let flags = self.current_flags();
+        let word_set = if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
             &WORD_CASE_INSENSITIVE_UNICODE_SET
         } else {
             &WORD_SET
@@ -933,7 +940,22 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_anonymous_group(&mut self, group: &AnonymousGroup) -> SubExpressionInfo {
-        self.emit_disjunction(&group.disjunction)
+        // Update the set of current flags if any modifiers are present in this group
+        let has_modifiers =
+            !group.positive_modifiers.is_empty() || !group.negative_modifiers.is_empty();
+        if has_modifiers {
+            let new_flags =
+                (self.current_flags() | group.positive_modifiers) & !group.negative_modifiers;
+            self.flags.push(new_flags);
+        }
+
+        let info = self.emit_disjunction(&group.disjunction);
+
+        if has_modifiers {
+            self.flags.pop();
+        }
+
+        info
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
@@ -952,7 +974,8 @@ impl CompiledRegExpBuilder {
                 // Use the precomputed word sets for word and whitespace character classes
                 ClassRange::Word => set_builder.add_set(&WORD_SET),
                 ClassRange::NotWord => {
-                    if self.flags.is_case_insensitive() && self.flags.has_any_unicode_flag() {
+                    let flags = self.current_flags();
+                    if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
                         set_builder.add_set(&NOT_WORD_CASE_INSENSITIVE_UNICODE_SET);
                     } else {
                         set_builder.add_set(&NOT_WORD_SET);
@@ -986,7 +1009,7 @@ impl CompiledRegExpBuilder {
 
         // If comparison is case insensitive then expand the set of code points to include the
         // case insensitive closure of all code points in the set.
-        let set = if self.flags.is_case_insensitive() {
+        let set = if self.current_flags().is_case_insensitive() {
             self.case_close_over(&set_builder.build())
         } else {
             set_builder.build()
@@ -1025,7 +1048,7 @@ impl CompiledRegExpBuilder {
         // `add_case_closure_to`, so we have precomputed the code points for which the behavior
         // differs. We use the precomupted override if one exists, otherwise we use
         // `add_case_closure_to`.
-        if self.flags.has_any_unicode_flag() || !has_case_closure_override(code_point) {
+        if self.current_flags().has_any_unicode_flag() || !has_case_closure_override(code_point) {
             ICU.case_mapper.add_case_closure_to(code_point, set_builder);
         } else {
             let case_closure_override = get_case_closure_override(code_point).unwrap();

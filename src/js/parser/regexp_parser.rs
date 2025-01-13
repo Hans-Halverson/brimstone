@@ -598,7 +598,11 @@ impl<T: LexerStream> RegExpParser<T> {
                     let disjunction = self.parse_disjunction()?;
                     self.expect(')')?;
 
-                    Ok(Term::AnonymousGroup(AnonymousGroup { disjunction }))
+                    Ok(Term::AnonymousGroup(AnonymousGroup {
+                        disjunction,
+                        positive_modifiers: RegExpFlags::empty(),
+                        negative_modifiers: RegExpFlags::empty(),
+                    }))
                 }
                 '=' => {
                     self.advance();
@@ -697,6 +701,40 @@ impl<T: LexerStream> RegExpParser<T> {
                         }
                     })
                 }
+                // Start of regexp modifiers for an anonymous group
+                'i' | 's' | 'm' | '-' => {
+                    let modifier_start_pos = self.pos();
+                    let positive_modifiers = self.parse_modifiers()?;
+
+                    let negative_modifiers = if self.eat('-') {
+                        let negative_modifiers = self.parse_modifiers()?;
+
+                        // Both positive and negative modifiers can't be empty (i.e. `(?-:` prefix)
+                        if positive_modifiers.is_empty() && negative_modifiers.is_empty() {
+                            return self
+                                .error(modifier_start_pos, ParseError::EmptyRegExpModifiers);
+                        }
+
+                        negative_modifiers
+                    } else {
+                        RegExpFlags::empty()
+                    };
+
+                    // Check if any modifier is contained in both positive and negative modifiers
+                    if !((positive_modifiers & negative_modifiers).is_empty()) {
+                        return self.error(modifier_start_pos, ParseError::DuplicateRegExpModifier);
+                    }
+
+                    self.expect(':')?;
+                    let disjunction = self.parse_disjunction()?;
+                    self.expect(')')?;
+
+                    Ok(Term::AnonymousGroup(AnonymousGroup {
+                        disjunction,
+                        positive_modifiers,
+                        negative_modifiers,
+                    }))
+                }
                 _ => self.error_unexpected_token(self.pos()),
             })
         } else {
@@ -709,6 +747,42 @@ impl<T: LexerStream> RegExpParser<T> {
 
             Ok(Term::CaptureGroup(CaptureGroup { name: None, index, disjunction }))
         }
+    }
+
+    fn parse_modifiers(&mut self) -> ParseResult<RegExpFlags> {
+        let mut modifiers = RegExpFlags::empty();
+
+        loop {
+            match_u32!(match self.current() {
+                'i' => {
+                    if modifiers.is_case_insensitive() {
+                        return self.error(self.pos(), ParseError::DuplicateRegExpModifier);
+                    }
+
+                    self.advance();
+                    modifiers.insert(RegExpFlags::IGNORE_CASE);
+                }
+                'm' => {
+                    if modifiers.is_multiline() {
+                        return self.error(self.pos(), ParseError::DuplicateRegExpModifier);
+                    }
+
+                    self.advance();
+                    modifiers.insert(RegExpFlags::MULTILINE);
+                }
+                's' => {
+                    if modifiers.is_dot_all() {
+                        return self.error(self.pos(), ParseError::DuplicateRegExpModifier);
+                    }
+
+                    self.advance();
+                    modifiers.insert(RegExpFlags::DOT_ALL);
+                }
+                _ => break,
+            })
+        }
+
+        Ok(modifiers)
     }
 
     fn parse_character_class(&mut self) -> ParseResult<Term> {

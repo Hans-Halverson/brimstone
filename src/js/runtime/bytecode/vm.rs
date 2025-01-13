@@ -4280,6 +4280,7 @@ impl VM {
     ) -> EvalResult<()> {
         let dest = instr.dest();
         let specifier = self.read_register_to_handle(instr.specifier());
+        let options = self.read_register_to_handle(instr.options());
 
         // Find the source path of the currently executing function
         let source_file_path = self
@@ -4290,7 +4291,7 @@ impl VM {
             .path();
 
         // May allocate
-        let namespace_promise = dynamic_import(self.cx(), source_file_path, specifier)?;
+        let namespace_promise = dynamic_import(self.cx(), source_file_path, specifier, options)?;
 
         self.write_register(dest, *namespace_promise.as_value());
 

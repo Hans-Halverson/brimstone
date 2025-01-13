@@ -941,6 +941,7 @@ impl<'a> Printer<'a> {
     fn print_import_expression(&mut self, expr: &ImportExpression) {
         self.start_node("ImportExpression", &expr.loc);
         self.property("source", expr.source.as_ref(), Printer::print_expression);
+        self.property("options", expr.options.as_ref(), Printer::print_optional_expression);
         self.end_node();
     }
 
@@ -1035,6 +1036,25 @@ impl<'a> Printer<'a> {
             Printer::print_import_specifier,
         );
         self.property("source", import.source.as_ref(), Printer::print_string_literal);
+        self.print_import_attributes_property(import.attributes.as_ref());
+
+        self.end_node();
+    }
+
+    fn print_import_attributes_property(&mut self, attributes: Option<&P<ImportAttributes>>) {
+        if let Some(attributes) = attributes {
+            self.array_property(
+                "attributes",
+                &attributes.attributes,
+                Printer::print_import_attribute,
+            );
+        }
+    }
+
+    fn print_import_attribute(&mut self, attribute: &ImportAttribute) {
+        self.start_node("ImportAttribute", &attribute.loc);
+        self.property("key", attribute.key.as_ref(), Printer::print_expression);
+        self.property("value", attribute.value.as_ref(), Printer::print_string_literal);
         self.end_node();
     }
 
@@ -1094,6 +1114,7 @@ impl<'a> Printer<'a> {
             Printer::print_export_specifier,
         );
         self.property("source", export.source.as_ref(), Printer::print_optional_string_literal);
+        self.print_import_attributes_property(export.source_attributes.as_ref());
         self.end_node();
     }
 
@@ -1101,6 +1122,7 @@ impl<'a> Printer<'a> {
         self.start_node("ExportAllDeclaration", &export.loc);
         self.property("exported", export.exported.as_ref(), Printer::print_optional_export_name);
         self.property("source", export.source.as_ref(), Printer::print_string_literal);
+        self.print_import_attributes_property(export.source_attributes.as_ref());
         self.end_node();
     }
 

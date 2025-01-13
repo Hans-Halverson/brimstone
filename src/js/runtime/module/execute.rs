@@ -3,22 +3,27 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     if_abrupt_reject_promise,
     js::runtime::{
-        abstract_operations::call_object,
+        abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
         builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+        context::ModuleCacheKey,
+        error::type_error_value,
         function::get_argument,
+        get,
+        interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
         module::linker::link,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
-        to_string, Context, EvalResult, Handle, Value,
+        to_string, Context, EvalResult, Handle, PropertyKey, Value,
     },
     must,
 };
 
 use super::{
+    import_attributes::ImportAttributes,
     loader::{host_load_imported_module, load_requested_modules},
-    source_text_module::{ModuleId, ModuleState, SourceTextModule},
+    source_text_module::{ModuleId, ModuleRequest, ModuleState, SourceTextModule},
 };
 
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
@@ -35,7 +40,10 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
         .to_str()
         .unwrap()
         .to_string();
-    cx.modules.insert(source_file_path, *module);
+
+    // Modules executing directly are assumed to have no attributes
+    let module_cache_key = ModuleCacheKey::new(source_file_path, None);
+    cx.insert_module(module_cache_key, module);
 
     let promise = load_requested_modules(cx, module);
 
@@ -496,19 +504,83 @@ pub fn dynamic_import(
     cx: Context,
     source_file_path: Handle<FlatString>,
     specifier: Handle<Value>,
+    options: Handle<Value>,
 ) -> EvalResult<Handle<ObjectValue>> {
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
     let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
 
     let specifier_string_completion = to_string(cx, specifier);
-    let specifier_string = if_abrupt_reject_promise!(cx, specifier_string_completion, capability);
+    let specifier = if_abrupt_reject_promise!(cx, specifier_string_completion, capability);
 
-    let load_completion = host_load_imported_module(
-        cx,
-        source_file_path,
-        specifier_string.flatten(),
-        cx.current_realm(),
-    );
+    let mut attribute_pairs = vec![];
+
+    if !options.is_undefined() {
+        if !options.is_object() {
+            let error = type_error_value(cx, "Import options must be an object");
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+            return Ok(capability.promise());
+        }
+
+        let attributes_object_completion = get(cx, options.as_object(), cx.names.with());
+        let attributes_object =
+            if_abrupt_reject_promise!(cx, attributes_object_completion, capability);
+
+        if !attributes_object.is_undefined() {
+            if !attributes_object.is_object() {
+                let error = type_error_value(cx, "Import attributes must be an object");
+                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                return Ok(capability.promise());
+            }
+
+            let entries_completion = enumerable_own_property_names(
+                cx,
+                attributes_object.as_object(),
+                KeyOrValue::KeyAndValue,
+            );
+            let entries = if_abrupt_reject_promise!(cx, entries_completion, capability);
+
+            for entry in entries {
+                // Entry is gaurenteed to be an array with two elements
+                let entry = entry.as_object();
+                let key = must!(get(cx, entry, PropertyKey::from_u8(0).to_handle(cx)));
+                let value = must!(get(cx, entry, PropertyKey::from_u8(1).to_handle(cx)));
+
+                if !value.is_string() {
+                    let error = type_error_value(cx, "Import attribute values must be strings");
+                    must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                    return Ok(capability.promise());
+                }
+
+                // Intern the key and value strings
+                let key_string = must!(to_string(cx, key));
+                let key_flat_string = key_string.flatten();
+                let key_interned_string = InternedStrings::get(cx, *key_flat_string).to_handle();
+
+                let value_flat_string = value.as_string().flatten();
+                let value_interned_string =
+                    InternedStrings::get(cx, *value_flat_string).to_handle();
+
+                attribute_pairs.push((key_interned_string, value_interned_string));
+            }
+        }
+    }
+
+    let attributes = if !attribute_pairs.is_empty() {
+        // Sort keys in lexicographic order
+        attribute_pairs.sort_by_key(|(key, _)| *key);
+
+        Some(ImportAttributes::new(cx, &attribute_pairs))
+    } else {
+        None
+    };
+
+    let specifier = specifier.flatten();
+    let specifier = InternedStrings::get(cx, *specifier).to_handle();
+
+    let module_request = ModuleRequest { specifier, attributes };
+
+    let load_completion =
+        host_load_imported_module(cx, source_file_path, module_request, cx.current_realm());
     continue_dynamic_import(cx, capability, load_completion);
 
     Ok(capability.promise())

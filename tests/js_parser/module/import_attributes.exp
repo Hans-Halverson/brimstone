@@ -1,0 +1,284 @@
+{
+  type: "Program",
+  loc: "1:1-12:48",
+  body: [
+    {
+      type: "ImportDeclaration",
+      loc: "1:1-1:22",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "1:8-1:14",
+        value: "mod1",
+      },
+      attributes: [],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "2:1-2:30",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "2:16-2:22",
+        value: "mod2",
+      },
+      attributes: [],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "4:1-4:35",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "4:8-4:14",
+        value: "mod3",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "4:22-4:33",
+          key: {
+            type: "Identifier",
+            loc: "4:22-4:25",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "4:27-4:33",
+            value: "prop",
+          },
+        },
+      ],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "5:1-5:36",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "5:8-5:14",
+        value: "mod4",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "5:22-5:33",
+          key: {
+            type: "Identifier",
+            loc: "5:22-5:25",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "5:27-5:33",
+            value: "prop",
+          },
+        },
+      ],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "6:1-6:50",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "6:8-6:14",
+        value: "mod4",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "6:22-6:33",
+          key: {
+            type: "Identifier",
+            loc: "6:22-6:25",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "6:27-6:33",
+            value: "prop",
+          },
+        },
+        {
+          type: "ImportAttribute",
+          loc: "6:35-6:48",
+          key: {
+            type: "Identifier",
+            loc: "6:35-6:39",
+            name: "key2",
+          },
+          value: {
+            type: "Literal",
+            loc: "6:41-6:48",
+            value: "prop2",
+          },
+        },
+      ],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "7:1-7:51",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "7:8-7:14",
+        value: "mod5",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "7:22-7:33",
+          key: {
+            type: "Identifier",
+            loc: "7:22-7:25",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "7:27-7:33",
+            value: "prop",
+          },
+        },
+        {
+          type: "ImportAttribute",
+          loc: "7:35-7:48",
+          key: {
+            type: "Identifier",
+            loc: "7:35-7:39",
+            name: "key2",
+          },
+          value: {
+            type: "Literal",
+            loc: "7:41-7:48",
+            value: "prop2",
+          },
+        },
+      ],
+    },
+    {
+      type: "ImportDeclaration",
+      loc: "9:1-9:65",
+      specifiers: [],
+      source: {
+        type: "Literal",
+        loc: "9:8-9:14",
+        value: "mod6",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "9:22-9:34",
+          key: {
+            type: "Literal",
+            loc: "9:22-9:25",
+            value: "a",
+          },
+          value: {
+            type: "Literal",
+            loc: "9:27-9:34",
+            value: "prop1",
+          },
+        },
+        {
+          type: "ImportAttribute",
+          loc: "9:36-9:46",
+          key: {
+            type: "Identifier",
+            loc: "9:36-9:37",
+            name: "b",
+          },
+          value: {
+            type: "Literal",
+            loc: "9:39-9:46",
+            value: "prop2",
+          },
+        },
+        {
+          type: "ImportAttribute",
+          loc: "9:48-9:63",
+          key: {
+            type: "Identifier",
+            loc: "9:48-9:54",
+            name: "import",
+          },
+          value: {
+            type: "Literal",
+            loc: "9:56-9:63",
+            value: "prop3",
+          },
+        },
+      ],
+    },
+    {
+      type: "ExportAllDeclaration",
+      loc: "11:1-11:48",
+      exported: {
+        type: "Identifier",
+        loc: "11:13-11:15",
+        name: "ns",
+      },
+      source: {
+        type: "Literal",
+        loc: "11:21-11:27",
+        value: "mod7",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "11:35-11:46",
+          key: {
+            type: "Identifier",
+            loc: "11:35-11:38",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "11:40-11:46",
+            value: "prop",
+          },
+        },
+      ],
+    },
+    {
+      type: "ExportNamedDeclaration",
+      loc: "12:1-12:48",
+      declaration: null,
+      specifiers: [
+        {
+          type: "ExportSpecifier",
+          loc: "12:10-12:13",
+          exported: null,
+          local: {
+            type: "Identifier",
+            loc: "12:10-12:13",
+            name: "foo",
+          },
+        },
+      ],
+      source: {
+        type: "Literal",
+        loc: "12:21-12:27",
+        value: "mod8",
+      },
+      attributes: [
+        {
+          type: "ImportAttribute",
+          loc: "12:35-12:46",
+          key: {
+            type: "Identifier",
+            loc: "12:35-12:38",
+            name: "key",
+          },
+          value: {
+            type: "Literal",
+            loc: "12:40-12:46",
+            value: "prop",
+          },
+        },
+      ],
+    },
+  ],
+  sourceType: "module",
+  has_use_strict_directive: false,
+}

@@ -118,6 +118,7 @@ pub enum ObjectKind {
 
     SourceTextModule,
     ModuleNamespaceObject,
+    ImportAttributes,
 
     Generator,
     AsyncGenerator,
@@ -141,10 +142,12 @@ pub enum ObjectKind {
     InternedStringsMap,
     InternedStringsSet,
     LexicalNamesMap,
+    ModuleCacheMap,
 
     // Arrays
     ValueArray,
     ByteArray,
+    ModuleRequestArray,
     FinalizationRegistryCells,
     GlobalScopes,
 
@@ -338,6 +341,7 @@ impl BaseDescriptors {
             ModuleNamespaceObject,
             DescFlags::IS_OBJECT
         );
+        other_heap_object_descriptor!(ObjectKind::ImportAttributes);
 
         ordinary_object_descriptor!(ObjectKind::Generator);
         ordinary_object_descriptor!(ObjectKind::AsyncGenerator);
@@ -360,9 +364,11 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
+        other_heap_object_descriptor!(ObjectKind::ModuleCacheMap);
 
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);
+        other_heap_object_descriptor!(ObjectKind::ModuleRequestArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 

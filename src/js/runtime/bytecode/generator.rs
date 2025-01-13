@@ -35,9 +35,12 @@ use crate::js::{
         gc::{Escapable, HandleScope},
         global_names::GlobalNames,
         interned_strings::InternedStrings,
-        module::source_text_module::{
-            DirectReExportEntry, ImportEntry, LocalExportEntry, NamedReExportEntry,
-            SourceTextModule,
+        module::{
+            import_attributes::ImportAttributes,
+            source_text_module::{
+                DirectReExportEntry, ImportEntry, LocalExportEntry, ModuleRequest,
+                NamedReExportEntry, SourceTextModule,
+            },
         },
         object_descriptor::ObjectKind,
         regexp::compiler::compile_regexp,
@@ -289,7 +292,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         program: &ast::Program,
         program_function: Handle<BytecodeFunction>,
     ) -> Handle<SourceTextModule> {
-        let mut module_specifiers = IndexSet::new();
+        let mut module_requests = IndexSet::new();
 
         let mut imports = vec![];
         let mut local_exports = vec![];
@@ -306,7 +309,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
             match toplevel {
                 ast::Toplevel::Import(import) => {
                     let module_specifier = self.cx.alloc_wtf8_string(&import.source.value);
-                    module_specifiers.insert(module_specifier);
+
+                    let module_request =
+                        self.gen_module_request(module_specifier, import.attributes.as_deref());
+                    module_requests.insert(module_request);
 
                     // Each specifier will generate an import entry
                     for specifier in &import.specifiers {
@@ -328,7 +334,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         let is_exported = local_id.get_binding().is_exported();
 
                         imports.push(ImportEntry {
-                            module_request: module_specifier,
+                            module_request,
                             local_name,
                             import_name,
                             slot_index,
@@ -339,11 +345,19 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 // Gather module specifiers from re-exports
                 ast::Toplevel::ExportNamed(ast::ExportNamedDeclaration {
                     source: Some(source),
+                    source_attributes,
                     ..
                 })
-                | ast::Toplevel::ExportAll(ast::ExportAllDeclaration { source, .. }) => {
+                | ast::Toplevel::ExportAll(ast::ExportAllDeclaration {
+                    source,
+                    source_attributes,
+                    ..
+                }) => {
                     let module_specifier = self.cx.alloc_wtf8_string(&source.value);
-                    module_specifiers.insert(module_specifier);
+                    let module_request =
+                        self.gen_module_request(module_specifier, source_attributes.as_deref());
+
+                    module_requests.insert(module_request);
                 }
                 _ => {}
             }
@@ -408,8 +422,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                         // If there is a from source specifier this is a named re-export
                         if let Some(module_specifier) = module_specifier {
+                            let module_request = self.gen_module_request(
+                                module_specifier,
+                                export.source_attributes.as_deref(),
+                            );
+
                             named_re_exports.push(NamedReExportEntry {
-                                module_request: module_specifier,
+                                module_request,
                                 export_name,
                                 import_name: Some(local_name),
                             });
@@ -450,6 +469,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 }
                 ast::Toplevel::ExportAll(export) => {
                     let module_specifier = self.cx.alloc_wtf8_string(&export.source.value);
+                    let module_request = self
+                        .gen_module_request(module_specifier, export.source_attributes.as_deref());
 
                     if let Some(exported_name) = export.exported.as_ref() {
                         // If there is an exported name this is a namespace re-export, which counts
@@ -457,14 +478,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         let export_name = self.alloc_export_name_string(exported_name);
 
                         named_re_exports.push(NamedReExportEntry {
-                            module_request: module_specifier,
+                            module_request,
                             export_name,
                             import_name: None,
                         });
                     } else {
                         // Otherwise this is a direct re-export
-                        direct_re_exports
-                            .push(DirectReExportEntry { module_request: module_specifier });
+                        direct_re_exports.push(DirectReExportEntry { module_request });
                     }
                 }
                 _ => {}
@@ -478,7 +498,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
             self.cx,
             program_function,
             module_scope,
-            &module_specifiers,
+            &module_requests,
             &imports,
             &local_exports,
             &named_re_exports,
@@ -490,6 +510,50 @@ impl<'a> BytecodeProgramGenerator<'a> {
         module_scope.set_heap_item_slot(0, module.as_heap_item());
 
         module
+    }
+
+    fn gen_module_request(
+        &mut self,
+        specifier: Handle<FlatString>,
+        attributes: Option<&ast::ImportAttributes>,
+    ) -> ModuleRequest {
+        let attributes = self.gen_import_attributes(attributes);
+        ModuleRequest { specifier, attributes }
+    }
+
+    fn gen_import_attributes(
+        &mut self,
+        attributes: Option<&ast::ImportAttributes>,
+    ) -> Option<Handle<ImportAttributes>> {
+        attributes?;
+
+        let attributes = &attributes.unwrap().attributes;
+        if attributes.is_empty() {
+            return None;
+        }
+
+        let mut attribute_pairs = vec![];
+
+        // Gather all key value pairs from AST
+        for attribute in attributes.iter() {
+            let key = match attribute.key.as_ref() {
+                ast::Expression::Id(ast::Identifier { name, .. }) => {
+                    InternedStrings::get_str(self.cx, name).as_flat()
+                }
+                ast::Expression::String(ast::StringLiteral { value, .. }) => {
+                    InternedStrings::get_wtf8_str(self.cx, value).as_flat()
+                }
+                _ => unreachable!("expected string or identifier"),
+            };
+            let value = InternedStrings::get_wtf8_str(self.cx, &attribute.value.value).as_flat();
+
+            attribute_pairs.push((key, value));
+        }
+
+        // Keys are sorted in lexicographic order
+        attribute_pairs.sort_by(|(key1, _), (key2, _)| key1.cmp(key2));
+
+        Some(ImportAttributes::new(self.cx, &attribute_pairs))
     }
 
     /// Create the root module scope for module evaluation. Initialize
@@ -5871,9 +5935,21 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let import_pos = expr.loc.start;
 
         let specifier = self.gen_expression(&expr.source)?;
-        self.writer
-            .dynamic_import_instruction(dest, specifier, import_pos);
 
+        // Options argument is optional, treated as undefined if not provided
+        let options = match &expr.options {
+            Some(expr) => self.gen_expression(expr)?,
+            None => {
+                let options = self.register_allocator.allocate()?;
+                self.writer.load_undefined_instruction(options);
+                options
+            }
+        };
+
+        self.writer
+            .dynamic_import_instruction(dest, specifier, options, import_pos);
+
+        self.register_allocator.release(options);
         self.register_allocator.release(specifier);
 
         Ok(dest)

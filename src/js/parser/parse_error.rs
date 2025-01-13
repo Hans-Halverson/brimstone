@@ -91,6 +91,9 @@ pub enum ParseError {
     DirectExportNameIsString,
     UnresolvedExport,
     DuplicateExport(Box<Wtf8String>),
+    ImportAttributeInvalidKey,
+    ImportAttributeInvalidValue,
+    DuplicateImportAttribute,
     // RegExp parsing errors
     UnexpectedRegExpToken,
     InvalidRegExpFlag,
@@ -388,6 +391,15 @@ impl fmt::Display for ParseError {
             }
             ParseError::DuplicateExport(name) => {
                 write!(f, "Export with name \"{}\" already exists in module", name)
+            }
+            ParseError::ImportAttributeInvalidKey => {
+                write!(f, "Import attribute key must be an identifier or string")
+            }
+            ParseError::ImportAttributeInvalidValue => {
+                write!(f, "Import attribute value must be a string")
+            }
+            ParseError::DuplicateImportAttribute => {
+                write!(f, "Import attribute with that key already exists")
             }
             ParseError::UnexpectedRegExpToken => {
                 write!(f, "Unexpected token")

@@ -1,0 +1,1 @@
+SyntaxError: tests/js_error/parser/import_attribute_duplicate_keys_module.js:1:37 Import attribute with that key already exists

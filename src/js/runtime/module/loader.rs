@@ -9,6 +9,7 @@ use crate::{
         runtime::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
+            context::ModuleCacheKey,
             error::{syntax_error, syntax_parse_error},
             eval_result::EvalResult,
             intrinsics::intrinsics::Intrinsic,
@@ -20,7 +21,7 @@ use crate::{
     must,
 };
 
-use super::source_text_module::{ModuleId, ModuleState, SourceTextModule};
+use super::source_text_module::{ModuleId, ModuleRequest, ModuleState, SourceTextModule};
 
 /// GraphLoadingStateRecord (https://tc39.es/ecma262/#graphloadingstate-record)
 struct GraphLoader {
@@ -37,23 +38,24 @@ impl GraphLoader {
         if module.state() == ModuleState::New && self.visited.insert(module.id()) {
             module.set_state(ModuleState::Unlinked);
 
-            let specifiers = module.requested_module_specifiers();
+            let module_requests = module.requested_modules();
             let loaded_modules = module.loaded_modules();
 
-            self.pending_modules_count += specifiers.len();
+            self.pending_modules_count += module_requests.len();
 
-            for i in 0..specifiers.len() {
+            for i in 0..module_requests.len() {
                 match loaded_modules.as_slice()[i] {
                     Some(loaded_module) => self.inner_module_loading(cx, loaded_module.to_handle()),
                     None => {
-                        let module_specifier = specifiers.as_slice()[i].to_handle();
+                        let module_request =
+                            ModuleRequest::from_heap(&module_requests.as_slice()[i]);
 
                         // Create the SourceTextModule for the module with the given specifier,
                         // or evaluate to an error.
                         let load_result = host_load_imported_module(
                             cx,
                             module.source_file_path(),
-                            module_specifier,
+                            module_request,
                             self.realm,
                         );
 
@@ -61,7 +63,7 @@ impl GraphLoader {
                         self.finish_loading_imported_module(
                             cx,
                             module,
-                            module_specifier,
+                            module_request,
                             load_result,
                         );
                     }
@@ -92,11 +94,13 @@ impl GraphLoader {
         &mut self,
         cx: Context,
         mut referrer: Handle<SourceTextModule>,
-        specifier: Handle<FlatString>,
+        module_request: ModuleRequest,
         module_result: EvalResult<Handle<SourceTextModule>>,
     ) {
         if let Ok(module) = module_result {
-            let module_index = referrer.lookup_specifier_index(*specifier).unwrap();
+            let module_index = referrer
+                .lookup_module_request_index(&module_request.to_heap())
+                .unwrap();
             if !referrer.has_loaded_module_at(module_index) {
                 referrer.set_loaded_module_at(module_index, *module);
             }
@@ -154,7 +158,7 @@ pub fn load_requested_modules(
 pub fn host_load_imported_module(
     mut cx: Context,
     source_file_path: Handle<FlatString>,
-    module_specifier: Handle<FlatString>,
+    module_request: ModuleRequest,
     realm: Handle<Realm>,
 ) -> EvalResult<Handle<SourceTextModule>> {
     let source_file_path = Path::new(&source_file_path.to_string())
@@ -165,7 +169,7 @@ pub fn host_load_imported_module(
     // Join source file path with specifier path so that relative specifiers will be applied to
     // source path and absolute specifiers will overwrite source path.
     let new_module_path = source_file_dir
-        .join(Path::new(&module_specifier.to_string()))
+        .join(Path::new(&module_request.specifier.to_string()))
         .canonicalize();
 
     let new_module_path = match new_module_path {
@@ -176,8 +180,13 @@ pub fn host_load_imported_module(
     let new_module_path_string = new_module_path.to_str().unwrap().to_string();
 
     // Use the cached module if it has already been loaded
-    if let Some(module) = cx.modules.get(&new_module_path_string) {
-        return Ok(module.to_handle());
+    {
+        let module_cache_key =
+            ModuleCacheKey::new(new_module_path_string.clone(), module_request.attributes);
+
+        if let Some(module) = cx.modules.get(&module_cache_key.into_heap()) {
+            return Ok(module.to_handle());
+        }
     }
 
     // Parse the file at the given path, returning AST
@@ -208,7 +217,8 @@ pub fn host_load_imported_module(
     };
 
     // Cache the module
-    cx.modules.insert(new_module_path_string, *module);
+    let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
+    cx.insert_module(module_cache_key, module);
 
     Ok(module)
 }

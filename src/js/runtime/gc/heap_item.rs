@@ -18,7 +18,7 @@ use crate::js::runtime::{
         },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
     },
-    context::GlobalSymbolRegistryField,
+    context::{GlobalSymbolRegistryField, ModuleCacheField},
     for_in_iterator::ForInIterator,
     generator_object::GeneratorObject,
     global_names::GlobalNames,
@@ -52,8 +52,12 @@ use crate::js::runtime::{
         weak_set_object::{WeakSetObject, WeakSetObjectSetField},
     },
     module::{
+        import_attributes::ImportAttributes,
         module_namespace_object::ModuleNamespaceObject,
-        source_text_module::{ExportMapField, SourceTextModule},
+        source_text_module::{
+            module_request_array_byte_size, module_request_array_visit_pointers, ExportMapField,
+            SourceTextModule,
+        },
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
@@ -156,6 +160,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
             ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().byte_size(),
             ObjectKind::ModuleNamespaceObject => self.cast::<ModuleNamespaceObject>().byte_size(),
+            ObjectKind::ImportAttributes => self.cast::<ImportAttributes>().byte_size(),
             ObjectKind::Generator => self.cast::<GeneratorObject>().byte_size(),
             ObjectKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
             ObjectKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
@@ -177,8 +182,10 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::InternedStringsMap => InternedStringsMapField::byte_size(&self.cast()),
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
+            ObjectKind::ModuleCacheMap => ModuleCacheField::byte_size(&self.cast()),
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
+            ObjectKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
             }
@@ -270,6 +277,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ModuleNamespaceObject => {
                 self.cast::<ModuleNamespaceObject>().visit_pointers(visitor)
             }
+            ObjectKind::ImportAttributes => self.cast::<ImportAttributes>().visit_pointers(visitor),
             ObjectKind::Generator => self.cast::<GeneratorObject>().visit_pointers(visitor),
             ObjectKind::AsyncGenerator => {
                 self.cast::<AsyncGeneratorObject>().visit_pointers(visitor)
@@ -315,8 +323,14 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::LexicalNamesMap => {
                 LexicalNamesMapField::visit_pointers(self.cast_mut(), visitor)
             }
+            ObjectKind::ModuleCacheMap => {
+                ModuleCacheField::visit_pointers(self.cast_mut(), visitor)
+            }
             ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
+            ObjectKind::ModuleRequestArray => {
+                module_request_array_visit_pointers(self.cast_mut(), visitor)
+            }
             ObjectKind::FinalizationRegistryCells => self
                 .cast::<FinalizationRegistryCells>()
                 .visit_pointers(visitor),

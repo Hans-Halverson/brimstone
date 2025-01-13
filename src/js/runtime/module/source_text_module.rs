@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    hash::Hash,
     num::NonZeroUsize,
     sync::{LazyLock, Mutex},
 };
@@ -13,7 +14,9 @@ use crate::{
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
         gc::{HandleScope, HeapItem, HeapObject, HeapVisitor},
-        module::module_namespace_object::ModuleNamespaceObject,
+        module::{
+            import_attributes::ImportAttributes, module_namespace_object::ModuleNamespaceObject,
+        },
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
@@ -53,8 +56,8 @@ pub struct SourceTextModule {
     /// Map of all exported names to the BoxedValue that contains the exported value. This is lazily
     /// created when the namespace object is first accessed.
     exports: Option<HeapPtr<ExportMap>>,
-    /// The set of module specifiers that are requested by this module in imports and re-exports.
-    requested_module_specifiers: HeapPtr<StringArray>,
+    /// The set of module specifiers and attributes requested by this module in imports and re-exports.
+    requested_modules: HeapPtr<ModuleRequestArray>,
     /// Each index corresponds to the specifier at the same index in `requested_module_specifiers`,
     /// and contains the module object if one has been loaded.
     loaded_modules: HeapPtr<ModuleOptionArray>,
@@ -88,7 +91,7 @@ pub enum ModuleState {
     Evaluated,
 }
 
-type StringArray = BsArray<HeapPtr<FlatString>>;
+type ModuleRequestArray = BsArray<HeapModuleRequest>;
 
 type ModuleOptionArray = BsArray<Option<HeapPtr<SourceTextModule>>>;
 
@@ -102,7 +105,7 @@ impl SourceTextModule {
         cx: Context,
         program_function: Handle<BytecodeFunction>,
         module_scope: Handle<Scope>,
-        requested_module_specifiers: &IndexSet<Handle<FlatString>>,
+        requested_modules: &IndexSet<ModuleRequest>,
         imports: &[ImportEntry],
         local_exports: &[LocalExportEntry],
         named_re_exports: &[NamedReExportEntry],
@@ -111,20 +114,20 @@ impl SourceTextModule {
     ) -> Handle<SourceTextModule> {
         // First create arrays for requested and loaded modules. Requested modules are initialized
         // from arguments, loaded modules are initialized to None.
-        let num_specifiers = requested_module_specifiers.len();
-        let mut heap_requested_module_specifiers =
-            BsArray::new_uninit(cx, ObjectKind::ValueArray, num_specifiers).to_handle();
-        for (dst, src) in heap_requested_module_specifiers
+        let num_module_requests = requested_modules.len();
+        let mut heap_requested_modules =
+            BsArray::new_uninit(cx, ObjectKind::ModuleRequestArray, num_module_requests)
+                .to_handle();
+        for (dst, src) in heap_requested_modules
             .as_mut_slice()
             .iter_mut()
-            .zip(requested_module_specifiers.iter())
+            .zip(requested_modules.iter())
         {
-            *dst = **src;
+            *dst = src.to_heap();
         }
 
         let loaded_modules =
-            BsArray::new(cx, ObjectKind::ValueArray, requested_module_specifiers.len(), None)
-                .to_handle();
+            BsArray::new(cx, ObjectKind::ValueArray, requested_modules.len(), None).to_handle();
 
         // Then create the uninitialized module object
         let num_entries =
@@ -142,7 +145,7 @@ impl SourceTextModule {
         set_uninit!(object.import_meta, None);
         set_uninit!(object.namespace_object, None);
         set_uninit!(object.exports, None);
-        set_uninit!(object.requested_module_specifiers, *heap_requested_module_specifiers);
+        set_uninit!(object.requested_modules, *heap_requested_modules);
         set_uninit!(object.loaded_modules, *loaded_modules);
         set_uninit!(object.dfs_index, 0);
         set_uninit!(object.dfs_ancestor_index, 0);
@@ -340,8 +343,8 @@ impl SourceTextModule {
     }
 
     #[inline]
-    pub fn requested_module_specifiers(&self) -> Handle<StringArray> {
-        self.requested_module_specifiers.to_handle()
+    pub fn requested_modules(&self) -> Handle<ModuleRequestArray> {
+        self.requested_modules.to_handle()
     }
 
     #[inline]
@@ -349,11 +352,11 @@ impl SourceTextModule {
         self.loaded_modules.to_handle()
     }
 
-    pub fn lookup_specifier_index(&self, module_specifier: HeapPtr<FlatString>) -> Option<usize> {
-        self.requested_module_specifiers
+    pub fn lookup_module_request_index(&self, module_request: &HeapModuleRequest) -> Option<usize> {
+        self.requested_modules
             .as_slice()
             .iter()
-            .position(|&specifier| specifier == module_specifier)
+            .position(|request| request == module_request)
     }
 
     pub fn has_loaded_module_at(&self, index: usize) -> bool {
@@ -414,7 +417,7 @@ impl HeapPtr<SourceTextModule> {
         for entry in self.entries.as_slice() {
             if let ModuleEntry::NamedReExport(entry) = entry {
                 if entry.export_name == export_name {
-                    let imported_module = self.get_imported_module(entry.module_request);
+                    let imported_module = self.get_imported_module(&entry.module_request);
 
                     if let Some(import_name) = entry.import_name {
                         // Re-export of a named import tries to resolve in other module
@@ -440,7 +443,7 @@ impl HeapPtr<SourceTextModule> {
 
         for entry in self.entries.as_slice() {
             if let ModuleEntry::DirectReExport(entry) = entry {
-                let imported_module = self.get_imported_module(entry.module_request);
+                let imported_module = self.get_imported_module(&entry.module_request);
                 let resolution = imported_module.resolve_export(cx, export_name, resolve_set);
 
                 match resolution {
@@ -494,9 +497,9 @@ impl HeapPtr<SourceTextModule> {
     /// GetImportedModule (https://tc39.es/ecma262/#sec-GetImportedModule)
     pub fn get_imported_module(
         &self,
-        module_specifier: HeapPtr<FlatString>,
+        module_request: &HeapModuleRequest,
     ) -> HeapPtr<SourceTextModule> {
-        let index = self.lookup_specifier_index(module_specifier).unwrap();
+        let index = self.lookup_module_request_index(module_request).unwrap();
         self.get_loaded_module_at(index)
     }
 
@@ -522,7 +525,8 @@ impl HeapPtr<SourceTextModule> {
                 ModuleEntry::DirectReExport(named_re_export) => {
                     // Add all names from the requested module to the set of exported names, excluding
                     // the default export.
-                    let requested_module = self.get_imported_module(named_re_export.module_request);
+                    let requested_module =
+                        self.get_imported_module(&named_re_export.module_request);
 
                     let mut re_exported_names = HashSet::new();
                     requested_module.get_exported_names(cx, &mut re_exported_names, visited_set);
@@ -671,7 +675,7 @@ impl HeapObject for HeapPtr<SourceTextModule> {
         visitor.visit_pointer_opt(&mut self.import_meta);
         visitor.visit_pointer_opt(&mut self.namespace_object);
         visitor.visit_pointer_opt(&mut self.exports);
-        visitor.visit_pointer(&mut self.requested_module_specifiers);
+        visitor.visit_pointer(&mut self.requested_modules);
         visitor.visit_pointer(&mut self.loaded_modules);
         visitor.visit_pointer_opt(&mut self.cycle_root);
         visitor.visit_pointer_opt(&mut self.top_level_capability);
@@ -685,7 +689,7 @@ impl HeapObject for HeapPtr<SourceTextModule> {
         for entry in self.entries.as_mut_slice() {
             match entry {
                 ModuleEntry::Import(import_entry) => {
-                    visitor.visit_pointer(&mut import_entry.module_request);
+                    import_entry.module_request.visit_pointers(visitor);
                     visitor.visit_pointer_opt(&mut import_entry.import_name);
                     visitor.visit_pointer(&mut import_entry.local_name);
                 }
@@ -696,10 +700,12 @@ impl HeapObject for HeapPtr<SourceTextModule> {
                 ModuleEntry::NamedReExport(named_re_export_entry) => {
                     visitor.visit_pointer(&mut named_re_export_entry.export_name);
                     visitor.visit_pointer_opt(&mut named_re_export_entry.import_name);
-                    visitor.visit_pointer(&mut named_re_export_entry.module_request);
+                    named_re_export_entry.module_request.visit_pointers(visitor);
                 }
                 ModuleEntry::DirectReExport(direct_re_export_entry) => {
-                    visitor.visit_pointer(&mut direct_re_export_entry.module_request);
+                    direct_re_export_entry
+                        .module_request
+                        .visit_pointers(visitor);
                 }
             }
         }
@@ -718,6 +724,60 @@ fn next_module_id() -> ModuleId {
     module_id
 }
 
+/// A request to import a module with the given attributes.
+#[derive(Clone, Copy, PartialEq)]
+pub struct HeapModuleRequest {
+    /// The module specifier as a string.
+    pub specifier: HeapPtr<FlatString>,
+    /// The import attributes, if any were specified.
+    pub attributes: Option<HeapPtr<ImportAttributes>>,
+}
+
+#[derive(Clone, Copy)]
+pub struct ModuleRequest {
+    pub specifier: Handle<FlatString>,
+    pub attributes: Option<Handle<ImportAttributes>>,
+}
+
+impl HeapModuleRequest {
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.specifier);
+        visitor.visit_pointer_opt(&mut self.attributes);
+    }
+}
+
+impl ModuleRequest {
+    pub fn from_heap(module_request: &HeapModuleRequest) -> ModuleRequest {
+        ModuleRequest {
+            specifier: module_request.specifier.to_handle(),
+            attributes: module_request.attributes.map(|a| a.to_handle()),
+        }
+    }
+
+    pub fn to_heap(self) -> HeapModuleRequest {
+        HeapModuleRequest {
+            specifier: *self.specifier,
+            attributes: self.attributes.map(|a| *a),
+        }
+    }
+}
+
+impl PartialEq for ModuleRequest {
+    fn eq(&self, other: &Self) -> bool {
+        self.specifier == other.specifier
+            && self.attributes.as_deref() == other.attributes.as_deref()
+    }
+}
+
+impl Eq for ModuleRequest {}
+
+impl Hash for ModuleRequest {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Ignore attributes for hashing
+        self.specifier.hash(state);
+    }
+}
+
 pub enum ModuleEntry {
     Import(HeapImportEntry),
     LocalExport(HeapLocalExportEntry),
@@ -727,8 +787,8 @@ pub enum ModuleEntry {
 
 /// ImportEntry (https://tc39.es/ecma262/#table-importentry-record-fields)
 pub struct HeapImportEntry {
-    /// Name of the module that binding is being imported from.
-    pub module_request: HeapPtr<FlatString>,
+    /// Module that binding is being imported from.
+    pub module_request: HeapModuleRequest,
     /// Name of the binding in the module it was declared in. If None then this entry is for the
     /// namespace object, meaning the slot_index may refer to an unboxed value.
     pub import_name: Option<HeapPtr<FlatString>>,
@@ -741,7 +801,7 @@ pub struct HeapImportEntry {
 }
 
 pub struct ImportEntry {
-    pub module_request: Handle<FlatString>,
+    pub module_request: ModuleRequest,
     pub import_name: Option<Handle<FlatString>>,
     pub local_name: Handle<FlatString>,
     pub slot_index: usize,
@@ -751,7 +811,7 @@ pub struct ImportEntry {
 impl ImportEntry {
     pub fn from_heap(entry: &HeapImportEntry) -> ImportEntry {
         ImportEntry {
-            module_request: entry.module_request.to_handle(),
+            module_request: ModuleRequest::from_heap(&entry.module_request),
             import_name: entry.import_name.map(|name| name.to_handle()),
             local_name: entry.local_name.to_handle(),
             slot_index: entry.slot_index,
@@ -761,7 +821,7 @@ impl ImportEntry {
 
     fn to_heap(&self) -> HeapImportEntry {
         HeapImportEntry {
-            module_request: *self.module_request,
+            module_request: self.module_request.to_heap(),
             import_name: self.import_name.map(|name| *name),
             local_name: *self.local_name,
             slot_index: self.slot_index,
@@ -810,14 +870,14 @@ pub struct HeapNamedReExportEntry {
     /// Name of the re-exported binding within its module. If None this is a named re-export of
     /// a namespace object.
     import_name: Option<HeapPtr<FlatString>>,
-    /// Name of the module that is having a bindings re-exported.
-    module_request: HeapPtr<FlatString>,
+    /// Module that is having a bindings re-exported.
+    module_request: HeapModuleRequest,
 }
 
 pub struct NamedReExportEntry {
     pub export_name: Handle<FlatString>,
     pub import_name: Option<Handle<FlatString>>,
-    pub module_request: Handle<FlatString>,
+    pub module_request: ModuleRequest,
 }
 
 impl NamedReExportEntry {
@@ -825,7 +885,7 @@ impl NamedReExportEntry {
         HeapNamedReExportEntry {
             export_name: *self.export_name,
             import_name: self.import_name.map(|name| *name),
-            module_request: *self.module_request,
+            module_request: self.module_request.to_heap(),
         }
     }
 }
@@ -836,17 +896,32 @@ impl NamedReExportEntry {
 /// Coressponds to the direct re-export of all bindings from another module,
 /// i.e. `export * from "mod"`.
 pub struct HeapDirectReExportEntry {
-    /// Name of the module that is having its bindings re-exported.
-    module_request: HeapPtr<FlatString>,
+    /// Module that is having its bindings re-exported.
+    module_request: HeapModuleRequest,
 }
 
 pub struct DirectReExportEntry {
-    pub module_request: Handle<FlatString>,
+    pub module_request: ModuleRequest,
 }
 
 impl DirectReExportEntry {
     fn to_heap(&self) -> HeapDirectReExportEntry {
-        HeapDirectReExportEntry { module_request: *self.module_request }
+        HeapDirectReExportEntry { module_request: self.module_request.to_heap() }
+    }
+}
+
+pub fn module_request_array_byte_size(array: HeapPtr<ModuleRequestArray>) -> usize {
+    ModuleRequestArray::calculate_size_in_bytes(array.len())
+}
+
+pub fn module_request_array_visit_pointers(
+    array: &mut HeapPtr<ModuleRequestArray>,
+    visitor: &mut impl HeapVisitor,
+) {
+    array.visit_pointers(visitor);
+
+    for module_request in array.as_mut_slice() {
+        module_request.visit_pointers(visitor);
     }
 }
 

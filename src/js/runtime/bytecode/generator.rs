@@ -525,9 +525,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         &mut self,
         attributes: Option<&ast::ImportAttributes>,
     ) -> Option<Handle<ImportAttributes>> {
-        if attributes.is_none() {
-            return None;
-        }
+        attributes?;
 
         let attributes = &attributes.unwrap().attributes;
         if attributes.is_empty() {
@@ -540,10 +538,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for attribute in attributes.iter() {
             let key = match attribute.key.as_ref() {
                 ast::Expression::Id(ast::Identifier { name, .. }) => {
-                    InternedStrings::get_str(self.cx, &name).as_flat()
+                    InternedStrings::get_str(self.cx, name).as_flat()
                 }
                 ast::Expression::String(ast::StringLiteral { value, .. }) => {
-                    InternedStrings::get_wtf8_str(self.cx, &value).as_flat()
+                    InternedStrings::get_wtf8_str(self.cx, value).as_flat()
                 }
                 _ => unreachable!("expected string or identifier"),
             };
@@ -5940,7 +5938,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Options argument is optional, treated as undefined if not provided
         let options = match &expr.options {
-            Some(expr) => self.gen_expression(&expr)?,
+            Some(expr) => self.gen_expression(expr)?,
             None => {
                 let options = self.register_allocator.allocate()?;
                 self.writer.load_undefined_instruction(options);

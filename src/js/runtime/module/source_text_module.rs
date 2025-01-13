@@ -754,7 +754,7 @@ impl ModuleRequest {
         }
     }
 
-    pub fn to_heap(&self) -> HeapModuleRequest {
+    pub fn to_heap(self) -> HeapModuleRequest {
         HeapModuleRequest {
             specifier: *self.specifier,
             attributes: self.attributes.map(|a| *a),

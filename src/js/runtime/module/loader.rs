@@ -184,7 +184,7 @@ pub fn host_load_imported_module(
         let module_cache_key =
             ModuleCacheKey::new(new_module_path_string.clone(), module_request.attributes);
 
-        if let Some(module) = cx.modules.get(&module_cache_key.to_heap()) {
+        if let Some(module) = cx.modules.get(&module_cache_key.into_heap()) {
             return Ok(module.to_handle());
         }
     }

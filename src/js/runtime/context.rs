@@ -272,7 +272,7 @@ impl Context {
     pub fn insert_module(&mut self, cache_key: ModuleCacheKey, module: Handle<SourceTextModule>) {
         ModuleCacheField
             .maybe_grow_for_insertion(*self)
-            .insert_without_growing(cache_key.to_heap(), *module);
+            .insert_without_growing(cache_key.into_heap(), *module);
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
@@ -482,7 +482,7 @@ impl ModuleCacheKey {
         Self { path, attributes }
     }
 
-    pub fn to_heap(self) -> HeapModuleCacheKey {
+    pub fn into_heap(self) -> HeapModuleCacheKey {
         HeapModuleCacheKey::new(self.path, self.attributes.map(|attr| *attr))
     }
 }

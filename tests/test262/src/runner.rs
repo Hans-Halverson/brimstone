@@ -142,12 +142,18 @@ impl TestRunner {
 fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -> TestResult {
     match test.mode {
         TestMode::StrictScript => run_single_test(test, test262_root, true, start_timestamp),
-        TestMode::NonStrictScript | TestMode::Module | TestMode::Raw => {
+        TestMode::NonStrictScript | TestMode::Module => {
             run_single_test(test, test262_root, false, start_timestamp)
         }
         // Run in both strict and non strict mode, both must pass for this test to be successful
         TestMode::Script => {
             let non_strict_result = run_single_test(test, test262_root, false, start_timestamp);
+
+            // Raw mode tests for scripts are only run in non-strict mode
+            if test.is_raw {
+                return non_strict_result;
+            }
+
             if let TestResultCompletion::Success = non_strict_result.result {
                 run_single_test(test, test262_root, true, start_timestamp)
             } else {
@@ -179,7 +185,7 @@ fn run_single_test(
         }
 
         // Default harness files are loaded unless running in raw mode
-        if test.mode != TestMode::Raw {
+        if !test.is_raw {
             load_harness_test_file(cx, test262_root, "assert.js");
             load_harness_test_file(cx, test262_root, "sta.js");
         }

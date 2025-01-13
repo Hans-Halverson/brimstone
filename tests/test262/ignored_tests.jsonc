@@ -8,9 +8,6 @@
       //
       ////////////////////////////////////////
 
-      // Support raw module tests in test harness
-      "language/module-code/import-attributes/allow-nlt-before-with.js",
-
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 

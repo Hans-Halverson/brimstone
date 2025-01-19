@@ -491,15 +491,7 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
     func.debug_format(&mut printer);
     let bytecode_string = printer.finish();
 
-    if let Some(mut dump_buffer) = cx.options.dump_buffer() {
-        if !dump_buffer.is_empty() {
-            dump_buffer.push('\n');
-        }
-
-        dump_buffer.push_str(&bytecode_string);
-    } else {
-        println!("{}", bytecode_string);
-    }
+    cx.print_or_add_to_dump_buffer(&bytecode_string);
 }
 
 impl HeapObject for HeapPtr<BytecodeFunction> {

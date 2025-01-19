@@ -60,6 +60,15 @@ fn js_bytecode_snapshot_tests() -> GenericResult<()> {
     run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(path))
 }
 
+#[test]
+fn js_regexp_bytecode_snapshot_tests() -> GenericResult<()> {
+    let regexp_bytecode_tests_dir = Path::new(file!())
+        .parent()
+        .unwrap()
+        .join("js_regexp_bytecode");
+    run_snapshot_tests(&regexp_bytecode_tests_dir, &mut |path| print_regexp_bytecode(path))
+}
+
 fn print_bytecode(path: &str) -> GenericResult<String> {
     // Check if the test file should be run with dumped bytecode collected, e.g. for eval
     let file = fs::read_to_string(path).unwrap();
@@ -92,6 +101,23 @@ fn run_and_return_bytecode(
 
     f(cx)?;
 
+    let dump_buffer = options.dump_buffer().unwrap().clone();
+
+    Ok(dump_buffer)
+}
+
+fn print_regexp_bytecode(path: &str) -> GenericResult<String> {
+    // Bytecode will be dumped to the internal dump buffer
+    let options = OptionsBuilder::new()
+        .print_regexp_bytecode(true)
+        .dump_buffer(Some(Mutex::new(String::new())))
+        .build();
+
+    let options = Rc::new(options);
+    let cx = ContextBuilder::new().set_options(options.clone()).build();
+
+    // Generate bytecode, extracting dumped regexp bytecode
+    generate_bytecode(cx, path)?;
     let dump_buffer = options.dump_buffer().unwrap().clone();
 
     Ok(dump_buffer)

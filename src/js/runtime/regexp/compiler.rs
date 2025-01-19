@@ -1080,7 +1080,8 @@ pub fn compile_regexp(
     let compiled_regexp = builder.compile(cx, regexp);
 
     if cx.options.print_regexp_bytecode {
-        println!("{}", compiled_regexp.debug_print(DebugPrintMode::Verbose));
+        let bytecode_string = compiled_regexp.debug_print(DebugPrintMode::Verbose);
+        cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
 
     compiled_regexp

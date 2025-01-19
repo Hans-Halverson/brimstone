@@ -1,0 +1,20 @@
+[CompiledRegExpObject: /a/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(1)
+    12: Accept
+}
+
+[CompiledRegExpObject: /[a-z]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(a, {)
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
+}

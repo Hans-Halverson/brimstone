@@ -96,12 +96,23 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24]]
     AssertEndOrNewline,
 
-    /// Assert a word boundary (\b)
+    /// Move to the previous code point as part of checking a word boundary. Must be called after
+    /// the current code point has been checked to see if it is a word, with the result of the check
+    /// still stored in the compare register. Compare register will be stored in the word boundary
+    /// register to compare against the previous code point.
+    ///
+    /// Layout: [[opcode: u8] [padding: u24]]
+    WordBoundaryMoveToPrevious,
+
+    /// Assert a word boundary (\b). Must be called after WordBoundaryMoveToPrevious, and restores
+    /// to the place in the input stream before WordBoundaryMoveToPrevious was called.
+    ///
     ///
     /// Layout: [[opcode: u8] [padding: u24]]
     AssertWordBoundary,
 
-    /// Assert not a word boundary (\B)
+    /// Assert not a word boundary (\B). Must be called after WordBoundaryMoveToPrevious, and
+    /// restores to the place in the input stream before WordBoundaryMoveToPrevious was called.
     ///
     /// Layout: [[opcode: u8] [padding: u24]]
     AssertNotWordBoundary,
@@ -210,6 +221,7 @@ impl OpCode {
             OpCode::AssertEnd => AssertEndInstruction::SIZE,
             OpCode::AssertStartOrNewline => AssertStartOrNewlineInstruction::SIZE,
             OpCode::AssertEndOrNewline => AssertEndOrNewlineInstruction::SIZE,
+            OpCode::WordBoundaryMoveToPrevious => WordBoundaryMoveToPreviousInstruction::SIZE,
             OpCode::AssertWordBoundary => AssertWordBoundaryInstruction::SIZE,
             OpCode::AssertNotWordBoundary => AssertNotWordBoundaryInstruction::SIZE,
             OpCode::Backreference => BackreferenceInstruction::SIZE,
@@ -277,6 +289,9 @@ impl Instruction {
             OpCode::AssertEndOrNewline => {
                 self.cast::<AssertEndOrNewlineInstruction>().debug_print()
             }
+            OpCode::WordBoundaryMoveToPrevious => self
+                .cast::<WordBoundaryMoveToPreviousInstruction>()
+                .debug_print(),
             OpCode::AssertWordBoundary => {
                 self.cast::<AssertWordBoundaryInstruction>().debug_print()
             }
@@ -384,6 +399,10 @@ nullary_regexp_bytcode_instruction!(AssertStartInstruction, OpCode::AssertStart)
 nullary_regexp_bytcode_instruction!(AssertEndInstruction, OpCode::AssertEnd);
 nullary_regexp_bytcode_instruction!(AssertStartOrNewlineInstruction, OpCode::AssertStartOrNewline);
 nullary_regexp_bytcode_instruction!(AssertEndOrNewlineInstruction, OpCode::AssertEndOrNewline);
+nullary_regexp_bytcode_instruction!(
+    WordBoundaryMoveToPreviousInstruction,
+    OpCode::WordBoundaryMoveToPrevious
+);
 nullary_regexp_bytcode_instruction!(AssertWordBoundaryInstruction, OpCode::AssertWordBoundary);
 nullary_regexp_bytcode_instruction!(
     AssertNotWordBoundaryInstruction,

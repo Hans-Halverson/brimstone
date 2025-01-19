@@ -1,0 +1,29 @@
+[CompiledRegExpObject: /a\bc/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: CompareIsWord
+    11: WordBoundaryMoveToPrevious
+    12: CompareIsWord
+    13: AssertWordBoundary
+    14: Literal(c)
+    15: MarkCapturePoint(1)
+    17: Accept
+}
+
+[CompiledRegExpObject: /a\Bc/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: CompareIsWord
+    11: WordBoundaryMoveToPrevious
+    12: CompareIsWord
+    13: AssertNotWordBoundary
+    14: Literal(c)
+    15: MarkCapturePoint(1)
+    17: Accept
+}

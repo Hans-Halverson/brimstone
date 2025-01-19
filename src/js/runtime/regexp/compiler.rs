@@ -27,6 +27,7 @@ use super::{
         ConsumeIfTrueInstruction, FailInstruction, InstructionIteratorMut, JumpInstruction,
         LiteralInstruction, LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
         OpCode, ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
+        WordBoundaryMoveToPreviousInstruction,
     },
     matcher::canonicalize,
 };
@@ -207,6 +208,10 @@ impl CompiledRegExpBuilder {
 
     fn emit_assert_end_or_newline_instruction(&mut self) {
         AssertEndOrNewlineInstruction::write(self.current_block_buf())
+    }
+
+    fn emit_word_boundary_move_to_previous_instruction(&mut self) {
+        WordBoundaryMoveToPreviousInstruction::write(self.current_block_buf())
     }
 
     fn emit_assert_word_boundary_instruction(&mut self) {
@@ -585,9 +590,23 @@ impl CompiledRegExpBuilder {
                     self.emit_assert_end_instruction()
                 }
             }
-            Assertion::WordBoundary => self.emit_assert_word_boundary_instruction(),
-            Assertion::NotWordBoundary => self.emit_assert_not_word_boundary_instruction(),
+            Assertion::WordBoundary => self.emit_assert_word_boundary(),
+            Assertion::NotWordBoundary => self.emit_assert_not_word_boundary(),
         }
+    }
+
+    fn emit_assert_word_boundary(&mut self) {
+        self.emit_compare_is_word_instruction();
+        self.emit_word_boundary_move_to_previous_instruction();
+        self.emit_compare_is_word_instruction();
+        self.emit_assert_word_boundary_instruction()
+    }
+
+    fn emit_assert_not_word_boundary(&mut self) {
+        self.emit_compare_is_word_instruction();
+        self.emit_word_boundary_move_to_previous_instruction();
+        self.emit_compare_is_word_instruction();
+        self.emit_assert_not_word_boundary_instruction()
     }
 
     fn in_block<R>(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self) -> R) -> R {

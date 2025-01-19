@@ -12,7 +12,7 @@ pub type CodeUnit = u16;
 pub type CodePoint = u32;
 
 /// Highest unicode code point
-const MAX_CODE_POINT: CodePoint = 0x10FFFF;
+pub const MAX_CODE_POINT: CodePoint = 0x10FFFF;
 
 // Start of high surrogate range, inclusive
 const HIGH_SURROGATE_START: CodeUnit = 0xD800;

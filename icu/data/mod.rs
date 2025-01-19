@@ -64,6 +64,7 @@ include!("xid_continue_v1_marker.rs.data");
 include!("xid_start_v1_marker.rs.data");
 include!("case_map_v1_marker.rs.data");
 include!("general_category_v1_marker.rs.data");
+include!("script_v1_marker.rs.data");
 include!("script_with_extensions_property_v1_marker.rs.data");
 /// Marks a type as a data provider. You can then use macros like
 /// `impl_core_helloworld_v1` to add implementations.
@@ -159,6 +160,7 @@ macro_rules! impl_data_provider {
         impl_xid_start_v1_marker!($provider);
         impl_case_map_v1_marker!($provider);
         impl_general_category_v1_marker!($provider);
+        impl_script_v1_marker!($provider);
         impl_script_with_extensions_property_v1_marker!($provider);
     };
 }
@@ -234,6 +236,7 @@ macro_rules! impl_any_provider {
                     h if h == <icu_properties::provider::XidStartV1Marker as icu_provider::DataMarker>::INFO.path.hashed() => icu_provider::DataProvider::<icu_properties::provider::XidStartV1Marker>::load(self, req).map(icu_provider::DataResponse::wrap_into_any_response),
                     h if h == <icu_casemap::provider::CaseMapV1Marker as icu_provider::DataMarker>::INFO.path.hashed() => icu_provider::DataProvider::<icu_casemap::provider::CaseMapV1Marker>::load(self, req).map(icu_provider::DataResponse::wrap_into_any_response),
                     h if h == <icu_properties::provider::GeneralCategoryV1Marker as icu_provider::DataMarker>::INFO.path.hashed() => icu_provider::DataProvider::<icu_properties::provider::GeneralCategoryV1Marker>::load(self, req).map(icu_provider::DataResponse::wrap_into_any_response),
+                    h if h == <icu_properties::provider::ScriptV1Marker as icu_provider::DataMarker>::INFO.path.hashed() => icu_provider::DataProvider::<icu_properties::provider::ScriptV1Marker>::load(self, req).map(icu_provider::DataResponse::wrap_into_any_response),
                     h if h == <icu_properties::provider::ScriptWithExtensionsPropertyV1Marker as icu_provider::DataMarker>::INFO.path.hashed() => icu_provider::DataProvider::<icu_properties::provider::ScriptWithExtensionsPropertyV1Marker>::load(self, req).map(icu_provider::DataResponse::wrap_into_any_response),
                     _ => Err(icu_provider::DataErrorKind::MarkerNotFound.with_req(marker, req)),
                 }

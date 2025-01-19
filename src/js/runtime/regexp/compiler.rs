@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use crate::js::{
-    common::{unicode::CodePoint, unicode_property::UnicodeProperty, wtf_8::Wtf8String},
+    common::{unicode::CodePoint, wtf_8::Wtf8String},
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
@@ -22,13 +22,12 @@ use super::{
         AssertNotWordBoundaryInstruction, AssertStartInstruction, AssertStartOrNewlineInstruction,
         AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
         ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-        CompareIsDigitInstruction, CompareIsNotDigitInstruction,
-        CompareIsNotUnicodePropertyInstruction, CompareIsNotWhitespaceInstruction,
-        CompareIsUnicodePropertyInstruction, CompareIsWhitespaceInstruction,
-        ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction,
-        InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
-        LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
-        WildcardInstruction, WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+        CompareIsDigitInstruction, CompareIsNotDigitInstruction, CompareIsNotWhitespaceInstruction,
+        CompareIsWhitespaceInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction,
+        FailInstruction, InstructionIteratorMut, JumpInstruction, LiteralInstruction,
+        LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
+        ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
+        WordBoundaryMoveToPreviousInstruction,
     },
     matcher::canonicalize,
 };
@@ -257,17 +256,6 @@ impl CompiledRegExpBuilder {
 
     fn emit_compare_is_not_whitespace_instruction(&mut self) {
         CompareIsNotWhitespaceInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_unicode_property_instruction(&mut self, unicode_property: UnicodeProperty) {
-        CompareIsUnicodePropertyInstruction::write(self.current_block_buf(), unicode_property)
-    }
-
-    fn emit_compare_is_not_unicode_property_instruction(
-        &mut self,
-        unicode_property: UnicodeProperty,
-    ) {
-        CompareIsNotUnicodePropertyInstruction::write(self.current_block_buf(), unicode_property)
     }
 
     fn emit_lookaround_instruction(&mut self, is_ahead: bool, is_positive: bool, body_branch: u32) {
@@ -977,10 +965,17 @@ impl CompiledRegExpBuilder {
                 ClassRange::Whitespace => self.emit_compare_is_whitespace_instruction(),
                 ClassRange::NotWhitespace => self.emit_compare_is_not_whitespace_instruction(),
                 ClassRange::UnicodeProperty(property) => {
-                    self.emit_compare_is_unicode_property_instruction(*property)
+                    property.add_to_set(&mut set_builder);
                 }
                 ClassRange::NotUnicodeProperty(property) => {
-                    self.emit_compare_is_not_unicode_property_instruction(*property)
+                    // Construct the complement of the unicode property set
+                    let mut property_complement_builder = CodePointInversionListBuilder::new();
+                    property.add_to_set(&mut property_complement_builder);
+                    property_complement_builder.complement();
+                    let property_complement = property_complement_builder.build();
+
+                    // Then add the complement set to the set builder
+                    set_builder.add_set(&property_complement);
                 }
             }
         }

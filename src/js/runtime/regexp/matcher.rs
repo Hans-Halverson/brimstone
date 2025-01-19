@@ -23,8 +23,7 @@ use super::{
         AssertStartInstruction, AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
         BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
         CompareBetweenInstruction, CompareEqualsInstruction, CompareIsDigitInstruction,
-        CompareIsNotDigitInstruction, CompareIsNotUnicodePropertyInstruction,
-        CompareIsNotWhitespaceInstruction, CompareIsUnicodePropertyInstruction,
+        CompareIsNotDigitInstruction, CompareIsNotWhitespaceInstruction,
         CompareIsWhitespaceInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction,
         Instruction, JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
         MarkCapturePointInstruction, ProgressInstruction, TInstruction, WildcardInstruction,
@@ -469,26 +468,6 @@ impl<T: LexerStream> MatchEngine<T> {
                     }
 
                     self.advance_instruction::<CompareIsNotWhitespaceInstruction>();
-                }
-                OpCode::CompareIsUnicodeProperty => {
-                    let instr = instr.cast::<CompareIsUnicodePropertyInstruction>();
-
-                    let current = self.string_lexer.current();
-                    if instr.unicode_property().is_match(current) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsUnicodePropertyInstruction>();
-                }
-                OpCode::CompareIsNotUnicodeProperty => {
-                    let instr = instr.cast::<CompareIsNotUnicodePropertyInstruction>();
-
-                    let current = self.string_lexer.current();
-                    if !instr.unicode_property().is_match(current) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsNotUnicodePropertyInstruction>();
                 }
                 OpCode::Lookaround => {
                     let instr = instr.cast::<LookaroundInstruction>();

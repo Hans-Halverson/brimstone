@@ -31,87 +31,13 @@ pub struct ICU {
 pub struct GeneralCategories {
     /// Classifier which maps code points to general categories
     pub classifier: CodePointMapDataBorrowed<'static, GeneralCategory>,
-    //     /// The C general category
-    //     pub other: CodePointSetDataBorrowed<'static>,
-    //     /// The Cc general category
-    //     pub control: CodePointSetDataBorrowed<'static>,
-    //     /// The Cf general category
-    //     pub format: CodePointSetDataBorrowed<'static>,
-    //     /// The Cn general category
-    //     pub unassigned: CodePointSetDataBorrowed<'static>,
-    //     /// The Co general category
-    //     pub private_use: CodePointSetDataBorrowed<'static>,
-    //     /// The Cs general category
-    //     pub surrogate: CodePointSetDataBorrowed<'static>,
-    //     /// The L general category
-    //     pub letter: CodePointSetDataBorrowed<'static>,
-    //     /// The LC general category
-    //     pub cased_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The Ll general category
-    //     pub lowercase_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The Lm general category
-    //     pub modifier_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The Lo general category
-    //     pub other_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The Lt general category
-    //     pub titlecase_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The Lu general category
-    //     pub uppercase_letter: CodePointSetDataBorrowed<'static>,
-    //     /// The M general category
-    //     pub mark: CodePointSetDataBorrowed<'static>,
-    //     /// The Mc general category
-    //     pub spacing_mark: CodePointSetDataBorrowed<'static>,
-    //     /// The Me general category
-    //     pub enclosing_mark: CodePointSetDataBorrowed<'static>,
-    //     /// The Mn general category
-    //     pub nonspacing_mark: CodePointSetDataBorrowed<'static>,
-    //     /// The N general category
-    //     pub number: CodePointSetDataBorrowed<'static>,
-    //     /// The Nd general category
-    //     pub decimal_number: CodePointSetDataBorrowed<'static>,
-    //     /// The Nl general category
-    //     pub letter_number: CodePointSetDataBorrowed<'static>,
-    //     /// The No general category
-    //     pub other_number: CodePointSetDataBorrowed<'static>,
-    //     /// The P general category
-    //     pub punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Pc general category
-    //     pub connector_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Pd general category
-    //     pub dash_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Pe general category
-    //     pub close_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Pf general category
-    //     pub final_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Pi general category
-    //     pub initial_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Po general category
-    //     pub other_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The Ps general category
-    //     pub open_punctuation: CodePointSetDataBorrowed<'static>,
-    //     /// The S general category
-    //     pub symbol: CodePointSetDataBorrowed<'static>,
-    //     /// The Sc general category
-    //     pub currency_symbol: CodePointSetDataBorrowed<'static>,
-    //     /// The Sk general category
-    //     pub modifier_symbol: CodePointSetDataBorrowed<'static>,
-    //     /// The Sm general category
-    //     pub math_symbol: CodePointSetDataBorrowed<'static>,
-    //     /// The So general category
-    //     pub other_symbol: CodePointSetDataBorrowed<'static>,
-    //     /// The Z general category
-    //     pub separator: CodePointSetDataBorrowed<'static>,
-    //     /// The Zl general category
-    //     pub line_separator: CodePointSetDataBorrowed<'static>,
-    //     /// The Zp general category
-    //     pub paragraph_separator: CodePointSetDataBorrowed<'static>,
-    //     /// The Zs general category
-    //     pub space_separator: CodePointSetDataBorrowed<'static>,
 }
 
 pub struct Scripts {
-    /// Classifier which maps code points to scripts or sets of scripts
-    pub classifier: ScriptWithExtensionsBorrowed<'static>,
+    /// Classifier which maps code points to scripts (without extensions)
+    pub script_classifier: CodePointMapDataBorrowed<'static, Script>,
+    /// Classifier which maps code points to set of scripts with extensions
+    pub script_with_extension_classifier: ScriptWithExtensionsBorrowed<'static>,
     /// Mapper which maps script name to script enum
     pub names: PropertyParserBorrowed<'static, Script>,
 }
@@ -298,7 +224,9 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     binary_property_static!(XID_START_SET, XidStart);
 
     // Scripts
-    static SCRIPT_CLASSIFIER: LazyLock<ScriptWithExtensions> =
+    static SCRIPT_MAP: LazyLock<CodePointMapData<Script>> =
+        LazyLock::new(|| CodePointMapData::<Script>::try_new_unstable(&BakedDataProvider).unwrap());
+    static SCRIPT_WITH_EXTENSIONS_CLASSIFIER: LazyLock<ScriptWithExtensions> =
         LazyLock::new(|| ScriptWithExtensions::try_new_unstable(&BakedDataProvider).unwrap());
     static SCRIPT_NAMES: LazyLock<PropertyParser<Script>> =
         LazyLock::new(|| PropertyParser::try_new_unstable(&BakedDataProvider).unwrap());
@@ -316,7 +244,8 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     ICU {
         general_categories: GeneralCategories { classifier: GENERAL_CATEGORIES_MAP.as_borrowed() },
         scripts: Scripts {
-            classifier: SCRIPT_CLASSIFIER.as_borrowed(),
+            script_classifier: SCRIPT_MAP.as_borrowed(),
+            script_with_extension_classifier: SCRIPT_WITH_EXTENSIONS_CLASSIFIER.as_borrowed(),
             names: SCRIPT_NAMES.as_borrowed(),
         },
         properties: Properties {

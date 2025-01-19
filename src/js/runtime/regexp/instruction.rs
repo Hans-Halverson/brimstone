@@ -173,16 +173,6 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24]]
     CompareIsNotWhitespace,
 
-    /// Set the compare register to true if the current code point matches a unicode property
-    ///
-    /// Layout: [[opcode: u8] [padding: u24] [unicode_property: u32]]
-    CompareIsUnicodeProperty,
-
-    /// Set the compare register to true if the current code point does not match a unicode property
-    ///
-    /// Layout: [[opcode: u8] [padding: u24] [unicode_property: u32]]
-    CompareIsNotUnicodeProperty,
-
     /// Start a lookahead with operands `is_ahead`, `is_positive`, and `body_branch`
     /// which is the instruction that starts the lookaround body.
     ///
@@ -223,8 +213,6 @@ impl OpCode {
             OpCode::CompareIsNotDigit => CompareIsNotDigitInstruction::SIZE,
             OpCode::CompareIsWhitespace => CompareIsWhitespaceInstruction::SIZE,
             OpCode::CompareIsNotWhitespace => CompareIsNotWhitespaceInstruction::SIZE,
-            OpCode::CompareIsUnicodeProperty => CompareIsUnicodePropertyInstruction::SIZE,
-            OpCode::CompareIsNotUnicodeProperty => CompareIsNotUnicodePropertyInstruction::SIZE,
             OpCode::Lookaround => LookaroundInstruction::SIZE,
         }
     }
@@ -298,12 +286,6 @@ impl Instruction {
             }
             OpCode::CompareIsNotWhitespace => self
                 .cast::<CompareIsNotWhitespaceInstruction>()
-                .debug_print(),
-            OpCode::CompareIsUnicodeProperty => self
-                .cast::<CompareIsUnicodePropertyInstruction>()
-                .debug_print(),
-            OpCode::CompareIsNotUnicodeProperty => self
-                .cast::<CompareIsNotUnicodePropertyInstruction>()
                 .debug_print(),
             OpCode::Lookaround => self.cast::<LookaroundInstruction>().debug_print(),
         }
@@ -686,56 +668,6 @@ impl CompareBetweenInstruction {
     pub fn write(buf: &mut Vec<u32>, start_code_point: u32, end_code_point: u32) {
         write_opcode_with_u24_operand!(buf, Self::OPCODE, start_code_point);
         write_u32!(buf, end_code_point);
-    }
-}
-
-regexp_bytecode_instruction!(
-    CompareIsUnicodePropertyInstruction,
-    OpCode::CompareIsUnicodeProperty,
-    2,
-    impl TInstruction {
-        fn debug_print(&self) -> String {
-            format!("{:?}({:?})", Self::OPCODE, self.unicode_property())
-        }
-    }
-);
-
-impl CompareIsUnicodePropertyInstruction {
-    #[inline]
-    pub fn unicode_property(&self) -> UnicodeProperty {
-        unsafe { std::mem::transmute(self.0[1]) }
-    }
-
-    pub fn write(buf: &mut Vec<u32>, unicode_property: UnicodeProperty) {
-        write_u32!(buf, Self::OPCODE);
-
-        let encoded_property: u32 = unsafe { std::mem::transmute(unicode_property) };
-        write_u32!(buf, encoded_property);
-    }
-}
-
-regexp_bytecode_instruction!(
-    CompareIsNotUnicodePropertyInstruction,
-    OpCode::CompareIsNotUnicodeProperty,
-    2,
-    impl TInstruction {
-        fn debug_print(&self) -> String {
-            format!("{:?}({:?})", Self::OPCODE, self.unicode_property())
-        }
-    }
-);
-
-impl CompareIsNotUnicodePropertyInstruction {
-    #[inline]
-    pub fn unicode_property(&self) -> UnicodeProperty {
-        unsafe { std::mem::transmute(self.0[1]) }
-    }
-
-    pub fn write(buf: &mut Vec<u32>, unicode_property: UnicodeProperty) {
-        write_u32!(buf, Self::OPCODE);
-
-        let encoded_property: u32 = unsafe { std::mem::transmute(unicode_property) };
-        write_u32!(buf, encoded_property);
     }
 }
 

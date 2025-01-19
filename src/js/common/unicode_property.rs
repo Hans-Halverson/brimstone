@@ -1,9 +1,10 @@
-use icu_properties::props::{GeneralCategoryGroup, Script};
-
-use super::{
-    icu::ICU,
-    unicode::{is_ascii, CodePoint},
+use icu_collections::codepointinvlist::CodePointInversionListBuilder;
+use icu_properties::{
+    props::{GeneralCategory, GeneralCategoryGroup, Script},
+    CodePointSetDataBorrowed,
 };
+
+use super::{icu::ICU, unicode::MAX_CODE_POINT};
 
 #[derive(Clone, Copy, Debug)]
 pub enum UnicodeProperty {
@@ -13,11 +14,11 @@ pub enum UnicodeProperty {
 }
 
 impl UnicodeProperty {
-    pub fn is_match(&self, code_point: CodePoint) -> bool {
+    pub fn add_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
         match self {
-            Self::Binary(property) => property.is_match(code_point),
-            Self::GeneralCategory(property) => property.is_match(code_point),
-            Self::Script(property) => property.is_match(code_point),
+            Self::Binary(property) => property.add_to_set(set_builder),
+            Self::GeneralCategory(property) => property.add_to_set(set_builder),
+            Self::Script(property) => property.add_to_set(set_builder),
         }
     }
 }
@@ -148,92 +149,137 @@ impl BinaryUnicodeProperty {
         Some(property)
     }
 
-    pub fn is_match(&self, code_point: CodePoint) -> bool {
+    pub fn add_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
         match self {
-            Self::ASCII => is_ascii(code_point),
-            Self::ASCIIHexDigit => ICU.properties.ascii_hex_digit.contains32(code_point),
-            Self::Alphabetic => ICU.properties.alphabetic.contains32(code_point),
-            Self::Any => true,
-            // Note that the assigned property is not a regular property set and instead is treated
-            // as the complement of the assigned general category `\P{C}`.
-            Self::Assigned => !in_category_group(code_point, GeneralCategoryGroup::Unassigned),
-            Self::BidiControl => ICU.properties.bidi_control.contains32(code_point),
-            Self::BidiMirrored => ICU.properties.bidi_mirrored.contains32(code_point),
-            Self::CaseIgnorable => ICU.properties.case_ignorable.contains32(code_point),
-            Self::Cased => ICU.properties.cased.contains32(code_point),
-            Self::ChangesWhenCasefolded => ICU
-                .properties
-                .changes_when_casefolded
-                .contains32(code_point),
-            Self::ChangesWhenCasemapped => ICU
-                .properties
-                .changes_when_casemapped
-                .contains32(code_point),
-            Self::ChangesWhenLowercased => ICU
-                .properties
-                .changes_when_lowercased
-                .contains32(code_point),
-            Self::ChangesWhenNFKCCasefolded => ICU
-                .properties
-                .changes_when_nfkc_casefolded
-                .contains32(code_point),
-            Self::ChangesWhenTitlecased => ICU
-                .properties
-                .changes_when_titlecased
-                .contains32(code_point),
-            Self::ChangesWhenUppercased => ICU
-                .properties
-                .changes_when_uppercased
-                .contains32(code_point),
-            Self::Dash => ICU.properties.dash.contains32(code_point),
-            Self::DefaultIgnorableCodePoint => ICU
-                .properties
-                .default_ignorable_code_point
-                .contains32(code_point),
-            Self::Deprecated => ICU.properties.deprecated.contains32(code_point),
-            Self::Diacritic => ICU.properties.diacritic.contains32(code_point),
-            Self::Emoji => ICU.properties.emoji.contains32(code_point),
-            Self::EmojiComponent => ICU.properties.emoji_component.contains32(code_point),
-            Self::EmojiModifier => ICU.properties.emoji_modifier.contains32(code_point),
-            Self::EmojiModifierBase => ICU.properties.emoji_modifier_base.contains32(code_point),
-            Self::EmojiPresentation => ICU.properties.emoji_presentation.contains32(code_point),
-            Self::ExtendedPictographic => {
-                ICU.properties.extended_pictographic.contains32(code_point)
+            Self::ASCII => set_builder.add_range32(0x00..=0x7F),
+            Self::ASCIIHexDigit => {
+                add_binary_property_to_set(set_builder, &ICU.properties.ascii_hex_digit)
             }
-            Self::Extender => ICU.properties.extender.contains32(code_point),
-            Self::GraphemeBase => ICU.properties.grapheme_base.contains32(code_point),
-            Self::GraphemeExtend => ICU.properties.grapheme_extend.contains32(code_point),
-            Self::HexDigit => ICU.properties.hex_digit.contains32(code_point),
-            Self::IDSBinaryOperator => ICU.properties.ids_binary_operator.contains32(code_point),
-            Self::IDSTrinaryOperator => ICU.properties.ids_trinary_operator.contains32(code_point),
-            Self::IDContinue => ICU.properties.id_continue.contains32(code_point),
-            Self::IDStart => ICU.properties.id_start.contains32(code_point),
-            Self::Ideographic => ICU.properties.ideographic.contains32(code_point),
-            Self::JoinControl => ICU.properties.join_control.contains32(code_point),
-            Self::LogicalOrderException => ICU
-                .properties
-                .logical_order_exception
-                .contains32(code_point),
-            Self::Lowercase => ICU.properties.lowercase.contains32(code_point),
-            Self::Math => ICU.properties.math.contains32(code_point),
-            Self::NoncharacterCodePoint => ICU
-                .properties
-                .noncharacter_code_point
-                .contains32(code_point),
-            Self::PatternSyntax => ICU.properties.pattern_syntax.contains32(code_point),
-            Self::PatternWhiteSpace => ICU.properties.pattern_white_space.contains32(code_point),
-            Self::QuotationMark => ICU.properties.quotation_mark.contains32(code_point),
-            Self::Radical => ICU.properties.radical.contains32(code_point),
-            Self::RegionalIndicator => ICU.properties.regional_indicator.contains32(code_point),
-            Self::SentenceTerminal => ICU.properties.sentence_terminal.contains32(code_point),
-            Self::SoftDotted => ICU.properties.soft_dotted.contains32(code_point),
-            Self::TerminalPunctuation => ICU.properties.terminal_punctuation.contains32(code_point),
-            Self::UnifiedIdeograph => ICU.properties.unified_ideograph.contains32(code_point),
-            Self::Uppercase => ICU.properties.uppercase.contains32(code_point),
-            Self::VariationSelector => ICU.properties.variation_selector.contains32(code_point),
-            Self::WhiteSpace => ICU.properties.white_space.contains32(code_point),
-            Self::XIDContinue => ICU.properties.xid_continue.contains32(code_point),
-            Self::XIDStart => ICU.properties.xid_start.contains32(code_point),
+            Self::Alphabetic => add_binary_property_to_set(set_builder, &ICU.properties.alphabetic),
+            Self::Any => set_builder.add_range32(0x00..=MAX_CODE_POINT),
+            Self::Assigned => {
+                todo!()
+            }
+            Self::BidiControl => {
+                add_binary_property_to_set(set_builder, &ICU.properties.bidi_control)
+            }
+            Self::BidiMirrored => {
+                add_binary_property_to_set(set_builder, &ICU.properties.bidi_mirrored)
+            }
+            Self::CaseIgnorable => {
+                add_binary_property_to_set(set_builder, &ICU.properties.case_ignorable)
+            }
+            Self::Cased => add_binary_property_to_set(set_builder, &ICU.properties.cased),
+            Self::ChangesWhenCasefolded => {
+                add_binary_property_to_set(set_builder, &ICU.properties.changes_when_casefolded)
+            }
+            Self::ChangesWhenCasemapped => {
+                add_binary_property_to_set(set_builder, &ICU.properties.changes_when_casemapped)
+            }
+            Self::ChangesWhenLowercased => {
+                add_binary_property_to_set(set_builder, &ICU.properties.changes_when_lowercased)
+            }
+            Self::ChangesWhenNFKCCasefolded => add_binary_property_to_set(
+                set_builder,
+                &ICU.properties.changes_when_nfkc_casefolded,
+            ),
+            Self::ChangesWhenTitlecased => {
+                add_binary_property_to_set(set_builder, &ICU.properties.changes_when_titlecased)
+            }
+            Self::ChangesWhenUppercased => {
+                add_binary_property_to_set(set_builder, &ICU.properties.changes_when_uppercased)
+            }
+            Self::Dash => add_binary_property_to_set(set_builder, &ICU.properties.dash),
+            Self::DefaultIgnorableCodePoint => add_binary_property_to_set(
+                set_builder,
+                &ICU.properties.default_ignorable_code_point,
+            ),
+            Self::Deprecated => add_binary_property_to_set(set_builder, &ICU.properties.deprecated),
+            Self::Diacritic => add_binary_property_to_set(set_builder, &ICU.properties.diacritic),
+            Self::Emoji => add_binary_property_to_set(set_builder, &ICU.properties.emoji),
+            Self::EmojiComponent => {
+                add_binary_property_to_set(set_builder, &ICU.properties.emoji_component)
+            }
+            Self::EmojiModifier => {
+                add_binary_property_to_set(set_builder, &ICU.properties.emoji_modifier)
+            }
+            Self::EmojiModifierBase => {
+                add_binary_property_to_set(set_builder, &ICU.properties.emoji_modifier_base)
+            }
+            Self::EmojiPresentation => {
+                add_binary_property_to_set(set_builder, &ICU.properties.emoji_presentation)
+            }
+            Self::ExtendedPictographic => {
+                add_binary_property_to_set(set_builder, &ICU.properties.extended_pictographic)
+            }
+            Self::Extender => add_binary_property_to_set(set_builder, &ICU.properties.extender),
+            Self::GraphemeBase => {
+                add_binary_property_to_set(set_builder, &ICU.properties.grapheme_base)
+            }
+            Self::GraphemeExtend => {
+                add_binary_property_to_set(set_builder, &ICU.properties.grapheme_extend)
+            }
+            Self::HexDigit => add_binary_property_to_set(set_builder, &ICU.properties.hex_digit),
+            Self::IDSBinaryOperator => {
+                add_binary_property_to_set(set_builder, &ICU.properties.ids_binary_operator)
+            }
+            Self::IDSTrinaryOperator => {
+                add_binary_property_to_set(set_builder, &ICU.properties.ids_trinary_operator)
+            }
+            Self::IDContinue => {
+                add_binary_property_to_set(set_builder, &ICU.properties.id_continue)
+            }
+            Self::IDStart => add_binary_property_to_set(set_builder, &ICU.properties.id_start),
+            Self::Ideographic => {
+                add_binary_property_to_set(set_builder, &ICU.properties.ideographic)
+            }
+            Self::JoinControl => {
+                add_binary_property_to_set(set_builder, &ICU.properties.join_control)
+            }
+            Self::LogicalOrderException => {
+                add_binary_property_to_set(set_builder, &ICU.properties.logical_order_exception)
+            }
+            Self::Lowercase => add_binary_property_to_set(set_builder, &ICU.properties.lowercase),
+            Self::Math => add_binary_property_to_set(set_builder, &ICU.properties.math),
+            Self::NoncharacterCodePoint => {
+                add_binary_property_to_set(set_builder, &ICU.properties.noncharacter_code_point)
+            }
+            Self::PatternSyntax => {
+                add_binary_property_to_set(set_builder, &ICU.properties.pattern_syntax)
+            }
+            Self::PatternWhiteSpace => {
+                add_binary_property_to_set(set_builder, &ICU.properties.pattern_white_space)
+            }
+            Self::QuotationMark => {
+                add_binary_property_to_set(set_builder, &ICU.properties.quotation_mark)
+            }
+            Self::Radical => add_binary_property_to_set(set_builder, &ICU.properties.radical),
+            Self::RegionalIndicator => {
+                add_binary_property_to_set(set_builder, &ICU.properties.regional_indicator)
+            }
+            Self::SentenceTerminal => {
+                add_binary_property_to_set(set_builder, &ICU.properties.sentence_terminal)
+            }
+            Self::SoftDotted => {
+                add_binary_property_to_set(set_builder, &ICU.properties.soft_dotted)
+            }
+            Self::TerminalPunctuation => {
+                add_binary_property_to_set(set_builder, &ICU.properties.terminal_punctuation)
+            }
+            Self::UnifiedIdeograph => {
+                add_binary_property_to_set(set_builder, &ICU.properties.unified_ideograph)
+            }
+            Self::Uppercase => add_binary_property_to_set(set_builder, &ICU.properties.uppercase),
+            Self::VariationSelector => {
+                add_binary_property_to_set(set_builder, &ICU.properties.variation_selector)
+            }
+            Self::WhiteSpace => {
+                add_binary_property_to_set(set_builder, &ICU.properties.white_space)
+            }
+            Self::XIDContinue => {
+                add_binary_property_to_set(set_builder, &ICU.properties.xid_continue)
+            }
+            Self::XIDStart => add_binary_property_to_set(set_builder, &ICU.properties.xid_start),
         }
     }
 }
@@ -366,91 +412,166 @@ impl GeneralCategoryProperty {
         Some(property)
     }
 
-    pub fn is_match(&self, code_point: CodePoint) -> bool {
+    pub fn add_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
         match self {
-            Self::Other => in_category_group(code_point, GeneralCategoryGroup::Other),
-            Self::Control => in_category_group(code_point, GeneralCategoryGroup::Control),
-            Self::Format => in_category_group(code_point, GeneralCategoryGroup::Format),
-            Self::Unassigned => in_category_group(code_point, GeneralCategoryGroup::Unassigned),
-            Self::PrivateUse => in_category_group(code_point, GeneralCategoryGroup::PrivateUse),
-            Self::Surrogate => in_category_group(code_point, GeneralCategoryGroup::Surrogate),
-            Self::Letter => in_category_group(code_point, GeneralCategoryGroup::Letter),
-            Self::CasedLetter => in_category_group(code_point, GeneralCategoryGroup::CasedLetter),
-            Self::LowercaseLetter => {
-                in_category_group(code_point, GeneralCategoryGroup::LowercaseLetter)
+            Self::Other => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Other)
             }
+            Self::Control => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Control)
+            }
+            Self::Format => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Format)
+            }
+            Self::Unassigned => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Unassigned)
+            }
+            Self::PrivateUse => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::PrivateUse)
+            }
+            Self::Surrogate => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Surrogate)
+            }
+            Self::Letter => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Letter)
+            }
+            Self::CasedLetter => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::CasedLetter)
+            }
+            Self::LowercaseLetter => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::LowercaseLetter,
+            ),
             Self::ModifierLetter => {
-                in_category_group(code_point, GeneralCategoryGroup::ModifierLetter)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::ModifierLetter)
             }
-            Self::OtherLetter => in_category_group(code_point, GeneralCategoryGroup::OtherLetter),
-            Self::TitlecaseLetter => {
-                in_category_group(code_point, GeneralCategoryGroup::TitlecaseLetter)
+            Self::OtherLetter => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::OtherLetter)
             }
-            Self::UppercaseLetter => {
-                in_category_group(code_point, GeneralCategoryGroup::UppercaseLetter)
+            Self::TitlecaseLetter => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::TitlecaseLetter,
+            ),
+            Self::UppercaseLetter => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::UppercaseLetter,
+            ),
+            Self::Mark => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Mark)
             }
-            Self::Mark => in_category_group(code_point, GeneralCategoryGroup::Mark),
-            Self::SpacingMark => in_category_group(code_point, GeneralCategoryGroup::SpacingMark),
+            Self::SpacingMark => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::SpacingMark)
+            }
             Self::EnclosingMark => {
-                in_category_group(code_point, GeneralCategoryGroup::EnclosingMark)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::EnclosingMark)
             }
             Self::NonspacingMark => {
-                in_category_group(code_point, GeneralCategoryGroup::NonspacingMark)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::NonspacingMark)
             }
-            Self::Number => in_category_group(code_point, GeneralCategoryGroup::Number),
+            Self::Number => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Number)
+            }
             Self::DecimalNumber => {
-                in_category_group(code_point, GeneralCategoryGroup::DecimalNumber)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::DecimalNumber)
             }
-            Self::LetterNumber => in_category_group(code_point, GeneralCategoryGroup::LetterNumber),
-            Self::OtherNumber => in_category_group(code_point, GeneralCategoryGroup::OtherNumber),
-            Self::Punctuation => in_category_group(code_point, GeneralCategoryGroup::Punctuation),
-            Self::ConnectorPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::ConnectorPunctuation)
+            Self::LetterNumber => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::LetterNumber)
             }
-            Self::DashPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::DashPunctuation)
+            Self::OtherNumber => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::OtherNumber)
             }
-            Self::ClosePunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::ClosePunctuation)
+            Self::Punctuation => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Punctuation)
             }
-            Self::FinalPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::FinalPunctuation)
+            Self::ConnectorPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::ConnectorPunctuation,
+            ),
+            Self::DashPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::DashPunctuation,
+            ),
+            Self::ClosePunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::ClosePunctuation,
+            ),
+            Self::FinalPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::FinalPunctuation,
+            ),
+            Self::InitialPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::InitialPunctuation,
+            ),
+            Self::OtherPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::OtherPunctuation,
+            ),
+            Self::OpenPunctuation => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::OpenPunctuation,
+            ),
+            Self::Symbol => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Symbol)
             }
-            Self::InitialPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::InitialPunctuation)
-            }
-            Self::OtherPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::OtherPunctuation)
-            }
-            Self::OpenPunctuation => {
-                in_category_group(code_point, GeneralCategoryGroup::OpenPunctuation)
-            }
-            Self::Symbol => in_category_group(code_point, GeneralCategoryGroup::Symbol),
             Self::CurrencySymbol => {
-                in_category_group(code_point, GeneralCategoryGroup::CurrencySymbol)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::CurrencySymbol)
             }
             Self::ModifierSymbol => {
-                in_category_group(code_point, GeneralCategoryGroup::ModifierSymbol)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::ModifierSymbol)
             }
-            Self::MathSymbol => in_category_group(code_point, GeneralCategoryGroup::MathSymbol),
-            Self::OtherSymbol => in_category_group(code_point, GeneralCategoryGroup::OtherSymbol),
-            Self::Separator => in_category_group(code_point, GeneralCategoryGroup::Separator),
+            Self::MathSymbol => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::MathSymbol)
+            }
+            Self::OtherSymbol => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::OtherSymbol)
+            }
+            Self::Separator => {
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::Separator)
+            }
             Self::LineSeparator => {
-                in_category_group(code_point, GeneralCategoryGroup::LineSeparator)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::LineSeparator)
             }
-            Self::ParagraphSeparator => {
-                in_category_group(code_point, GeneralCategoryGroup::ParagraphSeparator)
-            }
+            Self::ParagraphSeparator => add_general_category_group_to_set(
+                set_builder,
+                GeneralCategoryGroup::ParagraphSeparator,
+            ),
             Self::SpaceSeparator => {
-                in_category_group(code_point, GeneralCategoryGroup::SpaceSeparator)
+                add_general_category_group_to_set(set_builder, GeneralCategoryGroup::SpaceSeparator)
             }
         }
     }
 }
 
-fn in_category_group(code_point: CodePoint, category_group: GeneralCategoryGroup) -> bool {
-    let category = ICU.general_categories.classifier.get32(code_point);
-    category_group.contains(category)
+#[inline]
+fn add_binary_property_to_set(
+    set_builder: &mut CodePointInversionListBuilder,
+    binary_property_set: &CodePointSetDataBorrowed<'static>,
+) {
+    set_builder.add_set(
+        &binary_property_set
+            .static_to_owned()
+            .to_code_point_inversion_list(),
+    );
+}
+
+#[inline]
+fn add_general_category_group_to_set(
+    set_builder: &mut CodePointInversionListBuilder,
+    general_category_group: GeneralCategoryGroup,
+) {
+    // Find the general categories which are a part of this group by iterating through all general
+    // categories.
+    for general_category in GeneralCategory::ALL_VALUES {
+        if general_category_group.contains(*general_category) {
+            // Add the set of code points for this general category to the set builder.
+            let general_category_set = ICU
+                .general_categories
+                .classifier
+                .get_set_for_value(*general_category);
+            set_builder.add_set(&general_category_set.to_code_point_inversion_list());
+        }
+    }
 }
 
 /// A script property with or without extensions
@@ -469,11 +590,16 @@ impl ScriptProperty {
             .map(|script| ScriptProperty { script, with_extensions })
     }
 
-    pub fn is_match(&self, code_point: CodePoint) -> bool {
+    pub fn add_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
         if self.with_extensions {
-            ICU.scripts.classifier.has_script32(code_point, self.script)
+            let set = ICU
+                .scripts
+                .script_with_extension_classifier
+                .get_script_extensions_set(self.script);
+            set_builder.add_set(&set);
         } else {
-            ICU.scripts.classifier.get_script_val32(code_point) == self.script
+            let set = ICU.scripts.script_classifier.get_set_for_value(self.script);
+            set_builder.add_set(&set.to_code_point_inversion_list())
         }
     }
 }

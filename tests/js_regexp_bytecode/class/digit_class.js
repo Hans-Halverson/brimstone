@@ -1,13 +1,11 @@
-// Shorthand word classes expanded
-/\w/;
-/\W/;
+/\d\D/;
 
 // Shorthand as single element of class
-/[\w][\W]/;
+/[\d][\D]/;
 
 // Shorthand mixed in class
-/[\wa][\Wa]/;
-/[\wa-z][\Wa-z]/;
+/[\da][\D4]/;
+/[\da-z][\D4-6]/;
 
 // Union is the entire unicode range
-/[\w\W]/;
+/[\d\D]/;

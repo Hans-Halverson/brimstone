@@ -156,9 +156,17 @@ impl BinaryUnicodeProperty {
                 add_binary_property_to_set(set_builder, &ICU.properties.ascii_hex_digit)
             }
             Self::Alphabetic => add_binary_property_to_set(set_builder, &ICU.properties.alphabetic),
-            Self::Any => set_builder.add_range32(0x00..=MAX_CODE_POINT),
+            Self::Any => set_builder.add_range32(0..=MAX_CODE_POINT),
             Self::Assigned => {
-                todo!()
+                // Assigned is the complement of the Unassigned general category
+                let mut assigned_set = CodePointInversionListBuilder::new();
+                add_general_category_group_to_set(
+                    &mut assigned_set,
+                    GeneralCategoryGroup::Unassigned,
+                );
+                assigned_set.complement();
+
+                set_builder.add_set(&assigned_set.build());
             }
             Self::BidiControl => {
                 add_binary_property_to_set(set_builder, &ICU.properties.bidi_control)

@@ -1,9 +1,7 @@
 use crate::js::{
     common::{
         icu::ICU,
-        unicode::{
-            is_decimal_digit, is_newline, is_whitespace, try_encode_surrogate_pair, CodePoint,
-        },
+        unicode::{is_newline, try_encode_surrogate_pair, CodePoint},
     },
     parser::lexer_stream::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
@@ -22,12 +20,11 @@ use super::{
         AssertEndInstruction, AssertEndOrNewlineInstruction, AssertNotWordBoundaryInstruction,
         AssertStartInstruction, AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
         BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-        CompareBetweenInstruction, CompareEqualsInstruction, CompareIsDigitInstruction,
-        CompareIsNotDigitInstruction, CompareIsNotWhitespaceInstruction,
-        CompareIsWhitespaceInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction,
-        Instruction, JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
-        MarkCapturePointInstruction, ProgressInstruction, TInstruction, WildcardInstruction,
-        WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+        CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
+        ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
+        LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, ProgressInstruction,
+        TInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
+        WordBoundaryMoveToPreviousInstruction,
     },
 };
 
@@ -438,36 +435,6 @@ impl<T: LexerStream> MatchEngine<T> {
                     }
 
                     self.advance_instruction::<CompareBetweenInstruction>();
-                }
-                OpCode::CompareIsDigit => {
-                    if is_decimal_digit(self.string_lexer.current()) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsDigitInstruction>();
-                }
-                OpCode::CompareIsNotDigit => {
-                    if !is_decimal_digit(self.string_lexer.current()) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsNotDigitInstruction>();
-                }
-                OpCode::CompareIsWhitespace => {
-                    let current = self.string_lexer.current();
-                    if is_whitespace(current) || is_newline(current) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsWhitespaceInstruction>();
-                }
-                OpCode::CompareIsNotWhitespace => {
-                    let current = self.string_lexer.current();
-                    if !is_whitespace(current) && !is_newline(current) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsNotWhitespaceInstruction>();
                 }
                 OpCode::Lookaround => {
                     let instr = instr.cast::<LookaroundInstruction>();

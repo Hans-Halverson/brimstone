@@ -153,26 +153,6 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [start_code_point: u24] [end_code_point: u32]]
     CompareBetween,
 
-    /// Set the compare register to true if the current code point is a digit (\d)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsDigit,
-
-    /// Set the compare register to true if the current code point is not a digit (\d)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsNotDigit,
-
-    /// Set the compare register to true if the current code point is a whitespace (\S)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsWhitespace,
-
-    /// Set the compare register to true if the current code point is not a whitespace (\S)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsNotWhitespace,
-
     /// Start a lookahead with operands `is_ahead`, `is_positive`, and `body_branch`
     /// which is the instruction that starts the lookaround body.
     ///
@@ -209,10 +189,6 @@ impl OpCode {
             OpCode::ConsumeIfFalse => ConsumeIfFalseInstruction::SIZE,
             OpCode::CompareEquals => CompareEqualsInstruction::SIZE,
             OpCode::CompareBetween => CompareBetweenInstruction::SIZE,
-            OpCode::CompareIsDigit => CompareIsDigitInstruction::SIZE,
-            OpCode::CompareIsNotDigit => CompareIsNotDigitInstruction::SIZE,
-            OpCode::CompareIsWhitespace => CompareIsWhitespaceInstruction::SIZE,
-            OpCode::CompareIsNotWhitespace => CompareIsNotWhitespaceInstruction::SIZE,
             OpCode::Lookaround => LookaroundInstruction::SIZE,
         }
     }
@@ -279,14 +255,6 @@ impl Instruction {
             OpCode::ConsumeIfFalse => self.cast::<ConsumeIfFalseInstruction>().debug_print(),
             OpCode::CompareEquals => self.cast::<CompareEqualsInstruction>().debug_print(),
             OpCode::CompareBetween => self.cast::<CompareBetweenInstruction>().debug_print(),
-            OpCode::CompareIsDigit => self.cast::<CompareIsDigitInstruction>().debug_print(),
-            OpCode::CompareIsNotDigit => self.cast::<CompareIsNotDigitInstruction>().debug_print(),
-            OpCode::CompareIsWhitespace => {
-                self.cast::<CompareIsWhitespaceInstruction>().debug_print()
-            }
-            OpCode::CompareIsNotWhitespace => self
-                .cast::<CompareIsNotWhitespaceInstruction>()
-                .debug_print(),
             OpCode::Lookaround => self.cast::<LookaroundInstruction>().debug_print(),
         }
     }
@@ -378,13 +346,6 @@ nullary_regexp_bytcode_instruction!(
 );
 nullary_regexp_bytcode_instruction!(ConsumeIfTrueInstruction, OpCode::ConsumeIfTrue);
 nullary_regexp_bytcode_instruction!(ConsumeIfFalseInstruction, OpCode::ConsumeIfFalse);
-nullary_regexp_bytcode_instruction!(CompareIsDigitInstruction, OpCode::CompareIsDigit);
-nullary_regexp_bytcode_instruction!(CompareIsNotDigitInstruction, OpCode::CompareIsNotDigit);
-nullary_regexp_bytcode_instruction!(CompareIsWhitespaceInstruction, OpCode::CompareIsWhitespace);
-nullary_regexp_bytcode_instruction!(
-    CompareIsNotWhitespaceInstruction,
-    OpCode::CompareIsNotWhitespace
-);
 
 regexp_bytecode_instruction!(
     LiteralInstruction,

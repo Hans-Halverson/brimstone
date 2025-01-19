@@ -2,8 +2,7 @@ use crate::js::{
     common::{
         icu::ICU,
         unicode::{
-            is_ascii_alphabetic, is_decimal_digit, is_newline, is_whitespace,
-            try_encode_surrogate_pair, CodePoint,
+            is_decimal_digit, is_newline, is_whitespace, try_encode_surrogate_pair, CodePoint,
         },
     },
     parser::lexer_stream::{
@@ -25,10 +24,9 @@ use super::{
         BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
         CompareBetweenInstruction, CompareEqualsInstruction, CompareIsDigitInstruction,
         CompareIsNotDigitInstruction, CompareIsNotUnicodePropertyInstruction,
-        CompareIsNotWhitespaceInstruction, CompareIsNotWordInstruction,
-        CompareIsUnicodePropertyInstruction, CompareIsWhitespaceInstruction,
-        CompareIsWordInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction,
-        JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
+        CompareIsNotWhitespaceInstruction, CompareIsUnicodePropertyInstruction,
+        CompareIsWhitespaceInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction,
+        Instruction, JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
         MarkCapturePointInstruction, ProgressInstruction, TInstruction, WildcardInstruction,
         WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
@@ -456,20 +454,6 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     self.advance_instruction::<CompareIsNotDigitInstruction>();
                 }
-                OpCode::CompareIsWord => {
-                    if is_word_code_point(self.string_lexer.current()) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsWordInstruction>();
-                }
-                OpCode::CompareIsNotWord => {
-                    if !is_word_code_point(self.string_lexer.current()) {
-                        self.compare_register = true;
-                    }
-
-                    self.advance_instruction::<CompareIsNotWordInstruction>();
-                }
                 OpCode::CompareIsWhitespace => {
                     let current = self.string_lexer.current();
                     if is_whitespace(current) || is_newline(current) {
@@ -829,11 +813,6 @@ fn run_case_insensitive_matcher(
         let lexer_stream = HeapTwoByteCodeUnitLexerStream::new(&lowercase_string_code_units);
         match_lexer_stream(lexer_stream, regexp, start_index)
     }
-}
-
-/// Whether a code point is a word character as defined by \w or \b
-fn is_word_code_point(code_point: CodePoint) -> bool {
-    is_ascii_alphabetic(code_point) || is_decimal_digit(code_point) || code_point == '_' as u32
 }
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)

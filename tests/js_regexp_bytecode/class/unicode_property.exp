@@ -1,0 +1,44 @@
+[CompiledRegExpObject: /\p{Letter}/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsUnicodeProperty(GeneralCategory(Letter))
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExpObject: /[\p{Letter}]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsUnicodeProperty(GeneralCategory(Letter))
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExpObject: /[\p{Letter}1]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsUnicodeProperty(GeneralCategory(Letter))
+    11: Literal(1)
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExpObject: /[\p{Letter}1-9]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsUnicodeProperty(GeneralCategory(Letter))
+    11: CompareBetween(1, :)
+    13: ConsumeIfTrue
+    14: MarkCapturePoint(1)
+    16: Accept
+}

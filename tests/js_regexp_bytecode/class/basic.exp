@@ -1,0 +1,57 @@
+[CompiledRegExpObject: /[a]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(1)
+    12: Accept
+}
+
+[CompiledRegExpObject: /[^a]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareEquals(a)
+    10: ConsumeIfFalse
+    11: MarkCapturePoint(1)
+    13: Accept
+}
+
+[CompiledRegExpObject: /[ac]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareEquals(a)
+    10: CompareEquals(c)
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExpObject: /[a-z]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(a, {)
+    11: ConsumeIfTrue
+    12: MarkCapturePoint(1)
+    14: Accept
+}
+
+[CompiledRegExpObject: /[a-z0-9AC]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareEquals(A)
+    12: CompareEquals(C)
+    13: CompareBetween(a, {)
+    15: ConsumeIfTrue
+    16: MarkCapturePoint(1)
+    18: Accept
+}

@@ -1,9 +1,19 @@
 // Escape outside class
-/\p{Letter}/u;
+/\p{ASCII_Hex_Digit}/u;
 
 // Escape inside class
-/[\p{Letter}]/u;
+/[\p{ASCII_Hex_Digit}]/u;
 
 // Escape mixed in class
-/[\p{Letter}1]/u;
-/[\p{Letter}1-9]/u;
+/[\p{ASCII_Hex_Digit}1]/u;
+/[\p{ASCII_Hex_Digit}1-9]/u;
+
+// Complement class
+/\P{ASCII_Hex_Digit}/u;
+/[\P{ASCII_Hex_Digit}C]/u;
+
+// Scripts
+/\p{Script=Latin}/u;
+
+// General category groups
+/\p{General_Category=Separator}/u;

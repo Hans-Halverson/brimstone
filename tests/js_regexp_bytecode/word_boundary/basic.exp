@@ -4,13 +4,19 @@
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
      9: Literal(a)
-    10: CompareIsWord
-    11: WordBoundaryMoveToPrevious
-    12: CompareIsWord
-    13: AssertWordBoundary
-    14: Literal(c)
-    15: MarkCapturePoint(1)
-    17: Accept
+    10: CompareBetween(0, :)
+    12: CompareBetween(A, [)
+    14: CompareEquals(_)
+    15: CompareBetween(a, {)
+    17: WordBoundaryMoveToPrevious
+    18: CompareBetween(0, :)
+    20: CompareBetween(A, [)
+    22: CompareEquals(_)
+    23: CompareBetween(a, {)
+    25: AssertWordBoundary
+    26: Literal(c)
+    27: MarkCapturePoint(1)
+    29: Accept
 }
 
 [CompiledRegExpObject: /a\Bc/] {
@@ -19,11 +25,17 @@
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
      9: Literal(a)
-    10: CompareIsWord
-    11: WordBoundaryMoveToPrevious
-    12: CompareIsWord
-    13: AssertNotWordBoundary
-    14: Literal(c)
-    15: MarkCapturePoint(1)
-    17: Accept
+    10: CompareBetween(0, :)
+    12: CompareBetween(A, [)
+    14: CompareEquals(_)
+    15: CompareBetween(a, {)
+    17: WordBoundaryMoveToPrevious
+    18: CompareBetween(0, :)
+    20: CompareBetween(A, [)
+    22: CompareEquals(_)
+    23: CompareBetween(a, {)
+    25: AssertNotWordBoundary
+    26: Literal(c)
+    27: MarkCapturePoint(1)
+    29: Accept
 }

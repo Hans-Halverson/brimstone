@@ -1,0 +1,71 @@
+[CompiledRegExpObject: /\d\D\s\S/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsDigit
+    10: ConsumeIfTrue
+    11: CompareIsNotDigit
+    12: ConsumeIfTrue
+    13: CompareIsWhitespace
+    14: ConsumeIfTrue
+    15: CompareIsNotWhitespace
+    16: ConsumeIfTrue
+    17: MarkCapturePoint(1)
+    19: Accept
+}
+
+[CompiledRegExpObject: /[\d][\D][\s][\S]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsDigit
+    10: ConsumeIfTrue
+    11: CompareIsNotDigit
+    12: ConsumeIfTrue
+    13: CompareIsWhitespace
+    14: ConsumeIfTrue
+    15: CompareIsNotWhitespace
+    16: ConsumeIfTrue
+    17: MarkCapturePoint(1)
+    19: Accept
+}
+
+[CompiledRegExpObject: /[\da][\Da][\sa][\Sa]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsDigit
+    10: Literal(a)
+    11: CompareIsNotDigit
+    12: Literal(a)
+    13: CompareIsWhitespace
+    14: Literal(a)
+    15: CompareIsNotWhitespace
+    16: Literal(a)
+    17: MarkCapturePoint(1)
+    19: Accept
+}
+
+[CompiledRegExpObject: /[\da-z][\Da-z][\sa-z][\Sa-z]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareIsDigit
+    10: CompareBetween(a, {)
+    12: ConsumeIfTrue
+    13: CompareIsNotDigit
+    14: CompareBetween(a, {)
+    16: ConsumeIfTrue
+    17: CompareIsWhitespace
+    18: CompareBetween(a, {)
+    20: ConsumeIfTrue
+    21: CompareIsNotWhitespace
+    22: CompareBetween(a, {)
+    24: ConsumeIfTrue
+    25: MarkCapturePoint(1)
+    27: Accept
+}

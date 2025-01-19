@@ -163,16 +163,6 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24]]
     CompareIsNotDigit,
 
-    /// Set the compare register to true if the current code point is a word (\w)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsWord,
-
-    /// Set the compare register to true if the current code point is not a word (\W)
-    ///
-    /// Layout: [[opcode: u8] [padding: u24]]
-    CompareIsNotWord,
-
     /// Set the compare register to true if the current code point is a whitespace (\S)
     ///
     /// Layout: [[opcode: u8] [padding: u24]]
@@ -231,8 +221,6 @@ impl OpCode {
             OpCode::CompareBetween => CompareBetweenInstruction::SIZE,
             OpCode::CompareIsDigit => CompareIsDigitInstruction::SIZE,
             OpCode::CompareIsNotDigit => CompareIsNotDigitInstruction::SIZE,
-            OpCode::CompareIsWord => CompareIsWordInstruction::SIZE,
-            OpCode::CompareIsNotWord => CompareIsNotWordInstruction::SIZE,
             OpCode::CompareIsWhitespace => CompareIsWhitespaceInstruction::SIZE,
             OpCode::CompareIsNotWhitespace => CompareIsNotWhitespaceInstruction::SIZE,
             OpCode::CompareIsUnicodeProperty => CompareIsUnicodePropertyInstruction::SIZE,
@@ -305,8 +293,6 @@ impl Instruction {
             OpCode::CompareBetween => self.cast::<CompareBetweenInstruction>().debug_print(),
             OpCode::CompareIsDigit => self.cast::<CompareIsDigitInstruction>().debug_print(),
             OpCode::CompareIsNotDigit => self.cast::<CompareIsNotDigitInstruction>().debug_print(),
-            OpCode::CompareIsWord => self.cast::<CompareIsWordInstruction>().debug_print(),
-            OpCode::CompareIsNotWord => self.cast::<CompareIsNotWordInstruction>().debug_print(),
             OpCode::CompareIsWhitespace => {
                 self.cast::<CompareIsWhitespaceInstruction>().debug_print()
             }
@@ -412,8 +398,6 @@ nullary_regexp_bytcode_instruction!(ConsumeIfTrueInstruction, OpCode::ConsumeIfT
 nullary_regexp_bytcode_instruction!(ConsumeIfFalseInstruction, OpCode::ConsumeIfFalse);
 nullary_regexp_bytcode_instruction!(CompareIsDigitInstruction, OpCode::CompareIsDigit);
 nullary_regexp_bytcode_instruction!(CompareIsNotDigitInstruction, OpCode::CompareIsNotDigit);
-nullary_regexp_bytcode_instruction!(CompareIsWordInstruction, OpCode::CompareIsWord);
-nullary_regexp_bytcode_instruction!(CompareIsNotWordInstruction, OpCode::CompareIsNotWord);
 nullary_regexp_bytcode_instruction!(CompareIsWhitespaceInstruction, OpCode::CompareIsWhitespace);
 nullary_regexp_bytcode_instruction!(
     CompareIsNotWhitespaceInstruction,

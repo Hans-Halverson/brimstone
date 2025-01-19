@@ -1,4 +1,6 @@
-use icu_collections::codepointinvlist::CodePointInversionListBuilder;
+use std::sync::LazyLock;
+
+use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use crate::js::{
     common::{unicode::CodePoint, unicode_property::UnicodeProperty, wtf_8::Wtf8String},
@@ -22,12 +24,11 @@ use super::{
         ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
         CompareIsDigitInstruction, CompareIsNotDigitInstruction,
         CompareIsNotUnicodePropertyInstruction, CompareIsNotWhitespaceInstruction,
-        CompareIsNotWordInstruction, CompareIsUnicodePropertyInstruction,
-        CompareIsWhitespaceInstruction, CompareIsWordInstruction, ConsumeIfFalseInstruction,
-        ConsumeIfTrueInstruction, FailInstruction, InstructionIteratorMut, JumpInstruction,
-        LiteralInstruction, LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction,
-        OpCode, ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-        WordBoundaryMoveToPreviousInstruction,
+        CompareIsUnicodePropertyInstruction, CompareIsWhitespaceInstruction,
+        ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction,
+        InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
+        LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
+        WildcardInstruction, WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
     matcher::canonicalize,
 };
@@ -248,14 +249,6 @@ impl CompiledRegExpBuilder {
 
     fn emit_compare_is_not_digit_instruction(&mut self) {
         CompareIsNotDigitInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_word_instruction(&mut self) {
-        CompareIsWordInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_not_word_instruction(&mut self) {
-        CompareIsNotWordInstruction::write(self.current_block_buf())
     }
 
     fn emit_compare_is_whitespace_instruction(&mut self) {
@@ -596,17 +589,21 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_assert_word_boundary(&mut self) {
-        self.emit_compare_is_word_instruction();
+        self.emit_word_comparison();
         self.emit_word_boundary_move_to_previous_instruction();
-        self.emit_compare_is_word_instruction();
+        self.emit_word_comparison();
         self.emit_assert_word_boundary_instruction()
     }
 
     fn emit_assert_not_word_boundary(&mut self) {
-        self.emit_compare_is_word_instruction();
+        self.emit_word_comparison();
         self.emit_word_boundary_move_to_previous_instruction();
-        self.emit_compare_is_word_instruction();
+        self.emit_word_comparison();
         self.emit_assert_not_word_boundary_instruction()
+    }
+
+    fn emit_word_comparison(&mut self) {
+        self.emit_set_comparisons(&WORD_SET);
     }
 
     fn in_block<R>(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self) -> R) -> R {
@@ -975,8 +972,8 @@ impl CompiledRegExpBuilder {
                 // Shorthand char ranges have own instructions
                 ClassRange::Digit => self.emit_compare_is_digit_instruction(),
                 ClassRange::NotDigit => self.emit_compare_is_not_digit_instruction(),
-                ClassRange::Word => self.emit_compare_is_word_instruction(),
-                ClassRange::NotWord => self.emit_compare_is_not_word_instruction(),
+                ClassRange::Word => set_builder.add_set(&WORD_SET),
+                ClassRange::NotWord => set_builder.add_set(&NOT_WORD_SET),
                 ClassRange::Whitespace => self.emit_compare_is_whitespace_instruction(),
                 ClassRange::NotWhitespace => self.emit_compare_is_not_whitespace_instruction(),
                 ClassRange::UnicodeProperty(property) => {
@@ -989,8 +986,29 @@ impl CompiledRegExpBuilder {
         }
 
         let set = set_builder.build();
+        self.emit_code_point_set(&set, character_class.is_inverted);
+    }
 
-        // Emit char ranges in set. Iterates over inclusive ranges.
+    fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
+        // Can emit a literal instruction if we are matching a single code point
+        if set.size() == 1 && !is_inverted {
+            let single_code_point = set.iter_chars().next().unwrap() as CodePoint;
+            self.emit_literal_instruction(single_code_point);
+            return;
+        }
+
+        self.emit_set_comparisons(set);
+
+        // Emit the final consume instruction, noting whether to invert
+        if is_inverted {
+            self.emit_consume_if_false_instruction();
+        } else {
+            self.emit_consume_if_true_instruction();
+        }
+    }
+
+    fn emit_set_comparisons(&mut self, set: &CodePointInversionList) {
+        // Emit all range comparisons in the set. Iterates over inclusive ranges.
         for range in set.iter_ranges() {
             let start = *range.start();
             let end = *range.end();
@@ -1001,13 +1019,6 @@ impl CompiledRegExpBuilder {
                 // Convert from inclusive end to exclusive end
                 self.emit_compare_between_instruction(start, end + 1);
             }
-        }
-
-        // Emit the final consume instruction, noting whether to invert
-        if character_class.is_inverted {
-            self.emit_consume_if_false_instruction();
-        } else {
-            self.emit_consume_if_true_instruction();
         }
     }
 
@@ -1088,6 +1099,26 @@ impl CompiledRegExpBuilder {
 
         instructions
     }
+}
+
+/// Set of word characters to be used for word character classes and word boundary assertions.
+static WORD_SET: LazyLock<CodePointInversionList> =
+    LazyLock::new(|| create_word_set_builder().build());
+
+/// Set of non-word characters to be used for non-word character classes.
+static NOT_WORD_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
+    let mut set_builder = create_word_set_builder();
+    set_builder.complement();
+    set_builder.build()
+});
+
+fn create_word_set_builder() -> CodePointInversionListBuilder {
+    let mut set_builder = CodePointInversionListBuilder::new();
+    set_builder.add_range('a'..='z');
+    set_builder.add_range('A'..='Z');
+    set_builder.add_range('0'..='9');
+    set_builder.add_char('_');
+    set_builder
 }
 
 pub fn compile_regexp(

@@ -30,7 +30,7 @@ use super::{
         CompareIsWordInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction,
         JumpInstruction, LiteralInstruction, LookaroundInstruction, LoopInstruction,
         MarkCapturePointInstruction, ProgressInstruction, TInstruction, WildcardInstruction,
-        WildcardNoNewlineInstruction,
+        WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
 };
 
@@ -51,6 +51,8 @@ pub struct MatchEngine<T: LexerStream> {
     loop_registers: Vec<usize>,
     // An accumulator register for building multi-part comparisons
     compare_register: bool,
+    // A register to track whether one side of a word boundary assertion was a word code point
+    word_boundary_register: bool,
     // Backtrack stack base index for the current sub-execution. For the top-level execution this is
     // always 0, for sub-executions this is the size of the backtrack stack at the sub-execution start.
     backtrack_stack_base: usize,
@@ -115,6 +117,7 @@ impl<T: LexerStream> MatchEngine<T> {
             progress_points: vec![EMPTY_STRING_INDEX; regexp.num_progress_points as usize],
             loop_registers: vec![0; regexp.num_loop_registers as usize],
             compare_register: false,
+            word_boundary_register: false,
             backtrack_stack_base: 0,
         }
     }
@@ -364,19 +367,37 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.backtrack()?;
                     }
                 }
+                OpCode::WordBoundaryMoveToPrevious => {
+                    // Save the word boundary comparison on the first side of the boundary
+                    self.word_boundary_register = self.compare_register;
+
+                    // Update lexer stream state to be pointing at the previous code point
+                    self.no_advance_read_code_point_in_direction(!DIRECTION);
+
+                    self.advance_instruction::<WordBoundaryMoveToPreviousInstruction>();
+                    self.reset_compare_register();
+                }
                 OpCode::AssertWordBoundary => {
-                    if self.is_at_word_boundary::<DIRECTION>() {
+                    if self.is_at_word_boundary() {
+                        // Restore lexer stream to the original direction
+                        self.no_advance_read_code_point_in_direction(DIRECTION);
                         self.advance_instruction::<AssertWordBoundaryInstruction>()
                     } else {
                         self.backtrack()?;
                     }
+
+                    self.reset_compare_register();
                 }
                 OpCode::AssertNotWordBoundary => {
-                    if self.is_at_word_boundary::<DIRECTION>() {
+                    if self.is_at_word_boundary() {
                         self.backtrack()?;
                     } else {
+                        // Restore lexer stream to the original direction
+                        self.no_advance_read_code_point_in_direction(DIRECTION);
                         self.advance_instruction::<AssertNotWordBoundaryInstruction>()
                     }
+
+                    self.reset_compare_register();
                 }
                 OpCode::Backreference => {
                     let instr = instr.cast::<BackreferenceInstruction>();
@@ -390,7 +411,7 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.advance_instruction::<ConsumeIfTrueInstruction>();
                     }
 
-                    self.compare_register = false;
+                    self.reset_compare_register();
                 }
                 OpCode::ConsumeIfFalse => {
                     if self.compare_register || !self.string_lexer.has_current() {
@@ -400,7 +421,7 @@ impl<T: LexerStream> MatchEngine<T> {
                         self.advance_instruction::<ConsumeIfFalseInstruction>();
                     }
 
-                    self.compare_register = false;
+                    self.reset_compare_register();
                 }
                 OpCode::CompareEquals => {
                     let instr = instr.cast::<CompareEqualsInstruction>();
@@ -550,13 +571,6 @@ impl<T: LexerStream> MatchEngine<T> {
         }
     }
 
-    fn peek_prev_code_point_in_direction<const DIRECTION: bool>(&self) -> CodePoint {
-        match DIRECTION {
-            FORWARD => self.string_lexer.peek_prev_code_point(),
-            BACKWARD => self.string_lexer.peek_next_code_point(),
-        }
-    }
-
     fn code_point_before_current_pos<const DIRECTION: bool>(&self) -> CodePoint {
         match DIRECTION {
             // In forwards mode the current token is the code point after the pos, so we must peek
@@ -577,12 +591,28 @@ impl<T: LexerStream> MatchEngine<T> {
         }
     }
 
-    fn is_at_word_boundary<const DIRECTION: bool>(&self) -> bool {
-        let is_current_word = is_word_code_point(self.string_lexer.current());
-        let is_prev_word =
-            is_word_code_point(self.peek_prev_code_point_in_direction::<DIRECTION>());
+    /// Read the code point in a particular direction from the current position in the lexer stream.
+    /// Does not change the position in the lexer stream.
+    fn no_advance_read_code_point_in_direction(&mut self, direction: bool) {
+        match direction {
+            FORWARD => {
+                self.string_lexer.advance_n(0);
+            }
+            BACKWARD => {
+                self.string_lexer.advance_backwards_n(0);
+            }
+        }
+    }
 
-        is_current_word != is_prev_word
+    /// At a word boundary iff the word comparison on one side of the boundary does not match the
+    /// word comparison on the other side.
+    fn is_at_word_boundary(&self) -> bool {
+        self.compare_register != self.word_boundary_register
+    }
+
+    #[inline]
+    fn reset_compare_register(&mut self) {
+        self.compare_register = false;
     }
 
     fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) {

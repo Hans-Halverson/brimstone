@@ -321,6 +321,18 @@ impl Context {
         GlobalSymbolRegistryField
     }
 
+    pub fn print_or_add_to_dump_buffer(&self, str: &str) {
+        if let Some(mut buffer) = self.options.dump_buffer() {
+            if !buffer.is_empty() {
+                buffer.push('\n');
+            }
+
+            buffer.push_str(str);
+        } else {
+            println!("{}", str);
+        }
+    }
+
     #[inline]
     pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
         FlatString::from_wtf8(*self, str.as_bytes())

@@ -1,9 +1,12 @@
 // Shorthand digit and whitespace classes have own instructions
-/\d\D\s\S/;
+/\s\S/;
 
 // Shorthand as single element of class
-/[\d][\D][\s][\S]/;
+/[\s][\S]/;
 
 // Shorthand mixed in class
-/[\da][\Da][\sa][\Sa]/;
-/[\da-z][\Da-z][\sa-z][\Sa-z]/
+/[\sa][\S\x0B]/;
+/[\sa-z][\S\x0A-\x0C]/;
+
+// Union is the entire unicode range
+/[\s\S]/;

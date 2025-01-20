@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use crate::js::{
-    common::{unicode::CodePoint, wtf_8::Wtf8String},
+    common::{
+        unicode::{CodePoint, MAX_CODE_POINT},
+        wtf_8::Wtf8String,
+    },
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
         ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
@@ -22,12 +25,10 @@ use super::{
         AssertNotWordBoundaryInstruction, AssertStartInstruction, AssertStartOrNewlineInstruction,
         AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
         ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-        CompareIsDigitInstruction, CompareIsNotDigitInstruction, CompareIsNotWhitespaceInstruction,
-        CompareIsWhitespaceInstruction, ConsumeIfFalseInstruction, ConsumeIfTrueInstruction,
-        FailInstruction, InstructionIteratorMut, JumpInstruction, LiteralInstruction,
-        LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
-        ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-        WordBoundaryMoveToPreviousInstruction,
+        ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction,
+        InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
+        LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
+        WildcardInstruction, WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
     matcher::canonicalize,
 };
@@ -240,22 +241,6 @@ impl CompiledRegExpBuilder {
 
     fn emit_compare_between_instruction(&mut self, start: CodePoint, end: CodePoint) {
         CompareBetweenInstruction::write(self.current_block_buf(), start, end)
-    }
-
-    fn emit_compare_is_digit_instruction(&mut self) {
-        CompareIsDigitInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_not_digit_instruction(&mut self) {
-        CompareIsNotDigitInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_whitespace_instruction(&mut self) {
-        CompareIsWhitespaceInstruction::write(self.current_block_buf())
-    }
-
-    fn emit_compare_is_not_whitespace_instruction(&mut self) {
-        CompareIsNotWhitespaceInstruction::write(self.current_block_buf())
     }
 
     fn emit_lookaround_instruction(&mut self, is_ahead: bool, is_positive: bool, body_branch: u32) {
@@ -957,13 +942,19 @@ impl CompiledRegExpBuilder {
                         set_builder.add_range32(*start..=*end);
                     }
                 }
-                // Shorthand char ranges have own instructions
-                ClassRange::Digit => self.emit_compare_is_digit_instruction(),
-                ClassRange::NotDigit => self.emit_compare_is_not_digit_instruction(),
+                // Use the precomputed word sets for word and whitespace character classes
                 ClassRange::Word => set_builder.add_set(&WORD_SET),
                 ClassRange::NotWord => set_builder.add_set(&NOT_WORD_SET),
-                ClassRange::Whitespace => self.emit_compare_is_whitespace_instruction(),
-                ClassRange::NotWhitespace => self.emit_compare_is_not_whitespace_instruction(),
+                ClassRange::Whitespace => set_builder.add_set(&WHITESPACE_SET),
+                ClassRange::NotWhitespace => set_builder.add_set(&NOT_WHITESPACE_SET),
+                // Decimal ranges are simple so they are hardcoded
+                ClassRange::Digit => {
+                    set_builder.add_range('0'..='9');
+                }
+                ClassRange::NotDigit => {
+                    set_builder.add_range32(0..('0' as u32));
+                    set_builder.add_range32(('9' as u32 + 1)..=MAX_CODE_POINT);
+                }
                 ClassRange::UnicodeProperty(property) => {
                     property.add_to_set(&mut set_builder);
                 }
@@ -1107,12 +1098,44 @@ static NOT_WORD_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
     set_builder.build()
 });
 
+/// Set of whitespace characters to be used for whitespace character classes.
+static WHITESPACE_SET: LazyLock<CodePointInversionList> =
+    LazyLock::new(|| create_whitespace_set_builder().build());
+
+/// Set of non-whitespace characters to be used for non-whitespace character classes.
+static NOT_WHITESPACE_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
+    let mut set_builder = create_whitespace_set_builder();
+    set_builder.complement();
+    set_builder.build()
+});
+
 fn create_word_set_builder() -> CodePointInversionListBuilder {
     let mut set_builder = CodePointInversionListBuilder::new();
+
     set_builder.add_range('a'..='z');
     set_builder.add_range('A'..='Z');
     set_builder.add_range('0'..='9');
     set_builder.add_char('_');
+
+    set_builder
+}
+
+fn create_whitespace_set_builder() -> CodePointInversionListBuilder {
+    // All code points on the right hand side of WhiteSpace or LineTerminator productions in the
+    // spec.
+    let mut set_builder = CodePointInversionListBuilder::new();
+
+    set_builder.add_range('\u{0009}'..='\u{000D}');
+    set_builder.add_char('\u{0020}');
+    set_builder.add_char('\u{00A0}');
+    set_builder.add_char('\u{1680}');
+    set_builder.add_range('\u{2000}'..='\u{200A}');
+    set_builder.add_range('\u{2028}'..='\u{2029}');
+    set_builder.add_char('\u{202F}');
+    set_builder.add_char('\u{205F}');
+    set_builder.add_char('\u{3000}');
+    set_builder.add_char('\u{FEFF}');
+
     set_builder
 }
 

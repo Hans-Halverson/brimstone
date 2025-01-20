@@ -25,6 +25,7 @@ name = "brimstone"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.1.0",
+ "case_closure_overrides",
  "clap",
  "icu_casemap",
  "icu_collator",
@@ -42,6 +43,23 @@ dependencies = [
  "rand",
  "ryu-js",
  "wrap_ordinary_object",
+ "zerotrie",
+ "zerovec",
+]
+
+[[package]]
+name = "case_closure_overrides"
+version = "0.1.0"
+dependencies = [
+ "icu_casemap",
+ "icu_collator",
+ "icu_collections",
+ "icu_locale",
+ "icu_normalizer",
+ "icu_properties",
+ "icu_provider",
+ "icu_provider_adapters",
+ "icu_provider_baked",
  "zerotrie",
  "zerovec",
 ]

@@ -12,11 +12,14 @@ path = "src/main.rs"
 bitflags = "2.1.0"
 clap = { version = "4.0.29", features = ["derive"] }
 indexmap = "2.1.0"
-match_u32 = { path = "src/js/parser/match_u32" }
 num-bigint = "0.4.3"
 num-traits = "0.2.16"
 rand = "0.8.5"
 ryu-js = "0.2.2"
+
+# Internal crates
+case_closure_overrides = { path = "src/js/runtime/regexp/case_closure_overrides" }
+match_u32 = { path = "src/js/parser/match_u32" }
 wrap_ordinary_object = { path = "src/js/runtime/wrap_ordinary_object" }
 
 # ICU4X crates must all be the same version

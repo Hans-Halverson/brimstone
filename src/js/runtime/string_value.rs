@@ -1313,6 +1313,24 @@ impl CodeUnitIterator {
         }
     }
 
+    pub fn from_raw_one_byte_slice(slice: &[u8]) -> Self {
+        let range = slice.as_ptr_range();
+        CodeUnitIterator {
+            ptr: range.start,
+            end: range.end,
+            width: StringWidth::OneByte,
+        }
+    }
+
+    pub fn from_raw_two_byte_slice(slice: &[CodeUnit]) -> Self {
+        let range = slice.as_ptr_range();
+        CodeUnitIterator {
+            ptr: range.start as *const u8,
+            end: range.end as *const u8,
+            width: StringWidth::TwoByte,
+        }
+    }
+
     #[inline]
     pub fn is_end(&self) -> bool {
         std::ptr::eq(self.ptr, self.end)
@@ -1511,6 +1529,14 @@ impl CodePointIterator {
         CodePointIterator {
             iter: CodeUnitIterator::from_two_byte_slice(string, start, end),
         }
+    }
+
+    pub fn from_raw_one_byte_slice(slice: &[u8]) -> Self {
+        CodePointIterator { iter: CodeUnitIterator::from_raw_one_byte_slice(slice) }
+    }
+
+    pub fn from_raw_two_byte_slice(slice: &[CodeUnit]) -> Self {
+        CodePointIterator { iter: CodeUnitIterator::from_raw_two_byte_slice(slice) }
     }
 
     fn ptr(&self) -> *const u8 {

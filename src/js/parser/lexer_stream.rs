@@ -1,8 +1,11 @@
 use std::rc::Rc;
 
-use crate::js::common::unicode::{
-    code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii, is_high_surrogate_code_unit,
-    is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
+use crate::js::{
+    common::unicode::{
+        code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
+        is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
+    },
+    runtime::string_value::{CodePointIterator, CodeUnitIterator},
 };
 
 use super::{
@@ -66,6 +69,9 @@ pub trait LexerStream {
 
     /// Parse and move forward one code point in the input stream
     fn parse_unicode_codepoint(&mut self) -> ParseResult<u32>;
+
+    /// Iterate through the code points in the input stream between two indices.
+    fn iter_slice<'a>(&self, start: Pos, end: Pos) -> impl 'a + DoubleEndedIterator<Item = u32>;
 
     /// Return a slice of the underlying buffer between two indices. Note that the underlying buffer
     /// may not be a buffer of bytes but the return type is always a byte slice.
@@ -226,6 +232,12 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
         }
     }
 
+    #[allow(refining_impl_trait)]
+    fn iter_slice<'b, 'c>(&'b self, _: Pos, _: Pos) -> impl 'c + DoubleEndedIterator<Item = u32> {
+        // Stub implementation
+        CodePointIterator::from_raw_one_byte_slice(&[])
+    }
+
     fn slice(&self, _: Pos, _: Pos) -> &[u8] {
         panic!("Utf8LexerStream::slice not implemented")
     }
@@ -372,6 +384,14 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
         self.advance_n(1);
 
         Ok(code_point)
+    }
+
+    fn iter_slice<'b, 'c>(
+        &'b self,
+        start: Pos,
+        end: Pos,
+    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+        CodePointIterator::from_raw_one_byte_slice(&self.buf[start..end])
     }
 
     fn slice(&self, start: Pos, end: Pos) -> &[u8] {
@@ -525,6 +545,15 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         self.advance_n(1);
 
         Ok(code_point)
+    }
+
+    fn iter_slice<'b, 'c>(
+        &'b self,
+        start: Pos,
+        end: Pos,
+    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+        CodeUnitIterator::from_raw_two_byte_slice(&self.buf[start..end])
+            .map(|code_unit| code_unit as u32)
     }
 
     fn slice(&self, start: Pos, end: Pos) -> &[u8] {
@@ -734,6 +763,14 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         self.advance_n(num_code_units);
 
         Ok(code_point)
+    }
+
+    fn iter_slice<'b, 'c>(
+        &'b self,
+        start: Pos,
+        end: Pos,
+    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+        CodePointIterator::from_raw_two_byte_slice(&self.buf[start..end])
     }
 
     fn slice(&self, start: Pos, end: Pos) -> &[u8] {

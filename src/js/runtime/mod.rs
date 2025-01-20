@@ -45,7 +45,7 @@ mod source_file;
 pub mod stack_trace;
 mod string_object;
 mod string_parsing;
-mod string_value;
+pub mod string_value;
 mod tasks;
 pub mod test_262_object;
 mod type_utilities;

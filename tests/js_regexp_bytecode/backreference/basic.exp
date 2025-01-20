@@ -1,0 +1,48 @@
+[CompiledRegExpObject: /(a)\1/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: MarkCapturePoint(2)
+    11: Literal(a)
+    12: MarkCapturePoint(3)
+    14: Backreference(1, false)
+    16: MarkCapturePoint(1)
+    18: Accept
+}
+
+[CompiledRegExpObject: /(a)(b)(c)\3\1\2/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: MarkCapturePoint(2)
+    11: Literal(a)
+    12: MarkCapturePoint(3)
+    14: MarkCapturePoint(4)
+    16: Literal(b)
+    17: MarkCapturePoint(5)
+    19: MarkCapturePoint(6)
+    21: Literal(c)
+    22: MarkCapturePoint(7)
+    24: Backreference(3, false)
+    26: Backreference(1, false)
+    28: Backreference(2, false)
+    30: MarkCapturePoint(1)
+    32: Accept
+}
+
+[CompiledRegExpObject: /(a)\1/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: MarkCapturePoint(2)
+    11: CompareEquals(A)
+    12: CompareEquals(a)
+    13: ConsumeIfTrue
+    14: MarkCapturePoint(3)
+    16: Backreference(1, true)
+    18: MarkCapturePoint(1)
+    20: Accept
+}

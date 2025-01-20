@@ -1,0 +1,159 @@
+[CompiledRegExpObject: /\b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: CompareEquals(ſ)
+    17: CompareEquals(K)
+    18: WordBoundaryMoveToPrevious
+    19: CompareBetween(0, :)
+    21: CompareBetween(A, [)
+    23: CompareEquals(_)
+    24: CompareBetween(a, {)
+    26: CompareEquals(ſ)
+    27: CompareEquals(K)
+    28: AssertWordBoundary
+    29: MarkCapturePoint(1)
+    31: Accept
+}
+
+[CompiledRegExpObject: /\B/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertNotWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\B/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertNotWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\B/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: WordBoundaryMoveToPrevious
+    17: CompareBetween(0, :)
+    19: CompareBetween(A, [)
+    21: CompareEquals(_)
+    22: CompareBetween(a, {)
+    24: AssertNotWordBoundary
+    25: MarkCapturePoint(1)
+    27: Accept
+}
+
+[CompiledRegExpObject: /\B/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareBetween(0, :)
+    11: CompareBetween(A, [)
+    13: CompareEquals(_)
+    14: CompareBetween(a, {)
+    16: CompareEquals(ſ)
+    17: CompareEquals(K)
+    18: WordBoundaryMoveToPrevious
+    19: CompareBetween(0, :)
+    21: CompareBetween(A, [)
+    23: CompareEquals(_)
+    24: CompareBetween(a, {)
+    26: CompareEquals(ſ)
+    27: CompareEquals(K)
+    28: AssertNotWordBoundary
+    29: MarkCapturePoint(1)
+    31: Accept
+}

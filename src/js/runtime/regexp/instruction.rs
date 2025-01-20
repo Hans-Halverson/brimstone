@@ -120,7 +120,7 @@ pub enum OpCode {
     /// Consume the same code points as a previously captured group, failing if the previously
     /// captured group cannot be matched.
     ///
-    /// Layout: [[opcode: u8] [padding: u24] [capture_group_index: u32]]
+    /// Layout: [[opcode: u8] [is_case_insensitive: u8] [capture_group_index: u32]]
     Backreference,
 
     /// Comparisons work by setting a boolean accumulator register for the current multi-part
@@ -562,19 +562,30 @@ regexp_bytecode_instruction!(
     2,
     impl TInstruction {
         fn debug_print(&self) -> String {
-            format!("{:?}({})", Self::OPCODE, self.capture_group_index())
+            format!("{:?}({}, {})", Self::OPCODE, self.capture_group_index(), self.is_case_insensitive())
         }
     }
 );
 
 impl BackreferenceInstruction {
     #[inline]
+    pub fn is_case_insensitive(&self) -> bool {
+        get_packed_u8_operand(self.0.as_ptr(), 1) != 0
+    }
+
+    #[inline]
     pub fn capture_group_index(&self) -> u32 {
         self.0[1]
     }
 
-    pub fn write(buf: &mut Vec<u32>, capture_group_index: u32) {
-        write_u32!(buf, Self::OPCODE);
+    pub fn write(buf: &mut Vec<u32>, is_case_insensitive: bool, capture_group_index: u32) {
+        let mut first_u32 = Self::OPCODE as u32;
+
+        if is_case_insensitive {
+            first_u32 |= 1 << 8;
+        }
+
+        write_u32!(buf, first_u32);
         write_u32!(buf, capture_group_index);
     }
 }

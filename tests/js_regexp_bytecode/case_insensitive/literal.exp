@@ -1,0 +1,27 @@
+[CompiledRegExpObject: /aBc/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: CompareEquals(A)
+    10: CompareEquals(a)
+    11: ConsumeIfTrue
+    12: CompareEquals(B)
+    13: CompareEquals(b)
+    14: ConsumeIfTrue
+    15: CompareEquals(C)
+    16: CompareEquals(c)
+    17: ConsumeIfTrue
+    18: MarkCapturePoint(1)
+    20: Accept
+}
+
+[CompiledRegExpObject: /-/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(-)
+    10: MarkCapturePoint(1)
+    12: Accept
+}

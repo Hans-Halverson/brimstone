@@ -1,7 +1,7 @@
 use crate::js::{
     common::{
         icu::ICU,
-        unicode::{is_newline, try_encode_surrogate_pair, CodePoint},
+        unicode::{is_newline, CodePoint},
     },
     parser::lexer_stream::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
@@ -9,7 +9,7 @@ use crate::js::{
     },
     runtime::{
         regexp::instruction::OpCode,
-        string_value::{string_index_to_usize, FlatString, StringValue, StringWidth},
+        string_value::{StringValue, StringWidth},
         Handle, HeapPtr,
     },
 };
@@ -395,7 +395,10 @@ impl<T: LexerStream> MatchEngine<T> {
                 }
                 OpCode::Backreference => {
                     let instr = instr.cast::<BackreferenceInstruction>();
-                    self.execute_backreference::<DIRECTION>(instr.capture_group_index())?;
+                    self.execute_backreference::<DIRECTION>(
+                        instr.is_case_insensitive(),
+                        instr.capture_group_index(),
+                    )?;
                 }
                 OpCode::ConsumeIfTrue => {
                     if !self.compare_register || !self.string_lexer.has_current() {
@@ -577,6 +580,7 @@ impl<T: LexerStream> MatchEngine<T> {
 
     fn execute_backreference<const DIRECTION: bool>(
         &mut self,
+        is_case_insensitive: bool,
         mut capture_group_index: u32,
     ) -> Result<(), ()> {
         if self.regexp.has_duplicate_named_capture_groups {
@@ -604,35 +608,74 @@ impl<T: LexerStream> MatchEngine<T> {
             Some((start_index, end_index)) => {
                 let start_index = start_index as usize;
                 let end_index = end_index as usize;
-
-                let captured_slice = self.string_lexer.slice(start_index, end_index);
                 let captured_slice_len = end_index - start_index;
 
-                match DIRECTION {
-                    FORWARD => {
-                        // Slice to check is directly after current string position
-                        if self
-                            .string_lexer
-                            .slice_equals(self.string_lexer.pos(), captured_slice)
+                if is_case_insensitive {
+                    // If case insensitive comparison then we cannot compare slices directly.
+                    // Instead we must check if each pair of code points canonicalizes to the same
+                    // value.
+                    let mut capture_slice_iter =
+                        self.string_lexer.iter_slice(start_index, end_index);
+
+                    let is_unicode_aware = self.regexp.flags.has_any_unicode_flag();
+
+                    loop {
+                        let next_capture_value = match DIRECTION {
+                            FORWARD => capture_slice_iter.next(),
+                            BACKWARD => capture_slice_iter.next_back(),
+                        };
+
+                        let next_capture_value = match next_capture_value {
+                            // No more code points in the captured slice, so we have matched the
+                            // entire backreference and can continue.
+                            None => {
+                                self.advance_instruction::<BackreferenceInstruction>();
+                                break;
+                            }
+                            Some(next_capture_value) => next_capture_value,
+                        };
+
+                        // Check if case insensitive canonicalized values match
+                        if self.string_lexer.has_current()
+                            && (canonicalize(next_capture_value, is_unicode_aware)
+                                == canonicalize(self.string_lexer.current(), is_unicode_aware))
                         {
-                            self.string_lexer.advance_n(captured_slice_len);
-                            self.advance_instruction::<BackreferenceInstruction>();
+                            self.advance_code_point_in_direction::<DIRECTION>();
                         } else {
                             self.backtrack()?;
+                            break;
                         }
                     }
-                    BACKWARD => {
-                        // Slice to check is directly before current string position
-                        let start_pos = self.string_lexer.pos().checked_sub(captured_slice_len);
-                        if start_pos.is_some()
-                            && self
+                } else {
+                    // Otherwise can compare slices directly
+                    let captured_slice = self.string_lexer.slice(start_index, end_index);
+
+                    match DIRECTION {
+                        FORWARD => {
+                            // Slice to check is directly after current string position
+                            if self
                                 .string_lexer
-                                .slice_equals(start_pos.unwrap(), captured_slice)
-                        {
-                            self.string_lexer.advance_backwards_n(captured_slice_len);
-                            self.advance_instruction::<BackreferenceInstruction>();
-                        } else {
-                            self.backtrack()?;
+                                .slice_equals(self.string_lexer.pos(), captured_slice)
+                            {
+                                self.string_lexer.advance_n(captured_slice_len);
+                                self.advance_instruction::<BackreferenceInstruction>();
+                            } else {
+                                self.backtrack()?;
+                            }
+                        }
+                        BACKWARD => {
+                            // Slice to check is directly before current string position
+                            let start_pos = self.string_lexer.pos().checked_sub(captured_slice_len);
+                            if start_pos.is_some()
+                                && self
+                                    .string_lexer
+                                    .slice_equals(start_pos.unwrap(), captured_slice)
+                            {
+                                self.string_lexer.advance_backwards_n(captured_slice_len);
+                                self.advance_instruction::<BackreferenceInstruction>();
+                            } else {
+                                self.backtrack()?;
+                            }
                         }
                     }
                 }
@@ -692,10 +735,6 @@ pub fn run_matcher(
 
     let regexp = *regexp;
 
-    if regexp.flags.is_case_insensitive() {
-        return run_case_insensitive_matcher(regexp, flat_string, start_index);
-    }
-
     match flat_string.width() {
         StringWidth::OneByte => {
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
@@ -712,52 +751,6 @@ pub fn run_matcher(
                 match_lexer_stream(lexer_stream, regexp, start_index)
             }
         }
-    }
-}
-
-fn run_case_insensitive_matcher(
-    regexp: HeapPtr<CompiledRegExpObject>,
-    target_string: Handle<FlatString>,
-    start_index: u32,
-) -> Option<Match> {
-    // If ignoring case, canonicalize into an off-heap UTF-16 string
-    let mut lowercase_string_code_units =
-        Vec::with_capacity(string_index_to_usize(target_string.len()));
-
-    if regexp.flags.has_any_unicode_flag() {
-        for code_point in target_string.iter_code_points() {
-            let canonical_code_point = canonicalize(code_point, true);
-
-            match try_encode_surrogate_pair(canonical_code_point) {
-                None => lowercase_string_code_units.push(canonical_code_point as u16),
-                Some((high, low)) => {
-                    lowercase_string_code_units.push(high);
-                    lowercase_string_code_units.push(low);
-                }
-            }
-        }
-
-        let lexer_stream = HeapTwoByteCodePointLexerStream::new(&lowercase_string_code_units);
-        match_lexer_stream(lexer_stream, regexp, start_index)
-    } else {
-        for code_unit in target_string.iter_code_units() {
-            let canonical_code_point = canonicalize(code_unit as CodePoint, false);
-
-            match try_encode_surrogate_pair(canonical_code_point) {
-                None => lowercase_string_code_units.push(canonical_code_point as u16),
-                Some((high, low)) => {
-                    lowercase_string_code_units.push(high);
-                    lowercase_string_code_units.push(low);
-                }
-            }
-        }
-
-        // We can use the match indices returned from matching the canonicalized string. This is
-        // because both simple case folding and simple uppercase do not map code points outside the
-        // BMP inside the BMP (and vice versa). This means that the number of code units needed per
-        // code point is the same.
-        let lexer_stream = HeapTwoByteCodeUnitLexerStream::new(&lowercase_string_code_units);
-        match_lexer_stream(lexer_stream, regexp, start_index)
     }
 }
 

@@ -1,10 +1,12 @@
 use std::sync::LazyLock;
 
+use case_closure_overrides::{get_case_closure_override, has_case_closure_override};
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use crate::js::{
     common::{
-        unicode::{CodePoint, MAX_CODE_POINT},
+        icu::ICU,
+        unicode::{is_surrogate_code_point, CodePoint, MAX_CODE_POINT},
         wtf_8::Wtf8String,
     },
     parser::regexp::{
@@ -30,7 +32,6 @@ use super::{
         LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
         WildcardInstruction, WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
-    matcher::canonicalize,
 };
 
 type BlockId = usize;
@@ -223,8 +224,16 @@ impl CompiledRegExpBuilder {
         AssertNotWordBoundaryInstruction::write(self.current_block_buf())
     }
 
-    fn emit_backreference_instruction(&mut self, capture_group_index: u32) {
-        BackreferenceInstruction::write(self.current_block_buf(), capture_group_index)
+    fn emit_backreference_instruction(
+        &mut self,
+        is_case_insensitive: bool,
+        capture_group_index: u32,
+    ) {
+        BackreferenceInstruction::write(
+            self.current_block_buf(),
+            is_case_insensitive,
+            capture_group_index,
+        )
     }
 
     fn emit_consume_if_true_instruction(&mut self) {
@@ -251,10 +260,6 @@ impl CompiledRegExpBuilder {
         let next_register = self.num_loop_registers;
         self.num_loop_registers += 1;
         next_register
-    }
-
-    fn canonicalize(&mut self, code_point: CodePoint) -> CodePoint {
-        canonicalize(code_point, self.flags.has_any_unicode_flag())
     }
 
     fn compile(&mut self, cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
@@ -500,7 +505,10 @@ impl CompiledRegExpBuilder {
             }
             Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
-                self.emit_backreference_instruction(backreference.index);
+                self.emit_backreference_instruction(
+                    self.flags.is_case_insensitive(),
+                    backreference.index,
+                );
 
                 // Backreferences may be empty depending on what was captured
                 SubExpressionInfo::no_captures(false)
@@ -509,13 +517,18 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_code_point_literal(&mut self, code_point: CodePoint) {
-        let code_point = if self.flags.is_case_insensitive() {
-            self.canonicalize(code_point)
-        } else {
-            code_point
-        };
+        if self.flags.is_case_insensitive() && !is_surrogate_code_point(code_point) {
+            // Under case insensitive mode, emit a comparison against any code points in the case
+            // insensitive closure of the code point. This will check for any code points which
+            // canonicalize to the same value as the literal code point.
+            let mut closure_set_builder = CodePointInversionListBuilder::new();
+            self.add_case_closure(&mut closure_set_builder, char::from_u32(code_point).unwrap());
+            let closure_set = closure_set_builder.build();
 
-        self.emit_literal_instruction(code_point)
+            self.emit_code_point_set(&closure_set, /* is_inverted */ false);
+        } else {
+            self.emit_literal_instruction(code_point)
+        }
     }
 
     fn emit_literal(&mut self, string: &Wtf8String) {
@@ -576,7 +589,13 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_word_comparison(&mut self) {
-        self.emit_set_comparisons(&WORD_SET);
+        let word_set = if self.flags.is_case_insensitive() && self.flags.has_any_unicode_flag() {
+            &WORD_CASE_INSENSITIVE_UNICODE_SET
+        } else {
+            &WORD_SET
+        };
+
+        self.emit_set_comparisons(word_set);
     }
 
     fn in_block<R>(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self) -> R) -> R {
@@ -918,33 +937,27 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
-        let is_case_insensitive = self.flags.is_case_insensitive();
         let mut set_builder = CodePointInversionListBuilder::new();
 
         for class_range in &character_class.ranges {
             match class_range {
                 // Accumulate single and range char ranges
                 ClassRange::Single(code_point) => {
-                    if is_case_insensitive {
-                        set_builder.add32(self.canonicalize(*code_point));
-                    } else {
-                        set_builder.add32(*code_point)
-                    }
+                    set_builder.add32(*code_point);
                 }
                 ClassRange::Range(start, end) => {
-                    if is_case_insensitive {
-                        // Canonicalize each element of range and add to set
-                        for code_point in *start..=*end {
-                            set_builder.add32(self.canonicalize(code_point));
-                        }
-                    } else {
-                        // Otherwise can add the range directly
-                        set_builder.add_range32(*start..=*end);
-                    }
+                    // Otherwise can add the range directly
+                    set_builder.add_range32(*start..=*end);
                 }
                 // Use the precomputed word sets for word and whitespace character classes
                 ClassRange::Word => set_builder.add_set(&WORD_SET),
-                ClassRange::NotWord => set_builder.add_set(&NOT_WORD_SET),
+                ClassRange::NotWord => {
+                    if self.flags.is_case_insensitive() && self.flags.has_any_unicode_flag() {
+                        set_builder.add_set(&NOT_WORD_CASE_INSENSITIVE_UNICODE_SET);
+                    } else {
+                        set_builder.add_set(&NOT_WORD_SET);
+                    }
+                }
                 ClassRange::Whitespace => set_builder.add_set(&WHITESPACE_SET),
                 ClassRange::NotWhitespace => set_builder.add_set(&NOT_WHITESPACE_SET),
                 // Decimal ranges are simple so they are hardcoded
@@ -971,8 +984,53 @@ impl CompiledRegExpBuilder {
             }
         }
 
-        let set = set_builder.build();
+        // If comparison is case insensitive then expand the set of code points to include the
+        // case insensitive closure of all code points in the set.
+        let set = if self.flags.is_case_insensitive() {
+            self.case_close_over(&set_builder.build())
+        } else {
+            set_builder.build()
+        };
+
         self.emit_code_point_set(&set, character_class.is_inverted);
+    }
+
+    /// Create the case insensitive closure for the given set of code points, following the
+    /// Canonicalization abstract operation from the spec.
+    ///
+    /// This is used to match for any character which is case-insensitive-equivalent to any
+    /// character in the given set.
+    fn case_close_over(&self, set: &CodePointInversionList) -> CodePointInversionList<'static> {
+        let mut set_builder = CodePointInversionListBuilder::new();
+        for code_point in set.iter_chars() {
+            self.add_case_closure(&mut set_builder, code_point);
+        }
+
+        set_builder.build()
+    }
+
+    /// Create the spec-compliant case closure set for the given code point.
+    fn add_case_closure(&self, set_builder: &mut CodePointInversionListBuilder, code_point: char) {
+        // Case closure sets do not contain the code point itself
+        set_builder.add_char(code_point);
+
+        // We use `add_case_closure_to` from icu4x whenever possible.
+        //
+        // Unicode aware RegExp canonicalization uses standard Unicode simple case mapping, so
+        // `add_case_closure_to` is sufficient.
+        //
+        // However unicode unware RegExp canonicalization uses a slightly different procedure,
+        // mapping code points using simple uppercase mapping, but not mapping code points outside
+        // the Latin1 range to within the Latin1 range. This has almost the same behavior as
+        // `add_case_closure_to`, so we have precomputed the code points for which the behavior
+        // differs. We use the precomupted override if one exists, otherwise we use
+        // `add_case_closure_to`.
+        if self.flags.has_any_unicode_flag() || !has_case_closure_override(code_point) {
+            ICU.case_mapper.add_case_closure_to(code_point, set_builder);
+        } else {
+            let case_closure_override = get_case_closure_override(code_point).unwrap();
+            set_builder.add_set(case_closure_override);
+        }
     }
 
     fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
@@ -1087,16 +1145,44 @@ impl CompiledRegExpBuilder {
     }
 }
 
-/// Set of word characters to be used for word character classes and word boundary assertions.
+/// Set of word characters to be used for word character classes and word boundary assertions when
+/// in case sensitive or unicode unaware mode.
 static WORD_SET: LazyLock<CodePointInversionList> =
     LazyLock::new(|| create_word_set_builder().build());
 
-/// Set of non-word characters to be used for non-word character classes.
+/// Set of word characters to be used for word character classes and word boundary assertions when
+/// in case insensitive, unicode aware mode.
+static WORD_CASE_INSENSITIVE_UNICODE_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
+    let mut set_builder = create_word_set_builder();
+
+    // Add extra code points to form the case insensitive closure of the word set
+    set_builder.add_char('\u{017f}');
+    set_builder.add_char('\u{212a}');
+
+    set_builder.build()
+});
+
+/// Set of non-word characters to be used for non-word character classes when in case sensitive or
+/// unicode unaware mode.
 static NOT_WORD_SET: LazyLock<CodePointInversionList> = LazyLock::new(|| {
     let mut set_builder = create_word_set_builder();
     set_builder.complement();
     set_builder.build()
 });
+
+/// Set of non-word characters to be used for non-word character classes when in case insensitive,
+/// unicode aware mode.
+static NOT_WORD_CASE_INSENSITIVE_UNICODE_SET: LazyLock<CodePointInversionList> =
+    LazyLock::new(|| {
+        let mut set_builder = create_word_set_builder();
+
+        // Add extra code points to form the case insensitive closure of the word set
+        set_builder.add_char('\u{017f}');
+        set_builder.add_char('\u{212a}');
+
+        set_builder.complement();
+        set_builder.build()
+    });
 
 /// Set of whitespace characters to be used for whitespace character classes.
 static WHITESPACE_SET: LazyLock<CodePointInversionList> =

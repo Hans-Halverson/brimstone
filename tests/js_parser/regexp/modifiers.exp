@@ -1,0 +1,236 @@
+{
+  type: "Program",
+  loc: "1:1-6:13",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:1-1:10",
+      kind: {
+        type: "Literal",
+        loc: "1:1-1:9",
+        raw: "/(?i:a)/",
+        value: {
+          pattern: "(?i:a)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+i, -)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:11",
+      kind: {
+        type: "Literal",
+        loc: "2:1-2:10",
+        raw: "/(?i-:a)/",
+        value: {
+          pattern: "(?i-:a)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+i, -)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:1-3:13",
+      kind: {
+        type: "Literal",
+        loc: "3:1-3:12",
+        raw: "/(?i-s:a)/u",
+        value: {
+          pattern: "(?i-s:a)",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+i, -s)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:1-4:11",
+      kind: {
+        type: "Literal",
+        loc: "4:1-4:10",
+        raw: "/(?-s:a)/",
+        value: {
+          pattern: "(?-s:a)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+, -s)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:1-5:12",
+      kind: {
+        type: "Literal",
+        loc: "5:1-5:11",
+        raw: "/(?ism:a)/",
+        value: {
+          pattern: "(?ism:a)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+ims, -)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:13",
+      kind: {
+        type: "Literal",
+        loc: "6:1-6:12",
+        raw: "/(?-ism:a)/",
+        value: {
+          pattern: "(?-ism:a)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "AnonymousGroup",
+                  modifiers: "(+, -ims)",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [
+                        {
+                          type: "Literal",
+                          value: "a",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

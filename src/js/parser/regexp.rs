@@ -142,15 +142,19 @@ pub enum Assertion {
 pub type CaptureGroupIndex = u32;
 
 pub struct CaptureGroup {
-    // Optional capture group name
+    /// Optional capture group name
     pub name: Option<String>,
-    // Index of the capture group in the RegExp
+    /// Index of the capture group in the RegExp
     pub index: CaptureGroupIndex,
     pub disjunction: Disjunction,
 }
 
 pub struct AnonymousGroup {
     pub disjunction: Disjunction,
+    /// Optional positive modifier flags. Only `i`, `m`, and `s` are allowed.
+    pub positive_modifiers: RegExpFlags,
+    /// Optional negative modifier flags. Only `i`, `m`, and `s` are allowed.
+    pub negative_modifiers: RegExpFlags,
 }
 
 pub enum ClassRange {

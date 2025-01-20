@@ -171,7 +171,6 @@
       // Stage 4 proposals
       "iterator-helpers",
       "json-modules",
-      "regexp-modifiers",
 
       // Other unimplemented features
       "regexp-v-flag",

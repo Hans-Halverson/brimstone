@@ -5,7 +5,8 @@ use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
 use super::regexp::{
     Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
-    ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
+    ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
+    Term,
 };
 use super::source::Source;
 
@@ -1367,14 +1368,33 @@ impl<'a> Printer<'a> {
             ClassRange::NotUnicodeProperty(property) => {
                 self.print_str(&format!("NotUnicodeProperty({:?})", property))
             }
+            ClassRange::NestedClass(class) => self.print_regexp_character_class(class),
         }
     }
 
     fn print_regexp_character_class(&mut self, class: &CharacterClass) {
         self.start_regexp_node("CharacterClass");
+
+        if class.expression_type != ClassExpressionType::Union {
+            self.property(
+                "expression_type",
+                &class.expression_type,
+                Printer::print_class_expression_type,
+            );
+        }
+
         self.property("is_inverted", class.is_inverted, Printer::print_bool);
-        self.array_property("ranges", &class.ranges, Printer::print_regexp_character_class_range);
+        self.array_property("ranges", &class.operands, Printer::print_regexp_character_class_range);
         self.end_node();
+    }
+
+    fn print_class_expression_type(&mut self, class_expression_type: &ClassExpressionType) {
+        let str = match class_expression_type {
+            ClassExpressionType::Union => "Union",
+            ClassExpressionType::Intersection => "Intersection",
+            ClassExpressionType::Difference => "Difference",
+        };
+        self.print_str(str);
     }
 
     fn print_regexp_backreference(&mut self, backreference: &Backreference) {

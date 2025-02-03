@@ -961,7 +961,7 @@ impl CompiledRegExpBuilder {
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
         let mut set_builder = CodePointInversionListBuilder::new();
 
-        for class_range in &character_class.ranges {
+        for class_range in &character_class.operands {
             match class_range {
                 // Accumulate single and range char ranges
                 ClassRange::Single(code_point) => {
@@ -1004,6 +1004,7 @@ impl CompiledRegExpBuilder {
                     // Then add the complement set to the set builder
                     set_builder.add_set(&property_complement);
                 }
+                ClassRange::NestedClass(_) => unimplemented!("nested character classes"),
             }
         }
 

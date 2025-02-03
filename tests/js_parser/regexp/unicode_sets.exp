@@ -1,0 +1,995 @@
+{
+  type: "Program",
+  loc: "1:1-45:30",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:7",
+      kind: {
+        type: "Literal",
+        loc: "2:1-2:6",
+        raw: "/[]/v",
+        value: {
+          pattern: "[]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:1-3:10",
+      kind: {
+        type: "Literal",
+        loc: "3:1-3:9",
+        raw: "/[abc]/v",
+        value: {
+          pattern: "[abc]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(c)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:1-4:10",
+      kind: {
+        type: "Literal",
+        loc: "4:1-4:9",
+        raw: "/[a-z]/v",
+        value: {
+          pattern: "[a-z]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(a, z)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:1-5:17",
+      kind: {
+        type: "Literal",
+        loc: "5:1-5:16",
+        raw: "/[a-zA-ZqR-Z]/v",
+        value: {
+          pattern: "[a-zA-ZqR-Z]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Range(a, z)",
+                    "Range(A, Z)",
+                    "Single(q)",
+                    "Range(R, Z)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:19",
+      kind: {
+        type: "Literal",
+        loc: "6:1-6:18",
+        raw: "/[\w\W\s\S\d\D]/v",
+        value: {
+          pattern: "[\w\W\s\S\d\D]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\W",
+                    "\s",
+                    "\S",
+                    "\d",
+                    "\D",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:1-9:8",
+      kind: {
+        type: "Literal",
+        loc: "9:1-9:7",
+        raw: "/[^]/v",
+        value: {
+          pattern: "[^]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:1-10:11",
+      kind: {
+        type: "Literal",
+        loc: "10:1-10:10",
+        raw: "/[^abc]/v",
+        value: {
+          pattern: "[^abc]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: true,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(c)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:1-13:19",
+      kind: {
+        type: "Literal",
+        loc: "13:1-13:18",
+        raw: "/[\r\n\f\v\t\b]/v",
+        value: {
+          pattern: "[\r\n\f\v\t\b]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single()",
+                    "Single(
+)",
+                    "Single()",
+                    "Single()",
+                    "Single(	)",
+                    "Single()",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:1-14:19",
+      kind: {
+        type: "Literal",
+        loc: "14:1-14:18",
+        raw: "/[\u0061\u0062]/v",
+        value: {
+          pattern: "[\u0061\u0062]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:1-15:21",
+      kind: {
+        type: "Literal",
+        loc: "15:1-15:20",
+        raw: "/[\u{61}\u{0062}]/v",
+        value: {
+          pattern: "[\u{61}\u{0062}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(a)",
+                    "Single(b)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "16:1-16:10",
+      kind: {
+        type: "Literal",
+        loc: "16:1-16:9",
+        raw: "/[\cI]/v",
+        value: {
+          pattern: "[\cI]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(	)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:1-17:21",
+      kind: {
+        type: "Literal",
+        loc: "17:1-17:20",
+        raw: "/[\0\x61\x62\xFF]/v",
+        value: {
+          pattern: "[\0\x61\x62\xFF]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single( )",
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(ÿ)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:1-20:38",
+      kind: {
+        type: "Literal",
+        loc: "20:1-20:37",
+        raw: "/[\/\-\\^\$\.\*\+\?\(\)\[\]\{\}\|]/v",
+        value: {
+          pattern: "[\/\-\\^\$\.\*\+\?\(\)\[\]\{\}\|]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(/)",
+                    "Single(-)",
+                    "Single(\)",
+                    "Single(^)",
+                    "Single($)",
+                    "Single(.)",
+                    "Single(*)",
+                    "Single(+)",
+                    "Single(?)",
+                    "Single(()",
+                    "Single())",
+                    "Single([)",
+                    "Single(])",
+                    "Single({)",
+                    "Single(})",
+                    "Single(|)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:1-23:35",
+      kind: {
+        type: "Literal",
+        loc: "23:1-23:34",
+        raw: "/[\&\-\!\#\%\,\:\;\<\=\>\@\`\~]/v",
+        value: {
+          pattern: "[\&\-\!\#\%\,\:\;\<\=\>\@\`\~]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "Single(&)",
+                    "Single(-)",
+                    "Single(!)",
+                    "Single(#)",
+                    "Single(%)",
+                    "Single(,)",
+                    "Single(:)",
+                    "Single(;)",
+                    "Single(<)",
+                    "Single(=)",
+                    "Single(>)",
+                    "Single(@)",
+                    "Single(`)",
+                    "Single(~)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "26:1-26:16",
+      kind: {
+        type: "Literal",
+        loc: "26:1-26:15",
+        raw: "/[\p{ASCII}]/v",
+        value: {
+          pattern: "[\p{ASCII}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "UnicodeProperty(Binary(ASCII))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "27:1-27:26",
+      kind: {
+        type: "Literal",
+        loc: "27:1-27:25",
+        raw: "/[\P{ASCII_Hex_Digit}]/v",
+        value: {
+          pattern: "[\P{ASCII_Hex_Digit}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "NotUnicodeProperty(Binary(ASCIIHexDigit))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "30:1-30:13",
+      kind: {
+        type: "Literal",
+        loc: "30:1-30:12",
+        raw: "/[\w&&\d]/v",
+        value: {
+          pattern: "[\w&&\d]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Intersection",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\d",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "31:1-31:28",
+      kind: {
+        type: "Literal",
+        loc: "31:1-31:27",
+        raw: "/[\w&&\d&&\s&&\p{ASCII}]/v",
+        value: {
+          pattern: "[\w&&\d&&\s&&\p{ASCII}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Intersection",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\d",
+                    "\s",
+                    "UnicodeProperty(Binary(ASCII))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "32:1-32:21",
+      kind: {
+        type: "Literal",
+        loc: "32:1-32:20",
+        raw: "/[[a-z]&&\d&&[a]]/v",
+        value: {
+          pattern: "[[a-z]&&\d&&[a]]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Intersection",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        "Range(a, z)",
+                      ],
+                    },
+                    "\d",
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        "Single(a)",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "33:1-33:14",
+      kind: {
+        type: "Literal",
+        loc: "33:1-33:13",
+        raw: "/[^\w&&\d]/v",
+        value: {
+          pattern: "[^\w&&\d]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Intersection",
+                  is_inverted: true,
+                  ranges: [
+                    "\w",
+                    "\d",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "36:1-36:13",
+      kind: {
+        type: "Literal",
+        loc: "36:1-36:12",
+        raw: "/[\w--\d]/v",
+        value: {
+          pattern: "[\w--\d]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Difference",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\d",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "37:1-37:28",
+      kind: {
+        type: "Literal",
+        loc: "37:1-37:27",
+        raw: "/[\w--\d--\s--\p{ASCII}]/v",
+        value: {
+          pattern: "[\w--\d--\s--\p{ASCII}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Difference",
+                  is_inverted: false,
+                  ranges: [
+                    "\w",
+                    "\d",
+                    "\s",
+                    "UnicodeProperty(Binary(ASCII))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "38:1-38:21",
+      kind: {
+        type: "Literal",
+        loc: "38:1-38:20",
+        raw: "/[[a-z]--\d--[a]]/v",
+        value: {
+          pattern: "[[a-z]--\d--[a]]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Difference",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        "Range(a, z)",
+                      ],
+                    },
+                    "\d",
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        "Single(a)",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "39:1-39:14",
+      kind: {
+        type: "Literal",
+        loc: "39:1-39:13",
+        raw: "/[^\w--\d]/v",
+        value: {
+          pattern: "[^\w--\d]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  expression_type: "Difference",
+                  is_inverted: true,
+                  ranges: [
+                    "\w",
+                    "\d",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "42:1-42:12",
+      kind: {
+        type: "Literal",
+        loc: "42:1-42:11",
+        raw: "/[[a-z]]/v",
+        value: {
+          pattern: "[[a-z]]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        "Range(a, z)",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "43:1-43:14",
+      kind: {
+        type: "Literal",
+        loc: "43:1-43:13",
+        raw: "/[[[a-z]]]/v",
+        value: {
+          pattern: "[[[a-z]]]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        {
+                          type: "CharacterClass",
+                          is_inverted: false,
+                          ranges: [
+                            "Range(a, z)",
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "44:1-44:11",
+      kind: {
+        type: "Literal",
+        loc: "44:1-44:10",
+        raw: "/[[[]]]/v",
+        value: {
+          pattern: "[[[]]]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      is_inverted: false,
+                      ranges: [
+                        {
+                          type: "CharacterClass",
+                          is_inverted: false,
+                          ranges: [],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "45:1-45:30",
+      kind: {
+        type: "Literal",
+        loc: "45:1-45:29",
+        raw: "/[[[\w&&\s]--[a-z]]abcd-e]/v",
+        value: {
+          pattern: "[[[\w&&\s]--[a-z]]abcd-e]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "CharacterClass",
+                      expression_type: "Difference",
+                      is_inverted: false,
+                      ranges: [
+                        {
+                          type: "CharacterClass",
+                          expression_type: "Intersection",
+                          is_inverted: false,
+                          ranges: [
+                            "\w",
+                            "\s",
+                          ],
+                        },
+                        {
+                          type: "CharacterClass",
+                          is_inverted: false,
+                          ranges: [
+                            "Range(a, z)",
+                          ],
+                        },
+                      ],
+                    },
+                    "Single(a)",
+                    "Single(b)",
+                    "Single(c)",
+                    "Range(d, e)",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

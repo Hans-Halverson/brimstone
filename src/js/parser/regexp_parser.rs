@@ -24,7 +24,8 @@ use super::{
     loc::Pos,
     regexp::{
         Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
-        CharacterClass, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
+        CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
+        RegExp, RegExpFlags, Term,
     },
     ParseError, ParseResult,
 };
@@ -355,7 +356,13 @@ impl<T: LexerStream> RegExpParser<T> {
 
                 group
             }
-            '[' => self.parse_character_class()?,
+            '[' => {
+                if self.flags.has_unicode_sets_flag() {
+                    Term::CharacterClass(self.parse_unicode_sets_character_class()?)
+                } else {
+                    self.parse_standard_character_class()?
+                }
+            }
             '^' => {
                 self.advance();
                 Term::Assertion(Assertion::Start)
@@ -372,45 +379,29 @@ impl<T: LexerStream> RegExpParser<T> {
                     // Standard character class shorthands
                     'w' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::Word],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Word))
                     }
                     'W' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::NotWord],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::NotWord))
                     }
                     'd' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::Digit],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Digit))
                     }
                     'D' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::NotDigit],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::NotDigit))
                     }
                     's' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::Whitespace],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Whitespace))
                     }
                     'S' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::NotWhitespace],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(
+                            ClassRange::NotWhitespace,
+                        ))
                     }
                     // Word boundary assertions
                     'b' => {
@@ -467,10 +458,9 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         self.expect('}')?;
 
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::UnicodeProperty(property)],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(
+                            ClassRange::UnicodeProperty(property),
+                        ))
                     }
                     'P' if self.is_unicode_aware() => {
                         self.advance2();
@@ -480,10 +470,9 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         self.expect('}')?;
 
-                        Term::CharacterClass(CharacterClass {
-                            is_inverted: false,
-                            ranges: vec![ClassRange::NotUnicodeProperty(property)],
-                        })
+                        Term::CharacterClass(CharacterClass::from_shorthand(
+                            ClassRange::NotUnicodeProperty(property),
+                        ))
                     }
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
@@ -785,7 +774,8 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(modifiers)
     }
 
-    fn parse_character_class(&mut self) -> ParseResult<Term> {
+    /// Parse a character class when not in `v` mode.
+    fn parse_standard_character_class(&mut self) -> ParseResult<Term> {
         self.advance();
 
         let is_inverted = self.eat('^');
@@ -819,7 +809,11 @@ impl<T: LexerStream> RegExpParser<T> {
             }
         }
 
-        Ok(Term::CharacterClass(CharacterClass { is_inverted, ranges }))
+        Ok(Term::CharacterClass(CharacterClass {
+            expression_type: ClassExpressionType::Union,
+            is_inverted,
+            operands: ranges,
+        }))
     }
 
     fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<u32> {
@@ -832,7 +826,8 @@ impl<T: LexerStream> RegExpParser<T> {
             | ClassRange::Whitespace
             | ClassRange::NotWhitespace
             | ClassRange::UnicodeProperty(_)
-            | ClassRange::NotUnicodeProperty(_) => {
+            | ClassRange::NotUnicodeProperty(_)
+            | ClassRange::NestedClass(_) => {
                 self.error(self.pos(), ParseError::RegExpCharacterClassInRange)
             }
             ClassRange::Range(..) => unreachable!("Ranges are not returned by parse_class_atom"),
@@ -908,6 +903,150 @@ impl<T: LexerStream> RegExpParser<T> {
         let code_point = self.parse_unicode_codepoint()?;
 
         Ok(ClassRange::Single(code_point))
+    }
+
+    /// Parse a character class when in `v` mode.
+    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<CharacterClass> {
+        self.advance();
+
+        let is_inverted = self.eat('^');
+
+        // Character class may be empty
+        if self.eat(']') {
+            return Ok(CharacterClass {
+                expression_type: ClassExpressionType::Union,
+                is_inverted,
+                operands: vec![],
+            });
+        }
+
+        let first_operand_pos = self.pos();
+        let mut operands = vec![self.parse_class_set_operand()?];
+
+        let expression_type;
+
+        if self.is_at_class_intersection_operator() {
+            // Intersection character class
+            expression_type = ClassExpressionType::Intersection;
+
+            while self.is_at_class_intersection_operator() {
+                self.advance2();
+                operands.push(self.parse_class_set_operand()?);
+            }
+        } else if self.is_at_class_difference_operator() {
+            // Difference character class
+            expression_type = ClassExpressionType::Difference;
+
+            while self.is_at_class_difference_operator() {
+                self.advance2();
+                operands.push(self.parse_class_set_operand()?);
+            }
+        } else if self.current() == ']' as u32 {
+            // Empty union character class
+            expression_type = ClassExpressionType::Union;
+        } else {
+            // Non-empty union character class
+            expression_type = ClassExpressionType::Union;
+
+            // Check if the first operand is actually the left side of a range
+            if self.current() == '-' as u32 {
+                let start_operand = operands.pop().unwrap();
+                let range = self
+                    .parse_unicode_sets_character_class_range(start_operand, first_operand_pos)?;
+                operands.push(range);
+            }
+
+            // Parse adjacent operands to the union class
+            while self.current() != ']' as u32 {
+                let operand_start_pos = self.pos();
+                let operand = self.parse_class_set_operand()?;
+
+                // Check if the operand is actually the left side of a range
+                if self.current() == '-' as u32 {
+                    let range =
+                        self.parse_unicode_sets_character_class_range(operand, operand_start_pos)?;
+                    operands.push(range);
+                } else {
+                    operands.push(operand);
+                }
+            }
+        }
+
+        self.expect(']')?;
+
+        Ok(CharacterClass { expression_type, is_inverted, operands })
+    }
+
+    fn parse_class_set_operand(&mut self) -> ParseResult<ClassRange> {
+        if self.current() == '[' as u32 {
+            let nested_class = self.parse_unicode_sets_character_class()?;
+            return Ok(ClassRange::NestedClass(nested_class));
+        }
+
+        // First handle `v`-mode specific syntax
+        match_u32!(match self.current() {
+            '\\' => match_u32!(match self.peek() {
+                // Members of ClassSetReservedPunctuator which can be escaped
+                code_point @ ('&' | '-' | '!' | '#' | '%' | ',' | ':' | ';' | '<' | '=' | '>'
+                | '@' | '`' | '~') => {
+                    self.advance2();
+                    return Ok(ClassRange::Single(code_point));
+                }
+                _ => {}
+            }),
+            // Members of ClassSetSyntaxCharacter are not allowed without escaping
+            '(' | ')' | '[' | ']' | '{' | '}' | '/' | '-' | '|' => {
+                return self.error_unexpected_token(self.pos());
+            }
+            // Do not allow reserved double punctuators
+            _ if self.is_at_class_set_reserved_double_punctuator() => {
+                // Point error to second character of the double punctuator
+                self.advance();
+                return self.error_unexpected_token(self.pos());
+            }
+            _ => {}
+        });
+
+        // Otherwise defer to standard character class atom parsing
+        self.parse_class_atom()
+    }
+
+    fn parse_unicode_sets_character_class_range(
+        &mut self,
+        start_operand: ClassRange,
+        operand_start_pos: Pos,
+    ) -> ParseResult<ClassRange> {
+        // Skip the `-` character
+        self.advance();
+
+        let end_operand = self.parse_class_set_operand()?;
+
+        let start = self.class_atom_to_range_bound(start_operand)?;
+        let end = self.class_atom_to_range_bound(end_operand)?;
+
+        if end < start {
+            return self.error(operand_start_pos, ParseError::InvalidCharacterClassRange);
+        }
+
+        Ok(ClassRange::Range(start, end))
+    }
+
+    fn is_at_class_intersection_operator(&mut self) -> bool {
+        self.current() == '&' as u32 && self.peek() == '&' as u32 && self.peek2() != '&' as u32
+    }
+
+    fn is_at_class_difference_operator(&mut self) -> bool {
+        self.current() == '-' as u32 && self.peek() == '-' as u32
+    }
+
+    fn is_at_class_set_reserved_double_punctuator(&mut self) -> bool {
+        match_u32!(match self.current() {
+            punctuator @ ('&' | '!' | '#' | '$' | '%' | '*' | '+' | ',' | '.' | ':' | ';' | '<'
+            | '=' | '>' | '?' | '@' | '^' | '`' | '~') => {
+                self.peek() == punctuator
+            }
+            _ => false,
+        })
     }
 
     fn parse_regexp_escape_sequence(&mut self) -> ParseResult<u32> {

@@ -99,6 +99,7 @@ pub fn match_u32(item: TokenStream) -> TokenStream {
     proc_macro::TokenStream::from(quote! {
         {
             #(#char_const_decls)*
+            #[allow(clippy::single_match)]
             #match_ast
         }
     })

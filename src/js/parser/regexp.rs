@@ -75,7 +75,7 @@ impl RegExpFlags {
 
     /// Either the `u` or `v` flag is set
     pub fn has_any_unicode_flag(&self) -> bool {
-        self.contains(Self::UNICODE_AWARE)
+        self.contains(Self::UNICODE_AWARE) || self.contains(Self::UNICODE_SETS)
     }
 
     /// The `y` flag is set
@@ -178,13 +178,38 @@ pub enum ClassRange {
     UnicodeProperty(UnicodeProperty),
     /// All code points that do not match a unicode property `\P{UnicodeProperty}`
     NotUnicodeProperty(UnicodeProperty),
+    /// A nested character class
+    NestedClass(CharacterClass),
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum ClassExpressionType {
+    /// A standard character class, including all non-`v`-mode character classes, e.g. [abA-Z]
+    Union,
+    /// A character class formed from the intersection of all ranges, e.g. [\w&&\s&&\d]
+    Intersection,
+    /// A character class formed from the difference of all ranges, e.g. [\w--\s--\d]
+    Difference,
 }
 
 pub struct CharacterClass {
+    /// Whether this character class is a union, intersection, or difference. Standard and all
+    /// non-`v`-mode character classes are unions.
+    pub expression_type: ClassExpressionType,
     /// Whether to only match characters not listed in this class
     pub is_inverted: bool,
-    /// Union of class ranges
-    pub ranges: Vec<ClassRange>,
+    /// Collection of operands to this classes expression
+    pub operands: Vec<ClassRange>,
+}
+
+impl CharacterClass {
+    pub fn from_shorthand(shorthand: ClassRange) -> Self {
+        CharacterClass {
+            expression_type: ClassExpressionType::Union,
+            is_inverted: false,
+            operands: vec![shorthand],
+        }
+    }
 }
 
 pub struct Lookaround {

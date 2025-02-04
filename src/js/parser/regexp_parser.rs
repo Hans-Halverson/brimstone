@@ -9,7 +9,8 @@ use crate::js::common::{
     options::Options,
     unicode::{
         as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
-        is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_unit, is_id_continue_unicode,
+        is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
+        is_high_surrogate_code_unit, is_id_continue_unicode, is_low_surrogate_code_point,
         is_low_surrogate_code_unit,
     },
     unicode_property::{
@@ -1189,7 +1190,19 @@ impl<T: LexerStream> RegExpParser<T> {
             self.parse_regex_unicode_escape_sequence(true)?
         } else {
             // Otherwise must be a unicode codepoint
-            self.parse_unicode_codepoint()?
+            let code_point = self.parse_unicode_codepoint()?;
+
+            // If in non-unicode mode then parse as surrogate pair
+            if !self.flags.has_any_unicode_flag() && is_high_surrogate_code_point(code_point) {
+                let next_code_point = self.parse_unicode_codepoint()?;
+                if is_low_surrogate_code_point(next_code_point) {
+                    code_point_from_surrogate_pair(code_point as u16, next_code_point as u16)
+                } else {
+                    code_point
+                }
+            } else {
+                code_point
+            }
         };
 
         if let Some(char) = as_id_start(code_point) {
@@ -1212,7 +1225,18 @@ impl<T: LexerStream> RegExpParser<T> {
             } else {
                 // Otherwise must be a unicode codepoint
                 let save_state = self.save();
-                let code_point = self.parse_unicode_codepoint()?;
+                let mut code_point = self.parse_unicode_codepoint()?;
+
+                // If in non-unicode mode then parse as surrogate pair
+                if !self.flags.has_any_unicode_flag() && is_high_surrogate_code_point(code_point) {
+                    let next_code_point = self.parse_unicode_codepoint()?;
+                    if is_low_surrogate_code_point(next_code_point) {
+                        code_point = code_point_from_surrogate_pair(
+                            code_point as u16,
+                            next_code_point as u16,
+                        );
+                    }
+                }
 
                 if let Some(char) = as_id_part(code_point) {
                     string_builder.push(char);

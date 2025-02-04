@@ -14,19 +14,27 @@ pub type CodePoint = u32;
 /// Highest unicode code point
 pub const MAX_CODE_POINT: CodePoint = 0x10FFFF;
 
-// Start of high surrogate range, inclusive
+/// End of the BMP range, inclusive
+const BMP_END: CodePoint = 0xFFFF;
+
+/// Start of high surrogate range, inclusive
 const HIGH_SURROGATE_START: CodeUnit = 0xD800;
-// End of high surrogate range, inclusive
+/// End of high surrogate range, inclusive
 const HIGH_SURROGATE_END: CodeUnit = 0xDBFF;
 
-// Start of low surrogate range, inclusive
+/// Start of low surrogate range, inclusive
 const LOW_SURROGATE_START: CodeUnit = 0xDC00;
-// End of low surrogate range, inclusive
+/// End of low surrogate range, inclusive
 const LOW_SURROGATE_END: CodeUnit = 0xDFFF;
 
 #[inline]
-pub fn is_in_unicode_range(code_point: u32) -> bool {
+pub fn is_in_unicode_range(code_point: CodePoint) -> bool {
     code_point <= MAX_CODE_POINT
+}
+
+#[inline]
+pub fn is_in_bmp_range(code_point: CodePoint) -> bool {
+    code_point <= BMP_END
 }
 
 #[inline]
@@ -363,6 +371,28 @@ pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
         Ok((codepoint, 4))
     } else {
         Err(1)
+    }
+}
+
+/// Encode a code point (including surrogate pairs) as UTF-16 into the given buffer. Must only be
+/// called on code points that are in the valid unicode range [0x0-0x10FFFF]. Must only be called
+/// when the buffer has room for the encoded code point.
+///
+/// Return the number of code units for the encoded code point.
+pub fn encode_utf16_codepoint(buf: &mut [CodeUnit], code_point: CodePoint) -> usize {
+    if is_in_bmp_range(code_point) {
+        buf[0] = code_point as u16;
+        1
+    } else {
+        let offset = code_point - 0x10000;
+
+        let high_bits = ((offset) >> 10) as u16;
+        let low_bits = (offset & 0x3FF) as u16;
+
+        buf[0] = high_bits + HIGH_SURROGATE_START;
+        buf[1] = low_bits + LOW_SURROGATE_START;
+
+        2
     }
 }
 

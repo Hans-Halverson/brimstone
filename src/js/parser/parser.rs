@@ -5,11 +5,12 @@ use std::rc::Rc;
 use bitflags::bitflags;
 
 use crate::js::common::options::Options;
+use crate::js::common::unicode::encode_utf16_codepoint;
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
-use super::lexer_stream::Utf8LexerStream;
+use super::lexer_stream::{HeapTwoByteCodeUnitLexerStream, Utf8LexerStream};
 use super::loc::{Loc, Pos, EMPTY_LOC};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::regexp_parser::RegExpParser;
@@ -2983,11 +2984,27 @@ impl<'a> Parser<'a> {
                 Utf8LexerStream::new(flags_start_pos, source.clone(), flags_string.as_bytes());
             let flags = RegExpParser::parse_flags(lexer_stream)?;
 
-            // Start position of pattern is offset by one to account for the leading `/`
-            let pattern_start_pos = start_pos + 1;
-            let create_lexer_stream =
-                || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
-            let regexp = p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?);
+            // If in unicode mode then can parse UTF-8 string directly as full code points
+            let regexp = if flags.has_any_unicode_flag() {
+                // Start position of pattern is offset by one to account for the leading `/`
+                let pattern_start_pos = start_pos + 1;
+                let create_lexer_stream =
+                    || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
+                p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?)
+            } else {
+                // Otherwise must first translate UTF-8 to UTF-16, then treat as individual code
+                // units.
+                let mut utf16_pattern: Vec<u16> = vec![];
+                let mut buf = [0; 2];
+
+                for code_point in pattern.iter_code_points() {
+                    let byte_length = encode_utf16_codepoint(&mut buf, code_point);
+                    utf16_pattern.extend_from_slice(&buf[..byte_length]);
+                }
+
+                let create_lexer_stream = || HeapTwoByteCodeUnitLexerStream::new(&utf16_pattern);
+                p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?)
+            };
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })
         } else {

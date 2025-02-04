@@ -216,7 +216,8 @@ impl RegExpPrototype {
         let flags_string = to_string(cx, flags_string)?;
 
         let is_global = flags_string_contains(flags_string, 'g' as u32);
-        let is_unicode = flags_string_contains(flags_string, 'u' as u32);
+        let is_unicode = flags_string_contains(flags_string, 'u' as u32)
+            || flags_string_contains(flags_string, 'v' as u32);
 
         if !is_global {
             return regexp_exec(cx, regexp_object, string_value);
@@ -298,7 +299,8 @@ impl RegExpPrototype {
         set(cx, matcher, cx.names.last_index(), last_index_value, true)?;
 
         let is_global = flags_string_contains(flags_string, 'g' as u32);
-        let is_unicode = flags_string_contains(flags_string, 'u' as u32);
+        let is_unicode = flags_string_contains(flags_string, 'u' as u32)
+            || flags_string_contains(flags_string, 'v' as u32);
 
         Ok(RegExpStringIterator::new(cx, matcher, string_value, is_global, is_unicode).as_value())
     }

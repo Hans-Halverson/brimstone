@@ -1,6 +1,8 @@
 use std::sync::LazyLock;
 
-use case_closure_overrides::{get_case_closure_override, has_case_closure_override};
+use case_closure_overrides::{
+    all_case_folded_set, get_case_closure_override, has_case_closure_override,
+};
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use crate::js::{
@@ -11,7 +13,8 @@ use crate::js::{
     },
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
-        ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags, Term,
+        ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
+        Term,
     },
     runtime::{
         debug_print::{DebugPrint, DebugPrintMode},
@@ -136,6 +139,11 @@ impl CompiledRegExpBuilder {
 
     fn current_flags(&self) -> RegExpFlags {
         *self.flags.last().unwrap()
+    }
+
+    fn is_case_insensitive_unicode_sets(&self) -> bool {
+        let flags = self.current_flags();
+        flags.has_unicode_sets_flag() && flags.is_case_insensitive()
     }
 
     fn emit_literal_instruction(&mut self, code_point: CodePoint) {
@@ -959,64 +967,208 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
-        let mut set_builder = CodePointInversionListBuilder::new();
-
-        for class_range in &character_class.operands {
-            match class_range {
-                // Accumulate single and range char ranges
-                ClassRange::Single(code_point) => {
-                    set_builder.add32(*code_point);
-                }
-                ClassRange::Range(start, end) => {
-                    // Otherwise can add the range directly
-                    set_builder.add_range32(*start..=*end);
-                }
-                // Use the precomputed word sets for word and whitespace character classes
-                ClassRange::Word => set_builder.add_set(&WORD_SET),
-                ClassRange::NotWord => {
-                    let flags = self.current_flags();
-                    if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
-                        set_builder.add_set(&NOT_WORD_CASE_INSENSITIVE_UNICODE_SET);
-                    } else {
-                        set_builder.add_set(&NOT_WORD_SET);
-                    }
-                }
-                ClassRange::Whitespace => set_builder.add_set(&WHITESPACE_SET),
-                ClassRange::NotWhitespace => set_builder.add_set(&NOT_WHITESPACE_SET),
-                // Decimal ranges are simple so they are hardcoded
-                ClassRange::Digit => {
-                    set_builder.add_range('0'..='9');
-                }
-                ClassRange::NotDigit => {
-                    set_builder.add_range32(0..('0' as u32));
-                    set_builder.add_range32(('9' as u32 + 1)..=MAX_CODE_POINT);
-                }
-                ClassRange::UnicodeProperty(property) => {
-                    property.add_to_set(&mut set_builder);
-                }
-                ClassRange::NotUnicodeProperty(property) => {
-                    // Construct the complement of the unicode property set
-                    let mut property_complement_builder = CodePointInversionListBuilder::new();
-                    property.add_to_set(&mut property_complement_builder);
-                    property_complement_builder.complement();
-                    let property_complement = property_complement_builder.build();
-
-                    // Then add the complement set to the set builder
-                    set_builder.add_set(&property_complement);
-                }
-                ClassRange::NestedClass(_) => unimplemented!("nested character classes"),
-            }
-        }
+        let flags = self.current_flags();
+        let set = self.character_class_to_set(character_class);
 
         // If comparison is case insensitive then expand the set of code points to include the
         // case insensitive closure of all code points in the set.
-        let set = if self.current_flags().is_case_insensitive() {
-            self.case_close_over(&set_builder.build())
+        let set = if flags.is_case_insensitive() {
+            self.case_close_over(&set)
         } else {
-            set_builder.build()
+            set
         };
 
-        self.emit_code_point_set(&set, character_class.is_inverted);
+        // In unicode sets mode the set was eagerly inverted instead of inverting at the end
+        let is_check_inverted = character_class.is_inverted && !flags.has_unicode_sets_flag();
+
+        self.emit_code_point_set(&set, is_check_inverted);
+    }
+
+    fn character_class_to_set<'a>(
+        &self,
+        character_class: &CharacterClass,
+    ) -> CodePointInversionList<'a> {
+        let mut set_builder = CodePointInversionListBuilder::new();
+
+        let set = match character_class.expression_type {
+            ClassExpressionType::Union => {
+                for class_range in &character_class.operands {
+                    self.add_character_class_range_to_set(class_range, &mut set_builder);
+                }
+
+                self.maybe_simple_case_folding(set_builder.build())
+            }
+            ClassExpressionType::Intersection => {
+                // Initialize set with the first operand
+                let first_set = self.character_class_range_to_set(&character_class.operands[0]);
+                set_builder.add_set(&first_set);
+
+                // Only retain code points that are in all operands
+                for class_range in &character_class.operands[1..] {
+                    let other_set = self.character_class_range_to_set(class_range);
+                    set_builder.retain_set(&other_set);
+                }
+
+                set_builder.build()
+            }
+            ClassExpressionType::Difference => {
+                // Initialize set with the first operand
+                let first_set = self.character_class_range_to_set(&character_class.operands[0]);
+                set_builder.add_set(&first_set);
+
+                // Remove code points that are in later operands
+                for class_range in &character_class.operands[1..] {
+                    let other_set = self.character_class_range_to_set(class_range);
+                    set_builder.remove_set(&other_set);
+                }
+
+                set_builder.build()
+            }
+        };
+
+        // Eagerly invert the set if in unicode sets mode
+        let flags = self.current_flags();
+        if character_class.is_inverted && flags.has_unicode_sets_flag() {
+            self.complement_set(&set)
+        } else {
+            set
+        }
+    }
+
+    /// Return the complement of a set when in unicode sets mode.
+    fn complement_set(&self, set: &CodePointInversionList) -> CodePointInversionList<'static> {
+        let mut complement_builder = CodePointInversionListBuilder::new();
+
+        // Start with set of all code points. Only including the canonical case folded set if in
+        // case insensitive mode.
+        if self.current_flags().is_case_insensitive() {
+            complement_builder.add_set(all_case_folded_set());
+        } else {
+            complement_builder.add_set(&CodePointInversionList::all());
+        }
+
+        // Remove the target set from the set of all code points
+        complement_builder.remove_set(set);
+
+        complement_builder.build()
+    }
+
+    fn character_class_range_to_set(
+        &self,
+        class_range: &ClassRange,
+    ) -> CodePointInversionList<'static> {
+        let mut set_builder = CodePointInversionListBuilder::new();
+        self.add_character_class_range_to_set(class_range, &mut set_builder);
+        self.maybe_simple_case_folding(set_builder.build())
+    }
+
+    /// MaybeSimpleCaseFolding (https://tc39.es/ecma262/#sec-maybesimplecasefolding)
+    fn maybe_simple_case_folding(
+        &self,
+        set: CodePointInversionList<'static>,
+    ) -> CodePointInversionList<'static> {
+        if !self.is_case_insensitive_unicode_sets() {
+            return set;
+        }
+
+        let mut case_folded_set = CodePointInversionListBuilder::new();
+
+        for code_point in set.iter_chars() {
+            case_folded_set.add_char(ICU.case_mapper.simple_fold(code_point))
+        }
+
+        case_folded_set.build()
+    }
+
+    fn add_character_class_range_to_set(
+        &self,
+        class_range: &ClassRange,
+        set_builder: &mut CodePointInversionListBuilder,
+    ) {
+        match class_range {
+            // Accumulate single and range char ranges
+            ClassRange::Single(code_point) => {
+                set_builder.add32(*code_point);
+            }
+            ClassRange::Range(start, end) => {
+                // Otherwise can add the range directly
+                set_builder.add_range32(*start..=*end);
+            }
+            // Use the precomputed word set. This is valid in case insensitive `u` mode because
+            // the case closure will be created by the caller. This is valid in case sensitive `v`
+            // mode becase MaybeSimpleCaseFolding will be applied by the caller.
+            ClassRange::Word => set_builder.add_set(&WORD_SET),
+            // Use the precomputed not word set if possible. In case insensitive `v` mode we must
+            // construct the complement ourselves.
+            ClassRange::NotWord => {
+                let flags = self.current_flags();
+                if flags.is_case_insensitive() && flags.has_any_unicode_flag() {
+                    if flags.has_unicode_sets_flag() {
+                        let set = self.complement_set(&WORD_CASE_INSENSITIVE_UNICODE_SET);
+                        set_builder.add_set(&set);
+                    } else {
+                        set_builder.add_set(&NOT_WORD_CASE_INSENSITIVE_UNICODE_SET);
+                    }
+                } else {
+                    set_builder.add_set(&NOT_WORD_SET);
+                }
+            }
+            // Use the precomputed whitespace set
+            ClassRange::Whitespace => set_builder.add_set(&WHITESPACE_SET),
+            // Use the precomputed not whitespace set if possible. In case insensitive `v` mode we
+            // must construct the complement ourselves.
+            ClassRange::NotWhitespace => {
+                if self.is_case_insensitive_unicode_sets() {
+                    set_builder.add_set(&self.complement_set(&WHITESPACE_SET));
+                } else {
+                    set_builder.add_set(&NOT_WHITESPACE_SET)
+                }
+            }
+            // Decimal ranges are simple so they are hardcoded
+            ClassRange::Digit => {
+                set_builder.add_range('0'..='9');
+            }
+            // Use the hardcoded simple decimal ranges when possible. In case insensitive `v` mode
+            // we must construct the complement ourselves.
+            ClassRange::NotDigit => {
+                if self.is_case_insensitive_unicode_sets() {
+                    let mut digits_set = CodePointInversionListBuilder::new();
+                    digits_set.add_range('0'..='9');
+                    set_builder.add_set(&self.complement_set(&digits_set.build()));
+                } else {
+                    set_builder.add_range32(0..('0' as u32));
+                    set_builder.add_range32(('9' as u32 + 1)..=MAX_CODE_POINT);
+                }
+            }
+            ClassRange::UnicodeProperty(property) => {
+                // MaybeSimpleCaseFolding will be applied by the caller
+                property.add_to_set(set_builder);
+            }
+            // Construct the complement of the unicode property set
+            ClassRange::NotUnicodeProperty(property) => {
+                let property_complement = if self.is_case_insensitive_unicode_sets() {
+                    // In case insensitive unicode sets mode we must perform case folding before
+                    // taking the complement.
+                    let mut property_set = CodePointInversionListBuilder::new();
+                    property.add_to_set(&mut property_set);
+                    let property_set = self.maybe_simple_case_folding(property_set.build());
+                    self.complement_set(&property_set)
+                } else {
+                    // Otherwise create the complement set directly. MaybeSimpleCaseFolding will
+                    // be applied by the caller.
+                    let mut property_complement = CodePointInversionListBuilder::new();
+                    property.add_to_set(&mut property_complement);
+                    property_complement.complement();
+                    property_complement.build()
+                };
+
+                // Then add the complement set to the set builder
+                set_builder.add_set(&property_complement);
+            }
+            ClassRange::NestedClass(nested_class) => {
+                set_builder.add_set(&self.character_class_to_set(nested_class));
+            }
+        }
     }
 
     /// Create the case insensitive closure for the given set of code points, following the

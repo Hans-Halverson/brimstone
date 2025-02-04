@@ -17,3 +17,6 @@
 
 // General category groups
 /\p{General_Category=Separator}/u;
+
+// Inverted property
+/[^\p{ASCII_Hex_Digit}]/u;

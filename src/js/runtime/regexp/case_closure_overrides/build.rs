@@ -36,7 +36,9 @@ fn main() {
     println!("cargo::rerun-if-changed=build.rs");
 
     let overrides = gen_overrides_map();
-    let overrides_file = gen_overrides_file(overrides);
+    let all_case_folded = gen_all_case_folded_characters();
+    let overrides_file = gen_overrides_file(overrides, &all_case_folded);
+    gen_all_case_folded_characters();
 
     fs::write(&dest_path, &overrides_file).unwrap();
 }
@@ -125,7 +127,24 @@ fn gen_overrides_map() -> HashMap<char, HashSet<char>> {
     overrides
 }
 
-fn gen_overrides_file(overrides: HashMap<char, HashSet<char>>) -> String {
+/// Generate the set of all code points that map to themselves under case folding.
+fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
+    let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap(); 
+
+    let mut builder = CodePointInversionListBuilder::new();
+
+    for i in 0..0x110000u32 {
+        if let Some (c) = char::from_u32(i) {
+            if c == case_mapper.simple_fold(c) {
+                builder.add_char(c);
+            }
+        }
+    }
+
+    builder.build()
+}
+
+fn gen_overrides_file(overrides: HashMap<char, HashSet<char>>, all_case_folded: &CodePointInversionList) -> String {
     let mut file = String::new();
 
     file.push_str("use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
@@ -174,8 +193,21 @@ pub fn has_case_closure_override(c: char) -> bool {
 pub fn get_case_closure_override(c: char) -> Option<&'static CodePointInversionList<'static>> {
   OVERRIDES_MAP.get(&c)
 }
-",
-    );
+
+const ALL_CASE_FOLDED_DATA",
+);
+
+    let inv_list_vec = all_case_folded.get_inversion_list_vec();
+    file.push_str(&format!(": [u32; {}] = {:?};\n\n", inv_list_vec.len(), inv_list_vec));
+
+    file.push_str("static ALL_CASE_FOLDED_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| {
+    CodePointInversionList::try_from_u32_inversion_list_slice(&ALL_CASE_FOLDED_DATA).unwrap()
+});
+
+pub fn all_case_folded_set() -> &'static CodePointInversionList<'static> {
+    &ALL_CASE_FOLDED_SET
+}
+");
 
     file
 }

@@ -15,3 +15,8 @@
 
 // Maps entire unicode properties
 /\p{Uppercase}/iu;
+/\p{Uppercase}/iv;
+
+// Inversion of unicode properties
+/[^\p{Uppercase}]/iu;
+/[^\p{Uppercase}]/iv;

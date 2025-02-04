@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-17:20",
+  loc: "1:1-21:22",
   body: [
     {
       type: "ExpressionStatement",
@@ -383,6 +383,74 @@
                           ],
                         },
                       ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:1-20:21",
+      kind: {
+        type: "Literal",
+        loc: "20:1-20:20",
+        raw: "/(?<𝑓𝑜𝑥>)/",
+        value: {
+          pattern: "(?<𝑓𝑜𝑥>)",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  index: 1,
+                  name: "𝑓𝑜𝑥",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:1-21:22",
+      kind: {
+        type: "Literal",
+        loc: "21:1-21:21",
+        raw: "/(?<𝑓𝑜𝑥>)/u",
+        value: {
+          pattern: "(?<𝑓𝑜𝑥>)",
+          flags: "u",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CaptureGroup",
+                  index: 1,
+                  name: "𝑓𝑜𝑥",
+                  alternatives: [
+                    {
+                      type: "Alternative",
+                      terms: [],
                     },
                   ],
                 },

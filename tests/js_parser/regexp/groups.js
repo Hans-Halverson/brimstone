@@ -15,3 +15,7 @@
 
 // Nested capture groups
 /(a(?<name>b(c)))/;
+
+// Unicode in named capture group
+/(?<𝑓𝑜𝑥>)/;
+/(?<𝑓𝑜𝑥>)/u;

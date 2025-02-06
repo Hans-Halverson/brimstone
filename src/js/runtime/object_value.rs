@@ -520,11 +520,26 @@ impl Handle<ObjectValue> {
     /// implementations as necessary.
     pub fn prevent_extensions(&mut self, cx: Context) -> EvalResult<bool> {
         if let Some(mut proxy_object) = self.as_proxy() {
-            proxy_object.prevent_extensions(cx)
-        } else {
-            self.ordinary_prevent_extensions()
+            return proxy_object.prevent_extensions(cx);
         }
+
+        if self.is_typed_array() {
+            if !is_typed_array_fixed_length(self.as_typed_array()) {
+                return Ok(false);
+            }
+        }
+
+        self.ordinary_prevent_extensions()
     }
+}
+
+/// IsTypedArrayFixedLength (https://tc39.es/ecma262/#sec-istypedarrayfixedlength)
+fn is_typed_array_fixed_length(typed_array: DynTypedArray) -> bool {
+    if typed_array.array_length().is_none() {
+        return false;
+    }
+
+    typed_array.viewed_array_buffer().is_fixed_length()
 }
 
 // Wrap all virtual methods for easy access

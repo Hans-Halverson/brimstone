@@ -22,6 +22,47 @@
       "built-ins/Object/freeze/typedarray-backed-by-resizable-buffer.js",
       "built-ins/String/prototype/replace/regexp-capture-by-index.js",
 
+      // Unicode properties of strings are not supported (e.g. RGI_Emoji), as they are not yet
+      // supported in icu4x.
+      "built-ins/RegExp/unicodeSets/generated/character-class-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-class-escape-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-class-escape-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-class-escape-union-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-class-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-class-union-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-property-escape-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-property-escape-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-property-escape-union-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/character-union-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-character-class-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-character-class.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-character-property-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-character.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-difference-string-literal.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-character-class-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-character-class.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-character-property-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-character.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-intersection-string-literal.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-character-class-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-character-class.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-character-property-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-character.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/property-of-strings-escape-union-string-literal.js",
+      "built-ins/RegExp/unicodeSets/generated/rgi-emoji-13.1.js",
+      "built-ins/RegExp/unicodeSets/generated/rgi-emoji-14.0.js",
+      "built-ins/RegExp/unicodeSets/generated/rgi-emoji-15.0.js",
+      "built-ins/RegExp/unicodeSets/generated/rgi-emoji-15.1.js",
+      "built-ins/RegExp/unicodeSets/generated/rgi-emoji-16.0.js",
+      "built-ins/RegExp/unicodeSets/generated/string-literal-difference-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/string-literal-intersection-property-of-strings-escape.js",
+      "built-ins/RegExp/unicodeSets/generated/string-literal-union-property-of-strings-escape.js",
+
       ////////////////////////////////////////
       //
       // Known divergences (Do not plan on fixing)
@@ -173,7 +214,6 @@
       "json-modules",
 
       // Other unimplemented features
-      "regexp-v-flag",
       "SharedArrayBuffer",
       "Atomics"
     ]

@@ -1,4 +1,4 @@
-use std::sync::LazyLock;
+use std::{collections::HashSet, sync::LazyLock};
 
 use case_closure_overrides::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
@@ -968,7 +968,15 @@ impl CompiledRegExpBuilder {
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
         let flags = self.current_flags();
-        let set = self.character_class_to_set(character_class);
+        let (set, strings) = self.character_class_to_set(character_class);
+
+        // First check strings if there are any
+        let mut join_block = None;
+        if !strings.is_empty() {
+            let join_block_id = self.new_block();
+            self.emit_class_string_disjunction(&strings, join_block_id);
+            join_block = Some(join_block_id);
+        }
 
         // If comparison is case insensitive then expand the set of code points to include the
         // case insensitive closure of all code points in the set.
@@ -982,44 +990,66 @@ impl CompiledRegExpBuilder {
         let is_check_inverted = character_class.is_inverted && !flags.has_unicode_sets_flag();
 
         self.emit_code_point_set(&set, is_check_inverted);
+
+        // If there is a join block (needed from string disjunction) then proceed to it
+        if let Some(join_block) = join_block {
+            self.emit_jump_instruction(join_block);
+            self.set_current_block(join_block);
+        }
     }
 
-    fn character_class_to_set<'a>(
+    fn character_class_to_set<'a, 'b>(
         &self,
-        character_class: &CharacterClass,
-    ) -> CodePointInversionList<'a> {
+        character_class: &'b CharacterClass,
+    ) -> (CodePointInversionList<'a>, HashSet<&'b Wtf8String>) {
         let mut set_builder = CodePointInversionListBuilder::new();
+        let mut strings = HashSet::new();
 
         let set = match character_class.expression_type {
             ClassExpressionType::Union => {
+                // Add code points and strings that are in any operand
                 for class_range in &character_class.operands {
-                    self.add_character_class_range_to_set(class_range, &mut set_builder);
+                    self.add_character_class_range_to_set(
+                        class_range,
+                        &mut set_builder,
+                        &mut strings,
+                    );
                 }
 
                 self.maybe_simple_case_folding(set_builder.build())
             }
             ClassExpressionType::Intersection => {
-                // Initialize set with the first operand
-                let first_set = self.character_class_range_to_set(&character_class.operands[0]);
+                // Initialize sets with the first operand
+                let (first_set, first_strings) =
+                    self.character_class_range_to_set(&character_class.operands[0]);
                 set_builder.add_set(&first_set);
+                strings = first_strings;
 
-                // Only retain code points that are in all operands
+                // Only retain code points and srings that are in all operands
                 for class_range in &character_class.operands[1..] {
-                    let other_set = self.character_class_range_to_set(class_range);
+                    let (other_set, other_strings) = self.character_class_range_to_set(class_range);
                     set_builder.retain_set(&other_set);
+                    strings.retain(|string| other_strings.contains(string));
                 }
 
                 set_builder.build()
             }
             ClassExpressionType::Difference => {
-                // Initialize set with the first operand
-                let first_set = self.character_class_range_to_set(&character_class.operands[0]);
+                // Initialize sets with the first operand
+                let (first_set, first_strings) =
+                    self.character_class_range_to_set(&character_class.operands[0]);
                 set_builder.add_set(&first_set);
+                strings = first_strings;
 
-                // Remove code points that are in later operands
+                // Remove code points and strings that are in later operands
                 for class_range in &character_class.operands[1..] {
-                    let other_set = self.character_class_range_to_set(class_range);
+                    let (other_set, other_strings) = self.character_class_range_to_set(class_range);
+
                     set_builder.remove_set(&other_set);
+
+                    for string in other_strings {
+                        strings.remove(string);
+                    }
                 }
 
                 set_builder.build()
@@ -1028,11 +1058,13 @@ impl CompiledRegExpBuilder {
 
         // Eagerly invert the set if in unicode sets mode
         let flags = self.current_flags();
-        if character_class.is_inverted && flags.has_unicode_sets_flag() {
+        let set = if character_class.is_inverted && flags.has_unicode_sets_flag() {
             self.complement_set(&set)
         } else {
             set
-        }
+        };
+
+        (set, strings)
     }
 
     /// Return the complement of a set when in unicode sets mode.
@@ -1053,13 +1085,17 @@ impl CompiledRegExpBuilder {
         complement_builder.build()
     }
 
-    fn character_class_range_to_set(
+    fn character_class_range_to_set<'a>(
         &self,
-        class_range: &ClassRange,
-    ) -> CodePointInversionList<'static> {
+        class_range: &'a ClassRange,
+    ) -> (CodePointInversionList<'static>, HashSet<&'a Wtf8String>) {
         let mut set_builder = CodePointInversionListBuilder::new();
-        self.add_character_class_range_to_set(class_range, &mut set_builder);
-        self.maybe_simple_case_folding(set_builder.build())
+        let mut strings = HashSet::new();
+
+        self.add_character_class_range_to_set(class_range, &mut set_builder, &mut strings);
+        let code_point_set = self.maybe_simple_case_folding(set_builder.build());
+
+        (code_point_set, strings)
     }
 
     /// MaybeSimpleCaseFolding (https://tc39.es/ecma262/#sec-maybesimplecasefolding)
@@ -1080,10 +1116,11 @@ impl CompiledRegExpBuilder {
         case_folded_set.build()
     }
 
-    fn add_character_class_range_to_set(
+    fn add_character_class_range_to_set<'a>(
         &self,
-        class_range: &ClassRange,
+        class_range: &'a ClassRange,
         set_builder: &mut CodePointInversionListBuilder,
+        strings_set_builder: &mut HashSet<&'a Wtf8String>,
     ) {
         match class_range {
             // Accumulate single and range char ranges
@@ -1166,9 +1203,23 @@ impl CompiledRegExpBuilder {
                 set_builder.add_set(&property_complement);
             }
             ClassRange::NestedClass(nested_class) => {
-                set_builder.add_set(&self.character_class_to_set(nested_class));
+                let (code_points_set, string_set) = self.character_class_to_set(nested_class);
+                set_builder.add_set(&code_points_set);
+                strings_set_builder.extend(string_set.iter());
             }
-            ClassRange::StringDisjunction(_) => unimplemented!("\\q{{...}}"),
+            ClassRange::StringDisjunction(disjunction) => {
+                for string in &disjunction.alternatives {
+                    // Check if the string has exactly one code point (only need to check at most
+                    // the first two code points to be sure).
+                    if string.iter_code_points().take(2).count() == 1 {
+                        // Treat as a regular code point instead of a string
+                        set_builder.add32(string.iter_code_points().next().unwrap());
+                    } else {
+                        // Treat as a string
+                        strings_set_builder.insert(string);
+                    }
+                }
+            }
         }
     }
 
@@ -1241,6 +1292,59 @@ impl CompiledRegExpBuilder {
                 self.emit_compare_between_instruction(start, end + 1);
             }
         }
+    }
+
+    fn emit_class_string_disjunction(
+        &mut self,
+        strings: &HashSet<&Wtf8String>,
+        success_block: BlockId,
+    ) {
+        let mut strings = strings.iter().collect::<Vec<_>>();
+
+        // Order strings by length, checking the longest first. Break ties consistently by comparing
+        // the strings as bytes.
+        strings.sort_by(|a, b| {
+            let len_cmp = b.len().cmp(&a.len());
+            len_cmp.then_with(|| a.as_bytes().cmp(b.as_bytes()))
+        });
+
+        // Set up blocks for the branch instructions between alternatives. First branch can always
+        // occur in the current block.
+        let mut branch_block_ids = vec![self.current_block_id];
+        for _ in 0..strings.len() - 1 {
+            branch_block_ids.push(self.new_block())
+        }
+
+        // Set up blocks for each alternative
+        let mut alternative_block_ids = vec![];
+        for _ in 0..strings.len() {
+            alternative_block_ids.push(self.new_block())
+        }
+
+        // Block that all alternatives join to at the end
+        let join_block_id = self.new_block();
+
+        // Emit branch chain for all but the last alternative
+        for i in 0..strings.len() - 1 {
+            // Branch between this alternative and the next branch block
+            self.set_current_block(branch_block_ids[i]);
+            self.emit_branch_instruction(alternative_block_ids[i], branch_block_ids[i + 1]);
+        }
+
+        // Emit branch between the last alternative and the join block
+        self.set_current_block(branch_block_ids[branch_block_ids.len() - 1]);
+        self.emit_branch_instruction(alternative_block_ids[strings.len() - 1], join_block_id);
+
+        // Emit each alternative block, trying to match the literal and proceeding to the success
+        // block if successful.
+        for (i, string) in strings.iter().enumerate() {
+            self.set_current_block(alternative_block_ids[i]);
+            self.emit_literal(string);
+            self.emit_jump_instruction(success_block);
+        }
+
+        // Disjunction ends at start of join block
+        self.set_current_block(join_block_id);
     }
 
     fn emit_lookaround(&mut self, lookaround: &Lookaround) -> SubExpressionInfo {

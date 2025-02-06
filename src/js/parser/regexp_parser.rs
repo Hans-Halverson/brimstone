@@ -26,7 +26,7 @@ use super::{
     regexp::{
         Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
         CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
-        RegExp, RegExpFlags, Term,
+        RegExp, RegExpFlags, StringDisjunction, Term,
     },
     ParseError, ParseResult,
 };
@@ -828,7 +828,8 @@ impl<T: LexerStream> RegExpParser<T> {
             | ClassRange::NotWhitespace
             | ClassRange::UnicodeProperty(_)
             | ClassRange::NotUnicodeProperty(_)
-            | ClassRange::NestedClass(_) => {
+            | ClassRange::NestedClass(_)
+            | ClassRange::StringDisjunction(_) => {
                 self.error(self.pos(), ParseError::RegExpCharacterClassInRange)
             }
             ClassRange::Range(..) => unreachable!("Ranges are not returned by parse_class_atom"),
@@ -894,6 +895,9 @@ impl<T: LexerStream> RegExpParser<T> {
                     self.expect('}')?;
 
                     Ok(ClassRange::NotUnicodeProperty(property))
+                }
+                'q' if self.flags.has_unicode_sets_flag() => {
+                    Ok(ClassRange::StringDisjunction(self.parse_string_disjunction()?))
                 }
                 // After checking class-specific escape sequences, must be a regular regexp
                 // escape sequence.
@@ -984,6 +988,19 @@ impl<T: LexerStream> RegExpParser<T> {
             return Ok(ClassRange::NestedClass(nested_class));
         }
 
+        if let Some(code_point) = self.parse_class_set_character_reserved_syntax()? {
+            return Ok(ClassRange::Single(code_point));
+        }
+
+        // Otherwise defer to standard character class atom parsing
+        self.parse_class_atom()
+    }
+
+    /// Parses the following parts of ClassSetCharacter (https://tc39.es/ecma262/#prod-ClassSetCharacter)
+    ///   \ ClassSetReservedPunctuator
+    ///   [lookahead ∉ ClassSetReservedDoublePunctuator]
+    ///   not ClassSetSyntaxCharacter
+    fn parse_class_set_character_reserved_syntax(&mut self) -> ParseResult<Option<u32>> {
         // First handle `v`-mode specific syntax
         match_u32!(match self.current() {
             '\\' => match_u32!(match self.peek() {
@@ -991,7 +1008,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 code_point @ ('&' | '-' | '!' | '#' | '%' | ',' | ':' | ';' | '<' | '=' | '>'
                 | '@' | '`' | '~') => {
                     self.advance2();
-                    return Ok(ClassRange::Single(code_point));
+                    return Ok(Some(code_point));
                 }
                 _ => {}
             }),
@@ -1008,8 +1025,25 @@ impl<T: LexerStream> RegExpParser<T> {
             _ => {}
         });
 
-        // Otherwise defer to standard character class atom parsing
-        self.parse_class_atom()
+        Ok(None)
+    }
+
+    fn parse_class_set_character(&mut self) -> ParseResult<u32> {
+        if let Some(code_point) = self.parse_class_set_character_reserved_syntax()? {
+            return Ok(code_point);
+        }
+
+        if self.current() == '\\' as u32 {
+            // '\b' is class specific and not included in common regexp escape sequences
+            if self.peek() == 'b' as u32 {
+                self.advance2();
+                return Ok('\u{0008}' as u32);
+            }
+
+            return self.parse_regexp_escape_sequence();
+        }
+
+        self.parse_unicode_codepoint()
     }
 
     fn parse_unicode_sets_character_class_range(
@@ -1180,6 +1214,39 @@ impl<T: LexerStream> RegExpParser<T> {
         }
 
         string_builder
+    }
+
+    fn parse_string_disjunction(&mut self) -> ParseResult<StringDisjunction> {
+        self.advance2();
+        self.expect('{')?;
+
+        let mut alternatives = vec![];
+
+        while self.current() != '}' as u32 {
+            let alternative = self.parse_string_disjunction_alternative()?;
+            if !alternative.is_empty() {
+                alternatives.push(alternative);
+            }
+
+            if !self.eat('|') {
+                break;
+            }
+        }
+
+        self.expect('}')?;
+
+        Ok(StringDisjunction { alternatives })
+    }
+
+    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<Wtf8String> {
+        let mut string = Wtf8String::new();
+
+        while self.current() != '|' as u32 && self.current() != '}' as u32 {
+            let code_point = self.parse_class_set_character()?;
+            string.push(code_point);
+        }
+
+        Ok(string)
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {

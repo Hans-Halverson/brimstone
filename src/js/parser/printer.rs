@@ -6,7 +6,7 @@ use super::loc::{find_line_col_for_pos, Loc};
 use super::regexp::{
     Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
     ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
-    Term,
+    StringDisjunction, Term,
 };
 use super::source::Source;
 
@@ -1369,6 +1369,9 @@ impl<'a> Printer<'a> {
                 self.print_str(&format!("NotUnicodeProperty({:?})", property))
             }
             ClassRange::NestedClass(class) => self.print_regexp_character_class(class),
+            ClassRange::StringDisjunction(disjunction) => {
+                self.print_regexp_string_disjunction(disjunction)
+            }
         }
     }
 
@@ -1395,6 +1398,12 @@ impl<'a> Printer<'a> {
             ClassExpressionType::Difference => "Difference",
         };
         self.print_str(str);
+    }
+
+    fn print_regexp_string_disjunction(&mut self, disjunction: &StringDisjunction) {
+        self.start_regexp_node("StringDisjunction");
+        self.array_property("alternatives", &disjunction.alternatives, Printer::print_wtf8_string);
+        self.end_node();
     }
 
     fn print_regexp_backreference(&mut self, backreference: &Backreference) {

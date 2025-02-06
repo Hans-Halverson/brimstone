@@ -1,0 +1,462 @@
+{
+  type: "Program",
+  loc: "1:1-16:13",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "1:1-1:11",
+      kind: {
+        type: "Literal",
+        loc: "1:1-1:10",
+        raw: "/[\q{}]/v",
+        value: {
+          pattern: "[\q{}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:12",
+      kind: {
+        type: "Literal",
+        loc: "2:1-2:11",
+        raw: "/[\q{a}]/v",
+        value: {
+          pattern: "[\q{a}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "3:1-3:14",
+      kind: {
+        type: "Literal",
+        loc: "3:1-3:13",
+        raw: "/[\q{abc}]/v",
+        value: {
+          pattern: "[\q{abc}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "abc",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:1-5:14",
+      kind: {
+        type: "Literal",
+        loc: "5:1-5:13",
+        raw: "/[\q{a|b}]/v",
+        value: {
+          pattern: "[\q{a|b}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                        "b",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:20",
+      kind: {
+        type: "Literal",
+        loc: "6:1-6:19",
+        raw: "/[\q{ab|cde|fg}]/v",
+        value: {
+          pattern: "[\q{ab|cde|fg}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "ab",
+                        "cde",
+                        "fg",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "8:1-8:13",
+      kind: {
+        type: "Literal",
+        loc: "8:1-8:12",
+        raw: "/[\q{|a}]/v",
+        value: {
+          pattern: "[\q{|a}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "9:1-9:15",
+      kind: {
+        type: "Literal",
+        loc: "9:1-9:14",
+        raw: "/[\q{|||a}]/v",
+        value: {
+          pattern: "[\q{|||a}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:1-10:13",
+      kind: {
+        type: "Literal",
+        loc: "10:1-10:12",
+        raw: "/[\q{a|}]/v",
+        value: {
+          pattern: "[\q{a|}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "11:1-11:15",
+      kind: {
+        type: "Literal",
+        loc: "11:1-11:14",
+        raw: "/[\q{a|||}]/v",
+        value: {
+          pattern: "[\q{a|||}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "a",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "12:1-12:14",
+      kind: {
+        type: "Literal",
+        loc: "12:1-12:13",
+        raw: "/[\q{|||}]/v",
+        value: {
+          pattern: "[\q{|||}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:1-14:13",
+      kind: {
+        type: "Literal",
+        loc: "14:1-14:12",
+        raw: "/[\q{\b}]/v",
+        value: {
+          pattern: "[\q{\b}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "15:1-15:19",
+      kind: {
+        type: "Literal",
+        loc: "15:1-15:18",
+        raw: "/[\q{\u{202F}}]/v",
+        value: {
+          pattern: "[\q{\u{202F}}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        " ",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "16:1-16:13",
+      kind: {
+        type: "Literal",
+        loc: "16:1-16:12",
+        raw: "/[\q{\%}]/v",
+        value: {
+          pattern: "[\q{\%}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    {
+                      type: "StringDisjunction",
+                      alternatives: [
+                        "%",
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

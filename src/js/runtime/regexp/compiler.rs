@@ -1168,6 +1168,7 @@ impl CompiledRegExpBuilder {
             ClassRange::NestedClass(nested_class) => {
                 set_builder.add_set(&self.character_class_to_set(nested_class));
             }
+            ClassRange::StringDisjunction(_) => unimplemented!("\\q{{...}}"),
         }
     }
 

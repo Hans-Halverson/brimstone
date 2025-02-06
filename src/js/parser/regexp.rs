@@ -180,6 +180,8 @@ pub enum ClassRange {
     NotUnicodeProperty(UnicodeProperty),
     /// A nested character class
     NestedClass(CharacterClass),
+    /// A string disjunction: `\q{...}`
+    StringDisjunction(StringDisjunction),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -210,6 +212,11 @@ impl CharacterClass {
             operands: vec![shorthand],
         }
     }
+}
+
+pub struct StringDisjunction {
+    /// The individual options in this disjunction, e.g. `[a, b, c]` for `\q{a|b|c}`
+    pub alternatives: Vec<Wtf8String>,
 }
 
 pub struct Lookaround {

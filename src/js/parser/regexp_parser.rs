@@ -359,7 +359,8 @@ impl<T: LexerStream> RegExpParser<T> {
             }
             '[' => {
                 if self.flags.has_unicode_sets_flag() {
-                    Term::CharacterClass(self.parse_unicode_sets_character_class()?)
+                    let (character_class, _) = self.parse_unicode_sets_character_class()?;
+                    Term::CharacterClass(character_class)
                 } else {
                     self.parse_standard_character_class()?
                 }
@@ -896,9 +897,6 @@ impl<T: LexerStream> RegExpParser<T> {
 
                     Ok(ClassRange::NotUnicodeProperty(property))
                 }
-                'q' if self.flags.has_unicode_sets_flag() => {
-                    Ok(ClassRange::StringDisjunction(self.parse_string_disjunction()?))
-                }
                 // After checking class-specific escape sequences, must be a regular regexp
                 // escape sequence.
                 _ => Ok(ClassRange::Single(self.parse_regexp_escape_sequence()?)),
@@ -911,47 +909,74 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     /// Parse a character class when in `v` mode.
-    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<CharacterClass> {
+    ///
+    /// Return whether the character class may contain strings.
+    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<(CharacterClass, bool)> {
         self.advance();
 
         let is_inverted = self.eat('^');
 
         // Character class may be empty
         if self.eat(']') {
-            return Ok(CharacterClass {
-                expression_type: ClassExpressionType::Union,
-                is_inverted,
-                operands: vec![],
-            });
+            return Ok((
+                CharacterClass {
+                    expression_type: ClassExpressionType::Union,
+                    is_inverted,
+                    operands: vec![],
+                },
+                false,
+            ));
         }
 
         let first_operand_pos = self.pos();
-        let mut operands = vec![self.parse_class_set_operand()?];
+        let (first_operand, first_operand_may_contain_strings) = self.parse_class_set_operand()?;
+        let mut operands = vec![first_operand];
 
         let expression_type;
+        let mut may_contain_strings;
 
         if self.is_at_class_intersection_operator() {
             // Intersection character class
             expression_type = ClassExpressionType::Intersection;
 
+            // All operands must contain strings for the entire intersection to contain strings
+            may_contain_strings = true;
+
             while self.is_at_class_intersection_operator() {
                 self.advance2();
-                operands.push(self.parse_class_set_operand()?);
+
+                let (operand, operand_may_contain_strings) = self.parse_class_set_operand()?;
+
+                // If any operand does not contain strings, the entire intersection also cannot
+                if !operand_may_contain_strings {
+                    may_contain_strings = false;
+                }
+
+                operands.push(operand);
             }
         } else if self.is_at_class_difference_operator() {
             // Difference character class
             expression_type = ClassExpressionType::Difference;
 
+            // The entire difference may contains strings if the first operand does
+            may_contain_strings = first_operand_may_contain_strings;
+
             while self.is_at_class_difference_operator() {
                 self.advance2();
-                operands.push(self.parse_class_set_operand()?);
+
+                let (operand, _) = self.parse_class_set_operand()?;
+                operands.push(operand);
             }
         } else if self.current() == ']' as u32 {
-            // Empty union character class
+            // Single operand union
             expression_type = ClassExpressionType::Union;
+            may_contain_strings = first_operand_may_contain_strings;
         } else {
             // Non-empty union character class
             expression_type = ClassExpressionType::Union;
+
+            // The entire union may contain strings if any operand does
+            may_contain_strings = false;
 
             // Check if the first operand is actually the left side of a range
             if self.current() == '-' as u32 {
@@ -964,7 +989,11 @@ impl<T: LexerStream> RegExpParser<T> {
             // Parse adjacent operands to the union class
             while self.current() != ']' as u32 {
                 let operand_start_pos = self.pos();
-                let operand = self.parse_class_set_operand()?;
+                let (operand, operand_has_strings) = self.parse_class_set_operand()?;
+
+                if operand_has_strings {
+                    may_contain_strings = true;
+                }
 
                 // Check if the operand is actually the left side of a range
                 if self.current() == '-' as u32 {
@@ -979,21 +1008,34 @@ impl<T: LexerStream> RegExpParser<T> {
 
         self.expect(']')?;
 
-        Ok(CharacterClass { expression_type, is_inverted, operands })
+        // Inverted character classes cannot contain strings
+        if may_contain_strings && is_inverted {
+            return self.error(first_operand_pos, ParseError::InvertedCharacterClassContainStrings);
+        }
+
+        Ok((CharacterClass { expression_type, is_inverted, operands }, may_contain_strings))
     }
 
-    fn parse_class_set_operand(&mut self) -> ParseResult<ClassRange> {
+    /// Parse a single ClassSetOperand, returning whether it MayContainStrings.
+    fn parse_class_set_operand(&mut self) -> ParseResult<(ClassRange, bool)> {
         if self.current() == '[' as u32 {
-            let nested_class = self.parse_unicode_sets_character_class()?;
-            return Ok(ClassRange::NestedClass(nested_class));
+            let (nested_class, may_contain_strings) = self.parse_unicode_sets_character_class()?;
+            return Ok((ClassRange::NestedClass(nested_class), may_contain_strings));
         }
 
         if let Some(code_point) = self.parse_class_set_character_reserved_syntax()? {
-            return Ok(ClassRange::Single(code_point));
+            return Ok((ClassRange::Single(code_point), false));
+        }
+
+        // String disjunction \q{...}
+        if self.current() == '\\' as u32 && self.peek() == 'q' as u32 {
+            let (string_disjunction, may_contain_strings) = self.parse_string_disjunction()?;
+            return Ok((ClassRange::StringDisjunction(string_disjunction), may_contain_strings));
         }
 
         // Otherwise defer to standard character class atom parsing
-        self.parse_class_atom()
+        let atom = self.parse_class_atom()?;
+        Ok((atom, false))
     }
 
     /// Parses the following parts of ClassSetCharacter (https://tc39.es/ecma262/#prod-ClassSetCharacter)
@@ -1054,7 +1096,7 @@ impl<T: LexerStream> RegExpParser<T> {
         // Skip the `-` character
         self.advance();
 
-        let end_operand = self.parse_class_set_operand()?;
+        let (end_operand, _) = self.parse_class_set_operand()?;
 
         let start = self.class_atom_to_range_bound(start_operand)?;
         let end = self.class_atom_to_range_bound(end_operand)?;
@@ -1216,37 +1258,62 @@ impl<T: LexerStream> RegExpParser<T> {
         string_builder
     }
 
-    fn parse_string_disjunction(&mut self) -> ParseResult<StringDisjunction> {
+    /// Parses string disjunction syntax, starting at the opening `\`.
+    ///
+    /// Return the string disjunction, and whether the disjunction MayContainStrings.
+    fn parse_string_disjunction(&mut self) -> ParseResult<(StringDisjunction, bool)> {
         self.advance2();
         self.expect('{')?;
 
         let mut alternatives = vec![];
 
+        // Keep track of whether this disjunction contains strings, as opposed to contains only
+        // single code points.
+        //
+        // Note that this means the empty string is considered a string. So initially check for an
+        // entirely empty disjunction.
+        let mut may_contain_strings = self.current() == '}' as u32;
+
         while self.current() != '}' as u32 {
-            let alternative = self.parse_string_disjunction_alternative()?;
+            let (alternative, len) = self.parse_string_disjunction_alternative()?;
+
             if !alternative.is_empty() {
                 alternatives.push(alternative);
             }
 
+            if len != 1 {
+                may_contain_strings = true;
+            }
+
             if !self.eat('|') {
+                break;
+            }
+
+            // Check for a trailing `|` which means there is a final empty alternative
+            if self.current() == '}' as u32 {
+                may_contain_strings = true;
                 break;
             }
         }
 
         self.expect('}')?;
 
-        Ok(StringDisjunction { alternatives })
+        Ok((StringDisjunction { alternatives }, may_contain_strings))
     }
 
-    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<Wtf8String> {
+    /// Parse a single alternative in a class string disjunction. Return both the string and its
+    /// length in code points.
+    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<(Wtf8String, u64)> {
         let mut string = Wtf8String::new();
+        let mut num_code_points = 0;
 
         while self.current() != '|' as u32 && self.current() != '}' as u32 {
             let code_point = self.parse_class_set_character()?;
             string.push(code_point);
+            num_code_points += 1;
         }
 
-        Ok(string)
+        Ok((string, num_code_points))
     }
 
     fn parse_identifier(&mut self) -> ParseResult<String> {

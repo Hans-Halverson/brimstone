@@ -17,9 +17,6 @@
       "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
       "language/statements/with/set-mutable-binding-idref-with-proxy-env.js",
 
-      // Misc bugs
-      "built-ins/String/prototype/replace/regexp-capture-by-index.js",
-
       // Unicode properties of strings are not supported (e.g. RGI_Emoji), as they are not yet
       // supported in icu4x.
       "built-ins/RegExp/unicodeSets/generated/character-class-difference-property-of-strings-escape.js",

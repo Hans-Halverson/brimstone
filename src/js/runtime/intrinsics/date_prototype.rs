@@ -1064,7 +1064,7 @@ impl DatePrototype {
         let milliseconds_arg = get_argument(cx, arguments, 0);
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
 
-        if milliseconds.is_nan() {
+        if date_value.is_nan() {
             return Ok(cx.nan());
         }
 

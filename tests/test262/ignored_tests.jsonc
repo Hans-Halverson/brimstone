@@ -18,7 +18,6 @@
       "language/statements/with/set-mutable-binding-idref-with-proxy-env.js",
 
       // Misc bugs
-      "built-ins/Date/prototype/setUTCMilliseconds/date-value-read-before-tonumber-when-date-is-invalid.js",
       "built-ins/Object/freeze/typedarray-backed-by-resizable-buffer.js",
       "built-ins/String/prototype/replace/regexp-capture-by-index.js",
 

@@ -1541,21 +1541,23 @@ impl SubstitutionTemplate {
                         continue;
                     }
 
-                    // If index is multiple digits, check if only the first digit is in range
-                    if index >= 11 {
+                    // If index is multiple digits but out of range, instead treat as a single digit
+                    // followed by a literal.
+                    if index >= 10 {
+                        // Check if the first digit is in range
                         let first_digit_index = index / 10;
                         if first_digit_index <= indexed_captures.len() {
                             if let Some(captured_string) =
                                 indexed_captures.get(first_digit_index - 1).unwrap()
                             {
                                 string_parts.push(*captured_string);
-
-                                // Append second digit as a literal
-                                let second_digit_char = (index % 10) as u32 + '0' as u32;
-                                let second_digit_string =
-                                    FlatString::from_code_point(cx, second_digit_char);
-                                string_parts.push(second_digit_string.as_string().to_handle())
                             }
+
+                            // Append second digit as a literal
+                            let second_digit_char = (index % 10) as u32 + '0' as u32;
+                            let second_digit_string =
+                                FlatString::from_code_point(cx, second_digit_char);
+                            string_parts.push(second_digit_string.as_string().to_handle());
 
                             continue;
                         }

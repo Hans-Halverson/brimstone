@@ -4,7 +4,7 @@ use super::{
     abstract_operations::has_property,
     boxed_value::BoxedValue,
     collections::InlineArray,
-    error::{err_assign_constant, err_cannot_set_property},
+    error::{err_assign_constant, err_cannot_set_property, err_not_defined},
     gc::{HeapItem, HeapObject, HeapVisitor},
     get,
     module::source_text_module::SourceTextModule,
@@ -204,6 +204,7 @@ impl Handle<Scope> {
         &self,
         cx: Context,
         name: Handle<StringValue>,
+        is_strict: bool,
     ) -> EvalResult<Option<Handle<Value>>> {
         // Reuse handles while walking scope chain
         let mut object_handle = Handle::<ObjectValue>::empty(cx);
@@ -234,6 +235,16 @@ impl Handle<Scope> {
                 let key = name.cast::<PropertyKey>();
 
                 if scope.has_object_binding(cx, object_handle, key)? {
+                    // Must check if property exists again in GetBindingValue
+                    let still_exists = has_property(cx, object_handle, key)?;
+                    if !still_exists {
+                        if is_strict {
+                            return err_not_defined(cx, name);
+                        } else {
+                            return Ok(Some(cx.undefined()));
+                        }
+                    }
+
                     let value = get(cx, object_handle, key)?;
                     return Ok(Some(value));
                 }
@@ -306,6 +317,12 @@ impl Handle<Scope> {
                 let key = name.cast::<PropertyKey>();
 
                 if scope.has_object_binding(cx, object_handle, key)? {
+                    // Must check if property exists again in SetMutableBinding
+                    let still_exists = has_property(cx, object_handle, key)?;
+                    if !still_exists && is_strict {
+                        return err_not_defined(cx, name);
+                    }
+
                     let success = object_handle.set(cx, key, value, object_handle.into())?;
                     if !success && is_strict {
                         return err_cannot_set_property(cx, name);

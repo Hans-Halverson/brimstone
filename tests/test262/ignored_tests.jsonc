@@ -11,12 +11,6 @@
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 
-      // Missing call to `has` during dynamic lookup of proxy
-      "language/statements/with/get-binding-value-call-with-proxy-env.js",
-      "language/statements/with/get-binding-value-idref-with-proxy-env.js",
-      "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
-      "language/statements/with/set-mutable-binding-idref-with-proxy-env.js",
-
       // Unicode properties of strings are not supported (e.g. RGI_Emoji), as they are not yet
       // supported in icu4x.
       "built-ins/RegExp/unicodeSets/generated/character-class-difference-property-of-strings-escape.js",
@@ -182,6 +176,9 @@
       "language/expressions/compound-assignment/S11.13.2_A7.7_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.8_T4.js",
       "language/expressions/compound-assignment/S11.13.2_A7.9_T4.js",
+
+      // Compound member assignment resolves LHS twice
+      "language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js",
 
       // Update expressions call GetValue on reference twice 
       "language/statements/with/unscopables-inc-dec.js",

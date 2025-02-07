@@ -2512,8 +2512,9 @@ impl VM {
             let name = name.as_string().to_handle();
 
             let scope = self.scope().to_handle();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-            if let Some(value) = scope.lookup(cx, name)? {
+            if let Some(value) = scope.lookup(cx, name, is_strict)? {
                 self.write_register(dest, *value);
                 Ok(())
             } else {

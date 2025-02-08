@@ -1,4 +1,3 @@
 Error: 
   at get value (tests/js_error/source_locations/expression/yield_star/next_result_async_get_named_property_value_throws_module.js:8:19)
   at generator (tests/js_error/source_locations/expression/yield_star/next_result_async_get_named_property_value_throws_module.js:17:3)
-  at <anonymous> (<native>)

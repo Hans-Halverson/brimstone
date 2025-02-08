@@ -141,9 +141,11 @@ impl Callback1Task {
         Self { func, arg }
     }
 
-    fn execute(&self, cx: Context) -> EvalResult<()> {
+    fn execute(&self, mut cx: Context) -> EvalResult<()> {
         let func = self.func.to_handle(cx);
         let arg = self.arg.to_handle(cx);
+
+        cx.vm().mark_stack_trace_top();
 
         call(cx, func, cx.undefined(), &[arg])?;
 
@@ -177,6 +179,7 @@ impl AwaitResumeTask {
         };
 
         if let Some(generator) = generator.as_generator() {
+            cx.vm().mark_stack_trace_top();
             cx.vm()
                 .resume_generator(generator, completion_value, completion_type)?;
         } else {
@@ -186,6 +189,7 @@ impl AwaitResumeTask {
             // to drain the async queue when the VM stack is empty.
             cx.vm()
                 .push_initial_realm_stack_frame(async_generator.realm_ptr())?;
+            cx.vm().mark_stack_trace_top();
 
             async_generator_resume(cx, async_generator, completion_value, completion_type);
 
@@ -224,6 +228,8 @@ impl PromiseThenReactionTask {
         if let Some(realm) = self.realm {
             cx.vm().push_initial_realm_stack_frame(realm)?;
         }
+
+        cx.vm().mark_stack_trace_top();
 
         let result = self.result.to_handle(cx);
         let capability = self.capability.map(|c| c.to_handle());
@@ -293,6 +299,7 @@ impl PromiseThenSettleTask {
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
         cx.vm().push_initial_realm_stack_frame(self.realm)?;
+        cx.vm().mark_stack_trace_top();
 
         let then_function = self.then_function.to_handle();
         let resolution = self.resolution.to_handle().into();

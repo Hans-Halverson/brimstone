@@ -37,7 +37,7 @@ use super::{constant_table::ConstantTable, function::Closure};
 ///     +------------------+                     ^                ^
 ///     |       regn       |  (last register)    | callee's frame |
 ///     +------------------+  <- sp              +----------------+
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct StackFrame {
     /// Stack frames are centered around the frame pointer
     fp: *const StackSlotValue,

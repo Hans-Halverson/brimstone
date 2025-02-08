@@ -108,6 +108,7 @@ pub fn load_requested_modules_static_resolve(
 
     // Mark the module resolution phase as complete
     cx.has_finished_module_resolution = true;
+    cx.vm().mark_stack_trace_top();
 
     let evaluate_promise = module_evaluate(cx, module);
 

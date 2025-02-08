@@ -144,6 +144,10 @@ pub struct VM {
     /// The frame pointer
     fp: *mut StackSlotValue,
 
+    /// The stack frame directly above the last stack frame that should breported in a stack trace,
+    /// if there is one.
+    stack_trace_top: Option<StackFrame>,
+
     stack: Vec<StackSlotValue>,
 }
 
@@ -194,6 +198,18 @@ impl VM {
     fn stack_ptr_end(&self) -> *const StackSlotValue {
         self.stack.as_ptr_range().end
     }
+
+    pub fn stack_trace_top(&self) -> Option<StackFrame> {
+        self.stack_trace_top
+    }
+
+    pub fn mark_stack_trace_top(&mut self) {
+        self.stack_trace_top = if self.fp().is_null() {
+            None
+        } else {
+            Some(self.stack_frame())
+        };
+    }
 }
 
 impl VM {
@@ -210,6 +226,7 @@ impl VM {
             pc: std::ptr::null(),
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
+            stack_trace_top: None,
 
             stack,
         };

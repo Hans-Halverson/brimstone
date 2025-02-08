@@ -1,4 +1,4 @@
 Error: test
-  at bar (/Users/hanshalverson/Documents/brimstone/tests/js_error/stack_trace/script_top_level_error.js:2:9)
-  at <module> (/Users/hanshalverson/Documents/brimstone/tests/js_error/stack_trace/script_top_level_error.js:5:1)
+  at bar (tests/js_error/stack_trace/script_top_level_error.js:2:9)
+  at <module> (tests/js_error/stack_trace/script_top_level_error.js:5:1)
   at <anonymous> (<native>)

@@ -1,4 +1,9 @@
 Error: 
+   ┌ tests/js_error/source_locations/expression/yield_star/throw_result_get_named_property_done_throws.js:10:19
+   |
+10 |             throw new Error();
+   |                   ^
+Stack:
   at get done (tests/js_error/source_locations/expression/yield_star/throw_result_get_named_property_done_throws.js:10:19)
   at generator (tests/js_error/source_locations/expression/yield_star/throw_result_get_named_property_done_throws.js:20:3)
   at throw (<native>)

@@ -1,2 +1,7 @@
 TypeError: invalid instanceof operand
+  ┌ tests/js_error/source_locations/expression/binary/instanceof.js:1:6
+  |
+1 | ({}) instanceof null
+  |      ^
+Stack:
   at <global> (tests/js_error/source_locations/expression/binary/instanceof.js:1:6)

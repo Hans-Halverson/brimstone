@@ -3,12 +3,10 @@ use crate::js::parser::loc::find_line_col_for_pos;
 use super::{
     bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
     collections::BsArray,
-    console::format_error_one_line,
     gc::{HandleScope, HeapObject, HeapVisitor},
-    intrinsics::{error_constructor::ErrorObject, rust_runtime::return_undefined},
+    intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::return_undefined},
     object_descriptor::ObjectKind,
     source_file::SourceFile,
-    string_value::FlatString,
     Context, Handle, HeapPtr,
 };
 
@@ -114,17 +112,15 @@ pub fn create_current_stack_frame_info(
 /// cached from the time that the error was created.
 pub fn create_stack_trace(
     mut cx: Context,
-    error: Handle<ErrorObject>,
     stack_frame_info: Handle<StackFrameInfoArray>,
-) -> HeapPtr<FlatString> {
+) -> CachedStackTraceInfo {
     // Do any preparatory work that may allocate
     prepare_for_stack_trace(cx, stack_frame_info);
 
-    // Stack trace starts with the error itself
-    let mut stack_trace = format_error_one_line(cx, error.into());
-    stack_trace.push('\n');
+    let mut stack_trace = String::new();
+    let mut first_source_file_line_col = None;
 
-    for stack_frame in stack_frame_info.as_slice() {
+    for (i, stack_frame) in stack_frame_info.as_slice().iter().enumerate() {
         // Each line of the stack trace starts indented
         stack_trace.push_str("  at ");
 
@@ -161,13 +157,25 @@ pub fn create_stack_trace(
 
                 // Append the line and column to the function name
                 stack_trace.push_str(&format!(":{}:{}", line, column));
+
+                // Save the source position if it is for the first frame
+                if i == 0 {
+                    let source_file = func.source_file_ptr().unwrap();
+                    first_source_file_line_col = Some((source_file, line, column));
+                }
             }
         }
 
-        stack_trace.push_str(")\n");
+        stack_trace.push(')');
+
+        if i != stack_frame_info.len() - 1 {
+            stack_trace.push('\n');
+        }
     }
 
-    cx.alloc_string_ptr(&stack_trace)
+    let frames = cx.alloc_string_ptr(&stack_trace);
+
+    CachedStackTraceInfo { frames, source_file_line_col: first_source_file_line_col }
 }
 
 /// Prepare for a stack trace to be formatted. Perform any allocations that will be needed, such as

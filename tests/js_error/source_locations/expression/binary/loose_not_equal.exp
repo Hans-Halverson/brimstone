@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/binary/loose_not_equal.js:1:40
+  |
+1 | 1 != ({ [Symbol.toPrimitive]() { throw new Error() } })
+  |                                        ^
+Stack:
   at <anonymous> (tests/js_error/source_locations/expression/binary/loose_not_equal.js:1:40)
   at <global> (tests/js_error/source_locations/expression/binary/loose_not_equal.js:1:3)

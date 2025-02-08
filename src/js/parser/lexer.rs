@@ -1335,7 +1335,6 @@ impl<'a> Lexer<'a> {
                 Ok(code_point)
             }
             Err(byte_length) => {
-                println!("bl is {byte_length}");
                 self.advance_n(byte_length);
                 let loc = self.mark_loc(self.pos - byte_length);
                 self.error(loc, ParseError::InvalidUnicode)

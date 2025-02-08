@@ -1,4 +1,9 @@
 TypeError: iterator result must be an object
+   ┌ tests/js_error/source_locations/expression/yield_star/next_check_iterator_result_object_throws.js:12:3
+   |
+12 |   yield* iterable;
+   |   ^
+Stack:
   at generator (tests/js_error/source_locations/expression/yield_star/next_check_iterator_result_object_throws.js:12:3)
   at next (<native>)
   at <global> (tests/js_error/source_locations/expression/yield_star/next_check_iterator_result_object_throws.js:16:1)

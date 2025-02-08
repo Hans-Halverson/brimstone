@@ -96,6 +96,21 @@ impl Handle<SourceFile> {
 
         line_offsets_object
     }
+
+    pub fn get_line(&mut self, cx: Context, line: usize) -> String {
+        let offsets = self.line_offsets_ptr(cx);
+        let start = offsets.as_slice()[line] as usize;
+
+        let end = if line + 1 < offsets.len() {
+            // Exclude the newline character if one exists
+            offsets.as_slice()[line + 1] as usize - 1
+        } else {
+            self.contents.len()
+        };
+
+        let line_contents = &self.contents.as_slice()[start..end];
+        String::from_utf8_lossy(line_contents).to_string()
+    }
 }
 
 impl HeapObject for HeapPtr<SourceFile> {

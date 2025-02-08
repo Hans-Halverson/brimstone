@@ -12,6 +12,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
+        source_file::SourceFile,
         stack_trace::{create_current_stack_frame_info, create_stack_trace, StackFrameInfoArray},
         string_value::FlatString,
         type_utilities::to_string,
@@ -40,7 +41,15 @@ enum StackTraceState {
     /// trace.
     StackFrameInfo(HeapPtr<StackFrameInfoArray>),
     /// The full stack trace string has been generated and cached.
-    Generated(HeapPtr<FlatString>),
+    Generated(CachedStackTraceInfo),
+}
+
+#[derive(Clone, Copy)]
+pub struct CachedStackTraceInfo {
+    /// The formatted list of stack frames.
+    pub frames: HeapPtr<FlatString>,
+    /// The source file, line, and column if available.
+    pub source_file_line_col: Option<(HeapPtr<SourceFile>, usize, usize)>,
 }
 
 impl ErrorObject {
@@ -89,13 +98,13 @@ impl ErrorObject {
 
 impl Handle<ErrorObject> {
     /// Return the stack trace for this error. Stack trace is lazily generated on first access.
-    pub fn get_stack_trace(&mut self, cx: Context) -> Handle<FlatString> {
+    pub fn get_stack_trace(&mut self, cx: Context) -> CachedStackTraceInfo {
         match self.stack_trace_state {
-            StackTraceState::Generated(stack_frame) => stack_frame.to_handle(),
+            StackTraceState::Generated(cached_stack_trace) => cached_stack_trace,
             StackTraceState::StackFrameInfo(stack_frame_info) => {
-                let stack_trace = create_stack_trace(cx, *self, stack_frame_info.to_handle());
+                let stack_trace = create_stack_trace(cx, stack_frame_info.to_handle());
                 self.stack_trace_state = StackTraceState::Generated(stack_trace);
-                stack_trace.to_handle()
+                stack_trace
             }
             StackTraceState::Uninitialized => {
                 panic!("Expected stack trace state to be initialized")
@@ -200,7 +209,13 @@ impl HeapObject for HeapPtr<ErrorObject> {
             StackTraceState::StackFrameInfo(stack_frame_info) => {
                 visitor.visit_pointer(stack_frame_info);
             }
-            StackTraceState::Generated(stack_trace) => visitor.visit_pointer(stack_trace),
+            StackTraceState::Generated(stack_trace) => {
+                visitor.visit_pointer(&mut stack_trace.frames);
+
+                if let Some((source_file, _, _)) = stack_trace.source_file_line_col.as_mut() {
+                    visitor.visit_pointer(source_file);
+                }
+            }
         }
     }
 }

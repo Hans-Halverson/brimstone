@@ -1,2 +1,7 @@
 Error: test
+  ┌ tests/js_error/stack_trace/promise_then_module.js:2:9
+  |
+2 |   throw new Error('test');
+  |         ^
+Stack:
   at <anonymous> (tests/js_error/stack_trace/promise_then_module.js:2:9)

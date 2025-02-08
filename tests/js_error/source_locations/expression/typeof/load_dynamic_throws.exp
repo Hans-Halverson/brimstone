@@ -1,4 +1,9 @@
 Error: Error on get
+  ┌ tests/js_error/source_locations/expression/typeof/load_dynamic_throws.js:3:11
+  |
+3 |     throw new Error('Error on get');
+  |           ^
+Stack:
   at get (tests/js_error/source_locations/expression/typeof/load_dynamic_throws.js:3:11)
   at <eval> (<eval>:1:8)
   at <global> (tests/js_error/source_locations/expression/typeof/load_dynamic_throws.js:7:1)

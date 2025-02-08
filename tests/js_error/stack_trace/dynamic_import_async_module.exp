@@ -1,4 +1,9 @@
 Error: test
+  ┌ tests/js_error/stack_trace/top_level_await_module.js:2:9
+  |
+2 |   throw new Error('test');
+  |         ^
+Stack:
   at foo (tests/js_error/stack_trace/top_level_await_module.js:2:9)
   at <module> (tests/js_error/stack_trace/top_level_await_module.js:5:7)
   at <anonymous> (<native>)

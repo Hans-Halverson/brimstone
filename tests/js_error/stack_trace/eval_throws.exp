@@ -1,4 +1,9 @@
 Error: test
+  ┌ <eval>:1:24
+  |
+1 | function bar() { throw new Error("test") }; bar()
+  |                        ^
+Stack:
   at bar (<eval>:1:24)
   at <eval> (<eval>:1:45)
   at foo (tests/js_error/stack_trace/eval_throws.js:2:3)

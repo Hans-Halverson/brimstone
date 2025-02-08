@@ -1,2 +1,7 @@
 TypeError: null has no properties
+  ┌ tests/js_error/source_locations/statement/with/push_with_scope_throws.js:2:1
+  |
+2 | with (null) {}
+  | ^
+Stack:
   at <global> (tests/js_error/source_locations/statement/with/push_with_scope_throws.js:2:1)

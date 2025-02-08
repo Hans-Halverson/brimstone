@@ -16,6 +16,7 @@ num-bigint = "0.4.3"
 num-traits = "0.2.16"
 rand = "0.8.5"
 ryu-js = "0.2.2"
+supports-color = "3.0.2"
 
 # Internal crates
 case_closure_overrides = { path = "src/js/runtime/regexp/case_closure_overrides" }

@@ -1,3 +1,8 @@
 ReferenceError: this is not initialized
+  ┌ tests/js_error/source_locations/statement/return/check_this_initialized.js:8:3
+  |
+8 |   }
+  |   ^
+Stack:
   at C (tests/js_error/source_locations/statement/return/check_this_initialized.js:8:3)
   at <global> (tests/js_error/source_locations/statement/return/check_this_initialized.js:11:1)

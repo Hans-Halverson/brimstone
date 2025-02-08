@@ -6,8 +6,9 @@ use std::rc::Rc;
 
 use js::{
     common::{
-        error::print_error_message_and_exit,
+        error::{print_error_message_and_exit, FormatOptions},
         options::{Args, Options},
+        terminal::stderr_should_use_colors,
     },
     parser::source::Source,
     runtime::{
@@ -58,6 +59,11 @@ fn main() {
 
     cx.execute_then_drop(|cx| match evaluate(cx, &args) {
         Ok(_) => (),
-        Err(err) => print_error_message_and_exit(&err.to_error_message(cx)),
+        Err(err) => {
+            let supports_color = stderr_should_use_colors(&cx.options);
+            let format_options = FormatOptions::new(supports_color);
+
+            print_error_message_and_exit(&err.format(cx, &format_options));
+        }
     })
 }

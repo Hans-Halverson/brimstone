@@ -1,7 +1,15 @@
+use crate::js::common::{
+    error::{ErrorFormatter, FormatOptions, SourceInfo},
+    terminal::stdout_should_use_colors,
+};
+
 use super::{
-    abstract_operations::get,
     eval_result::EvalResult,
-    intrinsics::intrinsics::Intrinsic,
+    intrinsics::{
+        error_constructor::{CachedStackTraceInfo, ErrorObject},
+        error_prototype::{error_message, error_name},
+        intrinsics::Intrinsic,
+    },
     object_descriptor::ObjectKind,
     object_value::ObjectValue,
     realm::Realm,
@@ -28,9 +36,12 @@ impl ConsoleObject {
         arguments: &[Handle<Value>],
         _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
+        let use_colors = stdout_should_use_colors(&cx.options);
+        let opts = FormatOptions::new(use_colors);
+
         let formatted = arguments
             .iter()
-            .map(|argument| to_console_string(cx, *argument))
+            .map(|argument| to_console_string(cx, *argument, &opts))
             .collect::<Vec<String>>()
             .join(" ");
 
@@ -41,7 +52,7 @@ impl ConsoleObject {
 }
 
 /// Format for printing value to console
-pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
+pub fn to_console_string(cx: Context, value: Handle<Value>, opts: &FormatOptions) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
             ObjectKind::String => format!("{}", value.as_string()),
@@ -54,15 +65,8 @@ pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
             _ => {
                 let object = value.as_object();
 
-                if object.is_error() {
-                    match get(cx, object, cx.names.stack()) {
-                        // Try to use the stack property if it exists and is a string
-                        Ok(stack_value) if stack_value.is_string() => {
-                            stack_value.as_string().to_string()
-                        }
-                        // Otherwise use default one line error formatting
-                        _ => format_error_one_line(cx, object),
-                    }
+                if let Some(error) = object.as_error() {
+                    error_to_console_string(cx, error, opts)
                 } else if object.is_callable() {
                     "[Function]".to_owned()
                 } else {
@@ -87,17 +91,41 @@ pub fn to_console_string(cx: Context, value: Handle<Value>) -> String {
     }
 }
 
-/// Format an error object into a one line string containing name and message
-pub fn format_error_one_line(cx: Context, object: Handle<ObjectValue>) -> String {
-    let name = match get(cx, object, cx.names.name()) {
-        Ok(name_value) if name_value.is_string() => name_value.as_string(),
-        _ => cx.names.error().as_string(),
-    };
+fn error_to_console_string(
+    cx: Context,
+    mut error: Handle<ErrorObject>,
+    opts: &FormatOptions,
+) -> String {
+    let name = error_name(cx, error).to_string();
+    let mut formatter = ErrorFormatter::new(name, opts);
 
-    match get(cx, object, cx.names.message()) {
-        Ok(message_value) => {
-            format!("{}: {}", name, to_console_string(cx, message_value))
-        }
-        Err(_) => format!("{}", name),
+    if let Some(message) = error_message(cx, error) {
+        formatter.set_message(message);
     }
+
+    let stack_trace = error.get_stack_trace(cx);
+    formatter.set_stack_trace(stack_trace.frames.to_string());
+
+    if let Some(source_info) = new_heap_source_info(cx, &stack_trace) {
+        formatter.set_source_info(source_info);
+    }
+
+    formatter.build()
+}
+
+fn new_heap_source_info(
+    cx: Context,
+    stack_trace_info: &CachedStackTraceInfo,
+) -> Option<SourceInfo> {
+    let (mut source_file, line, col) =
+        if let Some((source_file, line, col)) = &stack_trace_info.source_file_line_col {
+            (source_file.to_handle(), *line, *col)
+        } else {
+            return None;
+        };
+
+    let name = source_file.display_name().to_string();
+    let snippet = source_file.get_line(cx, line - 1);
+
+    Some(SourceInfo::new(name, line, col, snippet))
 }

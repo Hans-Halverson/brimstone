@@ -1,4 +1,9 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/yield_star/next_result_get_named_property_value_throws.js:8:19
+  |
+8 |             throw new Error();
+  |                   ^
+Stack:
   at get value (tests/js_error/source_locations/expression/yield_star/next_result_get_named_property_value_throws.js:8:19)
   at generator (tests/js_error/source_locations/expression/yield_star/next_result_get_named_property_value_throws.js:20:3)
   at next (<native>)

@@ -1,2 +1,7 @@
 ReferenceError: can't access `x` before initialization
+  ┌ tests/js_error/source_locations/loads/check_tdz_global.js:1:2
+  |
+1 | (x);
+  |  ^
+Stack:
   at <global> (tests/js_error/source_locations/loads/check_tdz_global.js:1:2)

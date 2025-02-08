@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/assign/set_named_property.js:3:11
+  |
+3 |     throw new Error();
+  |           ^
+Stack:
   at set foo (tests/js_error/source_locations/expression/assign/set_named_property.js:3:11)
   at <global> (tests/js_error/source_locations/expression/assign/set_named_property.js:7:4)

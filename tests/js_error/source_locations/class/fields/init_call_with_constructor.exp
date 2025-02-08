@@ -1,4 +1,9 @@
 TypeError: BigInt cannot be converted to number
+  ┌ tests/js_error/source_locations/class/fields/init_call_with_constructor.js:3:13
+  |
+3 |   field = 1 + 2n;
+  |             ^
+Stack:
   at fieldsInitializer (tests/js_error/source_locations/class/fields/init_call_with_constructor.js:3:13)
   at C (tests/js_error/source_locations/class/fields/init_call_with_constructor.js:5:3)
   at <global> (tests/js_error/source_locations/class/fields/init_call_with_constructor.js:8:1)

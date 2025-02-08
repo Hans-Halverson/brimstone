@@ -1,4 +1,7 @@
-use crate::js::parser::{LocalizedParseError, LocalizedParseErrors};
+use crate::js::{
+    common::error::FormatOptions,
+    parser::{LocalizedParseError, LocalizedParseErrors},
+};
 
 use super::{
     bytecode::generator::EmitError,
@@ -46,12 +49,12 @@ impl From<Handle<Value>> for BsError {
 }
 
 impl BsError {
-    pub fn to_error_message(&self, cx: Context) -> String {
+    pub fn format(&self, cx: Context, opts: &FormatOptions) -> String {
         match self {
-            BsError::Parse(error) => error.to_string(),
-            BsError::Analyze(errors) => errors.to_string(),
-            BsError::Emit(error) => error.to_string(),
-            BsError::Eval(value) => to_console_string(cx, *value),
+            BsError::Parse(error) => error.format(opts),
+            BsError::Analyze(errors) => errors.format(opts),
+            BsError::Emit(error) => error.format(opts),
+            BsError::Eval(value) => to_console_string(cx, *value, opts),
         }
     }
 }

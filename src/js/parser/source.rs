@@ -68,6 +68,22 @@ impl Source {
         }
     }
 
+    /// Get the line of the source file at the given line number. Line number is 0-indexed.
+    pub fn get_line(&self, line: u32) -> String {
+        let offsets = self.line_offsets();
+        let start = offsets[line as usize];
+        let end = if (line as usize + 1) < offsets.len() {
+            // Exclude the newline character if one exists
+            offsets[line as usize + 1] as usize - 1
+        } else {
+            self.contents.len()
+        };
+
+        let line_slice = &self.contents.as_bytes()[start as usize..end];
+
+        String::from_utf8_lossy(line_slice).to_string()
+    }
+
     pub fn file_path(&self) -> &str {
         &self.file_path
     }

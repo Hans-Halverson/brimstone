@@ -1,4 +1,9 @@
 Error: get return
+  ┌ tests/js_error/source_locations/expression/yield_star/return_get_method_throws.js:8:15
+  |
+8 |         throw new Error('get return');
+  |               ^
+Stack:
   at get return (tests/js_error/source_locations/expression/yield_star/return_get_method_throws.js:8:15)
   at generator (tests/js_error/source_locations/expression/yield_star/return_get_method_throws.js:15:3)
   at return (<native>)

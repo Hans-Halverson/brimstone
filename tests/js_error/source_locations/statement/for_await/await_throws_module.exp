@@ -1,4 +1,9 @@
 Error: 
+  ┌ tests/js_error/source_locations/statement/for_await/await_throws_module.js:2:63
+  |
+2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error(); } });
+  |                                                               ^
+Stack:
   at get (tests/js_error/source_locations/statement/for_await/await_throws_module.js:2:63)
   at foo (tests/js_error/source_locations/statement/for_await/await_throws_module.js:15:20)
   at <module> (tests/js_error/source_locations/statement/for_await/await_throws_module.js:18:7)

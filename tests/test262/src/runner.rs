@@ -18,7 +18,7 @@ use crate::{
 
 use brimstone::js::{
     self,
-    common::{options::Options, wtf_8::Wtf8String},
+    common::{error::FormatOptions, options::Options, wtf_8::Wtf8String},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
         to_console_string, to_string, Context, EvalResult, Handle, Value,
@@ -495,7 +495,7 @@ fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
         }
     }
 
-    to_console_string(cx, value)
+    to_console_string(cx, value, &FormatOptions::default())
 }
 
 struct TestResult {

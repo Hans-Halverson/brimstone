@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/destructure/object/copy_data_properties_throws.js:3:11
+  |
+3 |     throw new Error()
+  |           ^
+Stack:
   at getOwnPropertyDescriptor (tests/js_error/source_locations/destructure/object/copy_data_properties_throws.js:3:11)
   at <global> (tests/js_error/source_locations/destructure/object/copy_data_properties_throws.js:10:7)

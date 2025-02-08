@@ -1,5 +1,3 @@
 Error: Error on get
   at get (tests/js_error/source_locations/expression/await/await_throws_module.js:2:63)
   at <module> (tests/js_error/source_locations/expression/await/await_throws_module.js:4:1)
-  at <anonymous> (<native>)
-  at <anonymous> (<native>)

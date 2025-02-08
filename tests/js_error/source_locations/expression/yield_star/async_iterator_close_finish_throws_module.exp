@@ -1,3 +1,2 @@
 TypeError: iterator's return method must return an object
   at generator (tests/js_error/source_locations/expression/yield_star/async_iterator_close_finish_throws_module.js:15:3)
-  at <anonymous> (<native>)

@@ -8,11 +8,25 @@ use brimstone::js::{
     },
 };
 
-use std::{cmp::min, env, error, fs, path::Path, rc::Rc, sync::Mutex};
+use std::{
+    cmp::min,
+    env, error, fs,
+    path::Path,
+    rc::Rc,
+    sync::{LazyLock, Mutex},
+};
 
 type GenericResult<T> = Result<T, Box<dyn error::Error>>;
 
 const RECORD_ENV_VAR: &str = "RECORD";
+
+static DIRECTORY_PREFIX_PATH: LazyLock<String> = LazyLock::new(|| {
+    std::env::current_dir()
+        .unwrap()
+        .to_string_lossy()
+        .to_string()
+        + "/"
+});
 
 struct TestEnv {
     errors: Vec<String>,
@@ -232,6 +246,10 @@ fn process_snapshot_test_file(
     let exp_path = path.with_extension("exp");
 
     let actual = test_fn(path_str)?;
+
+    // Remove the directory prefix from the actual output to make any paths in the snapshots
+    // relative to the test directory.
+    let actual = actual.replace(&*DIRECTORY_PREFIX_PATH, "");
 
     let expected = if exp_path.exists() {
         fs::read_to_string(&exp_path)?

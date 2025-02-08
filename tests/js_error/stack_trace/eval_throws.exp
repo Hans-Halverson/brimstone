@@ -1,0 +1,5 @@
+Error: test
+  at bar (<eval>:1:24)
+  at <eval> (<eval>:1:45)
+  at foo (tests/js_error/stack_trace/eval_throws.js:2:3)
+  at <global> (tests/js_error/stack_trace/eval_throws.js:5:1)

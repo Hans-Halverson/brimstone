@@ -3,5 +3,3 @@ Error:
   at next (<native>)
   at foo (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:13:20)
   at <module> (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:16:7)
-  at <anonymous> (<native>)
-  at <anonymous> (<native>)

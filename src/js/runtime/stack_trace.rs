@@ -52,7 +52,14 @@ fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec
         (Some(cx.vm().stack_frame()), cx.vm().pc())
     };
 
+    let stack_trace_top = cx.vm().stack_trace_top();
+
     while let Some(stack_frame) = stack_frame_opt {
+        // Stop if we've reached the first stack frame that should not be included in the trace
+        if Some(stack_frame) == stack_trace_top {
+            break;
+        }
+
         // Skip the last frame if it's a dummy frame for the realm
         if stack_frame.previous_frame().is_none() {
             let function = stack_frame.closure().function_ptr();

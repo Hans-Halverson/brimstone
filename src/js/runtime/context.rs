@@ -241,6 +241,7 @@ impl Context {
 
     /// Execute a program, running until the task queue is empty.
     pub fn run_script(&mut self, bytecode_script: BytecodeScript) -> EvalResult<()> {
+        self.vm().mark_stack_trace_top();
         self.vm().execute_script(bytecode_script)?;
         self.run_all_tasks()?;
 

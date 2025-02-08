@@ -3,5 +3,3 @@ Error:
   at generator (tests/js_error/source_locations/expression/yield_star/get_async_iterator_throws_module.js:8:3)
   at next (<native>)
   at <module> (tests/js_error/source_locations/expression/yield_star/get_async_iterator_throws_module.js:12:7)
-  at <anonymous> (<native>)
-  at <anonymous> (<native>)

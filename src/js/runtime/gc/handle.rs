@@ -412,6 +412,13 @@ impl Escapable for u32 {
     }
 }
 
+impl<T> Escapable for HeapPtr<T> {
+    #[inline]
+    fn escape(&self, _: Context) -> Self {
+        *self
+    }
+}
+
 impl Escapable for Handle<Value> {
     #[inline]
     fn escape(&self, cx: Context) -> Self {

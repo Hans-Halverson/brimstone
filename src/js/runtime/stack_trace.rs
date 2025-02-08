@@ -1,29 +1,48 @@
 use crate::js::parser::loc::find_line_col_for_pos;
 
 use super::{
-    abstract_operations::create_non_enumerable_data_property_or_throw,
-    bytecode::source_map::BytecodeSourceMap,
+    bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
+    collections::BsArray,
     console::format_error_one_line,
+    gc::{HandleScope, HeapObject, HeapVisitor},
     intrinsics::{error_constructor::ErrorObject, rust_runtime::return_undefined},
+    object_descriptor::ObjectKind,
     source_file::SourceFile,
-    Context, Handle,
+    string_value::FlatString,
+    Context, Handle, HeapPtr,
 };
 
-/// Create the string representaton of the current stack trace and attach to an error object.
-///
-/// Only expected to be called when an error is constructed. Must be called after message has been
-/// attached to the error.
-pub fn attach_stack_trace_to_error(
-    mut cx: Context,
-    error: Handle<ErrorObject>,
-    skip_current_frame: bool,
-) {
-    // Do any preparatory work that may allocate
-    prepare_for_stack_trace(cx);
+/// An array of stack frame entries which contain the information necessary to construct a full
+/// stack trace later if desired.
+pub type StackFrameInfoArray = BsArray<HeapStackFrameInfo>;
 
-    // Stack trace starts with the error itself
-    let mut stack_trace = format_error_one_line(cx, error.into());
-    stack_trace.push('\n');
+pub struct HeapStackFrameInfo {
+    /// The function executing in the stack frame.
+    function: HeapPtr<BytecodeFunction>,
+    /// Offset of the pc or saved return address in the bytecode. This will be used to report the
+    /// source location in this stack frame.
+    ///
+    /// Set to 0 if there is no BytecodeSourceMap for this frame.
+    bytecode_offset: usize,
+}
+
+struct StackFrameInfo {
+    function: Handle<BytecodeFunction>,
+    bytecode_offset: usize,
+}
+
+impl StackFrameInfo {
+    fn to_heap(&self) -> HeapStackFrameInfo {
+        HeapStackFrameInfo {
+            function: *self.function,
+            bytecode_offset: self.bytecode_offset,
+        }
+    }
+}
+
+/// Gather the stack frame information for each stack frame in the current stack.
+fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec<StackFrameInfo> {
+    let mut frames = vec![];
 
     // We may want to skip the first stack frame e.g. when in an error constructor
     let (mut stack_frame_opt, mut pc) = if skip_current_frame {
@@ -44,11 +63,66 @@ pub fn attach_stack_trace_to_error(
             }
         }
 
+        // Gather the function and bytecode offset if necessary
+        let function = stack_frame.closure().function();
+        let bytecode_offset = if function.source_map_ptr().is_some() {
+            pc as usize - function.bytecode().as_ptr() as usize
+        } else {
+            0
+        };
+
+        frames.push(StackFrameInfo { function, bytecode_offset });
+
+        // Move to the parent stack frame
+        pc = stack_frame.return_address();
+        stack_frame_opt = stack_frame.previous_frame();
+    }
+
+    frames
+}
+
+/// Create a StackFrameInfoArray for the current stack.
+///
+/// This contains the information necessary to construct a full stack trace for the error if the
+/// `stack` getter is ever called.
+pub fn create_current_stack_frame_info(
+    cx: Context,
+    skip_current_frame: bool,
+) -> HeapPtr<StackFrameInfoArray> {
+    HandleScope::new(cx, |cx| {
+        let frames = gather_current_stack_frames(cx, skip_current_frame);
+
+        let mut array =
+            StackFrameInfoArray::new_uninit(cx, ObjectKind::StackFrameInfoArray, frames.len());
+
+        for (i, frame) in frames.iter().enumerate() {
+            array.as_mut_slice()[i] = frame.to_heap();
+        }
+
+        array
+    })
+}
+
+/// Create the string representation of a strack trace for an error, given the stack frame info
+/// cached from the time that the error was created.
+pub fn create_stack_trace(
+    mut cx: Context,
+    error: Handle<ErrorObject>,
+    stack_frame_info: Handle<StackFrameInfoArray>,
+) -> HeapPtr<FlatString> {
+    // Do any preparatory work that may allocate
+    prepare_for_stack_trace(cx, stack_frame_info);
+
+    // Stack trace starts with the error itself
+    let mut stack_trace = format_error_one_line(cx, error.into());
+    stack_trace.push('\n');
+
+    for stack_frame in stack_frame_info.as_slice() {
         // Each line of the stack trace starts indented
         stack_trace.push_str("  at ");
 
         // Followed by the name of the function
-        let func = stack_frame.closure().function();
+        let func = stack_frame.function;
         if let Some(name) = func.name() {
             stack_trace.push_str(&name.to_string());
         } else {
@@ -66,12 +140,9 @@ pub fn attach_stack_trace_to_error(
 
         // If we have source code positions for this function, add the line and column
         if let Some(source_map) = func.source_map_ptr() {
-            // First find the bytecode offset of the pc or saved return address
-            let bytecode_offset = pc as usize - func.bytecode().as_ptr() as usize;
-
             // Map that bytecode offset to a source position using the source map
             let source_position =
-                BytecodeSourceMap::get_source_position(source_map, bytecode_offset);
+                BytecodeSourceMap::get_source_position(source_map, stack_frame.bytecode_offset);
 
             if let Some(source_position) = source_position {
                 // Get the line and column number for the source position. Will not allocate since
@@ -87,34 +158,38 @@ pub fn attach_stack_trace_to_error(
         }
 
         stack_trace.push_str(")\n");
-
-        // Move to the parent stack frame
-        pc = stack_frame.return_address();
-        stack_frame_opt = stack_frame.previous_frame();
     }
 
-    // Attach the stack trace string to the error object itself
-    let stack_trace_string = cx.alloc_string(&stack_trace);
-    create_non_enumerable_data_property_or_throw(
-        cx,
-        error.into(),
-        cx.names.stack(),
-        stack_trace_string.into(),
-    )
+    cx.alloc_string_ptr(&stack_trace)
 }
 
 /// Prepare for a stack trace to be formatted. Perform any allocations that will be needed, such as
 /// calculating line offsets for all source files.
-fn prepare_for_stack_trace(mut cx: Context) {
+fn prepare_for_stack_trace(cx: Context, stack_frame_info: Handle<StackFrameInfoArray>) {
     // Handle is shared between iterations
     let mut source_file_handle: Handle<SourceFile> = Handle::empty(cx);
 
     // Generate the line offsets for all source files referenced in the stack trace. This may
     // allocate if line offsets have not been generated yet.
-    for stack_frame in cx.vm().stack_frame().iter() {
-        if let Some(source_file) = stack_frame.closure().function_ptr().source_file_ptr() {
+    for i in 0..stack_frame_info.len() {
+        if let Some(source_file) = stack_frame_info.as_slice()[i].function.source_file_ptr() {
             source_file_handle.replace(source_file);
             source_file_handle.line_offsets_ptr(cx);
         }
+    }
+}
+
+pub fn stack_frame_info_array_byte_size(stack_frame_array: HeapPtr<StackFrameInfoArray>) -> usize {
+    StackFrameInfoArray::calculate_size_in_bytes(stack_frame_array.len())
+}
+
+pub fn stack_frame_info_array_visit_pointers(
+    stack_frame_array: &mut HeapPtr<StackFrameInfoArray>,
+    visitor: &mut impl HeapVisitor,
+) {
+    stack_frame_array.visit_pointers(visitor);
+
+    for stack_frame in stack_frame_array.as_mut_slice() {
+        visitor.visit_pointer(&mut stack_frame.function);
     }
 }

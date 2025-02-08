@@ -252,6 +252,7 @@ impl StackFrame {
     }
 
     /// Iterate upwards through stack frames, starting at this stack frame.
+    #[allow(unused)]
     #[inline]
     pub fn iter(&self) -> StackFrameIter {
         StackFrameIter { current_frame: Some(*self) }

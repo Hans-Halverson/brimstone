@@ -148,6 +148,7 @@ pub enum ObjectKind {
     ValueArray,
     ByteArray,
     ModuleRequestArray,
+    StackFrameInfoArray,
     FinalizationRegistryCells,
     GlobalScopes,
 
@@ -369,6 +370,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);
         other_heap_object_descriptor!(ObjectKind::ModuleRequestArray);
+        other_heap_object_descriptor!(ObjectKind::StackFrameInfoArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);
 

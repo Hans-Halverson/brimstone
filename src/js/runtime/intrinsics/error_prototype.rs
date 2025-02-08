@@ -4,7 +4,7 @@ use crate::js::runtime::{
     Context, Handle, Value,
 };
 
-use super::intrinsics::Intrinsic;
+use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 
 pub struct ErrorPrototype;
 
@@ -21,6 +21,7 @@ impl ErrorPrototype {
             cx.names.message(),
             cx.names.empty_string().as_string().into(),
         );
+        object.intrinsic_getter(cx, cx.names.stack(), Self::get_stack, realm);
         object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
 
         object
@@ -61,5 +62,21 @@ impl ErrorPrototype {
             let separator = cx.alloc_string(": ").as_string();
             Ok(StringValue::concat_all(cx, &[name_string, separator, message_string]).as_value())
         }
+    }
+
+    pub fn get_stack(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        // Check that `stack` getter was called on an error object
+        if !this_value.is_object() || !this_value.as_object().is_error() {
+            return Ok(cx.undefined());
+        }
+
+        let mut error = this_value.cast::<ErrorObject>();
+
+        Ok(error.get_stack_trace(cx).as_value())
     }
 }

@@ -39,7 +39,9 @@ impl<T: Clone> BsArray<T> {
 
         array
     }
+}
 
+impl<T> BsArray<T> {
     pub fn new_uninit(cx: Context, kind: ObjectKind, length: usize) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
@@ -71,7 +73,7 @@ impl<T: Clone> BsArray<T> {
     }
 }
 
-impl<T: Clone> HeapObject for HeapPtr<BsArray<T>> {
+impl<T> HeapObject for HeapPtr<BsArray<T>> {
     fn byte_size(&self) -> usize {
         BsArray::<T>::calculate_size_in_bytes(self.len())
     }

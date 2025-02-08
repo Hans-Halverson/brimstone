@@ -13,6 +13,7 @@ use super::{
     error::{syntax_error, syntax_parse_error, type_error},
     function::get_argument,
     gc::HandleScope,
+    gc_object::GcObject,
     intrinsics::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic},
     object_value::ObjectValue,
     string_value::StringValue,
@@ -44,6 +45,8 @@ impl Test262Object {
         let detach_array_buffer_key =
             PropertyKey::string(cx, detach_array_buffer_string).to_handle(cx);
         object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
+
+        object.intrinsic_func(cx, cx.names.gc(), GcObject::run, 0, realm);
 
         object.to_handle()
     }

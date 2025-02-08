@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/delete/delete_binding.js:5:13
+  |
+5 |       throw new Error()
+  |             ^
+Stack:
   at has (tests/js_error/source_locations/expression/delete/delete_binding.js:5:13)
   at <global> (tests/js_error/source_locations/expression/delete/delete_binding.js:11:3)

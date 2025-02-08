@@ -1,1 +1,5 @@
-SyntaxError: tests/js_error/source_locations/expression/update/prefix_to_numeric.js:1:1 Invalid increment/decrement operand
+SyntaxError: Invalid increment/decrement operand
+  ┌ tests/js_error/source_locations/expression/update/prefix_to_numeric.js:1:1
+  |
+1 | ++(Symbol('a'))
+  | ^

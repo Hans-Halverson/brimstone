@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/update/set_property.js:6:11
+  |
+6 |     throw new Error();
+  |           ^
+Stack:
   at set foo (tests/js_error/source_locations/expression/update/set_property.js:6:11)
   at <global> (tests/js_error/source_locations/expression/update/set_property.js:10:4)

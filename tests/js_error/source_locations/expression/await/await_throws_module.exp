@@ -1,3 +1,8 @@
 Error: Error on get
+  ┌ tests/js_error/source_locations/expression/await/await_throws_module.js:2:63
+  |
+2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error('Error on get'); } });
+  |                                                               ^
+Stack:
   at get (tests/js_error/source_locations/expression/await/await_throws_module.js:2:63)
   at <module> (tests/js_error/source_locations/expression/await/await_throws_module.js:4:1)

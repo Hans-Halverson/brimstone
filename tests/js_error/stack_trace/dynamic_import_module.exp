@@ -1,4 +1,9 @@
 Error: test
+  ┌ tests/js_error/stack_trace/script_top_level_error.js:2:9
+  |
+2 |   throw new Error('test')
+  |         ^
+Stack:
   at bar (tests/js_error/stack_trace/script_top_level_error.js:2:9)
   at <module> (tests/js_error/stack_trace/script_top_level_error.js:5:1)
   at <anonymous> (<native>)

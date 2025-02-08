@@ -1,4 +1,9 @@
 Error: 
+  ┌ tests/js_error/source_locations/destructure/member/set_super_property.js:3:11
+  |
+3 |     throw new Error()
+  |           ^
+Stack:
   at set foo (tests/js_error/source_locations/destructure/member/set_super_property.js:3:11)
   at test (tests/js_error/source_locations/destructure/member/set_super_property.js:9:16)
   at <global> (tests/js_error/source_locations/destructure/member/set_super_property.js:14:1)

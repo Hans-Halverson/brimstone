@@ -1,5 +1,8 @@
 use brimstone::js::{
-    common::options::{Options, OptionsBuilder},
+    common::{
+        error::FormatOptions,
+        options::{Options, OptionsBuilder},
+    },
     parser::{self, ast, source::Source},
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
@@ -63,7 +66,7 @@ fn print_error(path: &str) -> GenericResult<String> {
 
         match result {
             Ok(_) => Err(format!("{}: Expected an error", path).into()),
-            Err(err) => Ok(err.to_error_message(cx)),
+            Err(err) => Ok(err.format(cx, &FormatOptions::default())),
         }
     })
 }
@@ -125,6 +128,7 @@ fn print_regexp_bytecode(path: &str) -> GenericResult<String> {
     let options = OptionsBuilder::new()
         .print_regexp_bytecode(true)
         .dump_buffer(Some(Mutex::new(String::new())))
+        .no_color(true)
         .build();
 
     let options = Rc::new(options);

@@ -34,6 +34,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_test_262: bool,
 
+    /// Do not use colors when printing to terminal. Otherwise use colors if supported.
+    #[arg(long, default_value_t = false)]
+    pub no_color: bool,
+
     #[arg(required = true)]
     pub files: Vec<String>,
 }
@@ -54,6 +58,9 @@ pub struct Options {
 
     /// Buffer to write all dumped output into instead of stdout
     pub dump_buffer: Option<Mutex<String>>,
+
+    /// Whether to use colors when printing to the terminal
+    pub no_color: bool,
 }
 
 impl Options {
@@ -64,6 +71,7 @@ impl Options {
             .print_ast(args.print_ast)
             .print_bytecode(args.print_bytecode)
             .print_regexp_bytecode(args.print_regexp_bytecode)
+            .no_color(args.no_color)
             .build()
     }
 
@@ -93,6 +101,7 @@ impl OptionsBuilder {
             print_bytecode: false,
             print_regexp_bytecode: false,
             dump_buffer: None,
+            no_color: false,
         })
     }
 
@@ -124,6 +133,11 @@ impl OptionsBuilder {
     #[allow(unused)]
     pub fn dump_buffer(mut self, dump_buffer: Option<Mutex<String>>) -> Self {
         self.0.dump_buffer = dump_buffer;
+        self
+    }
+
+    pub fn no_color(mut self, no_color: bool) -> Self {
+        self.0.no_color = no_color;
         self
     }
 }

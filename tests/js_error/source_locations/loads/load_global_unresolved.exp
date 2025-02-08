@@ -1,3 +1,8 @@
 ReferenceError: x is not defined
+  ┌ tests/js_error/source_locations/loads/load_global_unresolved.js:3:3
+  |
+3 |   x;
+  |   ^
+Stack:
   at test (tests/js_error/source_locations/loads/load_global_unresolved.js:3:3)
   at <global> (tests/js_error/source_locations/loads/load_global_unresolved.js:6:1)

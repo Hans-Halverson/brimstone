@@ -10,7 +10,10 @@ use bitflags::bitflags;
 use indexmap::IndexSet;
 
 use crate::js::{
-    common::wtf_8::Wtf8String,
+    common::{
+        error::{ErrorFormatter, FormatOptions},
+        wtf_8::Wtf8String,
+    },
     parser::{
         ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
         loc::{Pos, NO_POS},
@@ -9197,6 +9200,14 @@ pub enum EmitError {
     TooManyScopes,
     IndexTooLarge,
     IntegerTooLarge,
+}
+
+impl EmitError {
+    pub fn format(&self, opts: &FormatOptions) -> String {
+        let mut formatter = ErrorFormatter::new("Error".to_string(), opts);
+        formatter.set_message(self.to_string());
+        formatter.build()
+    }
 }
 
 impl Error for EmitError {}

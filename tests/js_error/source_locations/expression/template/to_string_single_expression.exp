@@ -1,2 +1,7 @@
 TypeError: symbol cannot be converted to string
+  ┌ tests/js_error/source_locations/expression/template/to_string_single_expression.js:1:4
+  |
+1 | `${Symbol.iterator}`
+  |    ^
+Stack:
   at <global> (tests/js_error/source_locations/expression/template/to_string_single_expression.js:1:4)

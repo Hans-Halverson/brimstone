@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/call/call_maybe_eval.js:2:9
+  |
+2 |   throw new Error();
+  |         ^
+Stack:
   at eval (tests/js_error/source_locations/expression/call/call_maybe_eval.js:2:9)
   at <global> (tests/js_error/source_locations/expression/call/call_maybe_eval.js:5:1)

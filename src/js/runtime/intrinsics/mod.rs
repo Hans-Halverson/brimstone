@@ -22,7 +22,7 @@ mod date_constructor;
 pub mod date_object;
 mod date_prototype;
 pub mod error_constructor;
-mod error_prototype;
+pub mod error_prototype;
 mod finalization_registry_constructor;
 pub mod finalization_registry_object;
 mod finalization_registry_prototype;

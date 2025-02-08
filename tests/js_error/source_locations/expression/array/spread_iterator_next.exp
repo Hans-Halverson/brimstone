@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/array/spread_iterator_next.js:5:15
+  |
+5 |         throw new Error();
+  |               ^
+Stack:
   at next (tests/js_error/source_locations/expression/array/spread_iterator_next.js:5:15)
   at <global> (tests/js_error/source_locations/expression/array/spread_iterator_next.js:11:2)

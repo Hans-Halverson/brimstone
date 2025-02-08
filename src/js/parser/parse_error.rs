@@ -2,6 +2,7 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
+use crate::js::common::error::{ErrorFormatter, FormatOptions, SourceInfo};
 use crate::js::common::wtf_8::Wtf8String;
 use crate::js::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
 
@@ -486,6 +487,20 @@ impl LocalizedParseError {
             }
         }
     }
+
+    pub fn format(&self, opts: &FormatOptions) -> String {
+        let name = "SyntaxError".to_string();
+        let message = self.error.to_string();
+
+        let mut formatter = ErrorFormatter::new(name, opts);
+        formatter.set_message(message);
+
+        if let Some((loc, source)) = &self.source_loc {
+            formatter.set_source_info(SourceInfo::new_static(source, loc.start));
+        }
+
+        formatter.build()
+    }
 }
 
 impl Error for LocalizedParseError {}
@@ -516,13 +531,17 @@ impl LocalizedParseErrors {
     pub fn new(errors: Vec<LocalizedParseError>) -> Self {
         LocalizedParseErrors { errors }
     }
+
+    pub fn format(&self, opts: &FormatOptions) -> String {
+        format_localized_parse_errors(&self.errors, opts)
+    }
 }
 
 impl Error for LocalizedParseErrors {}
 
 impl fmt::Display for LocalizedParseErrors {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", format_localized_parse_errors(&self.errors))
+        write!(f, "{}", format_localized_parse_errors(&self.errors, &FormatOptions::default()))
     }
 }
 
@@ -534,7 +553,7 @@ impl fmt::Debug for LocalizedParseErrors {
 
 pub type ParseResult<T> = Result<T, LocalizedParseError>;
 
-pub fn format_localized_parse_errors(errors: &[LocalizedParseError]) -> String {
+fn format_localized_parse_errors(errors: &[LocalizedParseError], opts: &FormatOptions) -> String {
     // Separate errors into those with and without locs
     let mut errors_without_loc = vec![];
     let mut errors_with_loc = vec![];
@@ -561,12 +580,16 @@ pub fn format_localized_parse_errors(errors: &[LocalizedParseError]) -> String {
 
     let mut error_messages = vec![];
     for error in errors_without_loc {
-        error_messages.push(format!("{}", error))
+        error_messages.push(error.format(opts));
     }
 
     for (error, _, _, _) in errors_with_loc {
-        error_messages.push(format!("{}", error))
+        error_messages.push(error.format(opts));
     }
 
-    error_messages.join("\n\n")
+    error_messages
+        .iter()
+        .map(|s| s.as_str())
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }

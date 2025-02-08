@@ -1,4 +1,9 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/update/set_private_property.js:7:11
+  |
+7 |     throw new Error()
+  |           ^
+Stack:
   at set #foo (tests/js_error/source_locations/expression/update/set_private_property.js:7:11)
   at test (tests/js_error/source_locations/expression/update/set_private_property.js:11:9)
   at <global> (tests/js_error/source_locations/expression/update/set_private_property.js:16:1)

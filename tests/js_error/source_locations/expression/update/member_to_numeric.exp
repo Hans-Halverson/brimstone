@@ -1,2 +1,7 @@
 TypeError: symbol cannot be converted to number
+  ┌ tests/js_error/source_locations/expression/update/member_to_numeric.js:5:1
+  |
+5 | obj.a++;
+  | ^
+Stack:
   at <global> (tests/js_error/source_locations/expression/update/member_to_numeric.js:5:1)

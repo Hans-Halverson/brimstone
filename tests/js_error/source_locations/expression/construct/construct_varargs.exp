@@ -1,3 +1,8 @@
 Error: 
+  ┌ tests/js_error/source_locations/expression/construct/construct_varargs.js:2:9
+  |
+2 |   throw new Error();
+  |         ^
+Stack:
   at foo (tests/js_error/source_locations/expression/construct/construct_varargs.js:2:9)
   at <global> (tests/js_error/source_locations/expression/construct/construct_varargs.js:5:2)

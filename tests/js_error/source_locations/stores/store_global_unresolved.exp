@@ -3,6 +3,6 @@ ReferenceError: x is not defined
   |
 5 |   x = 1;
   |   ^
-Stack:
+Stack trace:
   at test (tests/js_error/source_locations/stores/store_global_unresolved.js:5:3)
   at <global> (tests/js_error/source_locations/stores/store_global_unresolved.js:8:1)

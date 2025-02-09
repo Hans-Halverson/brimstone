@@ -3,6 +3,6 @@ Error:
   |
 8 |           throw new Error();
   |                 ^
-Stack:
+Stack trace:
   at next (tests/js_error/source_locations/destructure/array/hole_iterator_next.js:8:17)
   at <global> (tests/js_error/source_locations/destructure/array/hole_iterator_next.js:19:9)

@@ -3,5 +3,5 @@ TypeError: invalid instanceof operand
   |
 1 | ({}) instanceof null
   |      ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/binary/instanceof.js:1:6)

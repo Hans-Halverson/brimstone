@@ -3,6 +3,6 @@ ReferenceError: can't access `x` before initialization
   |
 2 |   x;
   |   ^
-Stack:
+Stack trace:
   at test (tests/js_error/source_locations/loads/check_tdz_local.js:2:3)
   at <global> (tests/js_error/source_locations/loads/check_tdz_local.js:6:1)

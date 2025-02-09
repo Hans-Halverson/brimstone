@@ -3,7 +3,7 @@ Error: next
   |
 5 |         throw new Error('next');
   |               ^
-Stack:
+Stack trace:
   at next (tests/js_error/source_locations/expression/yield_star/next_throws.js:5:15)
   at generator (tests/js_error/source_locations/expression/yield_star/next_throws.js:12:3)
   at next (<native>)

@@ -3,5 +3,5 @@ TypeError: null has no properties
   |
 1 | var {...a} = null;
   |     ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/destructure/object/copy_data_properties_to_object.js:1:5)

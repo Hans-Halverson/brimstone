@@ -3,6 +3,6 @@ Error:
   |
 2 |   throw new Error()
   |         ^
-Stack:
+Stack trace:
   at foo (tests/js_error/source_locations/expression/construct/basic.js:2:9)
   at <global> (tests/js_error/source_locations/expression/construct/basic.js:5:2)

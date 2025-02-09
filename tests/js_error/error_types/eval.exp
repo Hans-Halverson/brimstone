@@ -3,5 +3,5 @@ Error: This is an error
   |
 1 | throw new Error('This is an error');
   |       ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/error_types/eval.js:1:7)

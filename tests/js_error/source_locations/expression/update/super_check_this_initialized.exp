@@ -3,6 +3,6 @@ ReferenceError: this is not initialized
   |
 7 |     super.foo++;
   |     ^
-Stack:
+Stack trace:
   at C (tests/js_error/source_locations/expression/update/super_check_this_initialized.js:7:5)
   at <global> (tests/js_error/source_locations/expression/update/super_check_this_initialized.js:11:1)

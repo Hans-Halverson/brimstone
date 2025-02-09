@@ -3,5 +3,5 @@ TypeError: BigInt cannot be converted to number
   |
 2 | x <<= 2n;
   |   ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/assign_op/shift_left.js:2:3)

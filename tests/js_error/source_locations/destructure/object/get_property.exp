@@ -3,6 +3,6 @@ Error:
   |
 3 |     throw new Error();
   |           ^
-Stack:
+Stack trace:
   at get foo (tests/js_error/source_locations/destructure/object/get_property.js:3:11)
   at <global> (tests/js_error/source_locations/destructure/object/get_property.js:7:7)

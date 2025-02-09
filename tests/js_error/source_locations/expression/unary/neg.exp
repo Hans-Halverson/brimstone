@@ -3,5 +3,5 @@ TypeError: symbol cannot be converted to number
   |
 1 | -Symbol.iterator;
   | ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/unary/neg.js:1:1)

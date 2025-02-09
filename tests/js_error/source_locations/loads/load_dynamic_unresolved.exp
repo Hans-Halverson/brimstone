@@ -3,7 +3,7 @@ ReferenceError: x is not defined
   |
 1 | x
   | ^
-Stack:
+Stack trace:
   at <eval> (<eval>:1:1)
   at test (tests/js_error/source_locations/loads/load_dynamic_unresolved.js:2:3)
   at <global> (tests/js_error/source_locations/loads/load_dynamic_unresolved.js:5:1)

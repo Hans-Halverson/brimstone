@@ -3,7 +3,7 @@ Error:
    |
 10 |             throw new Error();
    |                   ^
-Stack:
+Stack trace:
   at get value (tests/js_error/source_locations/expression/yield_star/return_result_get_named_property_value_throws.js:10:19)
   at generator (tests/js_error/source_locations/expression/yield_star/return_result_get_named_property_value_throws.js:20:3)
   at return (<native>)

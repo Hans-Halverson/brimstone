@@ -12,16 +12,20 @@ use crate::{
             context::ModuleCacheKey,
             error::{syntax_error, syntax_parse_error},
             eval_result::EvalResult,
-            intrinsics::intrinsics::Intrinsic,
+            intrinsics::{intrinsics::Intrinsic, json_object::JSONObject},
             promise_object::{PromiseCapability, PromiseObject},
             string_value::FlatString,
-            Context, Handle, Realm,
+            Context, Handle, Realm, Value,
         },
     },
     must,
 };
 
-use super::source_text_module::{ModuleId, ModuleRequest, ModuleState, SourceTextModule};
+use super::{
+    module::{DynModule, ModuleId},
+    source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
+    synthetic_module::SyntheticModule,
+};
 
 /// GraphLoadingStateRecord (https://tc39.es/ecma262/#graphloadingstate-record)
 struct GraphLoader {
@@ -34,43 +38,47 @@ struct GraphLoader {
 
 impl GraphLoader {
     /// InnerModuleLoading (https://tc39.es/ecma262/#sec-InnerModuleLoading)
-    fn inner_module_loading(&mut self, cx: Context, mut module: Handle<SourceTextModule>) {
-        if module.state() == ModuleState::New && self.visited.insert(module.id()) {
-            module.set_state(ModuleState::Unlinked);
+    fn inner_module_loading(&mut self, cx: Context, module: DynModule) {
+        if let Some(mut module) = module.as_source_text_module() {
+            if module.state() == ModuleState::New && self.visited.insert(module.id()) {
+                module.set_state(ModuleState::Unlinked);
 
-            let module_requests = module.requested_modules();
-            let loaded_modules = module.loaded_modules();
+                let module_requests = module.requested_modules();
+                let loaded_modules = module.loaded_modules();
 
-            self.pending_modules_count += module_requests.len();
+                self.pending_modules_count += module_requests.len();
 
-            for i in 0..module_requests.len() {
-                match loaded_modules.as_slice()[i] {
-                    Some(loaded_module) => self.inner_module_loading(cx, loaded_module.to_handle()),
-                    None => {
-                        let module_request =
-                            ModuleRequest::from_heap(&module_requests.as_slice()[i]);
+                for i in 0..module_requests.len() {
+                    match loaded_modules.as_slice()[i] {
+                        Some(loaded_module) => {
+                            self.inner_module_loading(cx, DynModule::from_heap(&loaded_module))
+                        }
+                        None => {
+                            let module_request =
+                                ModuleRequest::from_heap(&module_requests.as_slice()[i]);
 
-                        // Create the SourceTextModule for the module with the given specifier,
-                        // or evaluate to an error.
-                        let load_result = host_load_imported_module(
-                            cx,
-                            module.source_file_path(),
-                            module_request,
-                            self.realm,
-                        );
+                            // Create the SourceTextModule for the module with the given specifier,
+                            // or evaluate to an error.
+                            let load_result = host_load_imported_module(
+                                cx,
+                                module.source_file_path(),
+                                module_request,
+                                self.realm,
+                            );
 
-                        // Continue module loading with the SourceTextModule or error result
-                        self.finish_loading_imported_module(
-                            cx,
-                            module,
-                            module_request,
-                            load_result,
-                        );
+                            // Continue module loading with the SourceTextModule or error result
+                            self.finish_loading_imported_module(
+                                cx,
+                                module,
+                                module_request,
+                                load_result,
+                            );
+                        }
                     }
-                }
 
-                if !self.is_loading {
-                    return;
+                    if !self.is_loading {
+                        return;
+                    }
                 }
             }
         }
@@ -95,14 +103,14 @@ impl GraphLoader {
         cx: Context,
         mut referrer: Handle<SourceTextModule>,
         module_request: ModuleRequest,
-        module_result: EvalResult<Handle<SourceTextModule>>,
+        module_result: EvalResult<DynModule>,
     ) {
         if let Ok(module) = module_result {
             let module_index = referrer
                 .lookup_module_request_index(&module_request.to_heap())
                 .unwrap();
             if !referrer.has_loaded_module_at(module_index) {
-                referrer.set_loaded_module_at(module_index, *module);
+                referrer.set_loaded_module_at(module_index, module);
             }
         }
 
@@ -110,11 +118,7 @@ impl GraphLoader {
     }
 
     /// ContinueModuleLoading (https://tc39.es/ecma262/#sec-ContinueModuleLoading)
-    fn continue_module_loading(
-        &mut self,
-        cx: Context,
-        module_result: EvalResult<Handle<SourceTextModule>>,
-    ) {
+    fn continue_module_loading(&mut self, cx: Context, module_result: EvalResult<DynModule>) {
         if !self.is_loading {
             return;
         }
@@ -148,7 +152,7 @@ pub fn load_requested_modules(
         realm,
     };
 
-    graph_loader.inner_module_loading(cx, module);
+    graph_loader.inner_module_loading(cx, module.as_dyn_module());
 
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
     capability.promise().cast::<PromiseObject>()
@@ -160,7 +164,7 @@ pub fn host_load_imported_module(
     source_file_path: Handle<FlatString>,
     module_request: ModuleRequest,
     realm: Handle<Realm>,
-) -> EvalResult<Handle<SourceTextModule>> {
+) -> EvalResult<DynModule> {
     let source_file_path = Path::new(&source_file_path.to_string())
         .canonicalize()
         .unwrap();
@@ -185,7 +189,22 @@ pub fn host_load_imported_module(
             ModuleCacheKey::new(new_module_path_string.clone(), module_request.attributes);
 
         if let Some(module) = cx.modules.get(&module_cache_key.into_heap()) {
-            return Ok(module.to_handle());
+            return Ok(DynModule::from_heap(module));
+        }
+    }
+
+    // Check if the module is a JSON module
+    if let Some(attributes) = &module_request.attributes {
+        if attributes.has_attribute_with_value("type", "json") {
+            let json_value = parse_json_file_at_path(cx, new_module_path.as_path())?;
+            let json_module = SyntheticModule::new_default_export(cx, realm, json_value);
+
+            // Cache the JSON module
+            let module_cache_key =
+                ModuleCacheKey::new(new_module_path_string, module_request.attributes);
+            cx.insert_module(module_cache_key, json_module.as_dyn_module());
+
+            return Ok(json_module.as_dyn_module());
         }
     }
 
@@ -218,12 +237,22 @@ pub fn host_load_imported_module(
 
     // Cache the module
     let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
-    cx.insert_module(module_cache_key, module);
+    cx.insert_module(module_cache_key, module.as_dyn_module());
 
-    Ok(module)
+    Ok(module.as_dyn_module())
 }
 
 fn parse_file_at_path(cx: Context, path: &Path) -> ParseResult<ParseProgramResult> {
     let source = Rc::new(Source::new_from_file(path.to_str().unwrap())?);
     parse_module(&source, cx.options.as_ref())
+}
+
+fn parse_json_file_at_path(mut cx: Context, path: &Path) -> EvalResult<Handle<Value>> {
+    // Read the contents of the file into the heap
+    let file_contents = match Source::new_from_file(path.to_str().unwrap()) {
+        Ok(source) => cx.alloc_wtf8_string(&source.contents),
+        Err(error) => return syntax_parse_error(cx, &error),
+    };
+
+    JSONObject::parse(cx, cx.undefined(), &[file_contents.as_value()], None)
 }

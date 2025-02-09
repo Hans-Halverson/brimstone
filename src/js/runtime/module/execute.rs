@@ -11,7 +11,11 @@ use crate::{
         get,
         interned_strings::InternedStrings,
         intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
-        module::linker::link,
+        module::{
+            module::{DynModule, ModuleEnum},
+            synthetic_module::SyntheticModule,
+        },
+        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
@@ -22,8 +26,9 @@ use crate::{
 
 use super::{
     import_attributes::ImportAttributes,
-    loader::{host_load_imported_module, load_requested_modules},
-    source_text_module::{ModuleId, ModuleRequest, ModuleState, SourceTextModule},
+    loader::host_load_imported_module,
+    module::{Module, ModuleId},
+    source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
 };
 
 /// Execute a module - loading, linking, and evaluating it and its dependencies.
@@ -43,9 +48,9 @@ pub fn execute_module(mut cx: Context, module: Handle<SourceTextModule>) -> Hand
 
     // Modules executing directly are assumed to have no attributes
     let module_cache_key = ModuleCacheKey::new(source_file_path, None);
-    cx.insert_module(module_cache_key, module);
+    cx.insert_module(module_cache_key, module.as_dyn_module());
 
-    let promise = load_requested_modules(cx, module);
+    let promise = module.load_requested_modules(cx);
 
     let on_resolve = callback(cx, load_requested_modules_static_resolve);
     set_module(cx, on_resolve, module);
@@ -71,6 +76,33 @@ fn get_module(cx: Context, function: Handle<ObjectValue>) -> Handle<SourceTextMo
 
 fn set_module(cx: Context, mut function: Handle<ObjectValue>, value: Handle<SourceTextModule>) {
     function.private_element_set(cx, cx.well_known_symbols.module().cast(), value.into());
+}
+
+fn get_dyn_module(cx: Context, function: Handle<ObjectValue>) -> DynModule {
+    let item = function
+        .private_element_find(cx, cx.well_known_symbols.module().cast())
+        .unwrap()
+        .value()
+        .as_pointer();
+
+    debug_assert!(
+        item.descriptor().kind() == ObjectKind::SourceTextModule
+            || item.descriptor().kind() == ObjectKind::SyntheticModule
+    );
+
+    if item.descriptor().kind() == ObjectKind::SourceTextModule {
+        item.cast::<SourceTextModule>().to_handle().as_dyn_module()
+    } else {
+        item.cast::<SyntheticModule>().to_handle().as_dyn_module()
+    }
+}
+
+fn set_dyn_module(cx: Context, mut function: Handle<ObjectValue>, value: DynModule) {
+    function.private_element_set(
+        cx,
+        cx.well_known_symbols.module().cast(),
+        value.as_heap_item().into(),
+    );
 }
 
 fn get_capability(cx: Context, function: Handle<ObjectValue>) -> Handle<PromiseCapability> {
@@ -101,7 +133,7 @@ pub fn load_requested_modules_static_resolve(
     let module = get_module(cx, current_function);
     let capability = get_capability(cx, current_function);
 
-    if let Err(error) = link(cx, module) {
+    if let Err(error) = module.link(cx) {
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
         return Ok(cx.undefined());
     }
@@ -110,7 +142,7 @@ pub fn load_requested_modules_static_resolve(
     cx.has_finished_module_resolution = true;
     cx.vm().mark_stack_trace_top();
 
-    let evaluate_promise = module_evaluate(cx, module);
+    let evaluate_promise = module.evaluate(cx);
 
     Ok(perform_promise_then(
         cx,
@@ -149,7 +181,7 @@ fn callback(cx: Context, func: BuiltinFunctionPtr) -> Handle<ObjectValue> {
     .into()
 }
 
-fn module_evaluate(cx: Context, module: Handle<SourceTextModule>) -> Handle<PromiseObject> {
+pub fn module_evaluate(cx: Context, module: Handle<SourceTextModule>) -> Handle<PromiseObject> {
     let mut evaluator = GraphEvaluator::new();
     evaluator.evaluate(cx, module)
 }
@@ -184,7 +216,7 @@ impl GraphEvaluator {
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
         module.set_top_level_capability(*capability);
 
-        let evaluation_result = self.inner_evaluate(cx, module, 0);
+        let evaluation_result = self.inner_evaluate(cx, module.as_dyn_module(), 0);
 
         match evaluation_result {
             Ok(_) => {
@@ -222,9 +254,24 @@ impl GraphEvaluator {
     fn inner_evaluate(
         &mut self,
         mut cx: Context,
-        mut module: Handle<SourceTextModule>,
+        module: DynModule,
         index: u32,
     ) -> EvalResult<u32> {
+        let mut module = match module.as_enum() {
+            // Directly evaluate synthetic modules
+            ModuleEnum::Synthetic(module) => {
+                let promise = module.evaluate(cx);
+
+                // Propagate rejected value as error
+                return if let Some(rejected_value) = promise.rejected_value() {
+                    Err(rejected_value.to_handle(cx))
+                } else {
+                    Ok(index)
+                };
+            }
+            ModuleEnum::SourceText(module) => module,
+        };
+
         if matches!(module.state(), ModuleState::Evaluated | ModuleState::EvaluatingAsync) {
             if let Some(error) = module.evaluation_error(cx) {
                 return Err(error);
@@ -250,36 +297,38 @@ impl GraphEvaluator {
 
         let loaded_modules = module.loaded_modules();
         for i in 0..loaded_modules.len() {
-            let mut required_module = loaded_modules.as_slice()[i].unwrap().to_handle();
+            let required_module = DynModule::from_heap(&loaded_modules.as_slice()[i].unwrap());
 
             index = self.inner_evaluate(cx, required_module, index)?;
 
-            if required_module.state() == ModuleState::Evaluating {
-                let new_index = module
-                    .dfs_ancestor_index()
-                    .min(required_module.dfs_ancestor_index());
-                module.set_dfs_ancestor_index(new_index)
-            } else {
-                debug_assert!(matches!(
-                    required_module.state(),
-                    ModuleState::EvaluatingAsync | ModuleState::Evaluated
-                ));
+            if let Some(mut required_module) = required_module.as_source_text_module() {
+                if required_module.state() == ModuleState::Evaluating {
+                    let new_index = module
+                        .dfs_ancestor_index()
+                        .min(required_module.dfs_ancestor_index());
+                    module.set_dfs_ancestor_index(new_index)
+                } else {
+                    debug_assert!(matches!(
+                        required_module.state(),
+                        ModuleState::EvaluatingAsync | ModuleState::Evaluated
+                    ));
 
-                required_module = required_module.cycle_root().unwrap();
+                    required_module = required_module.cycle_root().unwrap();
 
-                debug_assert!(matches!(
-                    required_module.state(),
-                    ModuleState::EvaluatingAsync | ModuleState::Evaluated
-                ));
+                    debug_assert!(matches!(
+                        required_module.state(),
+                        ModuleState::EvaluatingAsync | ModuleState::Evaluated
+                    ));
 
-                if let Some(error) = required_module.evaluation_error(cx) {
-                    return Err(error);
+                    if let Some(error) = required_module.evaluation_error(cx) {
+                        return Err(error);
+                    }
                 }
-            }
 
-            if required_module.is_async_evaluation() {
-                module.inc_pending_async_dependencies();
-                required_module.push_async_parent_module(cx, module);
+                if required_module.is_async_evaluation() {
+                    module.inc_pending_async_dependencies();
+                    required_module.push_async_parent_module(cx, module);
+                }
             }
         }
 
@@ -591,7 +640,7 @@ pub fn dynamic_import(
 fn continue_dynamic_import(
     cx: Context,
     capability: Handle<PromiseCapability>,
-    load_completion: EvalResult<Handle<SourceTextModule>>,
+    load_completion: EvalResult<DynModule>,
 ) {
     let module = match load_completion {
         Ok(module) => module,
@@ -601,10 +650,10 @@ fn continue_dynamic_import(
         }
     };
 
-    let load_promise = load_requested_modules(cx, module);
+    let load_promise = module.load_requested_modules(cx);
 
     let on_resolve = callback(cx, load_requested_modules_dynamic_resolve);
-    set_module(cx, on_resolve, module);
+    set_dyn_module(cx, on_resolve, module);
     set_capability(cx, on_resolve, capability);
 
     let on_reject = callback(cx, load_requested_modules_reject);
@@ -619,12 +668,12 @@ pub fn load_requested_modules_dynamic_resolve(
     _: &[Handle<Value>],
     _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
-    // Fetch the module and capbility passed from the caller
+    // Fetch the module and capability passed from the caller
     let current_function = cx.current_function();
-    let module = get_module(cx, current_function);
+    let module = get_dyn_module(cx, current_function);
     let capability = get_capability(cx, current_function);
 
-    if let Err(error) = link(cx, module) {
+    if let Err(error) = module.link(cx) {
         must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
         return Ok(cx.undefined());
     }
@@ -633,20 +682,22 @@ pub fn load_requested_modules_dynamic_resolve(
     // we should rethrow that error directly. Otherwise Evaluate will fail since it expects an
     // evaluated module to have a [[CycleRoot]], but [[CycleRoot]] is not set if module evaluation
     // errors.
-    if module.state() == ModuleState::Evaluated && module.evaluation_error_ptr().is_some() {
-        must!(call_object(
-            cx,
-            capability.reject(),
-            cx.undefined(),
-            &[module.evaluation_error(cx).unwrap()]
-        ));
-        return Ok(cx.undefined());
+    if let Some(module) = module.as_source_text_module() {
+        if module.state() == ModuleState::Evaluated && module.evaluation_error_ptr().is_some() {
+            must!(call_object(
+                cx,
+                capability.reject(),
+                cx.undefined(),
+                &[module.evaluation_error(cx).unwrap()]
+            ));
+            return Ok(cx.undefined());
+        }
     }
 
-    let evaluate_promise = module_evaluate(cx, module);
+    let evaluate_promise = module.evaluate(cx);
 
     let on_resolve = callback(cx, module_evaluate_dynamic_resolve);
-    set_module(cx, on_resolve, module);
+    set_dyn_module(cx, on_resolve, module);
     set_capability(cx, on_resolve, capability);
 
     let on_reject = callback(cx, load_requested_modules_reject);
@@ -665,7 +716,7 @@ pub fn module_evaluate_dynamic_resolve(
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capbility passed from the caller
     let current_function = cx.current_function();
-    let mut module = get_module(cx, current_function);
+    let mut module = get_dyn_module(cx, current_function);
     let capability = get_capability(cx, current_function);
 
     let namespace_object = module.get_namespace_object(cx).to_handle();

@@ -35,7 +35,7 @@ pub mod global_object;
 #[allow(clippy::module_inception)]
 pub mod intrinsics;
 mod iterator_prototype;
-mod json_object;
+pub mod json_object;
 pub mod map_constructor;
 pub mod map_iterator;
 pub mod map_object;

@@ -4285,10 +4285,14 @@ impl VM {
         let module_scope = self.top_scope();
 
         // May allocate
-        let mut module = module_scope.module_scope_module().to_handle();
-        let object = module.get_import_meta_object(self.cx());
+        let value = if let Some(module) = module_scope.module_scope_module() {
+            let object = module.to_handle().get_import_meta_object(self.cx());
+            object.as_value()
+        } else {
+            Value::undefined()
+        };
 
-        self.write_register(dest, object.as_value());
+        self.write_register(dest, value);
     }
 
     #[inline]

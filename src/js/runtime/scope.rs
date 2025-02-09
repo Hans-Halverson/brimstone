@@ -169,13 +169,19 @@ impl Scope {
         self.get_slot(0).as_pointer().cast::<Realm>()
     }
 
-    /// Return the module stored in this module scope.
+    /// Return the source text module stored in this module scope, if one exists.
     ///
     /// Should only be called on module scopes.
     #[inline]
-    pub fn module_scope_module(&self) -> HeapPtr<SourceTextModule> {
+    pub fn module_scope_module(&self) -> Option<HeapPtr<SourceTextModule>> {
         debug_assert!(self.kind == ScopeKind::Module);
-        self.get_slot(0).as_pointer().cast::<SourceTextModule>()
+
+        let module = self.get_slot(0).as_pointer();
+        if module.descriptor().kind() == ObjectKind::SourceTextModule {
+            Some(module.cast::<SourceTextModule>())
+        } else {
+            None
+        }
     }
 }
 

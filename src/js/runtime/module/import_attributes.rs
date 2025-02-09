@@ -48,6 +48,16 @@ impl ImportAttributes {
             InlineArray::<HeapPtr<FlatString>>::calculate_size_in_bytes(num_entries);
         Self::ATTRIBUTE_PAIRS_OFFSET + attributes_size
     }
+
+    pub fn has_attribute_with_value(&self, key: &str, value: &str) -> bool {
+        for attribute_pair in self.attribute_pairs.as_slice().chunks_exact(2) {
+            if attribute_pair[0].eq_str(key) && attribute_pair[1].eq_str(value) {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl PartialEq for HeapPtr<ImportAttributes> {

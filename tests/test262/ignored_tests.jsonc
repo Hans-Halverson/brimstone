@@ -206,7 +206,6 @@
     "features": [
       // Stage 4 proposals
       "iterator-helpers",
-      "json-modules",
 
       // Other unimplemented features
       "SharedArrayBuffer",

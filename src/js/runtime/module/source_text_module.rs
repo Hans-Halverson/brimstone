@@ -1,31 +1,35 @@
-use std::{
-    collections::HashSet,
-    hash::Hash,
-    num::NonZeroUsize,
-    sync::{LazyLock, Mutex},
-};
+use std::{collections::HashSet, hash::Hash, num::NonZeroUsize};
 
 use indexmap::IndexSet;
 
 use crate::{
     field_offset,
     js::runtime::{
-        boxed_value::BoxedValue,
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
         gc::{HandleScope, HeapItem, HeapObject, HeapVisitor},
         module::{
-            import_attributes::ImportAttributes, module_namespace_object::ModuleNamespaceObject,
+            execute::module_evaluate, import_attributes::ImportAttributes, module::next_module_id,
+            module_namespace_object::ModuleNamespaceObject,
         },
         object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
-        promise_object::PromiseCapability,
+        promise_object::{PromiseCapability, PromiseObject},
         scope::Scope,
         string_value::FlatString,
-        Context, Handle, HeapPtr, PropertyKey, Value,
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
+};
+
+use super::{
+    linker::link,
+    loader::load_requested_modules,
+    module::{
+        DynModule, HeapDynModule, Module, ModuleEnum, ModuleId, ResolveExportName,
+        ResolveExportResult,
+    },
 };
 
 /// Abstract Module Records (https://tc39.es/ecma262/#sec-abstract-module-records)
@@ -93,7 +97,7 @@ pub enum ModuleState {
 
 type ModuleRequestArray = BsArray<HeapModuleRequest>;
 
-type ModuleOptionArray = BsArray<Option<HeapPtr<SourceTextModule>>>;
+type ModuleOptionArray = BsArray<Option<HeapDynModule>>;
 
 /// Key is the name of the export.
 /// - If export is a namespace export then value is the SourceTextModule whose namespace is exported
@@ -127,7 +131,8 @@ impl SourceTextModule {
         }
 
         let loaded_modules =
-            BsArray::new(cx, ObjectKind::ValueArray, requested_modules.len(), None).to_handle();
+            BsArray::new(cx, ObjectKind::ModuleOptionArray, requested_modules.len(), None)
+                .to_handle();
 
         // Then create the uninitialized module object
         let num_entries =
@@ -363,12 +368,12 @@ impl SourceTextModule {
         self.loaded_modules.as_slice()[index].is_some()
     }
 
-    pub fn get_loaded_module_at(&self, index: usize) -> HeapPtr<SourceTextModule> {
-        self.loaded_modules.as_slice()[index].unwrap()
+    pub fn get_loaded_module_at(&self, index: usize) -> DynModule {
+        DynModule::from_heap(&self.loaded_modules.as_slice()[index].unwrap())
     }
 
-    pub fn set_loaded_module_at(&mut self, index: usize, module: HeapPtr<SourceTextModule>) {
-        self.loaded_modules.as_mut_slice()[index] = Some(module);
+    pub fn set_loaded_module_at(&mut self, index: usize, module: DynModule) {
+        self.loaded_modules.as_mut_slice()[index] = Some(module.to_heap());
     }
 
     #[inline]
@@ -383,8 +388,127 @@ impl SourceTextModule {
 }
 
 impl HeapPtr<SourceTextModule> {
+    /// GetImportedModule (https://tc39.es/ecma262/#sec-GetImportedModule)
+    pub fn get_imported_module(&self, module_request: &HeapModuleRequest) -> DynModule {
+        let index = self.lookup_module_request_index(module_request).unwrap();
+        self.get_loaded_module_at(index)
+    }
+}
+
+impl Handle<SourceTextModule> {
+    #[inline]
+    pub fn as_dyn_module(&self) -> DynModule {
+        self.into_dyn_module()
+    }
+
+    #[inline]
+    fn async_parent_modules_field(&self) -> AsyncParentModulesField {
+        AsyncParentModulesField(self.to_handle())
+    }
+
+    #[inline]
+    fn exports_field(&self) -> ExportMapField {
+        ExportMapField(*self)
+    }
+
+    pub fn insert_export(
+        &self,
+        cx: Context,
+        export_name: Handle<PropertyKey>,
+        boxed_value_or_module: Handle<HeapItem>,
+    ) -> bool {
+        self.exports_field()
+            .maybe_grow_for_insertion(cx)
+            .insert_without_growing(*export_name, *boxed_value_or_module)
+    }
+
+    pub fn push_async_parent_module(
+        &mut self,
+        cx: Context,
+        parent_module: Handle<SourceTextModule>,
+    ) {
+        // Lazily initialize the async parent modules vec
+        if self.async_parent_modules.is_none() {
+            let async_parent_modules = BsVec::new(cx, ObjectKind::ValueVec, 4);
+            self.async_parent_modules = Some(async_parent_modules);
+        }
+
+        self.async_parent_modules_field()
+            .maybe_grow_for_push(cx)
+            .push_without_growing(*parent_module);
+    }
+
+    /// Returns the `import.meta` object for this module. Lazily creates and caches the object when
+    /// first accessed.
+    pub fn get_import_meta_object(&mut self, cx: Context) -> HeapPtr<ObjectValue> {
+        if let Some(import_meta) = self.import_meta {
+            return import_meta;
+        }
+
+        // No properties are added to the `import.meta` object - this is up to the implementation
+        let object =
+            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
+
+        self.import_meta = Some(object);
+
+        object
+    }
+}
+
+impl Module for Handle<SourceTextModule> {
+    fn as_enum(&self) -> ModuleEnum {
+        ModuleEnum::SourceText(*self)
+    }
+
+    fn as_source_text_module(&self) -> Option<Handle<SourceTextModule>> {
+        Some(*self)
+    }
+
+    fn load_requested_modules(&self, cx: Context) -> Handle<PromiseObject> {
+        load_requested_modules(cx, *self)
+    }
+
+    /// GetExportedNames (https://tc39.es/ecma262/#sec-getexportednames)
+    fn get_exported_names(
+        &self,
+        cx: Context,
+        exported_names: &mut HashSet<Handle<FlatString>>,
+        visited_set: &mut HashSet<ModuleId>,
+    ) {
+        // Reached a circular import
+        if !visited_set.insert(self.id()) {
+            return;
+        }
+
+        for entry in self.entries_as_slice() {
+            match entry {
+                // Named exports are added to the set of exported names
+                ModuleEntry::LocalExport(HeapLocalExportEntry { export_name, .. })
+                | ModuleEntry::NamedReExport(HeapNamedReExportEntry { export_name, .. }) => {
+                    exported_names.insert(export_name.to_handle());
+                }
+                ModuleEntry::DirectReExport(named_re_export) => {
+                    // Add all names from the requested module to the set of exported names, excluding
+                    // the default export.
+                    let requested_module =
+                        self.get_imported_module(&named_re_export.module_request);
+
+                    let mut re_exported_names = HashSet::new();
+                    requested_module.get_exported_names(cx, &mut re_exported_names, visited_set);
+
+                    for export_name in re_exported_names {
+                        if *export_name != cx.names.default.as_string().as_flat() {
+                            exported_names.insert(export_name);
+                        }
+                    }
+                }
+                ModuleEntry::Import(_) => {}
+            }
+        }
+    }
+
     /// ResolveExport (https://tc39.es/ecma262/#sec-resolveexport)
-    pub fn resolve_export(
+    fn resolve_export(
         &self,
         cx: Context,
         export_name: HeapPtr<FlatString>,
@@ -397,7 +521,7 @@ impl HeapPtr<SourceTextModule> {
             return ResolveExportResult::Circular;
         }
 
-        resolve_set.push((export_name, *self));
+        resolve_set.push((export_name, **self));
 
         // Check if there is a local export entry with the given export name
         for entry in self.entries.as_slice() {
@@ -407,7 +531,7 @@ impl HeapPtr<SourceTextModule> {
 
                     return ResolveExportResult::Resolved {
                         name: ResolveExportName::Local { name: entry.local_name, boxed_value },
-                        module: *self,
+                        module: self.to_handle().as_dyn_module(),
                     };
                 }
             }
@@ -494,98 +618,19 @@ impl HeapPtr<SourceTextModule> {
         star_resolution
     }
 
-    /// GetImportedModule (https://tc39.es/ecma262/#sec-GetImportedModule)
-    pub fn get_imported_module(
-        &self,
-        module_request: &HeapModuleRequest,
-    ) -> HeapPtr<SourceTextModule> {
-        let index = self.lookup_module_request_index(module_request).unwrap();
-        self.get_loaded_module_at(index)
+    fn link(&self, cx: Context) -> EvalResult<()> {
+        link(cx, *self)
     }
 
-    /// GetExportedNames (https://tc39.es/ecma262/#sec-getexportednames)
-    fn get_exported_names(
-        &self,
-        cx: Context,
-        exported_names: &mut HashSet<Handle<FlatString>>,
-        visited_set: &mut HashSet<ModuleId>,
-    ) {
-        // Reached a circular import
-        if !visited_set.insert(self.id()) {
-            return;
-        }
-
-        for entry in self.entries_as_slice() {
-            match entry {
-                // Named exports are added to the set of exported names
-                ModuleEntry::LocalExport(HeapLocalExportEntry { export_name, .. })
-                | ModuleEntry::NamedReExport(HeapNamedReExportEntry { export_name, .. }) => {
-                    exported_names.insert(export_name.to_handle());
-                }
-                ModuleEntry::DirectReExport(named_re_export) => {
-                    // Add all names from the requested module to the set of exported names, excluding
-                    // the default export.
-                    let requested_module =
-                        self.get_imported_module(&named_re_export.module_request);
-
-                    let mut re_exported_names = HashSet::new();
-                    requested_module.get_exported_names(cx, &mut re_exported_names, visited_set);
-
-                    for export_name in re_exported_names {
-                        if *export_name != cx.names.default.as_string().as_flat() {
-                            exported_names.insert(export_name);
-                        }
-                    }
-                }
-                ModuleEntry::Import(_) => {}
-            }
-        }
-    }
-}
-
-impl Handle<SourceTextModule> {
-    #[inline]
-    fn async_parent_modules_field(&self) -> AsyncParentModulesField {
-        AsyncParentModulesField(self.to_handle())
-    }
-
-    #[inline]
-    fn exports_field(&self) -> ExportMapField {
-        ExportMapField(*self)
-    }
-
-    pub fn insert_export(
-        &self,
-        cx: Context,
-        export_name: Handle<PropertyKey>,
-        boxed_value_or_module: Handle<HeapItem>,
-    ) -> bool {
-        self.exports_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(*export_name, *boxed_value_or_module)
-    }
-
-    pub fn push_async_parent_module(
-        &mut self,
-        cx: Context,
-        parent_module: Handle<SourceTextModule>,
-    ) {
-        // Lazily initialize the async parent modules vec
-        if self.async_parent_modules.is_none() {
-            let async_parent_modules = BsVec::new(cx, ObjectKind::ValueVec, 4);
-            self.async_parent_modules = Some(async_parent_modules);
-        }
-
-        self.async_parent_modules_field()
-            .maybe_grow_for_push(cx)
-            .push_without_growing(*parent_module);
+    fn evaluate(&self, cx: Context) -> Handle<PromiseObject> {
+        module_evaluate(cx, *self)
     }
 
     /// GetModuleNamespace (https://tc39.es/ecma262/#sec-getmodulenamespace)
     ///
     /// Returns the namespace object used when this module is namespace imported. Lazily creates the
     /// cached namespace object and exports map.
-    pub fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject> {
+    fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject> {
         if let Some(namespace_object) = self.namespace_object {
             return namespace_object;
         }
@@ -615,7 +660,7 @@ impl Handle<SourceTextModule> {
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle);
                         }
                         ResolveExportName::Namespace => {
-                            boxed_value_or_module_handle.replace(module.as_heap_item());
+                            boxed_value_or_module_handle.replace(*module.as_heap_item());
                             self.insert_export(cx, key_handle, boxed_value_or_module_handle);
                         }
                     }
@@ -624,43 +669,11 @@ impl Handle<SourceTextModule> {
         });
 
         // Create and cache the namespace object for this module
-        let namespace_object = ModuleNamespaceObject::new(cx, *self);
+        let namespace_object = ModuleNamespaceObject::new(cx, self.as_dyn_module());
         self.namespace_object = Some(namespace_object);
 
         namespace_object
     }
-
-    /// Returns the `import.meta` object for this module. Lazily creates and caches the object when
-    /// first accessed.
-    pub fn get_import_meta_object(&mut self, cx: Context) -> HeapPtr<ObjectValue> {
-        if let Some(import_meta) = self.import_meta {
-            return import_meta;
-        }
-
-        // No properties are added to the `import.meta` object - this is up to the implementation
-        let object =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
-
-        self.import_meta = Some(object);
-
-        object
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum ResolveExportResult {
-    Resolved { name: ResolveExportName, module: HeapPtr<SourceTextModule> },
-    Ambiguous,
-    Circular,
-    None,
-}
-
-#[derive(Clone, Copy)]
-pub enum ResolveExportName {
-    /// No local name since this is a namespace import.
-    Namespace,
-    /// The local name of the binding in the module.
-    Local { name: HeapPtr<FlatString>, boxed_value: HeapPtr<BoxedValue> },
 }
 
 impl HeapObject for HeapPtr<SourceTextModule> {
@@ -710,18 +723,6 @@ impl HeapObject for HeapPtr<SourceTextModule> {
             }
         }
     }
-}
-
-pub type ModuleId = usize;
-
-static NEXT_MODULE_ID: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
-
-fn next_module_id() -> ModuleId {
-    let mut next_module_id = NEXT_MODULE_ID.lock().unwrap();
-    let module_id = *next_module_id;
-    *next_module_id += 1;
-
-    module_id
 }
 
 /// A request to import a module with the given attributes.
@@ -922,6 +923,23 @@ pub fn module_request_array_visit_pointers(
 
     for module_request in array.as_mut_slice() {
         module_request.visit_pointers(visitor);
+    }
+}
+
+pub fn module_option_array_byte_size(array: HeapPtr<ModuleOptionArray>) -> usize {
+    ModuleOptionArray::calculate_size_in_bytes(array.len())
+}
+
+pub fn module_option_array_visit_pointers(
+    array: &mut HeapPtr<ModuleOptionArray>,
+    visitor: &mut impl HeapVisitor,
+) {
+    array.visit_pointers(visitor);
+
+    for module_opt in array.as_mut_slice() {
+        if let Some(module) = module_opt {
+            module.visit_pointers(visitor);
+        }
     }
 }
 

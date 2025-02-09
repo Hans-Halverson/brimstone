@@ -55,9 +55,11 @@ use crate::js::runtime::{
         import_attributes::ImportAttributes,
         module_namespace_object::ModuleNamespaceObject,
         source_text_module::{
+            module_option_array_byte_size, module_option_array_visit_pointers,
             module_request_array_byte_size, module_request_array_visit_pointers, ExportMapField,
             SourceTextModule,
         },
+        synthetic_module::SyntheticModule,
     },
     object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{NamedPropertiesMapField, ObjectValue},
@@ -160,6 +162,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().byte_size(),
             ObjectKind::ClassNames => self.cast::<ClassNames>().byte_size(),
             ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().byte_size(),
+            ObjectKind::SyntheticModule => self.cast::<SyntheticModule>().byte_size(),
             ObjectKind::ModuleNamespaceObject => self.cast::<ModuleNamespaceObject>().byte_size(),
             ObjectKind::ImportAttributes => self.cast::<ImportAttributes>().byte_size(),
             ObjectKind::Generator => self.cast::<GeneratorObject>().byte_size(),
@@ -187,6 +190,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
             ObjectKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
+            ObjectKind::ModuleOptionArray => module_option_array_byte_size(self.cast()),
             ObjectKind::StackFrameInfoArray => stack_frame_info_array_byte_size(self.cast()),
             ObjectKind::FinalizationRegistryCells => {
                 self.cast::<FinalizationRegistryCells>().byte_size()
@@ -276,6 +280,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalNames => self.cast::<GlobalNames>().visit_pointers(visitor),
             ObjectKind::ClassNames => self.cast::<ClassNames>().visit_pointers(visitor),
             ObjectKind::SourceTextModule => self.cast::<SourceTextModule>().visit_pointers(visitor),
+            ObjectKind::SyntheticModule => self.cast::<SyntheticModule>().visit_pointers(visitor),
             ObjectKind::ModuleNamespaceObject => {
                 self.cast::<ModuleNamespaceObject>().visit_pointers(visitor)
             }
@@ -332,6 +337,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ModuleRequestArray => {
                 module_request_array_visit_pointers(self.cast_mut(), visitor)
+            }
+            ObjectKind::ModuleOptionArray => {
+                module_option_array_visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::StackFrameInfoArray => {
                 stack_frame_info_array_visit_pointers(self.cast_mut(), visitor)

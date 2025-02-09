@@ -1143,6 +1143,22 @@ impl PartialEq for Handle<FlatString> {
     }
 }
 
+impl HeapPtr<FlatString> {
+    /// Compare a flat string against a Rust `&str`.
+    pub fn eq_str(&self, other: &str) -> bool {
+        let mut iter1 = self.iter_code_points();
+        let mut iter2 = other.chars();
+
+        while let (Some(code_point_1), Some(code_point_2)) = (iter1.next(), iter2.next()) {
+            if code_point_1 != code_point_2 as CodePoint {
+                return false;
+            }
+        }
+
+        iter1.next().is_none() && iter2.next().is_none()
+    }
+}
+
 impl Eq for HeapPtr<FlatString> {}
 
 impl Eq for Handle<FlatString> {}

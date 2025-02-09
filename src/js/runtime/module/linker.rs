@@ -1,10 +1,14 @@
 use crate::js::runtime::{
-    boxed_value::BoxedValue, error::syntax_error, gc::HandleScope,
-    module::source_text_module::ModuleState, Context, EvalResult, Handle,
+    boxed_value::BoxedValue,
+    error::syntax_error,
+    gc::HandleScope,
+    module::{module::ModuleEnum, source_text_module::ModuleState},
+    Context, EvalResult, Handle,
 };
 
-use super::source_text_module::{
-    ImportEntry, ModuleEntry, ResolveExportName, ResolveExportResult, SourceTextModule,
+use super::{
+    module::{DynModule, Module, ResolveExportName, ResolveExportResult},
+    source_text_module::{ImportEntry, ModuleEntry, SourceTextModule},
 };
 
 struct GraphLinker {
@@ -27,7 +31,7 @@ impl GraphLinker {
                 | ModuleState::Evaluated
         ));
 
-        match self.inner_link(cx, module, 0) {
+        match self.inner_link(cx, module.as_dyn_module(), 0) {
             Ok(_) => {
                 // Assert state postcondition
                 debug_assert!(matches!(
@@ -54,12 +58,15 @@ impl GraphLinker {
     }
 
     /// InnerModuleLinking (https://tc39.es/ecma262/#sec-InnerModuleLinking)
-    fn inner_link(
-        &mut self,
-        cx: Context,
-        mut module: Handle<SourceTextModule>,
-        index: u32,
-    ) -> EvalResult<u32> {
+    fn inner_link(&mut self, cx: Context, module: DynModule, index: u32) -> EvalResult<u32> {
+        let mut module = match module.as_enum() {
+            ModuleEnum::Synthetic(module) => {
+                module.link(cx)?;
+                return Ok(index);
+            }
+            ModuleEnum::SourceText(module) => module,
+        };
+
         // Only start linking when in the unlinked state
         if module.state() != ModuleState::Unlinked {
             // Check for valid states
@@ -84,23 +91,25 @@ impl GraphLinker {
 
         let loaded_modules = module.loaded_modules();
         for i in 0..loaded_modules.len() {
-            let required_module = loaded_modules.as_slice()[i].unwrap().to_handle();
+            let required_module = DynModule::from_heap(&loaded_modules.as_slice()[i].unwrap());
 
             index = self.inner_link(cx, required_module, index)?;
 
-            debug_assert!(matches!(
-                required_module.state(),
-                ModuleState::Linking
-                    | ModuleState::Linked
-                    | ModuleState::EvaluatingAsync
-                    | ModuleState::Evaluated
-            ));
+            if let Some(required_module) = required_module.as_source_text_module() {
+                debug_assert!(matches!(
+                    required_module.state(),
+                    ModuleState::Linking
+                        | ModuleState::Linked
+                        | ModuleState::EvaluatingAsync
+                        | ModuleState::Evaluated
+                ));
 
-            if required_module.state() == ModuleState::Linking {
-                let new_index = module
-                    .dfs_ancestor_index()
-                    .min(required_module.dfs_ancestor_index());
-                module.set_dfs_ancestor_index(new_index)
+                if required_module.state() == ModuleState::Linking {
+                    let new_index = module
+                        .dfs_ancestor_index()
+                        .min(required_module.dfs_ancestor_index());
+                    module.set_dfs_ancestor_index(new_index)
+                }
             }
         }
 
@@ -142,9 +151,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
         if let ModuleEntry::Import(heap_entry) = &module.entries_as_slice()[i] {
             let entry = ImportEntry::from_heap(heap_entry);
 
-            let mut imported_module = module
-                .get_imported_module(&entry.module_request.to_heap())
-                .to_handle();
+            let mut imported_module = module.get_imported_module(&entry.module_request.to_heap());
 
             if let Some(import_name) = entry.import_name {
                 let resolution = imported_module.resolve_export(cx, *import_name, &mut vec![]);
@@ -163,10 +170,9 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                     // Namespace object may be stored as a module or scope value
                     ResolveExportResult::Resolved {
                         name: ResolveExportName::Namespace,
-                        module: resolved_module,
+                        module: mut resolved_module,
                     } => {
                         // May allocate
-                        let mut resolved_module = resolved_module.to_handle();
                         let namespace_object = resolved_module.get_namespace_object(cx).to_handle();
 
                         // The BoxedValue for namespace re-exports has not yet been created (unlike

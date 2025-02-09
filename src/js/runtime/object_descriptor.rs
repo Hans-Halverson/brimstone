@@ -117,6 +117,7 @@ pub enum ObjectKind {
     ClassNames,
 
     SourceTextModule,
+    SyntheticModule,
     ModuleNamespaceObject,
     ImportAttributes,
 
@@ -148,6 +149,7 @@ pub enum ObjectKind {
     ValueArray,
     ByteArray,
     ModuleRequestArray,
+    ModuleOptionArray,
     StackFrameInfoArray,
     FinalizationRegistryCells,
     GlobalScopes,
@@ -337,6 +339,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ClassNames);
 
         other_heap_object_descriptor!(ObjectKind::SourceTextModule);
+        other_heap_object_descriptor!(ObjectKind::SyntheticModule);
         register_descriptor!(
             ObjectKind::ModuleNamespaceObject,
             ModuleNamespaceObject,
@@ -370,6 +373,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);
         other_heap_object_descriptor!(ObjectKind::ModuleRequestArray);
+        other_heap_object_descriptor!(ObjectKind::ModuleOptionArray);
         other_heap_object_descriptor!(ObjectKind::StackFrameInfoArray);
         other_heap_object_descriptor!(ObjectKind::FinalizationRegistryCells);
         other_heap_object_descriptor!(ObjectKind::GlobalScopes);

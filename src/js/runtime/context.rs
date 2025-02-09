@@ -25,7 +25,9 @@ use super::{
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
     module::{
-        execute::execute_module, import_attributes::ImportAttributes,
+        execute::execute_module,
+        import_attributes::ImportAttributes,
+        module::{DynModule, HeapDynModule},
         source_text_module::SourceTextModule,
     },
     object_descriptor::{BaseDescriptors, ObjectKind},
@@ -270,10 +272,10 @@ impl Context {
         Ok(())
     }
 
-    pub fn insert_module(&mut self, cache_key: ModuleCacheKey, module: Handle<SourceTextModule>) {
+    pub fn insert_module(&mut self, cache_key: ModuleCacheKey, module: DynModule) {
         ModuleCacheField
             .maybe_grow_for_insertion(*self)
-            .insert_without_growing(cache_key.into_heap(), *module);
+            .insert_without_growing(cache_key.into_heap(), module.to_heap());
     }
 
     pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
@@ -513,11 +515,11 @@ impl Hash for HeapModuleCacheKey {
     }
 }
 
-type ModuleCache = BsHashMap<HeapModuleCacheKey, HeapPtr<SourceTextModule>>;
+type ModuleCache = BsHashMap<HeapModuleCacheKey, HeapDynModule>;
 
 pub struct ModuleCacheField;
 
-impl BsHashMapField<HeapModuleCacheKey, HeapPtr<SourceTextModule>> for ModuleCacheField {
+impl BsHashMapField<HeapModuleCacheKey, HeapDynModule> for ModuleCacheField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ModuleCache> {
         ModuleCache::new(cx, ObjectKind::ModuleCacheMap, capacity)
     }
@@ -541,7 +543,7 @@ impl ModuleCacheField {
 
         for (cache_key, module) in map.iter_mut_gc_unsafe() {
             visitor.visit_pointer_opt(&mut cache_key.attributes);
-            visitor.visit_pointer(module);
+            module.visit_pointers(visitor);
         }
     }
 }

@@ -3,5 +3,5 @@ TypeError: right side of 'in' must be an object
   |
 1 | 1 in null
   |   ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/binary/in.js:1:3)

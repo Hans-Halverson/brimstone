@@ -3,6 +3,6 @@ TypeError: can't assign constant `x`
   |
 3 |   x++;
   |   ^
-Stack:
+Stack trace:
   at test (tests/js_error/source_locations/expression/update/error_const.js:3:3)
   at <global> (tests/js_error/source_locations/expression/update/error_const.js:6:1)

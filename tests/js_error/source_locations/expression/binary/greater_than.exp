@@ -3,5 +3,5 @@ TypeError: symbol cannot be converted to number
   |
 1 | 1 > Symbol.iterator
   |   ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/binary/greater_than.js:1:3)

@@ -3,7 +3,7 @@ Error:
   |
 5 |         throw new Error()
   |               ^
-Stack:
+Stack trace:
   at next (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:5:15)
   at next (<native>)
   at foo (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:13:20)

@@ -3,7 +3,7 @@ Error:
   |
 2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error(); } });
   |                                                               ^
-Stack:
+Stack trace:
   at get (tests/js_error/source_locations/statement/return/await_throws_module.js:2:63)
   at generator (tests/js_error/source_locations/statement/return/await_throws_module.js:5:3)
   at next (<native>)

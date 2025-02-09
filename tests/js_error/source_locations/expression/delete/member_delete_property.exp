@@ -3,5 +3,5 @@ TypeError: cannot delete property
   |
 6 | delete obj.foo;
   | ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/delete/member_delete_property.js:6:1)

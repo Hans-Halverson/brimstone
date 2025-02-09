@@ -3,5 +3,5 @@ TypeError: BigInt cannot be converted to number
   |
 1 | 1 >> 2n
   |   ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/binary/shift_right_arithmetic.js:1:3)

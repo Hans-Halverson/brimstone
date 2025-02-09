@@ -3,6 +3,6 @@ ReferenceError: this is not initialized
   |
 7 |     ({ x: super.foo } = { x: 1 });
   |           ^
-Stack:
+Stack trace:
   at C (tests/js_error/source_locations/destructure/member/super_check_this_initialized.js:7:11)
   at <global> (tests/js_error/source_locations/destructure/member/super_check_this_initialized.js:11:9)

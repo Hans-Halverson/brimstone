@@ -3,5 +3,5 @@ TypeError: super class must be a constructor
   |
 1 | (class C extends 1 {})
   |  ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/class/new_class.js:1:2)

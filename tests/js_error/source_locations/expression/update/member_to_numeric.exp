@@ -3,5 +3,5 @@ TypeError: symbol cannot be converted to number
   |
 5 | obj.a++;
   | ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/update/member_to_numeric.js:5:1)

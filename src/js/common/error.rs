@@ -175,7 +175,7 @@ impl ErrorFormatter {
         // Finally write the stack trace if one exists
         if let Some(stack_trace) = self.stack_trace {
             if has_source_info {
-                self.builder.push_str("\nStack:\n");
+                self.builder.push_str("\nStack trace:\n");
             }
 
             self.builder.push_str(&stack_trace);

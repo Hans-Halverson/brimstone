@@ -3,6 +3,6 @@ Error:
   |
 8 |         throw new Error();
   |               ^
-Stack:
+Stack trace:
   at get return (tests/js_error/source_locations/destructure/array/iterator_close_non_empty.js:8:15)
   at <global> (tests/js_error/source_locations/destructure/array/iterator_close_non_empty.js:14:5)

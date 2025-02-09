@@ -3,6 +3,6 @@ ReferenceError: this is not initialized
   |
 8 |   }
   |   ^
-Stack:
+Stack trace:
   at C (tests/js_error/source_locations/statement/return/check_this_initialized.js:8:3)
   at <global> (tests/js_error/source_locations/statement/return/check_this_initialized.js:11:1)

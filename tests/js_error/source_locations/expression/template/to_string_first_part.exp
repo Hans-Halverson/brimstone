@@ -3,5 +3,5 @@ TypeError: symbol cannot be converted to string
   |
 1 | `${Symbol.iterator} foo`;
   |    ^
-Stack:
+Stack trace:
   at <global> (tests/js_error/source_locations/expression/template/to_string_first_part.js:1:4)

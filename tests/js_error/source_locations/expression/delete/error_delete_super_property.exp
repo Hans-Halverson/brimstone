@@ -3,6 +3,6 @@ ReferenceError: cannot delete super property
   |
 5 |     delete super.x;
   |     ^
-Stack:
+Stack trace:
   at deleteSuperProperty (tests/js_error/source_locations/expression/delete/error_delete_super_property.js:5:5)
   at <global> (tests/js_error/source_locations/expression/delete/error_delete_super_property.js:10:1)

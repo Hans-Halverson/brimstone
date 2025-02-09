@@ -3,6 +3,6 @@ Error:
   |
 7 |       throw new Error()
   |             ^
-Stack:
+Stack trace:
   at has (tests/js_error/source_locations/statement/for_in/for_in_next.js:7:13)
   at <global> (tests/js_error/source_locations/statement/for_in/for_in_next.js:12:12)

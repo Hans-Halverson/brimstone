@@ -936,10 +936,8 @@ pub fn module_option_array_visit_pointers(
 ) {
     array.visit_pointers(visitor);
 
-    for module_opt in array.as_mut_slice() {
-        if let Some(module) = module_opt {
-            module.visit_pointers(visitor);
-        }
+    for module in array.as_mut_slice().iter_mut().flatten() {
+        module.visit_pointers(visitor);
     }
 }
 

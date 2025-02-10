@@ -117,3 +117,16 @@ pub fn byte_array_visit_pointers(
 ) {
     byte_array.visit_pointers(visitor);
 }
+
+/// A generic array of opaque 32-bit values. Corresponds to ObjectKind::U32Array.
+///
+/// Can be used for any kind of opaque 32-bit data.
+pub type U32Array = BsArray<u32>;
+
+pub fn u32_array_byte_size(array: HeapPtr<U32Array>) -> usize {
+    U32Array::calculate_size_in_bytes(array.len())
+}
+
+pub fn u32_array_visit_pointers(array: &mut HeapPtr<U32Array>, visitor: &mut impl HeapVisitor) {
+    array.visit_pointers(visitor);
+}

@@ -90,7 +90,7 @@ impl Handle<SourceFile> {
         // Lazily generate line offsets when first requested
         let raw_line_offsets = calculate_line_offsets(self.contents_as_slice());
         let line_offsets_object =
-            LineOffsetArray::new_from_slice(cx, ObjectKind::ByteArray, &raw_line_offsets);
+            LineOffsetArray::new_from_slice(cx, ObjectKind::U32Array, &raw_line_offsets);
 
         self.line_offsets = Some(line_offsets_object);
 

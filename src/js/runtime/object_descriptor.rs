@@ -148,6 +148,7 @@ pub enum ObjectKind {
     // Arrays
     ValueArray,
     ByteArray,
+    U32Array,
     ModuleRequestArray,
     ModuleOptionArray,
     StackFrameInfoArray,
@@ -372,6 +373,7 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::ValueArray);
         other_heap_object_descriptor!(ObjectKind::ByteArray);
+        other_heap_object_descriptor!(ObjectKind::U32Array);
         other_heap_object_descriptor!(ObjectKind::ModuleRequestArray);
         other_heap_object_descriptor!(ObjectKind::ModuleOptionArray);
         other_heap_object_descriptor!(ObjectKind::StackFrameInfoArray);

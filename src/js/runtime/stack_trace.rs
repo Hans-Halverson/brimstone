@@ -160,7 +160,7 @@ pub fn create_stack_trace(
 
                 // Save the source position if it is for the first frame
                 if i == 0 {
-                    let source_file = func.source_file_ptr().unwrap();
+                    let source_file = func.source_file_ptr().unwrap().to_handle();
                     first_source_file_line_col = Some((source_file, line, column));
                 }
             }
@@ -174,8 +174,10 @@ pub fn create_stack_trace(
     }
 
     let frames = cx.alloc_string_ptr(&stack_trace);
+    let source_file_line_col =
+        first_source_file_line_col.map(|(file, line, col)| (*file, line, col));
 
-    CachedStackTraceInfo { frames, source_file_line_col: first_source_file_line_col }
+    CachedStackTraceInfo { frames, source_file_line_col }
 }
 
 /// Prepare for a stack trace to be formatted. Perform any allocations that will be needed, such as

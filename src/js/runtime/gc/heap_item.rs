@@ -13,8 +13,8 @@ use crate::js::runtime::{
     class_names::ClassNames,
     collections::{
         array::{
-            byte_array_byte_size, byte_array_visit_pointers, value_array_byte_size,
-            value_array_visit_pointers,
+            byte_array_byte_size, byte_array_visit_pointers, u32_array_byte_size,
+            u32_array_visit_pointers, value_array_byte_size, value_array_visit_pointers,
         },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
     },
@@ -189,6 +189,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ModuleCacheMap => ModuleCacheField::byte_size(&self.cast()),
             ObjectKind::ValueArray => value_array_byte_size(self.cast()),
             ObjectKind::ByteArray => byte_array_byte_size(self.cast()),
+            ObjectKind::U32Array => u32_array_byte_size(self.cast()),
             ObjectKind::ModuleRequestArray => module_request_array_byte_size(self.cast()),
             ObjectKind::ModuleOptionArray => module_option_array_byte_size(self.cast()),
             ObjectKind::StackFrameInfoArray => stack_frame_info_array_byte_size(self.cast()),
@@ -335,6 +336,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::ValueArray => value_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ByteArray => byte_array_visit_pointers(self.cast_mut(), visitor),
+            ObjectKind::U32Array => u32_array_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::ModuleRequestArray => {
                 module_request_array_visit_pointers(self.cast_mut(), visitor)
             }

@@ -80,7 +80,7 @@ impl SymbolConstructor {
         );
 
         let iterator = cx.well_known_symbols.iterator().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.iterator(), iterator.into());
+        func.intrinsic_frozen_property(cx, cx.names.iterator_(), iterator.into());
 
         let match_ = cx.well_known_symbols.match_().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.match_(), match_.into());

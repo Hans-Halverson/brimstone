@@ -79,27 +79,15 @@ impl StringPrototype {
         object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm);
         object.intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm);
         object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_lower_case(),
-            Self::to_locale_lower_case,
-            0,
-            realm,
-        );
-        object.intrinsic_func(
-            cx,
-            cx.names.to_locale_upper_case(),
-            Self::to_locale_upper_case,
-            0,
-            realm,
-        );
+        object.intrinsic_func(cx, cx.names.to_locale_lower_case(), Self::to_lower_case, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_locale_upper_case(), Self::to_upper_case, 0, realm);
         object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
         object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
         object.intrinsic_func(cx, cx.names.to_well_formed(), Self::to_well_formed, 0, realm);
         object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm);
         object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm);
         object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.value_of(), Self::to_string, 0, realm);
 
         // String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
@@ -1070,32 +1058,6 @@ impl StringPrototype {
         Ok(string.substring(cx, int_start, int_end).as_value())
     }
 
-    /// String.prototype.toLocaleLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolocalelowercase)
-    pub fn to_locale_lower_case(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
-        let string = to_string(cx, object)?;
-
-        Ok(string.to_lower_case(cx).as_value())
-    }
-
-    /// String.prototype.toLocaleUpperCase (https://tc39.es/ecma262/#sec-string.prototype.tolocaleuppercase)
-    pub fn to_locale_upper_case(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
-        let string = to_string(cx, object)?;
-
-        Ok(string.to_upper_case(cx).as_value())
-    }
-
     /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
     pub fn to_lower_case(
         cx: Context,
@@ -1182,16 +1144,6 @@ impl StringPrototype {
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, true, false).as_value())
-    }
-
-    /// String.prototype.valueOf (https://tc39.es/ecma262/#sec-string.prototype.valueof)
-    pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_string_value(cx, this_value)
     }
 
     /// String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)

@@ -41,6 +41,7 @@ use crate::{
             generator_function_prototype::GeneratorFunctionPrototype,
             generator_prototype::GeneratorPrototype,
             global_object::{create_eval, create_parse_float, create_parse_int},
+            iterator_constructor::IteratorConstructor,
             iterator_prototype::IteratorPrototype,
             json_object::JSONObject,
             map_constructor::MapConstructor,
@@ -149,6 +150,7 @@ pub enum Intrinsic {
     Int16ArrayPrototype,
     Int32ArrayConstructor,
     Int32ArrayPrototype,
+    IteratorConstructor,
     IteratorPrototype,
     #[allow(clippy::upper_case_acronyms)]
     JSON,
@@ -362,6 +364,7 @@ impl Intrinsics {
 
         // Iterators
         register_intrinsic!(IteratorPrototype, IteratorPrototype);
+        register_intrinsic!(IteratorConstructor, IteratorConstructor);
         register_intrinsic!(AsyncIteratorPrototype, AsyncIteratorPrototype);
         register_intrinsic!(AsyncFromSyncIteratorPrototype, AsyncFromSyncIteratorPrototype);
         register_intrinsic!(ArrayIteratorPrototype, ArrayIteratorPrototype);

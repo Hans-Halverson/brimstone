@@ -32,6 +32,7 @@ impl IteratorPrototype {
         object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
+        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
 
         // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
@@ -211,6 +212,71 @@ impl IteratorPrototype {
             match result {
                 Err(_) => return iterator_close(cx, iterated.iterator, result),
                 Ok(_) => counter += 1,
+            }
+        }
+    }
+
+    /// Iterator.prototype.reduce (https://tc39.es/ecma262/#sec-iterator.prototype.reduce)
+    pub fn reduce(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Iterator.prototype.reduce called on non-object");
+        }
+
+        // Verify the callback argument is a function, closing the underlying iterator if not
+        let callback_arg = get_argument(cx, arguments, 0);
+        if !is_callable(callback_arg) {
+            let error =
+                type_error_value(cx, "Iterator.prototype.reduce callback is not a function");
+            return iterator_close(cx, this_value.as_object(), Err(error));
+        }
+        let callback = callback_arg.as_object();
+
+        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+
+        let mut accumulator;
+        let mut counter: u64;
+
+        if arguments.len() < 2 {
+            match iterator_step_value(cx, &mut iterated)? {
+                None => {
+                    return type_error(cx, "Iterator.prototype.reduce called on empty iterator")
+                }
+                Some(value) => {
+                    accumulator = value;
+                    counter = 1;
+                }
+            }
+        } else {
+            accumulator = get_argument(cx, arguments, 1);
+            counter = 0;
+        };
+
+        let mut counter_handle: Handle<Value> = Handle::empty(cx);
+
+        loop {
+            // Get the next value from the iterator, returning the accumulator if done
+            let value = match iterator_step_value(cx, &mut iterated)? {
+                None => return Ok(accumulator),
+                Some(value) => value,
+            };
+
+            // Pass accumulator, value, and counter to the predicate function
+            counter_handle.replace(Value::from(counter));
+            let result =
+                call_object(cx, callback, cx.undefined(), &[accumulator, value, counter_handle]);
+
+            // Finish iterating if callback threw, otherwise update the accumulator
+            match result {
+                Err(_) => return iterator_close(cx, iterated.iterator, result),
+                Ok(value) => {
+                    accumulator = value;
+                    counter += 1;
+                }
             }
         }
     }

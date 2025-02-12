@@ -345,6 +345,7 @@ rust_runtime_functions!(
     IteratorPrototype::set_constructor,
     IteratorPrototype::set_to_string_tag,
     IteratorPrototype::some,
+    IteratorPrototype::to_array,
     JSONObject::parse,
     JSONObject::stringify,
     MapConstructor::construct,

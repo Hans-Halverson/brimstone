@@ -22,6 +22,7 @@ impl IteratorPrototype {
 
         object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
 
         let iterator_key = cx.well_known_symbols.iterator();
@@ -116,6 +117,49 @@ impl IteratorPrototype {
                 Ok(result) if to_boolean(*result) => {
                     return iterator_close(cx, iterated.iterator, Ok(value))
                 }
+                Ok(_) => counter += 1,
+            }
+        }
+    }
+
+    /// Iterator.prototype.forEach (https://tc39.es/ecma262/#sec-iterator.prototype.foreach)
+    pub fn for_each(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Iterator.prototype.forEach called on non-object");
+        }
+
+        // Verify the callback argument is a function, closing the underlying iterator if not
+        let callback_arg = get_argument(cx, arguments, 0);
+        if !is_callable(callback_arg) {
+            let error =
+                type_error_value(cx, "Iterator.prototype.forEach callback is not a function");
+            return iterator_close(cx, this_value.as_object(), Err(error));
+        }
+        let callback = callback_arg.as_object();
+
+        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut counter: u64 = 0;
+        let mut counter_handle: Handle<Value> = Handle::empty(cx);
+
+        loop {
+            // Get the next value from the iterator, returning true if done
+            let value = match iterator_step_value(cx, &mut iterated)? {
+                None => return Ok(cx.undefined()),
+                Some(value) => value,
+            };
+
+            // Pass value and counter to the callback function
+            counter_handle.replace(Value::from(counter));
+            let result = call_object(cx, callback, cx.undefined(), &[value, counter_handle]);
+
+            // Finish iterating if callback threw
+            match result {
+                Err(_) => return iterator_close(cx, iterated.iterator, result),
                 Ok(_) => counter += 1,
             }
         }

@@ -337,6 +337,7 @@ rust_runtime_functions!(
     IteratorConstructor::construct,
     IteratorPrototype::every,
     IteratorPrototype::find,
+    IteratorPrototype::for_each,
     IteratorPrototype::some,
     JSONObject::parse,
     JSONObject::stringify,

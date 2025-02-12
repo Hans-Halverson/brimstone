@@ -399,6 +399,7 @@ builtin_names!(
     (then, "then"),
     (this, "this"),
     (throw, "throw"),
+    (to_array, "toArray"),
     (to_date_string, "toDateString"),
     (to_exponential, "toExponential"),
     (to_fixed, "toFixed"),

@@ -1,5 +1,6 @@
 use crate::js::runtime::{
     abstract_operations::{call_object, setter_that_ignores_prototype_properties},
+    array_object::create_array_from_list,
     error::{type_error, type_error_value},
     function::get_argument,
     iterator::{get_iterator_direct, iterator_close, iterator_step_value},
@@ -33,6 +34,7 @@ impl IteratorPrototype {
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
+        object.intrinsic_func(cx, cx.names.to_array(), Self::to_array, 0, realm);
 
         // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
@@ -321,6 +323,29 @@ impl IteratorPrototype {
                     return iterator_close(cx, iterated.iterator, Ok(cx.bool(true)))
                 }
                 Ok(_) => counter += 1,
+            }
+        }
+    }
+
+    /// Iterator.prototype.toArray (https://tc39.es/ecma262/#sec-iterator.prototype.toarray)
+    pub fn to_array(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Iterator.prototype.toArray called on non-object");
+        }
+
+        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut items = vec![];
+
+        // Collect all all items from the iterator until the iterator is done
+        loop {
+            match iterator_step_value(cx, &mut iterated)? {
+                None => return Ok(create_array_from_list(cx, &items).as_value()),
+                Some(value) => items.push(value),
             }
         }
     }

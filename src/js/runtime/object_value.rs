@@ -23,7 +23,8 @@ use super::{
         array_buffer_constructor::ArrayBufferObject, bigint_constructor::BigIntObject,
         boolean_constructor::BooleanObject, data_view_constructor::DataViewObject,
         date_object::DateObject, error_constructor::ErrorObject,
-        finalization_registry_object::FinalizationRegistryObject, map_object::MapObject,
+        finalization_registry_object::FinalizationRegistryObject,
+        iterator_constructor::WrappedValidIterator, map_object::MapObject,
         number_constructor::NumberObject, object_prototype::ObjectPrototype,
         regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
         typed_array::DynTypedArray, weak_map_object::WeakMapObject,
@@ -845,4 +846,10 @@ impl_subtype_casts!(
     ObjectKind::FinalizationRegistryObject,
     is_finalization_registry_object,
     as_finalization_registry_object
+);
+impl_subtype_casts!(
+    WrappedValidIterator,
+    ObjectKind::WrappedValidIterator,
+    is_wrapped_valid_iterator_object,
+    as_wrapped_valid_iterator_object
 );

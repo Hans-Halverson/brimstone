@@ -80,6 +80,36 @@ pub fn get_iterator(
     Ok(iterator_record)
 }
 
+/// GetIteratorDirect (https://tc39.es/ecma262/#sec-getiteratordirect)
+pub fn get_iterator_direct(cx: Context, object: Handle<ObjectValue>) -> EvalResult<Iterator> {
+    let next_method = get(cx, object, cx.names.next())?;
+    Ok(Iterator { iterator: object, next_method, is_done: false })
+}
+
+/// GetIteratorFlattenable (https://tc39.es/ecma262/#sec-getiteratorflattenable)
+pub fn get_iterator_flattenable(
+    cx: Context,
+    value: Handle<Value>,
+    reject_primitives: bool,
+) -> EvalResult<Iterator> {
+    if !value.is_object() {
+        if reject_primitives || !value.is_string() {
+            return type_error(cx, "value is not iterable");
+        }
+    }
+
+    let iterator = match get_method(cx, value, cx.well_known_symbols.iterator())? {
+        None => value,
+        Some(method) => call_object(cx, method, value, &[])?,
+    };
+
+    if !iterator.is_object() {
+        return type_error(cx, "iterator must be an object");
+    }
+
+    get_iterator_direct(cx, iterator.as_object())
+}
+
 /// IteratorNext (https://tc39.es/ecma262/#sec-iteratornext)
 pub fn iterator_next(
     cx: Context,

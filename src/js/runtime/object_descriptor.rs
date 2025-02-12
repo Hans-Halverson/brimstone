@@ -90,6 +90,7 @@ pub enum ObjectKind {
     RegExpStringIterator,
     ForInIterator,
     AsyncFromSyncIterator,
+    WrappedValidIterator,
 
     ObjectPrototype,
 
@@ -314,6 +315,7 @@ impl BaseDescriptors {
         ordinary_object_descriptor!(ObjectKind::RegExpStringIterator);
         other_heap_object_descriptor!(ObjectKind::ForInIterator);
         ordinary_object_descriptor!(ObjectKind::AsyncFromSyncIterator);
+        ordinary_object_descriptor!(ObjectKind::WrappedValidIterator);
 
         ordinary_object_descriptor!(ObjectKind::ObjectPrototype);
 

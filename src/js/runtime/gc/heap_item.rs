@@ -33,6 +33,7 @@ use crate::js::runtime::{
         date_object::DateObject,
         error_constructor::ErrorObject,
         finalization_registry_object::{FinalizationRegistryCells, FinalizationRegistryObject},
+        iterator_constructor::WrappedValidIterator,
         map_iterator::MapIterator,
         map_object::{MapObject, MapObjectMapField},
         number_constructor::NumberObject,
@@ -143,6 +144,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::RegExpStringIterator => self.cast::<RegExpStringIterator>().byte_size(),
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().byte_size(),
             ObjectKind::AsyncFromSyncIterator => self.cast::<AsyncFromSyncIterator>().byte_size(),
+            ObjectKind::WrappedValidIterator => self.cast::<WrappedValidIterator>().byte_size(),
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().byte_size(),
             ObjectKind::String => self.cast::<StringValue>().byte_size(),
             ObjectKind::Symbol => self.cast::<SymbolValue>().byte_size(),
@@ -257,6 +259,9 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ForInIterator => self.cast::<ForInIterator>().visit_pointers(visitor),
             ObjectKind::AsyncFromSyncIterator => {
                 self.cast::<AsyncFromSyncIterator>().visit_pointers(visitor)
+            }
+            ObjectKind::WrappedValidIterator => {
+                self.cast::<WrappedValidIterator>().visit_pointers(visitor)
             }
             ObjectKind::ObjectPrototype => self.cast::<ObjectPrototype>().visit_pointers(visitor),
             ObjectKind::String => self.cast::<StringValue>().visit_pointers(visitor),

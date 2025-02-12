@@ -41,7 +41,7 @@ use crate::{
             generator_function_prototype::GeneratorFunctionPrototype,
             generator_prototype::GeneratorPrototype,
             global_object::{create_eval, create_parse_float, create_parse_int},
-            iterator_constructor::IteratorConstructor,
+            iterator_constructor::{IteratorConstructor, WrapForValidIteratorPrototype},
             iterator_prototype::IteratorPrototype,
             json_object::JSONObject,
             map_constructor::MapConstructor,
@@ -176,6 +176,7 @@ pub enum Intrinsic {
     RegExpConstructor,
     RegExpPrototype,
     RegExpStringIteratorPrototype,
+    WrapForValidIteratorPrototype,
     SetConstructor,
     SetIteratorPrototype,
     SetPrototype,
@@ -372,6 +373,7 @@ impl Intrinsics {
         register_intrinsic!(MapIteratorPrototype, MapIteratorPrototype);
         register_intrinsic!(SetIteratorPrototype, SetIteratorPrototype);
         register_intrinsic!(RegExpStringIteratorPrototype, RegExpStringIteratorPrototype);
+        register_intrinsic!(WrapForValidIteratorPrototype, WrapForValidIteratorPrototype);
 
         // Async functions
         register_intrinsic_pair!(AsyncFunctionPrototype, AsyncFunctionConstructor);

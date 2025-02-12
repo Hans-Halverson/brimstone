@@ -2,8 +2,7 @@ use crate::js::runtime::{
     abstract_operations::{call_object, setter_that_ignores_prototype_properties},
     error::{type_error, type_error_value},
     function::get_argument,
-    get,
-    iterator::{iterator_close, iterator_step_value, Iterator},
+    iterator::{get_iterator_direct, iterator_close, iterator_step_value},
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::{is_callable, to_boolean},
@@ -356,10 +355,4 @@ impl IteratorPrototype {
 
         Ok(cx.undefined())
     }
-}
-
-/// GetIteratorDirect (https://tc39.es/ecma262/#sec-getiteratordirect)
-fn get_iterator_direct(cx: Context, object: Handle<ObjectValue>) -> EvalResult<Iterator> {
-    let next_method = get(cx, object, cx.names.next())?;
-    Ok(Iterator { iterator: object, next_method, is_done: false })
 }

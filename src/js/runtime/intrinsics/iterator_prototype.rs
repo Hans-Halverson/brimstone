@@ -1,5 +1,5 @@
 use crate::js::runtime::{
-    abstract_operations::call_object,
+    abstract_operations::{call_object, setter_that_ignores_prototype_properties},
     error::{type_error, type_error_value},
     function::get_argument,
     get,
@@ -20,15 +20,65 @@ impl IteratorPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
 
+        // Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-iterator.prototype.constructor)
+        object.intrinsic_getter_and_setter(
+            cx,
+            cx.names.constructor(),
+            Self::get_constructor,
+            Self::set_constructor,
+            realm,
+        );
+
         object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
 
+        // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
         object.intrinsic_func(cx, iterator_key, return_this, 0, realm);
 
+        // Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.tostringtag%)
+        let to_string_tag_key = cx.well_known_symbols.to_string_tag();
+        object.intrinsic_getter_and_setter(
+            cx,
+            to_string_tag_key,
+            Self::iterator_prototype_get_to_string_tag,
+            Self::set_to_string_tag,
+            realm,
+        );
+
         object
+    }
+
+    /// get Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-get-iterator.prototype.constructor)
+    pub fn get_constructor(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        Ok(cx.get_intrinsic(Intrinsic::IteratorConstructor).as_value())
+    }
+
+    /// set Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-set-iterator.prototype.constructor)
+    pub fn set_constructor(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let value = get_argument(cx, arguments, 0);
+
+        setter_that_ignores_prototype_properties(
+            cx,
+            this_value,
+            cx.get_intrinsic(Intrinsic::IteratorPrototype),
+            cx.names.constructor(),
+            value,
+        )?;
+
+        Ok(cx.undefined())
     }
 
     /// Iterator.prototype.every (https://tc39.es/ecma262/#sec-iterator.prototype.every)
@@ -208,6 +258,37 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
+    }
+
+    /// get Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-iterator.prototype-%symbol.tostringtag%)
+    #[no_mangle]
+    pub fn iterator_prototype_get_to_string_tag(
+        cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        Ok(cx.names.iterator().as_string().as_value())
+    }
+
+    /// set Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-set-iterator.prototype-%symbol.tostringtag%)
+    pub fn set_to_string_tag(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        let value = get_argument(cx, arguments, 0);
+
+        setter_that_ignores_prototype_properties(
+            cx,
+            this_value,
+            cx.get_intrinsic(Intrinsic::IteratorPrototype),
+            cx.well_known_symbols.to_string_tag(),
+            value,
+        )?;
+
+        Ok(cx.undefined())
     }
 }
 

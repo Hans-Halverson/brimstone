@@ -363,7 +363,8 @@ impl Intrinsics {
         register_intrinsic_pair!(Float64ArrayPrototype, Float64ArrayConstructor);
 
         // Iterators
-        register_intrinsic_pair!(IteratorPrototype, IteratorConstructor);
+        register_intrinsic!(IteratorPrototype, IteratorPrototype);
+        register_intrinsic!(IteratorConstructor, IteratorConstructor);
         register_intrinsic!(AsyncIteratorPrototype, AsyncIteratorPrototype);
         register_intrinsic!(AsyncFromSyncIteratorPrototype, AsyncFromSyncIteratorPrototype);
         register_intrinsic!(ArrayIteratorPrototype, ArrayIteratorPrototype);

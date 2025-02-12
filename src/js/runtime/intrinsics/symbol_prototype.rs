@@ -23,7 +23,7 @@ impl SymbolPrototype {
         let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_func = BuiltinFunction::create(
             cx,
-            Self::to_primitive,
+            Self::value_of,
             1,
             cx.names.symbol_to_primitive(),
             realm,
@@ -75,16 +75,6 @@ impl SymbolPrototype {
 
     /// Symbol.prototype.valueOf (https://tc39.es/ecma262/#sec-symbol.prototype.valueof)
     pub fn value_of(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
-        this_symbol_value(cx, this_value)
-    }
-
-    /// Symbol.prototype [ @@toPrimitive ] (https://tc39.es/ecma262/#sec-symbol.prototype-%symbol.toprimitive%)
-    pub fn to_primitive(
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],

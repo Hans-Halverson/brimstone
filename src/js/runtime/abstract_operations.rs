@@ -678,3 +678,30 @@ pub fn canonicalize_keyed_collection_key(cx: Context, key: Handle<Value>) -> Han
         key
     }
 }
+
+/// SetterThatIgnoresPrototypeProperties (https://tc39.es/ecma262/#sec-SetterThatIgnoresPrototypeProperties)
+pub fn setter_that_ignores_prototype_properties(
+    cx: Context,
+    this_value: Handle<Value>,
+    home_object: Handle<ObjectValue>,
+    key: Handle<PropertyKey>,
+    value: Handle<Value>,
+) -> EvalResult<()> {
+    if !this_value.is_object() {
+        return type_error(cx, "this is not an object");
+    }
+    let this_object = this_value.as_object();
+
+    // NOTE: Throwing here emulates assignment to a non-writable data property on the home object in strict mode code.
+    if same_object_value_handles(this_object, home_object) {
+        return type_error(cx, "cannot set property");
+    }
+
+    let descriptor = this_object.get_own_property(cx, key)?;
+
+    if descriptor.is_none() {
+        create_data_property_or_throw(cx, this_object, key, value)
+    } else {
+        set(cx, this_object, key, value, true)
+    }
+}

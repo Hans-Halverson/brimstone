@@ -35,9 +35,12 @@ extend_object! {
 }
 
 enum IteratorHelperState {
-    /// Iterator Helper for the drop method. Contains the number of values to drop, which is either
+    /// Iterator helper for the drop method. Contains the number of values to drop, which is either
     /// positive infinity or a non-negative integer.
     Drop(f64),
+    /// Iterator helper for the take method. Contains the number of remaining values to drop, which
+    /// is either positive infinity or a non-negative integer.
+    Take(f64),
 }
 
 impl IteratorHelperObject {
@@ -65,6 +68,12 @@ impl IteratorHelperObject {
         object
     }
 
+    pub fn new_take(cx: Context, iterator: &Iterator, limit: f64) -> Handle<IteratorHelperObject> {
+        let mut object = Self::new(cx, iterator);
+        set_uninit!(object.state, IteratorHelperState::Take(limit));
+        object
+    }
+
     pub fn generator_state(&self) -> GeneratorState {
         self.generator_state
     }
@@ -75,6 +84,10 @@ impl IteratorHelperObject {
 
     fn state(&self) -> &IteratorHelperState {
         &self.state
+    }
+
+    fn state_mut(&mut self) -> &mut IteratorHelperState {
+        &mut self.state
     }
 
     fn iterator(&self, cx: Context) -> Iterator {
@@ -99,6 +112,7 @@ impl Handle<IteratorHelperObject> {
     pub fn next(&mut self, cx: Context, is_start: bool) -> EvalResult<Option<Handle<ObjectValue>>> {
         match self.state() {
             IteratorHelperState::Drop(_) => self.next_drop(cx, is_start),
+            IteratorHelperState::Take(_) => self.next_take(cx),
         }
     }
 
@@ -161,11 +175,31 @@ impl Handle<IteratorHelperObject> {
             }
         }
 
-        let step_result = self.iterator_step_value(cx, &mut iterator);
+        let value_opt = self.iterator_step_value(cx, &mut iterator)?;
+        Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
+    }
 
-        step_result.map(|value_opt| {
-            value_opt.map(|value| create_iter_result_object(cx, value, false).as_object())
-        })
+    fn next_take(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let remaining = if let IteratorHelperState::Take(remaining) = self.state_mut() {
+            remaining
+        } else {
+            unreachable!()
+        };
+
+        // Close the iterator if we have taken all the values
+        if *remaining == 0.0 {
+            iterator_close(cx, self.iterator_object(), Ok(cx.undefined()))?;
+            return Ok(None);
+        }
+
+        // Otherwise decrement a non-inifinite remaining value
+        if *remaining != f64::INFINITY {
+            *remaining -= 1.0;
+        }
+
+        let mut iterator = self.iterator(cx);
+        let value_opt = self.iterator_step_value(cx, &mut iterator)?;
+        Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
     }
 }
 
@@ -180,7 +214,7 @@ impl HeapObject for HeapPtr<IteratorHelperObject> {
         visitor.visit_value(&mut self.next_method);
 
         match &mut self.state {
-            IteratorHelperState::Drop(_) => {}
+            IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }
     }
 }

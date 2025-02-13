@@ -67,19 +67,19 @@ impl IteratorHelperPrototype {
             // On errors set the "generator" to completed and propagate the error
             Err(error) => {
                 object.set_generator_state(GeneratorState::Completed);
-                return Err(error);
+                Err(error)
             }
             // On completion set the "generator" to completed and return the done result
             Ok(None) => {
                 object.set_generator_state(GeneratorState::Completed);
-                return Ok(create_iter_result_object(cx, cx.undefined(), true));
+                Ok(create_iter_result_object(cx, cx.undefined(), true))
             }
             // Otherwise must have been a "yield", so set the "generator" to be suspended
             Ok(Some(result)) => {
                 object.set_generator_state(GeneratorState::SuspendedYield);
-                return Ok(result.as_value());
+                Ok(result.as_value())
             }
-        };
+        }
     }
 
     /// %IteratorHelperPrototype%.return (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%.return)

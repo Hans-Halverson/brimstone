@@ -394,6 +394,7 @@ builtin_names!(
     (subarray, "subarray"),
     (substring, "substring"),
     (symmetric_difference, "symmetricDifference"),
+    (take, "take"),
     (tan, "tan"),
     (tanh, "tanh"),
     (test, "test"),

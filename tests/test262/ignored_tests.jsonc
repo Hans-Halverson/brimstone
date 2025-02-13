@@ -204,9 +204,6 @@
   // Tests for unimplemented features. Counts against test262 progress.
   "unimplemented": {
     "features": [
-      // Stage 4 proposals
-      "iterator-helpers",
-
       // Other unimplemented features
       "SharedArrayBuffer",
       "Atomics"

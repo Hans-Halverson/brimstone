@@ -12,6 +12,7 @@ use crate::{
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_with_proto,
+        type_utilities::to_boolean,
         Context, EvalResult, Handle, HeapPtr, Value,
     },
     set_uninit,
@@ -44,6 +45,8 @@ enum IteratorHelperState {
     Take(f64),
     /// Iterator helper for the map method. Contains the mapper function and a counter.
     Map { mapper: HeapPtr<ObjectValue>, counter: u64 },
+    /// Iterator helper for the filter method. Contains the predicate function and a counter.
+    Filter { predicate: HeapPtr<ObjectValue>, counter: u64 },
 }
 
 impl IteratorHelperObject {
@@ -87,6 +90,19 @@ impl IteratorHelperObject {
         object
     }
 
+    pub fn new_filter(
+        cx: Context,
+        iterator: &Iterator,
+        predicate: Handle<ObjectValue>,
+    ) -> Handle<IteratorHelperObject> {
+        let mut object = Self::new(cx, iterator);
+        set_uninit!(
+            object.state,
+            IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
+        );
+        object
+    }
+
     pub fn generator_state(&self) -> GeneratorState {
         self.generator_state
     }
@@ -127,6 +143,7 @@ impl Handle<IteratorHelperObject> {
             IteratorHelperState::Drop(_) => self.next_drop(cx, is_start),
             IteratorHelperState::Take(_) => self.next_take(cx),
             IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
+            IteratorHelperState::Filter { .. } => self.next_filter(cx, is_start),
         }
     }
 
@@ -246,6 +263,66 @@ impl Handle<IteratorHelperObject> {
             Ok(value) => Ok(Some(create_iter_result_object(cx, value, false).as_object())),
         }
     }
+
+    fn next_filter(
+        &mut self,
+        cx: Context,
+        is_start: bool,
+    ) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let predicate = if let IteratorHelperState::Filter { predicate, counter } = self.state_mut()
+        {
+            // Counter is initialized to 0 on start, increment it after the first iteration
+            if !is_start {
+                *counter += 1;
+            }
+
+            predicate.to_handle()
+        } else {
+            unreachable!()
+        };
+
+        let mut iterator = self.iterator(cx);
+        let mut counter_value: Handle<Value> = Handle::empty(cx);
+
+        // Keep looping until we find a value fron the underlying iterator which passes the
+        // predicate function.
+        loop {
+            // Get the next value from the underlying iterator
+            let value = match self.iterator_step_value(cx, &mut iterator)? {
+                None => return Ok(None),
+                Some(value) => value,
+            };
+
+            // Increment the counter for the next iteration
+            if let IteratorHelperState::Filter { counter, .. } = self.state() {
+                counter_value.replace(Value::from(*counter));
+            } else {
+                unreachable!()
+            };
+
+            // Run the predicate function on the value, closing the iterator on error
+            let is_selected =
+                match call_object(cx, predicate, cx.undefined(), &[value, counter_value]) {
+                    Err(error) => {
+                        iterator_close(cx, self.iterator_object(), Err(error))?;
+                        return Ok(None);
+                    }
+                    Ok(is_selected) => to_boolean(*is_selected),
+                };
+
+            // Return the value as an iterator result if the predicate returns true
+            if is_selected {
+                return Ok(Some(create_iter_result_object(cx, value, false).as_object()));
+            }
+
+            // Increment the counter for the next iteration
+            if let IteratorHelperState::Filter { counter, .. } = self.state_mut() {
+                *counter += 1;
+            } else {
+                unreachable!()
+            };
+        }
+    }
 }
 
 impl HeapObject for HeapPtr<IteratorHelperObject> {
@@ -260,6 +337,7 @@ impl HeapObject for HeapPtr<IteratorHelperObject> {
 
         match &mut self.state {
             IteratorHelperState::Map { mapper, .. } => visitor.visit_pointer(mapper),
+            IteratorHelperState::Filter { predicate, .. } => visitor.visit_pointer(predicate),
             IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }
     }

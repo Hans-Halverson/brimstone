@@ -341,6 +341,7 @@ rust_runtime_functions!(
     IteratorHelperPrototype::return_,
     IteratorPrototype::drop,
     IteratorPrototype::every,
+    IteratorPrototype::filter,
     IteratorPrototype::find,
     IteratorPrototype::for_each,
     IteratorPrototype::get_constructor,

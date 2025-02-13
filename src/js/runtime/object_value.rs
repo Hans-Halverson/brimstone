@@ -24,8 +24,8 @@ use super::{
         boolean_constructor::BooleanObject, data_view_constructor::DataViewObject,
         date_object::DateObject, error_constructor::ErrorObject,
         finalization_registry_object::FinalizationRegistryObject,
-        iterator_constructor::WrappedValidIterator, map_object::MapObject,
-        number_constructor::NumberObject, object_prototype::ObjectPrototype,
+        iterator_constructor::WrappedValidIterator, iterator_helper_object::IteratorHelperObject,
+        map_object::MapObject, number_constructor::NumberObject, object_prototype::ObjectPrototype,
         regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
         typed_array::DynTypedArray, weak_map_object::WeakMapObject,
         weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
@@ -852,4 +852,10 @@ impl_subtype_casts!(
     ObjectKind::WrappedValidIterator,
     is_wrapped_valid_iterator_object,
     as_wrapped_valid_iterator_object
+);
+impl_subtype_casts!(
+    IteratorHelperObject,
+    ObjectKind::IteratorHelperObject,
+    is_iterator_helper_object,
+    as_iterator_helper_object
 );

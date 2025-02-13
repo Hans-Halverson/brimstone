@@ -345,6 +345,7 @@ rust_runtime_functions!(
     IteratorPrototype::for_each,
     IteratorPrototype::get_constructor,
     IteratorPrototype::iterator_prototype_get_to_string_tag,
+    IteratorPrototype::map,
     IteratorPrototype::reduce,
     IteratorPrototype::set_constructor,
     IteratorPrototype::set_to_string_tag,

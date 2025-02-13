@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     js::runtime::{
+        abstract_operations::call_object,
         gc::{HeapObject, HeapVisitor},
         generator_object::GeneratorState,
         iterator::{
@@ -41,6 +42,8 @@ enum IteratorHelperState {
     /// Iterator helper for the take method. Contains the number of remaining values to drop, which
     /// is either positive infinity or a non-negative integer.
     Take(f64),
+    /// Iterator helper for the map method. Contains the mapper function and a counter.
+    Map { mapper: HeapPtr<ObjectValue>, counter: u64 },
 }
 
 impl IteratorHelperObject {
@@ -71,6 +74,16 @@ impl IteratorHelperObject {
     pub fn new_take(cx: Context, iterator: &Iterator, limit: f64) -> Handle<IteratorHelperObject> {
         let mut object = Self::new(cx, iterator);
         set_uninit!(object.state, IteratorHelperState::Take(limit));
+        object
+    }
+
+    pub fn new_map(
+        cx: Context,
+        iterator: &Iterator,
+        mapper: Handle<ObjectValue>,
+    ) -> Handle<IteratorHelperObject> {
+        let mut object = Self::new(cx, iterator);
+        set_uninit!(object.state, IteratorHelperState::Map { mapper: *mapper, counter: 0 });
         object
     }
 
@@ -113,6 +126,7 @@ impl Handle<IteratorHelperObject> {
         match self.state() {
             IteratorHelperState::Drop(_) => self.next_drop(cx, is_start),
             IteratorHelperState::Take(_) => self.next_take(cx),
+            IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
         }
     }
 
@@ -201,6 +215,37 @@ impl Handle<IteratorHelperObject> {
         let value_opt = self.iterator_step_value(cx, &mut iterator)?;
         Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
     }
+
+    fn next_map(&mut self, cx: Context, is_start: bool) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let (mapper, counter) =
+            if let IteratorHelperState::Map { mapper, counter } = self.state_mut() {
+                (mapper.to_handle(), counter)
+            } else {
+                unreachable!()
+            };
+
+        // Counter is initialized to 0 on start, increment it after the first iteration
+        if !is_start {
+            *counter += 1;
+        }
+
+        let counter_value = Value::from(*counter).to_handle(cx);
+
+        // Get the next value from the underlying iterator
+        let value = match self.iterator_step_value(cx, &mut self.iterator(cx))? {
+            None => return Ok(None),
+            Some(value) => value,
+        };
+
+        // Run the mapper function, returning the result and closing the iterator on error
+        match call_object(cx, mapper, cx.undefined(), &[value, counter_value]) {
+            Err(error) => {
+                iterator_close(cx, self.iterator_object(), Err(error))?;
+                Ok(None)
+            }
+            Ok(value) => Ok(Some(create_iter_result_object(cx, value, false).as_object())),
+        }
+    }
 }
 
 impl HeapObject for HeapPtr<IteratorHelperObject> {
@@ -214,6 +259,7 @@ impl HeapObject for HeapPtr<IteratorHelperObject> {
         visitor.visit_value(&mut self.next_method);
 
         match &mut self.state {
+            IteratorHelperState::Map { mapper, .. } => visitor.visit_pointer(mapper),
             IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }
     }

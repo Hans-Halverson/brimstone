@@ -74,7 +74,7 @@ fn reference_error_value(cx: Context, message: &str) -> Handle<Value> {
     ReferenceError::new_with_message(cx, message.to_owned()).into()
 }
 
-fn range_error_value(cx: Context, message: &str) -> Handle<Value> {
+pub fn range_error_value(cx: Context, message: &str) -> Handle<Value> {
     RangeError::new_with_message(cx, message.to_owned()).into()
 }
 

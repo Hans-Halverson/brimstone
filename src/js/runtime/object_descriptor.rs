@@ -91,6 +91,7 @@ pub enum ObjectKind {
     ForInIterator,
     AsyncFromSyncIterator,
     WrappedValidIterator,
+    IteratorHelperObject,
 
     ObjectPrototype,
 
@@ -316,6 +317,7 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::ForInIterator);
         ordinary_object_descriptor!(ObjectKind::AsyncFromSyncIterator);
         ordinary_object_descriptor!(ObjectKind::WrappedValidIterator);
+        ordinary_object_descriptor!(ObjectKind::IteratorHelperObject);
 
         ordinary_object_descriptor!(ObjectKind::ObjectPrototype);
 

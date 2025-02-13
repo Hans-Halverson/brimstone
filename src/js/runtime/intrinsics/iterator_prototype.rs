@@ -1,16 +1,21 @@
-use crate::js::runtime::{
-    abstract_operations::{call_object, setter_that_ignores_prototype_properties},
-    array_object::create_array_from_list,
-    error::{type_error, type_error_value},
-    function::get_argument,
-    iterator::{get_iterator_direct, iterator_close, iterator_step_value},
-    object_value::ObjectValue,
-    realm::Realm,
-    type_utilities::{is_callable, to_boolean},
-    Context, EvalResult, Handle, Value,
+use crate::{
+    js::runtime::{
+        abstract_operations::{call_object, setter_that_ignores_prototype_properties},
+        array_object::create_array_from_list,
+        error::{range_error_value, type_error, type_error_value},
+        function::get_argument,
+        iterator::{get_iterator_direct, iterator_close, iterator_step_value},
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::{is_callable, to_boolean, to_integer_or_infinity, to_number},
+        Context, EvalResult, Handle, Value,
+    },
+    must,
 };
 
-use super::{intrinsics::Intrinsic, rust_runtime::return_this};
+use super::{
+    intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject, rust_runtime::return_this,
+};
 
 /// The %IteratorPrototype% Object (https://tc39.es/ecma262/#sec-%iteratorprototype%-object)
 pub struct IteratorPrototype;
@@ -29,6 +34,7 @@ impl IteratorPrototype {
             realm,
         );
 
+        object.intrinsic_func(cx, cx.names.drop(), Self::drop, 1, realm);
         object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
@@ -81,6 +87,45 @@ impl IteratorPrototype {
         )?;
 
         Ok(cx.undefined())
+    }
+
+    /// Iterator.prototype.drop (https://tc39.es/ecma262/#sec-iterator.prototype.drop)
+    pub fn drop(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Iterator.prototype.drop called on non-object");
+        }
+
+        let iterator_object = this_value.as_object();
+
+        // Verify the limit is a number, closing the underlying iterator if not
+        let num_limit_arg = get_argument(cx, arguments, 0);
+        let num_limit = match to_number(cx, num_limit_arg) {
+            Err(error) => {
+                return iterator_close(cx, iterator_object, Err(error));
+            }
+            Ok(num_limit) => num_limit,
+        };
+
+        // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
+        if num_limit.is_nan() {
+            let error = range_error_value(cx, "Iterator.prototype.drop limit is NaN");
+            return iterator_close(cx, iterator_object, Err(error));
+        }
+
+        let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
+        if integer_limit < 0.0 {
+            let error = range_error_value(cx, "Iterator.prototype.drop limit is negative");
+            return iterator_close(cx, iterator_object, Err(error));
+        }
+
+        // Get the underlying iterator and create a new iterator helper drop object
+        let iterated = get_iterator_direct(cx, iterator_object)?;
+        Ok(IteratorHelperObject::new_drop(cx, &iterated, integer_limit).as_value())
     }
 
     /// Iterator.prototype.every (https://tc39.es/ecma262/#sec-iterator.prototype.every)

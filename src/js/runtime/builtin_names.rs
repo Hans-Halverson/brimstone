@@ -176,6 +176,7 @@ builtin_names!(
     (difference, "difference"),
     (done, "done"),
     (dot_all, "dotAll"),
+    (drop, "drop"),
     (encode_uri, "encodeURI"),
     (encode_uri_component, "encodeURIComponent"),
     (ends_with, "endsWith"),

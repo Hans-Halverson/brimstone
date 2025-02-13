@@ -47,8 +47,8 @@ extend_object! {
     }
 }
 
-#[derive(PartialEq)]
-enum GeneratorState {
+#[derive(Clone, Copy, PartialEq)]
+pub enum GeneratorState {
     /// Generator has been created but has not started executing yet.
     SuspendedStart,
     /// Generator is not executing since it has yielded.

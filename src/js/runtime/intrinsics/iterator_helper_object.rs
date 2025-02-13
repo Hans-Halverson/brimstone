@@ -7,7 +7,8 @@ use crate::{
         gc::{HeapObject, HeapVisitor},
         generator_object::GeneratorState,
         iterator::{
-            create_iter_result_object, iterator_close, iterator_step, iterator_step_value, Iterator,
+            create_iter_result_object, get_iterator_flattenable, iterator_close, iterator_step,
+            iterator_step_value, Iterator,
         },
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -43,10 +44,18 @@ enum IteratorHelperState {
     /// Iterator helper for the take method. Contains the number of remaining values to drop, which
     /// is either positive infinity or a non-negative integer.
     Take(f64),
-    /// Iterator helper for the map method. Contains the mapper function and a counter.
-    Map { mapper: HeapPtr<ObjectValue>, counter: u64 },
     /// Iterator helper for the filter method. Contains the predicate function and a counter.
     Filter { predicate: HeapPtr<ObjectValue>, counter: u64 },
+    /// Iterator helper for the map method. Contains the mapper function and a counter.
+    Map { mapper: HeapPtr<ObjectValue>, counter: u64 },
+    /// Iterator helper for the flatMap method. Contains the mapper function, a counter, and the
+    /// (iterator object, next method) pair of the inner iterator. Inner iterator is None before
+    /// the first iteration, and Some after that.
+    FlatMap {
+        mapper: HeapPtr<ObjectValue>,
+        inner_iterator: Option<(HeapPtr<ObjectValue>, Value)>,
+        counter: u64,
+    },
 }
 
 impl IteratorHelperObject {
@@ -80,6 +89,19 @@ impl IteratorHelperObject {
         object
     }
 
+    pub fn new_filter(
+        cx: Context,
+        iterator: &Iterator,
+        predicate: Handle<ObjectValue>,
+    ) -> Handle<IteratorHelperObject> {
+        let mut object = Self::new(cx, iterator);
+        set_uninit!(
+            object.state,
+            IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
+        );
+        object
+    }
+
     pub fn new_map(
         cx: Context,
         iterator: &Iterator,
@@ -90,15 +112,15 @@ impl IteratorHelperObject {
         object
     }
 
-    pub fn new_filter(
+    pub fn new_flat_map(
         cx: Context,
         iterator: &Iterator,
-        predicate: Handle<ObjectValue>,
+        mapper: Handle<ObjectValue>,
     ) -> Handle<IteratorHelperObject> {
         let mut object = Self::new(cx, iterator);
         set_uninit!(
             object.state,
-            IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
+            IteratorHelperState::FlatMap { mapper: *mapper, inner_iterator: None, counter: 0 }
         );
         object
     }
@@ -142,14 +164,28 @@ impl Handle<IteratorHelperObject> {
         match self.state() {
             IteratorHelperState::Drop(_) => self.next_drop(cx, is_start),
             IteratorHelperState::Take(_) => self.next_take(cx),
-            IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
             IteratorHelperState::Filter { .. } => self.next_filter(cx, is_start),
+            IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
+            IteratorHelperState::FlatMap { .. } => self.next_flat_map(cx),
         }
     }
 
     /// Returns either the return value or an error.
     pub fn return_(&mut self, cx: Context) -> EvalResult<Handle<Value>> {
-        iterator_close(cx, self.iterator_object(), Ok(cx.undefined()))
+        if let IteratorHelperState::FlatMap { inner_iterator, .. } = self.state() {
+            // Handle more complex return logic within flatMap. Implement logic directly following
+            // the yield when yielding an abnormal completion.
+            //
+            // First close the inner iterator, then close the outer iterator.
+            let inner_iterator = inner_iterator.as_ref().unwrap().0.to_handle();
+            let backup_completion = iterator_close(cx, inner_iterator, Ok(cx.undefined()));
+            match backup_completion {
+                Err(error) => iterator_close(cx, self.iterator_object(), Err(error)),
+                Ok(_) => iterator_close(cx, self.iterator_object(), Ok(cx.undefined())),
+            }
+        } else {
+            iterator_close(cx, self.iterator_object(), Ok(cx.undefined()))
+        }
     }
 
     fn iterator_step(
@@ -233,6 +269,66 @@ impl Handle<IteratorHelperObject> {
         Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
     }
 
+    fn next_filter(
+        &mut self,
+        cx: Context,
+        is_start: bool,
+    ) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let predicate = if let IteratorHelperState::Filter { predicate, counter } = self.state_mut()
+        {
+            // Counter is initialized to 0 on start, increment it after the first iteration
+            if !is_start {
+                *counter += 1;
+            }
+
+            predicate.to_handle()
+        } else {
+            unreachable!()
+        };
+
+        let mut iterator = self.iterator(cx);
+        let mut counter_value: Handle<Value> = Handle::empty(cx);
+
+        // Keep looping until we find a value fron the underlying iterator which passes the
+        // predicate function.
+        loop {
+            // Get the next value from the underlying iterator
+            let value = match self.iterator_step_value(cx, &mut iterator)? {
+                None => return Ok(None),
+                Some(value) => value,
+            };
+
+            // Convert the counter to a value
+            if let IteratorHelperState::Filter { counter, .. } = self.state() {
+                counter_value.replace(Value::from(*counter));
+            } else {
+                unreachable!()
+            };
+
+            // Run the predicate function on the value, closing the iterator on error
+            let is_selected =
+                match call_object(cx, predicate, cx.undefined(), &[value, counter_value]) {
+                    Err(error) => {
+                        iterator_close(cx, self.iterator_object(), Err(error))?;
+                        return Ok(None);
+                    }
+                    Ok(is_selected) => to_boolean(*is_selected),
+                };
+
+            // Return the value as an iterator result if the predicate returns true
+            if is_selected {
+                return Ok(Some(create_iter_result_object(cx, value, false).as_object()));
+            }
+
+            // Increment the counter for the next iteration
+            if let IteratorHelperState::Filter { counter, .. } = self.state_mut() {
+                *counter += 1;
+            } else {
+                unreachable!()
+            };
+        }
+    }
+
     fn next_map(&mut self, cx: Context, is_start: bool) -> EvalResult<Option<Handle<ObjectValue>>> {
         let (mapper, counter) =
             if let IteratorHelperState::Map { mapper, counter } = self.state_mut() {
@@ -264,59 +360,100 @@ impl Handle<IteratorHelperObject> {
         }
     }
 
-    fn next_filter(
-        &mut self,
-        cx: Context,
-        is_start: bool,
-    ) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let predicate = if let IteratorHelperState::Filter { predicate, counter } = self.state_mut()
-        {
-            // Counter is initialized to 0 on start, increment it after the first iteration
-            if !is_start {
-                *counter += 1;
-            }
+    fn next_flat_map(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let mut inner_iterator_opt: Option<Iterator> = None;
 
-            predicate.to_handle()
-        } else {
-            unreachable!()
-        };
+        let mapper =
+            if let IteratorHelperState::FlatMap { mapper, inner_iterator, .. } = self.state_mut() {
+                // Set the initial inner iterator, if one exists
+                if let Some((iterator, next_method)) = inner_iterator {
+                    inner_iterator_opt = Some(Iterator {
+                        iterator: iterator.to_handle(),
+                        next_method: next_method.to_handle(cx),
+                        is_done: false,
+                    });
+                }
 
-        let mut iterator = self.iterator(cx);
-        let mut counter_value: Handle<Value> = Handle::empty(cx);
-
-        // Keep looping until we find a value fron the underlying iterator which passes the
-        // predicate function.
-        loop {
-            // Get the next value from the underlying iterator
-            let value = match self.iterator_step_value(cx, &mut iterator)? {
-                None => return Ok(None),
-                Some(value) => value,
-            };
-
-            // Increment the counter for the next iteration
-            if let IteratorHelperState::Filter { counter, .. } = self.state() {
-                counter_value.replace(Value::from(*counter));
+                mapper.to_handle()
             } else {
                 unreachable!()
             };
 
-            // Run the predicate function on the value, closing the iterator on error
-            let is_selected =
-                match call_object(cx, predicate, cx.undefined(), &[value, counter_value]) {
-                    Err(error) => {
-                        iterator_close(cx, self.iterator_object(), Err(error))?;
-                        return Ok(None);
-                    }
-                    Ok(is_selected) => to_boolean(*is_selected),
+        let mut iterator = self.iterator(cx);
+        let mut counter_value: Handle<Value> = Handle::empty(cx);
+
+        // Outer loop iterates through the values of the underlying iterator
+        loop {
+            // Use the existing inner iterator if one exists (aka has already been started and is
+            // not done).
+            if inner_iterator_opt.is_none() {
+                // Get the next value from the underlying iterator
+                let value = match self.iterator_step_value(cx, &mut iterator)? {
+                    None => return Ok(None),
+                    Some(value) => value,
                 };
 
-            // Return the value as an iterator result if the predicate returns true
-            if is_selected {
-                return Ok(Some(create_iter_result_object(cx, value, false).as_object()));
+                // Convert the counter to a value
+                if let IteratorHelperState::FlatMap { counter, .. } = self.state() {
+                    counter_value.replace(Value::from(*counter));
+                } else {
+                    unreachable!()
+                };
+
+                // Run the mapper function on the value, closing the iterator on error
+                let mapped = match call_object(cx, mapper, cx.undefined(), &[value, counter_value])
+                {
+                    Err(error) => {
+                        iterator_close(cx, iterator.iterator, Err(error))?;
+                        return Ok(None);
+                    }
+                    Ok(mapped) => mapped,
+                };
+
+                // Get the inner iterator from the mapped value
+                match get_iterator_flattenable(cx, mapped, /* reject_primitives */ true) {
+                    Err(error) => {
+                        iterator_close(cx, iterator.iterator, Err(error))?;
+                        return Ok(None);
+                    }
+                    Ok(inner_iterator_result) => {
+                        // Save as the current inner iterator, both locally in this function and in
+                        // the iterator helper state.
+                        let iterator = inner_iterator_result.iterator;
+                        let next_method = inner_iterator_result.next_method;
+                        inner_iterator_opt = Some(inner_iterator_result);
+
+                        if let IteratorHelperState::FlatMap { inner_iterator, .. } =
+                            self.state_mut()
+                        {
+                            *inner_iterator = Some((*iterator, *next_method));
+                        } else {
+                            unreachable!()
+                        };
+                    }
+                }
             }
 
-            // Increment the counter for the next iteration
-            if let IteratorHelperState::Filter { counter, .. } = self.state_mut() {
+            // Return next value from the inner iterator.
+            match self.iterator_step_value(cx, inner_iterator_opt.as_mut().unwrap()) {
+                // Error if the inner iterator throws
+                Err(error) => {
+                    iterator_close(cx, iterator.iterator, Err(error))?;
+                    return Ok(None);
+                }
+                // If the inner iterator has reached the end then break out of the inner loop
+                // and continue to the next iteration of the outer loop.
+                Ok(None) => {
+                    inner_iterator_opt = None;
+                }
+                // If the inner iterator returns a value then return it as an iterator result
+                Ok(Some(value)) => {
+                    return Ok(Some(create_iter_result_object(cx, value, false).as_object()))
+                }
+            }
+
+            // Increment the counter for the next iteration of the outer loop
+            if let IteratorHelperState::FlatMap { counter, .. } = self.state_mut() {
                 *counter += 1;
             } else {
                 unreachable!()
@@ -336,8 +473,16 @@ impl HeapObject for HeapPtr<IteratorHelperObject> {
         visitor.visit_value(&mut self.next_method);
 
         match &mut self.state {
-            IteratorHelperState::Map { mapper, .. } => visitor.visit_pointer(mapper),
             IteratorHelperState::Filter { predicate, .. } => visitor.visit_pointer(predicate),
+            IteratorHelperState::Map { mapper, .. } => visitor.visit_pointer(mapper),
+            IteratorHelperState::FlatMap { mapper, inner_iterator, .. } => {
+                visitor.visit_pointer(mapper);
+
+                if let Some((iterator_object, next_method)) = inner_iterator {
+                    visitor.visit_pointer(iterator_object);
+                    visitor.visit_value(next_method);
+                }
+            }
             IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }
     }

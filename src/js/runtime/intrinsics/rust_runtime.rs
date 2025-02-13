@@ -343,6 +343,7 @@ rust_runtime_functions!(
     IteratorPrototype::every,
     IteratorPrototype::filter,
     IteratorPrototype::find,
+    IteratorPrototype::flat_map,
     IteratorPrototype::for_each,
     IteratorPrototype::get_constructor,
     IteratorPrototype::iterator_prototype_get_to_string_tag,

@@ -38,6 +38,7 @@ impl IteratorPrototype {
         object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
         object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
         object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
+        object.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
         object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
         object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
         object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
@@ -245,6 +246,30 @@ impl IteratorPrototype {
                 Ok(_) => counter += 1,
             }
         }
+    }
+
+    /// Iterator.prototype.flatMap (https://tc39.es/ecma262/#sec-iterator.prototype.flatmap)
+    pub fn flat_map(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        _: Option<Handle<ObjectValue>>,
+    ) -> EvalResult<Handle<Value>> {
+        if !this_value.is_object() {
+            return type_error(cx, "Iterator.prototype.flatMap called on non-object");
+        }
+
+        // Verify the mapper argument is a function, closing the underlying iterator if not
+        let mapper_arg = get_argument(cx, arguments, 0);
+        if !is_callable(mapper_arg) {
+            let error = type_error_value(cx, "Iterator.prototype.flatMap mapper is not a function");
+            return iterator_close(cx, this_value.as_object(), Err(error));
+        }
+        let mapper = mapper_arg.as_object();
+
+        // Get the underlying iterator and create a new iterator helper map object
+        let iterated = get_iterator_direct(cx, this_value.as_object())?;
+        Ok(IteratorHelperObject::new_flat_map(cx, &iterated, mapper).as_value())
     }
 
     /// Iterator.prototype.forEach (https://tc39.es/ecma262/#sec-iterator.prototype.foreach)

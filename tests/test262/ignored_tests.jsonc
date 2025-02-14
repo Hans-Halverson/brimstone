@@ -319,7 +319,7 @@
   // Slow tests which are ignored in GC stress test runs. Aim to ignore all tests over 5 seconds.
   "gc_stress_test": {
     "tests": [
-      "language/identifiers/start-unicode-*.js", // 60 tests
+      "language/identifiers/start-unicode-*.js", // 57 tests
       "built-ins/Array/prototype/copyWithin/resizable-buffer.js",
       "built-ins/Array/prototype/entries/resizable-buffer.js",
       "built-ins/Array/prototype/fill/resizable-buffer.js",
@@ -376,26 +376,7 @@
       "built-ins/encodeURIComponent/S15.1.3.4_A1.3_T1.js",
       "built-ins/encodeURIComponent/S15.1.3.4_A2.2_T1.js",
       "harness/nativeFunctionMatcher.js",
-      "language/destructuring/binding/typedarray-backed-by-resizable-buffer.js",
-      "staging/ArrayBuffer/resizable/array-sort-with-default-comparison.js",
-      "staging/ArrayBuffer/resizable/construct-from-typed-array.js",
-      "staging/ArrayBuffer/resizable/entries-keys-values.js",
-      "staging/ArrayBuffer/resizable/entries-keys-values-grow-mid-iteration.js",
-      "staging/ArrayBuffer/resizable/entries-keys-values-shrink-mid-iteration.js",
-      "staging/ArrayBuffer/resizable/every-some.js",
-      "staging/ArrayBuffer/resizable/filter.js",
-      "staging/ArrayBuffer/resizable/for-each-reduce-reduce-right.js",
-      "staging/ArrayBuffer/resizable/for-each-reduce-reduce-right-grow-mid-iteration.js",
-      "staging/ArrayBuffer/resizable/index-of-last-index-of.js",
-      "staging/ArrayBuffer/resizable/join-to-locale-string.js",
-      "staging/ArrayBuffer/resizable/object-define-property-define-properties.js",
-      "staging/ArrayBuffer/resizable/reverse.js",
-      "staging/ArrayBuffer/resizable/set-with-resizable-source.js",
-      "staging/ArrayBuffer/resizable/set-with-resizable-target.js",
-      "staging/ArrayBuffer/resizable/sort-with-custom-comparison.js",
-      "staging/ArrayBuffer/resizable/test-copy-within.js",
-      "staging/ArrayBuffer/resizable/test-fill.js",
-      "staging/ArrayBuffer/resizable/test-map.js"
+      "language/destructuring/binding/typedarray-backed-by-resizable-buffer.js"
     ]
   }
 }

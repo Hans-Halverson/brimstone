@@ -1,0 +1,10 @@
+TypeError: generator is already executing
+  ┌ tests/js_error/stack_trace/use_nearest_location.js:3:20
+  |
+3 | var i = { next() { ii.next() } };
+  |                    ^
+Stack trace:
+  at next (<native>)
+  at next (tests/js_error/stack_trace/use_nearest_location.js:3:20)
+  at next (<native>)
+  at <global> (tests/js_error/stack_trace/use_nearest_location.js:5:1)

@@ -158,8 +158,8 @@ pub fn create_stack_trace(
                 // Append the line and column to the function name
                 stack_trace.push_str(&format!(":{}:{}", line, column));
 
-                // Save the source position if it is for the first frame
-                if i == 0 {
+                // Save the first source position that is found
+                if first_source_file_line_col.is_none() {
                     let source_file = func.source_file_ptr().unwrap().to_handle();
                     first_source_file_line_col = Some((source_file, line, column));
                 }

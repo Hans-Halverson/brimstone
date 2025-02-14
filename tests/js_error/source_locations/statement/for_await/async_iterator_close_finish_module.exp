@@ -1,3 +1,8 @@
 TypeError: return method must return an object
+   ┌ tests/js_error/source_locations/statement/for_await/async_iterator_close_finish_module.js:15:20
+   |
+15 |   for await (var x of iterable) {
+   |                    ^
+Stack trace:
   at return (<native>)
   at foo (tests/js_error/source_locations/statement/for_await/async_iterator_close_finish_module.js:15:20)

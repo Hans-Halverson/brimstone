@@ -45,6 +45,13 @@ impl<T: ToHandleContents> Handle<T> {
 
         handle_context.next_ptr = unsafe { handle.add(1) };
 
+        // Increment handle count if tracking handles
+        #[cfg(feature = "handle_stats")]
+        {
+            handle_context.num_handles += 1;
+            handle_context.max_handles = handle_context.max_handles.max(handle_context.num_handles);
+        }
+
         Handle {
             ptr: unsafe { NonNull::new_unchecked(handle.cast()) },
             phantom_data: PhantomData,
@@ -158,7 +165,37 @@ impl HandleScope {
         // The saved handle scope was in a previous block. Pop blocks until the current block
         // matches that of the saved handle scope.
         if self.end_ptr != handle_context.end_ptr {
-            while self.end_ptr != handle_context.pop_block() {}
+            // If tracking handles then decrement the handle count for the first popped block. This
+            // removes the handle range from the start of the block to the next pointer.
+            #[cfg(feature = "handle_stats")]
+            {
+                let unallocated_in_block =
+                    unsafe { handle_context.end_ptr.offset_from(handle_context.next_ptr) as usize };
+                handle_context.num_handles -= HANDLE_BLOCK_SIZE - unallocated_in_block;
+            }
+
+            while self.end_ptr != handle_context.pop_block() {
+                // All later blocks were fully allocated
+                #[cfg(feature = "handle_stats")]
+                {
+                    handle_context.num_handles -= HANDLE_BLOCK_SIZE;
+                }
+            }
+
+            // Decrement the handle count for newly deallocated handles in the new current block.
+            // These handles are from the next pointer to the end of the block.
+            #[cfg(feature = "handle_stats")]
+            {
+                handle_context.num_handles -=
+                    unsafe { self.end_ptr.offset_from(self.next_ptr) } as usize;
+            }
+        } else {
+            // If tracking handles then remove the handle range in this block that was deallocated.
+            #[cfg(feature = "handle_stats")]
+            {
+                handle_context.num_handles -=
+                    unsafe { handle_context.next_ptr.offset_from(self.next_ptr) } as usize;
+            }
         }
 
         handle_context.next_ptr = self.next_ptr;
@@ -197,18 +234,34 @@ impl HandleBlock {
 }
 
 pub struct HandleContext {
-    // Pointer to within a handle block, pointing to address of the next handle to allocate
+    /// Pointer to within a handle block, pointing to address of the next handle to allocate
     next_ptr: *mut HandleContents,
 
-    // Pointer one beyond the end of the current handle scope block, marking the limit for this
-    // handle scope. Used to uniquely identify the current handle block.
+    /// Pointer one beyond the end of the current handle scope block, marking the limit for this
+    /// handle scope. Used to uniquely identify the current handle block.
     end_ptr: *mut HandleContents,
 
-    // Current block for the handle scope stack. Contains chain of other blocks in use.
+    /// Current block for the handle scope stack. Contains chain of other blocks in use.
     current_block: Pin<Box<HandleBlock>>,
 
-    // Chain of free blocks
+    /// Chain of free blocks
     free_blocks: Option<Pin<Box<HandleBlock>>>,
+
+    /// Total number of handles currently allocated
+    #[cfg(feature = "handle_stats")]
+    num_handles: usize,
+
+    /// Max number of handles allocated at once observed so far
+    #[cfg(feature = "handle_stats")]
+    max_handles: usize,
+}
+
+#[allow(unused)]
+#[cfg(feature = "handle_stats")]
+#[derive(Debug)]
+pub struct HandleStats {
+    pub num_handles: usize,
+    pub max_handles: usize,
 }
 
 impl HandleContext {
@@ -220,6 +273,10 @@ impl HandleContext {
             end_ptr: first_block.end_ptr,
             current_block: first_block,
             free_blocks: None,
+            #[cfg(feature = "handle_stats")]
+            num_handles: 0,
+            #[cfg(feature = "handle_stats")]
+            max_handles: 0,
         };
 
         // Initial value was uninitialized, so replace without dropping uninitialized value
@@ -272,7 +329,7 @@ impl HandleContext {
     ///
     /// Currently only used for debugging.
     #[allow(dead_code)]
-    pub fn num_handles(&self) -> usize {
+    pub fn handle_count(&self) -> usize {
         // Number of handles used in the current block
         let mut total =
             unsafe { HANDLE_BLOCK_SIZE - (self.end_ptr.offset_from(self.next_ptr) as usize) };
@@ -291,7 +348,7 @@ impl HandleContext {
     ///
     /// Currently only used for debugging.
     #[allow(dead_code)]
-    pub fn num_free_handle_blocks(&self) -> usize {
+    pub fn free_handle_block_count(&self) -> usize {
         let mut total = 0;
 
         let mut current_block = &self.free_blocks;
@@ -333,6 +390,11 @@ impl HandleContext {
                 current_ptr = current_ptr.add(1)
             }
         }
+    }
+
+    #[cfg(feature = "handle_stats")]
+    pub fn handle_stats(&self) -> HandleStats {
+        HandleStats { num_handles: self.num_handles, max_handles: self.max_handles }
     }
 }
 

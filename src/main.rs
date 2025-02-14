@@ -57,13 +57,20 @@ fn main() {
     let args = Args::parse();
     let cx = create_context(&args);
 
-    cx.execute_then_drop(|cx| match evaluate(cx, &args) {
-        Ok(_) => (),
-        Err(err) => {
-            let supports_color = stderr_should_use_colors(&cx.options);
-            let format_options = FormatOptions::new(supports_color);
+    cx.execute_then_drop(|cx| {
+        let result = evaluate(cx, &args);
 
-            print_error_message_and_exit(&err.format(cx, &format_options));
+        #[cfg(feature = "handle_stats")]
+        println!("{:?}", cx.heap.info().handle_context().handle_stats());
+
+        match result {
+            Ok(_) => (),
+            Err(err) => {
+                let supports_color = stderr_should_use_colors(&cx.options);
+                let format_options = FormatOptions::new(supports_color);
+
+                print_error_message_and_exit(&err.format(cx, &format_options));
+            }
         }
     })
 }

@@ -14,5 +14,5 @@ threadpool = "1.8.1"
 yaml-rust = "0.4.5"
 
 [features]
-# Run the garbage collector in stress test mode
 gc_stress_test = ["brimstone/gc_stress_test"]
+handle_stats = ["brimstone/handle_stats"]

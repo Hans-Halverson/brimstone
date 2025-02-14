@@ -39,6 +39,8 @@ zerovec = "0.11.0"
 [features]
 # Run the garbage collector in stress test mode
 gc_stress_test = []
+# Collect handle use statistics
+handle_stats = []
 
 [lib]
 doctest = false

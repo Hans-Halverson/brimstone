@@ -257,6 +257,9 @@ fn run_single_test(
         check_expected_completion(cx, test, completion, duration)
     }));
 
+    #[cfg(feature = "handle_stats")]
+    println!("{:?}", cx.heap.info().handle_context().handle_stats());
+
     cx.drop();
 
     match panic_result {

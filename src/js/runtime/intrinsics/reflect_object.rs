@@ -65,7 +65,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !is_callable(target) {
@@ -84,7 +83,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !is_constructor_value(target) {
@@ -115,7 +113,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -139,7 +136,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -159,7 +155,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -183,7 +178,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -206,7 +200,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -223,7 +216,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -243,7 +235,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -259,7 +250,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -276,7 +266,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -292,7 +281,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {
@@ -318,7 +306,6 @@ impl ReflectObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         if !target.is_object() {

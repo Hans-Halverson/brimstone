@@ -74,7 +74,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let property_arg = get_argument(cx, arguments, 0);
         let property_key = to_property_key(cx, property_arg)?;
@@ -89,7 +88,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
@@ -119,7 +117,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let property_arg = get_argument(cx, arguments, 0);
         let property_key = to_property_key(cx, property_arg)?;
@@ -136,7 +133,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         invoke(cx, this_value, cx.names.to_string(), &[])
     }
@@ -146,7 +142,6 @@ impl ObjectPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
             return Ok(cx.alloc_string("[object Undefined]").as_value());
@@ -201,7 +196,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Ok(to_object(cx, this_value)?.as_value())
     }
@@ -211,7 +205,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         match object.get_prototype_of(cx)? {
@@ -225,7 +218,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
@@ -254,7 +246,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
@@ -277,7 +268,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
@@ -300,7 +290,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let key_arg = get_argument(cx, arguments, 0);
@@ -333,7 +322,6 @@ impl ObjectPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let key_arg = get_argument(cx, arguments, 0);

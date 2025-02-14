@@ -33,12 +33,11 @@ impl FinalizationRegistryConstructor {
 
     /// FinalizationRegistry (https://tc39.es/ecma262/#sec-finalization-registry-cleanup-callback)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = if let Some(new_target) = new_target {
+        let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
             return type_error(cx, "FinalizationRegistry constructor must be called with new");

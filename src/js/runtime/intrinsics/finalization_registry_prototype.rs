@@ -39,7 +39,6 @@ impl FinalizationRegistryPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let registry_object =
             if let Some(registry_object) = this_finalization_registry_value(this_value) {
@@ -89,7 +88,6 @@ impl FinalizationRegistryPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let registry_object =
             if let Some(registry_object) = this_finalization_registry_value(this_value) {

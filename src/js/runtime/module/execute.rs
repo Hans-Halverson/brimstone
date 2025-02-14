@@ -4,13 +4,16 @@ use crate::{
     if_abrupt_reject_promise,
     js::runtime::{
         abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
-        builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+        builtin_function::BuiltinFunction,
         context::ModuleCacheKey,
         error::type_error_value,
         function::get_argument,
         get,
         interned_strings::InternedStrings,
-        intrinsics::{intrinsics::Intrinsic, promise_prototype::perform_promise_then},
+        intrinsics::{
+            intrinsics::Intrinsic, promise_prototype::perform_promise_then,
+            rust_runtime::RustRuntimeFunction,
+        },
         module::{
             module::{DynModule, ModuleEnum},
             synthetic_module::SyntheticModule,
@@ -126,7 +129,6 @@ pub fn load_requested_modules_static_resolve(
     mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capbility passed from `execute_module`
     let current_function = cx.current_function();
@@ -157,7 +159,6 @@ pub fn load_requested_modules_reject(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the capbility passed from `execute_module`
     let current_function = cx.current_function();
@@ -169,7 +170,7 @@ pub fn load_requested_modules_reject(
     Ok(cx.undefined())
 }
 
-fn callback(cx: Context, func: BuiltinFunctionPtr) -> Handle<ObjectValue> {
+fn callback(cx: Context, func: RustRuntimeFunction) -> Handle<ObjectValue> {
     BuiltinFunction::create_builtin_function_without_properties(
         cx,
         func,
@@ -396,7 +397,6 @@ pub fn async_module_execution_fulfilled(
     mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
@@ -537,7 +537,6 @@ pub fn async_module_execution_rejected_runtime(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module passed from `execute_async_module`
     let current_function = cx.current_function();
@@ -666,7 +665,6 @@ pub fn load_requested_modules_dynamic_resolve(
     mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capability passed from the caller
     let current_function = cx.current_function();
@@ -712,7 +710,6 @@ pub fn module_evaluate_dynamic_resolve(
     mut cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the module and capbility passed from the caller
     let current_function = cx.current_function();

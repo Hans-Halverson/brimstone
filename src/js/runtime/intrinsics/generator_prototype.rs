@@ -45,7 +45,6 @@ impl GeneratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         generator_resume(cx, this_value, value)
@@ -56,7 +55,6 @@ impl GeneratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         generator_resume_abrupt(cx, this_value, value, GeneratorCompletionType::Return)
@@ -67,7 +65,6 @@ impl GeneratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let error = get_argument(cx, arguments, 0);
         generator_resume_abrupt(cx, this_value, error, GeneratorCompletionType::Throw)

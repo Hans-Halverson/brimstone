@@ -102,7 +102,6 @@ impl MapIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut map_iterator = MapIterator::cast_from_value(cx, this_value)?;
 

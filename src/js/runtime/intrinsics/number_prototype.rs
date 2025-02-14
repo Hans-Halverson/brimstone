@@ -38,7 +38,6 @@ impl NumberPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
@@ -118,7 +117,6 @@ impl NumberPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value)?;
         let mut number = number_value.as_number();
@@ -164,9 +162,8 @@ impl NumberPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        Self::to_string(cx, this_value, &[], None)
+        Self::to_string(cx, this_value, &[])
     }
 
     /// Number.prototype.toPrecision (https://tc39.es/ecma262/#sec-number.prototype.toprecision)
@@ -174,7 +171,6 @@ impl NumberPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value)?;
 
@@ -259,7 +255,6 @@ impl NumberPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value)?;
 
@@ -365,7 +360,6 @@ impl NumberPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = this_number_value(cx, this_value)?;
         Ok(number_value.to_handle(cx))

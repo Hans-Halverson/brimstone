@@ -77,9 +77,8 @@ macro_rules! create_native_error {
                 mut cx: Context,
                 _: Handle<Value>,
                 arguments: &[Handle<Value>],
-                new_target: Option<Handle<ObjectValue>>,
             ) -> EvalResult<Handle<Value>> {
-                let new_target = if let Some(new_target) = new_target {
+                let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
                 } else {
                     cx.current_function()

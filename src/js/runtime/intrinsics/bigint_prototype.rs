@@ -40,7 +40,6 @@ impl BigIntPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bigint_value = this_bigint_value(cx, this_value)?;
 
@@ -66,7 +65,6 @@ impl BigIntPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         Ok(this_bigint_value(cx, this_value)?.into())
     }

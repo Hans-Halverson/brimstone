@@ -57,7 +57,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "byteLength")?;
 
@@ -70,7 +69,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "detached")?;
         Ok(cx.bool(array_buffer.is_detached()))
@@ -81,7 +79,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "maxByteLength")?;
 
@@ -98,7 +95,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "resizable")?;
         Ok(cx.bool(!array_buffer.is_fixed_length()))
@@ -109,7 +105,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut array_buffer = require_array_buffer(cx, this_value, "resize")?;
 
@@ -162,7 +157,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
@@ -245,7 +239,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "transfer")?;
         let new_length = get_argument(cx, arguments, 0);
@@ -261,7 +254,6 @@ impl ArrayBufferPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array_buffer = require_array_buffer(cx, this_value, "transferToFixedLength")?;
         let new_length = get_argument(cx, arguments, 0);

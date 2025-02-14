@@ -63,7 +63,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -81,7 +80,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -100,7 +98,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -116,7 +113,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -154,7 +150,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -175,7 +170,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -193,7 +187,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -209,7 +202,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -235,7 +227,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map
@@ -251,7 +242,6 @@ impl MapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let map = if let Some(map) = this_map_value(this_value) {
             map

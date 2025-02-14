@@ -95,7 +95,6 @@ impl FunctionPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error(cx, "value is not a function");
@@ -117,7 +116,6 @@ impl FunctionPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error(cx, "value is not a function");
@@ -174,7 +172,6 @@ impl FunctionPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
             return type_error(cx, "value is not a function");
@@ -193,7 +190,6 @@ impl FunctionPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Function.prototype.toString expected a function");
@@ -247,7 +243,6 @@ impl FunctionPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let has_instance = ordinary_has_instance(cx, this_value, argument)?;

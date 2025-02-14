@@ -38,12 +38,11 @@ impl WeakSetConstructor {
 
     /// WeakSet (https://tc39.es/ecma262/#sec-weakset-iterable)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = if let Some(new_target) = new_target {
+        let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
             return type_error(cx, "WeakSet constructor must be called with new");

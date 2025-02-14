@@ -537,7 +537,6 @@ impl PromiseCapability {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Get the capability object that was attached to the executor function
         let current_function = cx.current_function();

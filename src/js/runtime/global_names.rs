@@ -102,7 +102,6 @@ pub fn global_declaration_instantiation_runtime(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let global_names = arguments.first().unwrap().cast::<GlobalNames>();
     let realm = cx.current_realm();

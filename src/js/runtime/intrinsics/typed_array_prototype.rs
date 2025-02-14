@@ -110,7 +110,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -143,7 +142,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = require_typed_array(cx, this_value)?;
         Ok(typed_array.viewed_array_buffer().as_value())
@@ -154,7 +152,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = require_typed_array(cx, this_value)?;
 
@@ -173,7 +170,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = require_typed_array(cx, this_value)?;
 
@@ -190,7 +186,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -319,7 +314,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
@@ -332,7 +326,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -373,7 +366,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -439,7 +431,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -497,7 +488,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -526,7 +516,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -555,7 +544,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -585,7 +573,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -615,7 +602,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -653,7 +639,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -701,7 +686,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -750,7 +734,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -792,7 +775,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
@@ -805,7 +787,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -862,7 +843,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = require_typed_array(cx, this_value)?;
 
@@ -881,7 +861,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -923,7 +902,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -971,7 +949,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1019,7 +996,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1058,7 +1034,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1208,7 +1183,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1310,7 +1284,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1351,7 +1324,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
@@ -1388,7 +1360,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array = require_typed_array(cx, this_value)?;
         let buffer = typed_array.viewed_array_buffer();
@@ -1459,7 +1430,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1494,7 +1464,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1524,7 +1493,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
@@ -1563,7 +1531,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
@@ -1576,7 +1543,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array = typed_array_record.typed_array;
@@ -1649,7 +1615,6 @@ impl TypedArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return Ok(cx.undefined());

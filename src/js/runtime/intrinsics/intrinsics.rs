@@ -487,7 +487,6 @@ pub fn throw_type_error(
     cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     type_error(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }

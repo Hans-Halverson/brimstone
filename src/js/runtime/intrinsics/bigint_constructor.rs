@@ -77,12 +77,11 @@ impl BigIntConstructor {
 
     /// BigInt (https://tc39.es/ecma262/#sec-bigint-constructor-number-value)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if new_target.is_some() {
+        if cx.current_new_target().is_some() {
             return type_error(cx, "BigInt is not a constructor");
         }
 
@@ -111,7 +110,6 @@ impl BigIntConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
         let bits = to_index(cx, bits_arg)?;
@@ -146,7 +144,6 @@ impl BigIntConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bits_arg = get_argument(cx, arguments, 0);
         let bits = to_index(cx, bits_arg)?;

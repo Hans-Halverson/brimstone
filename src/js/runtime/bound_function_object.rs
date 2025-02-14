@@ -145,7 +145,6 @@ impl BoundFunctionObject {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bound_function = cx.current_function();
 
@@ -171,7 +170,7 @@ impl BoundFunctionObject {
         all_arguments.extend(arguments.iter());
 
         // If there is a new_target this was called as a constructor
-        if let Some(new_target) = new_target {
+        if let Some(new_target) = cx.current_new_target() {
             let new_target = if same_object_value_handles(bound_function, new_target) {
                 bound_target_function
             } else {

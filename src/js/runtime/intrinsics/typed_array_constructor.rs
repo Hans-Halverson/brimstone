@@ -64,7 +64,6 @@ impl TypedArrayConstructor {
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         type_error(cx, "TypedArray constructor is abstract and cannot be called")
     }
@@ -74,7 +73,6 @@ impl TypedArrayConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.from must be called on constructor");
@@ -169,7 +167,6 @@ impl TypedArrayConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
             return type_error(cx, "TypedArray.of must be called on constructor");
@@ -611,12 +608,11 @@ macro_rules! create_typed_array_constructor {
 
             /// TypedArray (https://tc39.es/ecma262/#sec-typedarray)
             pub fn construct(
-                cx: Context,
+                mut cx: Context,
                 _: Handle<Value>,
                 arguments: &[Handle<Value>],
-                new_target: Option<Handle<ObjectValue>>,
             ) -> EvalResult<Handle<Value>> {
-                let new_target = if let Some(new_target) = new_target {
+                let new_target = if let Some(new_target) = cx.current_new_target() {
                     new_target
                 } else {
                     return type_error(

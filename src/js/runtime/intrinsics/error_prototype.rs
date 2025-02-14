@@ -35,7 +35,6 @@ impl ErrorPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "expected object");
@@ -71,7 +70,6 @@ impl ErrorPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Check that `stack` getter was called on an error object
         if !this_value.is_object() || !this_value.as_object().is_error() {

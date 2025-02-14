@@ -57,7 +57,6 @@ impl JSONObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let text_arg = get_argument(cx, arguments, 0);
         let text_string = to_string(cx, text_arg)?;
@@ -143,7 +142,6 @@ impl JSONObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Replacer arg may be a function or property list
         let replacer_arg = get_argument(cx, arguments, 1);

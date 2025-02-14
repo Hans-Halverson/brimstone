@@ -99,7 +99,6 @@ impl RegExpStringIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut regexp_iterator = RegExpStringIterator::cast_from_value(cx, this_value)?;
 

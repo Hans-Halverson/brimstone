@@ -70,7 +70,6 @@ impl StringIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
 

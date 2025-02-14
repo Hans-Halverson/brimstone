@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use crate::{
     js::runtime::{
         async_generator_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
-        gc_object::GcObject, global_names, module, object_value::ObjectValue,
-        promise_object::PromiseCapability, test_262_object::Test262Object, Context, EvalResult,
-        Handle, Value,
+        gc_object::GcObject, global_names, module, promise_object::PromiseCapability,
+        test_262_object::Test262Object, Context, EvalResult, Handle, Value,
     },
     static_assert,
 };
@@ -99,11 +98,10 @@ pub type RustRuntimeFunctionId = u16;
 // Check that the number of runtime functions fits in the RustRuntimeFunctionId type.
 static_assert!(NUM_RUST_RUNTIME_FUNCTIONS <= (1 << (RustRuntimeFunctionId::BITS as usize)));
 
-type RustRuntimeFunction = fn(
+pub type RustRuntimeFunction = fn(
     cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
-    new_target: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>>;
 
 impl RustRuntimeFunctionRegistry {
@@ -654,7 +652,6 @@ pub fn return_this(
     _: Context,
     this_value: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     Ok(this_value)
 }
@@ -665,7 +662,6 @@ pub fn return_undefined(
     cx: Context,
     _: Handle<Value>,
     _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     Ok(cx.undefined())
 }

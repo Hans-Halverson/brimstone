@@ -397,7 +397,6 @@ pub fn await_return_resolve(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
 
@@ -416,7 +415,6 @@ pub fn await_return_reject(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
 

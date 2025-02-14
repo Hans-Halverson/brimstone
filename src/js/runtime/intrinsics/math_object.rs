@@ -100,7 +100,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -117,7 +116,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -129,7 +127,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -141,7 +138,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -153,7 +149,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -165,7 +160,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -177,7 +171,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -189,7 +182,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let y_arg = get_argument(cx, arguments, 0);
         let y = to_number(cx, y_arg)?;
@@ -205,7 +197,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -217,7 +208,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -234,7 +224,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_uint32(cx, argument)?;
@@ -246,7 +235,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -258,7 +246,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -270,7 +257,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -282,7 +268,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -294,7 +279,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -311,7 +295,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -323,7 +306,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut sum = Value::smi(0);
         let mut has_infinity: bool = false;
@@ -368,7 +350,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let x_arg = get_argument(cx, arguments, 0);
         let x = to_uint32(cx, x_arg)?;
@@ -386,7 +367,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -398,7 +378,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -410,7 +389,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -422,7 +400,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -434,7 +411,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut highest = Value::number(f64::NEG_INFINITY);
         let mut found_nan = false;
@@ -468,7 +444,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut lowest = Value::number(f64::INFINITY);
         let mut found_nan = false;
@@ -502,7 +477,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let base_arg = get_argument(cx, arguments, 0);
         let base = to_number(cx, base_arg)?;
@@ -514,12 +488,7 @@ impl MathObject {
     }
 
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)
-    pub fn random(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
+    pub fn random(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
         let n = rand::thread_rng().gen::<f64>();
         Ok(cx.number(n))
     }
@@ -529,7 +498,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -555,7 +523,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = *to_number(cx, argument)?;
@@ -587,7 +554,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -599,7 +565,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -611,7 +576,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -623,7 +587,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -635,7 +598,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
@@ -647,7 +609,6 @@ impl MathObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;

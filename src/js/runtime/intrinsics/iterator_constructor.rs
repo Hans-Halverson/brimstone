@@ -49,8 +49,8 @@ impl IteratorConstructor {
         mut cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
+        let new_target = cx.current_new_target();
         let throw_type_error = match new_target {
             None => true,
             Some(new_target) => new_target.ptr_eq(&cx.current_function()),
@@ -74,7 +74,6 @@ impl IteratorConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         let iterator = get_iterator_flattenable(cx, value, /* reject_primitives */ false)?;
@@ -160,7 +159,6 @@ impl WrapForValidIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Check if called on a WrappedIteratorObject
         if this_value.is_object() {
@@ -179,7 +177,6 @@ impl WrapForValidIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Check if called on a WrappedIteratorObject
         if this_value.is_object() {

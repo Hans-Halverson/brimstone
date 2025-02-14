@@ -254,5 +254,5 @@ fn parse_json_file_at_path(mut cx: Context, path: &Path) -> EvalResult<Handle<Va
         Err(error) => return syntax_parse_error(cx, &error),
     };
 
-    JSONObject::parse(cx, cx.undefined(), &[file_contents.as_value()], None)
+    JSONObject::parse(cx, cx.undefined(), &[file_contents.as_value()])
 }

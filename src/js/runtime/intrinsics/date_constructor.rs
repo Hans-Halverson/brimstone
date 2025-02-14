@@ -51,12 +51,11 @@ impl DateConstructor {
 
     /// Date (https://tc39.es/ecma262/#sec-date)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = if let Some(new_target) = new_target {
+        let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
             return Ok(to_date_string(cx, get_current_unix_time()).as_value());
@@ -146,12 +145,7 @@ impl DateConstructor {
     }
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
-    pub fn now(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
+    pub fn now(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
         Ok(Value::from(get_current_unix_time()).to_handle(cx))
     }
 
@@ -160,7 +154,6 @@ impl DateConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let string_arg = get_argument(cx, arguments, 0);
         let string = to_string(cx, string_arg)?;
@@ -177,7 +170,6 @@ impl DateConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_of_args = arguments.len();
 

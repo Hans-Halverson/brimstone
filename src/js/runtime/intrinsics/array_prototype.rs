@@ -106,7 +106,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -136,7 +135,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let array = array_species_create(cx, object, 0)?;
@@ -223,7 +221,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -329,7 +326,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).as_value())
@@ -340,7 +336,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -380,7 +375,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -432,7 +426,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -483,7 +476,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -509,7 +501,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -535,7 +526,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -562,7 +552,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -589,7 +578,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -684,7 +672,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -717,7 +704,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -754,7 +740,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -799,7 +784,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -845,7 +829,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -884,7 +867,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key).as_value())
@@ -895,7 +877,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -949,7 +930,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -989,7 +969,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1017,7 +996,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1046,7 +1024,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1106,7 +1083,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1165,7 +1141,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1223,7 +1198,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1267,7 +1241,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1335,7 +1308,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1375,7 +1347,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
@@ -1415,7 +1386,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1517,7 +1487,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1552,7 +1521,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1579,7 +1547,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
@@ -1615,7 +1582,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1688,7 +1654,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let array = to_object(cx, this_value)?;
         let func = get(cx, array, cx.names.join())?;
@@ -1707,7 +1672,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;
@@ -1751,7 +1715,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value).as_value())
@@ -1762,7 +1725,6 @@ impl ArrayPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
         let length = length_of_array_like(cx, object)?;

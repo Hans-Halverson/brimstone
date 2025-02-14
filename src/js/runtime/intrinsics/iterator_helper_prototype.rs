@@ -37,7 +37,6 @@ impl IteratorHelperPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // GenerateResume adapted for Iterator Helper Objects
         let mut object = match validate_iterator_helper_object(this_value) {
@@ -87,7 +86,6 @@ impl IteratorHelperPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut object = match validate_iterator_helper_object(this_value) {
             None => {

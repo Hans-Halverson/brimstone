@@ -35,7 +35,6 @@ impl WeakSetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
@@ -58,7 +57,6 @@ impl WeakSetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
@@ -81,7 +79,6 @@ impl WeakSetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object

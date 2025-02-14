@@ -6,12 +6,14 @@ use crate::{
         parser::loc::Pos,
         runtime::{
             abstract_operations::define_property_or_throw,
-            builtin_function::BuiltinFunctionPtr,
             collections::{array::ByteArray, InlineArray},
             debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
             function::{set_function_length, set_function_name},
             gc::{HeapObject, HeapVisitor},
-            intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionId},
+            intrinsics::{
+                intrinsics::Intrinsic,
+                rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
+            },
             object_descriptor::{ObjectDescriptor, ObjectKind},
             object_value::ObjectValue,
             ordinary_object::{object_create, object_create_with_proto},
@@ -298,7 +300,7 @@ impl BytecodeFunction {
 
     pub fn new_rust_runtime_function(
         cx: Context,
-        builtin_func: BuiltinFunctionPtr,
+        builtin_func: RustRuntimeFunction,
         realm: Handle<Realm>,
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
@@ -308,11 +310,20 @@ impl BytecodeFunction {
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
 
+        let mut num_registers = 0;
+        let mut new_target_index = None;
+
+        // Native constructors store the new target in the first register
+        if is_constructor {
+            num_registers = 1;
+            new_target_index = Some(0);
+        }
+
         set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
         set_uninit!(object.realm, *realm);
-        set_uninit!(object.num_registers, 0);
+        set_uninit!(object.num_registers, num_registers);
         set_uninit!(object.num_parameters, 0);
         set_uninit!(object.function_length, 0);
         set_uninit!(object.is_strict, true);
@@ -320,7 +331,7 @@ impl BytecodeFunction {
         set_uninit!(object.is_class_constructor, false);
         set_uninit!(object.is_base_constructor, true);
         set_uninit!(object.is_async, false);
-        set_uninit!(object.new_target_index, None);
+        set_uninit!(object.new_target_index, new_target_index);
         set_uninit!(object.generator_index, None);
         set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, None);

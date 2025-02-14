@@ -144,10 +144,9 @@ impl NumberConstructor {
 
     /// Number (https://tc39.es/ecma262/#sec-number-constructor-number-value)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let number_value = if arguments.is_empty() {
             0.0
@@ -162,7 +161,7 @@ impl NumberConstructor {
             }
         };
 
-        match new_target {
+        match cx.current_new_target() {
             None => Ok(Value::from(number_value).to_handle(cx)),
             Some(new_target) => {
                 Ok(NumberObject::new_from_constructor(cx, new_target, number_value)?.as_value())
@@ -175,7 +174,6 @@ impl NumberConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
@@ -190,7 +188,6 @@ impl NumberConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         Ok(cx.bool(is_integral_number(*value)))
@@ -201,7 +198,6 @@ impl NumberConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_number() {
@@ -216,7 +212,6 @@ impl NumberConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !is_integral_number(*value) {

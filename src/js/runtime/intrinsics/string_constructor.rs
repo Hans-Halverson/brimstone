@@ -47,11 +47,12 @@ impl StringConstructor {
 
     /// String (https://tc39.es/ecma262/#sec-string-constructor-string-value)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
+        let new_target = cx.current_new_target();
+
         let string_value = if arguments.is_empty() {
             cx.names.empty_string().as_string()
         } else {
@@ -78,7 +79,6 @@ impl StringConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
@@ -100,7 +100,6 @@ impl StringConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         macro_rules! get_code_point {
             ($arg:expr) => {{
@@ -144,7 +143,6 @@ impl StringConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let substitution_count = arguments.len() - 1;
 

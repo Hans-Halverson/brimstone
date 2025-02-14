@@ -107,7 +107,6 @@ impl Test262Object {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         if !argument.is_string() {
@@ -127,7 +126,6 @@ impl Test262Object {
         cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm that also has the test262 object installed
         let realm = Realm::new(cx);
@@ -140,7 +138,6 @@ impl Test262Object {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let script_text = get_argument(cx, arguments, 0);
         if !script_text.is_string() {
@@ -184,7 +181,6 @@ impl Test262Object {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {

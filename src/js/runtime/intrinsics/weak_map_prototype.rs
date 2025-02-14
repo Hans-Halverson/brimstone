@@ -36,7 +36,6 @@ impl WeakMapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
@@ -59,7 +58,6 @@ impl WeakMapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
@@ -84,7 +82,6 @@ impl WeakMapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
@@ -107,7 +104,6 @@ impl WeakMapPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object

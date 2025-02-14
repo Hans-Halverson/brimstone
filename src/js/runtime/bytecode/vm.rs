@@ -1268,6 +1268,11 @@ impl VM {
         self.stack_frame().receiver()
     }
 
+    #[inline]
+    pub fn get_register_at_index(&mut self, index: u32) -> Value {
+        self.read_register(Register::<ExtraWide>::local(index as usize))
+    }
+
     /// Walk the stack, returning the first source file that is found.
     pub fn current_source_file(&self) -> HeapPtr<SourceFile> {
         let mut stack_frame = self.stack_frame();
@@ -1287,7 +1292,7 @@ impl VM {
     }
 
     #[inline]
-    fn read_register<W: Width>(&mut self, reg: Register<W>) -> Value {
+    fn read_register<W: Width>(&self, reg: Register<W>) -> Value {
         unsafe { *self.register_address(reg) }
     }
 
@@ -2217,9 +2222,14 @@ impl VM {
             /* return value address */ std::ptr::null_mut(),
         )?;
 
+        // Set the new target if this is a constructor call
+        if let Some(new_target) = new_target {
+            self.set_new_target(function.function_ptr(), *new_target);
+        }
+
         // Perform the runtime call. May allocate.
         let rust_function = self.cx().rust_runtime_functions.get_function(function_id);
-        let result = rust_function(self.cx, receiver, arguments, new_target);
+        let result = rust_function(self.cx, receiver, arguments);
 
         // Clean up the stack frame
         self.pop_stack_frame();

@@ -34,7 +34,6 @@ impl ConsoleObject {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let use_colors = stdout_should_use_colors(&cx.options);
         let opts = FormatOptions::new(use_colors);

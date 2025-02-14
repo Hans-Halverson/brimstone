@@ -53,7 +53,6 @@ impl SymbolPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = this_symbol_value(cx, this_value)?;
         match symbol_value.as_symbol().description() {
@@ -67,7 +66,6 @@ impl SymbolPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = this_symbol_value(cx, this_value)?;
         Ok(symbol_descriptive_string(cx, symbol_value.as_symbol()).as_value())
@@ -78,7 +76,6 @@ impl SymbolPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         this_symbol_value(cx, this_value)
     }

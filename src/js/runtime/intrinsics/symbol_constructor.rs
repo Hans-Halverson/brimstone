@@ -117,12 +117,11 @@ impl SymbolConstructor {
 
     /// Symbol (https://tc39.es/ecma262/#sec-symbol-description)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if new_target.is_some() {
+        if cx.current_new_target().is_some() {
             return type_error(cx, "Symbol is not a constructor");
         }
 
@@ -141,7 +140,6 @@ impl SymbolConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let string_key = to_string(cx, argument)?.flatten();
@@ -163,7 +161,6 @@ impl SymbolConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {

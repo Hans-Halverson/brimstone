@@ -34,12 +34,7 @@ impl GcObject {
         });
     }
 
-    pub fn run(
-        cx: Context,
-        _: Handle<Value>,
-        _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
-    ) -> EvalResult<Handle<Value>> {
+    pub fn run(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
         Heap::run_gc(cx);
         Ok(cx.undefined())
     }

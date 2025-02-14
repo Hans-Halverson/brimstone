@@ -132,7 +132,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -154,7 +153,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -176,7 +174,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -201,7 +198,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -223,7 +219,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -248,7 +243,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -273,7 +267,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -295,7 +288,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -320,7 +312,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(date_value) = this_date_value(this_value) {
             Ok(Value::from(date_value).to_handle(cx))
@@ -334,7 +325,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -356,7 +346,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -378,7 +367,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -400,7 +388,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -422,7 +409,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -444,7 +430,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -469,7 +454,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -494,7 +478,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -519,7 +502,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -544,7 +526,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -576,7 +557,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -623,7 +603,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -691,7 +670,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -731,7 +709,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -790,7 +767,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -834,7 +810,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -886,7 +861,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if this_date_value(this_value).is_none() {
             return type_error(cx, "Date.prototype.setTime method must be called on Date object");
@@ -905,7 +879,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -938,7 +911,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -983,7 +955,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1050,7 +1021,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1088,7 +1058,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1145,7 +1114,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1190,7 +1158,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1240,7 +1207,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1272,7 +1238,6 @@ impl DatePrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1315,7 +1280,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
 
@@ -1333,7 +1297,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1352,7 +1315,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1371,7 +1333,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1390,7 +1351,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1406,7 +1366,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1440,7 +1399,6 @@ impl DatePrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1477,7 +1435,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
@@ -1493,7 +1450,6 @@ impl DatePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Date.prototype[@@toPrimitive] must be called on object");

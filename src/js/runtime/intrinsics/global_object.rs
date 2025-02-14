@@ -12,7 +12,6 @@ use crate::js::{
         eval::eval::perform_eval,
         function::get_argument,
         gc::HandleScope,
-        object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
         string_value::{FlatString, StringValue},
@@ -156,7 +155,6 @@ pub fn eval(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let code_arg = get_argument(cx, arguments, 0);
 
@@ -168,7 +166,6 @@ pub fn is_finite(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = to_number(cx, argument)?;
@@ -180,7 +177,6 @@ pub fn is_nan(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let argument = get_argument(cx, arguments, 0);
     let num = to_number(cx, argument)?;
@@ -192,7 +188,6 @@ pub fn parse_float(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = to_string(cx, input_string_arg)?;
@@ -215,7 +210,6 @@ pub fn parse_int(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = to_string(cx, input_string_arg)?;
@@ -329,7 +323,6 @@ pub fn decode_uri(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_arg = get_argument(cx, arguments, 0);
     let uri_string = to_string(cx, uri_arg)?;
@@ -342,7 +335,6 @@ pub fn decode_uri_component(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_component_arg = get_argument(cx, arguments, 0);
     let uri_component_string = to_string(cx, uri_component_arg)?;
@@ -458,7 +450,6 @@ pub fn encode_uri(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_arg = get_argument(cx, arguments, 0);
     let uri_string = to_string(cx, uri_arg)?;
@@ -471,7 +462,6 @@ pub fn encode_uri_component(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let uri_component_arg = get_argument(cx, arguments, 0);
     let uri_component_string = to_string(cx, uri_component_arg)?;

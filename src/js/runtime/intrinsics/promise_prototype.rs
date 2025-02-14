@@ -43,7 +43,6 @@ impl PromisePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let on_rejected = get_argument(cx, arguments, 0);
         invoke(cx, this_value, cx.names.then(), &[cx.undefined(), on_rejected])
@@ -54,7 +53,6 @@ impl PromisePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.prototype.finally called on non-object");
@@ -147,7 +145,6 @@ impl PromisePrototype {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
 
@@ -178,7 +175,6 @@ impl PromisePrototype {
         mut cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
         Ok(Self::get_value(cx, current_function))
@@ -188,7 +184,6 @@ impl PromisePrototype {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
 
@@ -219,7 +214,6 @@ impl PromisePrototype {
         mut cx: Context,
         _: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
@@ -232,7 +226,6 @@ impl PromisePrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !is_promise(*this_value) {
             return type_error(cx, "Promise.prototype.then called on non-promise");

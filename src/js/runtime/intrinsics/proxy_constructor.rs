@@ -36,12 +36,11 @@ impl ProxyConstructor {
 
     /// Proxy (https://tc39.es/ecma262/#sec-proxy-target-handler)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if new_target.is_none() {
+        if cx.current_new_target().is_none() {
             return type_error(cx, "Proxy is a constructor");
         }
 
@@ -56,7 +55,6 @@ impl ProxyConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let target = get_argument(cx, arguments, 0);
         let handler = get_argument(cx, arguments, 1);
@@ -82,12 +80,7 @@ impl ProxyConstructor {
     }
 }
 
-pub fn revoke(
-    mut cx: Context,
-    _: Handle<Value>,
-    _: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
-) -> EvalResult<Handle<Value>> {
+pub fn revoke(mut cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
     // Find the proxy object attached to this closure via a private property
     let mut revoke_function = cx.current_function();
     let proxy_object_property =

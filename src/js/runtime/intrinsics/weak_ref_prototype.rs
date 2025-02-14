@@ -32,7 +32,6 @@ impl WeakRefPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
             Ok(weak_ref_object.weak_ref_target().to_handle(cx))

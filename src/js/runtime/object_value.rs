@@ -12,7 +12,7 @@ use super::{
     array_object::ArrayObject,
     array_properties::ArrayProperties,
     async_generator_object::AsyncGeneratorObject,
-    builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+    builtin_function::BuiltinFunction,
     bytecode::function::Closure,
     collections::{BsIndexMap, BsIndexMapField},
     error::type_error,
@@ -26,9 +26,10 @@ use super::{
         finalization_registry_object::FinalizationRegistryObject,
         iterator_constructor::WrappedValidIterator, iterator_helper_object::IteratorHelperObject,
         map_object::MapObject, number_constructor::NumberObject, object_prototype::ObjectPrototype,
-        regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
-        typed_array::DynTypedArray, weak_map_object::WeakMapObject,
-        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+        regexp_constructor::RegExpObject, rust_runtime::RustRuntimeFunction, set_object::SetObject,
+        symbol_constructor::SymbolObject, typed_array::DynTypedArray,
+        weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+        weak_set_object::WeakSetObject,
     },
     object_descriptor::ObjectKind,
     promise_object::PromiseObject,
@@ -437,7 +438,7 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        func: BuiltinFunctionPtr,
+        func: RustRuntimeFunction,
         realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
@@ -449,8 +450,8 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        getter: BuiltinFunctionPtr,
-        setter: BuiltinFunctionPtr,
+        getter: RustRuntimeFunction,
+        setter: RustRuntimeFunction,
         realm: Handle<Realm>,
     ) {
         let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
@@ -463,7 +464,7 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        func: BuiltinFunctionPtr,
+        func: RustRuntimeFunction,
         length: u32,
         realm: Handle<Realm>,
     ) {

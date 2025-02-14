@@ -2,7 +2,7 @@ use crate::{
     js::runtime::{
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         array_object::{array_create, ArrayObject},
-        builtin_function::{BuiltinFunction, BuiltinFunctionPtr},
+        builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
@@ -21,7 +21,11 @@ use crate::{
     must,
 };
 
-use super::{intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::return_this};
+use super::{
+    intrinsics::Intrinsic,
+    number_constructor::NumberObject,
+    rust_runtime::{return_this, RustRuntimeFunction},
+};
 
 /// IfAbruptRejectPromise (https://tc39.es/ecma262/#sec-ifabruptrejectpromise)
 #[macro_export]
@@ -78,12 +82,11 @@ impl PromiseConstructor {
 
     //// Promise (https://tc39.es/ecma262/#sec-promise-executor)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = if let Some(target) = new_target {
+        let new_target = if let Some(target) = cx.current_new_target() {
             target
         } else {
             return type_error(cx, "Promise constructor must be called with new");
@@ -227,7 +230,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all)
@@ -299,7 +301,6 @@ impl PromiseConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -337,7 +338,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all_settled)
@@ -434,7 +434,6 @@ impl PromiseConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -488,7 +487,6 @@ impl PromiseConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -542,7 +540,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_any)
@@ -616,7 +613,6 @@ impl PromiseConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let function = cx.current_function();
 
@@ -655,7 +651,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
         Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_race)
@@ -688,7 +683,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let result = get_argument(cx, arguments, 0);
 
@@ -704,7 +698,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.resolve called on non-object");
@@ -719,7 +712,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
             return type_error(cx, "Promise.try called on non-object");
@@ -743,7 +735,6 @@ impl PromiseConstructor {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let capability = PromiseCapability::new(cx, this_value)?;
 
@@ -806,7 +797,7 @@ fn create_reject_function(cx: Context, promise: Handle<PromiseObject>) -> Handle
 fn create_settle_function(
     cx: Context,
     promise: Handle<PromiseObject>,
-    func: BuiltinFunctionPtr,
+    func: RustRuntimeFunction,
 ) -> Handle<ObjectValue> {
     let mut function = BuiltinFunction::create(
         cx,
@@ -837,7 +828,6 @@ pub fn resolve_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let resolution = get_argument(cx, arguments, 0);
 
@@ -854,7 +844,6 @@ pub fn reject_builtin_function(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let resolution = get_argument(cx, arguments, 0);
 

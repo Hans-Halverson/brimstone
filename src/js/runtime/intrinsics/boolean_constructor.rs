@@ -106,14 +106,13 @@ impl BooleanConstructor {
 
     /// Boolean (https://tc39.es/ecma262/#sec-boolean-constructor-boolean-value)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = to_boolean(*get_argument(cx, arguments, 0));
 
-        match new_target {
+        match cx.current_new_target() {
             None => Ok(cx.bool(bool_value)),
             Some(new_target) => {
                 Ok(BooleanObject::new_from_constructor(cx, new_target, bool_value)?.as_value())

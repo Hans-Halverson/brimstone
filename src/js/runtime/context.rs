@@ -316,6 +316,21 @@ impl Context {
         self.vm().closure().to_handle().into()
     }
 
+    pub fn current_new_target(&mut self) -> Option<Handle<ObjectValue>> {
+        let new_target_index = self.vm().closure().function().new_target_index();
+        if let Some(index) = new_target_index {
+            let new_target = self.vm().get_register_at_index(index);
+            if new_target.is_undefined() {
+                return None;
+            }
+
+            debug_assert!(new_target.is_object());
+            Some(new_target.as_object().to_handle())
+        } else {
+            None
+        }
+    }
+
     pub fn global_symbol_registry(&self) -> HeapPtr<GlobalSymbolRegistry> {
         self.global_symbol_registry
     }

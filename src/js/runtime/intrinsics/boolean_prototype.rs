@@ -29,7 +29,6 @@ impl BooleanPrototype {
         mut cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = this_boolean_value(cx, this_value)?;
         let string_value = if bool_value { "true" } else { "false" };
@@ -42,7 +41,6 @@ impl BooleanPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let bool_value = this_boolean_value(cx, this_value)?;
         Ok(cx.bool(bool_value))

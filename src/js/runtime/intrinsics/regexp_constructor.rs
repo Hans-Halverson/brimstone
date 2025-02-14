@@ -150,14 +150,13 @@ impl RegExpConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let pattern_arg = get_argument(cx, arguments, 0);
         let flags_arg = get_argument(cx, arguments, 1);
 
         let pattern_is_regexp = is_regexp(cx, pattern_arg)?;
 
-        let new_target = match new_target {
+        let new_target = match cx.current_new_target() {
             None => {
                 let new_target = cx.current_function();
 

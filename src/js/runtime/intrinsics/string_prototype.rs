@@ -101,7 +101,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -134,7 +133,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -156,7 +154,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -177,7 +174,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -198,7 +194,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let mut concat_string = to_string(cx, object)?;
@@ -216,7 +211,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -257,7 +251,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -286,7 +279,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -313,7 +305,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -326,7 +317,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -356,7 +346,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -385,7 +374,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_object = require_object_coercible(cx, this_value)?;
 
@@ -414,7 +402,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_object = require_object_coercible(cx, this_value)?;
 
@@ -466,7 +453,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -515,7 +501,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let max_length_arg = get_argument(cx, arguments, 0);
         let fill_string_arg = get_argument(cx, arguments, 1);
@@ -528,7 +513,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let max_length_arg = get_argument(cx, arguments, 0);
         let fill_string_arg = get_argument(cx, arguments, 1);
@@ -595,7 +579,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -616,7 +599,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
@@ -697,7 +679,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
@@ -812,7 +793,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
@@ -843,7 +823,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -890,7 +869,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
 
@@ -985,7 +963,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1033,7 +1010,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1063,7 +1039,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1076,7 +1051,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         this_string_value(cx, this_value)
     }
@@ -1086,7 +1060,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1099,7 +1072,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1112,7 +1084,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1125,7 +1096,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1138,7 +1108,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
@@ -1151,7 +1120,6 @@ impl StringPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;

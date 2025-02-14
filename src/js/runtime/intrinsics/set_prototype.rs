@@ -84,7 +84,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -106,7 +105,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -124,7 +122,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -143,7 +140,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -205,7 +201,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -221,7 +216,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -257,7 +251,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -278,7 +271,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -345,7 +337,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -408,7 +399,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -453,7 +443,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -497,7 +486,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set
@@ -513,7 +501,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -558,7 +545,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
@@ -594,7 +580,6 @@ impl SetPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let set = if let Some(set) = this_set_value(this_value) {
             set

@@ -103,9 +103,8 @@ impl ObjectConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        if let Some(new_target) = new_target {
+        if let Some(new_target) = cx.current_new_target() {
             if !cx.current_function().ptr_eq(&new_target) {
                 let new_object = object_create_from_constructor::<ObjectValue>(
                     cx,
@@ -131,7 +130,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let to_arg = get_argument(cx, arguments, 0);
         let to = to_object(cx, to_arg)?;
@@ -169,7 +167,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let proto = get_argument(cx, arguments, 0);
         let proto = if proto.is_object() {
@@ -197,7 +194,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
@@ -245,7 +241,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
@@ -268,7 +263,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -281,7 +275,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
@@ -300,7 +293,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let iterable_arg = get_argument(cx, arguments, 0);
         let iterable = require_object_coercible(cx, iterable_arg)?;
@@ -319,7 +311,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -338,7 +329,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -367,7 +357,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, true)?;
@@ -379,7 +368,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let symbol_keys = Self::get_own_property_keys(cx, object_arg, false)?;
@@ -414,7 +402,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -431,7 +418,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let items = get_argument(cx, arguments, 0);
         let callback = get_argument(cx, arguments, 1);
@@ -456,7 +442,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -473,7 +458,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let is_same = same_value(get_argument(cx, arguments, 0), get_argument(cx, arguments, 1));
         Ok(cx.bool(is_same))
@@ -484,7 +468,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
@@ -500,7 +483,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
@@ -516,7 +498,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
@@ -532,7 +513,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;
@@ -545,7 +525,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let value = get_argument(cx, arguments, 0);
         if !value.is_object() {
@@ -564,7 +543,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
@@ -583,7 +561,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = require_object_coercible(cx, object_arg)?;
@@ -614,7 +591,6 @@ impl ObjectConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let object_arg = get_argument(cx, arguments, 0);
         let object = to_object(cx, object_arg)?;

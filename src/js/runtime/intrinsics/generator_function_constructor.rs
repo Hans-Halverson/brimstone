@@ -36,13 +36,12 @@ impl GeneratorFunctionConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let constructor = cx.current_function();
         Ok(create_dynamic_function(
             cx,
             constructor,
-            new_target,
+            cx.current_new_target(),
             arguments,
             /* is_async */ false,
             /* is_generator */ true,

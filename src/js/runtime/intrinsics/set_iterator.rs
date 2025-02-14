@@ -99,7 +99,6 @@ impl SetIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let mut set_iterator = SetIterator::cast_from_value(cx, this_value)?;
 

@@ -2,31 +2,22 @@ use crate::js::runtime::bytecode::function::Closure;
 
 use super::{
     bytecode::function::BytecodeFunction,
-    eval_result::EvalResult,
     function::{build_function_name, set_function_length, set_function_name},
-    intrinsics::intrinsics::Intrinsic,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunction},
     object_value::ObjectValue,
     property_key::PropertyKey,
     realm::Realm,
-    Context, Handle, Value,
+    Context, Handle,
 };
 
 /// Built-in Function Object (https://tc39.es/ecma262/#sec-built-in-function-objects)
 pub struct BuiltinFunction {}
 
-// Function pointer to a builtin function
-pub type BuiltinFunctionPtr = fn(
-    cx: Context,
-    this_value: Handle<Value>,
-    arguments: &[Handle<Value>],
-    new_target: Option<Handle<ObjectValue>>,
-) -> EvalResult<Handle<Value>>;
-
 impl BuiltinFunction {
     /// Create a new builtin function. Function is not a constructor.
     pub fn create(
         cx: Context,
-        builtin_func: BuiltinFunctionPtr,
+        builtin_func: RustRuntimeFunction,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
@@ -48,7 +39,7 @@ impl BuiltinFunction {
 
     fn create_builtin_function(
         cx: Context,
-        builtin_func: BuiltinFunctionPtr,
+        builtin_func: RustRuntimeFunction,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
@@ -82,7 +73,7 @@ impl BuiltinFunction {
 
     pub fn create_builtin_function_without_properties(
         cx: Context,
-        builtin_func: BuiltinFunctionPtr,
+        builtin_func: RustRuntimeFunction,
         name: Option<Handle<PropertyKey>>,
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
@@ -106,7 +97,7 @@ impl BuiltinFunction {
     /// Create the constructor function for an intrinsic.
     pub fn intrinsic_constructor(
         cx: Context,
-        builtin_func: BuiltinFunctionPtr,
+        builtin_func: RustRuntimeFunction,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,

@@ -58,9 +58,10 @@ impl ArrayConstructor {
         mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = new_target.unwrap_or_else(|| cx.current_function());
+        let new_target = cx
+            .current_new_target()
+            .unwrap_or_else(|| cx.current_function());
         let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::ArrayPrototype)?;
 
         if arguments.is_empty() {
@@ -109,7 +110,6 @@ impl ArrayConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         // Determine if map function was provided and is callable
         let map_function_arg = get_argument(cx, arguments, 1);
@@ -217,7 +217,6 @@ impl ArrayConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
         let is_array = is_array(cx, argument)?;
@@ -229,7 +228,6 @@ impl ArrayConstructor {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let length = arguments.len();
         let length_value = Value::from(length).to_handle(cx);

@@ -51,12 +51,11 @@ impl MapConstructor {
 
     /// Map (https://tc39.es/ecma262/#sec-map-iterable)
     pub fn construct(
-        cx: Context,
+        mut cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        new_target: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
-        let new_target = if let Some(new_target) = new_target {
+        let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
             return type_error(cx, "Map constructor must be called with new");
@@ -85,7 +84,6 @@ impl MapConstructor {
         cx: Context,
         _: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let items = get_argument(cx, arguments, 0);
         let callback = get_argument(cx, arguments, 1);

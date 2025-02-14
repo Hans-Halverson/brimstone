@@ -91,7 +91,6 @@ impl AsyncFromSyncIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -124,7 +123,6 @@ impl AsyncFromSyncIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -176,7 +174,6 @@ impl AsyncFromSyncIteratorPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
@@ -298,7 +295,6 @@ pub fn create_continuing_iter_result_object(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ false))
@@ -308,7 +304,6 @@ pub fn create_done_iter_result_object(
     cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
     Ok(create_iter_result_object(cx, value, /* is_done */ true))
@@ -318,7 +313,6 @@ pub fn async_from_sync_iterator_continuation_on_reject(
     mut cx: Context,
     _: Handle<Value>,
     arguments: &[Handle<Value>],
-    _: Option<Handle<ObjectValue>>,
 ) -> EvalResult<Handle<Value>> {
     // Fetch the iterator passed from the caller
     let current_function = cx.current_function();

@@ -70,7 +70,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let data_view = require_is_data_view(cx, this_value)?;
         Ok(data_view.viewed_array_buffer().as_value())
@@ -81,7 +80,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let data_view = require_is_data_view(cx, this_value)?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -100,7 +98,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         _: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         let data_view = require_is_data_view(cx, this_value)?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
@@ -117,7 +114,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_big_int64_element, i64::swap_bytes)
     }
@@ -127,7 +123,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_big_uint64_element, u64::swap_bytes)
     }
@@ -137,7 +132,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_float32_element, |element| {
             let bits = f32::to_bits(element);
@@ -150,7 +144,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_float64_element, |element| {
             let bits = f64::to_bits(element);
@@ -163,7 +156,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_int8_element, |element| element)
     }
@@ -173,7 +165,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_int16_element, i16::swap_bytes)
     }
@@ -183,7 +174,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_int32_element, i32::swap_bytes)
     }
@@ -193,7 +183,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_uint8_element, |element| element)
     }
@@ -203,7 +192,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_uint16_element, u16::swap_bytes)
     }
@@ -213,7 +201,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         get_view_value(cx, this_value, arguments, from_uint32_element, u32::swap_bytes)
     }
@@ -223,7 +210,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -240,7 +226,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -257,7 +242,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -277,7 +261,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -297,7 +280,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(cx, this_value, arguments, ContentType::Number, to_int8_element, |element| {
             element
@@ -309,7 +291,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -326,7 +307,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -343,7 +323,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -360,7 +339,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,
@@ -377,7 +355,6 @@ impl DataViewPrototype {
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
-        _: Option<Handle<ObjectValue>>,
     ) -> EvalResult<Handle<Value>> {
         set_view_value(
             cx,

@@ -296,7 +296,35 @@ impl VM {
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        self.call_from_rust(closure.cast(), receiver, arguments)
+        #[cfg(feature = "handle_stats")]
+        let num_handles_before = self.current_num_handles();
+
+        let result = self.call_from_rust(closure.cast(), receiver, arguments);
+
+        // In handle stats mode verify that the number of handles before and after execution of a
+        // function are the same.
+        #[cfg(feature = "handle_stats")]
+        {
+            let num_handles_after = self.current_num_handles();
+            if num_handles_before != num_handles_after {
+                panic!(
+                    "Different number of handles before and after execution: {} vs {}",
+                    num_handles_before, num_handles_after
+                );
+            }
+        }
+
+        result
+    }
+
+    #[cfg(feature = "handle_stats")]
+    fn current_num_handles(&self) -> usize {
+        self.cx()
+            .heap
+            .info()
+            .handle_context()
+            .handle_stats()
+            .num_handles
     }
 
     /// Resume a suspended generator, executing it until it suspends or completes.

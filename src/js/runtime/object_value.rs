@@ -5,7 +5,7 @@ use std::{
     num::NonZeroU32,
 };
 
-use crate::set_uninit;
+use crate::{handle_scope_guard, set_uninit};
 
 use super::{
     accessor::Accessor,
@@ -421,15 +421,21 @@ impl Handle<ObjectValue> {
         key: Handle<PropertyKey>,
         value: Handle<Value>,
     ) {
+        handle_scope_guard!(cx);
+
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
     pub fn instrinsic_length_prop(&mut self, cx: Context, length: i32) {
+        handle_scope_guard!(cx);
+
         let length_value = cx.smi(length);
         self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
     }
 
     pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &str) {
+        handle_scope_guard!(cx);
+
         let name_value = cx.alloc_string(name).into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
@@ -441,6 +447,8 @@ impl Handle<ObjectValue> {
         func: RustRuntimeFunction,
         realm: Handle<Realm>,
     ) {
+        handle_scope_guard!(cx);
+
         let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
         let accessor_value = Accessor::new(cx, Some(getter), None);
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
@@ -454,6 +462,8 @@ impl Handle<ObjectValue> {
         setter: RustRuntimeFunction,
         realm: Handle<Realm>,
     ) {
+        handle_scope_guard!(cx);
+
         let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
         let setter = BuiltinFunction::create(cx, setter, 1, name, realm, None, Some("set"));
         let accessor_value = Accessor::new(cx, Some(getter), Some(setter));
@@ -468,6 +478,8 @@ impl Handle<ObjectValue> {
         length: u32,
         realm: Handle<Realm>,
     ) {
+        handle_scope_guard!(cx);
+
         let func = BuiltinFunction::create(cx, func, length, name, realm, None, None).into();
         self.intrinsic_data_prop(cx, name, func);
     }
@@ -478,6 +490,8 @@ impl Handle<ObjectValue> {
         key: Handle<PropertyKey>,
         value: Handle<Value>,
     ) {
+        handle_scope_guard!(cx);
+
         self.set_property(cx, key, Property::data(value, false, false, false));
     }
 }

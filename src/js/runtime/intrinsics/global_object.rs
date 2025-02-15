@@ -1,23 +1,26 @@
-use crate::js::{
-    common::{
-        unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
-        wtf_8::Wtf8String,
-    },
-    runtime::{
-        abstract_operations::define_property_or_throw,
-        builtin_function::BuiltinFunction,
-        bytecode::instruction::EvalFlags,
-        console::ConsoleObject,
-        error::uri_error,
-        eval::eval::perform_eval,
-        function::get_argument,
-        gc::HandleScope,
-        property_descriptor::PropertyDescriptor,
-        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
-        string_value::{FlatString, StringValue},
-        to_string,
-        type_utilities::{to_int32, to_number},
-        Context, EvalResult, Handle, Realm, Value,
+use crate::{
+    handle_scope_guard,
+    js::{
+        common::{
+            unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
+            wtf_8::Wtf8String,
+        },
+        runtime::{
+            abstract_operations::define_property_or_throw,
+            builtin_function::BuiltinFunction,
+            bytecode::instruction::EvalFlags,
+            console::ConsoleObject,
+            error::uri_error,
+            eval::eval::perform_eval,
+            function::get_argument,
+            gc::HandleScope,
+            property_descriptor::PropertyDescriptor,
+            string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
+            string_value::{FlatString, StringValue},
+            to_string,
+            type_utilities::{to_int32, to_number},
+            Context, EvalResult, Handle, Realm, Value,
+        },
     },
 };
 
@@ -27,7 +30,9 @@ use super::intrinsics::Intrinsic;
 pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalResult<()> {
     HandleScope::new(cx, |cx| {
         macro_rules! value_prop {
-            ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {
+            ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {{
+                handle_scope_guard!(cx);
+
                 define_property_or_throw(
                     cx,
                     realm.global_object(),
@@ -39,11 +44,13 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                         $is_configurable,
                     ),
                 )?;
-            };
+            }};
         }
 
         macro_rules! func_prop {
             ($str_name:expr, $func_name:expr, $length:expr) => {{
+                handle_scope_guard!(cx);
+
                 let func_object =
                     BuiltinFunction::create(cx, $func_name, $length, $str_name, realm, None, None)
                         .into();
@@ -52,7 +59,9 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         }
 
         macro_rules! intrinsic_prop {
-            ($name:expr, $intrinsic:ident) => {
+            ($name:expr, $intrinsic:ident) => {{
+                handle_scope_guard!(cx);
+
                 let value = realm.get_intrinsic(Intrinsic::$intrinsic);
                 define_property_or_throw(
                     cx,
@@ -60,7 +69,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                     $name,
                     PropertyDescriptor::data(value.into(), true, false, true),
                 )?;
-            };
+            }};
         }
 
         // Value Properties of the Global Object (https://tc39.es/ecma262/#sec-value-properties-of-the-global-object)

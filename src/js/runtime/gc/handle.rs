@@ -159,6 +159,11 @@ impl HandleScope {
     /// Exit a handle scope without returning an escaped item.
     #[inline]
     pub fn exit(self) {
+        self.exit_non_consuming();
+    }
+
+    #[inline]
+    fn exit_non_consuming(&self) {
         let heap = unsafe { &mut *self.heap_ptr };
         let handle_context = heap.info().handle_context();
 
@@ -201,6 +206,40 @@ impl HandleScope {
         handle_context.next_ptr = self.next_ptr;
         handle_context.end_ptr = self.end_ptr;
     }
+}
+
+/// A guard which enters a handle scope and exits it when dropped. Does not escape any values.
+pub struct HandleScopeGuard {
+    handle_scope: HandleScope,
+}
+
+impl HandleScopeGuard {
+    #[inline]
+    pub fn new(cx: Context) -> HandleScopeGuard {
+        HandleScopeGuard { handle_scope: HandleScope::enter(cx) }
+    }
+}
+
+impl Drop for HandleScopeGuard {
+    #[inline]
+    fn drop(&mut self) {
+        self.handle_scope.exit_non_consuming();
+    }
+}
+
+#[macro_export]
+macro_rules! handle_scope_guard {
+    ($cx:expr) => {
+        let _guard = $crate::js::runtime::gc::HandleScopeGuard::new($cx);
+    };
+}
+
+#[macro_export]
+macro_rules! in_handle_scope {
+    ($cx:expr, $block:block) => {{
+        $crate::handle_scope_guard!($cx);
+        $block
+    }};
 }
 
 /// Number of handles contained in a single handle block. Default to 4KB handle blocks.

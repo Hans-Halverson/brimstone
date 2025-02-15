@@ -1,4 +1,5 @@
 use crate::{
+    handle_scope_guard, in_handle_scope,
     js::runtime::{
         abstract_operations::define_property_or_throw,
         builtin_function::BuiltinFunction,
@@ -242,12 +243,14 @@ impl Intrinsics {
         }
 
         macro_rules! register_intrinsic {
-            ($intrinsic_name:ident, $struct_name:ident) => {
+            ($intrinsic_name:ident, $struct_name:ident) => {{
                 // Each intrinsic may use many handles during initialization
-                let intrinsic_object = HandleScope::new(cx, |cx| $struct_name::new(cx, realm));
+                handle_scope_guard!(cx);
 
-                register_existing_intrinsic!($intrinsic_name, intrinsic_object)
-            };
+                let intrinsic_object = $struct_name::new(cx, realm);
+
+                register_existing_intrinsic!($intrinsic_name, intrinsic_object);
+            }};
         }
 
         macro_rules! register_intrinsic_pair {
@@ -265,27 +268,39 @@ impl Intrinsics {
 
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
         // form dependency cycles, so first create uninitialized and then initialize later.
-        let object_prototype = ObjectPrototype::new_uninit(cx);
-        let function_prototype = FunctionPrototype::new_uninit(cx);
+        in_handle_scope!(cx, {
+            let object_prototype = ObjectPrototype::new_uninit(cx);
+            let function_prototype = FunctionPrototype::new_uninit(cx);
 
-        register_existing_intrinsic!(ObjectPrototype, object_prototype);
-        register_existing_intrinsic!(FunctionPrototype, function_prototype);
+            register_existing_intrinsic!(ObjectPrototype, object_prototype);
+            register_existing_intrinsic!(FunctionPrototype, function_prototype);
+        });
 
         // Initialize the global object and scope. Global object will be referenced when settings
         // up intrinsics, but needs object prototype set up first.
-        let global_object = object_create_with_proto::<ObjectValue>(
-            cx,
-            ObjectKind::OrdinaryObject,
-            object_prototype.into(),
-        );
-        realm.set_global_object(global_object);
+        in_handle_scope!(cx, {
+            let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+            let global_object = object_create_with_proto::<ObjectValue>(
+                cx,
+                ObjectKind::OrdinaryObject,
+                object_prototype,
+            );
+            realm.set_global_object(global_object);
 
-        // Now that global object has been created, create default global scope which will be used
-        // by all intrinsic closures.
-        realm.init_global_scope(cx);
+            // Now that global object has been created, create default global scope which will be used
+            // by all intrinsic closures.
+            realm.init_global_scope(cx);
+        });
 
-        ObjectPrototype::initialize(cx, object_prototype, realm);
-        FunctionPrototype::initialize(cx, function_prototype, realm);
+        // Initialize the most commonly used intrinsics
+        in_handle_scope!(cx, {
+            let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype).cast();
+            ObjectPrototype::initialize(cx, object_prototype, realm);
+        });
+        in_handle_scope!(cx, {
+            let function_prototype = realm.get_intrinsic(Intrinsic::FunctionPrototype);
+            FunctionPrototype::initialize(cx, function_prototype, realm);
+        });
 
         // Normal intrinsic creation
         register_intrinsic!(ObjectConstructor, ObjectConstructor);
@@ -328,19 +343,24 @@ impl Intrinsics {
         register_intrinsic_pair!(FinalizationRegistryPrototype, FinalizationRegistryConstructor);
 
         // Properties of basic intrinsics
-        let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
-        register_existing_intrinsic!(
-            ObjectPrototypeToString,
-            object_prototype_to_string.as_object()
-        );
+        in_handle_scope!(cx, {
+            let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
+            let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
+            register_existing_intrinsic!(
+                ObjectPrototypeToString,
+                object_prototype_to_string.as_object()
+            );
 
-        let array_prototype = realm.get_intrinsic(Intrinsic::ArrayPrototype);
-        let array_prototype_values = must!(get(cx, array_prototype, cx.names.values()));
-        register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
+            let array_prototype = realm.get_intrinsic(Intrinsic::ArrayPrototype);
+            let array_prototype_values = must!(get(cx, array_prototype, cx.names.values()));
+            register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
-        let array_prototype_to_string = must!(get(cx, array_prototype, cx.names.to_string()));
-        register_existing_intrinsic!(ArrayPrototypeToString, array_prototype_to_string.as_object());
+            let array_prototype_to_string = must!(get(cx, array_prototype, cx.names.to_string()));
+            register_existing_intrinsic!(
+                ArrayPrototypeToString,
+                array_prototype_to_string.as_object()
+            );
+        });
 
         // Native errors
         register_intrinsic_pair!(AggregateErrorPrototype, AggregateErrorConstructor);
@@ -422,20 +442,22 @@ impl Intrinsics {
         register_intrinsic!(Reflect, ReflectObject);
 
         // Builtin functions
-        register_existing_intrinsic!(Eval, create_eval(cx, realm));
-        register_existing_intrinsic!(
-            GlobalDeclarationInstantiation,
-            create_global_declaration_instantiation_intrinsic(cx, realm)
-        );
+        in_handle_scope!(cx, {
+            register_existing_intrinsic!(Eval, create_eval(cx, realm));
+            register_existing_intrinsic!(
+                GlobalDeclarationInstantiation,
+                create_global_declaration_instantiation_intrinsic(cx, realm)
+            );
 
-        let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
-        register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic);
+            let throw_type_error_intrinsic = create_throw_type_error_intrinsic(cx, realm);
+            register_existing_intrinsic!(ThrowTypeError, throw_type_error_intrinsic);
 
-        add_restricted_function_properties(
-            cx,
-            realm.get_intrinsic(Intrinsic::FunctionPrototype),
-            realm,
-        );
+            add_restricted_function_properties(
+                cx,
+                realm.get_intrinsic(Intrinsic::FunctionPrototype),
+                realm,
+            );
+        });
     }
 
     #[inline]
@@ -459,6 +481,8 @@ impl Intrinsics {
         prototype: Intrinsic,
         constructor: Intrinsic,
     ) {
+        handle_scope_guard!(cx);
+
         let mut prototype_object = realm.get_intrinsic(prototype);
         let constructor_object = realm.get_intrinsic(constructor);
 
@@ -474,6 +498,8 @@ impl Intrinsics {
         prototype: Intrinsic,
         constructor: Intrinsic,
     ) {
+        handle_scope_guard!(cx);
+
         let mut prototype_object = realm.get_intrinsic(prototype);
         let constructor_object = realm.get_intrinsic(constructor);
 
@@ -493,33 +519,36 @@ pub fn throw_type_error(
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)
 fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    let mut throw_type_error_func = BuiltinFunction::create_builtin_function_without_properties(
-        cx,
-        throw_type_error,
-        /* name */ None,
-        realm,
-        /* prototype */ None,
-        /* is_constructor */ false,
-    )
-    .into();
+    HandleScope::new(cx, |cx| {
+        let mut throw_type_error_func =
+            BuiltinFunction::create_builtin_function_without_properties(
+                cx,
+                throw_type_error,
+                /* name */ None,
+                realm,
+                /* prototype */ None,
+                /* is_constructor */ false,
+            )
+            .into();
 
-    let zero_value = cx.zero();
-    let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
-    must!(define_property_or_throw(
-        cx,
-        throw_type_error_func,
-        cx.names.length(),
-        length_desc,
-    ));
+        let zero_value = cx.zero();
+        let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
+        must!(define_property_or_throw(
+            cx,
+            throw_type_error_func,
+            cx.names.length(),
+            length_desc,
+        ));
 
-    // Is anonymous function so name is empty
-    let name = cx.names.empty_string().as_string().into();
-    let name_desc = PropertyDescriptor::data(name, false, false, false);
-    must!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
+        // Is anonymous function so name is empty
+        let name = cx.names.empty_string().as_string().into();
+        let name_desc = PropertyDescriptor::data(name, false, false, false);
+        must!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
 
-    must!(throw_type_error_func.prevent_extensions(cx));
+        must!(throw_type_error_func.prevent_extensions(cx));
 
-    throw_type_error_func.into()
+        throw_type_error_func.into()
+    })
 }
 
 /// AddRestrictedFunctionProperties (https://tc39.es/ecma262/#sec-addrestrictedfunctionproperties)
@@ -528,6 +557,8 @@ fn add_restricted_function_properties(
     func: Handle<ObjectValue>,
     realm: Handle<Realm>,
 ) {
+    handle_scope_guard!(cx);
+
     let thrower_func = realm.get_intrinsic(Intrinsic::ThrowTypeError);
 
     let caller_desc =
@@ -536,7 +567,7 @@ fn add_restricted_function_properties(
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc,));
+    must!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc));
 }
 
 impl Intrinsics {

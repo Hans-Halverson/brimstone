@@ -184,7 +184,7 @@ impl ObjectDescriptor {
         descriptor: Handle<ObjectDescriptor>,
         kind: ObjectKind,
         flags: DescFlags,
-    ) -> Handle<ObjectDescriptor>
+    ) -> HeapPtr<ObjectDescriptor>
     where
         Handle<T>: VirtualObject,
     {
@@ -195,7 +195,7 @@ impl ObjectDescriptor {
         set_uninit!(desc.kind, kind);
         set_uninit!(desc.flags, flags);
 
-        desc.to_handle()
+        desc
     }
 
     #[inline]
@@ -240,7 +240,8 @@ impl BaseDescriptors {
             fake_descriptor_handle,
             ObjectKind::Descriptor,
             DescFlags::empty(),
-        );
+        )
+        .to_handle();
         descriptor.descriptor = *descriptor;
         descriptors[ObjectKind::Descriptor as usize] = *descriptor;
 
@@ -248,7 +249,7 @@ impl BaseDescriptors {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
                 let desc =
                     ObjectDescriptor::new::<$object_ty>(cx, descriptor, $object_kind, $flags);
-                descriptors[$object_kind as usize] = *desc;
+                descriptors[$object_kind as usize] = desc;
             };
         }
 

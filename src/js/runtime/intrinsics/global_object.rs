@@ -1,5 +1,5 @@
 use crate::{
-    handle_scope_guard,
+    handle_scope, handle_scope_guard,
     js::{
         common::{
             unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
@@ -13,7 +13,6 @@ use crate::{
             error::uri_error,
             eval::eval::perform_eval,
             function::get_argument,
-            gc::HandleScope,
             property_descriptor::PropertyDescriptor,
             string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
             string_value::{FlatString, StringValue},
@@ -28,7 +27,7 @@ use super::intrinsics::Intrinsic;
 
 /// SetDefaultGlobalBindings (https://tc39.es/ecma262/#sec-setdefaultglobalbindings)
 pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalResult<()> {
-    HandleScope::new(cx, |cx| {
+    handle_scope!(cx, {
         macro_rules! value_prop {
             ($name:expr, $value:expr, $is_writable:expr, $is_enumerable:expr, $is_configurable:expr) => {{
                 handle_scope_guard!(cx);

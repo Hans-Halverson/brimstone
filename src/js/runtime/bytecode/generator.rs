@@ -9,50 +9,54 @@ use std::{
 use bitflags::bitflags;
 use indexmap::IndexSet;
 
-use crate::js::{
-    common::{
-        error::{ErrorFormatter, FormatOptions},
-        wtf_8::Wtf8String,
-    },
-    parser::{
-        ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
-        loc::{Pos, NO_POS},
-        parser::{ParseFunctionResult, ParseProgramResult},
-        scope_tree::{
-            AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME,
-            HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+use crate::{
+    handle_scope,
+    js::{
+        common::{
+            error::{ErrorFormatter, FormatOptions},
+            wtf_8::Wtf8String,
         },
-        source::Source,
-    },
-    runtime::{
-        boxed_value::BoxedValue,
-        bytecode::{
-            function::{dump_bytecode_function, BytecodeFunction},
-            instruction::DefinePropertyFlags,
-            source_map::BytecodeSourceMap,
-        },
-        class_names::{ClassNames, HomeObjectLocation, Method},
-        collections::{BsVec, BsVecField},
-        eval::expression::generate_template_object,
-        gc::{Escapable, HandleScope},
-        global_names::GlobalNames,
-        interned_strings::InternedStrings,
-        module::{
-            import_attributes::ImportAttributes,
-            source_text_module::{
-                DirectReExportEntry, ImportEntry, LocalExportEntry, ModuleRequest,
-                NamedReExportEntry, SourceTextModule,
+        parser::{
+            ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
+            loc::{Pos, NO_POS},
+            parser::{ParseFunctionResult, ParseProgramResult},
+            scope_tree::{
+                AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
+                VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME,
+                DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+                NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
             },
+            source::Source,
         },
-        object_descriptor::ObjectKind,
-        regexp::compiler::compile_regexp,
-        scope::Scope,
-        scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
-        source_file::SourceFile,
-        string_value::FlatString,
-        value::BigIntValue,
-        Context, Handle, HeapPtr, Realm, Value,
+        runtime::{
+            boxed_value::BoxedValue,
+            bytecode::{
+                function::{dump_bytecode_function, BytecodeFunction},
+                instruction::DefinePropertyFlags,
+                source_map::BytecodeSourceMap,
+            },
+            class_names::{ClassNames, HomeObjectLocation, Method},
+            collections::{BsVec, BsVecField},
+            eval::expression::generate_template_object,
+            gc::Escapable,
+            global_names::GlobalNames,
+            interned_strings::InternedStrings,
+            module::{
+                import_attributes::ImportAttributes,
+                source_text_module::{
+                    DirectReExportEntry, ImportEntry, LocalExportEntry, ModuleRequest,
+                    NamedReExportEntry, SourceTextModule,
+                },
+            },
+            object_descriptor::ObjectKind,
+            regexp::compiler::compile_regexp,
+            scope::Scope,
+            scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+            source_file::SourceFile,
+            string_value::FlatString,
+            value::BigIntValue,
+            Context, Handle, HeapPtr, Realm, Value,
+        },
     },
 };
 
@@ -166,7 +170,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<BytecodeScript> {
         debug_assert!(parse_result.program.kind == ProgramKind::Script);
 
-        HandleScope::new(cx, |_| {
+        handle_scope!(cx, {
             let source = parse_result.program.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let script = generator.generate_script_program(&parse_result.program)?;
@@ -190,7 +194,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<BytecodeScript> {
         let mut emit_result = EmitFunctionResult::empty();
 
-        let global_names = HandleScope::new(self.cx, |_| {
+        let global_names = handle_scope!(self.cx, {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
                 self.cx,
                 program,
@@ -229,7 +233,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<SourceTextModule>> {
         debug_assert!(parse_result.program.kind == ProgramKind::Module);
 
-        HandleScope::new(cx, |cx| {
+        handle_scope!(cx, {
             let source = parse_result.program.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let module = generator.generate_module_program(&parse_result.program)?;
@@ -262,7 +266,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let mut emit_result = EmitFunctionResult::empty();
 
-        HandleScope::new(self.cx, |_| {
+        handle_scope!(self.cx, {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
                 self.cx,
                 program,
@@ -620,7 +624,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         parse_result: &'a ParseProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
-        HandleScope::new(cx, |_| {
+        handle_scope!(cx, {
             let mut generator =
                 Self::new(cx, &parse_result.scope_tree, realm, parse_result.program.source.clone());
             let function = generator.generate_eval(&parse_result.program);
@@ -650,7 +654,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let mut emit_result = EmitFunctionResult::empty();
 
-        HandleScope::new(self.cx, |_| {
+        handle_scope!(self.cx, {
             let mut generator = BytecodeFunctionGenerator::new_for_program(
                 self.cx,
                 eval_program,
@@ -717,7 +721,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         parse_result: &'a ParseFunctionResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
-        HandleScope::new(cx, |_| {
+        handle_scope!(cx, {
             let source = parse_result.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let function = generator.generate_function_constructor(&parse_result.function);
@@ -774,7 +778,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         let mut emit_result = EmitFunctionResult::empty();
 
-        HandleScope::new(self.cx, |_| {
+        handle_scope!(self.cx, {
             // Special handling if emitting a default constructor
             if let PendingFunctionNode::Constructor {
                 node: None,

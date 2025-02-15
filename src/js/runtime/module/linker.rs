@@ -1,9 +1,11 @@
-use crate::js::runtime::{
-    boxed_value::BoxedValue,
-    error::syntax_error,
-    gc::HandleScope,
-    module::{module::ModuleEnum, source_text_module::ModuleState},
-    Context, EvalResult, Handle,
+use crate::{
+    handle_scope,
+    js::runtime::{
+        boxed_value::BoxedValue,
+        error::syntax_error,
+        module::{module::ModuleEnum, source_text_module::ModuleState},
+        Context, EvalResult, Handle,
+    },
 };
 
 use super::{
@@ -115,7 +117,7 @@ impl GraphLinker {
 
         // Can isolate InitializeEnvironment in a separate handle scope since handles cannot be
         // stored anywhere else and escape.
-        HandleScope::new(cx, |cx| initialize_environment(cx, module))?;
+        handle_scope!(cx, initialize_environment(cx, module))?;
 
         debug_assert!(module.dfs_ancestor_index() <= module.dfs_index());
 
@@ -207,7 +209,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
 }
 
 pub fn link(cx: Context, module: Handle<SourceTextModule>) -> EvalResult<()> {
-    HandleScope::new(cx, |cx| {
+    handle_scope!(cx, {
         let mut linker = GraphLinker::new();
         linker.link(cx, module)
     })

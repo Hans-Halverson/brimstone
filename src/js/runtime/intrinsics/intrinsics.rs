@@ -1,12 +1,12 @@
 use crate::{
-    handle_scope_guard, in_handle_scope,
+    handle_scope, handle_scope_guard,
     js::runtime::{
         abstract_operations::define_property_or_throw,
         builtin_function::BuiltinFunction,
         collections::InlineArray,
         error::type_error,
         eval_result::EvalResult,
-        gc::{HandleScope, HeapVisitor},
+        gc::HeapVisitor,
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
         intrinsics::{
@@ -268,7 +268,7 @@ impl Intrinsics {
 
         // Intrinsics which are used by many other intrinsics during creation. These intrinsics
         // form dependency cycles, so first create uninitialized and then initialize later.
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             let object_prototype = ObjectPrototype::new_uninit(cx);
             let function_prototype = FunctionPrototype::new_uninit(cx);
 
@@ -278,7 +278,7 @@ impl Intrinsics {
 
         // Initialize the global object and scope. Global object will be referenced when settings
         // up intrinsics, but needs object prototype set up first.
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
             let global_object = object_create_with_proto::<ObjectValue>(
                 cx,
@@ -293,11 +293,11 @@ impl Intrinsics {
         });
 
         // Initialize the most commonly used intrinsics
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype).cast();
             ObjectPrototype::initialize(cx, object_prototype, realm);
         });
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             let function_prototype = realm.get_intrinsic(Intrinsic::FunctionPrototype);
             FunctionPrototype::initialize(cx, function_prototype, realm);
         });
@@ -343,7 +343,7 @@ impl Intrinsics {
         register_intrinsic_pair!(FinalizationRegistryPrototype, FinalizationRegistryConstructor);
 
         // Properties of basic intrinsics
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
             let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
             register_existing_intrinsic!(
@@ -442,7 +442,7 @@ impl Intrinsics {
         register_intrinsic!(Reflect, ReflectObject);
 
         // Builtin functions
-        in_handle_scope!(cx, {
+        handle_scope!(cx, {
             register_existing_intrinsic!(Eval, create_eval(cx, realm));
             register_existing_intrinsic!(
                 GlobalDeclarationInstantiation,
@@ -519,7 +519,7 @@ pub fn throw_type_error(
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)
 fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    HandleScope::new(cx, |cx| {
+    handle_scope!(cx, {
         let mut throw_type_error_func =
             BuiltinFunction::create_builtin_function_without_properties(
                 cx,

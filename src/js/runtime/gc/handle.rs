@@ -227,6 +227,7 @@ impl Drop for HandleScopeGuard {
     }
 }
 
+/// A guard which enters a handle scope and exits it when dropped. Does not escape any values.
 #[macro_export]
 macro_rules! handle_scope_guard {
     ($cx:expr) => {
@@ -234,12 +235,16 @@ macro_rules! handle_scope_guard {
     };
 }
 
+/// Enter a handle scope and execute the given statement. Returns and escapes the result of
+/// executing the statement.
 #[macro_export]
-macro_rules! in_handle_scope {
-    ($cx:expr, $block:block) => {{
-        $crate::handle_scope_guard!($cx);
-        $block
-    }};
+macro_rules! handle_scope {
+    ($cx:expr, $body:stmt) => {
+        $crate::js::runtime::gc::HandleScope::new($cx, |_| {
+            let result = { $body };
+            result
+        })
+    };
 }
 
 /// Number of handles contained in a single handle block. Default to 4KB handle blocks.

@@ -1,7 +1,5 @@
 use crate::{
-    field_offset,
-    js::{parser::scope_tree::REALM_SCOPE_SLOT_NAME, runtime::gc::HandleScope},
-    must, set_uninit,
+    field_offset, handle_scope, js::parser::scope_tree::REALM_SCOPE_SLOT_NAME, must, set_uninit,
 };
 
 use super::{
@@ -47,7 +45,7 @@ const INTRINSICS_BYTE_OFFSET: usize = field_offset!(Realm, intrinsics);
 impl Realm {
     /// InitializeHostDefinedRealm (https://tc39.es/ecma262/#sec-initializehostdefinedrealm)
     pub fn new(cx: Context) -> Handle<Realm> {
-        HandleScope::new(cx, |cx| {
+        handle_scope!(cx, {
             let realm = Realm::new_uninit(cx);
             must!(set_default_global_bindings(cx, realm));
             realm
@@ -57,7 +55,7 @@ impl Realm {
     /// Realm initializes intrinsics but leaves other properties uninitialized. Must call
     /// `initialize` before using.
     fn new_uninit(cx: Context) -> Handle<Realm> {
-        HandleScope::new(cx, |cx| {
+        handle_scope!(cx, {
             // Realm record must be created before setting up intrinsics, as realm must be referenced
             // during intrinsic creation.
             let size = Self::calculate_size_in_bytes();

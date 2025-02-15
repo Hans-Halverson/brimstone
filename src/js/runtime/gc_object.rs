@@ -1,15 +1,12 @@
 use crate::{
+    handle_scope,
     js::runtime::{abstract_operations::define_property_or_throw, PropertyDescriptor},
     must,
 };
 
 use super::{
-    eval_result::EvalResult,
-    gc::{HandleScope, Heap},
-    intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue,
-    realm::Realm,
-    Context, Handle, Value,
+    eval_result::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic,
+    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 pub struct GcObject;
@@ -27,7 +24,7 @@ impl GcObject {
     /// Install the GC object on the realm's global object.
     #[allow(unused)]
     pub fn install(cx: Context, realm: Handle<Realm>) {
-        HandleScope::new(cx, |cx| {
+        handle_scope!(cx, {
             let gc_object = GcObject::new(cx, realm);
             let desc = PropertyDescriptor::data(gc_object.as_value(), true, false, true);
             must!(define_property_or_throw(cx, realm.global_object(), cx.names.gc(), desc))

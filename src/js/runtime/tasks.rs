@@ -1,13 +1,16 @@
 use std::collections::VecDeque;
 
-use crate::js::runtime::{
-    abstract_operations::{call, call_object},
-    intrinsics::promise_constructor::execute_then,
+use crate::{
+    handle_scope,
+    js::runtime::{
+        abstract_operations::{call, call_object},
+        intrinsics::promise_constructor::execute_then,
+    },
 };
 
 use super::{
     async_generator_object::async_generator_resume,
-    gc::{HandleScope, HeapVisitor},
+    gc::HeapVisitor,
     generator_object::GeneratorCompletionType,
     object_value::ObjectValue,
     promise_object::{PromiseCapability, PromiseObject, PromiseReactionKind},
@@ -118,11 +121,13 @@ impl Context {
     /// Run all tasks until the task queue is empty.
     pub fn run_all_tasks(&mut self) -> EvalResult<()> {
         while let Some(task) = self.task_queue().tasks.pop_front() {
-            HandleScope::new(*self, |cx| match task {
-                Task::Callback1(task) => task.execute(cx),
-                Task::AwaitResume(task) => task.execute(cx),
-                Task::PromiseThenReaction(task) => task.execute(cx),
-                Task::PromiseThenSettle(task) => task.execute(cx),
+            handle_scope!(*self, {
+                match task {
+                    Task::Callback1(task) => task.execute(*self),
+                    Task::AwaitResume(task) => task.execute(*self),
+                    Task::PromiseThenReaction(task) => task.execute(*self),
+                    Task::PromiseThenSettle(task) => task.execute(*self),
+                }
             })?;
         }
 

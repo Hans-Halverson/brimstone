@@ -3,11 +3,11 @@ use std::{collections::HashSet, hash::Hash, num::NonZeroUsize};
 use indexmap::IndexSet;
 
 use crate::{
-    field_offset,
+    field_offset, handle_scope,
     js::runtime::{
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
-        gc::{HandleScope, HeapItem, HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapObject, HeapVisitor},
         module::{
             execute::module_evaluate, import_attributes::ImportAttributes, module::next_module_id,
             module_namespace_object::ModuleNamespaceObject,
@@ -635,7 +635,7 @@ impl Module for Handle<SourceTextModule> {
             return namespace_object;
         }
 
-        HandleScope::new(cx, |cx| {
+        handle_scope!(cx, {
             // Lazily initialize the exports map
             self.exports = Some(ExportMap::new(cx, ObjectKind::ExportMap, 4));
 

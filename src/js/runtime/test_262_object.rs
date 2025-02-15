@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
+    handle_scope,
     js::{
         parser::{analyze::analyze, parse_script, source::Source},
         runtime::{bytecode::generator::BytecodeProgramGenerator, get},
@@ -12,7 +13,6 @@ use super::{
     abstract_operations::set,
     error::{syntax_error, syntax_parse_error, type_error},
     function::get_argument,
-    gc::HandleScope,
     gc_object::GcObject,
     intrinsics::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic},
     object_value::ObjectValue,
@@ -51,8 +51,8 @@ impl Test262Object {
         object.to_handle()
     }
 
-    pub fn install(cx: Context, realm: Handle<Realm>) {
-        HandleScope::new(cx, |mut cx| {
+    pub fn install(mut cx: Context, realm: Handle<Realm>) {
+        handle_scope!(cx, {
             // Create the test262 object
             let test_262_object = Test262Object::new(cx, realm);
 

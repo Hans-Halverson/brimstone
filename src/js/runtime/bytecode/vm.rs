@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    handle_scope,
     js::runtime::{
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
@@ -34,7 +35,7 @@ use crate::{
         },
         for_in_iterator::ForInIterator,
         function::build_function_name,
-        gc::{HandleScope, HeapVisitor},
+        gc::HeapVisitor,
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         intrinsics::{
@@ -1471,7 +1472,7 @@ impl VM {
             receiver_handle.replace(receiver);
 
             // Call rust runtime function directly in its own handle scope
-            HandleScope::new(self.cx(), |_| {
+            handle_scope!(self.cx(), {
                 self.call_rust_runtime(closure_ptr, function_id, receiver_handle, arguments, None)
             })
         } else {
@@ -1536,7 +1537,7 @@ impl VM {
             let receiver = self.cx().empty();
 
             // Call rust runtime function directly in its own handle scope
-            let return_value = HandleScope::new(self.cx(), |_| {
+            let return_value = handle_scope!(self.cx(), {
                 self.call_rust_runtime(
                     closure_ptr,
                     function_id,
@@ -1628,7 +1629,7 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            let return_value = HandleScope::new(self.cx(), |_| {
+            let return_value = handle_scope!(self.cx(), {
                 // Get the receiver to use. May allocate.
                 let closure_handle = closure_ptr.to_handle();
                 let receiver = self.generate_receiver(receiver, function_ptr)?;
@@ -1724,9 +1725,9 @@ impl VM {
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
-        let return_value = if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            let return_value =
-                HandleScope::new(self.cx(), |_| -> EvalResult<Handle<ObjectValue>> {
+        let return_value: HeapPtr<ObjectValue> =
+            if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+                let return_value = handle_scope!(self.cx(), {
                     // Calling builtin functions does not pass a receiver - pass empty as the
                     // uninitialized value.
                     let receiver = self.cx().empty();
@@ -1743,68 +1744,69 @@ impl VM {
                     )?;
 
                     // Return value must be an object
-                    Ok(return_value.as_object())
+                    let result: EvalResult<Handle<ObjectValue>> = Ok(return_value.as_object());
+                    result
                 })?;
 
-            *return_value
-        } else {
-            // Otherwise this is a call to a JS function in the VM.
-            let closure_handle = closure_ptr.to_handle();
-            let function_handle = function_ptr.to_handle();
-
-            // Create the receiver to use. Allocates.
-            let is_base = function_ptr.is_base_constructor();
-            let receiver = self.generate_constructor_receiver(new_target, is_base)?;
-
-            let closure_ptr = *closure_handle;
-            let mut receiver_handle = closure_handle.cast::<Value>();
-            receiver_handle.replace(receiver);
-
-            // Push the address of the return value
-            let mut return_value = Value::undefined();
-            let inner_call_return_value_address = (&mut return_value) as *mut Value;
-
-            // Set up the stack frame for the function call. Iterator should be over args in reverse
-            // order.
-            match self.get_args_slice(args) {
-                ArgsSlice::Forward(slice) => {
-                    self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter().rev(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ true,
-                        inner_call_return_value_address,
-                    )?;
-                }
-                ArgsSlice::Reverse(slice) => {
-                    self.push_stack_frame(
-                        closure_ptr,
-                        receiver,
-                        slice.iter(),
-                        slice.len(),
-                        /* return_to_rust_runtime */ true,
-                        inner_call_return_value_address,
-                    )?;
-                }
-            }
-
-            // Set the new target if one exists
-            self.set_new_target(*function_handle, *new_target);
-
-            // Start executing the dispatch loop from the start of the function, returning out of
-            // dispatch loop when the marked return address is encountered.
-            if let Err(error_value) = self.dispatch_loop() {
-                return Err(error_value.to_handle(self.cx()));
-            }
-
-            // Use the function's return value if it is an object
-            if return_value.is_object() {
-                return_value.as_object()
+                *return_value
             } else {
-                *self.constructor_non_object_return_value(receiver_handle, is_base)?
-            }
-        };
+                // Otherwise this is a call to a JS function in the VM.
+                let closure_handle = closure_ptr.to_handle();
+                let function_handle = function_ptr.to_handle();
+
+                // Create the receiver to use. Allocates.
+                let is_base = function_ptr.is_base_constructor();
+                let receiver = self.generate_constructor_receiver(new_target, is_base)?;
+
+                let closure_ptr = *closure_handle;
+                let mut receiver_handle = closure_handle.cast::<Value>();
+                receiver_handle.replace(receiver);
+
+                // Push the address of the return value
+                let mut return_value = Value::undefined();
+                let inner_call_return_value_address = (&mut return_value) as *mut Value;
+
+                // Set up the stack frame for the function call. Iterator should be over args in reverse
+                // order.
+                match self.get_args_slice(args) {
+                    ArgsSlice::Forward(slice) => {
+                        self.push_stack_frame(
+                            closure_ptr,
+                            receiver,
+                            slice.iter().rev(),
+                            slice.len(),
+                            /* return_to_rust_runtime */ true,
+                            inner_call_return_value_address,
+                        )?;
+                    }
+                    ArgsSlice::Reverse(slice) => {
+                        self.push_stack_frame(
+                            closure_ptr,
+                            receiver,
+                            slice.iter(),
+                            slice.len(),
+                            /* return_to_rust_runtime */ true,
+                            inner_call_return_value_address,
+                        )?;
+                    }
+                }
+
+                // Set the new target if one exists
+                self.set_new_target(*function_handle, *new_target);
+
+                // Start executing the dispatch loop from the start of the function, returning out of
+                // dispatch loop when the marked return address is encountered.
+                if let Err(error_value) = self.dispatch_loop() {
+                    return Err(error_value.to_handle(self.cx()));
+                }
+
+                // Use the function's return value if it is an object
+                if return_value.is_object() {
+                    return_value.as_object()
+                } else {
+                    *self.constructor_non_object_return_value(receiver_handle, is_base)?
+                }
+            };
 
         // Set the return value from the Rust runtime call
         unsafe { *return_value_address = return_value.into() };
@@ -2424,7 +2426,8 @@ impl VM {
         name_constant_index: ConstantIndex<W>,
         error_on_unresolved: bool,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx(), |cx| {
+        let cx = self.cx();
+        handle_scope!(cx, {
             let name = self.get_constant(name_constant_index);
             let name = name.as_string().to_handle();
 
@@ -2461,7 +2464,8 @@ impl VM {
         &mut self,
         instr: &StoreGlobalInstruction<W>,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx(), |cx| {
+        let cx = self.cx();
+        handle_scope!(cx, {
             let value = self.read_register_to_handle(instr.value());
 
             let name = self.get_constant(instr.constant_index());
@@ -2534,7 +2538,8 @@ impl VM {
         name_constant_index: ConstantIndex<W>,
         error_on_unresolved: bool,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx(), |cx| {
+        let cx = self.cx();
+        handle_scope!(cx, {
             let name = self.get_constant(name_constant_index);
             let name = name.as_string().to_handle();
 
@@ -2562,7 +2567,8 @@ impl VM {
         &mut self,
         instr: &StoreDynamicInstruction<W>,
     ) -> EvalResult<()> {
-        HandleScope::new(self.cx(), |cx| {
+        let cx = self.cx();
+        handle_scope!(cx, {
             let value = self.read_register(instr.value()).to_handle(cx);
 
             let name = self.get_constant(instr.name_index());

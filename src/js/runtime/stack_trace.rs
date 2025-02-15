@@ -1,9 +1,9 @@
-use crate::js::parser::loc::find_line_col_for_pos;
+use crate::{handle_scope_guard, js::parser::loc::find_line_col_for_pos};
 
 use super::{
     bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
     collections::BsArray,
-    gc::{HandleScope, HeapObject, HeapVisitor},
+    gc::{HeapObject, HeapVisitor},
     intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::return_undefined},
     object_descriptor::ObjectKind,
     source_file::SourceFile,
@@ -94,18 +94,18 @@ pub fn create_current_stack_frame_info(
     cx: Context,
     skip_current_frame: bool,
 ) -> HeapPtr<StackFrameInfoArray> {
-    HandleScope::new(cx, |cx| {
-        let frames = gather_current_stack_frames(cx, skip_current_frame);
+    handle_scope_guard!(cx);
 
-        let mut array =
-            StackFrameInfoArray::new_uninit(cx, ObjectKind::StackFrameInfoArray, frames.len());
+    let frames = gather_current_stack_frames(cx, skip_current_frame);
 
-        for (i, frame) in frames.iter().enumerate() {
-            array.as_mut_slice()[i] = frame.to_heap();
-        }
+    let mut array =
+        StackFrameInfoArray::new_uninit(cx, ObjectKind::StackFrameInfoArray, frames.len());
 
-        array
-    })
+    for (i, frame) in frames.iter().enumerate() {
+        array.as_mut_slice()[i] = frame.to_heap();
+    }
+
+    array
 }
 
 /// Create the string representation of a strack trace for an error, given the stack frame info

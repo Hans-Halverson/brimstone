@@ -6,10 +6,12 @@ use std::{
     rc::Rc,
 };
 
-use crate::js::{
-    common::{options::Options, wtf_8::Wtf8String},
-    parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
-    runtime::gc::HandleScope,
+use crate::{
+    handle_scope,
+    js::{
+        common::{options::Options, wtf_8::Wtf8String},
+        parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
+    },
 };
 
 use super::{
@@ -145,7 +147,7 @@ impl Context {
         cx.heap.info().set_context(cx);
         cx.vm = Some(Box::new(VM::new(cx)));
 
-        HandleScope::new(cx, |mut cx| {
+        handle_scope!(cx, {
             // Initialize all uninitialized fields
             cx.base_descriptors = BaseDescriptors::new(cx);
             InternedStrings::init(cx);

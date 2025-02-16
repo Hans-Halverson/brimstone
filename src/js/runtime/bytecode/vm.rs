@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    handle_scope,
+    handle_scope, handle_scope_guard,
     js::runtime::{
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
@@ -296,7 +296,36 @@ impl VM {
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        self.call_from_rust(closure.cast(), receiver, arguments)
+        #[cfg(feature = "handle_stats")]
+        let num_handles_before = self.current_num_handles();
+
+        let result = self.call_from_rust(closure.cast(), receiver, arguments);
+
+        // In handle stats mode verify that the number of handles before and after execution of a
+        // function are the same, except for the one additional handle holding the return value
+        // from `call_from_rust`.
+        #[cfg(feature = "handle_stats")]
+        {
+            let num_handles_after = self.current_num_handles();
+            if num_handles_before != num_handles_after - 1 {
+                panic!(
+                    "Different number of handles before and after execution: {} vs {}",
+                    num_handles_before, num_handles_after
+                );
+            }
+        }
+
+        result
+    }
+
+    #[cfg(feature = "handle_stats")]
+    fn current_num_handles(&self) -> usize {
+        self.cx()
+            .heap
+            .info()
+            .handle_context()
+            .handle_stats()
+            .num_handles
     }
 
     /// Resume a suspended generator, executing it until it suspends or completes.
@@ -390,6 +419,11 @@ impl VM {
     /// - References to the instruction cannot be held over any allocations, since the instruction
     ///   points into the managed heap and may be moved by a GC.
     fn dispatch_loop(&mut self) -> Result<(), Value> {
+        handle_scope!(self.cx(), self.dispatch_loop_inner())
+    }
+
+    #[inline]
+    fn dispatch_loop_inner(&mut self) -> Result<(), Value> {
         'dispatch: loop {
             macro_rules! create_dispatch_macros {
                 ($width:ident, $opcode_pc:expr) => {
@@ -460,6 +494,8 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(YieldInstruction);
 
+                    handle_scope_guard!(self.cx());
+
                     let generator_object = self.read_register(instr.generator()).as_object();
                     let yield_value = self.read_register(instr.yield_value());
                     let completion_value_index = instr.completion_value_dest().local_index() as u32;
@@ -527,6 +563,8 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(AwaitInstruction);
 
+                    handle_scope_guard!(self.cx());
+
                     let return_promise_or_generator =
                         self.read_register_to_handle(instr.return_promise_or_generator());
                     let argument_promise = self.read_register_to_handle(instr.argument_promise());
@@ -584,6 +622,8 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(GeneratorStartInstruction);
                     let generator_reg = instr.generator();
+
+                    handle_scope_guard!(self.cx());
 
                     // Set the PC to the next instruction to execute
                     self.set_pc_after(instr);
@@ -1453,27 +1493,27 @@ impl VM {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Check whether the value is callable, potentially deferring to proxy.
-        let closure_handle = match self.check_value_is_callable(*function)? {
-            CallableObject::Closure(closure) => closure.to_handle(),
+        let closure_ptr = match self.check_value_is_callable(*function)? {
+            CallableObject::Closure(closure) => closure,
             CallableObject::Proxy(proxy) => {
-                return proxy.to_handle().call(self.cx(), receiver, arguments)
+                return handle_scope!(self.cx(), {
+                    proxy.to_handle().call(self.cx(), receiver, arguments)
+                });
             }
             CallableObject::Error(error) => return Err(error),
         };
 
         // Get the receiver to use. May allocate.
-        let receiver = self.generate_receiver(Some(*receiver), closure_handle.function_ptr())?;
-        let closure_ptr = *closure_handle;
+        let (closure_ptr, receiver) =
+            self.generate_receiver(Some(*receiver), closure_ptr, closure_ptr.function_ptr())?;
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = closure_ptr.function_ptr().rust_runtime_function_id() {
-            // Reuse closure handle for receiver
-            let mut receiver_handle = closure_handle.cast::<Value>();
-            receiver_handle.replace(receiver);
-
             // Call rust runtime function directly in its own handle scope
-            handle_scope!(self.cx(), {
-                self.call_rust_runtime(closure_ptr, function_id, receiver_handle, arguments, None)
+            let cx = self.cx();
+            handle_scope!(cx, {
+                let receiver = receiver.to_handle(cx);
+                self.call_rust_runtime(closure_ptr, function_id, receiver, arguments, None)
             })
         } else {
             // Otherwise this is a call to a JS function in the VM
@@ -1515,87 +1555,89 @@ impl VM {
         arguments: &[Handle<Value>],
         new_target: Handle<ObjectValue>,
     ) -> EvalResult<Handle<ObjectValue>> {
-        // Check whether the value is a constructor, potentially deferring to proxy.
-        let closure_handle = match self.check_value_is_constructor(*function) {
-            CallableObject::Closure(closure) => closure.to_handle(),
-            // Proxy constructors call directly into the rust runtime
-            CallableObject::Proxy(proxy) => {
-                return proxy
-                    .to_handle()
-                    .construct(self.cx(), arguments, new_target);
-            }
-            CallableObject::Error(error) => return Err(error),
-        };
+        handle_scope!(self.cx(), {
+            // Check whether the value is a constructor, potentially deferring to proxy.
+            let closure_handle = match self.check_value_is_constructor(*function) {
+                CallableObject::Closure(closure) => closure.to_handle(),
+                // Proxy constructors call directly into the rust runtime
+                CallableObject::Proxy(proxy) => {
+                    return proxy
+                        .to_handle()
+                        .construct(self.cx(), arguments, new_target);
+                }
+                CallableObject::Error(error) => return Err(error),
+            };
 
-        let closure_ptr = *closure_handle;
-        let function_ptr = closure_ptr.function_ptr();
-
-        // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            // Calling builtin functions does not pass a receiver - pass empty as the uninitialized
-            // value.
-            let receiver = self.cx().empty();
-
-            // Call rust runtime function directly in its own handle scope
-            let return_value = handle_scope!(self.cx(), {
-                self.call_rust_runtime(
-                    closure_ptr,
-                    function_id,
-                    receiver,
-                    arguments,
-                    Some(new_target),
-                )
-            })?;
-
-            // Return value must be an object
-            Ok(return_value.as_object())
-        } else {
-            // Create the receiver to use. Allocates.
-            let is_base = function_ptr.is_base_constructor();
-            let receiver = self.generate_constructor_receiver(new_target, is_base)?;
-
-            // Reuse function handle for receiver
             let closure_ptr = *closure_handle;
             let function_ptr = closure_ptr.function_ptr();
 
-            let mut receiver_handle = closure_handle.cast::<Value>();
-            receiver_handle.replace(receiver);
+            // Check if this is a call to a function in the Rust runtime
+            if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+                // Calling builtin functions does not pass a receiver - pass empty as the
+                // uninitialized value.
+                let receiver = self.cx().empty();
 
-            // Otherwise this is a call to a JS function in the VM
-            let args_rev_iter = arguments.iter().rev().map(Handle::deref);
+                // Call rust runtime function directly in its own handle scope
+                let return_value = handle_scope!(self.cx(), {
+                    self.call_rust_runtime(
+                        closure_ptr,
+                        function_id,
+                        receiver,
+                        arguments,
+                        Some(new_target),
+                    )
+                })?;
 
-            // Push the address of the return value
-            let mut return_value = Value::undefined();
-            let return_value_address = (&mut return_value) as *mut Value;
-
-            // Push a stack frame for the function call, with return address set to return to Rust
-            self.push_stack_frame(
-                closure_ptr,
-                receiver,
-                args_rev_iter,
-                arguments.len(),
-                /* return_to_rust_runtime */ true,
-                return_value_address,
-            )?;
-
-            // Set the new target if one exists
-            self.set_new_target(function_ptr, *new_target);
-
-            // Start executing the dispatch loop from the start of the function, returning out of
-            // dispatch loop when the marked return address is encountered. May allocate.
-            if let Err(error_value) = self.dispatch_loop() {
-                return Err(error_value.to_handle(self.cx()));
-            }
-
-            let return_value = return_value.to_handle(self.cx());
-
-            // Use the function's return value if it is an object
-            if return_value.is_object() {
+                // Return value must be an object
                 Ok(return_value.as_object())
             } else {
-                self.constructor_non_object_return_value(receiver_handle, is_base)
+                // Create the receiver to use. Allocates.
+                let is_base = function_ptr.is_base_constructor();
+                let receiver = self.generate_constructor_receiver(new_target, is_base)?;
+
+                // Reuse function handle for receiver
+                let closure_ptr = *closure_handle;
+                let function_ptr = closure_ptr.function_ptr();
+
+                let mut receiver_handle = closure_handle.cast::<Value>();
+                receiver_handle.replace(receiver);
+
+                // Otherwise this is a call to a JS function in the VM
+                let args_rev_iter = arguments.iter().rev().map(Handle::deref);
+
+                // Push the address of the return value
+                let mut return_value = Value::undefined();
+                let return_value_address = (&mut return_value) as *mut Value;
+
+                // Push a stack frame for the function call, with return address set to return to Rust
+                self.push_stack_frame(
+                    closure_ptr,
+                    receiver,
+                    args_rev_iter,
+                    arguments.len(),
+                    /* return_to_rust_runtime */ true,
+                    return_value_address,
+                )?;
+
+                // Set the new target if one exists
+                self.set_new_target(function_ptr, *new_target);
+
+                // Start executing the dispatch loop from the start of the function, returning out
+                // of dispatch loop when the marked return address is encountered. May allocate.
+                if let Err(error_value) = self.dispatch_loop() {
+                    return Err(error_value.to_handle(self.cx()));
+                }
+
+                let return_value = return_value.to_handle(self.cx());
+
+                // Use the function's return value if it is an object
+                if return_value.is_object() {
+                    Ok(return_value.as_object())
+                } else {
+                    self.constructor_non_object_return_value(receiver_handle, is_base)
+                }
             }
-        }
+        })
     }
 
     #[inline]
@@ -1615,12 +1657,15 @@ impl VM {
             CallableObject::Closure(closure) => closure,
             // Proxy constructors call into the rust runtime
             CallableObject::Proxy(proxy) => {
-                // Can default to undefined receiver, which will be eventually coerced by callee
-                let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx());
-                let arguments = self.prepare_rust_runtime_args(args);
-                let return_value = proxy.to_handle().call(self.cx(), receiver, &arguments)?;
-                unsafe { *return_value_address = *return_value };
-                return Ok(());
+                return handle_scope!(self.cx(), {
+                    // Can default to undefined receiver, which will be eventually coerced by callee
+                    let receiver = receiver.unwrap_or(Value::undefined()).to_handle(self.cx());
+                    let arguments = self.prepare_rust_runtime_args(args);
+                    let return_value = proxy.to_handle().call(self.cx(), receiver, &arguments)?;
+                    unsafe { *return_value_address = *return_value };
+
+                    Ok(())
+                });
             }
             CallableObject::Error(error) => return Err(error),
         };
@@ -1629,31 +1674,31 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-            let return_value = handle_scope!(self.cx(), {
-                // Get the receiver to use. May allocate.
-                let closure_handle = closure_ptr.to_handle();
-                let receiver = self.generate_receiver(receiver, function_ptr)?;
-                let closure_ptr = *closure_handle;
+            // Get the receiver to use. May allocate.
+            let (closure_ptr, receiver) =
+                self.generate_receiver(receiver, closure_ptr, function_ptr)?;
 
-                // Reuse function handle for receiver
-                let mut receiver_handle = closure_handle.cast::<Value>();
-                receiver_handle.replace(receiver);
+            let cx = self.cx();
+            handle_scope!(cx, {
+                let receiver = receiver.to_handle(cx);
 
                 // Prepare arguments for the runtime call
                 let arguments = self.prepare_rust_runtime_args(args);
 
-                self.call_rust_runtime(closure_ptr, function_id, receiver_handle, &arguments, None)
-            })?;
+                let return_value =
+                    self.call_rust_runtime(closure_ptr, function_id, receiver, &arguments, None)?;
 
-            // Set the return value from the Rust runtime call
-            unsafe { *return_value_address = *return_value };
+                // Set the return value from the Rust runtime call
+                unsafe { *return_value_address = *return_value };
+
+                Ok::<(), Handle<Value>>(())
+            })?;
         } else {
             // Otherwise this is a call to a JS function in the VM.
 
             // Get the receiver to use. May allocate.
-            let closure_handle = closure_ptr.to_handle();
-            let receiver = self.generate_receiver(receiver, function_ptr)?;
-            let closure_ptr = *closure_handle;
+            let (closure_ptr, receiver) =
+                self.generate_receiver(receiver, closure_ptr, function_ptr)?;
 
             // Set up the stack frame for the function call. Iterator should be over args in reverse
             // order.
@@ -1700,24 +1745,24 @@ impl VM {
         let return_value_address = self.register_address(instr.dest());
 
         // TODO: Check if this cast is safe
-        let new_target = self
-            .read_register(instr.new_target())
-            .to_handle(self.cx())
-            .cast();
+        let new_target = self.read_register(instr.new_target()).as_object();
 
         // Check whether the value is a constructor, potentially deferring to proxy.
         let closure_ptr = match self.check_value_is_constructor(function_value) {
             CallableObject::Closure(closure) => closure,
             // Proxy constructors call into the rust runtime
             CallableObject::Proxy(proxy) => {
-                let proxy = proxy.to_handle();
-                let arguments = self.prepare_rust_runtime_args(args);
-                let return_value = proxy.construct(self.cx(), &arguments, new_target)?;
+                return handle_scope!(self.cx(), {
+                    let proxy = proxy.to_handle();
+                    let new_target = new_target.to_handle();
+                    let arguments = self.prepare_rust_runtime_args(args);
+                    let return_value = proxy.construct(self.cx(), &arguments, new_target)?;
 
-                // Can directly return value as proxy constructor is guaranteed to return an object
-                unsafe { *return_value_address = *return_value.as_value() };
+                    // Can directly return value as proxy constructor is guaranteed to return an object
+                    unsafe { *return_value_address = *return_value.as_value() };
 
-                return Ok(());
+                    Ok(())
+                });
             }
             CallableObject::Error(error) => return Err(error),
         };
@@ -1725,34 +1770,32 @@ impl VM {
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
-        let return_value: HeapPtr<ObjectValue> =
+        let return_value: HeapPtr<ObjectValue> = handle_scope!(self.cx(), {
             if let Some(function_id) = function_ptr.rust_runtime_function_id() {
-                let return_value = handle_scope!(self.cx(), {
-                    // Calling builtin functions does not pass a receiver - pass empty as the
-                    // uninitialized value.
-                    let receiver = self.cx().empty();
+                // Calling builtin functions does not pass a receiver - pass empty as the
+                // uninitialized value.
+                let receiver = self.cx().empty();
 
-                    // Prepare arguments for the runtime call
-                    let arguments = self.prepare_rust_runtime_args(args);
+                // Prepare arguments for the runtime call
+                let arguments = self.prepare_rust_runtime_args(args);
 
-                    let return_value = self.call_rust_runtime(
-                        closure_ptr,
-                        function_id,
-                        receiver,
-                        &arguments,
-                        Some(new_target),
-                    )?;
+                let new_target = new_target.to_handle();
 
-                    // Return value must be an object
-                    let result: EvalResult<Handle<ObjectValue>> = Ok(return_value.as_object());
-                    result
-                })?;
+                let return_value = self.call_rust_runtime(
+                    closure_ptr,
+                    function_id,
+                    receiver,
+                    &arguments,
+                    Some(new_target),
+                )?;
 
-                *return_value
+                // Return value must be an object
+                Ok(*return_value.as_object())
             } else {
                 // Otherwise this is a call to a JS function in the VM.
                 let closure_handle = closure_ptr.to_handle();
                 let function_handle = function_ptr.to_handle();
+                let new_target = new_target.to_handle();
 
                 // Create the receiver to use. Allocates.
                 let is_base = function_ptr.is_base_constructor();
@@ -1802,11 +1845,12 @@ impl VM {
 
                 // Use the function's return value if it is an object
                 if return_value.is_object() {
-                    return_value.as_object()
+                    Ok(return_value.as_object())
                 } else {
-                    *self.constructor_non_object_return_value(receiver_handle, is_base)?
+                    Ok(*self.constructor_non_object_return_value(receiver_handle, is_base)?)
                 }
-            };
+            }
+        })?;
 
         // Set the return value from the Rust runtime call
         unsafe { *return_value_address = return_value.into() };
@@ -1888,7 +1932,7 @@ impl VM {
         return_value_address: *mut Value,
     ) -> EvalResult<()> {
         let bytecode_function = closure.function_ptr();
-        let scope = closure.scope();
+        let scope = closure.scope_ptr();
 
         let num_parameters = bytecode_function.num_parameters() as usize;
         let num_registers = bytecode_function.num_registers();
@@ -2101,28 +2145,43 @@ impl VM {
     }
 
     /// Generate the receiver to be used given an optional explicit receiver value and the called
-    /// function.
+    /// function. May allocate.
+    ///
+    /// Returns the (closure, receiver) pair
     #[inline]
     fn generate_receiver(
         &mut self,
         receiver: Option<Value>,
+        closure: HeapPtr<Closure>,
         function: HeapPtr<BytecodeFunction>,
-    ) -> EvalResult<Value> {
+    ) -> EvalResult<(HeapPtr<Closure>, Value)> {
+        // Return the coerced receiver that should be passed to a function call.
         if let Some(receiver) = receiver {
-            self.coerce_receiver(receiver, function)
+            if function.is_strict() {
+                // No coercion is necessary in strict mode
+                Ok((closure, receiver))
+            } else if receiver.is_nullish() {
+                // Global object is used if receiver is nullish
+                Ok((closure, function.realm_ptr().global_object_ptr().as_value()))
+            } else {
+                // Otherwise receiver must be coerced to an object. This can allocate, so store
+                // closure behind a handle across `to_object` call.
+                let cx = self.cx();
+                handle_scope!(cx, {
+                    let closure = closure.to_handle();
+                    let receiver = receiver.to_handle(cx);
+                    let receiver_object = to_object(cx, receiver)?;
+                    Ok((*closure, *receiver_object.as_value()))
+                })
+            }
         } else {
-            Ok(self.default_receiver(function))
-        }
-    }
-
-    /// Return the default receiver used for a function call when no receiver is provided.
-    #[inline]
-    fn default_receiver(&self, function: HeapPtr<BytecodeFunction>) -> Value {
-        if function.is_strict() {
-            Value::undefined()
-        } else {
-            // Global object is used
-            function.realm_ptr().global_object_ptr().into()
+            // The default receiver used for a function call when no receiver is provided.
+            if function.is_strict() {
+                Ok((closure, Value::undefined()))
+            } else {
+                // Global object is used
+                Ok((closure, function.realm_ptr().global_object_ptr().as_value()))
+            }
         }
     }
 
@@ -2167,29 +2226,6 @@ impl VM {
             // undefined, so if the return value wasn't an object we should error.
             type_error(self.cx(), "derived constructor must return object or undefined")
         }
-    }
-
-    /// Return the coerced receiver that should be passed to a function call. No coercion is
-    /// necessary in strict mode, otherwise receiver must be coerced to an object, using the
-    /// global object if the receiver is nullish.
-    #[inline]
-    fn coerce_receiver(
-        &mut self,
-        receiver: Value,
-        function: HeapPtr<BytecodeFunction>,
-    ) -> EvalResult<Value> {
-        let value = if function.is_strict() {
-            receiver
-        } else if receiver.is_nullish() {
-            // Global object is used if receiver is nullish
-            function.realm_ptr().global_object_ptr().as_value()
-        } else {
-            let receiver = receiver.to_handle(self.cx());
-            let receiver_object = to_object(self.cx(), receiver)?;
-            *receiver_object.as_value()
-        };
-
-        Ok(value)
     }
 
     /// Allocate space for local registers, initializing to undefined
@@ -2244,28 +2280,30 @@ impl VM {
         &mut self,
         instr: &CallMaybeEvalInstruction<W>,
     ) -> EvalResult<()> {
-        let callee = self.read_register(instr.function());
+        handle_scope!(self.cx(), {
+            let callee = self.read_register(instr.function());
 
-        // Check if the callee is the eval function, if so this is a direct eval
-        let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
-        if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
-            let argc = instr.argc().value().to_usize();
-            let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
-            let dest = instr.dest();
+            // Check if the callee is the eval function, if so this is a direct eval
+            let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
+            if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
+                let argc = instr.argc().value().to_usize();
+                let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
+                let dest = instr.dest();
 
-            // Return undefined if there are no arguments
-            if argc == 0 {
-                self.write_register(dest, Value::undefined());
-                return Ok(());
+                // Return undefined if there are no arguments
+                if argc == 0 {
+                    self.write_register(dest, Value::undefined());
+                    return Ok(());
+                }
+
+                // Only the first argument is passed to eval
+                let arg = self.read_register(instr.argv());
+
+                self.direct_eval(arg, dest, flags)
+            } else {
+                self.execute_generic_call(instr)
             }
-
-            // Only the first argument is passed to eval
-            let arg = self.read_register_to_handle(instr.argv());
-
-            self.direct_eval(arg, dest, flags)
-        } else {
-            self.execute_generic_call(instr)
-        }
+        })
     }
 
     #[inline]
@@ -2273,38 +2311,39 @@ impl VM {
         &mut self,
         instr: &CallMaybeEvalVarargsInstruction<W>,
     ) -> EvalResult<()> {
-        let callee = self.read_register(instr.function());
+        handle_scope!(self.cx(), {
+            let callee = self.read_register(instr.function());
 
-        // Check if the callee is the eval function, if so this is a direct eval
-        let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
-        if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
-            let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
-            let dest = instr.dest();
+            // Check if the callee is the eval function, if so this is a direct eval
+            let eval_function_ptr = self.cx().get_intrinsic_ptr(Intrinsic::Eval);
+            if callee.is_object() && same_object_value(callee.as_object(), eval_function_ptr) {
+                let flags = EvalFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
+                let dest = instr.dest();
 
-            // Extract the first argument from the array
-            let args_slice = self.get_varargs_slice(instr.args());
-            if args_slice.is_empty() {
-                self.write_register(instr.dest(), Value::undefined());
-                return Ok(());
+                // Extract the first argument from the array
+                let args_slice = self.get_varargs_slice(instr.args());
+                if args_slice.is_empty() {
+                    self.write_register(instr.dest(), Value::undefined());
+                    return Ok(());
+                }
+
+                self.direct_eval(args_slice[0], dest, flags)
+            } else {
+                self.execute_generic_call(instr)
             }
-
-            let arg = args_slice[0].to_handle(self.cx());
-
-            self.direct_eval(arg, dest, flags)
-        } else {
-            self.execute_generic_call(instr)
-        }
+        })
     }
 
     #[inline]
     fn direct_eval<W: Width>(
         &mut self,
-        arg: Handle<Value>,
+        arg: Value,
         dest: Register<W>,
         flags: EvalFlags,
     ) -> EvalResult<()> {
         let is_strict_caller = self.closure().function_ptr().is_strict();
         let scope = self.scope().to_handle();
+        let arg = arg.to_handle(self.cx());
 
         // Allocates
         let result = perform_eval(self.cx(), arg, is_strict_caller, Some(scope), flags)?;
@@ -2318,38 +2357,40 @@ impl VM {
         &mut self,
         _: &DefaultSuperCallInstruction<W>,
     ) -> EvalResult<()> {
-        let super_constructor = must!(self
-            .closure()
-            .to_handle()
-            .as_object()
-            .get_prototype_of(self.cx()));
+        handle_scope!(self.cx(), {
+            let super_constructor = must!(self
+                .closure()
+                .to_handle()
+                .as_object()
+                .get_prototype_of(self.cx()));
 
-        if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
-            return type_error(self.cx(), "super must be a constructor");
-        }
-        let super_constructor = super_constructor.unwrap();
+            if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
+                return type_error(self.cx(), "super must be a constructor");
+            }
+            let super_constructor = super_constructor.unwrap();
 
-        // Place all arguments behind handles
-        let args = self
-            .stack_frame()
-            .args()
-            .iter()
-            .map(|arg| arg.to_handle(self.cx()))
-            .collect::<Vec<_>>();
+            // Place all arguments behind handles
+            let args = self
+                .stack_frame()
+                .args()
+                .iter()
+                .map(|arg| arg.to_handle(self.cx()))
+                .collect::<Vec<_>>();
 
-        // New target is in the first local register
-        let new_target = self
-            .read_register_to_handle(Register::<W>::local(0))
-            .as_object();
+            // New target is in the first local register
+            let new_target = self
+                .read_register_to_handle(Register::<W>::local(0))
+                .as_object();
 
-        // Call the super constructor
-        let this_value =
-            self.construct_from_rust(super_constructor.as_value(), &args, new_target)?;
+            // Call the super constructor
+            let this_value =
+                self.construct_from_rust(super_constructor.as_value(), &args, new_target)?;
 
-        // Store result of super call to the `this` register, which will be returned at end of call
-        self.write_register(Register::<W>::this(), *this_value.as_value());
+            // Store result of super call to the `this` register, which will be returned at end of call
+            self.write_register(Register::<W>::this(), *this_value.as_value());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2600,142 +2641,162 @@ impl VM {
 
     #[inline]
     fn execute_add<W: Width>(&mut self, instr: &AddInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_add(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_add(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_sub<W: Width>(&mut self, instr: &SubInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_subtract(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_subtract(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_mul<W: Width>(&mut self, instr: &MulInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_multiply(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_multiply(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_div<W: Width>(&mut self, instr: &DivInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_divide(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_divide(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_rem<W: Width>(&mut self, instr: &RemInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_remainder(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_remainder(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_exp<W: Width>(&mut self, instr: &ExpInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_exponentiation(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_exponentiation(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_bit_and<W: Width>(&mut self, instr: &BitAndInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_bit_or<W: Width>(&mut self, instr: &BitOrInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_bit_xor<W: Width>(&mut self, instr: &BitXorInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_shift_left<W: Width>(&mut self, instr: &ShiftLeftInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_shift_left(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_shift_left(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2743,16 +2804,18 @@ impl VM {
         &mut self,
         instr: &ShiftRightArithmeticInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2760,16 +2823,18 @@ impl VM {
         &mut self,
         instr: &ShiftRightLogicalInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2777,16 +2842,18 @@ impl VM {
         &mut self,
         instr: &LooseEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = is_loosely_equal(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, Value::bool(result));
+            self.write_register(dest, Value::bool(result));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2794,20 +2861,24 @@ impl VM {
         &mut self,
         instr: &LooseNotEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = is_loosely_equal(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, Value::bool(!result));
+            self.write_register(dest, Value::bool(!result));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_strict_equal<W: Width>(&mut self, instr: &StrictEqualInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let left_value = self.read_register_to_handle(instr.left());
         let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
@@ -2820,6 +2891,8 @@ impl VM {
 
     #[inline]
     fn execute_strict_not_equal<W: Width>(&mut self, instr: &StrictNotEqualInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let left_value = self.read_register_to_handle(instr.left());
         let right_value = self.read_register_to_handle(instr.right());
         let dest = instr.dest();
@@ -2832,16 +2905,18 @@ impl VM {
 
     #[inline]
     fn execute_less_than<W: Width>(&mut self, instr: &LessThanInstruction<W>) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_less_than(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_less_than(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2849,16 +2924,18 @@ impl VM {
         &mut self,
         instr: &LessThanOrEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2866,16 +2943,18 @@ impl VM {
         &mut self,
         instr: &GreaterThanInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_greater_than(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_greater_than(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2883,29 +2962,33 @@ impl VM {
         &mut self,
         instr: &GreaterThanOrEqualInstruction<W>,
     ) -> EvalResult<()> {
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
+            // May allocate
+            let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_neg<W: Width>(&mut self, instr: &NegInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_negate(self.cx(), value)?;
+            // May allocate
+            let result = eval_negate(self.cx(), value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -2969,19 +3052,23 @@ impl VM {
 
     #[inline]
     fn execute_bit_not<W: Width>(&mut self, instr: &BitNotInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_bitwise_not(self.cx(), value)?;
+            // May allocate
+            let result = eval_bitwise_not(self.cx(), value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
@@ -2993,16 +3080,18 @@ impl VM {
 
     #[inline]
     fn execute_in<W: Width>(&mut self, instr: &InInstruction<W>) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_in_expression(self.cx(), key, object)?;
+            // May allocate
+            let result = eval_in_expression(self.cx(), key, object)?;
 
-        self.write_register(dest, Value::bool(result));
+            self.write_register(dest, Value::bool(result));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3010,55 +3099,63 @@ impl VM {
         &mut self,
         instr: &InstanceOfInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let constructor = self.read_register_to_handle(instr.constructor());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let constructor = self.read_register_to_handle(instr.constructor());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = eval_instanceof_expression(self.cx(), object, constructor)?;
+            // May allocate
+            let result = eval_instanceof_expression(self.cx(), object, constructor)?;
 
-        self.write_register(dest, Value::bool(result));
+            self.write_register(dest, Value::bool(result));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_to_number<W: Width>(&mut self, instr: &ToNumberInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = to_number(self.cx(), value)?;
+            // May allocate
+            let result = to_number(self.cx(), value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_to_numeric<W: Width>(&mut self, instr: &ToNumericInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = to_numeric(self.cx(), value)?;
+            // May allocate
+            let result = to_numeric(self.cx(), value)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_to_string<W: Width>(&mut self, instr: &ToStringInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = to_string(self.cx(), value)?;
+            // May allocate
+            let result = to_string(self.cx(), value)?;
 
-        self.write_register(dest, *result.as_value());
+            self.write_register(dest, *result.as_value());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3066,32 +3163,38 @@ impl VM {
         &mut self,
         instr: &ToPropertyKeyInstruction<W>,
     ) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = to_property_key(self.cx(), value)?;
+            // May allocate
+            let result = to_property_key(self.cx(), value)?;
 
-        self.write_register(dest, *result.cast::<Value>());
+            self.write_register(dest, *result.cast::<Value>());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_to_object<W: Width>(&mut self, instr: &ToObjectInstruction<W>) -> EvalResult<()> {
-        let value = self.read_register_to_handle(instr.value());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let value = self.read_register_to_handle(instr.value());
+            let dest = instr.dest();
 
-        // May allocate
-        let result = to_object(self.cx(), value)?;
+            // May allocate
+            let result = to_object(self.cx(), value)?;
 
-        self.write_register(dest, *result.as_value());
+            self.write_register(dest, *result.as_value());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3106,6 +3209,8 @@ impl VM {
 
     #[inline]
     fn execute_new_async_closure<W: Width>(&mut self, instr: &NewAsyncClosureInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3121,6 +3226,8 @@ impl VM {
 
     #[inline]
     fn execute_new_generator<W: Width>(&mut self, instr: &NewGeneratorInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3140,6 +3247,8 @@ impl VM {
 
     #[inline]
     fn execute_new_async_generator<W: Width>(&mut self, instr: &NewAsyncGeneratorInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let func = self.get_constant(instr.function_index());
         let func = func.to_handle(self.cx()).cast::<BytecodeFunction>();
 
@@ -3159,6 +3268,8 @@ impl VM {
 
     #[inline]
     fn execute_new_object<W: Width>(&mut self, instr: &NewObjectInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         // Allocates
@@ -3169,6 +3280,8 @@ impl VM {
 
     #[inline]
     fn execute_new_array<W: Width>(&mut self, instr: &NewArrayInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         // Allocates
@@ -3179,6 +3292,8 @@ impl VM {
 
     #[inline]
     fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let compiled_regexp = self.get_constant(instr.regexp_index());
         let compiled_regexp = compiled_regexp
             .to_handle(self.cx())
@@ -3194,6 +3309,8 @@ impl VM {
 
     #[inline]
     fn execute_new_mapped_arguments<W: Width>(&mut self, instr: &NewMappedArgumentsInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         let closure = self.closure().to_handle();
@@ -3219,6 +3336,8 @@ impl VM {
         &mut self,
         instr: &NewUnmappedArgumentsInstruction<W>,
     ) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         // Place all arguments (up to argc) behind handles
@@ -3237,47 +3356,51 @@ impl VM {
 
     #[inline]
     fn execute_new_class<W: Width>(&mut self, instr: &NewClassInstruction<W>) -> EvalResult<()> {
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let dest = instr.dest();
 
-        let class_names = self
-            .get_constant(instr.class_names_index())
-            .to_handle(self.cx())
-            .cast::<ClassNames>();
-        let constructor_function = self
-            .get_constant(instr.constructor_function_index())
-            .to_handle(self.cx())
-            .cast::<BytecodeFunction>();
+            let class_names = self
+                .get_constant(instr.class_names_index())
+                .to_handle(self.cx())
+                .cast::<ClassNames>();
+            let constructor_function = self
+                .get_constant(instr.constructor_function_index())
+                .to_handle(self.cx())
+                .cast::<BytecodeFunction>();
 
-        let super_class = self.read_register_to_handle(instr.super_class());
-        let super_class = if super_class.is_empty() {
-            None
-        } else {
-            Some(super_class)
-        };
+            let super_class = self.read_register_to_handle(instr.super_class());
+            let super_class = if super_class.is_empty() {
+                None
+            } else {
+                Some(super_class)
+            };
 
-        let method_arguments = self
-            .get_reg_rev_slice(instr.methods(), class_names.num_arguments())
-            .iter()
-            .rev()
-            .map(|value| value.to_handle(self.cx()))
-            .collect::<Vec<_>>();
+            let method_arguments = self
+                .get_reg_rev_slice(instr.methods(), class_names.num_arguments())
+                .iter()
+                .rev()
+                .map(|value| value.to_handle(self.cx()))
+                .collect::<Vec<_>>();
 
-        // Allocates
-        let constructor = new_class(
-            self.cx(),
-            class_names,
-            constructor_function,
-            super_class,
-            &method_arguments,
-        )?;
+            // Allocates
+            let constructor = new_class(
+                self.cx(),
+                class_names,
+                constructor_function,
+                super_class,
+                &method_arguments,
+            )?;
 
-        self.write_register(dest, *constructor.as_value());
+            self.write_register(dest, *constructor.as_value());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_new_accessor<W: Width>(&mut self, instr: &NewAccessorInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
         let getter = self.read_register_to_handle(instr.getter()).as_object();
         let setter = self.read_register_to_handle(instr.setter()).as_object();
@@ -3290,6 +3413,8 @@ impl VM {
 
     #[inline]
     fn execute_new_private_symbol<W: Width>(&mut self, instr: &NewPrivateSymbolInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
         let name = self
             .get_constant(instr.name_index())
@@ -3307,27 +3432,29 @@ impl VM {
         &mut self,
         instr: &GetPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key());
-        let dest = instr.dest();
-        let is_strict = self.closure().function_ptr().is_strict();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key());
+            let dest = instr.dest();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate
-        let coerced_object = to_object(self.cx(), object)?;
-        let property_key = to_property_key(self.cx(), key)?;
+            // May allocate
+            let coerced_object = to_object(self.cx(), object)?;
+            let property_key = to_property_key(self.cx(), key)?;
 
-        // Result of ToObject is used as receiver in sloppy mode
-        let receiver = if is_strict {
-            object
-        } else {
-            coerced_object.into()
-        };
+            // Result of ToObject is used as receiver in sloppy mode
+            let receiver = if is_strict {
+                object
+            } else {
+                coerced_object.into()
+            };
 
-        let result = coerced_object.get(self.cx(), property_key, receiver)?;
+            let result = coerced_object.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3335,25 +3462,27 @@ impl VM {
         &mut self,
         instr: &SetPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key());
-        let value = self.read_register_to_handle(instr.value());
-        let is_strict = self.closure().function_ptr().is_strict();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key());
+            let value = self.read_register_to_handle(instr.value());
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate
-        let mut coerced_object = to_object(self.cx(), object)?;
-        let property_key = to_property_key(self.cx(), key)?;
+            // May allocate
+            let mut coerced_object = to_object(self.cx(), object)?;
+            let property_key = to_property_key(self.cx(), key)?;
 
-        if is_strict {
-            let success = coerced_object.set(self.cx(), property_key, value, object)?;
-            if !success {
-                return err_cannot_set_property(self.cx(), property_key);
+            if is_strict {
+                let success = coerced_object.set(self.cx(), property_key, value, object)?;
+                if !success {
+                    return err_cannot_set_property(self.cx(), property_key);
+                }
+            } else {
+                coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
             }
-        } else {
-            coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3361,49 +3490,53 @@ impl VM {
         &mut self,
         instr: &DefinePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key());
-        let value = self.read_register_to_handle(instr.value());
-        let flags = DefinePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key());
+            let value = self.read_register_to_handle(instr.value());
+            let flags =
+                DefinePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
 
-        // May allocate
-        let object = to_object(self.cx(), object)?;
-        let property_key = to_property_key(self.cx(), key)?;
+            // May allocate
+            let object = to_object(self.cx(), object)?;
+            let property_key = to_property_key(self.cx(), key)?;
 
-        // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
-        if !flags.is_empty() {
-            // We only set flags when the value evaluates to a closure
-            debug_assert!(
-                value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Closure
-            );
-            let mut closure = value.cast::<Closure>();
+            // Uncommon cases when some flags are set, e.g. for accessors or named evaluation
+            if !flags.is_empty() {
+                // We only set flags when the value evaluates to a closure
+                debug_assert!(
+                    value.is_pointer()
+                        && value.as_pointer().descriptor().kind() == ObjectKind::Closure
+                );
+                let mut closure = value.cast::<Closure>();
 
-            // Since we did not statically know the key we must perform "named evaluation" here, meaning
-            // we set the function name to the key.
-            if flags.contains(DefinePropertyFlags::NEEDS_NAME) {
-                let prefix = if flags.contains(DefinePropertyFlags::GETTER) {
-                    Some("get")
+                // Since we did not statically know the key we must perform "named evaluation" here,
+                // meaning we set the function name to the key.
+                if flags.contains(DefinePropertyFlags::NEEDS_NAME) {
+                    let prefix = if flags.contains(DefinePropertyFlags::GETTER) {
+                        Some("get")
+                    } else if flags.contains(DefinePropertyFlags::SETTER) {
+                        Some("set")
+                    } else {
+                        None
+                    };
+
+                    let name = build_function_name(self.cx(), property_key, prefix);
+                    closure.set_lazy_function_name(self.cx(), name);
+                }
+
+                // Create special property descriptors for accessors
+                if flags.contains(DefinePropertyFlags::GETTER) {
+                    let desc = PropertyDescriptor::get_only(Some(closure.into()), true, true);
+                    return define_property_or_throw(self.cx(), object, property_key, desc);
                 } else if flags.contains(DefinePropertyFlags::SETTER) {
-                    Some("set")
-                } else {
-                    None
-                };
-
-                let name = build_function_name(self.cx(), property_key, prefix);
-                closure.set_lazy_function_name(self.cx(), name);
+                    let desc = PropertyDescriptor::set_only(Some(closure.into()), true, true);
+                    return define_property_or_throw(self.cx(), object, property_key, desc);
+                }
             }
 
-            // Create special property descriptors for accessors
-            if flags.contains(DefinePropertyFlags::GETTER) {
-                let desc = PropertyDescriptor::get_only(Some(closure.into()), true, true);
-                return define_property_or_throw(self.cx(), object, property_key, desc);
-            } else if flags.contains(DefinePropertyFlags::SETTER) {
-                let desc = PropertyDescriptor::set_only(Some(closure.into()), true, true);
-                return define_property_or_throw(self.cx(), object, property_key, desc);
-            }
-        }
-
-        create_data_property_or_throw(self.cx(), object, property_key, value)
+            create_data_property_or_throw(self.cx(), object, property_key, value)
+        })
     }
 
     #[inline]
@@ -3411,32 +3544,34 @@ impl VM {
         &mut self,
         instr: &GetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(instr.name_constant_index());
-        let key = key.as_string().to_handle();
+            let key = self.get_constant(instr.name_constant_index());
+            let key = key.as_string().to_handle();
 
-        let dest = instr.dest();
-        let is_strict = self.closure().function_ptr().is_strict();
+            let dest = instr.dest();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate, replace handle
-        let property_key = PropertyKey::string(self.cx(), key);
-        let property_key = key.replace_into(property_key);
+            // May allocate, replace handle
+            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = key.replace_into(property_key);
 
-        let coerced_object = to_object(self.cx(), object)?;
+            let coerced_object = to_object(self.cx(), object)?;
 
-        // Result of ToObject is used as receiver in sloppy mode
-        let receiver = if is_strict {
-            object
-        } else {
-            coerced_object.into()
-        };
+            // Result of ToObject is used as receiver in sloppy mode
+            let receiver = if is_strict {
+                object
+            } else {
+                coerced_object.into()
+            };
 
-        let result = coerced_object.get(self.cx(), property_key, receiver)?;
+            let result = coerced_object.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3444,31 +3579,33 @@ impl VM {
         &mut self,
         instr: &SetNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(instr.name_constant_index());
-        let key = key.as_string().to_handle();
+            let key = self.get_constant(instr.name_constant_index());
+            let key = key.as_string().to_handle();
 
-        let value = self.read_register_to_handle(instr.value());
+            let value = self.read_register_to_handle(instr.value());
 
-        let is_strict = self.closure().function_ptr().is_strict();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate
-        let mut coerced_object = to_object(self.cx(), object)?;
+            // May allocate
+            let mut coerced_object = to_object(self.cx(), object)?;
 
-        let property_key = PropertyKey::string(self.cx(), key);
-        let property_key = key.replace_into(property_key);
+            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = key.replace_into(property_key);
 
-        if is_strict {
-            let success = coerced_object.set(self.cx(), property_key, value, object)?;
-            if !success {
-                return err_cannot_set_property(self.cx(), property_key);
+            if is_strict {
+                let success = coerced_object.set(self.cx(), property_key, value, object)?;
+                if !success {
+                    return err_cannot_set_property(self.cx(), property_key);
+                }
+            } else {
+                coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
             }
-        } else {
-            coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3476,20 +3613,22 @@ impl VM {
         &mut self,
         instr: &DefineNamedPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
 
-        let key = self.get_constant(instr.name_constant_index());
-        let key = key.as_string().to_handle();
+            let key = self.get_constant(instr.name_constant_index());
+            let key = key.as_string().to_handle();
 
-        let value = self.read_register_to_handle(instr.value());
+            let value = self.read_register_to_handle(instr.value());
 
-        // May allocate
-        let object = to_object(self.cx(), object)?;
+            // May allocate
+            let object = to_object(self.cx(), object)?;
 
-        let property_key = PropertyKey::string(self.cx(), key);
-        let property_key = key.replace_into(property_key);
+            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = key.replace_into(property_key);
 
-        create_data_property_or_throw(self.cx(), object, property_key, value)
+            create_data_property_or_throw(self.cx(), object, property_key, value)
+        })
     }
 
     #[inline]
@@ -3497,25 +3636,27 @@ impl VM {
         &mut self,
         instr: &GetSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let home_object = self
-            .read_register_to_handle(instr.home_object())
-            .as_object();
-        let receiver = self.read_register_to_handle(instr.receiver());
-        let key = self.read_register_to_handle(instr.key());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let home_object = self
+                .read_register_to_handle(instr.home_object())
+                .as_object();
+            let receiver = self.read_register_to_handle(instr.receiver());
+            let key = self.read_register_to_handle(instr.key());
+            let dest = instr.dest();
 
-        // May allocate
-        let property_key = to_property_key(self.cx(), key)?;
-        let home_prototype = match home_object.get_prototype_of(self.cx())? {
-            None => return type_error(self.cx(), "prototype is null"),
-            Some(prototype) => prototype,
-        };
+            // May allocate
+            let property_key = to_property_key(self.cx(), key)?;
+            let home_prototype = match home_object.get_prototype_of(self.cx())? {
+                None => return type_error(self.cx(), "prototype is null"),
+                Some(prototype) => prototype,
+            };
 
-        let result = home_prototype.get(self.cx(), property_key, receiver)?;
+            let result = home_prototype.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3523,30 +3664,32 @@ impl VM {
         &mut self,
         instr: &GetNamedSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let home_object = self
-            .read_register_to_handle(instr.home_object())
-            .as_object();
-        let receiver = self.read_register_to_handle(instr.receiver());
+        handle_scope!(self.cx(), {
+            let home_object = self
+                .read_register_to_handle(instr.home_object())
+                .as_object();
+            let receiver = self.read_register_to_handle(instr.receiver());
 
-        let key = self.get_constant(instr.name_constant_index());
-        let key = key.as_string().to_handle();
+            let key = self.get_constant(instr.name_constant_index());
+            let key = key.as_string().to_handle();
 
-        let dest = instr.dest();
+            let dest = instr.dest();
 
-        // May allocate, replace handle
-        let property_key = PropertyKey::string(self.cx(), key);
-        let property_key = key.replace_into(property_key);
+            // May allocate, replace handle
+            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = key.replace_into(property_key);
 
-        let home_prototype = match home_object.get_prototype_of(self.cx())? {
-            None => return type_error(self.cx(), "prototype is null"),
-            Some(prototype) => prototype,
-        };
+            let home_prototype = match home_object.get_prototype_of(self.cx())? {
+                None => return type_error(self.cx(), "prototype is null"),
+                Some(prototype) => prototype,
+            };
 
-        let result = home_prototype.get(self.cx(), property_key, receiver)?;
+            let result = home_prototype.get(self.cx(), property_key, receiver)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3554,31 +3697,33 @@ impl VM {
         &mut self,
         instr: &SetSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let home_object = self
-            .read_register_to_handle(instr.home_object())
-            .as_object();
-        let receiver = self.read_register_to_handle(instr.receiver());
-        let key = self.read_register_to_handle(instr.key());
-        let value = self.read_register_to_handle(instr.value());
-        let is_strict = self.closure().function_ptr().is_strict();
+        handle_scope!(self.cx(), {
+            let home_object = self
+                .read_register_to_handle(instr.home_object())
+                .as_object();
+            let receiver = self.read_register_to_handle(instr.receiver());
+            let key = self.read_register_to_handle(instr.key());
+            let value = self.read_register_to_handle(instr.value());
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate
-        let property_key = to_property_key(self.cx(), key)?;
-        let mut home_prototype = match home_object.get_prototype_of(self.cx())? {
-            None => return type_error(self.cx(), "prototype is null"),
-            Some(prototype) => prototype,
-        };
+            // May allocate
+            let property_key = to_property_key(self.cx(), key)?;
+            let mut home_prototype = match home_object.get_prototype_of(self.cx())? {
+                None => return type_error(self.cx(), "prototype is null"),
+                Some(prototype) => prototype,
+            };
 
-        if is_strict {
-            let success = home_prototype.set(self.cx(), property_key, value, receiver)?;
-            if !success {
-                return err_cannot_set_property(self.cx(), property_key);
+            if is_strict {
+                let success = home_prototype.set(self.cx(), property_key, value, receiver)?;
+                if !success {
+                    return err_cannot_set_property(self.cx(), property_key);
+                }
+            } else {
+                home_prototype.set(self.cx(), property_key, value, receiver)?;
             }
-        } else {
-            home_prototype.set(self.cx(), property_key, value, receiver)?;
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3586,18 +3731,20 @@ impl VM {
         &mut self,
         instr: &DeletePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key());
-        let dest = instr.dest();
-        let is_strict = self.closure().function_ptr().is_strict();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key());
+            let dest = instr.dest();
+            let is_strict = self.closure().function_ptr().is_strict();
 
-        // May allocate
-        let key = to_property_key(self.cx(), key)?;
-        let delete_status = eval_delete_property(self.cx(), object, key, is_strict)?;
+            // May allocate
+            let key = to_property_key(self.cx(), key)?;
+            let delete_status = eval_delete_property(self.cx(), object, key, is_strict)?;
 
-        self.write_register(dest, Value::bool(delete_status));
+            self.write_register(dest, Value::bool(delete_status));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3605,19 +3752,21 @@ impl VM {
         &mut self,
         instr: &DeleteBindingInstruction<W>,
     ) -> EvalResult<()> {
-        let mut scope = self.scope().to_handle();
-        let name = self
-            .get_constant(instr.name_constant_index())
-            .to_handle(self.cx())
-            .as_string();
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let mut scope = self.scope().to_handle();
+            let name = self
+                .get_constant(instr.name_constant_index())
+                .to_handle(self.cx())
+                .as_string();
+            let dest = instr.dest();
 
-        // May allocate
-        let delete_status = scope.lookup_delete(self.cx(), name)?;
+            // May allocate
+            let delete_status = scope.lookup_delete(self.cx(), name)?;
 
-        self.write_register(dest, Value::bool(delete_status));
+            self.write_register(dest, Value::bool(delete_status));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3625,17 +3774,19 @@ impl VM {
         &mut self,
         instr: &GetPrivatePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key()).as_symbol();
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key()).as_symbol();
+            let dest = instr.dest();
 
-        // May allocate
-        let coerced_object = to_object(self.cx(), object)?;
-        let result = private_get(self.cx(), coerced_object, key)?;
+            // May allocate
+            let coerced_object = to_object(self.cx(), object)?;
+            let result = private_get(self.cx(), coerced_object, key)?;
 
-        self.write_register(dest, *result);
+            self.write_register(dest, *result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3643,15 +3794,17 @@ impl VM {
         &mut self,
         instr: &SetPrivatePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.read_register_to_handle(instr.key()).as_symbol();
-        let value = self.read_register_to_handle(instr.value());
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.read_register_to_handle(instr.key()).as_symbol();
+            let value = self.read_register_to_handle(instr.value());
 
-        // May allocate
-        let coerced_object = to_object(self.cx(), object)?;
-        private_set(self.cx(), coerced_object, key, value)?;
+            // May allocate
+            let coerced_object = to_object(self.cx(), object)?;
+            private_set(self.cx(), coerced_object, key, value)?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3659,32 +3812,37 @@ impl VM {
         &mut self,
         instr: &DefinePrivatePropertyInstruction<W>,
     ) -> EvalResult<()> {
-        let mut object = self.read_register_to_handle(instr.object()).as_object();
-        let key = self.read_register_to_handle(instr.key()).as_symbol();
-        let value = self.read_register_to_handle(instr.value());
-        let flags =
-            DefinePrivatePropertyFlags::from_bits_retain(instr.flags().value().to_usize() as u8);
+        handle_scope!(self.cx(), {
+            let mut object = self.read_register_to_handle(instr.object()).as_object();
+            let key = self.read_register_to_handle(instr.key()).as_symbol();
+            let value = self.read_register_to_handle(instr.value());
+            let flags = DefinePrivatePropertyFlags::from_bits_retain(
+                instr.flags().value().to_usize() as u8,
+            );
 
-        // May allocate
-        let property = if flags == DefinePrivatePropertyFlags::empty() {
-            Property::private_field(value)
-        } else if flags == DefinePrivatePropertyFlags::METHOD {
-            Property::private_method(value.as_object())
-        } else if flags.contains(DefinePrivatePropertyFlags::GETTER) {
-            if flags.contains(DefinePrivatePropertyFlags::SETTER) {
-                Property::private_accessor(Accessor::from_value(value))
+            // May allocate
+            let property = if flags == DefinePrivatePropertyFlags::empty() {
+                Property::private_field(value)
+            } else if flags == DefinePrivatePropertyFlags::METHOD {
+                Property::private_method(value.as_object())
+            } else if flags.contains(DefinePrivatePropertyFlags::GETTER) {
+                if flags.contains(DefinePrivatePropertyFlags::SETTER) {
+                    Property::private_accessor(Accessor::from_value(value))
+                } else {
+                    Property::private_getter(self.cx(), value.as_object())
+                }
             } else {
-                Property::private_getter(self.cx(), value.as_object())
-            }
-        } else {
-            Property::private_setter(self.cx(), value.as_object())
-        };
+                Property::private_setter(self.cx(), value.as_object())
+            };
 
-        object.private_property_add(self.cx(), key, property)
+            object.private_property_add(self.cx(), key, property)
+        })
     }
 
     #[inline]
     fn execute_set_array_property<W: Width>(&mut self, instr: &SetArrayPropertyInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let array = self
             .read_register_to_handle(instr.array())
             .cast::<ArrayObject>();
@@ -3699,6 +3857,8 @@ impl VM {
 
     #[inline]
     fn execute_set_prototype_of<W: Width>(&mut self, instr: &SetPrototypeOfInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let mut object = self.read_register_to_handle(instr.object()).as_object();
         let prototype = self.read_register_to_handle(instr.prototype());
 
@@ -3715,43 +3875,49 @@ impl VM {
         &mut self,
         instr: &CopyDataPropertiesInstruction<W>,
     ) -> EvalResult<()> {
-        let dest = self.read_register_to_handle(instr.dest()).as_object();
-        let source = self.read_register_to_handle(instr.source());
-        let excluded_property_keys = self
-            .get_args_rev_slice(instr.argv(), instr.argc())
-            .iter()
-            .map(|v| v.to_handle(self.cx()).cast::<PropertyKey>())
-            .collect::<HashSet<_>>();
+        handle_scope!(self.cx(), {
+            let dest = self.read_register_to_handle(instr.dest()).as_object();
+            let source = self.read_register_to_handle(instr.source());
+            let excluded_property_keys = self
+                .get_args_rev_slice(instr.argv(), instr.argc())
+                .iter()
+                .map(|v| v.to_handle(self.cx()).cast::<PropertyKey>())
+                .collect::<HashSet<_>>();
 
-        // May allocate
-        copy_data_properties(self.cx(), dest, source, &excluded_property_keys)?;
+            // May allocate
+            copy_data_properties(self.cx(), dest, source, &excluded_property_keys)?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_get_method<W: Width>(&mut self, instr: &GetMethodInstruction<W>) -> EvalResult<()> {
-        let dest = instr.dest();
-        let object = self.read_register_to_handle(instr.object());
-        let key = self.get_constant(instr.name()).as_string().to_handle();
+        handle_scope!(self.cx(), {
+            let dest = instr.dest();
+            let object = self.read_register_to_handle(instr.object());
+            let key = self.get_constant(instr.name()).as_string().to_handle();
 
-        let key = PropertyKey::string(self.cx(), key).to_handle(self.cx());
+            let key = PropertyKey::string(self.cx(), key).to_handle(self.cx());
 
-        let function = get_v(self.cx(), object, key)?;
+            let function = get_v(self.cx(), object, key)?;
 
-        if function.is_nullish() {
-            self.write_register(dest, Value::undefined());
-        } else if !is_callable(function) {
-            return type_error(self.cx(), "value is not a function");
-        } else {
-            self.write_register(dest, *function);
-        }
+            if function.is_nullish() {
+                self.write_register(dest, Value::undefined());
+            } else if !is_callable(function) {
+                return type_error(self.cx(), "value is not a function");
+            } else {
+                self.write_register(dest, *function);
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_push_lexical_scope<W: Width>(&mut self, instr: &PushLexicalScopeInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let scope = self.scope().to_handle();
         let scope_names = self
             .get_constant(instr.scope_names_index())
@@ -3767,6 +3933,8 @@ impl VM {
 
     #[inline]
     fn execute_push_function_scope<W: Width>(&mut self, instr: &PushFunctionScopeInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let scope = self.scope().to_handle();
         let scope_names = self
             .get_constant(instr.scope_names_index())
@@ -3785,22 +3953,24 @@ impl VM {
         &mut self,
         instr: &PushWithScopeInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
 
-        let scope = self.scope().to_handle();
-        let scope_names = self
-            .get_constant(instr.scope_names_index())
-            .to_handle(self.cx())
-            .cast::<ScopeNames>();
+            let scope = self.scope().to_handle();
+            let scope_names = self
+                .get_constant(instr.scope_names_index())
+                .to_handle(self.cx())
+                .cast::<ScopeNames>();
 
-        // Allocates
-        let object = to_object(self.cx(), object)?;
-        let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object);
+            // Allocates
+            let object = to_object(self.cx(), object)?;
+            let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object);
 
-        // Write the new scope to the stack
-        *self.stack_frame().scope_mut() = *lexical_scope;
+            // Write the new scope to the stack
+            *self.stack_frame().scope_mut() = *lexical_scope;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3813,6 +3983,8 @@ impl VM {
 
     #[inline]
     fn execute_dup_scope<W: Width>(&mut self, _: &DupScopeInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let scope = self.scope().to_handle();
 
         // Allocates
@@ -3935,6 +4107,8 @@ impl VM {
 
     #[inline]
     fn execute_rest_parameter<W: Width>(&mut self, instr: &RestParameterInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         // Allocates
@@ -3972,6 +4146,8 @@ impl VM {
         &mut self,
         instr: &GetSuperConstructorInstruction<W>,
     ) {
+        handle_scope_guard!(self.cx());
+
         let derived_constructor = self
             .read_register_to_handle(instr.derived_constructor())
             .as_object();
@@ -4080,31 +4256,35 @@ impl VM {
         &mut self,
         instr: &NewForInIteratorInstruction<W>,
     ) -> EvalResult<()> {
-        let object = self.read_register_to_handle(instr.object());
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let object = self.read_register_to_handle(instr.object());
+            let dest = instr.dest();
 
-        // May allocate
-        let object = to_object(self.cx(), object)?;
-        let iterator = ForInIterator::new_for_object(self.cx(), object)?;
+            // May allocate
+            let object = to_object(self.cx(), object)?;
+            let iterator = ForInIterator::new_for_object(self.cx(), object)?;
 
-        self.write_register(dest, Value::heap_item(iterator.as_heap_item()));
+            self.write_register(dest, Value::heap_item(iterator.as_heap_item()));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
     fn execute_for_in_next<W: Width>(&mut self, instr: &ForInNextInstruction<W>) -> EvalResult<()> {
-        let mut iterator = self
-            .read_register_to_handle(instr.iterator())
-            .cast::<ForInIterator>();
-        let dest = instr.dest();
+        handle_scope!(self.cx(), {
+            let mut iterator = self
+                .read_register_to_handle(instr.iterator())
+                .cast::<ForInIterator>();
+            let dest = instr.dest();
 
-        // May allocate
-        let result = iterator.next(self.cx())?;
+            // May allocate
+            let result = iterator.next(self.cx())?;
 
-        self.write_register(dest, result);
+            self.write_register(dest, result);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -4112,17 +4292,19 @@ impl VM {
         &mut self,
         instr: &GetIteratorInstruction<W>,
     ) -> EvalResult<()> {
-        let iterable = self.read_register_to_handle(instr.iterable());
-        let iterator_dest = instr.iterator();
-        let next_method_dest = instr.next_method();
+        handle_scope!(self.cx(), {
+            let iterable = self.read_register_to_handle(instr.iterable());
+            let iterator_dest = instr.iterator();
+            let next_method_dest = instr.next_method();
 
-        // May allocate
-        let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Sync, None)?;
+            // May allocate
+            let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Sync, None)?;
 
-        self.write_register(iterator_dest, *iterator_result.iterator.as_value());
-        self.write_register(next_method_dest, *iterator_result.next_method);
+            self.write_register(iterator_dest, *iterator_result.iterator.as_value());
+            self.write_register(next_method_dest, *iterator_result.next_method);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -4130,17 +4312,19 @@ impl VM {
         &mut self,
         instr: &GetAsyncIteratorInstruction<W>,
     ) -> EvalResult<()> {
-        let iterable = self.read_register_to_handle(instr.iterable());
-        let iterator_dest = instr.iterator();
-        let next_method_dest = instr.next_method();
+        handle_scope!(self.cx(), {
+            let iterable = self.read_register_to_handle(instr.iterable());
+            let iterator_dest = instr.iterator();
+            let next_method_dest = instr.next_method();
 
-        // May allocate
-        let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Async, None)?;
+            // May allocate
+            let iterator_result = get_iterator(self.cx(), iterable, IteratorHint::Async, None)?;
 
-        self.write_register(iterator_dest, *iterator_result.iterator.as_value());
-        self.write_register(next_method_dest, *iterator_result.next_method);
+            self.write_register(iterator_dest, *iterator_result.iterator.as_value());
+            self.write_register(next_method_dest, *iterator_result.next_method);
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -4148,16 +4332,18 @@ impl VM {
         &mut self,
         instr: &IteratorNextInstruction<W>,
     ) -> EvalResult<()> {
-        let next_method = self.read_register_to_handle(instr.next_method());
-        let iterator = self.read_register_to_handle(instr.iterator());
-        let value_dest = instr.value();
-        let is_done_dest = instr.is_done();
+        handle_scope!(self.cx(), {
+            let next_method = self.read_register_to_handle(instr.next_method());
+            let iterator = self.read_register_to_handle(instr.iterator());
+            let value_dest = instr.value();
+            let is_done_dest = instr.is_done();
 
-        // Call the iterator's next method. May allocate.
-        let iterator_result = call(self.cx(), next_method, iterator, &[])?;
+            // Call the iterator's next method. May allocate.
+            let iterator_result = call(self.cx(), next_method, iterator, &[])?;
 
-        // Unpack iterator result and store value and is_done
-        self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+            // Unpack iterator result and store value and is_done
+            self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+        })
     }
 
     #[inline]
@@ -4165,11 +4351,13 @@ impl VM {
         &mut self,
         instr: &IteratorUnpackResultInstruction<W>,
     ) -> EvalResult<()> {
-        let iterator_result = self.read_register_to_handle(instr.iterator_result());
-        let value_dest = instr.value();
-        let is_done_dest = instr.is_done();
+        handle_scope!(self.cx(), {
+            let iterator_result = self.read_register_to_handle(instr.iterator_result());
+            let value_dest = instr.value();
+            let is_done_dest = instr.is_done();
 
-        self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+            self.iterator_unpack_result(iterator_result, value_dest, is_done_dest)
+        })
     }
 
     #[inline]
@@ -4207,20 +4395,22 @@ impl VM {
         &mut self,
         instr: &IteratorCloseInstruction<W>,
     ) -> EvalResult<()> {
-        let iterator = self.read_register_to_handle(instr.iterator());
-        let return_method = get_method(self.cx(), iterator, self.cx().names.return_())?;
+        handle_scope!(self.cx(), {
+            let iterator = self.read_register_to_handle(instr.iterator());
+            let return_method = get_method(self.cx(), iterator, self.cx().names.return_())?;
 
-        // Check if there is a return method and call it
-        if let Some(return_method) = return_method {
-            let return_result = call_object(self.cx(), return_method, iterator, &[])?;
+            // Check if there is a return method and call it
+            if let Some(return_method) = return_method {
+                let return_result = call_object(self.cx(), return_method, iterator, &[])?;
 
-            // Return method must return an object otherwise error
-            if !return_result.is_object() {
-                return type_error(self.cx(), "iterator's return method must return an object");
+                // Return method must return an object otherwise error
+                if !return_result.is_object() {
+                    return type_error(self.cx(), "iterator's return method must return an object");
+                }
             }
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -4228,22 +4418,24 @@ impl VM {
         &mut self,
         instr: &AsyncIteratorCloseStartInstruction<W>,
     ) -> EvalResult<()> {
-        let return_result_dest = instr.return_result();
-        let has_return_method = instr.has_return_method();
-        let iterator = self.read_register_to_handle(instr.iterator());
+        handle_scope!(self.cx(), {
+            let return_result_dest = instr.return_result();
+            let has_return_method = instr.has_return_method();
+            let iterator = self.read_register_to_handle(instr.iterator());
 
-        // May allocate
-        let return_method = get_method(self.cx(), iterator, self.cx().names.return_())?;
+            // May allocate
+            let return_method = get_method(self.cx(), iterator, self.cx().names.return_())?;
 
-        // Check if there is a return method and call it
-        if let Some(return_method) = return_method {
-            let return_result = call_object(self.cx(), return_method, iterator, &[])?;
-            self.write_register(return_result_dest, *return_result);
-        }
+            // Check if there is a return method and call it
+            if let Some(return_method) = return_method {
+                let return_result = call_object(self.cx(), return_method, iterator, &[])?;
+                self.write_register(return_result_dest, *return_result);
+            }
 
-        self.write_register(has_return_method, Value::bool(return_method.is_some()));
+            self.write_register(has_return_method, Value::bool(return_method.is_some()));
 
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -4273,6 +4465,8 @@ impl VM {
 
     #[inline]
     fn execute_resolve_promise<W: Width>(&mut self, instr: &ResolvePromiseInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let promise = self.read_register_to_handle(instr.promise());
         let value = self.read_register_to_handle(instr.value());
 
@@ -4284,6 +4478,8 @@ impl VM {
 
     #[inline]
     fn execute_reject_promise<W: Width>(&mut self, instr: &RejectPromiseInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let promise = self.read_register(instr.promise());
         let value = self.read_register(instr.value());
 
@@ -4295,6 +4491,8 @@ impl VM {
 
     #[inline]
     fn execute_import_meta<W: Width>(&mut self, instr: &ImportMetaInstruction<W>) {
+        handle_scope_guard!(self.cx());
+
         let dest = instr.dest();
 
         // Find the module scope, which is the top scope in the scope chain
@@ -4316,24 +4514,27 @@ impl VM {
         &mut self,
         instr: &DynamicImportInstruction<W>,
     ) -> EvalResult<()> {
-        let dest = instr.dest();
-        let specifier = self.read_register_to_handle(instr.specifier());
-        let options = self.read_register_to_handle(instr.options());
+        handle_scope!(self.cx(), {
+            let dest = instr.dest();
+            let specifier = self.read_register_to_handle(instr.specifier());
+            let options = self.read_register_to_handle(instr.options());
 
-        // Find the source path of the currently executing function
-        let source_file_path = self
-            .closure()
-            .function_ptr()
-            .source_file_ptr()
-            .unwrap()
-            .path();
+            // Find the source path of the currently executing function
+            let source_file_path = self
+                .closure()
+                .function_ptr()
+                .source_file_ptr()
+                .unwrap()
+                .path();
 
-        // May allocate
-        let namespace_promise = dynamic_import(self.cx(), source_file_path, specifier, options)?;
+            // May allocate
+            let namespace_promise =
+                dynamic_import(self.cx(), source_file_path, specifier, options)?;
 
-        self.write_register(dest, *namespace_promise.as_value());
+            self.write_register(dest, *namespace_promise.as_value());
 
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Visit a stack frame while unwinding the stack for an exception.

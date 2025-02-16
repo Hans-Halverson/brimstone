@@ -518,6 +518,13 @@ impl Escapable for u32 {
     }
 }
 
+impl Escapable for Value {
+    #[inline]
+    fn escape(&self, _: Context) -> Self {
+        *self
+    }
+}
+
 impl<T> Escapable for HeapPtr<T> {
     #[inline]
     fn escape(&self, _: Context) -> Self {
@@ -553,5 +560,12 @@ impl<T: Escapable, E: Escapable> Escapable for Result<T, E> {
             Ok(ok) => Ok(ok.escape(cx)),
             Err(err) => Err(err.escape(cx)),
         }
+    }
+}
+
+impl<T: Escapable, U: Escapable> Escapable for (T, U) {
+    #[inline]
+    fn escape(&self, cx: Context) -> Self {
+        (self.0.escape(cx), self.1.escape(cx))
     }
 }

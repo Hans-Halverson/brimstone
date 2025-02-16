@@ -129,8 +129,8 @@ impl Closure {
     }
 
     #[inline]
-    pub fn scope(&self) -> Handle<Scope> {
-        self.scope.to_handle()
+    pub fn scope_ptr(&self) -> HeapPtr<Scope> {
+        self.scope
     }
 
     #[inline]

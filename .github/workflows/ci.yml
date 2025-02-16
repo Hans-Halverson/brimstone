@@ -86,7 +86,7 @@ jobs:
           cargo run -- --reindex
           cargo run --release --features gc_stress_test -- --ignore-unimplemented
 
-  handle-tracking-tests:
+  test262-handle-tracking-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

@@ -319,6 +319,21 @@ pub fn encode_utf8_codepoint(buf: &mut [u8], code_point: CodePoint) -> usize {
     }
 }
 
+/// Return the number of bytes needed to encode the given code point in UTF-8.
+pub fn utf8_byte_count(code_point: CodePoint) -> usize {
+    if code_point < 0x80 {
+        1
+    } else if code_point <= 0x7FF {
+        2
+    } else if code_point <= 0xFFFF {
+        3
+    } else if code_point <= 0x10FFFF {
+        4
+    } else {
+        panic!("Code point out of range")
+    }
+}
+
 /// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
 /// current byte is in-bounds and is not ASCII meaning it is the start of a UTF-8 byte sequence.
 ///
@@ -392,6 +407,15 @@ pub fn encode_utf16_codepoint(buf: &mut [CodeUnit], code_point: CodePoint) -> us
         buf[0] = high_bits + HIGH_SURROGATE_START;
         buf[1] = low_bits + LOW_SURROGATE_START;
 
+        2
+    }
+}
+
+/// Return the number of ode units needed to encode the given code point in UTF-16.
+pub fn utf16_code_unit_count(code_point: CodePoint) -> usize {
+    if is_in_bmp_range(code_point) {
+        1
+    } else {
         2
     }
 }

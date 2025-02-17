@@ -747,7 +747,7 @@ pub fn run_matcher(
                 match_lexer_stream(lexer_stream, regexp, start_index)
             } else {
                 let lexer_stream =
-                    HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+                    HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
                 match_lexer_stream(lexer_stream, regexp, start_index)
             }
         }

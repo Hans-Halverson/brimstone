@@ -535,7 +535,8 @@ impl<T: LexerStream> RegExpParser<T> {
                         // than the upper bound.
                         if let Some(upper_bound) = upper_bound {
                             if lower_bound > upper_bound {
-                                return self.error(self.pos(), ParseError::InvalidQuantifierBounds);
+                                return self
+                                    .error(lower_bound_pos, ParseError::InvalidQuantifierBounds);
                             }
                         }
 

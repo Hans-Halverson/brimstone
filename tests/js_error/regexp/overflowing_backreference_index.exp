@@ -1,0 +1,5 @@
+SyntaxError: No capture group with index found
+  ┌ tests/js_error/regexp/overflowing_backreference_index.js:1:2
+  |
+1 | /\987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321/u;
+  |  ^

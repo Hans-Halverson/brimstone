@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use match_u32::match_u32;
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 
 use crate::js::common::unicode::{
     as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
@@ -730,13 +731,13 @@ impl<'a> Lexer<'a> {
     fn lex_literal_with_base(
         &mut self,
         base: u32,
-        shift: u32,
         char_to_digit: fn(u32) -> Option<u32>,
     ) -> LexResult {
         let start_pos = self.pos;
         self.advance2();
 
         let mut value: u64;
+        let mut overflows_u64 = false;
 
         // First digit must be a binary digit
         if let Some(digit) = char_to_digit(self.current) {
@@ -751,8 +752,19 @@ impl<'a> Lexer<'a> {
         let mut is_last_char_numeric_separator = false;
         loop {
             is_last_char_numeric_separator = if let Some(digit) = char_to_digit(self.current) {
-                value <<= shift;
-                value += digit as u64;
+                // Try to apply multiplication by base, marking if it overflows
+                if let Some(new_value) = value.checked_mul(base as u64) {
+                    value = new_value;
+                } else {
+                    overflows_u64 = true;
+                };
+
+                // Try to apply addition of digit, marking if it overflows
+                if let Some(new_value) = value.checked_add(digit as u64) {
+                    value = new_value;
+                } else {
+                    overflows_u64 = true;
+                };
 
                 false
             } else if self.current == '_' as u32 {
@@ -775,6 +787,7 @@ impl<'a> Lexer<'a> {
             return self.error(loc, ParseError::TrailingNumericSeparator);
         }
 
+        // A `n` suffix indicates a BigInt literal
         if self.current == 'n' as u32 {
             let digits_slice = &self.buf[(start_pos + 2)..self.pos];
             let value = BigInt::parse_bytes(digits_slice, base).unwrap();
@@ -783,29 +796,52 @@ impl<'a> Lexer<'a> {
             return self.emit(Token::BigIntLiteral(value), start_pos);
         }
 
+        // If the value overflows then we must first reparse to a BigInt, then convert to an f64
+        if overflows_u64 {
+            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
+            let bigint_value = BigInt::parse_bytes(digits_slice, base).unwrap();
+
+            // Never returns None, as BigInt -> float conversion goes to infinity instead of failing
+            let value = bigint_value.to_f64().unwrap();
+            return self.emit(Token::NumberLiteral(value), start_pos);
+        }
+
         self.emit(Token::NumberLiteral(value as f64), start_pos)
     }
 
     fn lex_binary_literal(&mut self) -> LexResult {
-        self.lex_literal_with_base(2, 1, get_binary_value)
+        self.lex_literal_with_base(2, get_binary_value)
     }
 
     fn lex_octal_literal(&mut self) -> LexResult {
-        self.lex_literal_with_base(8, 3, get_octal_value)
+        self.lex_literal_with_base(8, get_octal_value)
     }
 
     fn lex_hex_literal(&mut self) -> LexResult {
-        self.lex_literal_with_base(16, 4, get_hex_value)
+        self.lex_literal_with_base(16, get_hex_value)
     }
 
     fn lex_legacy_octal_literal(&mut self) -> Option<Token> {
         let save_state = self.save();
+        let start_pos = self.pos;
 
         let mut value: u64 = 0;
+        let mut overflows_u64 = false;
 
         while let Some(digit) = get_octal_value(self.current) {
-            value <<= 3;
-            value += digit as u64;
+            // Try to apply multiplication by base, marking if it overflows
+            if let Some(new_value) = value.checked_mul(8) {
+                value = new_value;
+            } else {
+                overflows_u64 = true;
+            };
+
+            // Try to apply addition of digit, marking if it overflows
+            if let Some(new_value) = value.checked_add(digit as u64) {
+                value = new_value;
+            } else {
+                overflows_u64 = true;
+            };
 
             self.advance();
         }
@@ -814,6 +850,16 @@ impl<'a> Lexer<'a> {
         if self.current == '8' as u32 || self.current == '9' as u32 {
             self.restore(&save_state);
             return None;
+        }
+
+        // If the value overflows then we must first reparse to a BigInt, then convert to an f64
+        if overflows_u64 {
+            let digits_slice = &self.buf[start_pos..self.pos];
+            let bigint_value = BigInt::parse_bytes(digits_slice, 8).unwrap();
+
+            // Never returns None, as BigInt -> float conversion goes to infinity instead of failing
+            let value = bigint_value.to_f64().unwrap();
+            return Some(Token::NumberLiteral(value));
         }
 
         Some(Token::NumberLiteral(value as f64))

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use bitflags::bitflags;
 
 use crate::js::common::options::Options;
-use crate::js::common::unicode::encode_utf16_codepoint;
+use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
@@ -2978,6 +2978,9 @@ impl<'a> Parser<'a> {
             let loc = self.mark_loc(start_pos);
             let source = self.lexer.source.clone();
 
+            // Start position of pattern is offset by one to account for the leading `/`
+            let pattern_start_pos = start_pos + 1;
+
             // Start position of flags is offset by two `/` characters and the entire pattern
             let flags_start_pos = start_pos + 2 + pattern.len();
             let lexer_stream =
@@ -2986,8 +2989,6 @@ impl<'a> Parser<'a> {
 
             // If in unicode mode then can parse UTF-8 string directly as full code points
             let regexp = if flags.has_any_unicode_flag() {
-                // Start position of pattern is offset by one to account for the leading `/`
-                let pattern_start_pos = start_pos + 1;
                 let create_lexer_stream =
                     || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
                 p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?)
@@ -3002,8 +3003,45 @@ impl<'a> Parser<'a> {
                     utf16_pattern.extend_from_slice(&buf[..byte_length]);
                 }
 
-                let create_lexer_stream = || HeapTwoByteCodeUnitLexerStream::new(&utf16_pattern);
-                p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?)
+                let create_lexer_stream =
+                    || HeapTwoByteCodeUnitLexerStream::new(&utf16_pattern, Some(source.clone()));
+                let parse_result =
+                    RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options);
+
+                match parse_result {
+                    Ok(regexp) => p(regexp),
+                    Err(mut error) => {
+                        // Error loc will be reported in the number of UTF-16 code units since the
+                        // start of the regexp.
+                        let loc = &mut error.source_loc.as_mut().unwrap().0;
+                        let target_utf16_offset = loc.start;
+
+                        // Convert from a UTF-16 code unit offset to UTF-8 byte offset
+                        let mut utf8_offset = 0;
+                        let mut utf16_offset = 0;
+
+                        // Iterate through the code points in the pattern and keep track of the
+                        // total UTF-8 and UTF-16 offsets. Stop when we reach the target UTF-16
+                        // offset.
+                        for code_point in pattern.iter_code_points() {
+                            if utf16_offset == target_utf16_offset {
+                                break;
+                            }
+
+                            utf8_offset += utf8_byte_count(code_point);
+                            utf16_offset += utf16_code_unit_count(code_point);
+
+                            debug_assert!(utf16_offset <= target_utf16_offset);
+                        }
+
+                        // Rewrite the loc to point to the position in the source string
+                        let pos = pattern_start_pos + utf8_offset;
+                        loc.start = pos;
+                        loc.end = pos;
+
+                        return Err(error);
+                    }
+                }
             };
 
             Ok(RegExpLiteral { loc, raw, pattern, flags: flags_string, regexp })

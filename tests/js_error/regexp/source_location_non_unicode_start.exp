@@ -1,0 +1,5 @@
+SyntaxError: Unexpected regular expression quantifier
+  ┌ tests/js_error/regexp/source_location_non_unicode_start.js:1:2
+  |
+1 | /?/;
+  |  ^

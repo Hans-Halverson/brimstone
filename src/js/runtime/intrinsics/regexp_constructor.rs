@@ -297,7 +297,8 @@ fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<Reg
         // Non-ASCII code points are not allowed in flags, so always safe to use unicode-unware
         // code unit lexer.
         StringWidth::TwoByte => {
-            let lexer_stream = HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+            let lexer_stream =
+                HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
             parse_lexer_stream(cx, lexer_stream)
         }
     }
@@ -333,7 +334,7 @@ fn parse_pattern(
                 parse_lexer_stream(cx, &create_lexer_stream, flags)
             } else {
                 let create_lexer_stream =
-                    || HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice());
+                    || HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
                 parse_lexer_stream(cx, &create_lexer_stream, flags)
             }
         }

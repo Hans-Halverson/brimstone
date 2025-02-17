@@ -1,0 +1,5 @@
+SyntaxError: Invalid quantifier bounds in regular expression
+  ┌ tests/js_error/regexp/source_location_non_unicode.js:2:7
+  |
+2 | /😂{2,1}/;
+  |       ^

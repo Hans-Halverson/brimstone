@@ -431,17 +431,19 @@ pub struct HeapTwoByteCodeUnitLexerStream<'a> {
     pos: Pos,
     /// Current code unit or EOF_CHAR
     current: u32,
+    /// Source of the buffer we are parsing, if one was specified
+    source: Option<Rc<Source>>,
 }
 
 impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
-    pub fn new(buf: &'a [u16]) -> Self {
+    pub fn new(buf: &'a [u16], source: Option<Rc<Source>>) -> Self {
         let current = if buf.is_empty() {
             EOF_CHAR
         } else {
             buf[0] as u32
         };
 
-        HeapTwoByteCodeUnitLexerStream { buf, pos: 0, current }
+        HeapTwoByteCodeUnitLexerStream { buf, pos: 0, current, source }
     }
 
     #[inline]
@@ -573,8 +575,15 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         &self.buf[start..end] == slice
     }
 
-    fn error<T>(&self, _: Pos, error: ParseError) -> ParseResult<T> {
-        Err(LocalizedParseError { error, source_loc: None })
+    fn error<T>(&self, pos: Pos, error: ParseError) -> ParseResult<T> {
+        let source_loc = if let Some(source) = &self.source {
+            let loc = Loc { start: pos, end: pos };
+            Some((loc, source.clone()))
+        } else {
+            None
+        };
+
+        Err(LocalizedParseError { error, source_loc })
     }
 
     fn save(&self) -> SavedLexerStreamState {

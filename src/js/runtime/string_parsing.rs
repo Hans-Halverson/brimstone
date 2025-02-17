@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 
 use crate::js::common::unicode::{
     is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace, CodeUnit,
@@ -197,7 +198,7 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
         match lexer.peek_ascii_char() {
             Some('x' | 'X') => {
                 let value =
-                    non_numeric_literal_with_base(&mut lexer, 4, StringLexer::current_hex_value)?;
+                    non_decimal_literal_with_base(&mut lexer, 16, StringLexer::current_hex_value)?;
                 skip_string_whitespace(&mut lexer);
 
                 if !lexer.is_end() {
@@ -208,7 +209,7 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
             }
             Some('o' | 'O') => {
                 let value =
-                    non_numeric_literal_with_base(&mut lexer, 3, StringLexer::current_octal_value)?;
+                    non_decimal_literal_with_base(&mut lexer, 8, StringLexer::current_octal_value)?;
                 skip_string_whitespace(&mut lexer);
 
                 if !lexer.is_end() {
@@ -218,9 +219,9 @@ pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
                 return Some(value);
             }
             Some('b' | 'B') => {
-                let value = non_numeric_literal_with_base(
+                let value = non_decimal_literal_with_base(
                     &mut lexer,
-                    1,
+                    2,
                     StringLexer::current_binary_value,
                 )?;
                 skip_string_whitespace(&mut lexer);
@@ -309,21 +310,34 @@ fn skip_decimal_digits(lexer: &mut StringLexer) -> bool {
 }
 
 #[inline]
-fn non_numeric_literal_with_base(
+fn non_decimal_literal_with_base(
     lexer: &mut StringLexer,
-    shift: u32,
+    base: u32,
     current_digit_fn: fn(&StringLexer) -> Option<u32>,
 ) -> Option<f64> {
     // Skip prefix
     lexer.advance();
     lexer.advance();
 
+    let start_ptr = lexer.current_ptr();
+
     let mut value: u64 = 0;
     let mut has_digit = false;
+    let mut overflows_u64 = false;
 
     while let Some(digit) = current_digit_fn(lexer) {
-        value <<= shift;
-        value += digit as u64;
+        // Check for overflow before updating value during multiply or add
+        if let Some(new_value) = value.checked_mul(base as u64) {
+            value = new_value;
+        } else {
+            overflows_u64 = true;
+        }
+
+        if let Some(new_value) = value.checked_add(digit as u64) {
+            value = new_value;
+        } else {
+            overflows_u64 = true;
+        }
 
         has_digit = true;
         lexer.advance();
@@ -331,6 +345,12 @@ fn non_numeric_literal_with_base(
 
     if !has_digit {
         return None;
+    }
+
+    // Reparse as a BigInt if overflow occurred
+    if overflows_u64 {
+        let end_ptr = lexer.current_ptr();
+        return Some(parse_between_ptrs_to_f64_overflowing(lexer, base, start_ptr, end_ptr));
     }
 
     Some(value as f64)
@@ -604,7 +624,45 @@ pub fn parse_between_ptrs_to_f64(
     }
 }
 
-// Parse exactly num_digits into an
+/// Parse portion of string between two pointers to a f64, where digits are in the given base and
+/// value overflows a u64. A BigInt is used as the intermediate value while parsing to prevent
+/// overflow.
+pub fn parse_between_ptrs_to_f64_overflowing(
+    lexer: &StringLexer,
+    base: u32,
+    start_ptr: *const u8,
+    end_ptr: *const u8,
+) -> f64 {
+    if lexer.width() == StringWidth::OneByte {
+        // If string is one-byte we can directly parse slice
+        let slice = unsafe {
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+        };
+
+        // Guaranteed to return a valid f64 as BigInt -> f64 conversion always succeeds
+        BigInt::parse_bytes(slice, base).unwrap().to_f64().unwrap()
+    } else {
+        // Otherwise we must copy string to a u8 buffer before parsing
+        let start_ptr = start_ptr as *const u16;
+        let end_ptr = end_ptr as *const u16;
+        let code_units = unsafe {
+            std::slice::from_raw_parts(start_ptr, end_ptr.offset_from(start_ptr) as usize)
+        };
+
+        let u8_slice = code_units
+            .iter()
+            .map(|&code_unit| code_unit as u8)
+            .collect::<Vec<u8>>();
+
+        BigInt::parse_bytes(&u8_slice, base)
+            .unwrap()
+            .to_f64()
+            .unwrap()
+    }
+}
+
+// Parse exactly num_digits into an integer. Caller must ensure that `num_digits` is small enough
+// to not cause overflow on an i64.
 fn parse_decimal_digits(lexer: &mut StringLexer, num_digits: i32) -> Option<i64> {
     let mut value = 0;
 

@@ -1,0 +1,237 @@
+{
+  type: "Program",
+  loc: "1:1-14:306",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:55",
+      kind: {
+        type: "CallExpression",
+        loc: "2:1-2:54",
+        callee: {
+          type: "MemberExpression",
+          loc: "2:1-2:12",
+          object: {
+            type: "Identifier",
+            loc: "2:1-2:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "2:9-2:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "2:13-2:53",
+            value: 9876543210987655000000000000000000000000,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "5:1-5:49",
+      kind: {
+        type: "CallExpression",
+        loc: "5:1-5:48",
+        callee: {
+          type: "MemberExpression",
+          loc: "5:1-5:12",
+          object: {
+            type: "Identifier",
+            loc: "5:1-5:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "5:9-5:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "5:13-5:47",
+            value: 338770000845734300000000000000000000000,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:49",
+      kind: {
+        type: "CallExpression",
+        loc: "6:1-6:48",
+        callee: {
+          type: "MemberExpression",
+          loc: "6:1-6:12",
+          object: {
+            type: "Identifier",
+            loc: "6:1-6:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "6:9-6:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "6:13-6:47",
+            value: 77611266635453610000000000000,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "7:1-7:92",
+      kind: {
+        type: "CallExpression",
+        loc: "7:1-7:91",
+        callee: {
+          type: "MemberExpression",
+          loc: "7:1-7:12",
+          object: {
+            type: "Identifier",
+            loc: "7:1-7:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "7:9-7:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "7:13-7:90",
+            value: 36560256641571448000000,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "10:1-10:48",
+      kind: {
+        type: "CallExpression",
+        loc: "10:1-10:47",
+        callee: {
+          type: "MemberExpression",
+          loc: "10:1-10:12",
+          object: {
+            type: "Identifier",
+            loc: "10:1-10:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "10:9-10:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "10:13-10:46",
+            value: 77611266635453610000000000000,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "13:1-13:305",
+      kind: {
+        type: "CallExpression",
+        loc: "13:1-13:304",
+        callee: {
+          type: "MemberExpression",
+          loc: "13:1-13:12",
+          object: {
+            type: "Identifier",
+            loc: "13:1-13:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "13:9-13:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            loc: "13:13-13:303",
+            value: inf,
+          },
+        ],
+        optional: false,
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "14:1-14:306",
+      kind: {
+        type: "CallExpression",
+        loc: "14:1-14:305",
+        callee: {
+          type: "MemberExpression",
+          loc: "14:1-14:12",
+          object: {
+            type: "Identifier",
+            loc: "14:1-14:8",
+            name: "console",
+          },
+          property: {
+            type: "Identifier",
+            loc: "14:9-14:12",
+            name: "log",
+          },
+          computed: false,
+          optional: false,
+        },
+        arguments: [
+          {
+            type: "UnaryExpression",
+            loc: "14:13-14:304",
+            operator: "-",
+            argument: {
+              type: "Literal",
+              loc: "14:14-14:304",
+              value: inf,
+            },
+          },
+        ],
+        optional: false,
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

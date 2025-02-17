@@ -421,7 +421,7 @@ impl<T: LexerStream> RegExpParser<T> {
                         let index = self.parse_decimal_digits()?;
 
                         // Ensure that index is in range
-                        if let Ok(index) = u32::try_from(index) {
+                        if let Some(index) = index.and_then(|index| u32::try_from(index).ok()) {
                             // Save indexed backreference to be analyzed after parsing
                             self.indexed_backreferences.push((index, start_pos));
 
@@ -513,17 +513,33 @@ impl<T: LexerStream> RegExpParser<T> {
             '{' => {
                 self.advance();
 
+                // Parse quantifier's lower bound
+                let lower_bound_pos = self.pos();
                 let lower_bound = self.parse_decimal_digits()?;
+
+                // If lower bound is out of range then error immediately since we can't generate
+                // conforming bytecode.
+                let Some(lower_bound) = lower_bound else {
+                    return self.error(lower_bound_pos, ParseError::QuantifierBoundTooLarge);
+                };
+
                 let upper_bound = if self.eat(',') {
                     if self.current() == '}' as u32 {
                         None
                     } else {
+                        // Parse the upper bound, treating as none if the upper bound is out of
+                        // range.
                         let upper_bound = self.parse_decimal_digits()?;
-                        if lower_bound > upper_bound {
-                            return self.error(self.pos(), ParseError::InvalidQuantifierBounds);
+
+                        // Check that quantifier is valid, meaning the lower bound is not greater
+                        // than the upper bound.
+                        if let Some(upper_bound) = upper_bound {
+                            if lower_bound > upper_bound {
+                                return self.error(self.pos(), ParseError::InvalidQuantifierBounds);
+                            }
                         }
 
-                        Some(upper_bound)
+                        upper_bound
                     }
                 } else {
                     Some(lower_bound)
@@ -558,7 +574,9 @@ impl<T: LexerStream> RegExpParser<T> {
         }
     }
 
-    fn parse_decimal_digits(&mut self) -> ParseResult<u64> {
+    /// Parse a sequence of decimal digits into a number. Error if there is no sequence of decimal
+    /// digits. Returns `None` if the number is too large to be represented as a `u64`.
+    fn parse_decimal_digits(&mut self) -> ParseResult<Option<u64>> {
         // Sequence of decimal digits must be nonempty
         if !is_decimal_digit(self.current()) {
             return self.error_unexpected_token(self.pos());
@@ -566,15 +584,31 @@ impl<T: LexerStream> RegExpParser<T> {
 
         let mut value: u64 = 0;
 
+        // Keep track of whether we have overflowed but keep consuming all digits
+        let mut has_overflowed = false;
+
         while is_decimal_digit(self.current()) {
-            value = value.checked_mul(10).unwrap();
-            value = value
-                .checked_add((self.current() as u64) - ('0' as u64))
-                .unwrap();
+            // Check for overflow when multiplying by 10 or adding digit to accumulator
+            if let Some(new_value) = value.checked_mul(10) {
+                value = new_value;
+            } else {
+                has_overflowed = true;
+            }
+
+            if let Some(new_value) = value.checked_add((self.current() as u64) - ('0' as u64)) {
+                value = new_value;
+            } else {
+                has_overflowed = true;
+            }
+
             self.advance();
         }
 
-        Ok(value)
+        if has_overflowed {
+            return Ok(None);
+        }
+
+        Ok(Some(value))
     }
 
     fn parse_group(&mut self) -> ParseResult<Term> {

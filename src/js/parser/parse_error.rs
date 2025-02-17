@@ -109,6 +109,7 @@ pub enum ParseError {
     InvalidBackreferenceIndex,
     InvalidBackreferenceName,
     InvalidQuantifierBounds,
+    QuantifierBoundTooLarge,
     NonQuantifiableAssertion,
     InvalidUnicodeProperty,
     DuplicateRegExpModifier,
@@ -443,6 +444,9 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvalidQuantifierBounds => {
                 write!(f, "Invalid quantifier bounds in regular expression")
+            }
+            ParseError::QuantifierBoundTooLarge => {
+                write!(f, "Quantifier too large in regular expression")
             }
             ParseError::NonQuantifiableAssertion => {
                 write!(f, "Quantifier on non-quantifiable assertion in regular expression")

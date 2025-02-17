@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-14:11",
+  loc: "1:1-17:118",
   body: [
     {
       type: "ExpressionStatement",
@@ -391,6 +391,39 @@
                   min: 1,
                   max: 2,
                   is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:1-17:118",
+      kind: {
+        type: "Literal",
+        loc: "17:1-17:117",
+        raw: "/a{1,9876543219876543219876543219876543219876543219876543219876543219876543219876543219876543219876543219876543210}/",
+        value: {
+          pattern: "a{1,9876543219876543219876543219876543219876543219876543219876543219876543219876543219876543219876543219876543210}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: null,
+                  is_greedy: true,
                 },
               ],
             },

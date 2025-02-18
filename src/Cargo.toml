@@ -1,0 +1,51 @@
+[package]
+name = "brimstone"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+default-run = "bs"
+
+[lib]
+doctest = false
+path = "lib.rs"
+
+[[bin]]
+name = "bs"
+path = "main.rs"
+
+[dependencies]
+bitflags.workspace = true
+clap = { workspace = true, features = ["derive"] }
+indexmap.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+rand.workspace = true
+ryu-js.workspace = true
+supports-color.workspace = true
+
+# Internal crates
+case_closure_overrides.workspace = true
+match_u32.workspace = true
+wrap_ordinary_object.workspace = true
+
+# ICU4X crates must all be the same version
+icu_casemap.workspace = true
+icu_collator.workspace = true
+icu_collections.workspace = true
+icu_locale.workspace = true
+icu_normalizer.workspace = true
+icu_properties.workspace = true
+icu_provider = { workspace = true, features = ["sync"] }
+icu_provider_baked.workspace = true
+icu_provider_adapters.workspace = true
+zerotrie.workspace = true
+zerovec.workspace = true
+
+[features]
+# Run the garbage collector in stress test mode
+gc_stress_test = []
+# Collect handle use statistics
+handle_stats = []
+
+[lints]
+workspace = true

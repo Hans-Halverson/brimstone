@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 /// Generate the `case_closure_overrides` module, which exposes the public interface:
-/// 
+///
 /// ```
 /// pub fn has_case_closure_override(c: char) -> bool;
 /// pub fn get_case_closure_override(c: char) -> Option<&'static CodePointInversionList<'static>>;
@@ -17,12 +17,12 @@ use std::path::Path;
 /// Unicode case folding/mapping procedures. Specifically it canonicalizes code points using the
 /// simple uppercase mapping (instead of case folding), but avoids mapping any code point from
 /// outside the Latin1 range to inside the Latin1 range.
-/// 
+///
 /// For case insensitive matching we do not canonicalize the input string, but instead generate the
 /// case insensitive closure of the input pattern. For example each literal in the pattern is
 /// replaced with the set of characters that canonicalize to the same value as that literal (this
 /// set is the case closure).
-/// 
+///
 /// We use the `add_case_closure_to` method from icu4x to generate the case closure using case
 /// folding. This is always used when in unicode aware mode. However, in non-unicode mode this
 /// method has a handful of code points that are incorrectly mapped due to the quirks of the
@@ -44,8 +44,6 @@ fn main() {
 }
 
 mod icu_data {
-    use icu_provider_baked;
-
     pub struct BakedDataProvider;
     include!("../../../../../icu/data/mod.rs");
     impl_data_provider!(BakedDataProvider);
@@ -129,12 +127,12 @@ fn gen_overrides_map() -> HashMap<char, HashSet<char>> {
 
 /// Generate the set of all code points that map to themselves under case folding.
 fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
-    let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap(); 
+    let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap();
 
     let mut builder = CodePointInversionListBuilder::new();
 
     for i in 0..0x110000u32 {
-        if let Some (c) = char::from_u32(i) {
+        if let Some(c) = char::from_u32(i) {
             if c == case_mapper.simple_fold(c) {
                 builder.add_char(c);
             }
@@ -144,7 +142,10 @@ fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
     builder.build()
 }
 
-fn gen_overrides_file(overrides: HashMap<char, HashSet<char>>, all_case_folded: &CodePointInversionList) -> String {
+fn gen_overrides_file(
+    overrides: HashMap<char, HashSet<char>>,
+    all_case_folded: &CodePointInversionList,
+) -> String {
     let mut file = String::new();
 
     file.push_str("use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
@@ -183,8 +184,8 @@ fn build_overrides_map() -> HashMap<char, CodePointInversionList<'static>> {
         "  map
 }
 
-static OVERRIDES_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| build_overrides_set());
-static OVERRIDES_MAP: LazyLock<HashMap<char, CodePointInversionList<'static>>> = LazyLock::new(|| build_overrides_map());
+static OVERRIDES_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(build_overrides_set);
+static OVERRIDES_MAP: LazyLock<HashMap<char, CodePointInversionList<'static>>> = LazyLock::new(build_overrides_map);
 
 pub fn has_case_closure_override(c: char) -> bool {
   OVERRIDES_SET.contains(c)
@@ -200,14 +201,16 @@ const ALL_CASE_FOLDED_DATA",
     let inv_list_vec = all_case_folded.get_inversion_list_vec();
     file.push_str(&format!(": [u32; {}] = {:?};\n\n", inv_list_vec.len(), inv_list_vec));
 
-    file.push_str("static ALL_CASE_FOLDED_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| {
+    file.push_str(
+        "static ALL_CASE_FOLDED_SET: LazyLock<CodePointInversionList<'static>> = LazyLock::new(|| {
     CodePointInversionList::try_from_u32_inversion_list_slice(&ALL_CASE_FOLDED_DATA).unwrap()
 });
 
 pub fn all_case_folded_set() -> &'static CodePointInversionList<'static> {
     &ALL_CASE_FOLDED_SET
 }
-");
+",
+    );
 
     file
 }

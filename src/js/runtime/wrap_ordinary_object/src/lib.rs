@@ -12,7 +12,7 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
     let mut method_names = HashSet::new();
 
     for item in &impl_ast.items {
-        if let syn::ImplItem::Method(method_ast) = item {
+        if let syn::ImplItem::Fn(method_ast) = item {
             method_names.insert(method_ast.sig.ident.to_string());
         }
     }
@@ -20,11 +20,11 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
     macro_rules! implement_if_undefined {
         ($method_name:expr, $body:item) => {
             if !method_names.contains($method_name) {
-                let method: syn::ImplItemMethod = syn::parse2(quote! {
+                let method: syn::ImplItemFn = syn::parse2(quote! {
                     $body
                 })
                 .unwrap();
-                impl_ast.items.push(syn::ImplItem::Method(method));
+                impl_ast.items.push(syn::ImplItem::Fn(method));
             }
         };
     }
@@ -61,7 +61,12 @@ pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStrea
 
     implement_if_undefined!(
         "get",
-        fn get(&self, cx: Context, key: Handle<PropertyKey>, receiver: Handle<Value>) -> EvalResult<Handle<Value>> {
+        fn get(
+            &self,
+            cx: Context,
+            key: Handle<PropertyKey>,
+            receiver: Handle<Value>,
+        ) -> EvalResult<Handle<Value>> {
             self.ordinary_object().get(cx, key, receiver)
         }
     );

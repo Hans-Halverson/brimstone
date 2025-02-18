@@ -204,10 +204,7 @@ fn run_single_test(
             // the test.
             Err(err) => {
                 // Do not count IO errors as negative tests results
-                let is_parse_error = match err.error {
-                    js::parser::ParseError::Io(_) => false,
-                    _ => true,
-                };
+                let is_parse_error = !matches!(err.error, js::parser::ParseError::Io(_));
 
                 let duration = start_timestamp.elapsed().unwrap();
 
@@ -217,7 +214,7 @@ fn run_single_test(
                     }
                     _ => TestResult::failure(
                         test,
-                        format!("Unexpected error during parsing:\n{}", err.to_string()),
+                        format!("Unexpected error during parsing:\n{}", err),
                         duration,
                     ),
                 };
@@ -239,7 +236,7 @@ fn run_single_test(
                     }
                     _ => TestResult::failure(
                         test,
-                        format!("Unexpected error during analysis:\n{}", err.to_string()),
+                        format!("Unexpected error during analysis:\n{}", err),
                         duration,
                     ),
                 };
@@ -303,16 +300,22 @@ fn parse_file(
 fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
-    let mut ast =
-        parse_file(full_path.to_str().unwrap(), cx.options.as_ref(), None, test262_root, false)
-            .expect(&format!("Failed to parse test harness file {}", full_path.display()));
+    let parse_result =
+        parse_file(full_path.to_str().unwrap(), cx.options.as_ref(), None, test262_root, false);
+    let mut ast = match parse_result {
+        Ok(ast) => ast,
+        Err(_) => {
+            panic!("Failed to parse test harness file {}", full_path.display());
+        }
+    };
 
-    js::parser::analyze::analyze(&mut ast)
-        .expect(&format!("Failed to parse test harness file {}", full_path.display()));
+    let analyze_result = js::parser::analyze::analyze(&mut ast);
+    if analyze_result.is_err() {
+        panic!("Failed to parse test harness file {}", full_path.display());
+    }
 
     let eval_result = execute_script_as_bytecode(cx, &ast);
-
-    if let Err(_) = eval_result {
+    if eval_result.is_err() {
         panic!("Failed to evaluate test harness file {}", full_path.display())
     }
 }
@@ -404,7 +407,7 @@ fn check_expected_completion(
             }
             other => TestResult::failure(
                 test,
-                format!("Test completed without throwing, but expected {}", other.to_string()),
+                format!("Test completed without throwing, but expected {}", other),
                 duration,
             ),
         },
@@ -450,8 +453,7 @@ fn check_expected_completion(
                         test,
                         format!(
                             "Test threw the following error during runtime, but expected {}:\n{}",
-                            test.expected_result.to_string(),
-                            thrown_string,
+                            test.expected_result, thrown_string,
                         ),
                         duration,
                     )
@@ -463,8 +465,7 @@ fn check_expected_completion(
                     test,
                     format!(
                         "Test threw the following error during runtime, but expected {}:\n{}",
-                        other.to_string(),
-                        thrown_string,
+                        other, thrown_string,
                     ),
                     duration,
                 )
@@ -493,7 +494,7 @@ fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
         if let Ok(message_value) = to_string(cx, value) {
             let message = message_value.to_string();
             if message.starts_with("Test262Error") {
-                return String::from(message);
+                return message;
             }
         }
     }

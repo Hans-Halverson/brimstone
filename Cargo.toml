@@ -1,27 +1,41 @@
-[package]
-name = "brimstone"
+[workspace]
+members = [
+  "src",
+  "src/js/runtime/regexp/case_closure_overrides",
+  "src/js/parser/match_u32",
+  "src/js/runtime/wrap_ordinary_object",
+  "tests/test262",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2018"
 version = "0.1.0"
 authors = ["hanshalverson <hansghalverson@gmail.com>"]
-edition = "2018"
 
-[[bin]]
-name = "bs"
-path = "src/main.rs"
-
-[dependencies]
-bitflags = "2.1.0"
-clap = { version = "4.0.29", features = ["derive"] }
-indexmap = "2.1.0"
-num-bigint = "0.4.3"
-num-traits = "0.2.16"
-rand = "0.8.5"
-ryu-js = "0.2.2"
-supports-color = "3.0.2"
-
-# Internal crates
+[workspace.dependencies]
+# Internal Crates
+brimstone = { path = "src" }
 case_closure_overrides = { path = "src/js/runtime/regexp/case_closure_overrides" }
 match_u32 = { path = "src/js/parser/match_u32" }
 wrap_ordinary_object = { path = "src/js/runtime/wrap_ordinary_object" }
+
+# External Crates
+bitflags = "2.1.0"
+clap = "4.0.29"
+indexmap = "2.1.0"
+num-bigint = "0.4.3"
+num-traits = "0.2.16"
+quote = "1.0.32"
+rand = "0.8.5"
+regex = "1.7.1"
+ryu-js = "0.2.2"
+serde = "1.0.152"
+serde_json = "1.0.91"
+supports-color = "3.0.2"
+syn = "2.0.27"
+threadpool = "1.8.1"
+yaml-rust = "0.4.5"
 
 # ICU4X crates must all be the same version
 icu_casemap = "2.0.0-beta1"
@@ -30,22 +44,13 @@ icu_collections = "2.0.0-beta1"
 icu_locale = "2.0.0-beta1"
 icu_normalizer = "2.0.0-beta1"
 icu_properties = "2.0.0-beta1"
-icu_provider = { version = "2.0.0-beta1", features = ["sync"] }
+icu_provider = "2.0.0-beta1"
 icu_provider_baked = "2.0.0-beta1"
 icu_provider_adapters = "2.0.0-beta1"
 zerotrie = "0.2.0"
 zerovec = "0.11.0"
 
-[features]
-# Run the garbage collector in stress test mode
-gc_stress_test = []
-# Collect handle use statistics
-handle_stats = []
-
-[lib]
-doctest = false
-
-[lints.clippy]
+[workspace.lints.clippy]
 collapsible_else_if = "allow"
 collapsible_if = "allow"
 comparison_chain = "allow"

@@ -1,12 +1,11 @@
 [package]
 name = "wrap_ordinary_object"
-version = "0.1.0"
-edition = "2018"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 proc-macro = true
-proc-macro2 = true
 
 [dependencies]
-syn = "1.0.106"
-quote = "1.0.22"
+syn = { workspace = true, features = ["full"] }
+quote.workspace = true

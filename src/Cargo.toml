@@ -24,9 +24,8 @@ ryu-js.workspace = true
 supports-color.workspace = true
 
 # Internal crates
-case_closure_overrides.workspace = true
-match_u32.workspace = true
-wrap_ordinary_object.workspace = true
+brimstone_icu_collections.workspace = true
+brimstone_macros.workspace = true
 
 # ICU4X crates must all be the same version
 icu_casemap.workspace = true

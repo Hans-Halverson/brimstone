@@ -34,7 +34,8 @@ name = "brimstone"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.1.0",
- "case_closure_overrides",
+ "brimstone_icu_collections",
+ "brimstone_macros",
  "clap",
  "icu_casemap",
  "icu_collator",
@@ -46,13 +47,11 @@ dependencies = [
  "icu_provider_adapters",
  "icu_provider_baked",
  "indexmap",
- "match_u32",
  "num-bigint",
  "num-traits",
  "rand",
  "ryu-js",
  "supports-color",
- "wrap_ordinary_object",
  "zerotrie",
  "zerovec",
 ]
@@ -71,7 +70,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "case_closure_overrides"
+name = "brimstone_icu_collections"
 version = "0.1.0"
 dependencies = [
  "icu_casemap",
@@ -85,6 +84,14 @@ dependencies = [
  "icu_provider_baked",
  "zerotrie",
  "zerovec",
+]
+
+[[package]]
+name = "brimstone_macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -488,14 +495,6 @@ name = "litemap"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "643cb0b8d4fcc284004d5fd0d67ccf61dfffadb7f75e1e71bc420f4688a3a704"
-
-[[package]]
-name = "match_u32"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn 2.0.32",
-]
 
 [[package]]
 name = "memchr"
@@ -934,14 +933,6 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
-
-[[package]]
-name = "wrap_ordinary_object"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn 2.0.32",
-]
 
 [[package]]
 name = "write16"

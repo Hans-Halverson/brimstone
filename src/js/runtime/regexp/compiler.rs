@@ -1,6 +1,6 @@
 use std::{collections::HashSet, sync::LazyLock};
 
-use case_closure_overrides::{
+use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
 };
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};

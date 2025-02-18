@@ -6,12 +6,15 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-/// Generate the `case_closure_overrides` module, which exposes the public interface:
+/// Generate the `brimstone_icu_collections` module, which exposes the public interface:
 ///
 /// ```
 /// pub fn has_case_closure_override(c: char) -> bool;
 /// pub fn get_case_closure_override(c: char) -> Option<&'static CodePointInversionList<'static>>;
+/// pub fn all_case_folded_set() -> &'static CodePointInversionList<'static>;
 /// ```
+///
+/// ## Case Closure Overrides
 ///
 /// The Canonicalize abstract operation in non-unicode mode differs slightly from standard
 /// Unicode case folding/mapping procedures. Specifically it canonicalizes code points using the
@@ -29,9 +32,14 @@ use std::path::Path;
 /// Canonicalize operation. This build script precomputes the correct case closures for these code
 /// points and refers to them as case closure overrides. Case insensitive non-unicode matching then
 /// uses these case closure overrides if they exist, and otherwise uses `add_case_closure_to`.
+///
+/// ## All Case Folded Characters
+///
+/// The `all_case_folded_set` function returns a set of all code points that map to themselves under
+/// case folding. This is needed to generate complement sets in case insensitive unicode sets mode.
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("generated_case_closure_overrides.rs");
+    let dest_path = Path::new(&out_dir).join("generated_icu_collections.rs");
 
     println!("cargo::rerun-if-changed=build.rs");
 
@@ -45,7 +53,7 @@ fn main() {
 
 mod icu_data {
     pub struct BakedDataProvider;
-    include!("../../../../../icu/data/mod.rs");
+    include!("../../icu/data/mod.rs");
     impl_data_provider!(BakedDataProvider);
 }
 

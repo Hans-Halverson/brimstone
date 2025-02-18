@@ -1,5 +1,5 @@
 [package]
-name = "case_closure_overrides"
+name = "brimstone_icu_collections"
 version.workspace = true
 edition.workspace = true
 

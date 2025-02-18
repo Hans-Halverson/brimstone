@@ -3,7 +3,7 @@ use std::{
     convert::TryFrom,
 };
 
-use match_u32::match_u32;
+use brimstone_macros::match_u32;
 
 use crate::js::common::{
     options::Options,

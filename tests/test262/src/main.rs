@@ -113,7 +113,7 @@ fn main_impl() -> GenericResult {
 }
 
 /// Wrapper to pretty print errors
-fn main() -> () {
+fn main() {
     match main_impl() {
         Ok(_) => (),
         Err(err) => {

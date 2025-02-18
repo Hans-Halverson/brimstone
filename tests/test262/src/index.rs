@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use yaml_rust::YamlLoader;
 
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fmt, fs, path::Path};
 
 use crate::utils::{GenericError, GenericResult};
 
@@ -51,10 +51,10 @@ pub enum TestMode {
     Module,
 }
 
-impl ExpectedResult {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for ExpectedResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ExpectedResult::Positive => String::from("no error to be thrown"),
+            ExpectedResult::Positive => write!(f, "no error to be thrown"),
             ExpectedResult::Negative { phase, type_ } => {
                 let phase_string = match phase {
                     TestPhase::Parse => "parsing",
@@ -62,7 +62,7 @@ impl ExpectedResult {
                     TestPhase::Runtime => "evaluation",
                 };
 
-                format!("{} error to be thrown during {}", type_, phase_string)
+                write!(f, "{} error to be thrown during {}", type_, phase_string)
             }
         }
     }
@@ -123,10 +123,10 @@ impl TestIndex {
     }
 
     fn index_test_file(&mut self, test_path: &Path) -> GenericResult {
-        let file_contents = fs::read_to_string(&test_path)?;
+        let file_contents = fs::read_to_string(test_path)?;
 
         let comment_start = file_contents.find("/*---").unwrap();
-        let comment_end = (&file_contents[comment_start..]).find("---*/").unwrap();
+        let comment_end = file_contents[comment_start..].find("---*/").unwrap();
 
         let comment = &file_contents[comment_start + 5..comment_start + comment_end];
 

@@ -22,13 +22,13 @@ impl CharRewriter {
         let const_ident = format_ident!("CONST_{}", char as u32);
 
         // Create a constant declaration if one doesn't already exist
-        if !self.char_const_decls.contains_key(&char) {
+        self.char_const_decls.entry(char).or_insert_with(|| {
             let const_decl: syn::ItemConst = syn::parse2(quote! {
                 const #const_ident: u32 = #char as u32;
             })
             .unwrap();
-            self.char_const_decls.insert(char, const_decl);
-        }
+            const_decl
+        });
 
         const_ident
     }

@@ -1,31 +1,30 @@
 [package]
 name = "case_closure_overrides"
-version = "0.1.0"
-edition = "2018"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-icu_casemap = "2.0.0-beta1"
-icu_collator = "2.0.0-beta1"
-icu_collections = "2.0.0-beta1"
-icu_locale = "2.0.0-beta1"
-icu_normalizer = "2.0.0-beta1"
-icu_properties = "2.0.0-beta1"
-icu_provider = { version = "2.0.0-beta1", features = ["sync"] }
-icu_provider_baked = "2.0.0-beta1"
-icu_provider_adapters = "2.0.0-beta1"
-zerotrie = "0.2.0"
-zerovec = "0.11.0"
+icu_casemap.workspace = true
+icu_collator.workspace = true
+icu_collections.workspace = true
+icu_locale.workspace = true
+icu_normalizer.workspace = true
+icu_properties.workspace = true
+icu_provider = { workspace = true, features = ["sync"] }
+icu_provider_baked.workspace = true
+icu_provider_adapters.workspace = true
+zerotrie.workspace = true
+zerovec.workspace = true
 
-# ICU4X crate versions must be shared with root Cargo.toml
 [build-dependencies]
-icu_casemap = "2.0.0-beta1"
-icu_collator = "2.0.0-beta1"
-icu_collections = "2.0.0-beta1"
-icu_locale = "2.0.0-beta1"
-icu_normalizer = "2.0.0-beta1"
-icu_properties = "2.0.0-beta1"
-icu_provider = { version = "2.0.0-beta1", features = ["sync"] }
-icu_provider_baked = "2.0.0-beta1"
-icu_provider_adapters = "2.0.0-beta1"
-zerotrie = "0.2.0"
-zerovec = "0.11.0"
+icu_casemap.workspace = true
+icu_collator.workspace = true
+icu_collections.workspace = true
+icu_locale.workspace = true
+icu_normalizer.workspace = true
+icu_properties.workspace = true
+icu_provider = { workspace = true, features = ["sync"] }
+icu_provider_baked.workspace = true
+icu_provider_adapters.workspace = true
+zerotrie.workspace = true
+zerovec.workspace = true

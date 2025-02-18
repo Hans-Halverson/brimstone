@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
-use match_u32::match_u32;
+use brimstone_macros::match_u32;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 

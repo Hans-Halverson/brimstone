@@ -3,10 +3,6 @@ use std::collections::HashSet;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 
-/// A macro that allows any object to implement all object methods by using the ordinary object
-/// methods for a wrapped ordinary object. Only provides the default implementation for a method
-/// if that method is not already defined.
-#[proc_macro_attribute]
 pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut impl_ast: syn::ItemImpl = syn::parse(item).unwrap();
     let mut method_names = HashSet::new();

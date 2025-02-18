@@ -1,9 +1,8 @@
 [workspace]
 members = [
   "src",
-  "src/js/runtime/regexp/case_closure_overrides",
-  "src/js/parser/match_u32",
-  "src/js/runtime/wrap_ordinary_object",
+  "src/brimstone_icu_collections",
+  "src/brimstone_macros",
   "tests/test262",
 ]
 resolver = "2"
@@ -16,9 +15,8 @@ authors = ["hanshalverson <hansghalverson@gmail.com>"]
 [workspace.dependencies]
 # Internal Crates
 brimstone = { path = "src" }
-case_closure_overrides = { path = "src/js/runtime/regexp/case_closure_overrides" }
-match_u32 = { path = "src/js/parser/match_u32" }
-wrap_ordinary_object = { path = "src/js/runtime/wrap_ordinary_object" }
+brimstone_icu_collections = { path = "src/brimstone_icu_collections" }
+brimstone_macros = { path = "src/brimstone_macros" }
 
 # External Crates
 bitflags = "2.1.0"

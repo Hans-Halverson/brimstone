@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
+use brimstone_macros::wrap_ordinary_object;
 use num_bigint::{BigInt, Sign};
-use wrap_ordinary_object::wrap_ordinary_object;
 
 use crate::{
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,

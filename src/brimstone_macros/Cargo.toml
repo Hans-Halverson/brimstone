@@ -1,5 +1,5 @@
 [package]
-name = "match_u32"
+name = "brimstone_macros"
 version.workspace = true
 edition.workspace = true
 

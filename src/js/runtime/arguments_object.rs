@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use wrap_ordinary_object::wrap_ordinary_object;
+use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
     extend_object, field_offset,

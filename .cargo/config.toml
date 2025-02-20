@@ -1,0 +1,2 @@
+[alias]
+brimstone-test = "run -p brimstone_integration_test_harness"

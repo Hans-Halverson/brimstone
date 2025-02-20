@@ -4,23 +4,28 @@ use yaml_rust::YamlLoader;
 
 use std::{collections::HashMap, fmt, fs, path::Path};
 
-use crate::utils::{GenericError, GenericResult};
+use crate::{
+    manifest::{Suite, TestManifest},
+    utils::{GenericError, GenericResult},
+};
 
 /// A single test262 test file along with its metadata
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Test {
-    // Path to the test file. Relative to the test262/test directory.
+    /// Path to the test file. Relative to the test262/test directory.
     pub path: String,
+    /// Test suite that the test belongs to.
+    pub suite: Suite,
     pub expected_result: ExpectedResult,
     pub mode: TestMode,
     pub is_async: bool,
-    // Run test without modifying the source file or evaluating any other scripts from test harness.
-    // For scripts the test is run once, in non-strict mode.
+    /// Run test without modifying the source file or evaluating any other scripts from test harness.
+    /// For scripts the test is run once, in non-strict mode.
     pub is_raw: bool,
-    // Files that must be evaluated in the global scope prior to test execution. Paths are
-    // relative to the test262/harness directory.
+    /// Files that must be evaluated in the global scope prior to test execution. Paths are
+    /// relative to the test262/harness directory.
     pub includes: Vec<String>,
-    // Tags for categorizing tests by feature, allows easy filtering by feature
+    /// Tags for categorizing tests by feature, allows easy filtering by feature
     pub features: Vec<String>,
 }
 
@@ -72,20 +77,16 @@ impl fmt::Display for ExpectedResult {
 pub struct TestIndex {
     // Tests indexed by test path
     pub tests: HashMap<String, Test>,
-
-    // Path to the test262 repo
-    pub test262_root: String,
 }
 
 impl TestIndex {
-    pub fn new(test262_root: &Path) -> Result<TestIndex, GenericError> {
-        let mut indexer = TestIndex {
-            tests: HashMap::new(),
-            test262_root: String::from(test262_root.to_str().unwrap()),
-        };
+    pub fn new(manifest: &TestManifest) -> Result<TestIndex, GenericError> {
+        let mut indexer = TestIndex { tests: HashMap::new() };
 
-        let test262_test_dir = test262_root.join("test");
-        indexer.visit_directory(&test262_test_dir)?;
+        for suite_config in &manifest.suites {
+            let suite_path = manifest.manifest_dir.as_path().join(&suite_config.path);
+            indexer.visit_directory(suite_config.suite, &suite_path, &suite_path)?;
+        }
 
         Ok(indexer)
     }
@@ -105,16 +106,16 @@ impl TestIndex {
     }
 
     /// Recursively visit all subdirectories under the target directory, searching for js files.
-    fn visit_directory(&mut self, path: &Path) -> GenericResult {
+    fn visit_directory(&mut self, suite: Suite, suite_root: &Path, path: &Path) -> GenericResult {
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                self.visit_directory(&path)?
+                self.visit_directory(suite, suite_root, &path)?
             } else if path.is_file() {
                 let path_string = path.to_str().unwrap();
                 if path_string.ends_with(".js") && !path_string.contains("_FIXTURE") {
-                    self.index_test_file(&path)?;
+                    self.index_test_file(suite, suite_root, &path)?;
                 }
             }
         }
@@ -122,12 +123,24 @@ impl TestIndex {
         Ok(())
     }
 
-    fn index_test_file(&mut self, test_path: &Path) -> GenericResult {
+    fn index_test_file(
+        &mut self,
+        suite: Suite,
+        suite_root: &Path,
+        test_path: &Path,
+    ) -> GenericResult {
         let file_contents = fs::read_to_string(test_path)?;
 
-        let comment_start = file_contents.find("/*---").unwrap();
-        let comment_end = file_contents[comment_start..].find("---*/").unwrap();
+        // Find the metadata comment in the file
+        let Some(comment_start) = file_contents.find("/*---") else {
+            return Err(format!(
+                "No metadata comment found in test file {}. Metadata comment must start with '/*---' and end with '---*/'",
+                test_path.to_string_lossy()
+            )
+            .into());
+        };
 
+        let comment_end = file_contents[comment_start..].find("---*/").unwrap();
         let comment = &file_contents[comment_start + 5..comment_start + comment_end];
 
         // The YAML parser doesn't consider CR to be a newline, so replace CR with LF
@@ -136,6 +149,15 @@ impl TestIndex {
         } else {
             YamlLoader::load_from_str(comment).unwrap()
         };
+
+        // Ensure that the test file contains metadata
+        if metadata.is_empty() {
+            return Err(format!(
+                "No YAML metadata found in test file {}",
+                test_path.to_string_lossy()
+            )
+            .into());
+        }
 
         let raw_negative = &metadata[0]["negative"];
         let expected_result = if raw_negative.is_badvalue() {
@@ -196,14 +218,13 @@ impl TestIndex {
             }
         }
 
-        let path = String::from(test_path.to_str().unwrap());
-
-        // Make path relative to test262/test directory
-        let path = path.strip_prefix(&self.test262_root).unwrap();
-        let path = path.strip_prefix("/test/").unwrap();
+        // Make path relative to the suite root.
+        let path = test_path.strip_prefix(suite_root).unwrap();
+        let path = path.to_string_lossy().into_owned();
 
         let test = Test {
-            path: String::from(path),
+            path: path.clone(),
+            suite,
             expected_result,
             mode,
             is_async,
@@ -212,7 +233,7 @@ impl TestIndex {
             features,
         };
 
-        self.tests.insert(String::from(path), test);
+        self.tests.insert(path, test);
 
         Ok(())
     }

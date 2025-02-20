@@ -47,8 +47,8 @@ jobs:
       - name: Run test262 tests
         run: |
           cd tests/test262
-          cargo run -- --reindex
-          cargo run -- --ignore-unimplemented
+          cargo brimstone-test -- --reindex
+          cargo brimstone-test -- --ignore-unimplemented
 
   # Run all test262 tests for implemented features with release build.
   test262-release:
@@ -65,8 +65,8 @@ jobs:
       - name: Run test262 tests
         run: |
           cd tests/test262
-          cargo run -- --reindex
-          cargo run --release -- --ignore-unimplemented
+          cargo brimstone-test -- --reindex
+          cargo brimstone-test --release -- --ignore-unimplemented
 
   # Run all test262 tests for implemented features with GC stress test mode on.
   test262-gc-stress-test:
@@ -83,8 +83,8 @@ jobs:
       - name: Run test262 tests
         run: |
           cd tests/test262
-          cargo run -- --reindex
-          cargo run --release --features gc_stress_test -- --ignore-unimplemented
+          cargo brimstone-test -- --reindex
+          cargo brimstone-test --release --features gc_stress_test -- --ignore-unimplemented
 
   test262-handle-tracking-tests:
     runs-on: ubuntu-latest
@@ -100,5 +100,5 @@ jobs:
       - name: Run test262 tests
         run: |
           cd tests/test262
-          cargo run -- --reindex
-          cargo run --release --features handle_stats -- --ignore-unimplemented
+          cargo brimstone-test -- --reindex
+          cargo brimstone-test --release --features handle_stats -- --ignore-unimplemented

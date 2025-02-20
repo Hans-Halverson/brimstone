@@ -2,6 +2,7 @@ use serde_json::{self, json};
 use threadpool::ThreadPool;
 
 use std::{
+    collections::HashMap,
     fs,
     panic::{self, AssertUnwindSafe},
     path::Path,
@@ -13,6 +14,8 @@ use std::{
 use crate::{
     ignored::IgnoredIndex,
     index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
+    manifest::{Suite, SuiteFilter, TestManifest},
+    table::{CellAlignment, TableCell, TableFormatter, TableRow},
     utils::GenericResult,
 };
 
@@ -26,8 +29,10 @@ use brimstone::js::{
 };
 
 pub struct TestRunner {
+    manifest: TestManifest,
     index: TestIndex,
-    ignored: IgnoredIndex,
+    ignored: HashMap<Suite, IgnoredIndex>,
+    suite_filter: SuiteFilter,
     thread_pool: ThreadPool,
     filter: Option<String>,
     feature: Option<String>,
@@ -38,8 +43,10 @@ const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
 
 impl TestRunner {
     pub fn new(
+        manifest: TestManifest,
         index: TestIndex,
-        ignored: IgnoredIndex,
+        ignored: HashMap<Suite, IgnoredIndex>,
+        suite_filter: SuiteFilter,
         num_threads: u8,
         filter: Option<String>,
         feature: Option<String>,
@@ -48,22 +55,50 @@ impl TestRunner {
             .num_threads(num_threads.into())
             .thread_stack_size(RUNNER_THREAD_STACK_SIZE)
             .build();
-        TestRunner { index, ignored, thread_pool, filter, feature }
+        TestRunner {
+            manifest,
+            index,
+            ignored,
+            suite_filter,
+            thread_pool,
+            filter,
+            feature,
+        }
     }
 
     pub fn run(&mut self, verbose: bool) -> TestResults {
         let (sender, receiver) = channel::<TestResult>();
         let mut num_jobs = 0;
-        let mut num_skipped = 0;
+        let mut num_skipped = self.suite_filter.map_for_suites(|_| 0);
         let mut ignored_failures = vec![];
 
         let all_tests_start_timestamp = SystemTime::now();
 
+        // Precompute the roots for each test suite
+        let mut suite_roots = HashMap::new();
+        for suite in &self.manifest.suites {
+            let suite_root = self.manifest.manifest_dir.as_path().join(&suite.path);
+            suite_roots.insert(suite.suite, suite_root.to_str().unwrap().to_owned());
+        }
+
+        // Precomute the root for the test262 repo as a string
+        let test262_root = self
+            .manifest
+            .test262_repo_path()
+            .to_str()
+            .unwrap()
+            .to_owned();
+
         for (i, test) in self.index.tests.values().enumerate() {
+            // Skip tests that are in suites that should not be run, but do not count as skipped
+            if !self.suite_filter.should_include(test.suite) {
+                continue;
+            }
+
             // If a filter was provided then skip all tests that do not match the filter
             if let Some(filter) = &self.filter {
                 if !test.path.contains(filter) {
-                    num_skipped += 1;
+                    *num_skipped.entry(test.suite).or_default() += 1;
                     continue;
                 }
             }
@@ -71,27 +106,28 @@ impl TestRunner {
             // If a feature was specified then skip all tests that do not have that feature
             if let Some(feature) = &self.feature {
                 if !test.features.contains(feature) {
-                    num_skipped += 1;
+                    *num_skipped.entry(test.suite).or_default() += 1;
                     continue;
                 }
             }
 
-            if self.ignored.should_fail(test) {
+            if self.ignored[&test.suite].should_fail(test) {
                 ignored_failures.push(TestResult::failure(
                     test,
                     "Ignored test counted as failure".to_owned(),
                     Duration::ZERO,
                 ));
                 continue;
-            } else if self.ignored.should_ignore(test) {
-                num_skipped += 1;
+            } else if self.ignored[&test.suite].should_ignore(test) {
+                *num_skipped.entry(test.suite).or_default() += 1;
                 continue;
             }
 
-            let test262_root = self.index.test262_root.clone();
-
             let test = test.clone();
             let sender = sender.clone();
+            let suite_root = suite_roots[&test.suite].clone();
+            let test262_root = test262_root.clone();
+
             num_jobs += 1;
 
             self.thread_pool.execute(move || {
@@ -102,7 +138,7 @@ impl TestRunner {
                         println!("{i}: {}", test.path);
                     }
 
-                    run_full_test(&test, &test262_root, start_timestamp)
+                    run_full_test(&test, &suite_root, &test262_root, start_timestamp)
                 });
 
                 let duration = start_timestamp.elapsed().unwrap();
@@ -135,19 +171,32 @@ impl TestRunner {
             results.extend(ignored_failures);
         }
 
-        TestResults::collate(results, num_skipped, all_tests_start_timestamp.elapsed().unwrap())
+        TestResults::collate(
+            results,
+            num_skipped,
+            all_tests_start_timestamp.elapsed().unwrap(),
+            self.suite_filter.clone(),
+        )
     }
 }
 
-fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -> TestResult {
+fn run_full_test(
+    test: &Test,
+    suite_root: &str,
+    test262_root: &str,
+    start_timestamp: SystemTime,
+) -> TestResult {
     match test.mode {
-        TestMode::StrictScript => run_single_test(test, test262_root, true, start_timestamp),
+        TestMode::StrictScript => {
+            run_single_test(test, suite_root, test262_root, true, start_timestamp)
+        }
         TestMode::NonStrictScript | TestMode::Module => {
-            run_single_test(test, test262_root, false, start_timestamp)
+            run_single_test(test, suite_root, test262_root, false, start_timestamp)
         }
         // Run in both strict and non strict mode, both must pass for this test to be successful
         TestMode::Script => {
-            let non_strict_result = run_single_test(test, test262_root, false, start_timestamp);
+            let non_strict_result =
+                run_single_test(test, suite_root, test262_root, false, start_timestamp);
 
             // Raw mode tests for scripts are only run in non-strict mode
             if test.is_raw {
@@ -155,7 +204,7 @@ fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -
             }
 
             if let TestResultCompletion::Success = non_strict_result.result {
-                run_single_test(test, test262_root, true, start_timestamp)
+                run_single_test(test, suite_root, test262_root, true, start_timestamp)
             } else {
                 non_strict_result
             }
@@ -165,6 +214,7 @@ fn run_full_test(test: &Test, test262_root: &str, start_timestamp: SystemTime) -
 
 fn run_single_test(
     test: &Test,
+    suite_root: &str,
     test262_root: &str,
     force_strict_mode: bool,
     start_timestamp: SystemTime,
@@ -197,7 +247,7 @@ fn run_single_test(
 
         // Try to parse file
         let parse_result =
-            parse_file(&test.path, options.as_ref(), Some(test), test262_root, force_strict_mode);
+            parse_file(&test.path, options.as_ref(), Some(test), suite_root, force_strict_mode);
         let mut ast = match parse_result {
             Ok(ast) => ast,
             // An error during parse may be a success or failure depending on the expected result of
@@ -269,10 +319,10 @@ fn parse_file(
     file: &str,
     options: &Options,
     test: Option<&Test>,
-    test262_root: &str,
+    suite_root: &str,
     force_strict_mode: bool,
 ) -> js::parser::ParseResult<js::parser::parser::ParseProgramResult> {
-    let full_path = Path::new(test262_root).join("test").join(file);
+    let full_path = Path::new(suite_root).join(file);
 
     let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
@@ -504,6 +554,7 @@ fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
 
 struct TestResult {
     path: String,
+    suite: Suite,
     result: TestResultCompletion,
     // Total time this test took to run
     time: Duration,
@@ -521,6 +572,7 @@ impl TestResult {
     fn success(test: &Test, time: Duration) -> TestResult {
         TestResult {
             path: test.path.clone(),
+            suite: test.suite,
             result: TestResultCompletion::Success,
             time,
         }
@@ -529,27 +581,24 @@ impl TestResult {
     fn failure(test: &Test, message: String, time: Duration) -> TestResult {
         TestResult {
             path: test.path.clone(),
+            suite: test.suite,
             result: TestResultCompletion::Failure(message),
             time,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn skipped(test: &Test) -> TestResult {
-        TestResult {
-            path: test.path.clone(),
-            result: TestResultCompletion::Skipped,
-            time: Duration::ZERO,
         }
     }
 }
 
 pub struct TestResults {
-    succeeded: Vec<TestResult>,
-    failed: Vec<TestResult>,
-    num_skipped: u64,
-    // Total duration of the entire test run
+    /// List of suceeeded tests in each test suite
+    succeeded: HashMap<Suite, Vec<TestResult>>,
+    /// List of failed tests in each test suite
+    failed: HashMap<Suite, Vec<TestResult>>,
+    /// Count of skipped tests in each test suite
+    num_skipped: HashMap<Suite, u64>,
+    /// Total duration of the entire test run
     total_duration: Duration,
+    /// Set of suites included in this run
+    suite_filter: SuiteFilter,
 }
 
 // ANSII codes for pretty printing
@@ -563,72 +612,120 @@ const DIM: &str = "\x1b[2m";
 impl TestResults {
     fn collate(
         results: Vec<TestResult>,
-        num_skipped: u64,
+        num_skipped: HashMap<Suite, u64>,
         total_duration: Duration,
+        suite_filter: SuiteFilter,
     ) -> TestResults {
         let mut collated = TestResults {
-            failed: vec![],
-            succeeded: vec![],
+            failed: suite_filter.map_for_suites(|_| vec![]),
+            succeeded: suite_filter.map_for_suites(|_| vec![]),
             num_skipped,
             total_duration,
+            suite_filter,
         };
 
         for result in results {
             match result.result {
                 TestResultCompletion::Success => {
-                    collated.succeeded.push(result);
+                    collated
+                        .succeeded
+                        .entry(result.suite)
+                        .or_default()
+                        .push(result);
                 }
                 TestResultCompletion::Failure(_) => {
-                    collated.failed.push(result);
+                    collated
+                        .failed
+                        .entry(result.suite)
+                        .or_default()
+                        .push(result);
                 }
                 TestResultCompletion::Skipped => {
-                    collated.num_skipped += 1;
+                    *collated.num_skipped.entry(result.suite).or_default() += 1;
                 }
             }
         }
 
-        collated.failed.sort_by(|a, b| a.path.cmp(&b.path));
-        collated.succeeded.sort_by(|a, b| a.path.cmp(&b.path));
+        collated
+            .failed
+            .values_mut()
+            .for_each(|failed| failed.sort_by(|a, b| a.path.cmp(&b.path)));
+        collated
+            .succeeded
+            .values_mut()
+            .for_each(|succeeded| succeeded.sort_by(|a, b| a.path.cmp(&b.path)));
 
         collated
     }
 
     pub fn is_successful(&self) -> bool {
-        self.failed.is_empty()
+        self.failed.values().all(|results| results.is_empty())
     }
 
     pub fn print_to_console(&self, test262_root: &Path) {
         let test262_prefix = test262_root.join("test");
 
-        for failed in &self.failed {
-            if let TestResultCompletion::Failure(message) = &failed.result {
-                // Strip file path from message to reduce length
-                let file_path = test262_prefix.join(&failed.path);
-                let cleaned_message = message.replace(file_path.to_str().unwrap(), "<file>");
+        for suite in self.suite_filter.iter() {
+            for failed in &self.failed[&suite] {
+                if let TestResultCompletion::Failure(message) = &failed.result {
+                    // Strip file path from message to reduce length
+                    let file_path = test262_prefix.join(&failed.path);
+                    let cleaned_message = message.replace(file_path.to_str().unwrap(), "<file>");
 
-                println!("{}{}Failed{}: {}\n{}\n", BOLD, RED, RESET, failed.path, cleaned_message);
+                    println!(
+                        "{}{}Failed{}: ({}) {}\n{}\n",
+                        BOLD, RED, RESET, failed.suite, failed.path, cleaned_message
+                    );
+                }
             }
         }
 
+        let status = if self.failed.values().all(|failed| failed.is_empty()) {
+            format!("{}{}Passed{}", BOLD, GREEN, RESET)
+        } else {
+            format!("{}{}Failed{}", BOLD, RED, RESET)
+        };
+
         println!(
-            "{}Tests completed in {:.2} seconds\n\n{}{}Succeeded: {}\n{}Failed: {}\n{}{}Skipped: {}{}",
+            "{}: {}Tests completed in {:.2} seconds{}\n",
+            status,
             BOLD,
             self.total_duration.as_secs_f64(),
-            BOLD,
-            GREEN,
-            self.succeeded.len(),
-            RED,
-            self.failed.len(),
-            WHITE,
-            DIM,
-            self.num_skipped,
-            RESET
+            RESET,
         );
+
+        let mut table_rows = vec![];
+        table_rows.push(new_header_row());
+
+        for suite in self.suite_filter.iter() {
+            let num_succeeded = &self.succeeded[&suite].len();
+            let num_failed = &self.failed[&suite].len();
+            let num_skipped = self.num_skipped[&suite];
+
+            table_rows.push(new_suite_row(
+                suite,
+                *num_succeeded as u64,
+                *num_failed as u64,
+                num_skipped,
+            ));
+        }
+
+        let table = TableFormatter::format(table_rows);
+        println!("{}", table);
     }
 
     pub fn print_test262_progress(&self) {
-        let succeeded = self.succeeded.len();
-        let failed = self.failed.len();
+        let succeeded = self
+            .succeeded
+            .values()
+            .map(|results| results.len())
+            .sum::<usize>();
+        let failed = self
+            .failed
+            .values()
+            .map(|results| results.len())
+            .sum::<usize>();
+
         let total = succeeded + failed;
         let percent = (succeeded as f64 / total as f64) * 100.0;
 
@@ -637,9 +734,25 @@ impl TestResults {
     }
 
     pub fn save_to_result_files(&self, result_files_path: String) -> GenericResult {
-        let succeeded_paths: Vec<&String> =
-            self.succeeded.iter().map(|result| &result.path).collect();
-        let failed_paths: Vec<&String> = self.failed.iter().map(|result| &result.path).collect();
+        let succeeded_paths: Vec<String> = self
+            .succeeded
+            .iter()
+            .flat_map(|(suite, results)| {
+                results
+                    .iter()
+                    .map(move |result| format!("<{}>/{}", suite, &result.path))
+            })
+            .collect();
+
+        let failed_paths: Vec<String> = self
+            .failed
+            .iter()
+            .flat_map(|(suite, results)| {
+                results
+                    .iter()
+                    .map(move |result| format!("<{}>/{}", suite, &result.path))
+            })
+            .collect();
 
         let succeeded_string = serde_json::to_string_pretty(&succeeded_paths).unwrap();
         let failed_string = serde_json::to_string_pretty(&failed_paths).unwrap();
@@ -655,8 +768,8 @@ impl TestResults {
 
     pub fn save_to_time_file(&self, tile_file_path: String) -> GenericResult {
         let mut all_test_results = vec![];
-        all_test_results.extend(self.succeeded.iter());
-        all_test_results.extend(self.failed.iter());
+        all_test_results.extend(self.succeeded.values().flat_map(|results| results.iter()));
+        all_test_results.extend(self.failed.values().flat_map(|results| results.iter()));
 
         all_test_results.sort_by(|a, b| a.time.cmp(&b.time).reverse());
 
@@ -664,6 +777,7 @@ impl TestResults {
         for test_result in all_test_results {
             let test_result_json = json!({
                 "path": test_result.path,
+                "suite": test_result.suite,
                 "time": test_result.time.as_secs_f64(),
                 "succeeded": test_result.result == TestResultCompletion::Success,
             });
@@ -677,4 +791,22 @@ impl TestResults {
 
         Ok(())
     }
+}
+
+fn new_header_row() -> TableRow {
+    TableRow::new(vec![
+        TableCell::simple(String::new()),
+        TableCell::with_modifiers("Succeeded".to_owned(), vec![BOLD, GREEN]),
+        TableCell::with_modifiers("Failed".to_owned(), vec![BOLD, RED]),
+        TableCell::with_modifiers("Skipped".to_owned(), vec![BOLD, DIM, WHITE]),
+    ])
+}
+
+fn new_suite_row(suite: Suite, succeeded: u64, failed: u64, skipped: u64) -> TableRow {
+    TableRow::new(vec![
+        TableCell::new(suite.to_string(), Some(vec![BOLD]), CellAlignment::Left),
+        TableCell::simple(succeeded.to_string()),
+        TableCell::simple(failed.to_string()),
+        TableCell::simple(skipped.to_string()),
+    ])
 }

@@ -57,19 +57,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "brimstone-test262"
-version = "0.1.0"
-dependencies = [
- "brimstone",
- "clap",
- "regex",
- "serde",
- "serde_json",
- "threadpool",
- "yaml-rust",
-]
-
-[[package]]
 name = "brimstone_icu_collections"
 version = "0.1.0"
 dependencies = [
@@ -84,6 +71,19 @@ dependencies = [
  "icu_provider_baked",
  "zerotrie",
  "zerovec",
+]
+
+[[package]]
+name = "brimstone_integration_test_harness"
+version = "0.1.0"
+dependencies = [
+ "brimstone",
+ "clap",
+ "regex",
+ "serde",
+ "serde_json",
+ "threadpool",
+ "yaml-rust",
 ]
 
 [[package]]

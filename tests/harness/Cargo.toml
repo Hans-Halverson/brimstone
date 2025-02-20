@@ -1,5 +1,5 @@
 [package]
-name = "brimstone-test262"
+name = "brimstone_integration_test_harness"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

@@ -79,7 +79,7 @@ fn main_impl() -> GenericResult {
     let test262_root = manifest.test262_repo_path();
 
     if args.reindex {
-        println!("Indexing test262 test suite...");
+        println!("Indexing test suite...");
         let index = TestIndex::new(&manifest)?;
 
         println!("Finished indexing. Writing index to file.");

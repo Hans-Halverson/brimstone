@@ -404,8 +404,8 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         *next_entry_index = tombstone_map
             .entries_as_slice()
             .iter()
-            .filter(|entry| matches!(entry, Entry::Occupied(_)))
             .take(*next_entry_index)
+            .filter(|entry| matches!(entry, Entry::Occupied(_)))
             .count();
 
         // Each tombstone contains a pointer to the new map

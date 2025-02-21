@@ -33,14 +33,13 @@ Hello world!
 
 ## Testing
 
-Brimstone relies heavily on [test262](https://github.com/tc39/test262). A [custom runner](./tests/test262/README.md) for test262 is included. This can be run with:
+Brimstone relies heavily on a set of first and third party integration test suites, most notably the official [test262](https://github.com/tc39/test262) test suite. A custom [integration test runner](./tests/README.md) is included. This can be run with:
 
 ```
-cd tests/test262
-cargo run
+cargo brimstone-test
 ```
 
-Unit tests can be run with `cargo test`.
+Unit and snapshot tests can be run with `cargo test`.
 
 For more information on testing see the [testing README](./tests/README.md).
 

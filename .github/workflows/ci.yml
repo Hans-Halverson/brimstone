@@ -32,8 +32,8 @@ jobs:
       - name: Run tests
         run: cargo test
 
-  # Run all test262 tests for implemented features with debug build.
-  test262-debug:
+  # Run all integration tests for implemented features with debug build.
+  integration-tests-debug:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -44,14 +44,13 @@ jobs:
       - name: Checkout test262 repo
         run: ./tests/test262/install_test262.sh
 
-      - name: Run test262 tests
+      - name: Run integration tests
         run: |
-          cd tests/test262
           cargo brimstone-test -- --reindex
           cargo brimstone-test -- --ignore-unimplemented
 
-  # Run all test262 tests for implemented features with release build.
-  test262-release:
+  # Run all integration tests for implemented features with release build.
+  integration-tests-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -62,14 +61,13 @@ jobs:
       - name: Checkout test262 repo
         run: ./tests/test262/install_test262.sh
 
-      - name: Run test262 tests
+      - name: Run integration tests
         run: |
-          cd tests/test262
           cargo brimstone-test -- --reindex
           cargo brimstone-test --release -- --ignore-unimplemented
 
-  # Run all test262 tests for implemented features with GC stress test mode on.
-  test262-gc-stress-test:
+  # Run all integration tests for implemented features with GC stress test mode on.
+  integration-tests-gc-stress-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -80,13 +78,13 @@ jobs:
       - name: Checkout test262 repo
         run: ./tests/test262/install_test262.sh
 
-      - name: Run test262 tests
+      - name: Run integration tests
         run: |
-          cd tests/test262
           cargo brimstone-test -- --reindex
           cargo brimstone-test --release --features gc_stress_test -- --ignore-unimplemented
 
-  test262-handle-tracking-tests:
+  # Run all integration tests for implemented features with handle tracking mode on.
+  integration-tests-handle-tracking:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -97,8 +95,7 @@ jobs:
       - name: Checkout test262 repo
         run: ./tests/test262/install_test262.sh
 
-      - name: Run test262 tests
+      - name: Run integration tests
         run: |
-          cd tests/test262
           cargo brimstone-test -- --reindex
           cargo brimstone-test --release --features handle_stats -- --ignore-unimplemented

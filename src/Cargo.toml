@@ -40,6 +40,9 @@ icu_provider_adapters.workspace = true
 zerotrie.workspace = true
 zerovec.workspace = true
 
+[dev-dependencies]
+criterion.workspace = true
+
 [features]
 # Run the garbage collector in stress test mode
 gc_stress_test = []
@@ -48,3 +51,7 @@ handle_stats = []
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "benches"
+harness = false

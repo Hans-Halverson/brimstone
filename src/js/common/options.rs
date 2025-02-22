@@ -2,6 +2,8 @@ use std::sync::{Mutex, MutexGuard};
 
 use clap::Parser;
 
+use super::constants::DEFAULT_HEAP_SIZE;
+
 /// Raw command line arguments.
 #[derive(Parser)]
 #[command(about)]
@@ -34,6 +36,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_test_262: bool,
 
+    /// The starting heap size, in bytes.
+    #[arg(long)]
+    pub min_heap_size: Option<usize>,
+
     /// Do not use colors when printing to terminal. Otherwise use colors if supported.
     #[arg(long, default_value_t = false)]
     pub no_color: bool,
@@ -59,6 +65,9 @@ pub struct Options {
     /// Buffer to write all dumped output into instead of stdout
     pub dump_buffer: Option<Mutex<String>>,
 
+    /// The starting heap size in bytes, if set.
+    pub min_heap_size: usize,
+
     /// Whether to use colors when printing to the terminal
     pub no_color: bool,
 }
@@ -71,6 +80,7 @@ impl Options {
             .print_ast(args.print_ast)
             .print_bytecode(args.print_bytecode)
             .print_regexp_bytecode(args.print_regexp_bytecode)
+            .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
             .no_color(args.no_color)
             .build()
     }
@@ -101,6 +111,7 @@ impl OptionsBuilder {
             print_bytecode: false,
             print_regexp_bytecode: false,
             dump_buffer: None,
+            min_heap_size: DEFAULT_HEAP_SIZE,
             no_color: false,
         })
     }
@@ -127,6 +138,11 @@ impl OptionsBuilder {
 
     pub fn print_regexp_bytecode(mut self, print_regexp_bytecode: bool) -> Self {
         self.0.print_regexp_bytecode = print_regexp_bytecode;
+        self
+    }
+
+    pub fn min_heap_size(mut self, min_heap_size: usize) -> Self {
+        self.0.min_heap_size = min_heap_size;
         self
     }
 

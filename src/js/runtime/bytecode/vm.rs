@@ -1946,7 +1946,7 @@ impl VM {
         // stack overflow error.
         unsafe {
             if self.sp().sub(num_frame_slots).cast_const() < self.stack_ptr_start() {
-                return range_error(self.cx, "Stack Overflow");
+                return range_error(self.cx, "Stack Overfloww");
             }
         }
 

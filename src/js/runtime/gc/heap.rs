@@ -36,12 +36,6 @@ pub struct Heap {
     pub gc_stress_test: bool,
 }
 
-/// Default size of the heap, in bytes
-const DEFAULT_HEAP_SIZE: usize = 256 * 1024 * 1024;
-
-// Amount of heap space that can be used for allocation
-const USABLE_HEAP_SIZE: usize = (DEFAULT_HEAP_SIZE - size_of::<HeapInfo>()) / 2;
-
 /// The heap is always aligned to a 1GB boundary. Must be aligned to a power of two alignment
 /// greater than the heap size so that we can mask heap pointers to find start of heap.
 const HEAP_ALIGNMENT: usize = 1024 * 1024 * 1024;
@@ -50,19 +44,22 @@ const HEAP_ALIGNMENT: usize = 1024 * 1024 * 1024;
 const HEAP_OBJECT_ALIGNMENT: usize = 8;
 
 impl Heap {
-    pub fn new() -> Heap {
+    pub fn new(initial_size: usize) -> Heap {
         // Create uninitialized buffer of memory for heap
         unsafe {
-            let layout = Layout::from_size_align(DEFAULT_HEAP_SIZE, HEAP_ALIGNMENT).unwrap();
+            let layout = Layout::from_size_align(initial_size, HEAP_ALIGNMENT).unwrap();
             let heap_info = std::alloc::alloc(layout);
+
+            // Amount of heap space that can be used for allocation
+            let usable_heap_size = (initial_size - size_of::<HeapInfo>()) / 2;
 
             // Leave room for heap info struct at start of heap
             let start = heap_info.add(size_of::<HeapInfo>());
-            let end = start.add(USABLE_HEAP_SIZE);
+            let end = start.add(usable_heap_size);
 
             // Find bounds of other heap part
             let next_heap_start = end;
-            let next_heap_end = end.add(USABLE_HEAP_SIZE);
+            let next_heap_end = end.add(usable_heap_size);
 
             HeapInfo::from_raw_heap_ptr(heap_info).init();
 

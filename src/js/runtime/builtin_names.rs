@@ -185,6 +185,7 @@ builtin_names!(
     (entries, "entries"),
     (enumerable, "enumerable"),
     (errors, "errors"),
+    (escape, "escape"),
     (eval, "eval"),
     (every, "every"),
     (exec, "exec"),

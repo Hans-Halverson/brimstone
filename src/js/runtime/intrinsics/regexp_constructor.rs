@@ -1,9 +1,17 @@
 use std::mem::size_of;
 
+use brimstone_macros::match_u32;
+
 use crate::{
     extend_object,
     js::{
-        common::{unicode::is_newline, wtf_8::Wtf8String},
+        common::{
+            unicode::{
+                is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline,
+                is_surrogate_code_point, is_whitespace,
+            },
+            wtf_8::Wtf8String,
+        },
         parser::{
             lexer_stream::{
                 HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
@@ -15,7 +23,7 @@ use crate::{
         runtime::{
             abstract_operations::{define_property_or_throw, set},
             builtin_function::BuiltinFunction,
-            error::syntax_parse_error,
+            error::{syntax_parse_error, type_error},
             eval_result::EvalResult,
             function::get_argument,
             gc::{Handle, HeapObject, HeapVisitor},
@@ -138,6 +146,8 @@ impl RegExpConstructor {
             realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.escape(), Self::escape, 1, realm);
+
         // get RegExp [ @@species ] (https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
         func.intrinsic_getter(cx, species_key, return_this, realm);
@@ -202,6 +212,70 @@ impl RegExpConstructor {
         };
 
         regexp_create(cx, regexp_source, new_target)
+    }
+
+    /// RegExp.escape (https://tc39.es/ecma262/#sec-regexp.escape)
+    pub fn escape(
+        mut cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let string_arg = get_argument(cx, arguments, 0);
+        if !string_arg.is_string() {
+            return type_error(cx, "RegExp.escape called with non-string argument");
+        }
+        let string = string_arg.as_string();
+
+        let mut escaped = Wtf8String::new();
+
+        for code_point in string.iter_code_points() {
+            // NOTE: Escaping a leading digit ensures that output corresponds with pattern text
+            // which may be used after a \0 character escape or a DecimalEscape such as \1 and still
+            // match S rather than be interpreted as an extension of the preceding escape sequence.
+            // Escaping a leading ASCII letter does the same for the context after \c.
+            if escaped.is_empty()
+                && (is_ascii_alphabetic(code_point) || is_decimal_digit(code_point))
+            {
+                escaped.push_str(&format!("\\x{:x}", code_point));
+                continue;
+            }
+
+            match_u32!(match code_point {
+                // Syntax characters are directly escaped
+                '^' | '$' | '\\' | '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}'
+                | '|' | '/' => {
+                    escaped.push_char('\\');
+                    escaped.push(code_point);
+                }
+                // Control escapes
+                '\t' => escaped.push_str("\\t"),
+                '\n' => escaped.push_str("\\n"),
+                '\u{000B}' => escaped.push_str("\\v"),
+                '\u{000C}' => escaped.push_str("\\f"),
+                '\r' => escaped.push_str("\\r"),
+                // Other punctuators are `\x` escaped
+                ',' | '-' | '=' | '<' | '>' | '#' | '&' | '!' | '%' | ':' | ';' | '@' | '~'
+                | '\'' | '`' | '\"' => {
+                    escaped.push_str(&format!("\\x{:2x}", code_point));
+                }
+                // Newlines, whitespace, and surrogate code points are either `\x` or `\u` escaped
+                // as appropriate.
+                _ if is_newline(code_point)
+                    || is_whitespace(code_point)
+                    || is_surrogate_code_point(code_point) =>
+                {
+                    if is_latin1(code_point) {
+                        escaped.push_str(&format!("\\x{:2x}", code_point));
+                    } else {
+                        escaped.push_str(&format!("\\u{:4x}", code_point));
+                    }
+                }
+                // Otherwise code point does not need to be escaped
+                _ => escaped.push(code_point),
+            })
+        }
+
+        Ok(cx.alloc_wtf8_string(&escaped).as_value())
     }
 }
 

@@ -248,7 +248,6 @@
       "Intl.Locale-info",
       "Intl.NumberFormat-v3",
       "Math.sumPrecise",
-      "RegExp.escape",
       "Temporal",
       "ShadowRealm"
     ]

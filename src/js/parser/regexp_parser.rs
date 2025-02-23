@@ -39,32 +39,39 @@ pub struct RegExpParser<T: LexerStream> {
     lexer_stream: T,
     /// Flags for this regexp
     flags: RegExpFlags,
-    // Number of capture groups seen so far
+    /// Number of capture groups seen so far
     num_capture_groups: usize,
-    // All capture groups seen so far, with name if a name was specified
+    /// All capture groups seen so far, with name if a name was specified
     capture_groups: Vec<Option<String>>,
-    // Map of capture group names that have been encountered so far to the index of their last
-    // occurrence in the RegExp.
+    /// Map of capture group names that have been encountered so far to the index of their last
+    /// occurrence in the RegExp.
     capture_group_names: HashMap<String, CaptureGroupIndex>,
-    // Set of all capture group names that are currently in scope
+    /// Set of all capture group names that are currently in scope
     current_capture_group_names: HashSet<String>,
-    // List of the capture group names that are in the current scope on the implicit scope stack
+    /// List of the capture group names that are in the current scope on the implicit scope stack
     current_capture_group_name_scope: Vec<String>,
-    // Whether the RegExp has any duplicate named capture groups.
+    /// Whether the RegExp has any duplicate named capture groups.
     has_duplicate_named_capture_groups: bool,
-    // Whether we should be parsing named capture groups or not.
+    /// Whether we should be parsing named capture groups or not.
     parse_named_capture_groups: bool,
-    // All named backreferences encountered. Saves the name, source position, and a reference to the
-    // backreference node itself.
+    /// Whether the parse is parsing in Annex B mode.
+    in_annex_b_mode: bool,
+    /// All named backreferences encountered. Saves the name, source position, and a reference to the
+    /// backreference node itself.
     named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
-    // All indexed backreferences encountered. Saves the index and source position.
+    /// All indexed backreferences encountered. Saves the index and source position.
     indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
-    // Number of parenthesized groups the parser is currently inside
+    /// Number of parenthesized groups the parser is currently inside
     group_depth: usize,
 }
 
 impl<T: LexerStream> RegExpParser<T> {
-    fn new(lexer_stream: T, flags: RegExpFlags, parse_named_capture_groups: bool) -> Self {
+    fn new(
+        lexer_stream: T,
+        flags: RegExpFlags,
+        parse_named_capture_groups: bool,
+        in_annex_b_mode: bool,
+    ) -> Self {
         RegExpParser {
             lexer_stream,
             flags,
@@ -75,6 +82,7 @@ impl<T: LexerStream> RegExpParser<T> {
             current_capture_group_name_scope: vec![],
             has_duplicate_named_capture_groups: false,
             parse_named_capture_groups,
+            in_annex_b_mode,
             named_backreferences: vec![],
             indexed_backreferences: vec![],
             group_depth: 0,
@@ -203,19 +211,33 @@ impl<T: LexerStream> RegExpParser<T> {
 
         let disjunction = if !options.annex_b {
             // Always parse with named capture groups if Annex B is not enabled
-            parser = Self::new(lexer_stream, flags, /* parse_named_capture_groups */ true);
+            parser = Self::new(
+                lexer_stream,
+                flags,
+                /* parse_named_capture_groups */ true,
+                options.annex_b,
+            );
             parser.parse_disjunction()?
         } else {
             // If Annex B is enabled then first try to parse without named capture groups. Only
             // reparse if a named capture group was encountered.
-            parser = Self::new(lexer_stream, flags, /* parse_named_capture_groups */ false);
+            parser = Self::new(
+                lexer_stream,
+                flags,
+                /* parse_named_capture_groups */ false,
+                options.annex_b,
+            );
             match parser.parse_disjunction() {
                 Ok(disjunction) => disjunction,
                 // If we encountered a named capture group then reparse with named capture groups
                 Err(error) if matches!(error.error, ParseError::NamedCaptureGroupEncountered) => {
                     let lexer_stream = create_lexer_stream();
-                    parser =
-                        Self::new(lexer_stream, flags, /* parse_named_capture_groups */ true);
+                    parser = Self::new(
+                        lexer_stream,
+                        flags,
+                        /* parse_named_capture_groups */ true,
+                        options.annex_b,
+                    );
                     parser.parse_disjunction()?
                 }
                 Err(error) => return Err(error),
@@ -311,10 +333,15 @@ impl<T: LexerStream> RegExpParser<T> {
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
             match_u32!(match self.current() {
-                '*' | '+' | '?' | '{' => {
+                '*' | '+' | '?' => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                '}' | ']' => return self.error_unexpected_token(self.pos()),
+                // ']', '{', and '}' are only valid pattern characters in Annex B mode
+                '{' if !self.in_annex_b_mode => {
+                    return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
+                }
+                '}' | ']' if !self.in_annex_b_mode =>
+                    return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative
                 '|' => break,
                 ')' => {
@@ -511,42 +538,27 @@ impl<T: LexerStream> RegExpParser<T> {
                 Some((0, Some(1)))
             }
             '{' => {
-                self.advance();
-
-                // Parse quantifier's lower bound
-                let lower_bound_pos = self.pos();
-                let lower_bound = self.parse_decimal_digits()?;
-
-                // If lower bound is out of range then error immediately since we can't generate
-                // conforming bytecode.
-                let Some(lower_bound) = lower_bound else {
-                    return self.error(lower_bound_pos, ParseError::QuantifierBoundTooLarge);
-                };
-
-                let upper_bound = if self.eat(',') {
-                    if self.current() == '}' as u32 {
-                        None
+                // In Annex B mode if we fail to parse a '{...' quantifier then we should recover
+                // and reparse it as the next term.
+                let (lower_bound, upper_bound) = if self.in_annex_b_mode {
+                    let save_state = self.save();
+                    if let Ok(bounds) = self.parse_braced_quantifier() {
+                        bounds
                     } else {
-                        // Parse the upper bound, treating as none if the upper bound is out of
-                        // range.
-                        let upper_bound = self.parse_decimal_digits()?;
-
-                        // Check that quantifier is valid, meaning the lower bound is not greater
-                        // than the upper bound.
-                        if let Some(upper_bound) = upper_bound {
-                            if lower_bound > upper_bound {
-                                return self
-                                    .error(lower_bound_pos, ParseError::InvalidQuantifierBounds);
-                            }
-                        }
-
-                        upper_bound
+                        self.restore(&save_state);
+                        return Ok(term);
                     }
                 } else {
-                    Some(lower_bound)
+                    self.parse_braced_quantifier()?
                 };
 
-                self.expect('}')?;
+                // Check that quantifier is valid, meaning the lower bound is not greater
+                // than the upper bound.
+                if let Some(upper_bound) = upper_bound {
+                    if lower_bound > upper_bound {
+                        return self.error(quantifier_pos, ParseError::InvalidQuantifierBounds);
+                    }
+                }
 
                 Some((lower_bound, upper_bound))
             }
@@ -573,6 +585,38 @@ impl<T: LexerStream> RegExpParser<T> {
         } else {
             Ok(term)
         }
+    }
+
+    /// Try to parse a braced quantifier (e.g. `{3}``, or `{1, 3}`). On failure return the error
+    /// and the original term itself, as the original term is need to recover in Annex B mode.
+    fn parse_braced_quantifier(&mut self) -> ParseResult<(u64, Option<u64>)> {
+        self.advance();
+
+        // Parse quantifier's lower bound
+        let lower_bound_pos = self.pos();
+        let lower_bound = self.parse_decimal_digits()?;
+
+        // If lower bound is out of range then error immediately since we can't generate
+        // conforming bytecode.
+        let Some(lower_bound) = lower_bound else {
+            return self.error(lower_bound_pos, ParseError::QuantifierBoundTooLarge);
+        };
+
+        let upper_bound = if self.eat(',') {
+            if self.current() == '}' as u32 {
+                None
+            } else {
+                // Parse the upper bound, treating as none if the upper bound is out of
+                // range.
+                self.parse_decimal_digits()?
+            }
+        } else {
+            Some(lower_bound)
+        };
+
+        self.expect('}')?;
+
+        Ok((lower_bound, upper_bound))
     }
 
     /// Parse a sequence of decimal digits into a number. Error if there is no sequence of decimal

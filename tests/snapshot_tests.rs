@@ -43,13 +43,16 @@ fn get_test_root(dirname: &str) -> PathBuf {
 
 #[test]
 fn js_parser_snapshot_tests() -> GenericResult<()> {
-    let options = Options::default();
     let parser_tests_dir = get_test_root("js_parser");
-    run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path, &options))
+    run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path))
 }
 
-fn print_ast(path: &str, options: &Options) -> GenericResult<String> {
-    let parse_result = parse_script_or_module(path, options)?;
+fn print_ast(path: &str) -> GenericResult<String> {
+    let options = OptionsBuilder::new()
+        .annex_b(path.contains("annex_b"))
+        .build();
+
+    let parse_result = parse_script_or_module(path, &options)?;
     Ok(parser::print_program(&parse_result.program))
 }
 
@@ -61,7 +64,12 @@ fn js_error_snapshot_tests() -> GenericResult<()> {
 
 fn print_error(path: &str) -> GenericResult<String> {
     let source = Rc::new(Source::new_from_file(path)?);
-    let cx = Context::default();
+
+    let options = OptionsBuilder::new()
+        .annex_b(path.contains("annex_b"))
+        .build();
+
+    let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
 
     cx.execute_then_drop(|mut cx| {
         let result = if path.contains("module") {

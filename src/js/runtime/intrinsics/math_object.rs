@@ -1,16 +1,18 @@
-use half::f16;
 use rand::Rng;
 
-use crate::js::runtime::{
-    eval_result::EvalResult,
-    function::get_argument,
-    numeric_operations::number_exponentiate,
-    object_value::ObjectValue,
-    property::Property,
-    realm::Realm,
-    type_utilities::{to_number, to_uint32},
-    value::Value,
-    Context, Handle,
+use crate::js::{
+    common::math::f64_to_f16,
+    runtime::{
+        eval_result::EvalResult,
+        function::get_argument,
+        numeric_operations::number_exponentiate,
+        object_value::ObjectValue,
+        property::Property,
+        realm::Realm,
+        type_utilities::{to_number, to_uint32},
+        value::Value,
+        Context, Handle,
+    },
 };
 
 use super::intrinsics::Intrinsic;
@@ -289,7 +291,7 @@ impl MathObject {
             return Ok(n);
         }
 
-        let rounded_f16 = f16::from_f64(n.as_number());
+        let rounded_f16 = f64_to_f16(n.as_number());
 
         Ok(cx.number(rounded_f16.to_f64()))
     }

@@ -104,6 +104,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         intrinsic_prop!(cx.names.error(), ErrorConstructor);
         intrinsic_prop!(cx.names.eval_error(), EvalErrorConstructor);
         intrinsic_prop!(cx.names.finalization_registry(), FinalizationRegistryConstructor);
+        intrinsic_prop!(cx.names.float16_array(), Float16ArrayConstructor);
         intrinsic_prop!(cx.names.float32_array(), Float32ArrayConstructor);
         intrinsic_prop!(cx.names.float64_array(), Float64ArrayConstructor);
         intrinsic_prop!(cx.names.function(), FunctionConstructor);

@@ -46,8 +46,8 @@ use crate::js::runtime::{
         string_iterator::StringIterator,
         symbol_constructor::SymbolObject,
         typed_array::{
-            BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
-            Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
+            BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
+            Int32Array, Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
         },
         weak_map_object::{WeakMapObject, WeakMapObjectMapField},
         weak_ref_constructor::WeakRefObject,
@@ -134,6 +134,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::UInt32Array => self.cast::<UInt32Array>().byte_size(),
             ObjectKind::BigInt64Array => self.cast::<BigInt64Array>().byte_size(),
             ObjectKind::BigUInt64Array => self.cast::<BigUInt64Array>().byte_size(),
+            ObjectKind::Float16Array => self.cast::<Float16Array>().byte_size(),
             ObjectKind::Float32Array => self.cast::<Float32Array>().byte_size(),
             ObjectKind::Float64Array => self.cast::<Float64Array>().byte_size(),
             ObjectKind::ArrayBufferObject => self.cast::<ArrayBufferObject>().byte_size(),
@@ -245,6 +246,7 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::UInt32Array => self.cast::<UInt32Array>().visit_pointers(visitor),
             ObjectKind::BigInt64Array => self.cast::<BigInt64Array>().visit_pointers(visitor),
             ObjectKind::BigUInt64Array => self.cast::<BigUInt64Array>().visit_pointers(visitor),
+            ObjectKind::Float16Array => self.cast::<Float16Array>().visit_pointers(visitor),
             ObjectKind::Float32Array => self.cast::<Float32Array>().visit_pointers(visitor),
             ObjectKind::Float64Array => self.cast::<Float64Array>().visit_pointers(visitor),
             ObjectKind::ArrayBufferObject => {

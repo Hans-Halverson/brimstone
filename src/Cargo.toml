@@ -16,6 +16,7 @@ path = "main.rs"
 [dependencies]
 bitflags.workspace = true
 clap = { workspace = true, features = ["derive"] }
+half.workspace = true
 indexmap.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true

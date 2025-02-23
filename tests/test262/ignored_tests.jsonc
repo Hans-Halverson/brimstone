@@ -243,7 +243,6 @@
       "Atomics.pause",
       "Error.isError",
       "FinalizationRegistry.prototype.cleanupSome",
-      "Float16Array",
       "Intl.DurationFormat",
       "Intl.Locale-info",
       "Intl.NumberFormat-v3",

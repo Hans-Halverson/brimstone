@@ -1,3 +1,5 @@
+use half::f16;
+
 use crate::js::runtime::{
     error::{range_error, type_error},
     function::get_argument,
@@ -12,12 +14,12 @@ use super::{
     data_view_constructor::DataViewObject,
     intrinsics::Intrinsic,
     typed_array::{
-        from_big_int64_element, from_big_uint64_element, from_float32_element,
-        from_float64_element, from_int16_element, from_int32_element, from_int8_element,
-        from_uint16_element, from_uint32_element, from_uint8_element, to_big_int64_element,
-        to_big_uint64_element, to_float32_element, to_float64_element, to_int16_element,
-        to_int32_element, to_int8_element, to_uint16_element, to_uint32_element, to_uint8_element,
-        ContentType,
+        from_big_int64_element, from_big_uint64_element, from_float16_element,
+        from_float32_element, from_float64_element, from_int16_element, from_int32_element,
+        from_int8_element, from_uint16_element, from_uint32_element, from_uint8_element,
+        to_big_int64_element, to_big_uint64_element, to_float16_element, to_float32_element,
+        to_float64_element, to_int16_element, to_int32_element, to_int8_element, to_uint16_element,
+        to_uint32_element, to_uint8_element, ContentType,
     },
 };
 
@@ -35,6 +37,7 @@ impl DataViewPrototype {
         object.intrinsic_getter(cx, cx.names.byte_offset(), Self::get_byte_offset, realm);
         object.intrinsic_func(cx, cx.names.get_big_int64(), Self::get_big_int64, 1, realm);
         object.intrinsic_func(cx, cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm);
+        object.intrinsic_func(cx, cx.names.get_float16(), Self::get_float16, 1, realm);
         object.intrinsic_func(cx, cx.names.get_float32(), Self::get_float32, 1, realm);
         object.intrinsic_func(cx, cx.names.get_float64(), Self::get_float64, 1, realm);
         object.intrinsic_func(cx, cx.names.get_int8(), Self::get_int8, 1, realm);
@@ -45,6 +48,7 @@ impl DataViewPrototype {
         object.intrinsic_func(cx, cx.names.get_uint32(), Self::get_uint32, 1, realm);
         object.intrinsic_func(cx, cx.names.set_big_int64(), Self::set_big_int64, 2, realm);
         object.intrinsic_func(cx, cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm);
+        object.intrinsic_func(cx, cx.names.set_float16(), Self::set_float16, 2, realm);
         object.intrinsic_func(cx, cx.names.set_float32(), Self::set_float32, 2, realm);
         object.intrinsic_func(cx, cx.names.set_float64(), Self::set_float64, 2, realm);
         object.intrinsic_func(cx, cx.names.set_int8(), Self::set_int8, 2, realm);
@@ -127,16 +131,22 @@ impl DataViewPrototype {
         get_view_value(cx, this_value, arguments, from_big_uint64_element, u64::swap_bytes)
     }
 
+    /// DataView.prototype.getFloat16 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat16)
+    pub fn get_float16(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        get_view_value(cx, this_value, arguments, from_float16_element, f16_swap_bytes)
+    }
+
     /// DataView.prototype.getFloat32 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat32)
     pub fn get_float32(
         cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_float32_element, |element| {
-            let bits = f32::to_bits(element);
-            f32::from_bits(bits.swap_bytes())
-        })
+        get_view_value(cx, this_value, arguments, from_float32_element, f32_swap_bytes)
     }
 
     /// DataView.prototype.getFloat64 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat64)
@@ -145,10 +155,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_float64_element, |element| {
-            let bits = f64::to_bits(element);
-            f64::from_bits(bits.swap_bytes())
-        })
+        get_view_value(cx, this_value, arguments, from_float64_element, f64_swap_bytes)
     }
 
     /// DataView.prototype.getInt8 (https://tc39.es/ecma262/#sec-dataview.prototype.getint8)
@@ -237,6 +244,22 @@ impl DataViewPrototype {
         )
     }
 
+    /// DataView.prototype.setFloat16 (https://tc39.es/ecma262/#sec-dataview.prototype.setfloat16)
+    pub fn set_float16(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            ContentType::Number,
+            to_float16_element,
+            f16_swap_bytes,
+        )
+    }
+
     /// DataView.prototype.setFloat32 (https://tc39.es/ecma262/#sec-dataview.prototype.setfloat32)
     pub fn set_float32(
         cx: Context,
@@ -249,10 +272,7 @@ impl DataViewPrototype {
             arguments,
             ContentType::Number,
             to_float32_element,
-            |element| {
-                let bits = f32::to_bits(element);
-                f32::from_bits(bits.swap_bytes())
-            },
+            f32_swap_bytes,
         )
     }
 
@@ -268,10 +288,7 @@ impl DataViewPrototype {
             arguments,
             ContentType::Number,
             to_float64_element,
-            |element| {
-                let bits = f64::to_bits(element);
-                f64::from_bits(bits.swap_bytes())
-            },
+            f64_swap_bytes,
         )
     }
 
@@ -548,4 +565,24 @@ fn is_view_out_of_bounds(data_view_record: &DataViewWithBufferWitnessRecord) -> 
     };
 
     byte_offset_start > buffer_byte_length || byte_offset_end > buffer_byte_length
+}
+
+#[inline]
+fn f16_swap_bytes(element: f16) -> f16 {
+    unsafe {
+        let bits = std::mem::transmute::<f16, u16>(element);
+        std::mem::transmute::<u16, f16>(bits.swap_bytes())
+    }
+}
+
+#[inline]
+fn f32_swap_bytes(element: f32) -> f32 {
+    let bits = f32::to_bits(element);
+    f32::from_bits(bits.swap_bytes())
+}
+
+#[inline]
+fn f64_swap_bytes(element: f64) -> f64 {
+    let bits = f64::to_bits(element);
+    f64::from_bits(bits.swap_bytes())
 }

@@ -22,6 +22,7 @@ brimstone_macros = { path = "src/brimstone_macros" }
 bitflags = "2.1.0"
 clap = "4.0.29"
 criterion = "0.5.1"
+half = "2.4.1"
 indexmap = "2.1.0"
 num-bigint = "0.4.3"
 num-traits = "0.2.16"

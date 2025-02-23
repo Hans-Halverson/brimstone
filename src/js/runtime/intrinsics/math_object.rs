@@ -1,3 +1,4 @@
+use half::f16;
 use rand::Rng;
 
 use crate::js::runtime::{
@@ -71,6 +72,7 @@ impl MathObject {
         object.intrinsic_func(cx, cx.names.cosh(), Self::cosh, 1, realm);
         object.intrinsic_func(cx, cx.names.exp(), Self::exp, 1, realm);
         object.intrinsic_func(cx, cx.names.expm1(), Self::expm1, 1, realm);
+        object.intrinsic_func(cx, cx.names.f16_round(), Self::f16_round, 1, realm);
         object.intrinsic_func(cx, cx.names.floor(), Self::floor, 1, realm);
         object.intrinsic_func(cx, cx.names.fround(), Self::fround, 1, realm);
         object.intrinsic_func(cx, cx.names.hypot(), Self::hypot, 2, realm);
@@ -272,6 +274,24 @@ impl MathObject {
         let argument = get_argument(cx, arguments, 0);
         let n = to_number(cx, argument)?;
         Ok(cx.number(f64::exp_m1(n.as_number())))
+    }
+
+    /// Math.f16Round (https://tc39.es/ecma262/#sec-math.f16round)
+    pub fn f16_round(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let argument = get_argument(cx, arguments, 0);
+        let n = to_number(cx, argument)?;
+
+        if n.is_nan() || n.is_zero() || n.is_infinity() {
+            return Ok(n);
+        }
+
+        let rounded_f16 = f16::from_f64(n.as_number());
+
+        Ok(cx.number(rounded_f16.to_f64()))
     }
 
     /// Math.floor (https://tc39.es/ecma262/#sec-math.floor)

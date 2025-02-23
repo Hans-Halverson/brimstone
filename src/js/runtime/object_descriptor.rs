@@ -15,8 +15,8 @@ use super::{
     array_object::ArrayObject,
     gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
     intrinsics::typed_array::{
-        BigInt64Array, BigUInt64Array, Float32Array, Float64Array, Int16Array, Int32Array,
-        Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
+        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
+        Int32Array, Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
     },
     object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
     proxy_object::ProxyObject,
@@ -77,6 +77,7 @@ pub enum ObjectKind {
     UInt32Array,
     BigInt64Array,
     BigUInt64Array,
+    Float16Array,
     Float32Array,
     Float64Array,
 
@@ -304,6 +305,7 @@ impl BaseDescriptors {
         register_descriptor!(ObjectKind::UInt32Array, UInt32Array, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BigInt64Array, BigInt64Array, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::BigUInt64Array, BigUInt64Array, DescFlags::IS_OBJECT);
+        register_descriptor!(ObjectKind::Float16Array, Float16Array, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::Float32Array, Float32Array, DescFlags::IS_OBJECT);
         register_descriptor!(ObjectKind::Float64Array, Float64Array, DescFlags::IS_OBJECT);
 

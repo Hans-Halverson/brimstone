@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use brimstone_macros::wrap_ordinary_object;
+use half::f16;
 use num_bigint::{BigInt, Sign};
 
 use crate::{
@@ -118,6 +119,7 @@ pub enum TypedArrayKind {
     UInt32Array,
     BigInt64Array,
     BigUInt64Array,
+    Float16Array,
     Float32Array,
     Float64Array,
 }
@@ -351,6 +353,28 @@ create_typed_array!(
     BigUInt64ArrayConstructor,
     to_big_uint64_element,
     from_big_uint64_element
+);
+
+#[inline]
+pub fn to_float16_element(cx: Context, value: Handle<Value>) -> EvalResult<f16> {
+    let number = to_number(cx, value)?;
+    Ok(f16::from_f64(number.as_number()))
+}
+
+#[inline]
+pub fn from_float16_element(cx: Context, element: f16) -> Handle<Value> {
+    Value::from(element.to_f64()).to_handle(cx)
+}
+
+create_typed_array!(
+    Float16Array,
+    float16_array,
+    f16,
+    ContentType::Number,
+    Float16ArrayPrototype,
+    Float16ArrayConstructor,
+    to_float16_element,
+    from_float16_element
 );
 
 #[inline]

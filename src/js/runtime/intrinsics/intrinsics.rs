@@ -72,13 +72,13 @@ use crate::{
             symbol_prototype::SymbolPrototype,
             typed_array::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
-                BigUInt64ArrayPrototype, Float32ArrayConstructor, Float32ArrayPrototype,
-                Float64ArrayConstructor, Float64ArrayPrototype, Int16ArrayConstructor,
-                Int16ArrayPrototype, Int32ArrayConstructor, Int32ArrayPrototype,
-                Int8ArrayConstructor, Int8ArrayPrototype, UInt16ArrayConstructor,
-                UInt16ArrayPrototype, UInt32ArrayConstructor, UInt32ArrayPrototype,
-                UInt8ArrayConstructor, UInt8ArrayPrototype, UInt8ClampedArrayConstructor,
-                UInt8ClampedArrayPrototype,
+                BigUInt64ArrayPrototype, Float16ArrayConstructor, Float16ArrayPrototype,
+                Float32ArrayConstructor, Float32ArrayPrototype, Float64ArrayConstructor,
+                Float64ArrayPrototype, Int16ArrayConstructor, Int16ArrayPrototype,
+                Int32ArrayConstructor, Int32ArrayPrototype, Int8ArrayConstructor,
+                Int8ArrayPrototype, UInt16ArrayConstructor, UInt16ArrayPrototype,
+                UInt32ArrayConstructor, UInt32ArrayPrototype, UInt8ArrayConstructor,
+                UInt8ArrayPrototype, UInt8ClampedArrayConstructor, UInt8ClampedArrayPrototype,
             },
             typed_array_constructor::TypedArrayConstructor,
             typed_array_prototype::TypedArrayPrototype,
@@ -136,6 +136,8 @@ pub enum Intrinsic {
     EvalErrorPrototype,
     FinalizationRegistryConstructor,
     FinalizationRegistryPrototype,
+    Float16ArrayConstructor,
+    Float16ArrayPrototype,
     Float32ArrayConstructor,
     Float32ArrayPrototype,
     Float64ArrayConstructor,
@@ -382,6 +384,7 @@ impl Intrinsics {
         register_intrinsic_pair!(UInt32ArrayPrototype, UInt32ArrayConstructor);
         register_intrinsic_pair!(BigInt64ArrayPrototype, BigInt64ArrayConstructor);
         register_intrinsic_pair!(BigUInt64ArrayPrototype, BigUInt64ArrayConstructor);
+        register_intrinsic_pair!(Float16ArrayPrototype, Float16ArrayConstructor);
         register_intrinsic_pair!(Float32ArrayPrototype, Float32ArrayConstructor);
         register_intrinsic_pair!(Float64ArrayPrototype, Float64ArrayConstructor);
 

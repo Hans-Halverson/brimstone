@@ -1696,6 +1696,7 @@ fn typed_array_species_create(
         TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
         TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
         TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float16Array => Intrinsic::Float16ArrayConstructor,
         TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };
@@ -1761,6 +1762,7 @@ fn typed_array_create_same_type(
         TypedArrayKind::UInt32Array => Intrinsic::UInt32ArrayConstructor,
         TypedArrayKind::BigInt64Array => Intrinsic::BigInt64ArrayConstructor,
         TypedArrayKind::BigUInt64Array => Intrinsic::BigUInt64ArrayConstructor,
+        TypedArrayKind::Float16Array => Intrinsic::Float16ArrayConstructor,
         TypedArrayKind::Float32Array => Intrinsic::Float32ArrayConstructor,
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };

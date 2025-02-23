@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use brimstone::js::{
     common::options::OptionsBuilder,
@@ -8,7 +11,40 @@ use brimstone::js::{
         Context, ContextBuilder, EvalResult,
     },
 };
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+
+/// A test with a setup, routine, and cleanup phase. Only the routine phase is measured.
+pub fn isolated_test<I, O, S, R, C>(
+    c: &mut Criterion,
+    name: &str,
+    mut setup: S,
+    mut routine: R,
+    mut cleanup: C,
+) where
+    S: FnMut() -> I,
+    R: FnMut(I) -> O,
+    C: FnMut(O),
+{
+    c.bench_function(name, |b| {
+        b.iter_custom(|iters| {
+            let mut total = Duration::ZERO;
+
+            for _ in 0..iters {
+                // Perform setup for the test
+                let input = setup();
+
+                // Only measure the time taken by the routine
+                let start = Instant::now();
+                let output = routine(input);
+                total += start.elapsed();
+
+                cleanup(output);
+            }
+
+            total
+        });
+    });
+}
 
 fn setup_step(file: &str) -> (Context, Rc<Source>) {
     // Use a 10 MB heap size
@@ -42,8 +78,13 @@ fn generate_step((cx, parse_result): (Context, ParseProgramResult)) -> (Context,
     (cx, bytecode_program)
 }
 
-fn execute_step((mut cx, bytecode_script): (Context, BytecodeScript)) -> EvalResult<()> {
-    cx.run_script(bytecode_script)
+fn execute_step((mut cx, bytecode_script): (Context, BytecodeScript)) -> (Context, EvalResult<()>) {
+    let result = cx.run_script(bytecode_script);
+    (cx, result)
+}
+
+fn cleanup_step<T>((cx, _): (Context, T)) {
+    cx.drop();
 }
 
 /// Benchmark all phases of program execution.
@@ -53,55 +94,51 @@ fn execute_step((mut cx, bytecode_script): (Context, BytecodeScript)) -> EvalRes
 /// - Bytecode execution
 fn bench_program_all_steps(c: &mut Criterion, file: &str) {
     // Isolate parser phase
-    c.bench_function(&format!("{} > parse", file), |b| {
-        b.iter_batched(|| setup_step(file), parse_step, BatchSize::PerIteration)
-    });
+    isolated_test(c, &format!("{} > parse", file), || setup_step(file), parse_step, cleanup_step);
 
     // Isolate analysis phase
-    c.bench_function(&format!("{} > analyze", file), |b| {
-        b.iter_batched(
-            || {
-                let setup_result = setup_step(file);
-                parse_step(setup_result)
-            },
-            analyze_step,
-            BatchSize::PerIteration,
-        )
-    });
+    isolated_test(
+        c,
+        &format!("{} > analyze", file),
+        || {
+            let setup_result = setup_step(file);
+            parse_step(setup_result)
+        },
+        |(cx, parse_result)| analyze_step((cx, parse_result)),
+        cleanup_step,
+    );
 
     // Isolate bytecode generation phase
-    c.bench_function(&format!("{} > generate", file), |b| {
-        b.iter_batched(
-            || {
-                let setup_result = setup_step(file);
-                let parse_result = parse_step(setup_result);
-                analyze_step(parse_result)
-            },
-            generate_step,
-            BatchSize::PerIteration,
-        );
-    });
+    isolated_test(
+        c,
+        &format!("{} > generate", file),
+        || {
+            let setup_result = setup_step(file);
+            let parse_result = parse_step(setup_result);
+            analyze_step(parse_result)
+        },
+        generate_step,
+        cleanup_step,
+    );
 
     // Isolate bytecode generation phase
-    c.bench_function(&format!("{} > execute", file), |b| {
-        b.iter_batched(
-            || {
-                let setup_result = setup_step(file);
-                let parse_result = parse_step(setup_result);
-                let analyzed_result = analyze_step(parse_result);
-                generate_step(analyzed_result)
-            },
-            execute_step,
-            BatchSize::PerIteration,
-        );
-    });
+    isolated_test(
+        c,
+        &format!("{} > execute", file),
+        || {
+            let setup_result = setup_step(file);
+            let parse_result = parse_step(setup_result);
+            let analyzed_result = analyze_step(parse_result);
+            generate_step(analyzed_result)
+        },
+        execute_step,
+        cleanup_step,
+    );
 }
 
 /// Benchmark context creation.
 fn context_benches(c: &mut Criterion) {
-    c.bench_function("context creation", |b| {
-        b.iter_batched(|| {}, |_| Context::default(), BatchSize::PerIteration);
-    });
+    isolated_test(c, "context creation", || {}, |_| (Context::default(), ()), cleanup_step);
 }
 
 pub fn program_benches(c: &mut Criterion) {

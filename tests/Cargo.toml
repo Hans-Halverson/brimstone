@@ -1,0 +1,12 @@
+[package]
+name = "brimstone_tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+brimstone.workspace = true
+
+[[test]]
+name = "snapshot_tests"
+path = "snapshot_tests.rs"

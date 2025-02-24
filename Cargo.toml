@@ -3,6 +3,7 @@ members = [
   "src",
   "src/brimstone_icu_collections",
   "src/brimstone_macros",
+  "tests",
   "tests/harness",
 ]
 resolver = "2"

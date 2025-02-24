@@ -14,7 +14,7 @@ use brimstone::js::{
 use std::{
     cmp::min,
     env, error, fs,
-    path::Path,
+    path::{Path, PathBuf},
     rc::Rc,
     sync::{LazyLock, Mutex},
 };
@@ -26,6 +26,8 @@ const RECORD_ENV_VAR: &str = "RECORD";
 static DIRECTORY_PREFIX_PATH: LazyLock<String> = LazyLock::new(|| {
     std::env::current_dir()
         .unwrap()
+        .parent()
+        .unwrap()
         .to_string_lossy()
         .to_string()
         + "/"
@@ -35,10 +37,14 @@ struct TestEnv {
     errors: Vec<String>,
 }
 
+fn get_test_root(dirname: &str) -> PathBuf {
+    std::env::current_dir().unwrap().join(dirname)
+}
+
 #[test]
 fn js_parser_snapshot_tests() -> GenericResult<()> {
     let options = Options::default();
-    let parser_tests_dir = Path::new(file!()).parent().unwrap().join("js_parser");
+    let parser_tests_dir = get_test_root("js_parser");
     run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path, &options))
 }
 
@@ -49,7 +55,7 @@ fn print_ast(path: &str, options: &Options) -> GenericResult<String> {
 
 #[test]
 fn js_error_snapshot_tests() -> GenericResult<()> {
-    let error_tests_dir = Path::new(file!()).parent().unwrap().join("js_error");
+    let error_tests_dir = get_test_root("js_error");
     run_snapshot_tests(&error_tests_dir, &mut |path| print_error(path))
 }
 
@@ -73,16 +79,13 @@ fn print_error(path: &str) -> GenericResult<String> {
 
 #[test]
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
-    let bytecode_tests_dir = Path::new(file!()).parent().unwrap().join("js_bytecode");
+    let bytecode_tests_dir = get_test_root("js_bytecode");
     run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(path))
 }
 
 #[test]
 fn js_regexp_bytecode_snapshot_tests() -> GenericResult<()> {
-    let regexp_bytecode_tests_dir = Path::new(file!())
-        .parent()
-        .unwrap()
-        .join("js_regexp_bytecode");
+    let regexp_bytecode_tests_dir = get_test_root("js_regexp_bytecode");
     run_snapshot_tests(&regexp_bytecode_tests_dir, &mut |path| print_regexp_bytecode(path))
 }
 

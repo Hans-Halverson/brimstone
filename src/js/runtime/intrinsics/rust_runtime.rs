@@ -575,6 +575,7 @@ rust_runtime_functions!(
     StringPrototype::trim_end,
     StringPrototype::trim_start,
     StringPrototype::iterator,
+    StringPrototype::substr,
     SymbolConstructor::construct,
     SymbolConstructor::for_,
     SymbolConstructor::key_for,

@@ -48,7 +48,7 @@ pub struct StringPrototype;
 
 impl StringPrototype {
     /// Properties of the String Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
         let mut object = StringObject::new_with_proto(cx, object_proto, empty_string).as_object();
@@ -95,15 +95,49 @@ impl StringPrototype {
 
         // Annex B methods
         if cx.options.annex_b {
-            object.intrinsic_func(cx, cx.names.substr(), Self::substr, 2, realm);
+            let substr_name = cx.alloc_string("substr").as_string();
+            let substr = PropertyKey::string_not_array_index(cx, substr_name).to_handle(cx);
+            object.intrinsic_func(cx, substr, Self::substr, 2, realm);
 
             // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
             // String.prototype.trimStart and String.prototype.trimEnd respectively.
             let trim_start = must!(get(cx, object, cx.names.trim_start()));
             let trim_end = must!(get(cx, object, cx.names.trim_end()));
 
-            object.intrinsic_data_prop(cx, cx.names.trim_left(), trim_start);
-            object.intrinsic_data_prop(cx, cx.names.trim_right(), trim_end);
+            let trim_left_name = cx.alloc_string("trimLeft").as_string();
+            let trim_left = PropertyKey::string_not_array_index(cx, trim_left_name).to_handle(cx);
+
+            let trim_right_name = cx.alloc_string("trimRight").as_string();
+            let trim_right = PropertyKey::string_not_array_index(cx, trim_right_name).to_handle(cx);
+
+            object.intrinsic_data_prop(cx, trim_left, trim_start);
+            object.intrinsic_data_prop(cx, trim_right, trim_end);
+
+            macro_rules! html_methods {
+                ($($name:expr, $method:path, $length:expr),*) => {
+                    $(
+                        let name = cx.alloc_string($name).as_string();
+                        let key = PropertyKey::string_not_array_index(cx, name).to_handle(cx);
+                        object.intrinsic_func(cx, key, $method, $length, realm);
+                    )*
+                }
+            }
+
+            html_methods! {
+                "anchor", Self::anchor, 1,
+                "big", Self::big, 0,
+                "blink", Self::blink, 0,
+                "bold", Self::bold, 0,
+                "fixed", Self::fixed, 0,
+                "fontcolor", Self::font_color, 1,
+                "fontsize", Self::font_size, 1,
+                "italics", Self::italics, 0,
+                "link", Self::link, 1,
+                "small", Self::small, 0,
+                "strike", Self::strike, 0,
+                "sub", Self::sub, 0,
+                "sup", Self::sup, 0
+            }
         }
 
         object
@@ -1184,6 +1218,183 @@ impl StringPrototype {
         let end_index = u32::min(start_index + length, string_length);
 
         Ok(string.substring(cx, start_index, end_index).as_value())
+    }
+
+    /// CreateHTML (https://tc39.es/ecma262/#sec-createhtml)
+    fn create_html(
+        mut cx: Context,
+        value: Handle<Value>,
+        tag: &str,
+        attribute_and_value: Option<(&str, Handle<Value>)>,
+    ) -> EvalResult<Handle<StringValue>> {
+        let object = require_object_coercible(cx, value)?;
+        let string = to_string(cx, object)?.to_wtf8_string();
+
+        let mut html = Wtf8String::new();
+
+        html.push_char('<');
+        html.push_str(tag);
+
+        if let Some((attribute, value)) = attribute_and_value {
+            let value_string = to_string(cx, value)?.to_wtf8_string();
+
+            html.push_char(' ');
+            html.push_str(attribute);
+            html.push_str("=\"");
+
+            // Escape quotes in the value string
+            for code_point in value_string.iter_code_points() {
+                if code_point == '\"' as u32 {
+                    html.push_str("&quot;");
+                } else {
+                    html.push(code_point);
+                }
+            }
+
+            html.push_char('"');
+        }
+
+        html.push_char('>');
+        html.push_wtf8_str(&string);
+        html.push_str("</");
+        html.push_str(tag);
+        html.push_char('>');
+
+        Ok(cx.alloc_wtf8_string(&html).as_string())
+    }
+
+    /// String.prototype.anchor (https://tc39.es/ecma262/#sec-string.prototype.anchor)
+    pub fn anchor(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let name_arg = get_argument(cx, arguments, 0);
+        let html_string = Self::create_html(cx, this_value, "a", Some(("name", name_arg)))?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.big (https://tc39.es/ecma262/#sec-string.prototype.big)
+    pub fn big(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "big", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.blink (https://tc39.es/ecma262/#sec-string.prototype.blink)
+    pub fn blink(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "blink", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.bold (https://tc39.es/ecma262/#sec-string.prototype.bold)
+    pub fn bold(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "b", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.fixed (https://tc39.es/ecma262/#sec-string.prototype.fixed)
+    pub fn fixed(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "tt", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.fontcolor (https://tc39.es/ecma262/#sec-string.prototype.fontcolor)
+    pub fn font_color(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let color_arg = get_argument(cx, arguments, 0);
+        let html_string = Self::create_html(cx, this_value, "font", Some(("color", color_arg)))?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.fontsize (https://tc39.es/ecma262/#sec-string.prototype.fontsize)
+    pub fn font_size(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let size_arg = get_argument(cx, arguments, 0);
+        let html_string = Self::create_html(cx, this_value, "font", Some(("size", size_arg)))?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.italics (https://tc39.es/ecma262/#sec-string.prototype.italics)
+    pub fn italics(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "i", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.link (https://tc39.es/ecma262/#sec-string.prototype.link)
+    pub fn link(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let url_arg = get_argument(cx, arguments, 0);
+        let html_string = Self::create_html(cx, this_value, "a", Some(("href", url_arg)))?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.small (https://tc39.es/ecma262/#sec-string.prototype.small)
+    pub fn small(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "small", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.strike (https://tc39.es/ecma262/#sec-string.prototype.strike)
+    pub fn strike(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "strike", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.sub (https://tc39.es/ecma262/#sec-string.prototype.sub)
+    pub fn sub(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "sub", None)?;
+        Ok(html_string.as_value())
+    }
+
+    /// String.prototype.sup (https://tc39.es/ecma262/#sec-string.prototype.sup)
+    pub fn sup(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let html_string = Self::create_html(cx, this_value, "sup", None)?;
+        Ok(html_string.as_value())
     }
 }
 

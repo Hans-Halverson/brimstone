@@ -81,10 +81,27 @@ impl ArrayBufferObject {
         // Save object pointer behind handle as we are about to allocate
         let mut object = object.to_handle();
 
-        // Initialize data block to all zeros
         object.data = if let Some(data) = data {
-            Some(*data)
+            // If requested size matches the underlying data block then simply reuse it
+            if byte_length == data.len() {
+                Some(*data)
+            } else {
+                // Otherwise allocate new zeroed data block and copy the data into it
+                let mut new_uninit =
+                    BsArray::<u8>::new_uninit(cx, ObjectKind::ByteArray, byte_length);
+
+                // Copy data from the old to new data block
+                let copied_size = byte_length.min(data.len());
+                new_uninit.as_mut_slice()[..copied_size]
+                    .copy_from_slice(&data.as_slice()[..copied_size]);
+
+                // Zero out the rest of the new data block
+                new_uninit.as_mut_slice()[copied_size..].fill(0);
+
+                Some(new_uninit)
+            }
         } else {
+            // Initialize data block to all zeros
             Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
         };
 

@@ -53,12 +53,14 @@ pub fn f64_to_f16(value: f64) -> f16 {
         f16::INFINITY.to_bits()
     } else if input < F64_TO_F16_NORMAL_THRESHOLD {
         let adjusted_input = f64::from_bits(input) + f64::from_bits(F64_TO_F16_DENORMAL_MAGIC);
-        (adjusted_input.to_bits() - F64_TO_F16_DENORMAL_MAGIC) as u16
+        (adjusted_input
+            .to_bits()
+            .wrapping_sub(F64_TO_F16_DENORMAL_MAGIC)) as u16
     } else {
         let is_mantissa_odd = (input >> (52 - 10)) & 1;
 
-        input += F64_TO_F16_NORMAL_MAGIC;
-        input += is_mantissa_odd;
+        input = input.wrapping_add(F64_TO_F16_NORMAL_MAGIC);
+        input = input.wrapping_add(is_mantissa_odd);
 
         (input >> (52 - 10)) as u16
     };

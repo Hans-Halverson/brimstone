@@ -22,6 +22,8 @@ pub struct Test {
     /// Run test without modifying the source file or evaluating any other scripts from test harness.
     /// For scripts the test is run once, in non-strict mode.
     pub is_raw: bool,
+    /// Run test with Annex B mode enabled.
+    pub is_annex_b: bool,
     /// Files that must be evaluated in the global scope prior to test execution. Paths are
     /// relative to the test262/harness directory.
     pub includes: Vec<String>,
@@ -222,6 +224,8 @@ impl TestIndex {
         let path = test_path.strip_prefix(suite_root).unwrap();
         let path = path.to_string_lossy().into_owned();
 
+        let is_annex_b = path.contains("annexB");
+
         let test = Test {
             path: path.clone(),
             suite,
@@ -229,6 +233,7 @@ impl TestIndex {
             mode,
             is_async,
             is_raw,
+            is_annex_b,
             includes,
             features,
         };

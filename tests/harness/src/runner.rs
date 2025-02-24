@@ -21,10 +21,14 @@ use crate::{
 
 use brimstone::js::{
     self,
-    common::{error::FormatOptions, options::Options, wtf_8::Wtf8String},
+    common::{
+        error::FormatOptions,
+        options::{Options, OptionsBuilder},
+        wtf_8::Wtf8String,
+    },
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
-        to_console_string, to_string, Context, EvalResult, Handle, Value,
+        to_console_string, to_string, Context, ContextBuilder, EvalResult, Handle, Value,
     },
 };
 
@@ -219,8 +223,11 @@ fn run_single_test(
     force_strict_mode: bool,
     start_timestamp: SystemTime,
 ) -> TestResult {
+    // Set up options for test
+    let options = OptionsBuilder::new().annex_b(test.is_annex_b).build();
+
     // Each test is executed in its own realm
-    let cx = Context::default();
+    let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
     let options = cx.options.clone();
 
     // Each realm has access to the test262 object

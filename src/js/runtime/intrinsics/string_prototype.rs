@@ -93,6 +93,19 @@ impl StringPrototype {
         let iterator_key = cx.well_known_symbols.iterator();
         object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
+        // Annex B methods
+        if cx.options.annex_b {
+            object.intrinsic_func(cx, cx.names.substr(), Self::substr, 2, realm);
+
+            // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
+            // String.prototype.trimStart and String.prototype.trimEnd respectively.
+            let trim_start = must!(get(cx, object, cx.names.trim_start()));
+            let trim_end = must!(get(cx, object, cx.names.trim_end()));
+
+            object.intrinsic_data_prop(cx, cx.names.trim_left(), trim_start);
+            object.intrinsic_data_prop(cx, cx.names.trim_right(), trim_end);
+        }
+
         object
     }
 
@@ -1127,6 +1140,50 @@ impl StringPrototype {
         let flat_string = string.flatten();
 
         Ok(StringIterator::new(cx, flat_string).as_value())
+    }
+
+    /// String.prototype.substr (https://tc39.es/ecma262/#sec-string.prototype.substr)
+    pub fn substr(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let object = require_object_coercible(cx, this_value)?;
+        let string = to_string(cx, object)?;
+
+        let string_length = string.len() as u32;
+
+        // Convert the start argument to an integer
+        let start_arg = get_argument(cx, arguments, 0);
+        let start = to_integer_or_infinity(cx, start_arg)?;
+
+        // Find the starting index, treating negative numbers as ofsets from the end of the string
+        // and handling infinities.
+        let start_index = if start.is_infinite() {
+            if start == f64::INFINITY {
+                string_length
+            } else {
+                0
+            }
+        } else if start < 0.0 {
+            i32::max(string_length as i32 + (start as i32), 0) as u32
+        } else {
+            u32::min(start as u32, string_length)
+        };
+
+        // Second argument is the length
+        let length_arg = get_argument(cx, arguments, 1);
+        let length = if length_arg.is_undefined() {
+            string_length
+        } else {
+            let length = to_integer_or_infinity(cx, length_arg)?;
+            length.clamp(0.0, string_length as f64) as u32
+        };
+
+        // Finally find the end index, given the start and length arguments
+        let end_index = u32::min(start_index + length, string_length);
+
+        Ok(string.substring(cx, start_index, end_index).as_value())
     }
 }
 

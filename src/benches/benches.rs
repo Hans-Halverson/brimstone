@@ -3,9 +3,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+use bitflags::bitflags;
 use brimstone::js::{
     common::options::OptionsBuilder,
-    parser::{analyze::analyze, parse_script, parser::ParseProgramResult, source::Source},
+    parser::{
+        analyze::analyze, parse_module, parse_script, parser::ParseProgramResult, source::Source,
+    },
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         Context, ContextBuilder, EvalResult,
@@ -46,9 +49,18 @@ pub fn isolated_test<I, O, S, R, C>(
     });
 }
 
-fn setup_step(file: &str) -> (Context, Rc<Source>) {
+bitflags! {
+    #[derive(Clone, Copy)]
+    struct TestFlags: u8 {
+        const ANNEX_B = 1 << 0;
+        const MODULE = 1 << 1;
+    }
+}
+
+fn setup_step(file: &str, flags: TestFlags) -> (Context, Rc<Source>) {
     // Use a 10 MB heap size
     let options = OptionsBuilder::new()
+        .annex_b(flags.contains(TestFlags::ANNEX_B))
         .min_heap_size(10 * 1024 * 1024)
         .build();
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
@@ -56,8 +68,16 @@ fn setup_step(file: &str) -> (Context, Rc<Source>) {
     (cx, source)
 }
 
-fn parse_step((cx, source): (Context, Rc<Source>)) -> (Context, ParseProgramResult) {
-    let parse_result = parse_script(&source, cx.options.as_ref()).unwrap();
+fn parse_step(
+    (cx, source): (Context, Rc<Source>),
+    flags: TestFlags,
+) -> (Context, ParseProgramResult) {
+    let parse_result = if flags.contains(TestFlags::MODULE) {
+        parse_module(&source, cx.options.as_ref()).unwrap()
+    } else {
+        parse_script(&source, cx.options.as_ref()).unwrap()
+    };
+
     (cx, parse_result)
 }
 
@@ -87,22 +107,32 @@ fn cleanup_step<T>((cx, _): (Context, T)) {
     cx.drop();
 }
 
+/// Benchmark just the parsing phase.
+fn bench_program_parser(c: &mut Criterion, file: &str, flags: TestFlags) {
+    isolated_test(
+        c,
+        &format!("{} > parse", file),
+        || setup_step(file, flags),
+        |input| parse_step(input, flags),
+        cleanup_step,
+    );
+}
+
 /// Benchmark all phases of program execution.
 /// - Parse
 /// - Analyze
 /// - Bytecode generation
 /// - Bytecode execution
-fn bench_program_all_steps(c: &mut Criterion, file: &str) {
-    // Isolate parser phase
-    isolated_test(c, &format!("{} > parse", file), || setup_step(file), parse_step, cleanup_step);
+fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
+    bench_program_parser(c, file, flags);
 
     // Isolate analysis phase
     isolated_test(
         c,
         &format!("{} > analyze", file),
         || {
-            let setup_result = setup_step(file);
-            parse_step(setup_result)
+            let setup_result = setup_step(file, flags);
+            parse_step(setup_result, flags)
         },
         |(cx, parse_result)| analyze_step((cx, parse_result)),
         cleanup_step,
@@ -113,8 +143,8 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str) {
         c,
         &format!("{} > generate", file),
         || {
-            let setup_result = setup_step(file);
-            let parse_result = parse_step(setup_result);
+            let setup_result = setup_step(file, flags);
+            let parse_result = parse_step(setup_result, flags);
             analyze_step(parse_result)
         },
         generate_step,
@@ -126,8 +156,8 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str) {
         c,
         &format!("{} > execute", file),
         || {
-            let setup_result = setup_step(file);
-            let parse_result = parse_step(setup_result);
+            let setup_result = setup_step(file, flags);
+            let parse_result = parse_step(setup_result, flags);
             let analyzed_result = analyze_step(parse_result);
             generate_step(analyzed_result)
         },
@@ -142,7 +172,10 @@ fn context_benches(c: &mut Criterion) {
 }
 
 pub fn program_benches(c: &mut Criterion) {
-    bench_program_all_steps(c, "empty.js");
+    bench_program_all_steps(c, "empty.js", TestFlags::empty());
+    bench_program_parser(c, "fixtures/acorn.js", TestFlags::empty());
+    bench_program_parser(c, "fixtures/react.js", TestFlags::empty());
+    bench_program_parser(c, "fixtures/typescript.js", TestFlags::empty());
 }
 
 criterion_group!(context, context_benches);

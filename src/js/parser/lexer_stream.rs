@@ -148,7 +148,7 @@ impl<'a> Utf8LexerStream<'a> {
     }
 }
 
-impl<'a> LexerStream for Utf8LexerStream<'a> {
+impl LexerStream for Utf8LexerStream<'_> {
     #[inline]
     fn pos(&self) -> Pos {
         self.pos
@@ -233,7 +233,7 @@ impl<'a> LexerStream for Utf8LexerStream<'a> {
     }
 
     #[allow(refining_impl_trait)]
-    fn iter_slice<'b, 'c>(&'b self, _: Pos, _: Pos) -> impl 'c + DoubleEndedIterator<Item = u32> {
+    fn iter_slice<'b>(&self, _: Pos, _: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         // Stub implementation
         CodePointIterator::from_raw_one_byte_slice(&[])
     }
@@ -294,7 +294,7 @@ impl<'a> HeapOneByteLexerStream<'a> {
     }
 }
 
-impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
+impl LexerStream for HeapOneByteLexerStream<'_> {
     #[inline]
     fn pos(&self) -> Pos {
         self.pos
@@ -386,11 +386,7 @@ impl<'a> LexerStream for HeapOneByteLexerStream<'a> {
         Ok(code_point)
     }
 
-    fn iter_slice<'b, 'c>(
-        &'b self,
-        start: Pos,
-        end: Pos,
-    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+    fn iter_slice<'b>(&self, start: Pos, end: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         CodePointIterator::from_raw_one_byte_slice(&self.buf[start..end])
     }
 
@@ -457,7 +453,7 @@ impl<'a> HeapTwoByteCodeUnitLexerStream<'a> {
     }
 }
 
-impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
+impl LexerStream for HeapTwoByteCodeUnitLexerStream<'_> {
     #[inline]
     fn pos(&self) -> Pos {
         self.pos
@@ -549,11 +545,7 @@ impl<'a> LexerStream for HeapTwoByteCodeUnitLexerStream<'a> {
         Ok(code_point)
     }
 
-    fn iter_slice<'b, 'c>(
-        &'b self,
-        start: Pos,
-        end: Pos,
-    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+    fn iter_slice<'b>(&self, start: Pos, end: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         CodeUnitIterator::from_raw_two_byte_slice(&self.buf[start..end])
             .map(|code_unit| code_unit as u32)
     }
@@ -650,7 +642,7 @@ impl<'a> HeapTwoByteCodePointLexerStream<'a> {
     }
 }
 
-impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
+impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
     #[inline]
     fn pos(&self) -> Pos {
         self.pos
@@ -774,11 +766,7 @@ impl<'a> LexerStream for HeapTwoByteCodePointLexerStream<'a> {
         Ok(code_point)
     }
 
-    fn iter_slice<'b, 'c>(
-        &'b self,
-        start: Pos,
-        end: Pos,
-    ) -> impl 'c + DoubleEndedIterator<Item = u32> {
+    fn iter_slice<'b>(&self, start: Pos, end: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         CodePointIterator::from_raw_two_byte_slice(&self.buf[start..end])
     }
 

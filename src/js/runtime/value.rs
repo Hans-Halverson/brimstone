@@ -77,6 +77,11 @@ use super::{
 /// - Decoding a double is simply bitwise negating the entire value. Same with encoding.
 /// - Undefined and Null tags differ by a single bit, so can mask and compare to check nullish
 ///   values instead of needing two comparisons.
+#[derive(Clone, Copy)]
+pub struct Value {
+    // Used as raw bitfield. NonZero for option inline niche optimization.
+    raw_bits: NonZeroU64,
+}
 
 const TAG_SHIFT: u64 = 48;
 
@@ -107,12 +112,6 @@ const FALSE: u64 = Value::bool(false).as_raw_bits();
 const SMI_MAX: f64 = i32::MAX as f64;
 const SMI_MIN: f64 = i32::MIN as f64;
 const SMI_ZERO: u64 = Value::smi(0).as_raw_bits();
-
-#[derive(Clone, Copy)]
-pub struct Value {
-    // Used as raw bitfield. NonZero for option inline niche optimization.
-    raw_bits: NonZeroU64,
-}
 
 impl Value {
     #[inline]
@@ -369,7 +368,7 @@ impl Value {
     pub const fn double(value: f64) -> Value {
         // f64::to_bits is not yet stable as a const fn. We only pass simple values in a const
         // context so perform a raw transmute until f64::to_bits is const stabilized.
-        let double_bits = unsafe { std::mem::transmute::<f64, u64>(value) };
+        let double_bits = value.to_bits();
         Value::from_raw_bits(!double_bits)
     }
 

@@ -312,7 +312,7 @@ impl<K, V> Entry<K, V> {
 
 pub struct GcUnsafeEntriesIter<'a, K, V>(slice::Iter<'a, Entry<K, V>>);
 
-impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIter<'a, K, V> {
+impl<K: Clone, V: Clone> Iterator for GcUnsafeEntriesIter<'_, K, V> {
     type Item = (K, V);
 
     #[inline]
@@ -354,7 +354,7 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeEntriesIterMut<'a, K, V> {
 
 pub struct GcUnsafeKeysIter<'a, K, V>(slice::Iter<'a, Entry<K, V>>);
 
-impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'a, K, V> {
+impl<K: Clone, V: Clone> Iterator for GcUnsafeKeysIter<'_, K, V> {
     type Item = K;
 
     #[inline]

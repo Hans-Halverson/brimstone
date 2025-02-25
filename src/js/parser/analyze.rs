@@ -298,7 +298,7 @@ impl<'a> Analyzer<'a> {
     }
 }
 
-impl<'a> AstVisitor for Analyzer<'a> {
+impl AstVisitor for Analyzer<'_> {
     fn visit_program(&mut self, program: &mut Program) {
         if program.is_strict_mode {
             self.enter_strict_mode_context();
@@ -1333,7 +1333,7 @@ impl Analyzer<'_> {
         let is_bad_constructor = match method.kind {
             ClassMethodKind::Constructor => method.value.is_async() || method.value.is_generator(),
             ClassMethodKind::Get | ClassMethodKind::Set if !method.is_static => {
-                key_name_bytes.map_or(false, |name| name == "constructor".as_bytes())
+                key_name_bytes.is_some_and(|name| name == "constructor".as_bytes())
             }
             _ => false,
         };
@@ -1344,7 +1344,7 @@ impl Analyzer<'_> {
 
         if method.is_static
             && !method.is_private
-            && key_name_bytes.map_or(false, |name| name == "prototype".as_bytes())
+            && key_name_bytes.is_some_and(|name| name == "prototype".as_bytes())
         {
             self.emit_error(method.loc, ParseError::ClassStaticPrototype);
         }

@@ -344,44 +344,41 @@ pub fn validate_and_apply_property_descriptor(
         }
     }
 
-    match &mut object {
-        Some(object) => {
-            // For every field in new descriptor that is present, set the corresponding attribute in
-            // the existing descriptor.
-            let mut property = object.get_property(cx, key).unwrap();
+    if let Some(object) = &mut object {
+        // For every field in new descriptor that is present, set the corresponding attribute in
+        // the existing descriptor.
+        let mut property = object.get_property(cx, key).unwrap();
 
-            if let Some(is_enumerable) = desc.is_enumerable {
-                property.set_is_enumerable(is_enumerable);
-            }
-
-            if let Some(is_configurable) = desc.is_configurable {
-                property.set_is_configurable(is_configurable);
-            }
-
-            if desc.is_data_descriptor() {
-                if let Some(is_writable) = desc.is_writable {
-                    property.set_is_writable(is_writable);
-                }
-
-                if let Some(value) = desc.value {
-                    property.set_value(value);
-                }
-            } else {
-                if desc.has_get {
-                    let mut accessor_value = Accessor::from_value(property.value());
-                    accessor_value.get = desc.get.map(|x| *x);
-                }
-
-                if desc.has_set {
-                    let mut accessor_value = Accessor::from_value(property.value());
-                    accessor_value.set = desc.set.map(|x| *x);
-                }
-            }
-
-            // Set modified property on object
-            object.set_property(cx, key, property);
+        if let Some(is_enumerable) = desc.is_enumerable {
+            property.set_is_enumerable(is_enumerable);
         }
-        None => {}
+
+        if let Some(is_configurable) = desc.is_configurable {
+            property.set_is_configurable(is_configurable);
+        }
+
+        if desc.is_data_descriptor() {
+            if let Some(is_writable) = desc.is_writable {
+                property.set_is_writable(is_writable);
+            }
+
+            if let Some(value) = desc.value {
+                property.set_value(value);
+            }
+        } else {
+            if desc.has_get {
+                let mut accessor_value = Accessor::from_value(property.value());
+                accessor_value.get = desc.get.map(|x| *x);
+            }
+
+            if desc.has_set {
+                let mut accessor_value = Accessor::from_value(property.value());
+                accessor_value.set = desc.set.map(|x| *x);
+            }
+        }
+
+        // Set modified property on object
+        object.set_property(cx, key, property);
     }
 
     true

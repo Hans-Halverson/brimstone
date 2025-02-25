@@ -1,8 +1,8 @@
-/// A simple varint encoding, optimized for space. Identical to the varint encoding used in
-/// protobufs.
-///
-/// High bit signals if there are more bytes to read. Lower 7 bits are the payload. Concatenate
-/// all 7 byte payloads in a sequence to get the full number.
+//! A simple varint encoding, optimized for space. Identical to the varint encoding used in
+//! protobufs.
+//!
+//! High bit signals if there are more bytes to read. Lower 7 bits are the payload. Concatenate
+//! all 7 byte payloads in a sequence to get the full number.
 
 /// Encode a value as a varint and append it to the given buffer.
 pub fn encode_varint(buf: &mut Vec<u8>, value: usize) {

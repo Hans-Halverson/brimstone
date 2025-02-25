@@ -6203,7 +6203,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // If there is a rest element all keys must be saved in a contiguous sequence of temporary
         // registers so they can be passed to the CopyDataProperties instruction.
-        let has_rest_element = pattern.properties.last().map_or(false, |p| p.is_rest);
+        let has_rest_element = pattern.properties.last().is_some_and(|p| p.is_rest);
 
         let mut saved_keys = vec![];
         if has_rest_element {
@@ -9731,7 +9731,7 @@ type FunctionVec = BsVec<HeapPtr<BytecodeFunction>>;
 
 struct FunctionVecField<'a>(&'a mut Option<Handle<FunctionVec>>);
 
-impl<'a> BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'a> {
+impl BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'_> {
     fn new_vec(cx: Context, capacity: usize) -> HeapPtr<FunctionVec> {
         BsVec::new(cx, ObjectKind::ValueVec, capacity)
     }

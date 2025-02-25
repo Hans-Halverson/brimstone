@@ -2673,7 +2673,7 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let value = value.clone();
                 self.advance()?;
-                Ok(p(Expression::BigInt(BigIntLiteral { loc, value })))
+                Ok(p(Expression::BigInt(BigIntLiteral::new(loc, value))))
             }
             // RegExp may be started by "/=" which is treated as a single token
             Token::Divide | Token::DivideEq => {

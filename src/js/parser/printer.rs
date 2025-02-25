@@ -573,7 +573,7 @@ impl<'a> Printer<'a> {
     fn print_bigint_literal(&mut self, lit: &BigIntLiteral) {
         self.start_node("Literal", &lit.loc);
         self.property("value", (), Printer::print_null_in_property);
-        self.property("bigint", lit.value.to_string().as_str(), Printer::print_str);
+        self.property("bigint", lit.value().to_string().as_str(), Printer::print_str);
         self.end_node();
     }
 

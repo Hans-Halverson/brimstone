@@ -2883,7 +2883,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         // BigInts are stored in the constant table, but not deduped
-        let bigint_value = BigIntValue::new(self.cx, lit.value.clone()).to_handle();
+        let bigint_value = BigIntValue::new(self.cx, lit.value()).to_handle();
         let constant_index = self
             .constant_table_builder
             .add_heap_object(bigint_value.cast())?;

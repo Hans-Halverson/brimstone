@@ -6,7 +6,7 @@ use std::{
 };
 
 use bitflags::bitflags;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, Sign};
 
 use crate::js::{common::wtf_8::Wtf8String, runtime::eval_result::EvalResult};
 
@@ -925,7 +925,22 @@ pub struct StringLiteral {
 
 pub struct BigIntLiteral {
     pub loc: Loc,
-    pub value: BigInt,
+    /// Sign of the BigInt value.
+    sign: Sign,
+    /// Digits of the BigInt value.
+    digits: Vec<u32>,
+}
+
+impl BigIntLiteral {
+    pub fn new(loc: Loc, value: BigInt) -> BigIntLiteral {
+        let (sign, unsigned) = value.into_parts();
+        BigIntLiteral { loc, sign, digits: unsigned.to_u32_digits() }
+    }
+
+    /// Return a clone of the BigInt value.
+    pub fn value(&self) -> BigInt {
+        BigInt::from_slice(self.sign, &self.digits)
+    }
 }
 
 pub struct RegExpLiteral {

@@ -220,7 +220,7 @@ pub fn host_load_imported_module(
     }
 
     if cx.options.print_ast {
-        println!("{}", print_program(&parse_result.program));
+        println!("{}", print_program(&parse_result));
     }
 
     // Finally generate the SourceTextModule for the parsed module

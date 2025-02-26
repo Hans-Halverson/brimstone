@@ -386,15 +386,15 @@ impl<'a> Parser<'a> {
             loc,
             toplevels,
             ProgramKind::Script,
-            self.lexer.source.clone(),
             scope,
             self.in_strict_mode,
             has_use_strict_directive,
         );
 
         let scope_tree = self.scope_builder.finish_ast_scope_tree();
+        let source = self.lexer.source.clone();
 
-        Ok(ParseProgramResult { program, scope_tree })
+        Ok(ParseProgramResult { program, scope_tree, source })
     }
 
     fn parse_directive_prologue(&mut self) -> ParseResult<bool> {
@@ -449,15 +449,15 @@ impl<'a> Parser<'a> {
             loc,
             toplevels,
             ProgramKind::Module,
-            self.lexer.source.clone(),
             scope,
             self.in_strict_mode,
             /* has_use_strict_directive */ false,
         );
 
         let scope_tree = self.scope_builder.finish_ast_scope_tree();
+        let source = self.lexer.source.clone();
 
-        Ok(ParseProgramResult { program, scope_tree })
+        Ok(ParseProgramResult { program, scope_tree, source })
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel> {
@@ -4850,6 +4850,7 @@ impl Expression {
 pub struct ParseProgramResult {
     pub program: Program,
     pub scope_tree: ScopeTree,
+    pub source: Rc<Source>,
 }
 
 pub struct ParseFunctionResult {

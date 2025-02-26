@@ -53,7 +53,7 @@ fn print_ast(path: &str) -> GenericResult<String> {
         .build();
 
     let parse_result = parse_script_or_module(path, &options)?;
-    Ok(parser::print_program(&parse_result.program))
+    Ok(parser::print_program(&parse_result))
 }
 
 #[test]

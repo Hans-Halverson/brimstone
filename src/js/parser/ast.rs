@@ -2,7 +2,6 @@ use std::{
     fmt::{self, Debug},
     hash,
     ptr::{self, NonNull},
-    rc::Rc,
 };
 
 use bitflags::bitflags;
@@ -16,7 +15,6 @@ use super::{
     scope_tree::{
         AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
     },
-    source::Source,
 };
 
 pub type P<T> = Box<T>;
@@ -85,7 +83,6 @@ pub struct Program {
     pub loc: Loc,
     pub toplevels: Vec<Toplevel>,
     pub kind: ProgramKind,
-    pub source: Rc<Source>,
     /// Whether the function is in strict mode, which could be inherited from surrounding context
     /// (e.g. in a direct eval or module)
     pub is_strict_mode: bool,
@@ -102,7 +99,6 @@ impl Program {
         loc: Loc,
         toplevels: Vec<Toplevel>,
         kind: ProgramKind,
-        source: Rc<Source>,
         scope: AstPtr<AstScopeNode>,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
@@ -111,7 +107,6 @@ impl Program {
             loc,
             toplevels,
             kind,
-            source,
             is_strict_mode,
             has_use_strict_directive,
             has_top_level_await: false,

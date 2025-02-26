@@ -1,6 +1,6 @@
 use std::{cell::Cell, collections::HashSet};
 
-use indexmap::IndexMap;
+use indexmap_allocator_api::IndexMap;
 
 use super::{
     ast::{self, AstPtr, FunctionId, TaggedResolvedScope},

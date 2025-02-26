@@ -17,7 +17,7 @@ path = "main.rs"
 bitflags.workspace = true
 clap = { workspace = true, features = ["derive"] }
 half.workspace = true
-indexmap.workspace = true
+indexmap-allocator-api.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 rand.workspace = true

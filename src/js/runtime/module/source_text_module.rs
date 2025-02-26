@@ -1,6 +1,6 @@
 use std::{collections::HashSet, hash::Hash, num::NonZeroUsize};
 
-use indexmap::IndexSet;
+use indexmap_allocator_api::IndexSet;
 
 use crate::{
     field_offset, handle_scope,

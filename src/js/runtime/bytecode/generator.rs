@@ -7,7 +7,7 @@ use std::{
 };
 
 use bitflags::bitflags;
-use indexmap::IndexSet;
+use indexmap_allocator_api::IndexSet;
 
 use crate::{
     handle_scope,

@@ -24,7 +24,7 @@ bitflags = "2.1.0"
 clap = "4.0.29"
 criterion = "0.5.1"
 half = "2.4.1"
-indexmap = "2.1.0"
+indexmap-allocator-api = "2.7.1"
 num-bigint = "0.4.3"
 num-traits = "0.2.16"
 quote = "1.0.32"
@@ -59,3 +59,7 @@ len_without_is_empty = "allow"
 new_ret_no_self = "allow"
 new_without_default = "allow"
 too_many_arguments = "allow"
+
+[patch.crates-io]
+# A version of indexmap 2.7.1 patched to support the allocator API
+indexmap-allocator-api = { git = 'https://github.com/Hans-Halverson/indexmap-allocator-api.git' }

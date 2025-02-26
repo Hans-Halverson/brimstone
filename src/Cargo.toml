@@ -14,7 +14,9 @@ name = "bs"
 path = "main.rs"
 
 [dependencies]
+allocator-api2.workspace = true
 bitflags.workspace = true
+bumpalo = { workspace = true, features = ["allocator-api2"] }
 clap = { workspace = true, features = ["derive"] }
 half.workspace = true
 hashbrown.workspace = true

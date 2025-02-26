@@ -45,9 +45,11 @@ checksum = "c70beb79cbb5ce9c4f8e20849978f34225931f665bb49efa6982875a4d5facb3"
 name = "brimstone"
 version = "0.1.0"
 dependencies = [
+ "allocator-api2",
  "bitflags 2.1.0",
  "brimstone_icu_collections",
  "brimstone_macros",
+ "bumpalo",
  "clap",
  "criterion",
  "half",
@@ -122,6 +124,9 @@ name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
+dependencies = [
+ "allocator-api2",
+]
 
 [[package]]
 name = "cast"

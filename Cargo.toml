@@ -20,7 +20,9 @@ brimstone_icu_collections = { path = "src/brimstone_icu_collections" }
 brimstone_macros = { path = "src/brimstone_macros" }
 
 # External Crates
+allocator-api2 = "0.2.21"
 bitflags = "2.1.0"
+bumpalo = "3.17.0"
 clap = "4.0.29"
 criterion = "0.5.1"
 half = "2.4.1"

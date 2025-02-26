@@ -136,7 +136,7 @@ pub enum Toplevel {
 
 pub struct Identifier {
     pub loc: Loc,
-    pub name: String,
+    pub name: Wtf8String,
 
     /// Reference to the scope that contains the binding for this identifier, or tagged as
     /// unresolved if the scope could not be statically determined.
@@ -146,7 +146,7 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub fn new(loc: Loc, name: String) -> Identifier {
+    pub fn new(loc: Loc, name: Wtf8String) -> Identifier {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
@@ -155,7 +155,7 @@ impl Identifier {
     }
 
     pub fn get_private_name_binding(&self) -> &Binding {
-        let private_name = format!("#{}", self.name);
+        let private_name = Wtf8String::from_string(format!("#{}", self.name));
         self.scope.unwrap_resolved().get_binding(&private_name)
     }
 }
@@ -786,12 +786,12 @@ pub type LabelId = u16;
 
 pub struct Label {
     pub loc: Loc,
-    pub name: String,
+    pub name: Wtf8String,
     pub id: LabelId,
 }
 
 impl Label {
-    pub fn new(loc: Loc, name: String) -> Label {
+    pub fn new(loc: Loc, name: Wtf8String) -> Label {
         Label { loc, name, id: 0 }
     }
 }
@@ -1282,11 +1282,11 @@ impl SuperMemberExpression {
         }
     }
 
-    pub fn home_object_name(&self) -> &'static str {
+    pub fn home_object_name(&self) -> &'static Wtf8String {
         if self.is_static {
-            STATIC_HOME_OBJECT_BINDING_NAME
+            &STATIC_HOME_OBJECT_BINDING_NAME
         } else {
-            HOME_OBJECT_BINDING_NAME
+            &HOME_OBJECT_BINDING_NAME
         }
     }
 }

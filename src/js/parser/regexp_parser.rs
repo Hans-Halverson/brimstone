@@ -42,14 +42,14 @@ pub struct RegExpParser<T: LexerStream> {
     /// Number of capture groups seen so far
     num_capture_groups: usize,
     /// All capture groups seen so far, with name if a name was specified
-    capture_groups: Vec<Option<String>>,
+    capture_groups: Vec<Option<Wtf8String>>,
     /// Map of capture group names that have been encountered so far to the index of their last
     /// occurrence in the RegExp.
-    capture_group_names: HashMap<String, CaptureGroupIndex>,
+    capture_group_names: HashMap<Wtf8String, CaptureGroupIndex>,
     /// Set of all capture group names that are currently in scope
-    current_capture_group_names: HashSet<String>,
+    current_capture_group_names: HashSet<Wtf8String>,
     /// List of the capture group names that are in the current scope on the implicit scope stack
-    current_capture_group_name_scope: Vec<String>,
+    current_capture_group_name_scope: Vec<Wtf8String>,
     /// Whether the RegExp has any duplicate named capture groups.
     has_duplicate_named_capture_groups: bool,
     /// Whether we should be parsing named capture groups or not.
@@ -58,7 +58,7 @@ pub struct RegExpParser<T: LexerStream> {
     in_annex_b_mode: bool,
     /// All named backreferences encountered. Saves the name, source position, and a reference to the
     /// backreference node itself.
-    named_backreferences: Vec<(String, Pos, AstPtr<Backreference>)>,
+    named_backreferences: Vec<(Wtf8String, Pos, AstPtr<Backreference>)>,
     /// All indexed backreferences encountered. Saves the index and source position.
     indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
     /// Number of parenthesized groups the parser is currently inside
@@ -1395,8 +1395,8 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok((string, num_code_points))
     }
 
-    fn parse_identifier(&mut self) -> ParseResult<String> {
-        let mut string_builder = String::new();
+    fn parse_identifier(&mut self) -> ParseResult<Wtf8String> {
+        let mut string_builder = Wtf8String::new();
 
         // First character must be an id start, which can be an escape sequence
         let code_point = if self.current() == '\\' as u32 {
@@ -1419,7 +1419,7 @@ impl<T: LexerStream> RegExpParser<T> {
         };
 
         if let Some(char) = as_id_start(code_point) {
-            string_builder.push(char);
+            string_builder.push_char(char);
         } else {
             return self.error_unexpected_token(self.pos());
         }
@@ -1431,7 +1431,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 let code_point = self.parse_regex_unicode_escape_sequence(true)?;
 
                 if let Some(char) = as_id_part(code_point) {
-                    string_builder.push(char);
+                    string_builder.push_char(char);
                 } else {
                     return self.error_unexpected_token(self.pos());
                 }
@@ -1452,7 +1452,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 }
 
                 if let Some(char) = as_id_part(code_point) {
-                    string_builder.push(char);
+                    string_builder.push_char(char);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);

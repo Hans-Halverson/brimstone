@@ -1,6 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::js::{
+    common::wtf_8::Wtf8String,
     parser::{
         analyze::{analyze_for_eval, PrivateNameUsage},
         ast, parse_script_for_eval,
@@ -111,7 +112,7 @@ pub fn perform_eval(
 /// Gather private names from parent class scopes.
 fn get_private_names_from_scopes(
     scope: Option<HeapPtr<Scope>>,
-) -> Option<HashMap<String, PrivateNameUsage>> {
+) -> Option<HashMap<Wtf8String, PrivateNameUsage>> {
     let mut private_names = None;
     let mut scope_opt = scope;
 
@@ -126,7 +127,7 @@ fn get_private_names_from_scopes(
                 if scope_names.is_private_name(i) {
                     // Exclude the "#" prefix
                     let prefixed_private_name = name.to_string();
-                    let private_name = prefixed_private_name[1..].to_string();
+                    let private_name = Wtf8String::from_str(&prefixed_private_name[1..]);
 
                     private_names
                         .as_mut()
@@ -206,7 +207,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     let mut eval_var_names = vec![];
     let mut eval_func_names = vec![];
     for (name, binding) in program.scope.as_ref().iter_var_decls() {
-        let name = InternedStrings::get_str(cx, name).as_flat();
+        let name = InternedStrings::get_wtf8_str(cx, name).as_flat();
         match binding.kind() {
             BindingKind::Var => eval_var_names.push(name),
             BindingKind::Function { .. } => eval_func_names.push(name),
@@ -218,7 +219,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     let eval_scope = program.scope.as_ref();
     let eval_var_names = eval_scope
         .iter_var_decls()
-        .map(|(name, _)| InternedStrings::get_str(cx, name).as_flat())
+        .map(|(name, _)| InternedStrings::get_wtf8_str(cx, name).as_flat())
         .collect::<Vec<_>>();
 
     check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names)?;

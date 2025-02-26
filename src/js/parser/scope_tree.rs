@@ -1,7 +1,9 @@
-use std::cell::Cell;
+use std::{cell::Cell, sync::LazyLock};
 
 use hashbrown::HashSet;
 use indexmap_allocator_api::IndexMap;
+
+use crate::js::common::wtf_8::Wtf8String;
 
 use super::{
     ast::{self, AstPtr, FunctionId, TaggedResolvedScope},
@@ -38,7 +40,7 @@ impl ScopeTree {
 
         // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding("this", BindingKind::ImplicitThis { in_derived_constructor: false })
+            .add_binding(&THIS_NAME, BindingKind::ImplicitThis { in_derived_constructor: false })
             .unwrap();
 
         scope_tree
@@ -180,7 +182,7 @@ impl ScopeTree {
 
     /// Add a binding to the AST scope tree, hoisting to a higher scope if necessary. On success
     /// return the AST scope node that the binding was added to.
-    pub fn add_binding(&mut self, name: &str, kind: BindingKind) -> AddBindingResult {
+    pub fn add_binding(&mut self, name: &Wtf8String, kind: BindingKind) -> AddBindingResult {
         if kind.is_lexically_scoped() {
             self.add_lexically_scoped_binding(name, kind)
         } else {
@@ -188,7 +190,11 @@ impl ScopeTree {
         }
     }
 
-    fn add_lexically_scoped_binding(&mut self, name: &str, kind: BindingKind) -> AddBindingResult {
+    fn add_lexically_scoped_binding(
+        &mut self,
+        name: &Wtf8String,
+        kind: BindingKind,
+    ) -> AddBindingResult {
         let node = self.get_ast_node_mut(self.current_node_id);
 
         if let Some(err) = node.error_if_lexical_name_already_declared(name) {
@@ -212,7 +218,7 @@ impl ScopeTree {
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
 
-    fn add_var_scoped_binding(&mut self, name: &str, kind: BindingKind) -> AddBindingResult {
+    fn add_var_scoped_binding(&mut self, name: &Wtf8String, kind: BindingKind) -> AddBindingResult {
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
         let mut node_id = self.current_node_id;
         let mut in_with_statement = false;
@@ -225,7 +231,7 @@ impl ScopeTree {
             if let Some(binding) = node.bindings.get(name) {
                 if binding.kind.is_lexically_scoped() {
                     return Err(ParseError::new_name_redeclaration(
-                        name.to_owned(),
+                        name.clone(),
                         binding.kind.clone(),
                     ));
                 }
@@ -285,7 +291,7 @@ impl ScopeTree {
     }
 
     /// Add a binding to the current scope in the AST scope tree.
-    pub fn add_binding_to_current_node(&mut self, name: &str, kind: BindingKind) {
+    pub fn add_binding_to_current_node(&mut self, name: &Wtf8String, kind: BindingKind) {
         self.get_ast_node_mut(self.current_node_id)
             .add_binding(name, kind, /* vm_location */ None, /* needs_tdz_check */ false);
     }
@@ -299,7 +305,7 @@ impl ScopeTree {
     pub fn resolve_use(
         &mut self,
         use_scope_id: ScopeNodeId,
-        name: &str,
+        name: &Wtf8String,
         name_loc: Loc,
     ) -> (TaggedResolvedScope, bool) {
         let mut scope_id = use_scope_id;
@@ -322,7 +328,7 @@ impl ScopeTree {
             }
 
             if !found_def
-                && name == NEW_TARGET_BINDING_NAME
+                && name == &*NEW_TARGET_BINDING_NAME
                 && self.needs_implicit_new_target(scope_id)
             {
                 self.add_implicit_new_target(scope_id);
@@ -497,12 +503,12 @@ impl ScopeTree {
     fn needs_implicit_arguments_object(&mut self, scope_id: ScopeNodeId) -> bool {
         let scope = self.get_ast_node(scope_id);
         matches!(scope.kind, ScopeNodeKind::Function { is_arrow: false, .. })
-            && !scope.bindings.contains_key("arguments")
+            && !scope.bindings.contains_key(&*ARGUMENTS_NAME)
     }
 
     fn add_implicit_arguments_object(&mut self, scope_id: ScopeNodeId) {
         self.get_ast_node_mut(scope_id).add_binding(
-            "arguments",
+            &ARGUMENTS_NAME,
             BindingKind::ImplicitArguments,
             None,
             false,
@@ -512,12 +518,12 @@ impl ScopeTree {
     fn needs_implicit_new_target(&mut self, scope_id: ScopeNodeId) -> bool {
         let scope = self.get_ast_node(scope_id);
         matches!(scope.kind, ScopeNodeKind::Function { is_arrow: false, .. })
-            && !scope.bindings.contains_key(NEW_TARGET_BINDING_NAME)
+            && !scope.bindings.contains_key(&*NEW_TARGET_BINDING_NAME)
     }
 
     fn add_implicit_new_target(&mut self, scope_id: ScopeNodeId) {
         self.get_ast_node_mut(scope_id).add_binding(
-            NEW_TARGET_BINDING_NAME,
+            &NEW_TARGET_BINDING_NAME,
             BindingKind::ImplicitNewTarget,
             None,
             false,
@@ -787,11 +793,11 @@ pub struct AstScopeNode {
     /// Bindings declared in this scope. Each name maps to the last binding with that name declared
     /// in the scope. Earlier var bindings may be overwritten by later var bindings, which is fine
     /// since they reference the same binding (though may contain different BindingKinds).
-    bindings: IndexMap<String, Binding>,
+    bindings: IndexMap<Wtf8String, Binding>,
     /// All var declared names that are in scope at this node but not included in the bindings map.
     /// - Includes the set of all var declared names in child scopes
     /// - For function body scopes, includes the parameter names
-    extra_var_names: HashSet<String>,
+    extra_var_names: HashSet<Wtf8String>,
     /// Total number of bindings added to map, including duplicates.
     num_bindings: usize,
     /// Whether at least one duplicate binding was added to map, replacing an earlier binding.
@@ -853,13 +859,13 @@ impl AstScopeNode {
 
     fn add_binding(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         kind: BindingKind,
         vm_location: Option<VMLocation>,
         needs_tdz_check: bool,
     ) {
         let insert_result = self.bindings.insert(
-            name.to_owned(),
+            name.clone(),
             Binding::new(kind, self.num_bindings, vm_location, needs_tdz_check),
         );
 
@@ -870,31 +876,31 @@ impl AstScopeNode {
         self.num_bindings += 1;
     }
 
-    pub fn has_binding(&self, name: &str) -> bool {
+    pub fn has_binding(&self, name: &Wtf8String) -> bool {
         self.bindings.contains_key(name)
     }
 
-    pub fn get_binding(&self, name: &str) -> &Binding {
+    pub fn get_binding(&self, name: &Wtf8String) -> &Binding {
         self.bindings.get(name).unwrap()
     }
 
-    pub fn get_binding_opt(&self, name: &str) -> Option<&Binding> {
+    pub fn get_binding_opt(&self, name: &Wtf8String) -> Option<&Binding> {
         self.bindings.get(name)
     }
 
-    pub fn get_binding_mut(&mut self, name: &str) -> &mut Binding {
+    pub fn get_binding_mut(&mut self, name: &Wtf8String) -> &mut Binding {
         self.bindings.get_mut(name).unwrap()
     }
 
     /// Iterator over all bindings in this scope, including funtion parameters and catch parameters.
-    pub fn iter_bindings(&self) -> impl DoubleEndedIterator<Item = (&String, &Binding)> {
+    pub fn iter_bindings(&self) -> impl DoubleEndedIterator<Item = (&Wtf8String, &Binding)> {
         self.bindings.iter()
     }
 
     /// Iterator over all VarScopedDeclarations in this scope. Note that this does not include
     /// function parameters or implicit function bindings, which are var scoped but do not count as
     /// VarScopedDeclarations.
-    pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&String, &Binding)> {
+    pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&Wtf8String, &Binding)> {
         self.bindings.iter().filter(|(_, binding)| {
             matches!(
                 binding.kind,
@@ -904,7 +910,7 @@ impl AstScopeNode {
     }
 
     /// Error if the provided lexical name is already declared in this scope.
-    pub fn error_if_lexical_name_already_declared(&self, name: &str) -> Option<ParseError> {
+    pub fn error_if_lexical_name_already_declared(&self, name: &Wtf8String) -> Option<ParseError> {
         // Error if there is already any binding with this name in the current scope, which is
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
@@ -912,7 +918,7 @@ impl AstScopeNode {
             // Function expression name bindings can always be overriden
             if !binding.kind().is_function_expression_name() {
                 return Some(ParseError::new_name_redeclaration(
-                    name.to_owned(),
+                    name.clone(),
                     binding.kind.clone(),
                 ));
             }
@@ -921,7 +927,7 @@ impl AstScopeNode {
         // Then check for other conflicting var scoped bindings, e.g. in child scopes
         if self.extra_var_names.contains(name) {
             return Some(ParseError::new_name_redeclaration(
-                name.to_owned(),
+                name.clone(),
                 // Guaranteed to conflict with a `var` binding, as the other var scoped names -
                 // var scoped functions and function parameters - cannot appear in child scopes.
                 BindingKind::Var,
@@ -1191,22 +1197,37 @@ pub enum VMLocation {
 }
 
 pub struct VMScopeNode {
-    bindings: Vec<String>,
+    bindings: Vec<Wtf8String>,
 }
 
 impl VMScopeNode {
     #[inline]
-    pub fn bindings(&self) -> &[String] {
+    pub fn bindings(&self) -> &[Wtf8String] {
         &self.bindings
     }
 }
 
-pub const SHADOWED_SCOPE_SLOT_NAME: &str = "%shadowed";
-pub const REALM_SCOPE_SLOT_NAME: &str = "%realm";
-pub const MODULE_SCOPE_SLOT_NAME: &str = "%module";
-pub const NEW_TARGET_BINDING_NAME: &str = "%new.target";
-pub const DERIVED_CONSTRUCTOR_BINDING_NAME: &str = "%constructor";
-pub const HOME_OBJECT_BINDING_NAME: &str = "%homeObject";
-pub const STATIC_HOME_OBJECT_BINDING_NAME: &str = "%staticHomeObject";
-pub const ANONYMOUS_DEFAULT_EXPORT_NAME: &str = "%defaultExport";
-const CLASS_FIELD_SLOT_NAME: &str = "%classField";
+pub static THIS_NAME: LazyLock<Wtf8String> = LazyLock::new(|| Wtf8String::from_str("this"));
+pub static ARGUMENTS_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("arguments"));
+pub static DEFAULT_EXPORT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("default"));
+
+pub static SHADOWED_SCOPE_SLOT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%shadowed"));
+pub static REALM_SCOPE_SLOT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%realm"));
+pub static MODULE_SCOPE_SLOT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%module"));
+pub static NEW_TARGET_BINDING_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%new.target"));
+pub static DERIVED_CONSTRUCTOR_BINDING_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%constructor"));
+pub static HOME_OBJECT_BINDING_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%homeObject"));
+pub static STATIC_HOME_OBJECT_BINDING_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%staticHomeObject"));
+pub static ANONYMOUS_DEFAULT_EXPORT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%defaultExport"));
+static CLASS_FIELD_SLOT_NAME: LazyLock<Wtf8String> =
+    LazyLock::new(|| Wtf8String::from_str("%classField"));

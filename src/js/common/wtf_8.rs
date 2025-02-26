@@ -24,14 +24,14 @@ impl Wtf8String {
     }
 
     #[inline]
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(string: &str) -> Self {
-        Self::from_bytes_unchecked(string.as_bytes())
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        Wtf8String { buf: bytes.to_vec() }
     }
 
     #[inline]
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
-        Wtf8String { buf: bytes.to_vec() }
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(string: &str) -> Self {
+        Self::from_bytes_unchecked(string.as_bytes())
     }
 
     #[inline]
@@ -215,5 +215,14 @@ impl Borrow<[u8]> for Wtf8String {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
+    }
+}
+
+impl From<char> for Wtf8String {
+    fn from(c: char) -> Self {
+        let mut buf = [0; 4];
+        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
+
+        Wtf8String { buf: buf[..byte_length].to_vec() }
     }
 }

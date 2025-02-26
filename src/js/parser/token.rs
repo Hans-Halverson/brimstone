@@ -8,7 +8,7 @@ use super::loc::Loc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
-    Identifier(String),
+    Identifier(Wtf8String),
     NumberLiteral(f64),
     StringLiteral(Wtf8String),
     BigIntLiteral(BigInt),
@@ -141,7 +141,7 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match self {
-            Token::Identifier(name) => name,
+            Token::Identifier(name) => return f.write_str(&name.to_string()),
             Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::StringLiteral(lit) => return f.write_str(&lit.to_string()),
             Token::BigIntLiteral(lit) => return write!(f, "{}n", lit),

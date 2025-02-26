@@ -47,7 +47,7 @@ pub enum ParseError {
     NullishCoalesceMixedWithLogical,
     HashNotFollowedByIdentifier,
     ForEachInitInvalidVarDecl,
-    NameRedeclaration(Box<(String, BindingKind)>),
+    NameRedeclaration(Box<(Wtf8String, BindingKind)>),
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -71,10 +71,10 @@ pub enum ParseError {
     ClassStaticPrototype,
     InvalidPatternInitializer,
     #[allow(clippy::box_collection)]
-    DuplicatePrivateName(Box<String>),
+    DuplicatePrivateName(Box<Wtf8String>),
     PrivateNameOutsideClass,
     #[allow(clippy::box_collection)]
-    PrivateNameNotDefined(Box<String>),
+    PrivateNameNotDefined(Box<Wtf8String>),
     PrivateNameConstructor,
     ArgumentsInClassInitializer,
     NewTargetOutsideFunction,
@@ -140,15 +140,15 @@ impl ParseError {
         ParseError::ExpectedToken(Box::new((actual, expected)))
     }
 
-    pub fn new_name_redeclaration(name: String, kind: BindingKind) -> ParseError {
+    pub fn new_name_redeclaration(name: Wtf8String, kind: BindingKind) -> ParseError {
         ParseError::NameRedeclaration(Box::new((name, kind)))
     }
 
-    pub fn new_duplicate_private_name(name: String) -> ParseError {
+    pub fn new_duplicate_private_name(name: Wtf8String) -> ParseError {
         ParseError::DuplicatePrivateName(Box::new(name))
     }
 
-    pub fn new_private_name_not_defined(name: String) -> ParseError {
+    pub fn new_private_name_not_defined(name: Wtf8String) -> ParseError {
         ParseError::PrivateNameNotDefined(Box::new(name))
     }
 }
@@ -244,7 +244,7 @@ impl fmt::Display for ParseError {
             }
             ParseError::NameRedeclaration(payload) => {
                 let (name, kind) = payload.as_ref();
-                if name == ANONYMOUS_DEFAULT_EXPORT_NAME {
+                if name == &*ANONYMOUS_DEFAULT_EXPORT_NAME {
                     write!(f, "Default export was already declared in this module")
                 } else {
                     let kind_string = match kind {

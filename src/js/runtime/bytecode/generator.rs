@@ -22,9 +22,9 @@ use crate::{
             parser::{ParseFunctionResult, ParseProgramResult},
             scope_tree::{
                 AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
-                VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME,
-                DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
-                NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+                VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME,
+                DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+                NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
             },
             source::Source,
         },
@@ -331,12 +331,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                     .imported
                                     .as_ref()
                                     .map(|imported| self.alloc_export_name_string(imported))
-                                    .unwrap_or_else(|| self.cx.alloc_string(&import.local.name));
+                                    .unwrap_or_else(|| {
+                                        self.cx.alloc_wtf8_string(&import.local.name)
+                                    });
                                 (&import.local, Some(imported))
                             }
                         };
 
-                        let local_name = self.cx.alloc_string(&local_id.name);
+                        let local_name = self.cx.alloc_wtf8_string(&local_id.name);
                         let slot_index = Self::id_module_slot_index(local_id);
                         let is_exported = local_id.get_binding().is_exported();
 
@@ -389,7 +391,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         // anonymous default export binding from the program scope.
                         let scope = program.scope.as_ref();
                         if let VMLocation::ModuleScope { index, .. } = scope
-                            .get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME)
+                            .get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME)
                             .vm_location()
                             .unwrap()
                         {
@@ -409,7 +411,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // Exporting a full named declaration adds export entries for each exported id
                     export.iter_declaration_ids(&mut |id| {
-                        let local_name = self.cx.alloc_string(&id.name);
+                        let local_name = self.cx.alloc_wtf8_string(&id.name);
                         let slot_index = Self::id_module_slot_index(id);
 
                         local_exports.push(LocalExportEntry {
@@ -545,7 +547,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for attribute in attributes.iter() {
             let key = match attribute.key.as_ref() {
                 ast::Expression::Id(ast::Identifier { name, .. }) => {
-                    InternedStrings::get_str(self.cx, name).as_flat()
+                    InternedStrings::get_wtf8_str(self.cx, name).as_flat()
                 }
                 ast::Expression::String(ast::StringLiteral { value, .. }) => {
                     InternedStrings::get_wtf8_str(self.cx, value).as_flat()
@@ -600,7 +602,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn alloc_export_name_string(&mut self, module_name: &ast::ExportName) -> Handle<FlatString> {
         match module_name {
-            ast::ExportName::Id(id) => self.cx.alloc_string(&id.name),
+            ast::ExportName::Id(id) => self.cx.alloc_wtf8_string(&id.name),
             ast::ExportName::String(lit) => self.cx.alloc_wtf8_string(&lit.value),
         }
     }
@@ -1184,7 +1186,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = func
             .id
             .as_ref()
-            .map(|id| Wtf8String::from_str(&id.name))
+            .map(|id| id.name.clone())
             .or_else(|| default_name.cloned());
 
         let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
@@ -1773,10 +1775,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_store_new_target(new_target_to_store)?;
 
         // Set the closure itself as the derived constructor if necessary
-        if func_scope.has_binding(DERIVED_CONSTRUCTOR_BINDING_NAME) {
+        if func_scope.has_binding(&DERIVED_CONSTRUCTOR_BINDING_NAME) {
             self.gen_initialize_binding(
-                DERIVED_CONSTRUCTOR_BINDING_NAME,
-                func_scope.get_binding(DERIVED_CONSTRUCTOR_BINDING_NAME),
+                &DERIVED_CONSTRUCTOR_BINDING_NAME,
+                func_scope.get_binding(&DERIVED_CONSTRUCTOR_BINDING_NAME),
                 Register::closure(),
             )?;
         }
@@ -1786,7 +1788,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if func.is_arguments_object_needed() {
             let store_flags = StoreFlags::INITIALIZATION;
 
-            let arguments_binding = func_scope.get_binding("arguments");
+            let arguments_binding = func_scope.get_binding(&ARGUMENTS_NAME);
             let arguments_dest = self.expr_dest_for_binding(arguments_binding, store_flags);
             let arguments_object = self.allocate_destination(arguments_dest)?;
 
@@ -1803,7 +1805,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     .new_unmapped_arguments_instruction(arguments_object);
             }
 
-            self.gen_initialize_binding("arguments", arguments_binding, arguments_object)?;
+            self.gen_initialize_binding(&ARGUMENTS_NAME, arguments_binding, arguments_object)?;
             self.register_allocator.release(arguments_object);
         }
 
@@ -2342,7 +2344,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_binding(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         binding: &Binding,
         pos: Pos,
         dest: ExprDest,
@@ -2394,14 +2396,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// TDZ check is performed directly on the source register itself.
     fn gen_load_fixed_register_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         fixed_reg: GenRegister,
         add_tdz_check: bool,
         pos: Pos,
         mut dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
-            let name_constant_index = self.add_string_constant(name)?;
+            let name_constant_index = self.add_wtf8_string_constant(name)?;
             self.writer
                 .check_tdz_instruction(fixed_reg, name_constant_index, pos);
         }
@@ -2425,14 +2427,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// perform the TDZ check on the loaded value.
     fn gen_load_non_fixed_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         add_tdz_check: bool,
         pos: Pos,
         dest: ExprDest,
         load_binding_fn: impl FnOnce(&mut Self, ExprDest) -> EmitResult<GenRegister>,
     ) -> EmitResult<GenRegister> {
         if add_tdz_check {
-            let name_constant_index = self.add_string_constant(name)?;
+            let name_constant_index = self.add_wtf8_string_constant(name)?;
 
             // Check if destination register is a fixed non-temporary. If so we must first
             // load to a temporary and perform the TDZ check, so that we guarantee that the
@@ -2462,12 +2464,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_global_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
-        let constant_index = self.add_string_constant(name)?;
+        let constant_index = self.add_wtf8_string_constant(name)?;
 
         self.writer
             .load_global_instruction(dest, constant_index, pos);
@@ -2524,12 +2526,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_dynamic_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
-        let constant_index = self.add_string_constant(name)?;
+        let constant_index = self.add_wtf8_string_constant(name)?;
 
         self.writer
             .load_dynamic_instruction(dest, constant_index, pos);
@@ -2561,7 +2563,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     #[inline]
     fn gen_initialize_binding(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         binding: &Binding,
         value: GenRegister,
     ) -> EmitResult<()> {
@@ -2571,7 +2573,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_binding(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         binding: &Binding,
         value: GenRegister,
         flags: StoreFlags,
@@ -2579,7 +2581,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         if self.is_immutable_reassignment(binding, flags) {
             // Error if we are trying to reassign an immutable binding
-            let name_constant_index = self.add_string_constant(name)?;
+            let name_constant_index = self.add_wtf8_string_constant(name)?;
             self.writer
                 .error_const_instruction(name_constant_index, pos);
         } else if self.is_noop_reassignment(binding, flags) {
@@ -2628,11 +2630,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_global_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         value: GenRegister,
         pos: Pos,
     ) -> EmitResult<()> {
-        let constant_index = self.add_string_constant(name)?;
+        let constant_index = self.add_wtf8_string_constant(name)?;
         self.writer
             .store_global_instruction(value, constant_index, pos);
 
@@ -2673,11 +2675,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_dynamic_identifier(
         &mut self,
-        name: &str,
+        name: &Wtf8String,
         value: GenRegister,
         pos: Pos,
     ) -> EmitResult<()> {
-        let constant_index = self.add_string_constant(name)?;
+        let constant_index = self.add_wtf8_string_constant(name)?;
         self.writer
             .store_dynamic_instruction(value, constant_index, pos);
 
@@ -2915,7 +2917,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_store_captured_this(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
-        match scope.get_binding("this").vm_location() {
+        match scope.get_binding(&THIS_NAME).vm_location() {
             // `this` is captured so it must be stored in the scope
             Some(VMLocation::Scope { scope_id, index }) => {
                 self.gen_store_scope_binding(scope_id, index, Register::this())
@@ -2945,7 +2947,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // If scope has been resolved this may be a captured `this`. Load from scope directly to
         // the dest.
         let this_value = if let Some(scope) = scope.as_ref() {
-            let binding = scope.as_ref().get_binding("this");
+            let binding = scope.as_ref().get_binding(&THIS_NAME);
 
             if let BindingKind::ImplicitThis { in_derived_constructor: true } = binding.kind() {
                 needs_init_check = true;
@@ -3060,7 +3062,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Special instruction for unresolved global bindings
                 ResolvedScope::UnresolvedGlobal => {
                     let argument = self.register_allocator.allocate()?;
-                    let constant_index = self.add_string_constant(&id.name)?;
+                    let constant_index = self.add_wtf8_string_constant(&id.name)?;
 
                     self.writer.load_global_or_unresolved_instruction(
                         argument,
@@ -3073,7 +3075,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 ResolvedScope::UnresolvedDynamic => {
                     // Special instruction for unresolved dynamic bindings
                     let argument = self.register_allocator.allocate()?;
-                    let constant_index = self.add_string_constant(&id.name)?;
+                    let constant_index = self.add_wtf8_string_constant(&id.name)?;
 
                     self.writer.load_dynamic_or_unresolved_instruction(
                         argument,
@@ -3209,7 +3211,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     }
                 }
 
-                let name_constant_index = self.add_string_constant(&id.name)?;
+                let name_constant_index = self.add_wtf8_string_constant(&id.name)?;
                 self.writer
                     .delete_binding_instruction(dest, name_constant_index, delete_pos);
 
@@ -3251,7 +3253,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             let key = self.register_allocator.allocate()?;
             let name_id = member_expr.property.to_id();
-            let constant_index = self.add_string_constant(&name_id.name)?;
+            let constant_index = self.add_wtf8_string_constant(&name_id.name)?;
             self.writer.load_constant_instruction(key, constant_index);
             Ok(key)
         }
@@ -3988,7 +3990,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             } else {
                 match property.key.as_ref() {
                     ast::Expression::Id(id) => {
-                        let constant_index = self.add_string_constant(&id.name)?;
+                        let constant_index = self.add_wtf8_string_constant(&id.name)?;
                         let name = AnyStr::from_id(id);
                         let is_proto = id.name == "__proto__";
 
@@ -4144,7 +4146,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: &AstScopeNode,
         home_object: GenRegister,
     ) -> EmitResult<()> {
-        match scope.get_binding(HOME_OBJECT_BINDING_NAME).vm_location() {
+        match scope.get_binding(&HOME_OBJECT_BINDING_NAME).vm_location() {
             // Home object is captured so it must be stored in the scope
             Some(VMLocation::Scope { scope_id, index }) => {
                 self.gen_store_scope_binding(scope_id, index, home_object)
@@ -4158,7 +4160,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn get_home_object_location(
         &mut self,
         scope: &AstScopeNode,
-        name: &str,
+        name: &Wtf8String,
     ) -> EmitResult<Option<HomeObjectLocation>> {
         match scope.get_binding(name).vm_location() {
             Some(VMLocation::Scope { scope_id, index }) => {
@@ -4257,7 +4259,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = expr.property.to_id();
-            let name_constant_index = self.add_string_constant(&name.name)?;
+            let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
 
             if release_object {
                 self.register_allocator.release(object);
@@ -4279,7 +4281,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match private_id.get_private_name_binding().vm_location().unwrap() {
             VMLocation::Scope { scope_id, index } => {
                 // Add the name to the constant table (without the "#" prefix)
-                let name_index = self.add_string_constant(&private_id.name)?;
+                let name_index = self.add_wtf8_string_constant(&private_id.name)?;
 
                 // Create a new private symbol
                 let dest = self.register_allocator.allocate()?;
@@ -4504,7 +4506,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         // Must be a super named access, but we do not have a SetNamedSuperProperty
                         // instruction so load to a register.
                         let name = member.property.to_id();
-                        let name_constant_index = self.add_string_constant(&name.name)?;
+                        let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
 
                         let key = self.register_allocator.allocate()?;
                         self.writer
@@ -4526,7 +4528,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     } else {
                         // Must be a named access
                         let name = member.property.to_id();
-                        let name_constant_index = self.add_string_constant(&name.name)?;
+                        let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
                         Property::Named(name_constant_index)
                     }
                 };
@@ -4769,7 +4771,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Must be a super named access, but we do not have a SetNamedSuperProperty
                     // instruction so load to a register.
                     let name = member.property.to_id();
-                    let name_constant_index = self.add_string_constant(&name.name)?;
+                    let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
 
                     let key = self.register_allocator.allocate()?;
                     self.writer
@@ -4804,7 +4806,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 } else {
                     // Must be a named access
                     let name = member.property.to_id();
-                    let name_constant_index = self.add_string_constant(&name.name)?;
+                    let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
                     self.writer.get_named_property_instruction(
                         temp,
                         object,
@@ -4894,7 +4896,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // operations may be performed directly on a local register, which would be
                 // observable.
                 if self.is_immutable_reassignment(binding, store_flags) {
-                    let name_constant_index = self.add_string_constant(&id.name)?;
+                    let name_constant_index = self.add_wtf8_string_constant(&id.name)?;
                     self.writer
                         .error_const_instruction(name_constant_index, id.loc.start);
                 }
@@ -5590,7 +5592,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = expr.property.to_id();
-            let name_constant_index = self.add_string_constant(&name.name)?;
+            let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
 
             self.register_allocator.release(home_object);
             if release_receiver {
@@ -5629,7 +5631,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Super calls implicitly use the surrounding derived constructor, so load it to register
         let derived_constructor = self.gen_load_internal_binding(
             super_call.constructor_scope,
-            DERIVED_CONSTRUCTOR_BINDING_NAME,
+            &DERIVED_CONSTRUCTOR_BINDING_NAME,
             ExprDest::Any,
         )?;
 
@@ -5683,7 +5685,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let this_value = if let Some(VMLocation::Scope { scope_id, index }) = super_call
             .this_scope
             .as_ref()
-            .get_binding("this")
+            .get_binding(&THIS_NAME)
             .vm_location()
         {
             captured_this = Some((scope_id, index));
@@ -5858,7 +5860,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_load_internal_binding(
         &mut self,
         scope: TaggedResolvedScope,
-        name: &str,
+        name: &Wtf8String,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Source position not needed since this load cannot fail, as binding is guaranteed to exist
@@ -5881,7 +5883,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: TaggedResolvedScope,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_load_internal_binding(scope, NEW_TARGET_BINDING_NAME, dest)
+        self.gen_load_internal_binding(scope, &NEW_TARGET_BINDING_NAME, dest)
     }
 
     /// Determine the location where a new.target binding should be stored, given a function scope.
@@ -5893,7 +5895,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         scope: &AstScopeNode,
     ) -> EmitResult<Option<(usize, usize, GenRegister)>> {
-        let new_target_binding = scope.get_binding_opt(NEW_TARGET_BINDING_NAME);
+        let new_target_binding = scope.get_binding_opt(&NEW_TARGET_BINDING_NAME);
         if new_target_binding.is_none() {
             return Ok(None);
         }
@@ -6070,7 +6072,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = member.property.to_id();
-            let property = self.add_string_constant(&name.name)?;
+            let property = self.add_wtf8_string_constant(&name.name)?;
             Ok(Reference::new(ReferenceKind::NamedProperty { object, property, operator_pos }))
         }
     }
@@ -6089,7 +6091,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             // Must be a named access
             let name = member.property.to_id();
-            let name_constant_index = self.add_string_constant(&name.name)?;
+            let name_constant_index = self.add_wtf8_string_constant(&name.name)?;
 
             let property = self.register_allocator.allocate()?;
             self.writer
@@ -6244,7 +6246,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             match &key {
                 Property::Named(id) => {
-                    let name_constant_index = self.add_string_constant(&id.name)?;
+                    let name_constant_index = self.add_wtf8_string_constant(&id.name)?;
 
                     // If there is a rest element name must be saved in the reserved registers. Can
                     // load directly to the temporary register since name is already a property key.
@@ -6861,7 +6863,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Determine if field has a statically known string name
                     let name = match &property.key.expr {
                         _ if property.is_computed => None,
-                        ast::Expression::Id(id) => Some(Wtf8String::from_str(&id.name)),
+                        ast::Expression::Id(id) => Some(id.name.clone()),
                         ast::Expression::String(string) => Some(string.value.clone()),
                         ast::Expression::Number(_) | ast::Expression::BigInt(_) => None,
                         _ => unreachable!("invalid class property key"),
@@ -6915,13 +6917,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let name = if let Some(id) = class.id.as_ref() {
             // Constructor has name of class
-            Wtf8String::from_str(&id.name)
+            id.name.clone()
         } else if let Some(name) = name {
             // Handle name passed from named evaluation
             name
         } else if let GenClassKind::Export { name, .. } = &kind {
             // Handle name passed from export, such as the anonymous default export name
-            Wtf8String::from_str(name)
+            (*name).clone()
         } else {
             // Otherwise name is the empty string if class has no name
             Wtf8String::new()
@@ -6940,9 +6942,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let constructor_index = self.enqueue_function_to_generate(pending_constructor)?;
 
         // Find the scope locations for the home objects if they are needed
-        let home_object = self.get_home_object_location(body_scope, HOME_OBJECT_BINDING_NAME)?;
+        let home_object = self.get_home_object_location(body_scope, &HOME_OBJECT_BINDING_NAME)?;
         let static_home_object =
-            self.get_home_object_location(body_scope, STATIC_HOME_OBJECT_BINDING_NAME)?;
+            self.get_home_object_location(body_scope, &STATIC_HOME_OBJECT_BINDING_NAME)?;
 
         // ClassNames object is stored in the constant table
         let class_names = ClassNames::new(self.cx, &methods, home_object, static_home_object);
@@ -7300,10 +7302,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // if the class is anonymous.
             ast::ExportDefaultKind::Class(class) => {
                 let (name, binding) = if let Some(id) = class.id.as_ref() {
-                    (id.name.as_str(), id.get_binding())
+                    (&id.name, id.get_binding())
                 } else {
-                    let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
-                    ("default", anonymous_binding)
+                    let anonymous_binding = scope.get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME);
+                    (&*DEFAULT_EXPORT_NAME, anonymous_binding)
                 };
 
                 self.gen_class(class, GenClassKind::Export { name, binding }, None, ExprDest::Any)?;
@@ -7316,8 +7318,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let value =
                     self.gen_named_outer_expression(AnyStr::Str("default"), expr, ExprDest::Any)?;
 
-                let anonymous_binding = scope.get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME);
-                self.gen_initialize_binding("default", anonymous_binding, value)?;
+                let anonymous_binding = scope.get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME);
+                self.gen_initialize_binding(&DEFAULT_EXPORT_NAME, anonymous_binding, value)?;
 
                 self.register_allocator.release(value);
 
@@ -7480,7 +7482,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         vm_node
             .bindings()
             .iter()
-            .map(|name| InternedStrings::get_str(cx, name).as_flat())
+            .map(|name| InternedStrings::get_wtf8_str(cx, name).as_flat())
             .collect::<Vec<_>>()
     }
 
@@ -8809,7 +8811,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 let gen_this_value = |this: &mut Self, dest: ExprDest| {
                     if let Some(scope) = derived_constructor_scope {
                         if let Some(VMLocation::Scope { scope_id, index }) =
-                            scope.as_ref().get_binding("this").vm_location()
+                            scope.as_ref().get_binding(&THIS_NAME).vm_location()
                         {
                             return this.gen_load_scope_binding(scope_id, index, dest);
                         }
@@ -9151,7 +9153,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut global_funcs = HashSet::new();
 
         for (name, binding) in global_scope.iter_var_decls() {
-            let name = InternedStrings::get_str(self.cx, name).as_flat();
+            let name = InternedStrings::get_wtf8_str(self.cx, name).as_flat();
             if let BindingKind::Function { .. } = binding.kind() {
                 global_funcs.insert(name);
             } else {
@@ -9188,7 +9190,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         if let Some(id) = id {
-            cx.alloc_string(&id.name)
+            cx.alloc_wtf8_string(&id.name)
         } else {
             cx.names.default_name().as_string().as_flat()
         }
@@ -9681,7 +9683,7 @@ enum CallArgs {
 enum GenClassKind<'a> {
     Declaration,
     Expression,
-    Export { name: &'a str, binding: &'a Binding },
+    Export { name: &'a Wtf8String, binding: &'a Binding },
 }
 
 /// A reference to a string that may be either wtf8 or utf8.
@@ -9693,12 +9695,12 @@ enum AnyStr<'a> {
 
 impl AnyStr<'_> {
     fn from_id(id: &ast::Identifier) -> AnyStr {
-        AnyStr::Str(id.name.as_str())
+        AnyStr::Wtf8(&id.name)
     }
 
     fn to_wtf8_string(self) -> Wtf8String {
         match self {
-            AnyStr::Wtf8(wtf8) => (*wtf8).clone(),
+            AnyStr::Wtf8(wtf8) => wtf8.clone(),
             AnyStr::Str(str) => Wtf8String::from_str(str),
         }
     }

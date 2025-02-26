@@ -61,7 +61,7 @@ impl CompiledRegExpObject {
             .map(|capture_group| {
                 if let Some(name_string) = capture_group {
                     has_named_capture_groups = true;
-                    Some(cx.alloc_string_ptr(name_string).to_handle())
+                    Some(cx.alloc_wtf8_string_ptr(name_string).to_handle())
                 } else {
                     None
                 }

@@ -17,7 +17,7 @@ use super::regexp_parser::RegExpParser;
 use super::scope_tree::{
     AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
     ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
-    STATIC_HOME_OBJECT_BINDING_NAME,
+    STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
 };
 use super::source::Source;
 use super::token::Token;
@@ -281,11 +281,11 @@ impl<'a> Parser<'a> {
 
     fn add_home_object_to_scope(&mut self, include_static: bool) {
         self.scope_builder
-            .add_binding_to_current_node(HOME_OBJECT_BINDING_NAME, BindingKind::HomeObject);
+            .add_binding_to_current_node(&HOME_OBJECT_BINDING_NAME, BindingKind::HomeObject);
 
         if include_static {
             self.scope_builder.add_binding_to_current_node(
-                STATIC_HOME_OBJECT_BINDING_NAME,
+                &STATIC_HOME_OBJECT_BINDING_NAME,
                 BindingKind::HomeObject,
             );
         }
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<()> {
         if let Err(error) = self
             .scope_builder
-            .add_binding(ANONYMOUS_DEFAULT_EXPORT_NAME, kind)
+            .add_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME, kind)
         {
             return self.error(loc, error);
         }
@@ -307,7 +307,7 @@ impl<'a> Parser<'a> {
         self.scope_builder
             .current_scope()
             .as_ref()
-            .get_binding(ANONYMOUS_DEFAULT_EXPORT_NAME)
+            .get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME)
             .set_is_exported(true);
 
         Ok(())
@@ -862,7 +862,7 @@ impl<'a> Parser<'a> {
         // when determining if it is captured by an arrow function.
         if !is_arrow {
             let kind = BindingKind::ImplicitThis { in_derived_constructor: is_derived_constructor };
-            self.scope_builder.add_binding("this", kind).unwrap();
+            self.scope_builder.add_binding(&THIS_NAME, kind).unwrap();
         }
 
         Ok(scope)
@@ -1675,7 +1675,7 @@ impl<'a> Parser<'a> {
 
                 self.advance()?;
 
-                let mut async_id = Identifier::new(async_loc, "async".to_owned());
+                let mut async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
                 self.add_binding(&mut async_id, BindingKind::new_function_parameter(0))?;
                 Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
@@ -2733,7 +2733,7 @@ impl<'a> Parser<'a> {
                     // `async [newline] id` is an `async` identifier with ASI followed by another
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
-                        let async_id = Identifier::new(async_loc, "async".to_owned());
+                        let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
                         return Ok(p(Expression::Id(async_id)));
                     }
 
@@ -2751,7 +2751,7 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
-                        let async_id = Identifier::new(async_loc, "async".to_owned());
+                        let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
                         return Ok(p(Expression::Id(async_id)));
                     }
                 }
@@ -2818,7 +2818,7 @@ impl<'a> Parser<'a> {
                 Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
-                let name = self.token.to_string();
+                let name = Wtf8String::from_string(self.token.to_string());
                 self.advance()?;
                 Ok(Identifier::new(loc, name))
             }
@@ -2919,7 +2919,7 @@ impl<'a> Parser<'a> {
             | Token::Meta
             | Token::Enum => {
                 let loc = self.loc;
-                let name = self.token.to_string();
+                let name = Wtf8String::from_string(self.token.to_string());
                 self.advance()?;
                 Ok(Some(Identifier::new(loc, name)))
             }
@@ -2927,7 +2927,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_reserved_word_in_current_context(&self, str: &str) -> bool {
+    fn is_reserved_word_in_current_context(&self, str: &Wtf8String) -> bool {
         Self::is_reserved_word(
             str.as_bytes(),
             self.in_strict_mode,
@@ -3232,7 +3232,8 @@ impl<'a> Parser<'a> {
 
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
-                    let id = Identifier::new(id_loc, id_token.to_string());
+                    let token_name = Wtf8String::from_string(id_token.to_string());
+                    let id = Identifier::new(id_loc, token_name);
                     let name = p(Expression::Id(id));
 
                     return self.parse_method_property(
@@ -3251,7 +3252,8 @@ impl<'a> Parser<'a> {
                 let is_init_property = self.is_property_initializer(prop_context)
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
-                    let id = Identifier::new(id_loc, id_token.to_string());
+                    let id_token_name = Wtf8String::from_string(id_token.to_string());
+                    let id = Identifier::new(id_loc, id_token_name);
                     let name = p(Expression::Id(id));
 
                     return self.parse_init_property(
@@ -3290,7 +3292,7 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let async_id = Identifier::new(async_loc, "async".to_owned());
+                let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
                 let name = p(Expression::Id(async_id));
 
                 return self.parse_method_property(
@@ -3310,7 +3312,7 @@ impl<'a> Parser<'a> {
                 || self.is_pattern_initializer_in_object(prop_context)
                 || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
-                let async_id = Identifier::new(async_loc, "async".to_owned());
+                let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
                 let name = p(Expression::Id(async_id));
 
                 return self.parse_init_property(
@@ -3586,7 +3588,7 @@ impl<'a> Parser<'a> {
         // by super calls.
         if is_derived_constructor {
             self.scope_builder
-                .add_binding(DERIVED_CONSTRUCTOR_BINDING_NAME, BindingKind::DerivedConstructor)
+                .add_binding(&DERIVED_CONSTRUCTOR_BINDING_NAME, BindingKind::DerivedConstructor)
                 .unwrap();
         }
 
@@ -3826,7 +3828,7 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let static_id = Identifier::new(static_loc, "static".to_owned());
+                let static_id = Identifier::new(static_loc, Wtf8String::from_str("static"));
                 let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
@@ -3853,7 +3855,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let static_id = Identifier::new(static_loc, "static".to_owned());
+                let static_id = Identifier::new(static_loc, Wtf8String::from_str("static"));
                 let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
@@ -3887,7 +3889,7 @@ impl<'a> Parser<'a> {
 
         // All private names are added to the current class scope
         if is_private {
-            let private_name = format!("#{}", &property.key.to_id().name);
+            let private_name = Wtf8String::from_string(format!("#{}", &property.key.to_id().name));
             self.scope_builder
                 .add_binding_to_current_node(&private_name, BindingKind::PrivateName);
         }
@@ -4670,8 +4672,8 @@ impl<'a> Parser<'a> {
             Expression::Id(id) => {
                 // Cannot assign to arguments or eval in strict mode
                 if self.in_strict_mode {
-                    match id.name.as_str() {
-                        "arguments" | "eval" => return None,
+                    match id.name.as_bytes() {
+                        b"arguments" | b"eval" => return None,
                         _ => {}
                     }
                 }
@@ -4823,7 +4825,7 @@ impl<'a> Parser<'a> {
             Expression::Id(id) => {
                 // Cannot assign to arguments or eval in strict mode
                 if self.in_strict_mode {
-                    !matches!(id.name.as_str(), "arguments" | "eval")
+                    !matches!(id.name.as_bytes(), b"arguments" | b"eval")
                 } else {
                     true
                 }

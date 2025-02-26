@@ -9,7 +9,7 @@ pub struct RegExp {
     pub flags: RegExpFlags,
     pub has_duplicate_named_capture_groups: bool,
     // All capture groups with their names if one was provided
-    pub capture_groups: Vec<Option<String>>,
+    pub capture_groups: Vec<Option<Wtf8String>>,
 }
 
 bitflags! {
@@ -143,7 +143,7 @@ pub type CaptureGroupIndex = u32;
 
 pub struct CaptureGroup {
     /// Optional capture group name
-    pub name: Option<String>,
+    pub name: Option<Wtf8String>,
     /// Index of the capture group in the RegExp
     pub index: CaptureGroupIndex,
     pub disjunction: Disjunction,

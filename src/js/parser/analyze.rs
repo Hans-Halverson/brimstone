@@ -6,7 +6,10 @@ use std::{
 use crate::{
     js::{
         common::wtf_8::Wtf8String,
-        parser::{parse_error::InvalidDuplicateParametersReason, scope_tree::VMLocation},
+        parser::{
+            parse_error::InvalidDuplicateParametersReason,
+            scope_tree::{VMLocation, ARGUMENTS_NAME},
+        },
     },
     must, visit_opt, visit_vec,
 };
@@ -18,7 +21,7 @@ use super::{
     parser::{ParseFunctionResult, ParseProgramResult},
     scope_tree::{
         AstScopeNode, ScopeNodeId, ScopeTree, DERIVED_CONSTRUCTOR_BINDING_NAME,
-        NEW_TARGET_BINDING_NAME,
+        NEW_TARGET_BINDING_NAME, THIS_NAME,
     },
     source::Source,
     LocalizedParseError, LocalizedParseErrors, ParseError,
@@ -36,7 +39,7 @@ pub struct Analyzer<'a> {
     /// Set of all names exported by the current module
     export_names: HashSet<Wtf8String>,
     /// Set of labels defined where the visitor is currently in
-    labels: HashMap<String, LabelInfo>,
+    labels: HashMap<Wtf8String, LabelInfo>,
     /// Number of labeled statements that the visitor is currently inside. Multiple labels on the
     /// same statement all count as a single "label depth", and will receive the same label id.
     label_depth: LabelId,
@@ -85,7 +88,7 @@ enum AllowSuperStackEntry {
 
 struct ClassStackEntry {
     // All private names bound in the body of this class
-    private_names: HashMap<String, PrivateNameUsage>,
+    private_names: HashMap<Wtf8String, PrivateNameUsage>,
     // Whether this class extends a base class
     is_derived: bool,
 }
@@ -99,7 +102,7 @@ struct LabelInfo {
 
 // Saved state from entering a function or class that can be restored from
 struct AnalyzerSavedState {
-    labels: HashMap<String, LabelInfo>,
+    labels: HashMap<Wtf8String, LabelInfo>,
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
@@ -253,10 +256,10 @@ impl<'a> Analyzer<'a> {
             return;
         }
 
-        match id.name.as_str() {
-            "eval" => self.emit_error(id.loc, ParseError::AssignEvalInStrictMode),
-            "arguments" => self.emit_error(id.loc, ParseError::AssignArgumentsInStrictMode),
-            _ => {}
+        if id.name == "eval" {
+            self.emit_error(id.loc, ParseError::AssignEvalInStrictMode);
+        } else if id.name == "arguments" {
+            self.emit_error(id.loc, ParseError::AssignArgumentsInStrictMode);
         }
     }
 
@@ -954,7 +957,7 @@ impl AstVisitor for Analyzer<'_> {
             id.get_binding().set_is_exported(true);
         }
 
-        self.add_exported_str(export.loc, "default");
+        self.add_export(export.loc, Wtf8String::from_str("default"));
     }
 
     fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
@@ -963,7 +966,7 @@ impl AstVisitor for Analyzer<'_> {
         // Mark local bindings as exported
         export.iter_declaration_ids(&mut |id| {
             id.get_binding().set_is_exported(true);
-            self.add_exported_str(id.loc, &id.name);
+            self.add_export(id.loc, id.name.clone());
         });
 
         for specifier in &mut export.specifiers {
@@ -1157,13 +1160,13 @@ impl Analyzer<'_> {
         // function has an "arguments" or new.target binding with the right kind, which may have
         // been added due to an implicit use or potential dynamic lookup found during analysis.
         if !is_arrow_function {
-            let arguments_binding_opt = func.scope.as_ref().get_binding_opt("arguments");
+            let arguments_binding_opt = func.scope.as_ref().get_binding_opt(&ARGUMENTS_NAME);
             let is_arguments_object_needed = arguments_binding_opt
                 .map(|binding| binding.kind().is_valid_arguments_kind())
                 .unwrap_or(false);
             func.set_is_arguments_object_needed(is_arguments_object_needed);
 
-            if func.scope.as_ref().has_binding(NEW_TARGET_BINDING_NAME) {
+            if func.scope.as_ref().has_binding(&NEW_TARGET_BINDING_NAME) {
                 func.set_is_new_target_needed(true);
             }
         }
@@ -1196,7 +1199,7 @@ impl Analyzer<'_> {
     fn collect_class_private_names(
         &mut self,
         class: &mut Class,
-    ) -> HashMap<String, PrivateNameUsage> {
+    ) -> HashMap<Wtf8String, PrivateNameUsage> {
         // Create new private name scope for stack and initialize with defined private names
         let mut private_names = HashMap::new();
         let mut has_private_accessor_pair = false;
@@ -1458,7 +1461,7 @@ impl Analyzer<'_> {
     fn push_all_labels<'a>(
         &mut self,
         stmt: &'a mut LabeledStatement,
-    ) -> (&'a mut Statement, Vec<(String, bool)>) {
+    ) -> (&'a mut Statement, Vec<(Wtf8String, bool)>) {
         // Always use 1 more than the current lable depth, so that a label id of 0 marks the
         // empty label.
         let label_id = self.label_depth + 1;
@@ -1496,7 +1499,7 @@ impl Analyzer<'_> {
         (inner_stmt, labels)
     }
 
-    fn pop_all_labels(&mut self, label_stack: Vec<(String, bool)>) {
+    fn pop_all_labels(&mut self, label_stack: Vec<(Wtf8String, bool)>) {
         // Exit all label scopes in reverse order that they were entered
         for (label_name, is_duplicate) in label_stack.iter().rev() {
             if !is_duplicate {
@@ -1594,14 +1597,10 @@ impl Analyzer<'_> {
         self.export_names.insert(name);
     }
 
-    fn add_exported_str(&mut self, loc: Loc, str: &str) {
-        self.add_export(loc, Wtf8String::from_str(str));
-    }
-
     fn add_exported_name(&mut self, export_name: &ExportName) {
         match export_name {
             ExportName::Id(id) => {
-                self.add_export(id.loc, Wtf8String::from_str(&id.name));
+                self.add_export(id.loc, id.name.clone());
             }
             ExportName::String(string) => {
                 self.add_export(string.loc, string.value.clone());
@@ -1609,7 +1608,7 @@ impl Analyzer<'_> {
         }
     }
 
-    fn resolve_use(&mut self, result_scope: &mut TaggedResolvedScope, name: &str, loc: Loc) {
+    fn resolve_use(&mut self, result_scope: &mut TaggedResolvedScope, name: &Wtf8String, loc: Loc) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
         let (def_scope, _) = self.scope_tree.resolve_use(current_scope, name, loc);
         *result_scope = def_scope;
@@ -1621,13 +1620,13 @@ impl Analyzer<'_> {
 
     fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier) {
         // Private name has a "#" prefix
-        let private_name = format!("#{}", &private_id.name);
+        let private_name = Wtf8String::from_string(format!("#{}", &private_id.name));
         self.resolve_use(&mut private_id.scope, &private_name, private_id.loc);
     }
 
     fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode>)) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
-        let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, "this", loc);
+        let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, &THIS_NAME, loc);
 
         // Only set scope if this is a capture of a `this` binding or if `this` is for a derived
         // constructor.
@@ -1642,7 +1641,7 @@ impl Analyzer<'_> {
     }
 
     fn resolve_new_target_use(&mut self, result_scope: &mut TaggedResolvedScope, loc: Loc) {
-        self.resolve_use(result_scope, NEW_TARGET_BINDING_NAME, loc);
+        self.resolve_use(result_scope, &NEW_TARGET_BINDING_NAME, loc);
     }
 
     fn resolve_derived_constructor_use(
@@ -1650,7 +1649,7 @@ impl Analyzer<'_> {
         result_scope: &mut TaggedResolvedScope,
         loc: Loc,
     ) {
-        self.resolve_use(result_scope, DERIVED_CONSTRUCTOR_BINDING_NAME, loc);
+        self.resolve_use(result_scope, &DERIVED_CONSTRUCTOR_BINDING_NAME, loc);
     }
 }
 
@@ -1670,7 +1669,7 @@ pub fn analyze(parse_result: &mut ParseProgramResult) -> Result<(), LocalizedPar
 pub fn analyze_for_eval(
     parse_result: &mut ParseProgramResult,
     source: Rc<Source>,
-    private_names: Option<HashMap<String, PrivateNameUsage>>,
+    private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
     in_static: bool,

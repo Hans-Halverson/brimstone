@@ -518,7 +518,7 @@ impl<'a> Lexer<'a> {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
 
                     if let Some(char) = as_id_start(code_point) {
-                        let string = String::from(char);
+                        let string = Wtf8String::from(char);
                         self.lex_identifier_non_ascii(start_pos, string)
                     } else {
                         let loc = self.mark_loc(start_pos);
@@ -537,7 +537,7 @@ impl<'a> Lexer<'a> {
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
                         if let Some(char) = as_id_start_unicode(code_point) {
-                            let string = String::from(char);
+                            let string = Wtf8String::from(char);
                             self.lex_identifier_non_ascii(start_pos, string)
                         } else if is_unicode_whitespace(code_point) {
                             continue;
@@ -1475,10 +1475,9 @@ impl<'a> Lexer<'a> {
                     // Non-ASCII character is part of the identifier so bail to slow path, copying
                     // over ASCII string and code point that has been created so far. Safe since
                     // string is ASCII only so far and therefore valid UTF-8.
-                    let mut string_builder = unsafe {
-                        String::from_utf8_unchecked(self.buf[start_pos..ascii_end_pos].to_vec())
-                    };
-                    string_builder.push(char);
+                    let mut string_builder =
+                        Wtf8String::from_bytes_unchecked(&self.buf[start_pos..ascii_end_pos]);
+                    string_builder.push_char(char);
 
                     return self.lex_identifier_non_ascii(start_pos, string_builder);
                 } else {
@@ -1496,7 +1495,8 @@ impl<'a> Lexer<'a> {
         if let Some(keyword_token) = self.ascii_id_to_keyword(&id_string) {
             self.emit(keyword_token, start_pos)
         } else {
-            self.emit(Token::Identifier(id_string), start_pos)
+            let wtf8_id_string = Wtf8String::from_string(id_string);
+            self.emit(Token::Identifier(wtf8_id_string), start_pos)
         }
     }
 
@@ -1505,19 +1505,19 @@ impl<'a> Lexer<'a> {
     fn lex_identifier_non_ascii(
         &mut self,
         start_pos: Pos,
-        mut string_builder: String,
+        mut string_builder: Wtf8String,
     ) -> LexResult {
         loop {
             // Check if ASCII
             if is_ascii(self.current) {
                 if let Some(char) = as_id_part_ascii(self.current) {
-                    string_builder.push(char);
+                    string_builder.push_char(char);
                     self.advance();
                 } else if self.current == '\\' as u32 {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
 
                     if let Some(char) = as_id_part(code_point) {
-                        string_builder.push(char);
+                        string_builder.push_char(char);
                     } else {
                         let loc = self.mark_loc(self.pos);
                         let code_point_string = to_string_or_unicode_escape_sequence(code_point);
@@ -1534,7 +1534,7 @@ impl<'a> Lexer<'a> {
                 let code_point = self.lex_utf8_codepoint()?;
 
                 if let Some(char) = as_id_part_unicode(code_point) {
-                    string_builder.push(char);
+                    string_builder.push_char(char);
                 } else {
                     // Restore to before codepoint if not part of the id
                     self.restore(&save_state);

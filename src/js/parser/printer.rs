@@ -747,7 +747,7 @@ impl<'a> Printer<'a> {
         let id = expr.to_id();
 
         self.start_node("PrivateIdentifier", &id.loc);
-        self.property("name", id.name.as_str(), Printer::print_str);
+        self.property("name", &id.name, Printer::print_wtf8_string);
         self.end_node();
     }
 
@@ -961,9 +961,9 @@ impl<'a> Printer<'a> {
         self.print_identifier_parts(&id.loc, &id.name);
     }
 
-    fn print_identifier_parts(&mut self, loc: &Loc, name: &str) {
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &Wtf8String) {
         self.start_node("Identifier", loc);
-        self.property("name", name, Printer::print_str);
+        self.property("name", name, Printer::print_wtf8_string);
         self.end_node();
     }
 
@@ -1197,13 +1197,6 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_string(&mut self, string: Option<&String>) {
-        match string {
-            None => self.print_null(),
-            Some(string) => self.print_str(string),
-        }
-    }
-
     fn print_optional_wtf8_string(&mut self, string: Option<&Wtf8String>) {
         match string {
             None => self.print_null(),
@@ -1304,7 +1297,7 @@ impl<'a> Printer<'a> {
     fn print_regexp_capture_group(&mut self, group: &CaptureGroup) {
         self.start_regexp_node("CaptureGroup");
         self.property("index", group.index, Printer::print_number);
-        self.property("name", group.name.as_ref(), Printer::print_optional_string);
+        self.property("name", group.name.as_ref(), Printer::print_optional_wtf8_string);
         self.print_disjunction(&group.disjunction);
         self.end_node();
     }

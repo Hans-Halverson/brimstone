@@ -51,6 +51,7 @@ dependencies = [
  "clap",
  "criterion",
  "half",
+ "hashbrown",
  "icu_casemap",
  "icu_collator",
  "icu_collections",

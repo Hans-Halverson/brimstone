@@ -1,5 +1,6 @@
-use std::{cell::Cell, collections::HashSet};
+use std::cell::Cell;
 
+use hashbrown::HashSet;
 use indexmap_allocator_api::IndexMap;
 
 use super::{

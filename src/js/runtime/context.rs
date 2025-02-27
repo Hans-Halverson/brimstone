@@ -205,7 +205,7 @@ impl Context {
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {
-            println!("{}", print_program(&parse_result.program));
+            println!("{}", print_program(&parse_result));
         }
 
         // Generate bytecode for the program
@@ -227,7 +227,7 @@ impl Context {
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {
-            println!("{}", print_program(&parse_result.program));
+            println!("{}", print_program(&parse_result));
         }
 
         // Generate bytecode for the program

@@ -171,7 +171,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         debug_assert!(parse_result.program.kind == ProgramKind::Script);
 
         handle_scope!(cx, {
-            let source = parse_result.program.source.clone();
+            let source = parse_result.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let script = generator.generate_script_program(&parse_result.program)?;
 
@@ -234,7 +234,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         debug_assert!(parse_result.program.kind == ProgramKind::Module);
 
         handle_scope!(cx, {
-            let source = parse_result.program.source.clone();
+            let source = parse_result.source.clone();
             let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
             let module = generator.generate_module_program(&parse_result.program)?;
 
@@ -628,7 +628,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
             let mut generator =
-                Self::new(cx, &parse_result.scope_tree, realm, parse_result.program.source.clone());
+                Self::new(cx, &parse_result.scope_tree, realm, parse_result.source.clone());
             let function = generator.generate_eval(&parse_result.program);
 
             generator.dump_bytecode_functions();

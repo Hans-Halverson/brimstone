@@ -3,6 +3,7 @@ use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
+use super::parser::ParseProgramResult;
 use super::regexp::{
     Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
     ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
@@ -1407,8 +1408,8 @@ impl<'a> Printer<'a> {
 }
 
 // Prints JSON in ESTree format
-pub fn print_program(program: &Program) -> String {
-    let mut printer = Printer::new(&program.source);
-    printer.print_program(program);
+pub fn print_program(parse_result: &ParseProgramResult) -> String {
+    let mut printer = Printer::new(&parse_result.source);
+    printer.print_program(&parse_result.program);
     printer.finish()
 }

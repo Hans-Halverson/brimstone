@@ -114,11 +114,11 @@ pub enum Term {
     /// Matches any characters in a set e.g. [a-b]
     CharacterClass(CharacterClass),
     /// References to a capture group: `\1` or `\k<name>`
-    Backreference(P<Backreference>),
+    Backreference(P<'a, Backreference>),
 }
 
 pub struct Quantifier {
-    pub term: P<Term>,
+    pub term: P<'a, Term>,
     /// The minimum number of times the term must match
     pub min: u64,
     /// The maximum number of times the term can match, inclusive. If None then there is no maximum.

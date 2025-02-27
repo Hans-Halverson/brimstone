@@ -5,9 +5,13 @@ use std::{
 };
 
 use bitflags::bitflags;
+use bumpalo::Bump;
 use num_bigint::{BigInt, Sign};
 
-use crate::js::{common::wtf_8::Wtf8String, runtime::eval_result::EvalResult};
+use crate::js::{
+    common::{alloc, wtf_8::Wtf8String},
+    runtime::eval_result::EvalResult,
+};
 
 use super::{
     loc::{Loc, Pos, EMPTY_LOC},
@@ -16,6 +20,8 @@ use super::{
         AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
     },
 };
+
+pub type AstVec<'a, T> = alloc::Vec<T, &'a Bump>;
 
 pub type P<'a, T> = &'a T;
 
@@ -81,7 +87,7 @@ impl<T> Debug for AstPtr<T> {
 
 pub struct Program<'a> {
     pub loc: Loc,
-    pub toplevels: Vec<Toplevel<'a>>,
+    pub toplevels: AstVec<'a, Toplevel<'a>>,
     pub kind: ProgramKind,
     /// Whether the function is in strict mode, which could be inherited from surrounding context
     /// (e.g. in a direct eval or module)
@@ -97,7 +103,7 @@ pub struct Program<'a> {
 impl<'a> Program<'a> {
     pub fn new(
         loc: Loc,
-        toplevels: Vec<Toplevel<'a>>,
+        toplevels: AstVec<'a, Toplevel<'a>>,
         kind: ProgramKind,
         scope: AstPtr<AstScopeNode>,
         is_strict_mode: bool,
@@ -137,7 +143,7 @@ pub struct Identifier<'a> {
     /// unresolved if the scope could not be statically determined.
     ///
     /// For defs this is set during parsing. For uses this is set during analysis.
-    pub scope: TaggedResolvedScope,
+    pub scope: TaggedResolvedScope<'a>,
 }
 
 impl<'a> Identifier<'a> {
@@ -175,11 +181,11 @@ pub enum ResolvedScope {
 }
 
 impl<'a> TaggedResolvedScope<'a> {
-    pub const fn unresolved_global() -> TaggedResolvedScope {
+    pub const fn unresolved_global() -> TaggedResolvedScope<'static> {
         TaggedResolvedScope { ptr: ptr::null_mut() }
     }
 
-    pub const fn unresolved_dynamic() -> TaggedResolvedScope {
+    pub const fn unresolved_dynamic() -> TaggedResolvedScope<'static> {
         TaggedResolvedScope { ptr: 1 as *mut u8 }
     }
 
@@ -255,7 +261,7 @@ pub enum VarKind {
 pub struct VariableDeclaration<'a> {
     pub loc: Loc,
     pub kind: VarKind,
-    pub declarations: Vec<VariableDeclarator<'a>>,
+    pub declarations: AstVec<'a, VariableDeclarator<'a>>,
 }
 
 pub struct VariableDeclarator<'a> {
@@ -311,7 +317,7 @@ bitflags! {
 pub struct Function<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
-    pub params: Vec<FunctionParam<'a>>,
+    pub params: AstVec<'a, FunctionParam<'a>>,
     pub body: P<'a, FunctionBody<'a>>,
     pub flags: FunctionFlags,
 
@@ -325,10 +331,10 @@ impl<'a> Function<'a> {
             // Default values that will be overwritten by `init`
             loc: EMPTY_LOC,
             id: None,
-            params: vec![],
+            params: alloc::vec![],
             body: p(FunctionBody::Block(FunctionBlockBody {
                 loc: EMPTY_LOC,
-                body: vec![],
+                body: alloc::vec![],
                 scope: None,
             })),
             flags: FunctionFlags::empty(),
@@ -340,7 +346,7 @@ impl<'a> Function<'a> {
         &mut self,
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        params: Vec<FunctionParam<'a>>,
+        params: AstVec<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
         scope: AstPtr<AstScopeNode>,
@@ -356,7 +362,7 @@ impl<'a> Function<'a> {
     pub fn new(
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        params: Vec<FunctionParam<'a>>,
+        params: AstVec<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
         scope: AstPtr<AstScopeNode>,
@@ -478,7 +484,7 @@ impl<'a> FunctionBody<'a> {
 
 pub struct FunctionBlockBody<'a> {
     pub loc: Loc,
-    pub body: Vec<Statement<'a>>,
+    pub body: AstVec<'a, Statement<'a>>,
 
     /// Scope node for the function body, not including parameters. Only present if the function has
     /// parameter expressions, otherwise only the function's scope node is needed.
@@ -489,7 +495,7 @@ pub struct Class<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
     pub super_class: Option<P<'a, OuterExpression<'a>>>,
-    pub body: Vec<ClassElement<'a>>,
+    pub body: AstVec<'a, ClassElement<'a>>,
 
     pub constructor: Option<AstPtr<ClassMethod<'a>>>,
 
@@ -510,7 +516,7 @@ impl<'a> Class<'a> {
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
         super_class: Option<P<'a, OuterExpression<'a>>>,
-        body: Vec<ClassElement<'a>>,
+        body: AstVec<'a, ClassElement<'a>>,
         scope: AstPtr<AstScopeNode>,
         fields_initializer_scope: Option<AstPtr<AstScopeNode>>,
         static_initializer_scope: Option<AstPtr<AstScopeNode>>,
@@ -595,7 +601,7 @@ pub struct ExpressionStatement<'a> {
 
 pub struct Block<'a> {
     pub loc: Loc,
-    pub body: Vec<Statement<'a>>,
+    pub body: AstVec<'a, Statement<'a>>,
 
     /// Block scope node for the block.
     pub scope: AstPtr<AstScopeNode>,
@@ -611,7 +617,7 @@ pub struct IfStatement<'a> {
 pub struct SwitchStatement<'a> {
     pub loc: Loc,
     pub discriminant: P<'a, OuterExpression<'a>>,
-    pub cases: Vec<SwitchCase<'a>>,
+    pub cases: AstVec<'a, SwitchCase<'a>>,
 
     /// Block scope node for the switch statement body.
     pub scope: AstPtr<AstScopeNode>,
@@ -620,7 +626,7 @@ pub struct SwitchStatement<'a> {
 pub struct SwitchCase<'a> {
     pub loc: Loc,
     pub test: Option<P<'a, OuterExpression<'a>>>,
-    pub body: Vec<Statement<'a>>,
+    pub body: AstVec<'a, Statement<'a>>,
 }
 
 pub struct ForStatement<'a> {
@@ -927,7 +933,7 @@ pub struct BigIntLiteral<'a> {
     /// Sign of the BigInt value.
     sign: Sign,
     /// Digits of the BigInt value.
-    digits: Vec<u32>,
+    digits: AstVec<'a, u32>,
 }
 
 impl<'a> BigIntLiteral<'a> {
@@ -1104,7 +1110,7 @@ pub struct ConditionalExpression<'a> {
 pub struct CallExpression<'a> {
     pub loc: Loc,
     pub callee: P<'a, Expression<'a>>,
-    pub arguments: Vec<CallArgument<'a>>,
+    pub arguments: AstVec<'a, CallArgument<'a>>,
     pub is_optional: bool,
 
     // The reamining fields are only set if the call expression is potentially a direct eval.
@@ -1133,7 +1139,7 @@ impl<'a> CallExpression<'a> {
     pub fn new(
         loc: Loc,
         callee: P<'a, Expression<'a>>,
-        arguments: Vec<CallArgument<'a>>,
+        arguments: AstVec<'a, CallArgument<'a>>,
         is_optional: bool,
     ) -> CallExpression<'a> {
         CallExpression {
@@ -1159,17 +1165,17 @@ pub enum CallArgument<'a> {
 pub struct NewExpression<'a> {
     pub loc: Loc,
     pub callee: P<'a, Expression<'a>>,
-    pub arguments: Vec<CallArgument<'a>>,
+    pub arguments: AstVec<'a, CallArgument<'a>>,
 }
 
 pub struct SequenceExpression<'a> {
     pub loc: Loc,
-    pub expressions: Vec<Expression<'a>>,
+    pub expressions: AstVec<'a, Expression<'a>>,
 }
 
 pub struct ArrayExpression<'a> {
     pub loc: Loc,
-    pub elements: Vec<ArrayElement<'a>>,
+    pub elements: AstVec<'a, ArrayElement<'a>>,
     // Needed for reparsing into a pattern
     pub is_parenthesized: bool,
 }
@@ -1188,7 +1194,7 @@ pub struct SpreadElement<'a> {
 
 pub struct ObjectExpression<'a> {
     pub loc: Loc,
-    pub properties: Vec<Property<'a>>,
+    pub properties: AstVec<'a, Property<'a>>,
     // Needed for reparsing into a pattern
     pub is_parenthesized: bool,
 
@@ -1293,7 +1299,7 @@ impl<'a> SuperMemberExpression<'a> {
 pub struct SuperCallExpression<'a> {
     pub loc: Loc,
     pub super_: Loc,
-    pub arguments: Vec<CallArgument<'a>>,
+    pub arguments: AstVec<'a, CallArgument<'a>>,
 
     /// Reference to the function scope that contains the binding for the containing derived
     /// constructor, or tagged as unresolved dynamic if the scope could not be statically determined.
@@ -1309,7 +1315,7 @@ pub struct SuperCallExpression<'a> {
 }
 
 impl<'a> SuperCallExpression<'a> {
-    pub fn new(loc: Loc, super_loc: Loc, arguments: Vec<CallArgument<'a>>) -> Self {
+    pub fn new(loc: Loc, super_loc: Loc, arguments: AstVec<'a, CallArgument<'a>>) -> Self {
         Self {
             loc,
             super_: super_loc,
@@ -1323,8 +1329,8 @@ impl<'a> SuperCallExpression<'a> {
 
 pub struct TemplateLiteral<'a> {
     pub loc: Loc,
-    pub quasis: Vec<TemplateElement<'a>>,
-    pub expressions: Vec<Expression<'a>>,
+    pub quasis: AstVec<'a, TemplateElement<'a>>,
+    pub expressions: AstVec<'a, Expression<'a>>,
 }
 
 pub struct TemplateElement<'a> {
@@ -1447,7 +1453,7 @@ impl<'a> Pattern<'a> {
 
 pub struct ArrayPattern<'a> {
     pub loc: Loc,
-    pub elements: Vec<ArrayPatternElement<'a>>,
+    pub elements: AstVec<'a, ArrayPatternElement<'a>>,
 }
 
 pub enum ArrayPatternElement<'a> {
@@ -1482,7 +1488,7 @@ pub struct RestElement<'a> {
 
 pub struct ObjectPattern<'a> {
     pub loc: Loc,
-    pub properties: Vec<ObjectPatternProperty<'a>>,
+    pub properties: AstVec<'a, ObjectPatternProperty<'a>>,
 }
 
 impl<'a> ObjectPattern<'a> {
@@ -1524,13 +1530,13 @@ impl<'a> AssignmentPattern<'a> {
 
 pub struct ImportDeclaration<'a> {
     pub loc: Loc,
-    pub specifiers: Vec<ImportSpecifier<'a>>,
+    pub specifiers: AstVec<'a, ImportSpecifier<'a>>,
     pub source: P<'a, StringLiteral<'a>>,
     pub attributes: Option<P<'a, ImportAttributes<'a>>>,
 }
 
 pub struct ImportAttributes<'a> {
-    pub attributes: Vec<ImportAttribute<'a>>,
+    pub attributes: AstVec<'a, ImportAttribute<'a>>,
 }
 
 pub struct ImportAttribute<'a> {
@@ -1566,7 +1572,7 @@ pub struct ExportNamedDeclaration<'a> {
     pub loc: Loc,
     // Must be variable declaration, function declaration, or class declaration
     pub declaration: Option<P<'a, Statement<'a>>>,
-    pub specifiers: Vec<ExportSpecifier<'a>>,
+    pub specifiers: AstVec<'a, ExportSpecifier<'a>>,
     pub source: Option<P<'a, StringLiteral<'a>>>,
     pub source_attributes: Option<P<'a, ImportAttributes<'a>>>,
 }

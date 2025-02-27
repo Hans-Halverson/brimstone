@@ -1,21 +1,26 @@
 use std::{borrow::Borrow, fmt, hash};
 
-use super::unicode::{
-    decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
-    is_low_surrogate_code_point, is_surrogate_code_point,
+use allocator_api2::alloc::{Allocator, Global};
+
+use super::{
+    alloc,
+    unicode::{
+        decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
+        is_low_surrogate_code_point, is_surrogate_code_point,
+    },
 };
 
 /// A string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
 /// Identical to UTf-8 but also allows unpaired surrogate code points.
 #[derive(Clone)]
-pub struct Wtf8String {
-    buf: Vec<u8>,
+pub struct Wtf8String<A: Allocator + Clone = Global> {
+    buf: alloc::Vec<u8, A>,
 }
 
-impl Wtf8String {
+impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn new() -> Self {
-        Wtf8String { buf: Vec::new() }
+        Wtf8String { buf: alloc::Vec::new() }
     }
 
     #[inline]
@@ -24,7 +29,7 @@ impl Wtf8String {
     }
 
     #[inline]
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+    pub fn from_bytes_unchecked(alloc: A, bytes: &[u8]) -> Self {
         Wtf8String { buf: bytes.to_vec() }
     }
 
@@ -89,7 +94,7 @@ impl Wtf8String {
         self.buf.truncate(new_length);
     }
 
-    pub fn repeat(&self, num_times: usize) -> Wtf8String {
+    pub fn repeat(&self, num_times: usize) -> Self {
         Wtf8String { buf: self.buf.repeat(num_times) }
     }
 

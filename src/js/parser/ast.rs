@@ -23,6 +23,8 @@ use super::{
 
 pub type AstVec<'a, T> = alloc::Vec<T, &'a Bump>;
 
+pub type AstString<'a> = Wtf8String<&'a Bump>;
+
 pub type P<'a, T> = &'a T;
 
 pub fn p<'a, T>(node: T) -> P<'a, T> {
@@ -137,7 +139,7 @@ pub enum Toplevel<'a> {
 
 pub struct Identifier<'a> {
     pub loc: Loc,
-    pub name: Wtf8String,
+    pub name: AstString<'a>,
 
     /// Reference to the scope that contains the binding for this identifier, or tagged as
     /// unresolved if the scope could not be statically determined.
@@ -147,7 +149,7 @@ pub struct Identifier<'a> {
 }
 
 impl<'a> Identifier<'a> {
-    pub fn new(loc: Loc, name: Wtf8String) -> Identifier {
+    pub fn new(loc: Loc, name: AstString) -> Identifier {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
@@ -156,7 +158,7 @@ impl<'a> Identifier<'a> {
     }
 
     pub fn get_private_name_binding(&self) -> &Binding {
-        let private_name = Wtf8String::from_string(format!("#{}", self.name));
+        let private_name = AstString::from_string(format!("#{}", self.name));
         self.scope.unwrap_resolved().get_binding(&private_name)
     }
 }
@@ -791,12 +793,12 @@ pub type LabelId = u16;
 
 pub struct Label<'a> {
     pub loc: Loc,
-    pub name: Wtf8String,
+    pub name: AstString<'a>,
     pub id: LabelId,
 }
 
 impl<'a> Label<'a> {
-    pub fn new(loc: Loc, name: Wtf8String) -> Label<'a> {
+    pub fn new(loc: Loc, name: AstString<'a>) -> Label<'a> {
         Label { loc, name, id: 0 }
     }
 }
@@ -925,7 +927,7 @@ pub struct NumberLiteral {
 
 pub struct StringLiteral<'a> {
     pub loc: Loc,
-    pub value: Wtf8String,
+    pub value: AstString<'a>,
 }
 
 pub struct BigIntLiteral<'a> {
@@ -950,9 +952,9 @@ impl<'a> BigIntLiteral<'a> {
 
 pub struct RegExpLiteral<'a> {
     pub loc: Loc,
-    pub raw: P<'a, Wtf8String>,
-    pub pattern: P<'a, Wtf8String>,
-    pub flags: P<'a, Wtf8String>,
+    pub raw: P<'a, AstString<'a>>,
+    pub pattern: P<'a, AstString<'a>>,
+    pub flags: P<'a, AstString<'a>>,
     pub regexp: P<'a, RegExp>,
 }
 
@@ -1335,9 +1337,9 @@ pub struct TemplateLiteral<'a> {
 
 pub struct TemplateElement<'a> {
     pub loc: Loc,
-    pub raw: Wtf8String,
+    pub raw: AstString<'a>,
     /// Guaranteed to exist for template literals. Tagged templates allow this to be None.
-    pub cooked: Option<Wtf8String>,
+    pub cooked: Option<AstString<'a>>,
 }
 
 pub struct TaggedTemplateExpression<'a> {

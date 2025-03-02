@@ -215,10 +215,14 @@ impl<A: Allocator + Clone> fmt::Debug for Wtf8String<A> {
     }
 }
 
-impl<A: Allocator + Clone> PartialEq for Wtf8String<A> {
+impl<A1, A2> PartialEq<Wtf8String<A1>> for Wtf8String<A2>
+where
+    A1: Allocator + Clone,
+    A2: Allocator + Clone,
+{
     // Must use the same eq as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Wtf8String<A1>) -> bool {
         self.as_bytes() == other.as_bytes()
     }
 }

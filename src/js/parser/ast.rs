@@ -1,4 +1,5 @@
 use std::{
+    collections::hash_map::RandomState,
     fmt::{self, Debug},
     hash,
     ptr::{self, NonNull},
@@ -6,6 +7,8 @@ use std::{
 
 use bitflags::bitflags;
 use bumpalo::Bump;
+use hashbrown::{DefaultHashBuilder, HashSet};
+use indexmap_allocator_api::IndexMap;
 use num_bigint::{BigInt, Sign};
 
 use crate::js::{
@@ -21,9 +24,17 @@ use super::{
     },
 };
 
-pub type AstVec<'a, T> = alloc::Vec<T, &'a Bump>;
+pub type AstAlloc<'a> = &'a Bump;
 
-pub type AstString<'a> = Wtf8String<&'a Bump>;
+pub type AstBox<'a, T> = alloc::Box<T, AstAlloc<'a>>;
+
+pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
+
+pub type AstString<'a> = Wtf8String<AstAlloc<'a>>;
+
+pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
+
+pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
 
 pub type P<'a, T> = &'a T;
 
@@ -99,7 +110,7 @@ pub struct Program<'a> {
     /// Whether this is a module with top level await. Set during analysis.
     pub has_top_level_await: bool,
 
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 impl<'a> Program<'a> {
@@ -107,7 +118,7 @@ impl<'a> Program<'a> {
         loc: Loc,
         toplevels: AstVec<'a, Toplevel<'a>>,
         kind: ProgramKind,
-        scope: AstPtr<AstScopeNode>,
+        scope: AstPtr<AstScopeNode<'a>>,
         is_strict_mode: bool,
         has_use_strict_directive: bool,
     ) -> Program<'a> {
@@ -324,7 +335,7 @@ pub struct Function<'a> {
     pub flags: FunctionFlags,
 
     /// Scope node for the function, containing function parameters and the body.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 impl<'a> Function<'a> {
@@ -351,7 +362,7 @@ impl<'a> Function<'a> {
         params: AstVec<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
-        scope: AstPtr<AstScopeNode>,
+        scope: AstPtr<AstScopeNode<'a>>,
     ) {
         self.loc = loc;
         self.id = id;
@@ -367,8 +378,8 @@ impl<'a> Function<'a> {
         params: AstVec<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
-        scope: AstPtr<AstScopeNode>,
-    ) -> Function {
+        scope: AstPtr<AstScopeNode<'a>>,
+    ) -> Function<'a> {
         let mut func = Function::new_uninit();
         func.init(loc, id, params, body, flags, scope);
         func
@@ -490,7 +501,7 @@ pub struct FunctionBlockBody<'a> {
 
     /// Scope node for the function body, not including parameters. Only present if the function has
     /// parameter expressions, otherwise only the function's scope node is needed.
-    pub scope: Option<AstPtr<AstScopeNode>>,
+    pub scope: Option<AstPtr<AstScopeNode<'a>>>,
 }
 
 pub struct Class<'a> {
@@ -502,15 +513,15 @@ pub struct Class<'a> {
     pub constructor: Option<AstPtr<ClassMethod<'a>>>,
 
     /// Scope node for the class body
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 
     /// Scope node for the instance fields initializer. Only present if the class has instance
     /// fields.
-    pub fields_initializer_scope: Option<AstPtr<AstScopeNode>>,
+    pub fields_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
 
     /// Scope node for the static initializer, including static fields and initializer blocks.
     /// Only present if the class has static fields or static initializer blocks.
-    pub static_initializer_scope: Option<AstPtr<AstScopeNode>>,
+    pub static_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
 }
 
 impl<'a> Class<'a> {
@@ -519,10 +530,10 @@ impl<'a> Class<'a> {
         id: Option<P<'a, Identifier<'a>>>,
         super_class: Option<P<'a, OuterExpression<'a>>>,
         body: AstVec<'a, ClassElement<'a>>,
-        scope: AstPtr<AstScopeNode>,
-        fields_initializer_scope: Option<AstPtr<AstScopeNode>>,
-        static_initializer_scope: Option<AstPtr<AstScopeNode>>,
-    ) -> Class {
+        scope: AstPtr<AstScopeNode<'a>>,
+        fields_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
+        static_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
+    ) -> Class<'a> {
         Class {
             loc,
             id,
@@ -606,7 +617,7 @@ pub struct Block<'a> {
     pub body: AstVec<'a, Statement<'a>>,
 
     /// Block scope node for the block.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 pub struct IfStatement<'a> {
@@ -622,7 +633,7 @@ pub struct SwitchStatement<'a> {
     pub cases: AstVec<'a, SwitchCase<'a>>,
 
     /// Block scope node for the switch statement body.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 pub struct SwitchCase<'a> {
@@ -639,7 +650,7 @@ pub struct ForStatement<'a> {
     pub body: P<'a, Statement<'a>>,
 
     /// Block scope node that contains the for statement variable declarations and the body.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 pub enum ForInit<'a> {
@@ -659,7 +670,7 @@ pub struct ForEachStatement<'a> {
     pub in_of_pos: Pos,
 
     /// Block scope node that contains the for statement variable declarations and the body.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 #[derive(PartialEq)]
@@ -720,7 +731,7 @@ pub struct WithStatement<'a> {
     pub body: P<'a, Statement<'a>>,
 
     /// Scope node for the with statement body
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 pub struct TryStatement<'a> {
@@ -738,7 +749,7 @@ pub struct CatchClause<'a> {
     pub param_has_assign_expr: bool,
 
     /// Block scope node that contains the catch clause parameter binding and body.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 impl<'a> CatchClause<'a> {
@@ -746,7 +757,7 @@ impl<'a> CatchClause<'a> {
         loc: Loc,
         param: Option<P<'a, Pattern<'a>>>,
         body: P<'a, Block<'a>>,
-        scope: AstPtr<AstScopeNode>,
+        scope: AstPtr<AstScopeNode<'a>>,
     ) -> CatchClause<'a> {
         CatchClause { loc, param, body, param_has_assign_expr: false, scope }
     }
@@ -764,7 +775,7 @@ pub struct ReturnStatement<'a> {
     /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
     /// `ThisExpression` node, but only set if this return is in a derived constructor (meaning the
     /// derived constructor's `this` may be implicitly returned).
-    pub this_scope: Option<AstPtr<AstScopeNode>>,
+    pub this_scope: Option<AstPtr<AstScopeNode<'a>>>,
 }
 
 impl<'a> ReturnStatement<'a> {
@@ -1201,7 +1212,7 @@ pub struct ObjectExpression<'a> {
     pub is_parenthesized: bool,
 
     /// Scope node for the object body, will only contain the home object.
-    pub scope: AstPtr<AstScopeNode>,
+    pub scope: AstPtr<AstScopeNode<'a>>,
 }
 
 pub struct Property<'a> {
@@ -1233,7 +1244,7 @@ pub struct ThisExpression<'a> {
     ///
     /// Starts out uninitialized during parsing and is set during analysis. Only set if resolved to
     /// a captured `this` binding, or if referring to `this` of a derived constructor.
-    pub scope: Option<AstPtr<AstScopeNode>>,
+    pub scope: Option<AstPtr<AstScopeNode<'a>>>,
 }
 
 pub struct AwaitExpression<'a> {
@@ -1258,7 +1269,7 @@ pub struct SuperMemberExpression<'a> {
 
     /// Reference to the scope that contains the binding for `this`. Treated the same as the scope
     /// in the `ThisExpression` node.
-    pub this_scope: Option<AstPtr<AstScopeNode>>,
+    pub this_scope: Option<AstPtr<AstScopeNode<'a>>>,
 
     /// Reference to the scope that contains the binding for the home object referenced by this
     /// super expression, or tagged as unresolved dynamic if the scope could not be statically
@@ -1313,7 +1324,7 @@ pub struct SuperCallExpression<'a> {
 
     /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
     /// `ThisExpression` node, but is always set since it refers to a derived constructor's `this`.
-    pub this_scope: AstPtr<AstScopeNode>,
+    pub this_scope: AstPtr<AstScopeNode<'a>>,
 }
 
 impl<'a> SuperCallExpression<'a> {

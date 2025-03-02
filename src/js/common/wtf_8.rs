@@ -1,6 +1,9 @@
 use std::{borrow::Borrow, fmt, hash};
 
-use allocator_api2::alloc::{Allocator, Global};
+use allocator_api2::{
+    alloc::{Allocator, Global},
+    SliceExt,
+};
 
 use super::{
     alloc,
@@ -17,12 +20,14 @@ pub struct Wtf8String<A: Allocator + Clone = Global> {
     buf: alloc::Vec<u8, A>,
 }
 
-impl<A: Allocator + Clone> Wtf8String<A> {
+impl Wtf8String<Global> {
     #[inline]
     pub fn new() -> Self {
         Wtf8String { buf: alloc::Vec::new() }
     }
+}
 
+impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn from_string(string: String) -> Self {
         Wtf8String { buf: string.into_bytes() }
@@ -45,6 +50,12 @@ impl<A: Allocator + Clone> Wtf8String<A> {
         string.push(code_point);
 
         string
+    }
+
+    #[inline]
+    pub fn clone_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: self.buf.to_vec_in(alloc) }
     }
 
     #[inline]
@@ -172,19 +183,19 @@ impl Iterator for Wtf8CodePointsIterator<'_> {
     }
 }
 
-impl fmt::Display for Wtf8String {
+impl<A: Allocator + Clone> fmt::Display for Wtf8String<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         String::from_utf8_lossy(&self.buf).to_string().fmt(f)
     }
 }
 
-impl fmt::Debug for Wtf8String {
+impl<A: Allocator + Clone> fmt::Debug for Wtf8String<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.to_string())
     }
 }
 
-impl PartialEq for Wtf8String {
+impl<A: Allocator + Clone> PartialEq for Wtf8String<A> {
     // Must use the same eq as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -192,23 +203,23 @@ impl PartialEq for Wtf8String {
     }
 }
 
-impl Eq for Wtf8String {}
+impl<A: Allocator + Clone> Eq for Wtf8String<A> {}
 
-impl PartialEq<str> for Wtf8String {
+impl<A: Allocator + Clone> PartialEq<str> for Wtf8String<A> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         self.buf == other.as_bytes()
     }
 }
 
-impl PartialEq<&str> for Wtf8String {
+impl<A: Allocator + Clone> PartialEq<&str> for Wtf8String<A> {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         self.buf == other.as_bytes()
     }
 }
 
-impl hash::Hash for Wtf8String {
+impl<A: Allocator + Clone> hash::Hash for Wtf8String<A> {
     // Must use the same hash function as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -216,14 +227,14 @@ impl hash::Hash for Wtf8String {
     }
 }
 
-impl Borrow<[u8]> for Wtf8String {
+impl<A: Allocator + Clone> Borrow<[u8]> for Wtf8String<A> {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl From<char> for Wtf8String {
+impl From<char> for Wtf8String<Global> {
     fn from(c: char) -> Self {
         let mut buf = [0; 4];
         let byte_length = encode_utf8_codepoint(&mut buf, c as u32);

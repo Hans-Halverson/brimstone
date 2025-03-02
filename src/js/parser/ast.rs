@@ -2,6 +2,7 @@ use std::{
     collections::hash_map::RandomState,
     fmt::{self, Debug},
     hash,
+    marker::PhantomData,
     ptr::{self, NonNull},
 };
 
@@ -182,6 +183,7 @@ impl<'a> Identifier<'a> {
 #[derive(Clone, Copy)]
 pub struct TaggedResolvedScope<'a> {
     ptr: *mut u8,
+    data: PhantomData<AstScopeNode<'a>>,
 }
 
 pub enum ResolvedScope {
@@ -195,15 +197,15 @@ pub enum ResolvedScope {
 
 impl<'a> TaggedResolvedScope<'a> {
     pub const fn unresolved_global() -> TaggedResolvedScope<'static> {
-        TaggedResolvedScope { ptr: ptr::null_mut() }
+        TaggedResolvedScope { ptr: ptr::null_mut(), data: PhantomData }
     }
 
     pub const fn unresolved_dynamic() -> TaggedResolvedScope<'static> {
-        TaggedResolvedScope { ptr: 1 as *mut u8 }
+        TaggedResolvedScope { ptr: 1 as *mut u8, data: PhantomData }
     }
 
     pub const fn resolved(scope: AstPtr<AstScopeNode>) -> TaggedResolvedScope {
-        TaggedResolvedScope { ptr: scope.ptr.as_ptr() as *mut u8 }
+        TaggedResolvedScope { ptr: scope.ptr.as_ptr() as *mut u8, data: PhantomData }
     }
 
     pub fn kind(&self) -> ResolvedScope {
@@ -294,7 +296,7 @@ impl<'a> VariableDeclarator<'a> {
         VariableDeclarator { loc, id, init, id_has_assign_expr: false }
     }
 
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -786,7 +788,7 @@ impl<'a> ReturnStatement<'a> {
 
 pub struct BreakStatement<'a> {
     pub loc: Loc,
-    pub label: Option<Label>,
+    pub label: Option<Label<'a>>,
 }
 
 pub struct ContinueStatement<'a> {
@@ -1593,7 +1595,7 @@ pub struct ExportNamedDeclaration<'a> {
 impl<'a> ExportNamedDeclaration<'a> {
     pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&'a Identifier<'a>)) {
         if let Some(declaration) = &self.declaration {
-            match declaration.as_ref() {
+            match declaration {
                 Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
                     for decl in declarations {
                         let _ = decl.iter_bound_names(&mut |id| {

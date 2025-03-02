@@ -12,8 +12,8 @@ use crate::js::common::unicode::{
     is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
     is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
 };
-use crate::js::common::wtf_8::Wtf8String;
 
+use super::ast::{AstAlloc, AstString};
 use super::loc::{Loc, Pos};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
@@ -27,6 +27,7 @@ pub struct Lexer<'a> {
     is_new_line_before_current: bool,
     pub in_strict_mode: bool,
     pub allow_hashbang_comment: bool,
+    alloc: AstAlloc<'a>,
 }
 
 /// A save point for the lexer, can be used to restore the lexer to a particular position.
@@ -35,13 +36,13 @@ pub struct SavedLexerState {
     pos: Pos,
 }
 
-type LexResult = ParseResult<(Token, Loc)>;
+type LexResult<'a> = ParseResult<(Token<'a>, Loc)>;
 
 /// Character that marks an EOF. Not a valid unicode character.
 const EOF_CHAR: u32 = 0x110000;
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: &'a Rc<Source>) -> Lexer<'a> {
+    pub fn new(source: &'a Rc<Source>, alloc: AstAlloc<'a>) -> Lexer<'a> {
         let buf = source.contents.as_bytes();
         let current = if buf.is_empty() {
             EOF_CHAR
@@ -57,6 +58,7 @@ impl<'a> Lexer<'a> {
             is_new_line_before_current: false,
             in_strict_mode: false,
             allow_hashbang_comment: true,
+            alloc,
         }
     }
 
@@ -141,7 +143,7 @@ impl<'a> Lexer<'a> {
         Loc { start: start_pos, end: self.pos }
     }
 
-    fn emit(&self, token: Token, start_pos: Pos) -> LexResult {
+    fn emit(&self, token: Token<'a>, start_pos: Pos) -> LexResult<'a> {
         Ok((token, self.mark_loc(start_pos)))
     }
 
@@ -518,7 +520,7 @@ impl<'a> Lexer<'a> {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
 
                     if let Some(char) = as_id_start(code_point) {
-                        let string = Wtf8String::from(char);
+                        let string = AstString::from_char_in(char, self.alloc);
                         self.lex_identifier_non_ascii(start_pos, string)
                     } else {
                         let loc = self.mark_loc(start_pos);
@@ -537,7 +539,7 @@ impl<'a> Lexer<'a> {
                     } else {
                         let code_point = self.lex_utf8_codepoint()?;
                         if let Some(char) = as_id_start_unicode(code_point) {
-                            let string = Wtf8String::from(char);
+                            let string = AstString::from_char_in(char, self.alloc);
                             self.lex_identifier_non_ascii(start_pos, string)
                         } else if is_unicode_whitespace(code_point) {
                             continue;
@@ -902,7 +904,7 @@ impl<'a> Lexer<'a> {
         let start_pos = self.pos;
         self.advance();
 
-        let mut value = Wtf8String::new();
+        let mut value = AstString::new_in(self.alloc);
 
         while self.current != quote_char {
             match_u32!(match self.current {
@@ -1112,10 +1114,13 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let pattern =
-            Wtf8String::from_bytes_unchecked(&self.buf[pattern_start_pos..pattern_end_pos]);
-        let flags = Wtf8String::from_bytes_unchecked(&self.buf[flags_start_pos..self.pos]);
-        let raw = Wtf8String::from_bytes_unchecked(&self.buf[start_pos..self.pos]);
+        let pattern = AstString::from_bytes_unchecked_in(
+            &self.buf[pattern_start_pos..pattern_end_pos],
+            self.alloc,
+        );
+        let flags =
+            AstString::from_bytes_unchecked_in(&self.buf[flags_start_pos..self.pos], self.alloc);
+        let raw = AstString::from_bytes_unchecked_in(&self.buf[start_pos..self.pos], self.alloc);
 
         self.emit(Token::RegExpLiteral { raw, pattern, flags }, start_pos)
     }
@@ -1166,7 +1171,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult {
-        let mut value = Wtf8String::new();
+        let mut value = AstString::new_in(self.alloc);
 
         let is_tail;
         let raw_start_pos = self.pos;
@@ -1325,12 +1330,13 @@ impl<'a> Lexer<'a> {
             })
         }
 
-        let mut raw = Wtf8String::from_bytes_unchecked(&self.buf[raw_start_pos..raw_end_pos]);
+        let mut raw =
+            AstString::from_bytes_unchecked_in(&self.buf[raw_start_pos..raw_end_pos], self.alloc);
 
         // CR and CRLF are both converted to LF in raw string. This requires copying the string
         // again, so only perform the replace if a CR was encountered.
         if has_cr {
-            let mut new_raw = Wtf8String::new();
+            let mut new_raw = AstString::new_in(self.alloc);
             for (i, slice) in raw.as_bytes().split(|byte| *byte == b'\r').enumerate() {
                 // Replace both `\r\n` and `\r`
                 let slice = if i != 0 && !slice.is_empty() && slice[0] == b'\n' {
@@ -1475,8 +1481,10 @@ impl<'a> Lexer<'a> {
                     // Non-ASCII character is part of the identifier so bail to slow path, copying
                     // over ASCII string and code point that has been created so far. Safe since
                     // string is ASCII only so far and therefore valid UTF-8.
-                    let mut string_builder =
-                        Wtf8String::from_bytes_unchecked(&self.buf[start_pos..ascii_end_pos]);
+                    let mut string_builder = AstString::from_bytes_unchecked_in(
+                        &self.buf[start_pos..ascii_end_pos],
+                        self.alloc,
+                    );
                     string_builder.push_char(char);
 
                     return self.lex_identifier_non_ascii(start_pos, string_builder);
@@ -1495,7 +1503,7 @@ impl<'a> Lexer<'a> {
         if let Some(keyword_token) = self.ascii_id_to_keyword(&id_string) {
             self.emit(keyword_token, start_pos)
         } else {
-            let wtf8_id_string = Wtf8String::from_string(id_string);
+            let wtf8_id_string = AstString::from_string_in(id_string, self.alloc);
             self.emit(Token::Identifier(wtf8_id_string), start_pos)
         }
     }
@@ -1505,7 +1513,7 @@ impl<'a> Lexer<'a> {
     fn lex_identifier_non_ascii(
         &mut self,
         start_pos: Pos,
-        mut string_builder: Wtf8String,
+        mut string_builder: AstString,
     ) -> LexResult {
         loop {
             // Check if ASCII

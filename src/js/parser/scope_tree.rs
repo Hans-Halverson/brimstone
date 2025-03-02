@@ -1,5 +1,6 @@
-use std::{cell::Cell, sync::LazyLock};
+use std::{cell::Cell, rc::Rc, sync::LazyLock};
 
+use allocator_api2::alloc::{Allocator, Global};
 use bumpalo::Bump;
 
 use crate::js::common::{alloc, wtf_8::Wtf8String};
@@ -31,22 +32,23 @@ type AddBindingResult<'a> = Result<AstPtr<AstScopeNode<'a>>, ParseError>;
 
 /// Functions for constructing, mutating, and querying the AST scope tree.
 impl<'a> ScopeTree<'a> {
-    fn new_with_root(alloc: AstAlloc<'a>, kind: ScopeNodeKind) -> ScopeTree<'a> {
+    fn new_with_root(alloc: &'a Bump, kind: ScopeNodeKind) -> ScopeTree<'a> {
         let mut scope_tree = ScopeTree {
-            ast_nodes: alloc::vec![in alloc],
-            vm_nodes: alloc::vec![in alloc],
+            ast_nodes: alloc::vec![in &alloc],
+            vm_nodes: alloc::vec![in &alloc],
             current_node_id: INITIAL_SCOPE_ID,
             alloc,
         };
 
-        let global_scope_node = scope_tree.new_ast_scope_node(INITIAL_SCOPE_ID, kind, None, alloc);
-        scope_tree
-            .ast_nodes
-            .push(AstBox::new_in(global_scope_node, alloc));
+        // Push the global scope node
+        scope_tree.push_new_ast_scope_node(INITIAL_SCOPE_ID, kind, None);
 
         // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding(&THIS_NAME, BindingKind::ImplicitThis { in_derived_constructor: false })
+            .add_binding(
+                &THIS_NAME,
+                BindingKind::ImplicitThis { in_derived_constructor: false },
+            )
             .unwrap();
 
         scope_tree
@@ -97,9 +99,7 @@ impl<'a> ScopeTree<'a> {
     /// Enter a new AST scope node with the provided kind.
     pub fn enter_scope(&'a mut self, kind: ScopeNodeKind) -> AstPtr<AstScopeNode<'a>> {
         let node_id = self.ast_nodes.len();
-        let ast_node =
-            self.new_ast_scope_node(node_id, kind, Some(self.current_node_id), self.alloc);
-        self.ast_nodes.push(AstBox::new_in(ast_node, self.alloc));
+        self.push_new_ast_scope_node(node_id, kind, Some(self.current_node_id));
 
         self.current_node_id = node_id;
 
@@ -135,13 +135,12 @@ impl<'a> ScopeTree<'a> {
         &self.vm_nodes[node_id]
     }
 
-    fn new_ast_scope_node<'b>(
-        &'a self,
+    fn push_new_ast_scope_node(
+        &mut self,
         id: ScopeNodeId,
         kind: ScopeNodeKind,
         parent: Option<ScopeNodeId>,
-        alloc: &'b Bump,
-    ) -> AstScopeNode<'b> {
+    ) {
         let enclosing_scope = if let ScopeNodeKind::Global
         | ScopeNodeKind::Module
         | ScopeNodeKind::Function { .. }
@@ -154,7 +153,7 @@ impl<'a> ScopeTree<'a> {
             self.get_ast_node(parent.unwrap()).enclosing_scope
         };
 
-        let mut extra_var_names = AstHashSet::new_in(alloc);
+        let mut extra_var_names = AstHashSet::new_in(self.alloc);
 
         // Function body scopes must know the names of all parameter names in the parent function
         // scope (to check for conflicts against lexical declarations).
@@ -163,18 +162,18 @@ impl<'a> ScopeTree<'a> {
             // All bindings in function scope are gaurantueed to be function parameters if a
             // function body scope is created.
             for (name, _) in func_scope.iter_bindings() {
-                extra_var_names.insert(name.clone_in(alloc));
+                extra_var_names.insert(name.clone_in(self.alloc));
             }
         }
 
         // With scope nodes always have dynamic bindings
         let supports_dynamic_bindings = kind == ScopeNodeKind::With;
 
-        AstScopeNode {
+        let scope_node = AstScopeNode {
             id,
             parent,
             kind,
-            bindings: AstIndexMap::new_in(alloc),
+            bindings: AstIndexMap::new_in(self.alloc),
             extra_var_names,
             num_bindings: 0,
             has_duplicates: false,
@@ -182,15 +181,22 @@ impl<'a> ScopeTree<'a> {
             supports_dynamic_bindings,
             allow_empty_vm_node: false,
             enclosing_scope,
-            enclosed_scopes: alloc::vec![in alloc],
+            enclosed_scopes: alloc::vec![in self.alloc],
             num_local_registers: 0,
             vm_scope: None,
-        }
+        };
+
+        self.ast_nodes.push(AstBox::new_in(scope_node, self.alloc));
     }
 
     /// Add a binding to the AST scope tree, hoisting to a higher scope if necessary. On success
     /// return the AST scope node that the binding was added to.
-    pub fn add_binding(&mut self, name: &Wtf8String, kind: BindingKind) -> AddBindingResult<'a> {
+    pub fn add_binding<'b: 'a>(
+        &mut self,
+        name: &'b AstString<'b>,
+        kind: BindingKind,
+    ) -> AddBindingResult<'a>
+    {
         if kind.is_lexically_scoped() {
             self.add_lexically_scoped_binding(name, kind)
         } else {
@@ -198,10 +204,10 @@ impl<'a> ScopeTree<'a> {
         }
     }
 
-    fn add_lexically_scoped_binding(
+    fn add_lexically_scoped_binding<'b: 'a>(
         &mut self,
-        name: &Wtf8String,
-        kind: BindingKind,
+        name: &'b AstString<'b>,
+        kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         let node = self.get_ast_node_mut(self.current_node_id);
 
@@ -214,7 +220,7 @@ impl<'a> ScopeTree<'a> {
         // uses in different cases).
         let needs_tdz_check = node.kind == ScopeNodeKind::Switch;
 
-        node.add_binding(name, kind, None, needs_tdz_check);
+        node.add_binding(name, kind, None, needs_tdz_check, self.alloc);
 
         // Lexically scoped bindings in the global scope must be placed in a VM scope node so that
         // they can be accessed by different scripts.
@@ -226,9 +232,9 @@ impl<'a> ScopeTree<'a> {
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
 
-    fn add_var_scoped_binding(
+    fn add_var_scoped_binding<'b: 'a>(
         &mut self,
-        name: &Wtf8String,
+        name: &'b AstString<'b>,
         kind: BindingKind,
     ) -> AddBindingResult<'a> {
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
@@ -282,7 +288,12 @@ impl<'a> ScopeTree<'a> {
                         None
                     };
 
-                    node.add_binding(name, kind, vm_location, /* needs_tdz_check */ false);
+                    node.add_binding(
+                        name,
+                        kind,
+                        vm_location,
+                        /* needs_tdz_check */ false,
+                    );
                 } else if existing_binding.is_some() && in_with_statement {
                     // Should treat as a WithVar binding if any var binding is within a with
                     node.bindings
@@ -295,7 +306,7 @@ impl<'a> ScopeTree<'a> {
             } else {
                 // Add var name to all scopes except for hoist target, so that later lexical
                 // declarations can check for name conflicts.
-                node.extra_var_names.insert(name.to_owned());
+                node.extra_var_names.insert(name.clone());
             }
 
             node_id = node.parent.unwrap();
@@ -869,15 +880,18 @@ impl<'a> AstScopeNode<'a> {
         self.allow_empty_vm_node = value;
     }
 
-    fn add_binding(
+    fn add_binding<A>(
         &mut self,
-        name: &Wtf8String,
-        kind: BindingKind,
+        name: &Wtf8String<A>,
+        kind: BindingKind<'a>,
         vm_location: Option<VMLocation>,
         needs_tdz_check: bool,
-    ) {
+        alloc: AstAlloc<'a>
+    ) where
+        A: Allocator + Clone,
+    {
         let insert_result = self.bindings.insert(
-            name.clone(),
+            name.clone_in(alloc),
             Binding::new(kind, self.num_bindings, vm_location, needs_tdz_check),
         );
 
@@ -888,19 +902,19 @@ impl<'a> AstScopeNode<'a> {
         self.num_bindings += 1;
     }
 
-    pub fn has_binding(&self, name: &Wtf8String) -> bool {
+    pub fn has_binding(&self, name: &AstString) -> bool {
         self.bindings.contains_key(name)
     }
 
-    pub fn get_binding(&self, name: &Wtf8String) -> &Binding {
+    pub fn get_binding<'b: 'a>(&self, name: &'b AstString<'b>) -> &Binding {
         self.bindings.get(name).unwrap()
     }
 
-    pub fn get_binding_opt(&self, name: &Wtf8String) -> Option<&Binding> {
+    pub fn get_binding_opt<'b: 'a>(&self, name: &'b AstString<'b>) -> Option<&Binding> {
         self.bindings.get(name)
     }
 
-    pub fn get_binding_mut(&mut self, name: &Wtf8String) -> &mut Binding {
+    pub fn get_binding_mut<'b: 'a>(&mut self, name: &'b AstString<'b>) -> &mut Binding<'a> {
         self.bindings.get_mut(name).unwrap()
     }
 
@@ -922,7 +936,7 @@ impl<'a> AstScopeNode<'a> {
     }
 
     /// Error if the provided lexical name is already declared in this scope.
-    pub fn error_if_lexical_name_already_declared(&self, name: &Wtf8String) -> Option<ParseError> {
+    pub fn error_if_lexical_name_already_declared(&self, name: &AstString) -> Option<ParseError> {
         // Error if there is already any binding with this name in the current scope, which is
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
@@ -930,7 +944,7 @@ impl<'a> AstScopeNode<'a> {
             // Function expression name bindings can always be overriden
             if !binding.kind().is_function_expression_name() {
                 return Some(ParseError::new_name_redeclaration(
-                    name.clone(),
+                    name.clone_in(Global),
                     binding.kind.clone(),
                 ));
             }
@@ -939,7 +953,7 @@ impl<'a> AstScopeNode<'a> {
         // Then check for other conflicting var scoped bindings, e.g. in child scopes
         if self.extra_var_names.contains(name) {
             return Some(ParseError::new_name_redeclaration(
-                name.clone(),
+                name.clone_in(Global),
                 // Guaranteed to conflict with a `var` binding, as the other var scoped names -
                 // var scoped functions and function parameters - cannot appear in child scopes.
                 BindingKind::Var,

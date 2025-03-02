@@ -1240,9 +1240,7 @@ impl<'a> Printer<'a> {
             Term::CaptureGroup(group) => self.print_regexp_capture_group(group),
             Term::AnonymousGroup(group) => self.print_regexp_anonymous_group(group),
             Term::CharacterClass(class) => self.print_regexp_character_class(class),
-            Term::Backreference(backreference) => {
-                self.print_regexp_backreference(backreference.as_ref())
-            }
+            Term::Backreference(backreference) => self.print_regexp_backreference(backreference),
         }
     }
 
@@ -1259,7 +1257,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_quantifier(&mut self, quantifier: &Quantifier) {
         self.start_regexp_node("Quantifier");
-        self.property("term", quantifier.term.as_ref(), Printer::print_term);
+        self.property("term", quantifier.term, Printer::print_term);
         self.property("min", quantifier.min, Printer::print_number);
         self.property("max", quantifier.max, Printer::print_optional_number);
         self.property("is_greedy", quantifier.is_greedy, Printer::print_bool);

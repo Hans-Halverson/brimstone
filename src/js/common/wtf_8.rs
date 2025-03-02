@@ -25,17 +25,37 @@ impl Wtf8String<Global> {
     pub fn new() -> Self {
         Wtf8String { buf: alloc::Vec::new() }
     }
-}
 
-impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn from_string(string: String) -> Self {
         Wtf8String { buf: string.into_bytes() }
     }
+}
+
+impl<A: Allocator + Clone> Wtf8String<A> {
+    #[inline]
+    pub fn new_in(alloc: A) -> Self {
+        Wtf8String { buf: alloc::Vec::new_in(alloc) }
+    }
 
     #[inline]
-    pub fn from_bytes_unchecked(alloc: A, bytes: &[u8]) -> Self {
-        Wtf8String { buf: bytes.to_vec() }
+    pub fn from_string_in(string: String, alloc: A) -> Self {
+        Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
+    }
+
+    #[inline]
+    pub fn from_bytes_unchecked_in(bytes: &[u8], alloc: A) -> Self {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: bytes.to_vec_in(alloc) }
+    }
+
+    #[inline]
+    pub fn from_char_in(c: char, alloc: A) -> Self {
+        let mut buf = [0; 4];
+        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
+
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: buf[..byte_length].to_vec_in(alloc) }
     }
 
     #[inline]
@@ -231,14 +251,5 @@ impl<A: Allocator + Clone> Borrow<[u8]> for Wtf8String<A> {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
-    }
-}
-
-impl From<char> for Wtf8String<Global> {
-    fn from(c: char) -> Self {
-        let mut buf = [0; 4];
-        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
-
-        Wtf8String { buf: buf[..byte_length].to_vec() }
     }
 }

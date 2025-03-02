@@ -37,10 +37,10 @@ pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
 
 pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
 
-pub type P<'a, T> = &'a T;
+pub type P<'a, T> = AstBox<'a, T>;
 
 pub fn p<'a, T>(node: T) -> P<'a, T> {
-    Box::new(node)
+    AstBox::new_in(node)
 }
 
 #[derive(Clone, Copy)]
@@ -973,7 +973,7 @@ pub struct RegExpLiteral<'a> {
     pub raw: P<'a, AstString<'a>>,
     pub pattern: P<'a, AstString<'a>>,
     pub flags: P<'a, AstString<'a>>,
-    pub regexp: P<'a, RegExp>,
+    pub regexp: P<'a, RegExp<'a>>,
 }
 
 #[derive(PartialEq)]
@@ -1417,7 +1417,7 @@ impl<'a> Pattern<'a> {
         matches!(self, Pattern::Id(_))
     }
 
-    pub fn iter_patterns<'a, F: FnMut(&'a Pattern<'a>)>(&'a self, f: &mut F) {
+    pub fn iter_patterns<F: FnMut(&'a Pattern<'a>)>(&'a self, f: &mut F) {
         f(self);
 
         match &self {
@@ -1441,7 +1441,7 @@ impl<'a> Pattern<'a> {
         }
     }
 
-    pub fn iter_bound_names<'a, F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
         &'a self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -1598,8 +1598,8 @@ pub struct ExportNamedDeclaration<'a> {
 }
 
 impl<'a> ExportNamedDeclaration<'a> {
-    pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&'a Identifier<'a>)) {
-        if let Some(declaration) = &self.declaration {
+    pub fn iter_declaration_ids(&'a self, f: &mut impl FnMut(&'a Identifier<'a>)) {
+        if let Some(declaration) = self.declaration.as_deref() {
             match declaration {
                 Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
                     for decl in declarations {

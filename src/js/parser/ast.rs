@@ -43,11 +43,6 @@ pub fn p<'a, T>(node: T) -> P<'a, T> {
     AstBox::new_in(node)
 }
 
-#[derive(Clone, Copy)]
-pub struct Pcx<'a> {
-    pub alloc: AstAlloc<'a>,
-}
-
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
 pub struct AstPtr<T> {
     ptr: NonNull<T>,

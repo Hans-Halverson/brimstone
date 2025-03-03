@@ -6,7 +6,7 @@ use crate::js::common::{alloc, wtf_8::Wtf8String};
 
 use super::{
     ast::{
-        self, AstBox, AstHashSet, AstIndexMap, AstPtr, AstString, AstVec, FunctionId, Pcx,
+        self, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstString, AstVec, FunctionId,
         TaggedResolvedScope,
     },
     loc::{Loc, Pos},
@@ -18,6 +18,7 @@ pub struct ScopeTree<'a> {
     ast_nodes: AstVec<'a, AstBox<'a, AstScopeNode<'a>>>,
     vm_nodes: AstVec<'a, VMScopeNode<'a>>,
     current_node_id: ScopeNodeId,
+    alloc: AstAlloc<'a>,
 }
 
 pub struct SavedScopeTreeState {
@@ -30,39 +31,36 @@ type AddBindingResult<'a> = Result<AstPtr<AstScopeNode<'a>>, ParseError>;
 
 /// Functions for constructing, mutating, and querying the AST scope tree.
 impl<'a> ScopeTree<'a> {
-    fn new_with_root(pcx: Pcx<'a>, kind: ScopeNodeKind) -> ScopeTree<'a> {
+    fn new_with_root(kind: ScopeNodeKind, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
         let mut scope_tree = ScopeTree {
-            ast_nodes: alloc::vec![in &pcx.alloc],
-            vm_nodes: alloc::vec![in &pcx.alloc],
+            ast_nodes: alloc::vec![in alloc],
+            vm_nodes: alloc::vec![in alloc],
             current_node_id: INITIAL_SCOPE_ID,
+            alloc,
         };
 
         // Push the global scope node
-        scope_tree.push_new_ast_scope_node(pcx, INITIAL_SCOPE_ID, kind, None);
+        scope_tree.push_new_ast_scope_node(INITIAL_SCOPE_ID, kind, None);
 
         // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding(
-                pcx,
-                &THIS_NAME,
-                BindingKind::ImplicitThis { in_derived_constructor: false },
-            )
+            .add_binding(&THIS_NAME, BindingKind::ImplicitThis { in_derived_constructor: false })
             .unwrap();
 
         scope_tree
     }
 
-    pub fn new_global(pcx: Pcx<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(pcx, ScopeNodeKind::Global)
+    pub fn new_global(alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+        Self::new_with_root(ScopeNodeKind::Global, alloc)
     }
 
-    pub fn new_module(pcx: Pcx<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(pcx, ScopeNodeKind::Module)
+    pub fn new_module(alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+        Self::new_with_root(ScopeNodeKind::Module, alloc)
     }
 
-    pub fn new_eval(pcx: Pcx<'a>, is_direct: bool) -> ScopeTree<'a> {
+    pub fn new_eval(is_direct: bool, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
         // Start off without setting the strict flag. This flag will be right away during parsing.
-        Self::new_with_root(pcx, ScopeNodeKind::Eval { is_direct, is_strict: false })
+        Self::new_with_root(ScopeNodeKind::Eval { is_direct, is_strict: false }, alloc)
     }
 
     pub fn finish_ast_scope_tree(mut self) -> ScopeTree<'a> {
@@ -95,13 +93,9 @@ impl<'a> ScopeTree<'a> {
     }
 
     /// Enter a new AST scope node with the provided kind.
-    pub fn enter_scope(
-        &'a mut self,
-        pcx: Pcx<'a>,
-        kind: ScopeNodeKind,
-    ) -> AstPtr<AstScopeNode<'a>> {
+    pub fn enter_scope(&'a mut self, kind: ScopeNodeKind) -> AstPtr<AstScopeNode<'a>> {
         let node_id = self.ast_nodes.len();
-        self.push_new_ast_scope_node(pcx, node_id, kind, Some(self.current_node_id));
+        self.push_new_ast_scope_node(node_id, kind, Some(self.current_node_id));
 
         self.current_node_id = node_id;
 
@@ -139,7 +133,6 @@ impl<'a> ScopeTree<'a> {
 
     fn push_new_ast_scope_node(
         &mut self,
-        pcx: Pcx<'a>,
         id: ScopeNodeId,
         kind: ScopeNodeKind,
         parent: Option<ScopeNodeId>,
@@ -156,7 +149,7 @@ impl<'a> ScopeTree<'a> {
             self.get_ast_node(parent.unwrap()).enclosing_scope
         };
 
-        let mut extra_var_names = AstHashSet::new_in(pcx.alloc);
+        let mut extra_var_names = AstHashSet::new_in(self.alloc);
 
         // Function body scopes must know the names of all parameter names in the parent function
         // scope (to check for conflicts against lexical declarations).
@@ -165,7 +158,7 @@ impl<'a> ScopeTree<'a> {
             // All bindings in function scope are gaurantueed to be function parameters if a
             // function body scope is created.
             for (name, _) in func_scope.iter_bindings() {
-                extra_var_names.insert(name.clone_in(pcx.alloc));
+                extra_var_names.insert(name.clone_in(self.alloc));
             }
         }
 
@@ -176,7 +169,7 @@ impl<'a> ScopeTree<'a> {
             id,
             parent,
             kind,
-            bindings: AstIndexMap::new_in(pcx.alloc),
+            bindings: AstIndexMap::new_in(self.alloc),
             extra_var_names,
             num_bindings: 0,
             has_duplicates: false,
@@ -184,35 +177,34 @@ impl<'a> ScopeTree<'a> {
             supports_dynamic_bindings,
             allow_empty_vm_node: false,
             enclosing_scope,
-            enclosed_scopes: alloc::vec![in pcx.alloc],
+            enclosed_scopes: alloc::vec![in self.alloc],
             num_local_registers: 0,
             vm_scope: None,
         };
 
-        self.ast_nodes.push(AstBox::new_in(scope_node, pcx.alloc));
+        self.ast_nodes.push(AstBox::new_in(scope_node, self.alloc));
     }
 
     /// Add a binding to the AST scope tree, hoisting to a higher scope if necessary. On success
     /// return the AST scope node that the binding was added to.
     pub fn add_binding<'b: 'a>(
         &'a mut self,
-        pcx: Pcx<'a>,
         name: &'b AstString<'b>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         if kind.is_lexically_scoped() {
-            self.add_lexically_scoped_binding(pcx, name, kind)
+            self.add_lexically_scoped_binding(name, kind)
         } else {
-            self.add_var_scoped_binding(pcx, name, kind)
+            self.add_var_scoped_binding(name, kind)
         }
     }
 
     fn add_lexically_scoped_binding<'b: 'a>(
         &'a mut self,
-        pcx: Pcx<'a>,
         name: &'b AstString<'b>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
+        let alloc = self.alloc;
         let node = self.get_ast_node_mut(self.current_node_id);
 
         if let Some(err) = node.error_if_lexical_name_already_declared(name) {
@@ -224,7 +216,7 @@ impl<'a> ScopeTree<'a> {
         // uses in different cases).
         let needs_tdz_check = node.kind == ScopeNodeKind::Switch;
 
-        node.add_binding(pcx, name, kind, None, needs_tdz_check);
+        node.add_binding(name, kind, None, needs_tdz_check, alloc);
 
         // Lexically scoped bindings in the global scope must be placed in a VM scope node so that
         // they can be accessed by different scripts.
@@ -238,10 +230,11 @@ impl<'a> ScopeTree<'a> {
 
     fn add_var_scoped_binding<'b: 'a>(
         &'a mut self,
-        pcx: Pcx<'a>,
         name: &'b AstString<'b>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
+        let alloc = self.alloc;
+
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
         let mut node_id = self.current_node_id;
         let mut in_with_statement = false;
@@ -294,11 +287,11 @@ impl<'a> ScopeTree<'a> {
                     };
 
                     node.add_binding(
-                        pcx,
                         name,
                         kind,
                         vm_location,
                         /* needs_tdz_check */ false,
+                        alloc,
                     );
                 } else if existing_binding.is_some() && in_with_statement {
                     // Should treat as a WithVar binding if any var binding is within a with
@@ -320,14 +313,10 @@ impl<'a> ScopeTree<'a> {
     }
 
     /// Add a binding to the current scope in the AST scope tree.
-    pub fn add_binding_to_current_node(
-        &'a mut self,
-        pcx: Pcx<'a>,
-        name: &Wtf8String,
-        kind: BindingKind<'a>,
-    ) {
+    pub fn add_binding_to_current_node(&'a mut self, name: &Wtf8String, kind: BindingKind<'a>) {
+        let alloc = self.alloc;
         self.get_ast_node_mut(self.current_node_id).add_binding(
-            pcx, name, kind, /* vm_location */ None, /* needs_tdz_check */ false,
+            name, kind, /* vm_location */ None, /* needs_tdz_check */ false, alloc,
         );
     }
 
@@ -339,7 +328,6 @@ impl<'a> ScopeTree<'a> {
     /// and whether the use is a capture.
     pub fn resolve_use<'b: 'a>(
         &'a mut self,
-        pcx: Pcx<'a>,
         use_scope_id: ScopeNodeId,
         name: &'b AstString<'b>,
         name_loc: Loc,
@@ -359,7 +347,7 @@ impl<'a> ScopeTree<'a> {
             // that one is needed. We know that one is needed if we are looking up e.g. "arguments"
             // and it has not been resolved to a binding by the time we reach the function scope.
             if !found_def && name == "arguments" && self.needs_implicit_arguments_object(scope_id) {
-                self.add_implicit_arguments_object(pcx, scope_id);
+                self.add_implicit_arguments_object(scope_id);
                 found_def = true;
             }
 
@@ -367,7 +355,7 @@ impl<'a> ScopeTree<'a> {
                 && name == &*NEW_TARGET_BINDING_NAME
                 && self.needs_implicit_new_target(scope_id)
             {
-                self.add_implicit_new_target(pcx, scope_id);
+                self.add_implicit_new_target(scope_id);
                 found_def = true;
             }
 
@@ -467,11 +455,7 @@ impl<'a> ScopeTree<'a> {
 
     /// Mark all scopes at the provided AST scope and above as being dynamically accessed, e.g. due
     /// to the presence of `eval` or `with`.
-    pub fn support_dynamic_access_in_visible_bindings(
-        &mut self,
-        pcx: Pcx<'a>,
-        scope_id: ScopeNodeId,
-    ) {
+    pub fn support_dynamic_access_in_visible_bindings(&mut self, scope_id: ScopeNodeId) {
         let mut scope_id = scope_id;
         loop {
             let scope = self.get_ast_node_mut(scope_id);
@@ -485,11 +469,11 @@ impl<'a> ScopeTree<'a> {
                 //
                 // IMPROVEMENT: new.target does not need to be added above `with` scopes
                 if self.needs_implicit_arguments_object(scope_id) {
-                    self.add_implicit_arguments_object(pcx, scope_id);
+                    self.add_implicit_arguments_object(scope_id);
                 }
 
                 if self.needs_implicit_new_target(scope_id) {
-                    self.add_implicit_new_target(pcx, scope_id);
+                    self.add_implicit_new_target(scope_id);
                 }
             }
 
@@ -546,13 +530,14 @@ impl<'a> ScopeTree<'a> {
             && !scope.bindings.contains_key(&*ARGUMENTS_NAME)
     }
 
-    fn add_implicit_arguments_object(&mut self, pcx: Pcx<'a>, scope_id: ScopeNodeId) {
+    fn add_implicit_arguments_object(&mut self, scope_id: ScopeNodeId) {
+        let alloc = self.alloc;
         self.get_ast_node_mut(scope_id).add_binding(
-            pcx,
             &ARGUMENTS_NAME,
             BindingKind::ImplicitArguments,
             None,
             false,
+            alloc,
         );
     }
 
@@ -562,13 +547,14 @@ impl<'a> ScopeTree<'a> {
             && !scope.bindings.contains_key(&*NEW_TARGET_BINDING_NAME)
     }
 
-    fn add_implicit_new_target(&mut self, pcx: Pcx<'a>, scope_id: ScopeNodeId) {
+    fn add_implicit_new_target(&mut self, scope_id: ScopeNodeId) {
+        let alloc = self.alloc;
         self.get_ast_node_mut(scope_id).add_binding(
-            pcx,
             &NEW_TARGET_BINDING_NAME,
             BindingKind::ImplicitNewTarget,
             None,
             false,
+            alloc,
         );
     }
 }
@@ -581,24 +567,26 @@ impl<'a> ScopeTree<'a> {
     /// created.
     pub fn finish_vm_scope_node(
         &mut self,
-        pcx: Pcx<'a>,
         ast_node_id: ScopeNodeId,
         num_extra_slots: Option<usize>,
     ) {
+        // Extract allocator
+        let alloc = self.alloc;
+
         let vm_node_id = self.vm_nodes.len();
         let ast_node = self.get_ast_node_mut(ast_node_id);
         let enclosing_scope = ast_node.enclosing_scope;
 
-        let mut bindings = alloc::vec![in pcx.alloc];
+        let mut bindings = alloc::vec![in alloc];
         let has_mapped_arguments_object =
             num_extra_slots.is_some() && matches!(ast_node.kind(), ScopeNodeKind::Function { .. });
 
         if ast_node.kind() == ScopeNodeKind::Global {
             // The first slot in a global scope always contains the realm
-            bindings.push(REALM_SCOPE_SLOT_NAME.clone_in(pcx.alloc));
+            bindings.push(REALM_SCOPE_SLOT_NAME.clone_in(alloc));
         } else if ast_node.kind() == ScopeNodeKind::Module {
             // The first slot in a module scope always contains the module object
-            bindings.push(MODULE_SCOPE_SLOT_NAME.clone_in(pcx.alloc));
+            bindings.push(MODULE_SCOPE_SLOT_NAME.clone_in(alloc));
         } else if has_mapped_arguments_object {
             // A mapped arguments object requires that all arguments be placed in the VM scope node
             // in order.
@@ -608,8 +596,8 @@ impl<'a> ScopeTree<'a> {
             // be accessed by name (since they are shadowed by another binding) and will remain
             // unresolvable.
             bindings = alloc::vec![
-                in pcx.alloc;
-                SHADOWED_SCOPE_SLOT_NAME.clone_in(pcx.alloc);
+                in alloc;
+                SHADOWED_SCOPE_SLOT_NAME.clone_in(alloc);
                 num_extra_slots.unwrap()
             ];
 
@@ -634,8 +622,8 @@ impl<'a> ScopeTree<'a> {
         } else if num_extra_slots.is_some() && ast_node.kind() == ScopeNodeKind::Class {
             // Extra slots for a class scope will hold computed and private field names
             bindings = alloc::vec![
-                in pcx.alloc;
-                CLASS_FIELD_SLOT_NAME.clone_in(pcx.alloc);
+                in alloc;
+                CLASS_FIELD_SLOT_NAME.clone_in(alloc);
                 num_extra_slots.unwrap()
             ];
         }
@@ -745,7 +733,7 @@ impl<'a> ScopeTree<'a> {
         enclosing_scope.enclosed_scopes.push(ast_node_id);
     }
 
-    pub fn finish_vm_scope_tree(&mut self, pcx: Pcx<'a>) {
+    pub fn finish_vm_scope_tree(&mut self) {
         for i in 0..self.ast_nodes.len() {
             if self.ast_nodes[i].enclosed_scopes.is_empty() {
                 continue;
@@ -754,7 +742,7 @@ impl<'a> ScopeTree<'a> {
             let mut num_local_registers = 0;
 
             // Extract enclosed scopes
-            let mut enclosed_scopes = alloc::vec![in pcx.alloc];
+            let mut enclosed_scopes = alloc::vec![in self.alloc];
             std::mem::swap(&mut enclosed_scopes, &mut self.ast_nodes[i].enclosed_scopes);
 
             // All bindings without a location are placed in local registers in the enclosing scope.
@@ -910,16 +898,16 @@ impl<'a> AstScopeNode<'a> {
 
     fn add_binding<A>(
         &mut self,
-        pcx: Pcx<'a>,
         name: &Wtf8String<A>,
         kind: BindingKind<'a>,
         vm_location: Option<VMLocation>,
         needs_tdz_check: bool,
+        alloc: AstAlloc<'a>,
     ) where
         A: Allocator + Clone,
     {
         let insert_result = self.bindings.insert(
-            name.clone_in(pcx.alloc),
+            name.clone_in(alloc),
             Binding::new(kind, self.num_bindings, vm_location, needs_tdz_check),
         );
 

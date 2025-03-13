@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use crate::js::common::{alloc, unicode_property::UnicodeProperty};
+use crate::js::common::unicode_property::UnicodeProperty;
 
 use super::ast::{AstString, AstVec, P};
 
@@ -202,16 +202,6 @@ pub struct CharacterClass<'a> {
     pub is_inverted: bool,
     /// Collection of operands to this classes expression
     pub operands: AstVec<'a, ClassRange<'a>>,
-}
-
-impl CharacterClass<'_> {
-    pub fn from_shorthand(shorthand: ClassRange) -> Self {
-        CharacterClass {
-            expression_type: ClassExpressionType::Union,
-            is_inverted: false,
-            operands: alloc::vec![shorthand],
-        }
-    }
 }
 
 pub struct StringDisjunction<'a> {

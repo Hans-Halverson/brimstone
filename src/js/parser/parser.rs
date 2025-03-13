@@ -126,7 +126,12 @@ fn swap_and_save<T: Copy>(reference: &mut T, new_value: T) -> T {
 
 impl<'a> Parser<'a> {
     // Must prime parser by calling advance before using.
-    fn new(lexer: Lexer<'a>, scope_builder: ScopeTree, options: &'a Options) -> Parser<'a> {
+    fn new(
+        lexer: Lexer<'a>,
+        scope_builder: ScopeTree<'a>,
+        options: &'a Options,
+        alloc: AstAlloc<'a>,
+    ) -> Parser<'a> {
         Parser {
             lexer,
             token: Token::Eof,
@@ -139,6 +144,7 @@ impl<'a> Parser<'a> {
             scope_builder,
             program_kind: ProgramKind::Script,
             options,
+            alloc,
         }
     }
 
@@ -288,12 +294,8 @@ impl<'a> Parser<'a> {
         vec
     }
 
-    fn add_binding(
-        &mut self,
-        id: &'a mut Identifier<'a>,
-        kind: BindingKind<'a>,
-    ) -> ParseResult<()> {
-        match self.scope_builder.add_binding(&id.name, kind) {
+    fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
+        match self.scope_builder.add_binding(id.name.as_arena_str(), kind) {
             Ok(scope) => {
                 id.scope = TaggedResolvedScope::resolved(scope);
                 Ok(())
@@ -3727,7 +3729,7 @@ impl<'a> Parser<'a> {
         if let Some(id) = id.as_ref() {
             self.scope_builder
                 .add_binding(
-                    &id.name,
+                    id.name.as_arena_str(),
                     BindingKind::Class {
                         in_body_scope: true,
                         init_pos: Cell::new(binding_init_pos),
@@ -4916,10 +4918,14 @@ pub struct ParseFunctionResult<'a> {
     pub source: Rc<Source>,
 }
 
-pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult<'a>> {
+pub fn parse_script<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
+) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     let initial_state = parser.save();
     parser.advance()?;
@@ -4927,24 +4933,29 @@ pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<Parse
     parser.parse_script(initial_state)
 }
 
-pub fn parse_module(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult<'a>> {
+pub fn parse_module<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
+) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_module(), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_module(alloc), options, alloc);
     parser.advance()?;
 
     parser.parse_module()
 }
 
-pub fn parse_script_for_eval(
-    source: &Rc<Source>,
-    options: &Options,
+pub fn parse_script_for_eval<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
     is_direct: bool,
     inherit_strict_mode: bool,
-) -> ParseResult<ParseProgramResult> {
+) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct, alloc), options, alloc);
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);
@@ -4955,15 +4966,16 @@ pub fn parse_script_for_eval(
     parser.parse_script(initial_state)
 }
 
-pub fn parse_function_params_for_function_constructor(
-    source: &Rc<Source>,
-    options: &Options,
+pub fn parse_function_params_for_function_constructor<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4976,15 +4988,16 @@ pub fn parse_function_params_for_function_constructor(
     Ok(())
 }
 
-pub fn parse_function_body_for_function_constructor(
-    source: &Rc<Source>,
-    options: &Options,
+pub fn parse_function_body_for_function_constructor<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -4998,13 +5011,14 @@ pub fn parse_function_body_for_function_constructor(
     Ok(())
 }
 
-pub fn parse_function_for_function_constructor(
-    source: &Rc<Source>,
-    options: &Options,
-) -> ParseResult<ParseFunctionResult> {
+pub fn parse_function_for_function_constructor<'a>(
+    source: &'a Rc<Source>,
+    options: &'a Options,
+    alloc: AstAlloc<'a>,
+) -> ParseResult<ParseFunctionResult<'a>> {
     // Create and prime parser
-    let lexer = Lexer::new(source);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
+    let lexer = Lexer::new(source, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
     parser.advance()?;
 
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;

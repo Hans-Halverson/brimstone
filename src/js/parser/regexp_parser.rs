@@ -6,6 +6,7 @@ use std::{
 use brimstone_macros::match_u32;
 
 use crate::js::common::{
+    alloc,
     options::Options,
     unicode::{
         as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
@@ -20,7 +21,7 @@ use crate::js::common::{
 };
 
 use super::{
-    ast::{p, AstPtr},
+    ast::{p, AstAlloc, AstPtr, AstStr, AstString, AstVec},
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
@@ -34,7 +35,7 @@ use super::{
 /// Parser of the full RegExp grammar and static semantics
 ///
 /// Patterns (https://tc39.es/ecma262/#sec-patterns)
-pub struct RegExpParser<T: LexerStream> {
+pub struct RegExpParser<'a, T: LexerStream> {
     /// The stream of code points to parse
     lexer_stream: T,
     /// Flags for this regexp
@@ -42,14 +43,14 @@ pub struct RegExpParser<T: LexerStream> {
     /// Number of capture groups seen so far
     num_capture_groups: usize,
     /// All capture groups seen so far, with name if a name was specified
-    capture_groups: Vec<Option<Wtf8String>>,
+    capture_groups: AstVec<'a, Option<AstString<'a>>>,
     /// Map of capture group names that have been encountered so far to the index of their last
     /// occurrence in the RegExp.
-    capture_group_names: HashMap<Wtf8String, CaptureGroupIndex>,
+    capture_group_names: HashMap<AstStr<'a>, CaptureGroupIndex>,
     /// Set of all capture group names that are currently in scope
-    current_capture_group_names: HashSet<Wtf8String>,
+    current_capture_group_names: HashSet<AstStr<'a>>,
     /// List of the capture group names that are in the current scope on the implicit scope stack
-    current_capture_group_name_scope: Vec<Wtf8String>,
+    current_capture_group_name_scope: Vec<AstStr<'a>>,
     /// Whether the RegExp has any duplicate named capture groups.
     has_duplicate_named_capture_groups: bool,
     /// Whether we should be parsing named capture groups or not.
@@ -58,17 +59,20 @@ pub struct RegExpParser<T: LexerStream> {
     in_annex_b_mode: bool,
     /// All named backreferences encountered. Saves the name, source position, and a reference to the
     /// backreference node itself.
-    named_backreferences: Vec<(Wtf8String, Pos, AstPtr<Backreference>)>,
+    named_backreferences: Vec<(AstStr<'a>, Pos, AstPtr<Backreference>)>,
     /// All indexed backreferences encountered. Saves the index and source position.
     indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
     /// Number of parenthesized groups the parser is currently inside
     group_depth: usize,
+    /// Allocator used for allocating AST nodes
+    alloc: AstAlloc<'a>,
 }
 
-impl<T: LexerStream> RegExpParser<T> {
+impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn new(
         lexer_stream: T,
         flags: RegExpFlags,
+        alloc: AstAlloc<'a>,
         parse_named_capture_groups: bool,
         in_annex_b_mode: bool,
     ) -> Self {
@@ -76,7 +80,7 @@ impl<T: LexerStream> RegExpParser<T> {
             lexer_stream,
             flags,
             num_capture_groups: 0,
-            capture_groups: vec![],
+            capture_groups: alloc::vec![in alloc],
             capture_group_names: HashMap::new(),
             current_capture_group_names: HashSet::new(),
             current_capture_group_name_scope: vec![],
@@ -86,6 +90,7 @@ impl<T: LexerStream> RegExpParser<T> {
             named_backreferences: vec![],
             indexed_backreferences: vec![],
             group_depth: 0,
+            alloc,
         }
     }
 
@@ -176,6 +181,20 @@ impl<T: LexerStream> RegExpParser<T> {
         }
     }
 
+    fn alloc_str(&self, string: &str) -> AstString<'a> {
+        AstString::from_str_in(string, self.alloc)
+    }
+
+    fn alloc_vec<U>(&self) -> AstVec<'a, U> {
+        AstVec::new_in(self.alloc)
+    }
+
+    fn alloc_vec_with_element<U>(&self, element: U) -> AstVec<'a, U> {
+        let mut vec = AstVec::new_in(self.alloc);
+        vec.push(element);
+        vec
+    }
+
     #[inline]
     fn is_unicode_aware(&self) -> bool {
         self.flags.has_any_unicode_flag()
@@ -203,7 +222,8 @@ impl<T: LexerStream> RegExpParser<T> {
         create_lexer_stream: &dyn Fn() -> T,
         flags: RegExpFlags,
         options: &Options,
-    ) -> ParseResult<RegExp> {
+        alloc: AstAlloc<'a>,
+    ) -> ParseResult<RegExp<'a>> {
         // First try to parse without named capture groups. Only reparse if a named capture group
         // was encountered.
         let lexer_stream = create_lexer_stream();
@@ -214,6 +234,7 @@ impl<T: LexerStream> RegExpParser<T> {
             parser = Self::new(
                 lexer_stream,
                 flags,
+                alloc,
                 /* parse_named_capture_groups */ true,
                 options.annex_b,
             );
@@ -224,6 +245,7 @@ impl<T: LexerStream> RegExpParser<T> {
             parser = Self::new(
                 lexer_stream,
                 flags,
+                alloc,
                 /* parse_named_capture_groups */ false,
                 options.annex_b,
             );
@@ -235,6 +257,7 @@ impl<T: LexerStream> RegExpParser<T> {
                     parser = Self::new(
                         lexer_stream,
                         flags,
+                        alloc,
                         /* parse_named_capture_groups */ true,
                         options.annex_b,
                     );
@@ -293,8 +316,8 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(flags)
     }
 
-    fn parse_disjunction(&mut self) -> ParseResult<Disjunction> {
-        let mut alternatives = vec![];
+    fn parse_disjunction(&mut self) -> ParseResult<Disjunction<'a>> {
+        let mut alternatives = self.alloc_vec();
 
         // There is always at least one alternative, even if the alternative is empty
         loop {
@@ -319,7 +342,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
             // A trailing `|` means there is a final empty alternative
             if self.is_end() {
-                alternatives.push(Alternative { terms: vec![] });
+                alternatives.push(Alternative { terms: self.alloc_vec() });
                 break;
             }
         }
@@ -327,8 +350,8 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(Disjunction { alternatives })
     }
 
-    fn parse_alternative(&mut self) -> ParseResult<Alternative> {
-        let mut terms = vec![];
+    fn parse_alternative(&mut self) -> ParseResult<Alternative<'a>> {
+        let mut terms = self.alloc_vec();
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
@@ -370,9 +393,9 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(Alternative { terms })
     }
 
-    fn parse_term(&mut self) -> ParseResult<Term> {
+    fn parse_term(&mut self) -> ParseResult<Term<'a>> {
         // Parse a single atomic term
-        let atom = match_u32!(match self.current() {
+        let atom: Term<'a> = match_u32!(match self.current() {
             '.' => {
                 self.advance();
                 Term::Wildcard
@@ -408,29 +431,35 @@ impl<T: LexerStream> RegExpParser<T> {
                     // Standard character class shorthands
                     'w' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Word))
+                        Term::CharacterClass(self.character_class_from_shorthand(ClassRange::Word))
                     }
                     'W' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::NotWord))
+                        Term::CharacterClass(
+                            self.character_class_from_shorthand(ClassRange::NotWord),
+                        )
                     }
                     'd' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Digit))
+                        Term::CharacterClass(self.character_class_from_shorthand(ClassRange::Digit))
                     }
                     'D' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::NotDigit))
+                        Term::CharacterClass(
+                            self.character_class_from_shorthand(ClassRange::NotDigit),
+                        )
                     }
                     's' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(ClassRange::Whitespace))
+                        Term::CharacterClass(
+                            self.character_class_from_shorthand(ClassRange::Whitespace),
+                        )
                     }
                     'S' => {
                         self.advance2();
-                        Term::CharacterClass(CharacterClass::from_shorthand(
-                            ClassRange::NotWhitespace,
-                        ))
+                        Term::CharacterClass(
+                            self.character_class_from_shorthand(ClassRange::NotWhitespace),
+                        )
                     }
                     // Word boundary assertions
                     'b' => {
@@ -471,7 +500,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         // Save named backreference to be analyzed and resolved after parsing
                         self.named_backreferences.push((
-                            name,
+                            name.as_arena_str(),
                             start_pos,
                             AstPtr::from_ref(backreference.as_ref()),
                         ));
@@ -487,9 +516,11 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         self.expect('}')?;
 
-                        Term::CharacterClass(CharacterClass::from_shorthand(
-                            ClassRange::UnicodeProperty(property),
-                        ))
+                        Term::CharacterClass(
+                            self.character_class_from_shorthand(ClassRange::UnicodeProperty(
+                                property,
+                            )),
+                        )
                     }
                     'P' if self.is_unicode_aware() => {
                         self.advance2();
@@ -499,7 +530,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
                         self.expect('}')?;
 
-                        Term::CharacterClass(CharacterClass::from_shorthand(
+                        Term::CharacterClass(self.character_class_from_shorthand(
                             ClassRange::NotUnicodeProperty(property),
                         ))
                     }
@@ -521,7 +552,20 @@ impl<T: LexerStream> RegExpParser<T> {
         self.parse_quantifier(atom)
     }
 
-    fn parse_quantifier(&mut self, term: Term) -> ParseResult<Term> {
+    fn asdf() {}
+
+    fn character_class_from_shorthand(&self, shorthand: ClassRange<'a>) -> CharacterClass<'a> {
+        let mut operands = alloc::vec![in self.alloc];
+        operands.push(shorthand);
+
+        CharacterClass {
+            expression_type: ClassExpressionType::Union,
+            is_inverted: false,
+            operands,
+        }
+    }
+
+    fn parse_quantifier(&mut self, term: Term<'a>) -> ParseResult<Term<'a>> {
         let quantifier_pos = self.pos();
 
         let bounds_opt = match_u32!(match self.current() {
@@ -656,7 +700,7 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok(Some(value))
     }
 
-    fn parse_group(&mut self) -> ParseResult<Term> {
+    fn parse_group(&mut self) -> ParseResult<Term<'a>> {
         self.advance();
 
         let left_paren_pos = self.pos();
@@ -736,22 +780,26 @@ impl<T: LexerStream> RegExpParser<T> {
                             // Add index to `capture_group_names`, overwriting earlier index
                             if self
                                 .capture_group_names
-                                .insert(name.clone(), index)
+                                .insert(name.as_arena_str(), index)
                                 .is_some()
                             {
                                 self.has_duplicate_named_capture_groups = true;
                             }
 
                             // If name is currently in scope then error
-                            if self.current_capture_group_names.contains(&name) {
+                            if self
+                                .current_capture_group_names
+                                .contains(name.as_arena_str())
+                            {
                                 return self
                                     .error(name_start_pos, ParseError::DuplicateCaptureGroupName);
                             }
 
                             // Add to set of all capture groups in scope, and to the current
                             // scope.
-                            self.current_capture_group_names.insert(name.clone());
-                            self.current_capture_group_name_scope.push(name.clone());
+                            self.current_capture_group_names.insert(name.as_arena_str());
+                            self.current_capture_group_name_scope
+                                .push(name.as_arena_str());
 
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
@@ -856,12 +904,12 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     /// Parse a character class when not in `v` mode.
-    fn parse_standard_character_class(&mut self) -> ParseResult<Term> {
+    fn parse_standard_character_class(&mut self) -> ParseResult<Term<'a>> {
         self.advance();
 
         let is_inverted = self.eat('^');
 
-        let mut ranges = vec![];
+        let mut ranges = self.alloc_vec();
         while !self.eat(']') {
             let atom_start_pos = self.pos();
             let atom = self.parse_class_atom()?;
@@ -916,7 +964,7 @@ impl<T: LexerStream> RegExpParser<T> {
         }
     }
 
-    fn parse_class_atom(&mut self) -> ParseResult<ClassRange> {
+    fn parse_class_atom(&mut self) -> ParseResult<ClassRange<'a>> {
         // Could be the start of an escape sequence
         if self.current() == '\\' as u32 {
             return match_u32!(match self.peek() {
@@ -990,7 +1038,7 @@ impl<T: LexerStream> RegExpParser<T> {
     /// Parse a character class when in `v` mode.
     ///
     /// Return whether the character class may contain strings.
-    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<(CharacterClass, bool)> {
+    fn parse_unicode_sets_character_class(&mut self) -> ParseResult<(CharacterClass<'a>, bool)> {
         self.advance();
 
         let is_inverted = self.eat('^');
@@ -1001,7 +1049,7 @@ impl<T: LexerStream> RegExpParser<T> {
                 CharacterClass {
                     expression_type: ClassExpressionType::Union,
                     is_inverted,
-                    operands: vec![],
+                    operands: self.alloc_vec(),
                 },
                 false,
             ));
@@ -1009,7 +1057,7 @@ impl<T: LexerStream> RegExpParser<T> {
 
         let first_operand_pos = self.pos();
         let (first_operand, first_operand_may_contain_strings) = self.parse_class_set_operand()?;
-        let mut operands = vec![first_operand];
+        let mut operands = self.alloc_vec_with_element(first_operand);
 
         let expression_type;
         let mut may_contain_strings;
@@ -1096,7 +1144,7 @@ impl<T: LexerStream> RegExpParser<T> {
     }
 
     /// Parse a single ClassSetOperand, returning whether it MayContainStrings.
-    fn parse_class_set_operand(&mut self) -> ParseResult<(ClassRange, bool)> {
+    fn parse_class_set_operand(&mut self) -> ParseResult<(ClassRange<'a>, bool)> {
         if self.current() == '[' as u32 {
             let (nested_class, may_contain_strings) = self.parse_unicode_sets_character_class()?;
             return Ok((ClassRange::NestedClass(nested_class), may_contain_strings));
@@ -1169,9 +1217,9 @@ impl<T: LexerStream> RegExpParser<T> {
 
     fn parse_unicode_sets_character_class_range(
         &mut self,
-        start_operand: ClassRange,
+        start_operand: ClassRange<'a>,
         operand_start_pos: Pos,
-    ) -> ParseResult<ClassRange> {
+    ) -> ParseResult<ClassRange<'a>> {
         // Skip the `-` character
         self.advance();
 
@@ -1340,11 +1388,11 @@ impl<T: LexerStream> RegExpParser<T> {
     /// Parses string disjunction syntax, starting at the opening `\`.
     ///
     /// Return the string disjunction, and whether the disjunction MayContainStrings.
-    fn parse_string_disjunction(&mut self) -> ParseResult<(StringDisjunction, bool)> {
+    fn parse_string_disjunction(&mut self) -> ParseResult<(StringDisjunction<'a>, bool)> {
         self.advance2();
         self.expect('{')?;
 
-        let mut alternatives = vec![];
+        let mut alternatives = self.alloc_vec();
 
         // Keep track of whether this disjunction contains strings, as opposed to contains only
         // single code points.
@@ -1382,8 +1430,8 @@ impl<T: LexerStream> RegExpParser<T> {
 
     /// Parse a single alternative in a class string disjunction. Return both the string and its
     /// length in code points.
-    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<(Wtf8String, u64)> {
-        let mut string = Wtf8String::new();
+    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<(AstString<'a>, u64)> {
+        let mut string = self.alloc_str("");
         let mut num_code_points = 0;
 
         while self.current() != '|' as u32 && self.current() != '}' as u32 {
@@ -1395,8 +1443,8 @@ impl<T: LexerStream> RegExpParser<T> {
         Ok((string, num_code_points))
     }
 
-    fn parse_identifier(&mut self) -> ParseResult<Wtf8String> {
-        let mut string_builder = Wtf8String::new();
+    fn parse_identifier(&mut self) -> ParseResult<AstString<'a>> {
+        let mut string_builder = self.alloc_str("");
 
         // First character must be an id start, which can be an escape sequence
         let code_point = if self.current() == '\\' as u32 {

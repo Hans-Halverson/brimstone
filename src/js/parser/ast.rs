@@ -13,7 +13,10 @@ use indexmap_allocator_api::IndexMap;
 use num_bigint::{BigInt, Sign};
 
 use crate::js::{
-    common::{alloc, wtf_8::Wtf8String},
+    common::{
+        alloc,
+        wtf_8::{Wtf8Str, Wtf8String},
+    },
     runtime::eval_result::EvalResult,
 };
 
@@ -31,6 +34,8 @@ pub type AstBox<'a, T> = alloc::Box<T, AstAlloc<'a>>;
 
 pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
 
+pub type AstStr<'a> = &'a Wtf8Str;
+
 pub type AstString<'a> = Wtf8String<AstAlloc<'a>>;
 
 pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
@@ -38,6 +43,13 @@ pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
 pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
 
 pub type P<'a, T> = AstBox<'a, T>;
+
+impl<'a> AstString<'a> {
+    /// Convert `AstString` to an `AstStr` that has the same lifetime as the underlying arena.
+    pub fn as_arena_str(&self) -> AstStr<'a> {
+        unsafe { std::mem::transmute(<AstString<'a> as std::ops::Deref>::deref(self)) }
+    }
+}
 
 pub fn p<'a, T>(node: T) -> P<'a, T> {
     AstBox::new_in(node)

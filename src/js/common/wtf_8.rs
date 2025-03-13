@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt, hash};
+use std::{borrow::Borrow, fmt, hash, ops::Deref};
 
 use allocator_api2::{
     alloc::{Allocator, Global},
@@ -13,7 +13,7 @@ use super::{
     },
 };
 
-/// A string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
+/// An owned string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
 /// Identical to UTf-8 but also allows unpaired surrogate code points.
 #[derive(Clone)]
 pub struct Wtf8String<A: Allocator + Clone = Global> {
@@ -92,6 +92,11 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.buf.is_empty()
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &Wtf8Str {
+        Wtf8Str::from_bytes_unchecked(&self.buf)
     }
 
     #[inline]
@@ -238,7 +243,7 @@ impl<A: Allocator + Clone> Eq for Wtf8String<A> {}
 impl<A: Allocator + Clone> PartialEq<str> for Wtf8String<A> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self.buf == other.as_bytes()
+        self.as_str() == other
     }
 }
 
@@ -253,7 +258,7 @@ impl<A: Allocator + Clone> hash::Hash for Wtf8String<A> {
     // Must use the same hash function as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_bytes().hash(state);
+        self.as_str().hash(state);
     }
 }
 
@@ -261,5 +266,41 @@ impl<A: Allocator + Clone> Borrow<[u8]> for Wtf8String<A> {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
+    }
+}
+
+impl<A: Allocator + Clone> Deref for Wtf8String<A> {
+    type Target = Wtf8Str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        Wtf8Str::from_bytes_unchecked(&self.buf)
+    }
+}
+
+/// A slice of a string using the WTF-8 encoding. The relationship between `Wtf8String` and
+/// `Wtf8Str` is equivalent to the relationship between `String` and `str`.
+#[derive(Eq, Hash, PartialEq)]
+pub struct Wtf8Str {
+    buf: [u8],
+}
+
+impl Wtf8Str {
+    #[inline]
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
+        unsafe { std::mem::transmute::<&[u8], &Wtf8Str>(bytes) }
+    }
+
+    #[inline]
+    pub fn to_owned_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: self.buf.to_vec_in(alloc) }
+    }
+}
+
+impl PartialEq<str> for Wtf8Str {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        &self.buf == other.as_bytes()
     }
 }

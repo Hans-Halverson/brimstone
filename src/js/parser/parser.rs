@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn restore(&mut self, save_state: ParserSaveState) {
+    fn restore(&mut self, save_state: ParserSaveState<'a>) {
         self.lexer.restore(&save_state.saved_lexer_state);
         self.scope_builder
             .restore(&save_state.saved_scope_builder_state);
@@ -373,7 +373,7 @@ impl<'a> Parser<'a> {
 
     fn parse_script(
         mut self,
-        initial_state: ParserSaveState,
+        initial_state: ParserSaveState<'a>,
     ) -> ParseResult<ParseProgramResult<'a>> {
         self.program_kind = ProgramKind::Script;
 
@@ -1074,7 +1074,7 @@ impl<'a> Parser<'a> {
 
     fn parse_function_body_statements(
         &mut self,
-        initial_state: ParserSaveState,
+        initial_state: ParserSaveState<'a>,
     ) -> ParseResult<AstVec<'a, Statement<'a>>> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
 
@@ -3597,7 +3597,7 @@ impl<'a> Parser<'a> {
         &mut self,
         key: P<'a, Expression<'a>>,
         start_pos: Pos,
-        kind: PropertyKind,
+        kind: PropertyKind<'a>,
         is_async: bool,
         is_generator: bool,
         is_computed: bool,
@@ -3923,7 +3923,7 @@ impl<'a> Parser<'a> {
         if is_private {
             let private_name = self.alloc_string(format!("#{}", &property.key.to_id().name));
             self.scope_builder
-                .add_binding_to_current_node(&private_name, BindingKind::PrivateName);
+                .add_binding_to_current_node(private_name.as_arena_str(), BindingKind::PrivateName);
         }
 
         // Translate from object property to class property or method
@@ -4916,7 +4916,7 @@ pub struct ParseFunctionResult<'a> {
     pub source: Rc<Source>,
 }
 
-pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult> {
+pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(), options);
@@ -4927,7 +4927,7 @@ pub fn parse_script(source: &Rc<Source>, options: &Options) -> ParseResult<Parse
     parser.parse_script(initial_state)
 }
 
-pub fn parse_module(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult> {
+pub fn parse_module(source: &Rc<Source>, options: &Options) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer, ScopeTree::new_module(), options);

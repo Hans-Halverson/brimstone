@@ -51,6 +51,13 @@ impl<'a> AstString<'a> {
     }
 }
 
+impl<'a, T> AstPtr<T> {
+    /// Convert `AstPtr` to a reference with the same lifetime as the underlying arena.
+    pub fn as_arena_ref(&self) -> &'a T {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
 pub fn p<'a, T>(node: T) -> P<'a, T> {
     AstBox::new_in(node)
 }

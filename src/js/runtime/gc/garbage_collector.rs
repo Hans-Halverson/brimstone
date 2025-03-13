@@ -499,6 +499,8 @@ impl GarbageCollector {
                     // Otherwise string was garbage collected so remove string from map.
                     // It is safe to remove during iteration for a BsHashMap.
                     string_map.remove(wtf8_str);
+
+                    // TODO: Drop the Wtf8String to avoid leaking memory
                 }
             }
         }

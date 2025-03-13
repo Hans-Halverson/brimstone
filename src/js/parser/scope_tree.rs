@@ -914,14 +914,14 @@ impl<'a> AstScopeNode<'a> {
     }
 
     /// Iterator over all bindings in this scope, including funtion parameters and catch parameters.
-    pub fn iter_bindings(&self) -> impl DoubleEndedIterator<Item = (&AstStr<'a>, &Binding)> {
+    pub fn iter_bindings(&self) -> impl DoubleEndedIterator<Item = (&AstStr<'a>, &Binding<'a>)> {
         self.bindings.iter()
     }
 
     /// Iterator over all VarScopedDeclarations in this scope. Note that this does not include
     /// function parameters or implicit function bindings, which are var scoped but do not count as
     /// VarScopedDeclarations.
-    pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&AstStr<'a>, &Binding)> {
+    pub fn iter_var_decls(&self) -> impl DoubleEndedIterator<Item = (&AstStr<'a>, &Binding<'a>)> {
         self.bindings.iter().filter(|(_, binding)| {
             matches!(
                 binding.kind,

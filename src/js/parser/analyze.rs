@@ -124,7 +124,7 @@ impl PrivateNameUsage {
 }
 
 impl<'a> Analyzer<'a> {
-    pub fn new(source: Rc<Source>, scope_tree: &'a mut ScopeTree) -> Analyzer<'a> {
+    pub fn new(source: Rc<Source>, scope_tree: &'a mut ScopeTree<'a>) -> Analyzer<'a> {
         Analyzer {
             source,
             errors: Vec::new(),

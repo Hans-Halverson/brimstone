@@ -9,7 +9,10 @@ use std::{
 use crate::{
     handle_scope,
     js::{
-        common::{options::Options, wtf_8::Wtf8String},
+        common::{
+            options::Options,
+            wtf_8::{Wtf8Str, Wtf8String},
+        },
         parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
     },
 };
@@ -364,6 +367,11 @@ impl Context {
     }
 
     #[inline]
+    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> HeapPtr<FlatString> {
+        FlatString::from_wtf8(*self, str.as_bytes())
+    }
+
+    #[inline]
     pub fn alloc_string(&mut self, str: &str) -> Handle<FlatString> {
         self.alloc_string_ptr(str).to_handle()
     }
@@ -371,6 +379,11 @@ impl Context {
     #[inline]
     pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<FlatString> {
         self.alloc_wtf8_string_ptr(str).to_handle()
+    }
+
+    #[inline]
+    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> Handle<FlatString> {
+        self.alloc_wtf8_str_ptr(str).to_handle()
     }
 
     #[inline]

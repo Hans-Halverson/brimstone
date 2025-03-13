@@ -269,6 +269,13 @@ impl<A: Allocator + Clone> Borrow<[u8]> for Wtf8String<A> {
     }
 }
 
+impl<A: Allocator + Clone> Borrow<Wtf8Str> for Wtf8String<A> {
+    #[inline]
+    fn borrow(&self) -> &Wtf8Str {
+        self.as_str()
+    }
+}
+
 impl<A: Allocator + Clone> Deref for Wtf8String<A> {
     type Target = Wtf8Str;
 
@@ -292,9 +299,19 @@ impl Wtf8Str {
     }
 
     #[inline]
+    pub fn from_str(str: &str) -> &Wtf8Str {
+        Self::from_bytes_unchecked(str.as_bytes())
+    }
+
+    #[inline]
     pub fn to_owned_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
         #[allow(unstable_name_collisions)]
         Wtf8String { buf: self.buf.to_vec_in(alloc) }
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buf
     }
 }
 

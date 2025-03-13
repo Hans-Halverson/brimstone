@@ -1,4 +1,9 @@
-use crate::{js::common::wtf_8::Wtf8String, set_uninit};
+use allocator_api2::alloc::Global;
+
+use crate::{
+    js::common::wtf_8::{Wtf8Str, Wtf8String},
+    set_uninit,
+};
 
 use super::{
     collections::{BsHashMap, BsHashMapField, BsHashSet, BsHashSetField},
@@ -95,17 +100,17 @@ impl InternedStrings {
         }
     }
 
-    pub fn get_wtf8_str(mut cx: Context, str: &Wtf8String) -> Handle<StringValue> {
+    pub fn get_wtf8_str(mut cx: Context, str: &Wtf8Str) -> Handle<StringValue> {
         match cx.interned_strings.str_cache.get(str) {
             Some(interned_string) => interned_string.as_string().to_handle(),
             None => {
-                let string_value = cx.alloc_wtf8_string_ptr(str);
+                let string_value = cx.alloc_wtf8_str_ptr(str);
                 let interned_string = InternedStrings::get(cx, string_value).to_handle();
 
                 cx.interned_strings
                     .str_cache_field()
                     .maybe_grow_for_insertion(cx)
-                    .insert_without_growing(str.clone(), *interned_string);
+                    .insert_without_growing(str.to_owned_in(Global), *interned_string);
 
                 interned_string.as_string()
             }

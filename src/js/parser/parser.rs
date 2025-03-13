@@ -6,7 +6,6 @@ use bitflags::bitflags;
 
 use crate::js::common::options::Options;
 use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
-use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
@@ -269,6 +268,24 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
+    fn alloc_str(&self, string: &str) -> AstString {
+        AstString::from_str_in(string, self.alloc)
+    }
+
+    fn alloc_string(&self, string: String) -> AstString {
+        AstString::from_string_in(string, self.alloc)
+    }
+
+    fn alloc_vec<T>(&self) -> AstVec<T> {
+        AstVec::new_in(self.alloc)
+    }
+
+    fn alloc_vec_with_element<T>(&self, element: T) -> AstVec<T> {
+        let mut vec = AstVec::new_in(self.alloc);
+        vec.push(element);
+        vec
+    }
+
     fn add_binding(&mut self, id: &mut Identifier, kind: BindingKind) -> ParseResult<()> {
         match self.scope_builder.add_binding(&id.name, kind) {
             Ok(scope) => {
@@ -371,7 +388,7 @@ impl<'a> Parser<'a> {
         // Re-prime the parser
         self.advance()?;
 
-        let mut toplevels = vec![];
+        let mut toplevels = self.alloc_vec();
         while self.token != Token::Eof {
             toplevels.push(self.parse_toplevel()?);
         }
@@ -430,7 +447,7 @@ impl<'a> Parser<'a> {
         // Allow top level await
         self.allow_await = true;
 
-        let mut toplevels = vec![];
+        let mut toplevels = self.alloc_vec();
         while self.token != Token::Eof {
             match self.token {
                 Token::Import => toplevels.push(self.parse_import_declaration()?),
@@ -650,7 +667,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
 
         // Gather comma separated declarators
-        let mut declarations = vec![];
+        let mut declarations = self.alloc_vec();
         loop {
             let start_pos = self.current_start_pos();
 
@@ -870,7 +887,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a list of function parameters, returning the function parameters themselves and
     /// whether the list contains any parameter expressions.
-    fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
+    fn parse_function_params(&mut self) -> ParseResult<AstVec<FunctionParam>> {
         self.expect(Token::LeftParen)?;
         let params = self.parse_function_params_until_terminator(Token::RightParen)?;
         self.expect(Token::RightParen)?;
@@ -881,9 +898,9 @@ impl<'a> Parser<'a> {
     fn parse_function_params_until_terminator(
         &mut self,
         terminator: Token,
-    ) -> ParseResult<Vec<FunctionParam>> {
+    ) -> ParseResult<AstVec<FunctionParam>> {
         // Read all function params until the terminator token
-        let mut params = vec![];
+        let mut params = self.alloc_vec();
         let mut index = 0;
 
         while self.token != terminator {
@@ -921,7 +938,7 @@ impl<'a> Parser<'a> {
         Ok(params)
     }
 
-    fn parse_function_params_without_parens(&mut self) -> ParseResult<Vec<FunctionParam>> {
+    fn parse_function_params_without_parens(&mut self) -> ParseResult<AstVec<FunctionParam>> {
         self.parse_function_params_until_terminator(Token::Eof)
     }
 
@@ -1017,7 +1034,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let mut body = vec![];
+        let mut body = self.alloc_vec();
         while self.token != Token::RightBrace {
             body.push(self.parse_statement_list_item(FunctionContext::TOPLEVEL)?)
         }
@@ -1047,7 +1064,7 @@ impl<'a> Parser<'a> {
     fn parse_function_body_statements(
         &mut self,
         initial_state: ParserSaveState,
-    ) -> ParseResult<Vec<Statement>> {
+    ) -> ParseResult<AstVec<Statement>> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Restore to initial state, then reparse directives with strict mode properly set
@@ -1062,7 +1079,7 @@ impl<'a> Parser<'a> {
         // Re-prime the parser
         self.advance()?;
 
-        let mut body = vec![];
+        let mut body = self.alloc_vec();
         while self.token != Token::Eof {
             body.push(self.parse_statement_list_item(FunctionContext::TOPLEVEL)?)
         }
@@ -1079,7 +1096,7 @@ impl<'a> Parser<'a> {
 
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
-        let mut body = vec![];
+        let mut body = self.alloc_vec();
         while self.token != Token::RightBrace {
             body.push(self.parse_statement_list_item(FunctionContext::empty())?)
         }
@@ -1125,7 +1142,7 @@ impl<'a> Parser<'a> {
         // Switch statements start a new block scope
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Switch);
 
-        let mut cases = vec![];
+        let mut cases = self.alloc_vec();
         self.expect(Token::LeftBrace)?;
 
         while self.token != Token::RightBrace {
@@ -1144,7 +1161,7 @@ impl<'a> Parser<'a> {
 
                     // Parse statement list, which will be terminated by the start of another case
                     // or the end of the switch.
-                    let mut body = vec![];
+                    let mut body = self.alloc_vec();
                     while self.token != Token::Case
                         && self.token != Token::Default
                         && self.token != Token::RightBrace
@@ -1558,7 +1575,7 @@ impl<'a> Parser<'a> {
         let expr = self.parse_assignment_expression()?;
 
         if self.token == Token::Comma {
-            let mut expressions = vec![*expr];
+            let mut expressions = self.alloc_vec_with_element(*expr);
             while self.token == Token::Comma {
                 self.advance()?;
                 expressions.push(*self.parse_assignment_expression()?);
@@ -1675,11 +1692,12 @@ impl<'a> Parser<'a> {
 
                 self.advance()?;
 
-                let mut async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
+                let mut async_id = Identifier::new(async_loc, self.alloc_str("async"));
                 self.add_binding(&mut async_id, BindingKind::new_function_parameter(0))?;
                 Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
-                let params = vec![FunctionParam::new_pattern(Pattern::Id(async_id))];
+                let params =
+                    self.alloc_vec_with_element(FunctionParam::new_pattern(Pattern::Id(async_id)));
                 let param_flags = self.analyze_function_params(&params);
 
                 let (body, strict_flags) = self.parse_arrow_function_body(param_flags)?;
@@ -1715,7 +1733,7 @@ impl<'a> Parser<'a> {
                     self.parse_binding_identifier(Some(BindingKind::new_function_parameter(0)))?;
                 Self::set_id_binding_init_pos(&id, self.prev_loc.end);
 
-                vec![FunctionParam::new_pattern(Pattern::Id(id))]
+                self.alloc_vec_with_element(FunctionParam::new_pattern(Pattern::Id(id)))
             }
         };
         let param_flags = self.analyze_function_params(&params);
@@ -2501,7 +2519,7 @@ impl<'a> Parser<'a> {
         let arguments = if self.token == Token::LeftParen {
             self.parse_call_arguments()?
         } else {
-            vec![]
+            self.alloc_vec()
         };
 
         let loc = self.mark_loc(start_pos);
@@ -2625,10 +2643,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call_arguments(&mut self) -> ParseResult<Vec<CallArgument>> {
+    fn parse_call_arguments(&mut self) -> ParseResult<AstVec<CallArgument>> {
         self.expect(Token::LeftParen)?;
 
-        let mut arguments = vec![];
+        let mut arguments = self.alloc_vec();
         while self.token != Token::RightParen {
             if self.token == Token::Spread {
                 arguments.push(CallArgument::Spread(self.parse_spread_element()?))
@@ -2736,7 +2754,7 @@ impl<'a> Parser<'a> {
                     // `async [newline] id` is an `async` identifier with ASI followed by another
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
-                        let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
+                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
                         return Ok(p(Expression::Id(async_id)));
                     }
 
@@ -2754,7 +2772,7 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
-                        let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
+                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
                         return Ok(p(Expression::Id(async_id)));
                     }
                 }
@@ -2821,7 +2839,7 @@ impl<'a> Parser<'a> {
                 Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
-                let name = Wtf8String::from_string(self.token.to_string());
+                let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
                 Ok(Identifier::new(loc, name))
             }
@@ -2922,7 +2940,7 @@ impl<'a> Parser<'a> {
             | Token::Meta
             | Token::Enum => {
                 let loc = self.loc;
-                let name = Wtf8String::from_string(self.token.to_string());
+                let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
                 Ok(Some(Identifier::new(loc, name)))
             }
@@ -2930,7 +2948,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_reserved_word_in_current_context(&self, str: &Wtf8String) -> bool {
+    fn is_reserved_word_in_current_context(&self, str: &AstString) -> bool {
         Self::is_reserved_word(
             str.as_bytes(),
             self.in_strict_mode,
@@ -3055,8 +3073,8 @@ impl<'a> Parser<'a> {
 
     fn parse_template_literal(
         &mut self,
-        raw: Wtf8String,
-        cooked: Option<Wtf8String>,
+        raw: AstString,
+        cooked: Option<AstString>,
         is_single_quasi: bool,
         is_tagged: bool,
     ) -> ParseResult<TemplateLiteral> {
@@ -3066,8 +3084,8 @@ impl<'a> Parser<'a> {
 
         self.advance()?;
 
-        let mut quasis = vec![head_quasi];
-        let mut expressions = vec![];
+        let mut quasis = self.alloc_vec_with_element(head_quasi);
+        let mut expressions = self.alloc_vec();
 
         if !is_single_quasi {
             loop {
@@ -3131,7 +3149,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let mut elements = vec![];
+        let mut elements = self.alloc_vec();
         while self.token != Token::RightBracket {
             match self.token {
                 Token::Comma => {
@@ -3169,7 +3187,7 @@ impl<'a> Parser<'a> {
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
         self.add_home_object_to_scope(/* include_static */ false);
 
-        let mut properties = vec![];
+        let mut properties = self.alloc_vec();
         while self.token != Token::RightBrace {
             if self.token == Token::Spread {
                 let spread = self.parse_spread_element()?;
@@ -3235,7 +3253,7 @@ impl<'a> Parser<'a> {
 
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
-                    let token_name = Wtf8String::from_string(id_token.to_string());
+                    let token_name = self.alloc_string(id_token.to_string());
                     let id = Identifier::new(id_loc, token_name);
                     let name = p(Expression::Id(id));
 
@@ -3255,7 +3273,7 @@ impl<'a> Parser<'a> {
                 let is_init_property = self.is_property_initializer(prop_context)
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
-                    let id_token_name = Wtf8String::from_string(id_token.to_string());
+                    let id_token_name = self.alloc_string(id_token.to_string());
                     let id = Identifier::new(id_loc, id_token_name);
                     let name = p(Expression::Id(id));
 
@@ -3295,7 +3313,7 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
+                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
                 let name = p(Expression::Id(async_id));
 
                 return self.parse_method_property(
@@ -3315,7 +3333,7 @@ impl<'a> Parser<'a> {
                 || self.is_pattern_initializer_in_object(prop_context)
                 || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
-                let async_id = Identifier::new(async_loc, Wtf8String::from_str("async"));
+                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
                 let name = p(Expression::Id(async_id));
 
                 return self.parse_init_property(
@@ -3710,7 +3728,7 @@ impl<'a> Parser<'a> {
         // Class body scope always contains the home object and static home object
         self.add_home_object_to_scope(/* include_static */ true);
 
-        let mut body = vec![];
+        let mut body = self.alloc_vec();
 
         let mut field_init_scope = None;
         let mut static_init_scope = None;
@@ -3789,7 +3807,7 @@ impl<'a> Parser<'a> {
                     .scope_builder
                     .enter_scope(ScopeNodeKind::StaticInitializer);
 
-                let params = vec![];
+                let params = self.alloc_vec();
                 let param_flags = self.analyze_function_params(&params);
 
                 // Await expressions are allowed in static initializer blocks from the perspective
@@ -3831,7 +3849,7 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let static_id = Identifier::new(static_loc, Wtf8String::from_str("static"));
+                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
                 let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
@@ -3858,7 +3876,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let static_id = Identifier::new(static_loc, Wtf8String::from_str("static"));
+                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
                 let name = p(Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
@@ -3892,7 +3910,7 @@ impl<'a> Parser<'a> {
 
         // All private names are added to the current class scope
         if is_private {
-            let private_name = Wtf8String::from_string(format!("#{}", &property.key.to_id().name));
+            let private_name = self.alloc_string(format!("#{}", &property.key.to_id().name));
             self.scope_builder
                 .add_binding_to_current_node(&private_name, BindingKind::PrivateName);
         }
@@ -4044,7 +4062,7 @@ impl<'a> Parser<'a> {
         // with in expression initializer appears in for init.
         let old_allow_in = swap_and_save(&mut self.allow_in, true);
 
-        let mut elements = vec![];
+        let mut elements = self.alloc_vec();
         while self.token != Token::RightBracket {
             match self.token {
                 Token::Comma => {
@@ -4102,7 +4120,7 @@ impl<'a> Parser<'a> {
         // with in expression initializer appears in for init.
         let old_allow_in = swap_and_save(&mut self.allow_in, true);
 
-        let mut properties = vec![];
+        let mut properties = self.alloc_vec();
         while self.token != Token::RightBrace {
             if self.token == Token::Spread {
                 properties.push(self.parse_object_pattern_rest_property(binding_kind)?);
@@ -4234,14 +4252,14 @@ impl<'a> Parser<'a> {
 
             return Ok(Toplevel::Import(ImportDeclaration {
                 loc,
-                specifiers: vec![],
+                specifiers: self.alloc_vec(),
                 source,
                 attributes,
             }));
         }
 
         // Check for default specifier, which must be at start
-        let mut specifiers = vec![];
+        let mut specifiers = self.alloc_vec();
 
         if let Token::Identifier(_) = self.token {
             // Starts with default specifier
@@ -4274,7 +4292,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
         self.expect(Token::LeftBrace)?;
 
-        let mut attributes = vec![];
+        let mut attributes = self.alloc_vec();
 
         while self.token != Token::RightBrace {
             let attribute = self.parse_import_attribute()?;
@@ -4324,7 +4342,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_or_namespace_specifier(
         &mut self,
-        specifiers: &mut Vec<ImportSpecifier>,
+        specifiers: &mut AstVec<ImportSpecifier>,
     ) -> ParseResult<()> {
         match self.token {
             Token::Multiply => {
@@ -4353,7 +4371,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_specifiers(
         &mut self,
-        specifiers: &mut Vec<ImportSpecifier>,
+        specifiers: &mut AstVec<ImportSpecifier>,
     ) -> ParseResult<()> {
         self.advance()?;
 
@@ -4422,7 +4440,7 @@ impl<'a> Parser<'a> {
             Token::LeftBrace => {
                 self.advance()?;
 
-                let mut specifiers = vec![];
+                let mut specifiers = self.alloc_vec();
 
                 // Parse list of specifiers between braces
                 while self.token != Token::RightBrace {
@@ -4526,7 +4544,7 @@ impl<'a> Parser<'a> {
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
                     loc,
                     declaration,
-                    specifiers: vec![],
+                    specifiers: self.alloc_vec(),
                     source: None,
                     source_attributes: None,
                 }))
@@ -4585,11 +4603,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn create_export_name_string(
-        &mut self,
-        loc: Loc,
-        value: Wtf8String,
-    ) -> ParseResult<ExportName> {
+    fn create_export_name_string(&mut self, loc: Loc, value: AstString) -> ParseResult<ExportName> {
         if !value.is_well_formed() {
             return self.error(loc, ParseError::ExportNameNotWellFormed);
         }
@@ -4696,7 +4710,7 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let mut properties = vec![];
+        let mut properties = self.alloc_vec();
 
         for property in expr.properties {
             let property = if let PropertyKind::Spread(has_spread_comma) = property.kind {
@@ -4772,7 +4786,7 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let mut elements = vec![];
+        let mut elements = self.alloc_vec();
 
         for element in expr.elements {
             let element = match element {

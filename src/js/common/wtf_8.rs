@@ -30,6 +30,12 @@ impl Wtf8String<Global> {
     pub fn from_string(string: String) -> Self {
         Wtf8String { buf: string.into_bytes() }
     }
+
+    #[inline]
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(string: &str) -> Self {
+        Self::from_bytes_unchecked_in(string.as_bytes(), Global)
+    }
 }
 
 impl<A: Allocator + Clone> Wtf8String<A> {
@@ -40,6 +46,12 @@ impl<A: Allocator + Clone> Wtf8String<A> {
 
     #[inline]
     pub fn from_string_in(string: String, alloc: A) -> Self {
+        Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
+    }
+
+    #[inline]
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str_in(string: &str, alloc: A) -> Self {
         Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
     }
 
@@ -56,12 +68,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
 
         #[allow(unstable_name_collisions)]
         Wtf8String { buf: buf[..byte_length].to_vec_in(alloc) }
-    }
-
-    #[inline]
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(string: &str) -> Self {
-        Self::from_bytes_unchecked(string.as_bytes())
     }
 
     #[inline]

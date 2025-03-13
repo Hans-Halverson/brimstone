@@ -93,7 +93,7 @@ impl<'a> ScopeTree<'a> {
     }
 
     /// Enter a new AST scope node with the provided kind.
-    pub fn enter_scope(&'a mut self, kind: ScopeNodeKind) -> AstPtr<AstScopeNode<'a>> {
+    pub fn enter_scope(&mut self, kind: ScopeNodeKind) -> AstPtr<AstScopeNode<'a>> {
         let node_id = self.ast_nodes.len();
         self.push_new_ast_scope_node(node_id, kind, Some(self.current_node_id));
 
@@ -123,7 +123,7 @@ impl<'a> ScopeTree<'a> {
         &mut self.ast_nodes[node_id]
     }
 
-    pub fn get_ast_node_ptr(&self, node_id: ScopeNodeId) -> AstPtr<AstScopeNode> {
+    pub fn get_ast_node_ptr(&self, node_id: ScopeNodeId) -> AstPtr<AstScopeNode<'a>> {
         AstPtr::from_ref(self.ast_nodes[node_id].as_ref())
     }
 
@@ -187,9 +187,9 @@ impl<'a> ScopeTree<'a> {
 
     /// Add a binding to the AST scope tree, hoisting to a higher scope if necessary. On success
     /// return the AST scope node that the binding was added to.
-    pub fn add_binding<'b: 'a>(
-        &'a mut self,
-        name: &'b AstString<'b>,
+    pub fn add_binding(
+        &mut self,
+        name: &'a AstString<'a>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         if kind.is_lexically_scoped() {
@@ -199,9 +199,9 @@ impl<'a> ScopeTree<'a> {
         }
     }
 
-    fn add_lexically_scoped_binding<'b: 'a>(
-        &'a mut self,
-        name: &'b AstString<'b>,
+    fn add_lexically_scoped_binding(
+        &mut self,
+        name: &'a AstString<'a>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         let alloc = self.alloc;
@@ -228,9 +228,9 @@ impl<'a> ScopeTree<'a> {
         Ok(self.get_ast_node_ptr(self.current_node_id))
     }
 
-    fn add_var_scoped_binding<'b: 'a>(
-        &'a mut self,
-        name: &'b AstString<'b>,
+    fn add_var_scoped_binding(
+        &mut self,
+        name: &'a AstString<'a>,
         kind: BindingKind<'a>,
     ) -> AddBindingResult<'a> {
         let alloc = self.alloc;
@@ -313,7 +313,10 @@ impl<'a> ScopeTree<'a> {
     }
 
     /// Add a binding to the current scope in the AST scope tree.
-    pub fn add_binding_to_current_node(&'a mut self, name: &Wtf8String, kind: BindingKind<'a>) {
+    pub fn add_binding_to_current_node<A>(&mut self, name: &Wtf8String<A>, kind: BindingKind<'a>)
+    where
+        A: Allocator + Clone,
+    {
         let alloc = self.alloc;
         self.get_ast_node_mut(self.current_node_id).add_binding(
             name, kind, /* vm_location */ None, /* needs_tdz_check */ false, alloc,
@@ -327,7 +330,7 @@ impl<'a> ScopeTree<'a> {
     /// Marks the binding as captured if it is used by a nested function. Returns the resolved scope
     /// and whether the use is a capture.
     pub fn resolve_use<'b: 'a>(
-        &'a mut self,
+        &mut self,
         use_scope_id: ScopeNodeId,
         name: &'b AstString<'b>,
         name_loc: Loc,

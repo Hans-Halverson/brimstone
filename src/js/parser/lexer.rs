@@ -156,7 +156,7 @@ impl<'a> Lexer<'a> {
         Err(self.localized_parse_error(loc, error))
     }
 
-    pub fn next(&mut self) -> LexResult {
+    pub fn next(&mut self) -> LexResult<'a> {
         self.is_new_line_before_current = false;
         loop {
             // Fast pass for skipping ASCII whitespace and newlines
@@ -899,7 +899,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn lex_string_literal(&mut self) -> LexResult {
+    fn lex_string_literal(&mut self) -> LexResult<'a> {
         let quote_char = self.current;
         let start_pos = self.pos;
         self.advance();
@@ -1061,7 +1061,7 @@ impl<'a> Lexer<'a> {
     }
 
     // Lex a regexp literal. Must be called when the previously lexed token was either a '/' or '/='
-    pub fn next_regexp_literal(&mut self) -> LexResult {
+    pub fn next_regexp_literal(&mut self) -> LexResult<'a> {
         let start_pos = if self.code_point_at(self.pos - 1) == '/' as u32 {
             let start_pos = self.pos - 1;
 
@@ -1165,12 +1165,12 @@ impl<'a> Lexer<'a> {
 
     // Get the next template part after the end of a template expression. Must be called when the
     // previously lexed token was a '}'.
-    pub fn next_template_part(&mut self) -> LexResult {
+    pub fn next_template_part(&mut self) -> LexResult<'a> {
         let start_pos = self.pos - 1;
         self.lex_template_literal(start_pos, false)
     }
 
-    fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult {
+    fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult<'a> {
         let mut value = AstString::new_in(self.alloc);
 
         let is_tail;
@@ -1451,7 +1451,7 @@ impl<'a> Lexer<'a> {
     }
 
     // Fast path for lexing a purely ASCII identifier
-    fn lex_identifier_ascii(&mut self, start_pos: Pos) -> LexResult {
+    fn lex_identifier_ascii(&mut self, start_pos: Pos) -> LexResult<'a> {
         // Consume the id start ASCII character
         self.advance();
 

@@ -2,6 +2,8 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+use bumpalo::Bump;
+
 use crate::js::common::wtf_8::Wtf8String;
 
 use super::loc::calculate_line_offsets;
@@ -15,6 +17,8 @@ pub struct Source {
     display_name: Option<String>,
     pub contents: Wtf8String,
     line_offsets: RefCell<Option<Vec<u32>>>,
+    /// Arena allocator for the AST parsed from this source
+    alloc: Bump,
 }
 
 impl Source {
@@ -24,6 +28,7 @@ impl Source {
             display_name,
             contents,
             line_offsets: RefCell::new(None),
+            alloc: Bump::new(),
         }
     }
 
@@ -52,6 +57,10 @@ impl Source {
         }
 
         Ok(Self::new(file_path, Some("<eval>".to_owned()), contents))
+    }
+
+    pub fn alloc(&self) -> &Bump {
+        &self.alloc
     }
 
     pub fn line_offsets(&self) -> &[u32] {

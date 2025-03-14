@@ -317,6 +317,11 @@ impl Wtf8Str {
     }
 
     #[inline]
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf
     }

@@ -1,5 +1,6 @@
 use std::{collections::HashSet, sync::LazyLock};
 
+use allocator_api2::alloc::{Allocator, Global};
 use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
 };
@@ -9,7 +10,7 @@ use crate::js::{
     common::{
         icu::ICU,
         unicode::{is_surrogate_code_point, CodePoint, MAX_CODE_POINT},
-        wtf_8::Wtf8String,
+        wtf_8::{Wtf8Str, Wtf8String},
     },
     parser::regexp::{
         Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
@@ -471,7 +472,7 @@ impl CompiledRegExpBuilder {
 
     fn emit_alternative_terms<'a>(
         &mut self,
-        iter: impl Iterator<Item = &'a Term>,
+        iter: impl Iterator<Item = &'a Term<'a>>,
     ) -> SubExpressionInfo {
         // If any term always consumes then the alternative always consumes
         let mut always_consumes = false;
@@ -545,7 +546,10 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn emit_literal(&mut self, string: &Wtf8String) {
+    fn emit_literal<A>(&mut self, string: &Wtf8String<A>)
+    where
+        A: Allocator + Clone,
+    {
         if self.is_forwards() {
             for code_point in string.iter_code_points() {
                 self.emit_code_point_literal(code_point)
@@ -1001,7 +1005,7 @@ impl CompiledRegExpBuilder {
     fn character_class_to_set<'a, 'b>(
         &self,
         character_class: &'b CharacterClass,
-    ) -> (CodePointInversionList<'a>, HashSet<&'b Wtf8String>) {
+    ) -> (CodePointInversionList<'a>, HashSet<&'b Wtf8Str>) {
         let mut set_builder = CodePointInversionListBuilder::new();
         let mut strings = HashSet::new();
 
@@ -1088,7 +1092,7 @@ impl CompiledRegExpBuilder {
     fn character_class_range_to_set<'a>(
         &self,
         class_range: &'a ClassRange,
-    ) -> (CodePointInversionList<'static>, HashSet<&'a Wtf8String>) {
+    ) -> (CodePointInversionList<'static>, HashSet<&'a Wtf8Str>) {
         let mut set_builder = CodePointInversionListBuilder::new();
         let mut strings = HashSet::new();
 
@@ -1120,7 +1124,7 @@ impl CompiledRegExpBuilder {
         &self,
         class_range: &'a ClassRange,
         set_builder: &mut CodePointInversionListBuilder,
-        strings_set_builder: &mut HashSet<&'a Wtf8String>,
+        strings_set_builder: &mut HashSet<&'a Wtf8Str>,
     ) {
         match class_range {
             // Accumulate single and range char ranges
@@ -1296,7 +1300,7 @@ impl CompiledRegExpBuilder {
 
     fn emit_class_string_disjunction(
         &mut self,
-        strings: &HashSet<&Wtf8String>,
+        strings: &HashSet<&Wtf8Str>,
         success_block: BlockId,
     ) {
         let mut strings = strings.iter().collect::<Vec<_>>();
@@ -1339,7 +1343,7 @@ impl CompiledRegExpBuilder {
         // block if successful.
         for (i, string) in strings.iter().enumerate() {
             self.set_current_block(alternative_block_ids[i]);
-            self.emit_literal(string);
+            self.emit_literal(&string.to_owned_in(Global));
             self.emit_jump_instruction(success_block);
         }
 

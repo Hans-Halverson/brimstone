@@ -980,10 +980,10 @@ impl<'a> Parser<'a> {
 
             param.iter_patterns(&mut |patt| match patt {
                 Pattern::Id(id) => {
-                    if parameter_names.contains(&id.name) {
+                    if parameter_names.contains(id.name.as_str()) {
                         has_duplicate_parameters = true;
                     } else {
-                        parameter_names.insert(&id.name);
+                        parameter_names.insert(id.name.as_arena_str());
                     }
                 }
                 Pattern::Array(_) => {
@@ -5036,9 +5036,9 @@ pub struct ParseFunctionResult<'a> {
 pub fn parse_script<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
@@ -5051,9 +5051,9 @@ pub fn parse_script<'a>(
 pub fn parse_module<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_module(alloc), options, alloc);
     parser.advance()?;
@@ -5064,11 +5064,11 @@ pub fn parse_module<'a>(
 pub fn parse_script_for_eval<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
     is_direct: bool,
     inherit_strict_mode: bool,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct, alloc), options, alloc);
 
@@ -5084,11 +5084,11 @@ pub fn parse_script_for_eval<'a>(
 pub fn parse_function_params_for_function_constructor<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
@@ -5106,11 +5106,11 @@ pub fn parse_function_params_for_function_constructor<'a>(
 pub fn parse_function_body_for_function_constructor<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
@@ -5129,9 +5129,9 @@ pub fn parse_function_body_for_function_constructor<'a>(
 pub fn parse_function_for_function_constructor<'a>(
     source: &'a Rc<Source>,
     options: &'a Options,
-    alloc: AstAlloc<'a>,
 ) -> ParseResult<ParseFunctionResult<'a>> {
     // Create and prime parser
+    let alloc = source.alloc();
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
     parser.advance()?;

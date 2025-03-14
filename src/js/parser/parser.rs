@@ -6,6 +6,7 @@ use bitflags::bitflags;
 
 use crate::js::common::options::Options;
 use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
+use crate::p;
 
 use super::ast::*;
 use super::lexer::{Lexer, SavedLexerState};
@@ -274,6 +275,10 @@ impl<'a> Parser<'a> {
 
     fn mark_loc(&self, start_pos: Pos) -> Loc {
         Loc { start: start_pos, end: self.prev_loc.end }
+    }
+
+    fn p<T>(&self, node: T) -> P<'a, T> {
+        P::new_in(node, self.alloc)
     }
 
     fn alloc_str(&self, string: &str) -> AstString<'a> {
@@ -615,8 +620,8 @@ impl<'a> Parser<'a> {
 
                         return Ok(Statement::Labeled(LabeledStatement {
                             loc,
-                            label: p(Label::new(label.loc, label.name)),
-                            body: p(body),
+                            label: p!(self, Label::new(label.loc, label.name)),
+                            body: p!(self, body),
                         }));
                     }
                 }
@@ -711,7 +716,7 @@ impl<'a> Parser<'a> {
                 Self::set_binding_init_pos(&id, loc.end);
             }
 
-            declarations.push(VariableDeclarator::new(loc, p(id), init));
+            declarations.push(VariableDeclarator::new(loc, p!(self, id), init));
 
             if self.token == Token::Comma {
                 self.advance()?;
@@ -780,7 +785,7 @@ impl<'a> Parser<'a> {
 
         // Function node must be allocated on heap and then initialized later, so that a pointer to
         // the function node can be passed to the scope builder.
-        let mut func = p(Function::new_uninit(self.alloc));
+        let mut func = p!(self, Function::new_uninit(self.alloc));
 
         // For declarations name is required and await/yield inherited from surrounding context,
         // and name is introduces into current scope.
@@ -808,7 +813,7 @@ impl<'a> Parser<'a> {
                     func_node: AstPtr::from_ref(func.as_ref()),
                 };
 
-                id = Some(p(self.parse_binding_identifier(Some(binding_kind))?));
+                id = Some(p!(self, self.parse_binding_identifier(Some(binding_kind))?));
             } else {
                 // Anonymous exported functions must still be added to scope but under the anonymous
                 // default export name.
@@ -830,7 +835,7 @@ impl<'a> Parser<'a> {
         // For expressions name is optional and is within this function's await/yield context.
         // Function expressions do not introduce name into current scope.
         if !is_decl && self.token != Token::LeftParen {
-            id = Some(p(self.parse_binding_identifier(None)?))
+            id = Some(p!(self, self.parse_binding_identifier(None)?))
         }
 
         // Function scope node must contain the params and body, but not function name.
@@ -855,7 +860,7 @@ impl<'a> Parser<'a> {
         let param_flags = self.analyze_function_params(&params);
 
         let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
-        let body = p(FunctionBody::Block(block));
+        let body = p!(self, FunctionBody::Block(block));
 
         let loc = self.mark_loc(start_pos);
 
@@ -1134,11 +1139,11 @@ impl<'a> Parser<'a> {
         let test = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
-        let conseq = p(self.parse_statement()?);
+        let conseq = p!(self, self.parse_statement()?);
 
         let altern = if self.token == Token::Else {
             self.advance()?;
-            Some(p(self.parse_statement()?))
+            Some(p!(self, self.parse_statement()?))
         } else {
             None
         };
@@ -1237,11 +1242,11 @@ impl<'a> Parser<'a> {
                         return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
                     }
 
-                    let init = p(ForEachInit::VarDecl(var_decl));
+                    let init = p!(self, ForEachInit::VarDecl(var_decl));
                     self.parse_for_each_statement(init, start_pos, is_await, scope)?
                 }
                 _ => {
-                    let init = Some(p(ForInit::VarDecl(var_decl)));
+                    let init = Some(p!(self, ForInit::VarDecl(var_decl)));
                     self.expect(Token::Semicolon)?;
                     self.parse_for_statement(init, start_pos, scope)?
                 }
@@ -1260,7 +1265,10 @@ impl<'a> Parser<'a> {
             // If parsed normally `async of` would be interpreted as the start of an async arrow
             // function and parsing would fail to force a backtrack.
             let expr = if is_await && self.token == Token::Async && self.peek()? == Token::Of {
-                OuterExpression::from_inner(Expression::Id(self.parse_identifier_reference()?))
+                OuterExpression::from_inner(
+                    Expression::Id(self.parse_identifier_reference()?),
+                    self.alloc,
+                )
             } else {
                 // Restrict "in" when parsing for init
                 let old_allow_in = swap_and_save(&mut self.allow_in, false);
@@ -1275,7 +1283,7 @@ impl<'a> Parser<'a> {
                 (Token::In, expr) | (Token::Of, expr) => {
                     let pattern =
                         self.reparse_expression_as_for_left_hand_side(expr, expr_start_pos)?;
-                    let left = p(ForEachInit::new_pattern(pattern));
+                    let left = p!(self, ForEachInit::new_pattern(pattern));
                     self.parse_for_each_statement(left, start_pos, is_await, scope)?
                 }
                 // An in expression is actually `for (expr in right)`
@@ -1294,8 +1302,8 @@ impl<'a> Parser<'a> {
                         AstBox::into_inner(left),
                         expr_start_pos,
                     )?;
-                    let left = p(ForEachInit::new_pattern(pattern));
-                    let body = p(self.parse_statement()?);
+                    let left = p!(self, ForEachInit::new_pattern(pattern));
+                    let body = p!(self, self.parse_statement()?);
                     let loc = self.mark_loc(start_pos);
 
                     Statement::ForEach(ForEachStatement {
@@ -1311,7 +1319,7 @@ impl<'a> Parser<'a> {
                 }
                 // Otherwise this is a regular for loop and the expression is used directly
                 (_, expr) => {
-                    let init = Some(p(ForInit::Expression(wrap_outer(expr))));
+                    let init = Some(p!(self, ForInit::Expression(wrap_outer(expr))));
                     self.expect(Token::Semicolon)?;
                     self.parse_for_statement(init, start_pos, scope)?
                 }
@@ -1348,7 +1356,7 @@ impl<'a> Parser<'a> {
         };
 
         self.expect(Token::RightParen)?;
-        let body = p(self.parse_statement()?);
+        let body = p!(self, self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::For(ForStatement { loc, init, test, update, body, scope }))
@@ -1388,7 +1396,7 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(Token::RightParen)?;
-        let body = p(self.parse_statement()?);
+        let body = p!(self, self.parse_statement()?);
         let loc = self.mark_loc(start_pos);
 
         Ok(Statement::ForEach(ForEachStatement {
@@ -1411,7 +1419,7 @@ impl<'a> Parser<'a> {
         let test = self.parse_outer_expression()?;
         self.expect(Token::RightParen)?;
 
-        let body = p(self.parse_statement()?);
+        let body = p!(self, self.parse_statement()?);
 
         let loc = self.mark_loc(start_pos);
 
@@ -1422,7 +1430,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let body = p(self.parse_statement()?);
+        let body = p!(self, self.parse_statement()?);
 
         self.expect(Token::While)?;
         self.expect(Token::LeftParen)?;
@@ -1449,7 +1457,7 @@ impl<'a> Parser<'a> {
 
         // With statements start a new special with scope to mark with boundary
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::With);
-        let body = p(self.parse_statement()?);
+        let body = p!(self, self.parse_statement()?);
         self.scope_builder.exit_scope();
 
         let loc = self.mark_loc(start_pos);
@@ -1461,7 +1469,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let block = p(self.parse_block()?);
+        let block = p!(self, self.parse_block()?);
 
         // Optional handler block
         let handler = if self.token == Token::Catch {
@@ -1486,22 +1494,22 @@ impl<'a> Parser<'a> {
                 Self::set_binding_init_pos(&param, loc.end);
 
                 self.expect(Token::RightParen)?;
-                Some(p(param))
+                Some(p!(self, param))
             };
 
-            let body = p(self.parse_block()?);
+            let body = p!(self, self.parse_block()?);
             let loc = self.mark_loc(catch_start_pos);
 
             self.scope_builder.exit_scope();
 
-            Some(p(CatchClause::new(loc, param, body, scope)))
+            Some(p!(self, CatchClause::new(loc, param, body, scope)))
         } else {
             None
         };
 
         let finalizer = if self.token == Token::Finally {
             self.advance()?;
-            Some(p(self.parse_block()?))
+            Some(p!(self, self.parse_block()?))
         } else {
             None
         };
@@ -1602,7 +1610,7 @@ impl<'a> Parser<'a> {
 
             let loc = self.mark_loc(start_pos);
 
-            Ok(p(Expression::Sequence(SequenceExpression { loc, expressions })))
+            Ok(p!(self, Expression::Sequence(SequenceExpression { loc, expressions })))
         } else {
             Ok(expr)
         }
@@ -1628,7 +1636,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
 
         if self.allow_yield && self.token == Token::Yield {
-            return Ok(p(Expression::Yield(self.parse_yield_expression()?)));
+            return Ok(p!(self, Expression::Yield(self.parse_yield_expression()?)));
         }
 
         let expr = self.parse_conditional_expression()?;
@@ -1659,29 +1667,38 @@ impl<'a> Parser<'a> {
                 let operator_pos = self.current_start_pos();
 
                 let left = if operator == AssignmentOperator::Equals {
-                    p(self.reparse_expression_as_assignment_left_hand_side(
-                        AstBox::into_inner(expr),
-                        start_pos,
-                    )?)
+                    p!(
+                        self,
+                        self.reparse_expression_as_assignment_left_hand_side(
+                            AstBox::into_inner(expr),
+                            start_pos,
+                        )?
+                    )
                 } else {
-                    p(self.reparse_expression_as_operator_assignment_left_hand_side(
-                        AstBox::into_inner(expr),
-                        start_pos,
-                    )?)
+                    p!(
+                        self,
+                        self.reparse_expression_as_operator_assignment_left_hand_side(
+                            AstBox::into_inner(expr),
+                            start_pos,
+                        )?
+                    )
                 };
 
                 self.advance()?;
                 let right = self.parse_assignment_expression()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::Assign(AssignmentExpression {
-                    loc,
-                    left,
-                    right,
-                    operator,
-                    operator_pos,
-                    is_parenthesized: false,
-                })))
+                Ok(p!(
+                    self,
+                    Expression::Assign(AssignmentExpression {
+                        loc,
+                        left,
+                        right,
+                        operator,
+                        operator_pos,
+                        is_parenthesized: false,
+                    })
+                ))
             }
         };
 
@@ -1728,15 +1745,21 @@ impl<'a> Parser<'a> {
 
                 self.scope_builder.exit_scope();
 
-                return Ok(p(Expression::ArrowFunction(p(Function::new(
-                    loc,
-                    /* id */ None,
-                    params,
-                    body,
-                    param_flags | strict_flags | FunctionFlags::IS_ARROW,
-                    scope,
-                    self.alloc,
-                )))));
+                return Ok(p!(
+                    self,
+                    Expression::ArrowFunction(p!(
+                        self,
+                        Function::new(
+                            loc,
+                            /* id */ None,
+                            params,
+                            body,
+                            param_flags | strict_flags | FunctionFlags::IS_ARROW,
+                            scope,
+                            self.alloc,
+                        )
+                    ))
+                ));
             }
 
             // If newline appears after the async keyword this cannot be a valid async arrow
@@ -1783,9 +1806,13 @@ impl<'a> Parser<'a> {
             flags |= FunctionFlags::IS_ASYNC;
         }
 
-        Ok(p(Expression::ArrowFunction(p(Function::new(
-            loc, /* id */ None, params, body, flags, scope, self.alloc,
-        )))))
+        Ok(p!(
+            self,
+            Expression::ArrowFunction(p!(
+                self,
+                Function::new(loc, /* id */ None, params, body, flags, scope, self.alloc)
+            ),)
+        ))
     }
 
     /// Parse an arrow function's body, returning the body along with FunctionFlags indicating
@@ -1796,7 +1823,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<(P<'a, FunctionBody<'a>>, FunctionFlags)> {
         if self.token == Token::LeftBrace {
             let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
-            Ok((p(FunctionBody::Block(block)), strict_flags))
+            Ok((p!(self, FunctionBody::Block(block)), strict_flags))
         } else {
             // Arrow function expression body cannot have a "use strict" directive, so inherits
             // strict mode from surrounding context.
@@ -1806,9 +1833,12 @@ impl<'a> Parser<'a> {
             }
 
             Ok((
-                p(FunctionBody::Expression(wrap_outer(AstBox::into_inner(
-                    self.parse_assignment_expression()?,
-                )))),
+                p!(
+                    self,
+                    FunctionBody::Expression(wrap_outer(AstBox::into_inner(
+                        self.parse_assignment_expression()?,
+                    )))
+                ),
                 strict_flags,
             ))
         }
@@ -1867,12 +1897,10 @@ impl<'a> Parser<'a> {
             let altern = self.parse_assignment_expression()?;
             let loc = self.mark_loc(start_pos);
 
-            Ok(p(Expression::Conditional(ConditionalExpression {
-                loc,
-                test: expr,
-                conseq,
-                altern,
-            })))
+            Ok(p!(
+                self,
+                Expression::Conditional(ConditionalExpression { loc, test: expr, conseq, altern })
+            ))
         } else {
             Ok(expr)
         }
@@ -1888,7 +1916,7 @@ impl<'a> Parser<'a> {
 
         // Private names must be the start of an `in` expression
         if self.token == Token::Hash {
-            let private_name = p(Expression::Id(self.parse_private_name()?));
+            let private_name = p!(self, Expression::Id(self.parse_private_name()?));
 
             if self.token == Token::In
                 && precedence.is_weaker_than(Precedence::Relational)
@@ -2153,13 +2181,10 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Binary(BinaryExpression {
-            loc,
-            left,
-            right,
-            operator,
-            operator_pos,
-        })))
+        Ok(p!(
+            self,
+            Expression::Binary(BinaryExpression { loc, left, right, operator, operator_pos })
+        ))
     }
 
     fn parse_logical_expression(
@@ -2173,7 +2198,7 @@ impl<'a> Parser<'a> {
         let right = self.parse_expression_with_precedence(precedence)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Logical(LogicalExpression { loc, left, right, operator })))
+        Ok(p!(self, Expression::Logical(LogicalExpression { loc, left, right, operator })))
     }
 
     fn parse_nullish_coalesce_expression(
@@ -2201,12 +2226,15 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(p(Expression::Logical(LogicalExpression {
-            loc,
-            left,
-            right,
-            operator: LogicalOperator::NullishCoalesce,
-        })))
+        Ok(p!(
+            self,
+            Expression::Logical(LogicalExpression {
+                loc,
+                left,
+                right,
+                operator: LogicalOperator::NullishCoalesce,
+            })
+        ))
     }
 
     fn parse_update_expression_prefix(
@@ -2222,12 +2250,10 @@ impl<'a> Parser<'a> {
             return self.error(loc, ParseError::InvalidUpdateExpressionArgument);
         }
 
-        Ok(p(Expression::Update(UpdateExpression {
-            loc,
-            operator,
-            argument,
-            is_prefix: true,
-        })))
+        Ok(p!(
+            self,
+            Expression::Update(UpdateExpression { loc, operator, argument, is_prefix: true })
+        ))
     }
 
     fn parse_update_expression_postfix(
@@ -2243,12 +2269,10 @@ impl<'a> Parser<'a> {
             return self.error(loc, ParseError::InvalidUpdateExpressionArgument);
         }
 
-        Ok(p(Expression::Update(UpdateExpression {
-            loc,
-            operator,
-            argument,
-            is_prefix: false,
-        })))
+        Ok(p!(
+            self,
+            Expression::Update(UpdateExpression { loc, operator, argument, is_prefix: false })
+        ))
     }
 
     fn parse_unary_expression(
@@ -2265,7 +2289,7 @@ impl<'a> Parser<'a> {
             return self.error(loc, ParseError::ExponentLHSUnary);
         }
 
-        Ok(p(Expression::Unary(UnaryExpression { loc, operator, argument })))
+        Ok(p!(self, Expression::Unary(UnaryExpression { loc, operator, argument })))
     }
 
     fn parse_await_expression(&mut self) -> ParseResult<P<'a, Expression<'a>>> {
@@ -2274,7 +2298,7 @@ impl<'a> Parser<'a> {
         let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Await(AwaitExpression { loc, argument })))
+        Ok(p!(self, Expression::Await(AwaitExpression { loc, argument })))
     }
 
     /// LeftHandSideExpression (https://tc39.es/ecma262/#sec-left-hand-side-expressions)
@@ -2315,9 +2339,12 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
-                let call_expr = p(Expression::Call(CallExpression::new(
-                    loc, expr, arguments, /* is_optional */ false,
-                )));
+                let call_expr = p!(
+                    self,
+                    Expression::Call(CallExpression::new(
+                        loc, expr, arguments, /* is_optional */ false,
+                    ))
+                );
 
                 self.parse_call_expression(call_expr, start_pos, allow_call, in_optional_chain)
             }
@@ -2359,20 +2386,21 @@ impl<'a> Parser<'a> {
                     Err(_) => None,
                 };
 
-                let quasi = p(self.parse_template_literal(
-                    raw.clone(),
-                    cooked,
-                    *is_tail,
-                    /* is_tagged */ true,
-                )?);
+                let quasi = p!(
+                    self,
+                    self.parse_template_literal(
+                        raw.clone(),
+                        cooked,
+                        *is_tail,
+                        /* is_tagged */ true,
+                    )?
+                );
                 let loc = self.mark_loc(start_pos);
 
-                let tagged_template_expr =
-                    p(Expression::TaggedTemplate(TaggedTemplateExpression {
-                        loc,
-                        tag: expr,
-                        quasi,
-                    }));
+                let tagged_template_expr = p!(
+                    self,
+                    Expression::TaggedTemplate(TaggedTemplateExpression { loc, tag: expr, quasi })
+                );
 
                 self.parse_call_expression(
                     tagged_template_expr,
@@ -2392,9 +2420,12 @@ impl<'a> Parser<'a> {
                         let arguments = self.parse_call_arguments()?;
                         let loc = self.mark_loc(start_pos);
 
-                        let call_expr = p(Expression::Call(CallExpression::new(
-                            loc, expr, arguments, /* is_optional */ true,
-                        )));
+                        let call_expr = p!(
+                            self,
+                            Expression::Call(CallExpression::new(
+                                loc, expr, arguments, /* is_optional */ true,
+                            ))
+                        );
 
                         let full_expr =
                             self.parse_call_expression(call_expr, start_pos, allow_call, true)?;
@@ -2402,7 +2433,10 @@ impl<'a> Parser<'a> {
                         // Wrap in chain expression if this is the first optional part
                         if !in_optional_chain {
                             let loc = self.mark_loc(start_pos);
-                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                            Ok(p!(
+                                self,
+                                Expression::Chain(ChainExpression { loc, expression: full_expr })
+                            ))
                         } else {
                             Ok(full_expr)
                         }
@@ -2418,7 +2452,10 @@ impl<'a> Parser<'a> {
                         // Wrap in chain expression if this is the first optional part
                         if !in_optional_chain {
                             let loc = self.mark_loc(start_pos);
-                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                            Ok(p!(
+                                self,
+                                Expression::Chain(ChainExpression { loc, expression: full_expr })
+                            ))
                         } else {
                             Ok(full_expr)
                         }
@@ -2440,7 +2477,10 @@ impl<'a> Parser<'a> {
                         // Wrap in chain expression if this is the first optional part
                         if !in_optional_chain {
                             let loc = self.mark_loc(start_pos);
-                            Ok(p(Expression::Chain(ChainExpression { loc, expression: full_expr })))
+                            Ok(p!(
+                                self,
+                                Expression::Chain(ChainExpression { loc, expression: full_expr })
+                            ))
                         } else {
                             Ok(full_expr)
                         }
@@ -2476,15 +2516,18 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Member(MemberExpression {
-            loc,
-            object,
-            property: p(Expression::Id(property)),
-            is_computed: false,
-            is_optional,
-            is_private,
-            operator_pos,
-        })))
+        Ok(p!(
+            self,
+            Expression::Member(MemberExpression {
+                loc,
+                object,
+                property: p!(self, Expression::Id(property)),
+                is_computed: false,
+                is_optional,
+                is_private,
+                operator_pos,
+            })
+        ))
     }
 
     fn parse_computed_member_expression(
@@ -2500,15 +2543,18 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBracket)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Member(MemberExpression {
-            loc,
-            object,
-            property,
-            is_computed: true,
-            is_optional,
-            is_private: false,
-            operator_pos,
-        })))
+        Ok(p!(
+            self,
+            Expression::Member(MemberExpression {
+                loc,
+                object,
+                property,
+                is_computed: true,
+                is_optional,
+                is_private: false,
+                operator_pos,
+            })
+        ))
     }
 
     fn parse_new_expression(&mut self) -> ParseResult<P<'a, Expression<'a>>> {
@@ -2528,7 +2574,7 @@ impl<'a> Parser<'a> {
                     self.advance()?;
                     let loc = self.mark_loc(start_pos);
 
-                    Ok(p(Expression::MetaProperty(MetaProperty::new_target(loc))))
+                    Ok(p!(self, Expression::MetaProperty(MetaProperty::new_target(loc))))
                 } else {
                     self.error(self.loc, ParseError::ExpectedNewTarget)
                 };
@@ -2549,7 +2595,7 @@ impl<'a> Parser<'a> {
         };
 
         let loc = self.mark_loc(start_pos);
-        Ok(p(Expression::New(NewExpression { loc, callee, arguments })))
+        Ok(p!(self, Expression::New(NewExpression { loc, callee, arguments })))
     }
 
     fn parse_super_expression(&mut self, allow_call: bool) -> ParseResult<P<'a, Expression<'a>>> {
@@ -2569,13 +2615,16 @@ impl<'a> Parser<'a> {
 
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperMember(SuperMemberExpression::new(
-                    loc,
-                    super_loc,
-                    operator_pos,
-                    p(Expression::Id(id)),
-                    /* is_computed */ false,
-                ))))
+                Ok(p!(
+                    self,
+                    Expression::SuperMember(SuperMemberExpression::new(
+                        loc,
+                        super_loc,
+                        operator_pos,
+                        p!(self, Expression::Id(id)),
+                        /* is_computed */ false,
+                    ))
+                ))
             }
             Token::LeftBracket => {
                 let operator_pos = self.current_start_pos();
@@ -2585,19 +2634,28 @@ impl<'a> Parser<'a> {
                 self.expect(Token::RightBracket)?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperMember(SuperMemberExpression::new(
-                    loc,
-                    super_loc,
-                    operator_pos,
-                    property,
-                    /* is_computed */ true,
-                ))))
+                Ok(p!(
+                    self,
+                    Expression::SuperMember(SuperMemberExpression::new(
+                        loc,
+                        super_loc,
+                        operator_pos,
+                        property,
+                        /* is_computed */ true,
+                    ))
+                ))
             }
             Token::LeftParen if allow_call => {
                 let arguments = self.parse_call_arguments()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::SuperCall(p(SuperCallExpression::new(loc, super_loc, arguments)))))
+                Ok(p!(
+                    self,
+                    Expression::SuperCall(p!(
+                        self,
+                        SuperCallExpression::new(loc, super_loc, arguments)
+                    ),)
+                ))
             }
             _ => self.error_expected_token(self.loc, &self.token, &Token::LeftParen),
         }
@@ -2620,10 +2678,13 @@ impl<'a> Parser<'a> {
                         return self.error(self.loc, ParseError::ImportMetaOutsideModule);
                     }
 
-                    Ok(p(Expression::MetaProperty(MetaProperty {
-                        loc,
-                        kind: MetaPropertyKind::ImportMeta,
-                    })))
+                    Ok(p!(
+                        self,
+                        Expression::MetaProperty(MetaProperty {
+                            loc,
+                            kind: MetaPropertyKind::ImportMeta,
+                        })
+                    ))
                 } else {
                     self.error(self.loc, ParseError::ExpectedImportMeta)
                 }
@@ -2660,7 +2721,7 @@ impl<'a> Parser<'a> {
 
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p(Expression::Import(ImportExpression { loc, source, options })))
+                Ok(p!(self, Expression::Import(ImportExpression { loc, source, options })))
             }
             _ => {
                 let loc = self.mark_loc(start_pos);
@@ -2700,38 +2761,38 @@ impl<'a> Parser<'a> {
             Token::Null => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(p(Expression::Null(loc)))
+                Ok(p!(self, Expression::Null(loc)))
             }
             Token::True | Token::False => {
                 let value = self.token == Token::True;
                 let loc = self.loc;
                 self.advance()?;
-                Ok(p(Expression::Boolean(BooleanLiteral { loc, value })))
+                Ok(p!(self, Expression::Boolean(BooleanLiteral { loc, value })))
             }
             Token::NumberLiteral(value) => {
                 let loc = self.loc;
                 let value = *value;
                 self.advance()?;
-                Ok(p(Expression::Number(NumberLiteral { loc, value })))
+                Ok(p!(self, Expression::Number(NumberLiteral { loc, value })))
             }
             Token::StringLiteral(_) => {
                 let string_literal = self.parse_string_literal()?;
-                Ok(p(Expression::String(string_literal)))
+                Ok(p!(self, Expression::String(string_literal)))
             }
             Token::BigIntLiteral(value) => {
                 let loc = self.loc;
                 let value = value.clone();
                 self.advance()?;
-                Ok(p(Expression::BigInt(BigIntLiteral::new(loc, value, self.alloc))))
+                Ok(p!(self, Expression::BigInt(BigIntLiteral::new(loc, value, self.alloc))))
             }
             // RegExp may be started by "/=" which is treated as a single token
             Token::Divide | Token::DivideEq => {
-                Ok(p(Expression::RegExp(self.parse_regexp_literal()?)))
+                Ok(p!(self, Expression::RegExp(self.parse_regexp_literal()?)))
             }
             Token::This => {
                 let loc = self.loc;
                 self.advance()?;
-                Ok(p(Expression::This(ThisExpression { loc, scope: None })))
+                Ok(p!(self, Expression::This(ThisExpression { loc, scope: None })))
             }
             Token::LeftParen => {
                 self.advance()?;
@@ -2751,9 +2812,10 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_object_expression(),
             Token::LeftBracket => self.parse_array_expression(),
-            Token::Class => Ok(p(Expression::Class(
-                self.parse_class(/* is_decl */ false, /* is_export */ false)?,
-            ))),
+            Token::Class => Ok(p!(
+                self,
+                Expression::Class(self.parse_class(/* is_decl */ false, /* is_export */ false)?,)
+            )),
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
@@ -2767,11 +2829,11 @@ impl<'a> Parser<'a> {
                     *is_tail,
                     /* is_tagged */ false,
                 )?;
-                Ok(p(Expression::Template(template_literal)))
+                Ok(p!(self, Expression::Template(template_literal)))
             }
             _ => {
                 if self.is_function_start()? {
-                    return Ok(p(Expression::Function(self.parse_function_expression()?)));
+                    return Ok(p!(self, Expression::Function(self.parse_function_expression()?)));
                 }
 
                 // Check for the start of an async arrow function
@@ -2783,7 +2845,7 @@ impl<'a> Parser<'a> {
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
                         let async_id = Identifier::new(async_loc, self.alloc_str("async"));
-                        return Ok(p(Expression::Id(async_id)));
+                        return Ok(p!(self, Expression::Id(async_id)));
                     }
 
                     // If followed by an identifier this is `async id`
@@ -2801,11 +2863,11 @@ impl<'a> Parser<'a> {
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
                         let async_id = Identifier::new(async_loc, self.alloc_str("async"));
-                        return Ok(p(Expression::Id(async_id)));
+                        return Ok(p!(self, Expression::Id(async_id)));
                     }
                 }
 
-                Ok(p(Expression::Id(self.parse_identifier_reference()?)))
+                Ok(p!(self, Expression::Id(self.parse_identifier_reference()?)))
             }
         }
     }
@@ -3019,9 +3081,9 @@ impl<'a> Parser<'a> {
         self.advance_regexp_literal()?;
 
         if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
-            let raw = p(raw.clone());
-            let pattern = p(pattern.clone());
-            let flags_string = p(flags.clone());
+            let raw = p!(self, raw.clone());
+            let pattern = p!(self, pattern.clone());
+            let flags_string = p!(self, flags.clone());
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);
@@ -3040,12 +3102,15 @@ impl<'a> Parser<'a> {
             let regexp = if flags.has_any_unicode_flag() {
                 let create_lexer_stream =
                     || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
-                p(RegExpParser::parse_regexp(
-                    &create_lexer_stream,
-                    flags,
-                    self.options,
-                    self.alloc,
-                )?)
+                p!(
+                    self,
+                    RegExpParser::parse_regexp(
+                        &create_lexer_stream,
+                        flags,
+                        self.options,
+                        self.alloc,
+                    )?
+                )
             } else {
                 // Otherwise must first translate UTF-8 to UTF-16, then treat as individual code
                 // units.
@@ -3067,7 +3132,7 @@ impl<'a> Parser<'a> {
                 );
 
                 match parse_result {
-                    Ok(regexp) => p(regexp),
+                    Ok(regexp) => p!(self, regexp),
                     Err(mut error) => {
                         // Error loc will be reported in the number of UTF-16 code units since the
                         // start of the regexp.
@@ -3215,7 +3280,10 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBracket)?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(p(Expression::Array(ArrayExpression { loc, elements, is_parenthesized: false })))
+        Ok(p!(
+            self,
+            Expression::Array(ArrayExpression { loc, elements, is_parenthesized: false })
+        ))
     }
 
     fn parse_object_expression(&mut self) -> ParseResult<P<'a, Expression<'a>>> {
@@ -3261,12 +3329,15 @@ impl<'a> Parser<'a> {
 
         self.scope_builder.exit_scope();
 
-        Ok(p(Expression::Object(ObjectExpression {
-            loc,
-            properties,
-            is_parenthesized: false,
-            scope,
-        })))
+        Ok(p!(
+            self,
+            Expression::Object(ObjectExpression {
+                loc,
+                properties,
+                is_parenthesized: false,
+                scope,
+            })
+        ))
     }
 
     fn parse_property(
@@ -3294,7 +3365,7 @@ impl<'a> Parser<'a> {
                 if self.token == Token::LeftParen {
                     let token_name = self.alloc_string(id_token.to_string());
                     let id = Identifier::new(id_loc, token_name);
-                    let name = p(Expression::Id(id));
+                    let name = p!(self, Expression::Id(id));
 
                     return self.parse_method_property(
                         name,
@@ -3314,7 +3385,7 @@ impl<'a> Parser<'a> {
                 if is_init_property || self.is_property_end(prop_context) {
                     let id_token_name = self.alloc_string(id_token.to_string());
                     let id = Identifier::new(id_loc, id_token_name);
-                    let name = p(Expression::Id(id));
+                    let name = p!(self, Expression::Id(id));
 
                     return self.parse_init_property(
                         name,
@@ -3353,7 +3424,7 @@ impl<'a> Parser<'a> {
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
                 let async_id = Identifier::new(async_loc, self.alloc_str("async"));
-                let name = p(Expression::Id(async_id));
+                let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_method_property(
                     name,
@@ -3373,7 +3444,7 @@ impl<'a> Parser<'a> {
                 || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
                 let async_id = Identifier::new(async_loc, self.alloc_str("async"));
-                let name = p(Expression::Id(async_id));
+                let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_init_property(
                     name,
@@ -3517,12 +3588,12 @@ impl<'a> Parser<'a> {
             // Private properties are only allowed in classes
             Token::Hash if prop_context == PropertyContext::Class => {
                 is_private = true;
-                p(Expression::Id(self.parse_private_name()?))
+                p!(self, Expression::Id(self.parse_private_name()?))
             }
             _ => match self.parse_identifier_name()? {
                 Some(key) => {
                     is_identifier = true;
-                    p(Expression::Id(key))
+                    p!(self, Expression::Id(key))
                 }
                 None => {
                     return self.error_unexpected_token(self.loc, &self.token);
@@ -3656,7 +3727,7 @@ impl<'a> Parser<'a> {
         let param_flags = self.analyze_function_params(&params);
 
         let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
-        let body = p(FunctionBody::Block(block));
+        let body = p!(self, FunctionBody::Block(block));
         let loc = self.mark_loc(start_pos);
 
         self.scope_builder.exit_scope();
@@ -3690,9 +3761,13 @@ impl<'a> Parser<'a> {
             is_computed,
             is_method: true,
             kind,
-            value: Some(p(Expression::Function(p(Function::new(
-                loc, /* id */ None, params, body, flags, scope, self.alloc,
-            ))))),
+            value: Some(p!(
+                self,
+                Expression::Function(p!(
+                    self,
+                    Function::new(loc, /* id */ None, params, body, flags, scope, self.alloc,)
+                ))
+            )),
         };
 
         self.allow_await = did_allow_await;
@@ -3720,7 +3795,7 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            Some(p(self.parse_binding_identifier(binding_kind)?))
+            Some(p!(self, self.parse_binding_identifier(binding_kind)?))
         } else if is_export {
             // Anonymous exported classes must still be added to scope but under the anonymous
             // default export name.
@@ -3795,15 +3870,10 @@ impl<'a> Parser<'a> {
         // Restore to strict mode context from beforehand
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok(p(Class::new(
-            loc,
-            id,
-            super_class,
-            body,
-            scope,
-            field_init_scope,
-            static_init_scope,
-        )))
+        Ok(p!(
+            self,
+            Class::new(loc, id, super_class, body, scope, field_init_scope, static_init_scope,)
+        ))
     }
 
     fn parse_private_name(&mut self) -> ParseResult<Identifier<'a>> {
@@ -3869,17 +3939,20 @@ impl<'a> Parser<'a> {
                 // the kind and the function's block body are ignored, so put in placeholders.
                 return Ok(ClassElement::Method(ClassMethod::new(
                     loc,
-                    /* key */ OuterExpression::from_inner(Expression::Null(loc)),
+                    /* key */ OuterExpression::from_inner(Expression::Null(loc), self.alloc),
                     /* value */
-                    p(Function::new(
-                        loc,
-                        None,
-                        params,
-                        p(FunctionBody::Block(block)),
-                        param_flags | FunctionFlags::IS_STRICT_MODE,
-                        scope,
-                        self.alloc,
-                    )),
+                    p!(
+                        self,
+                        Function::new(
+                            loc,
+                            None,
+                            params,
+                            p!(self, FunctionBody::Block(block)),
+                            param_flags | FunctionFlags::IS_STRICT_MODE,
+                            scope,
+                            self.alloc,
+                        )
+                    ),
                     ClassMethodKind::StaticInitializer,
                     /* is_computed */ false,
                     /* is_static */ false,
@@ -3890,7 +3963,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
                 let static_id = Identifier::new(static_loc, self.alloc_str("static"));
-                let name = p(Expression::Id(static_id));
+                let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
                     name,
@@ -3917,7 +3990,7 @@ impl<'a> Parser<'a> {
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
                 let static_id = Identifier::new(static_loc, self.alloc_str("static"));
-                let name = p(Expression::Id(static_id));
+                let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
                     name,
@@ -4092,7 +4165,7 @@ impl<'a> Parser<'a> {
                 let right = self.parse_assignment_expression()?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(Pattern::Assign(AssignmentPattern { loc, left: p(left), right }))
+                Ok(Pattern::Assign(AssignmentPattern { loc, left: p!(self, left), right }))
             }
             _ => Ok(left),
         }
@@ -4153,7 +4226,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let argument = p(self.parse_pattern(binding_kind)?);
+        let argument = p!(self, self.parse_pattern(binding_kind)?);
         let loc = self.mark_loc(start_pos);
 
         Ok(RestElement { loc, argument })
@@ -4221,7 +4294,7 @@ impl<'a> Parser<'a> {
             };
 
             // Shorthand property may be followed by assignment pattern
-            let value = p(self.parse_assignment_pattern(value, start_pos)?);
+            let value = p!(self, self.parse_assignment_pattern(value, start_pos)?);
             let loc = self.mark_loc(start_pos);
 
             return Ok(ObjectPatternProperty {
@@ -4235,7 +4308,7 @@ impl<'a> Parser<'a> {
 
         // Regular properties
         self.expect(Token::Colon)?;
-        let value = p(self.parse_pattern_including_assignment_pattern(binding_kind)?);
+        let value = p!(self, self.parse_pattern_including_assignment_pattern(binding_kind)?);
         let loc = self.mark_loc(start_pos);
 
         Ok(ObjectPatternProperty {
@@ -4261,7 +4334,7 @@ impl<'a> Parser<'a> {
         Ok(ObjectPatternProperty {
             loc,
             key: None,
-            value: p(Pattern::Id(id_argument)),
+            value: p!(self, Pattern::Id(id_argument)),
             is_computed: false,
             is_rest: true,
         })
@@ -4290,7 +4363,7 @@ impl<'a> Parser<'a> {
 
         // No specifiers
         if matches!(&self.token, Token::StringLiteral(_)) {
-            let source = p(self.parse_string_literal()?);
+            let source = p!(self, self.parse_string_literal()?);
 
             let attributes = self.parse_optional_import_attributes()?;
             self.expect_semicolon()?;
@@ -4310,7 +4383,7 @@ impl<'a> Parser<'a> {
 
         if let Token::Identifier(_) = self.token {
             // Starts with default specifier
-            let local = p(self.parse_imported_identifier()?);
+            let local = p!(self, self.parse_imported_identifier()?);
 
             let default_specifier = ImportDefaultSpecifier { loc: local.loc, local };
             specifiers.push(ImportSpecifier::Default(default_specifier));
@@ -4356,7 +4429,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightBrace)?;
 
-        Ok(Some(p(ImportAttributes { attributes })))
+        Ok(Some(p!(self, ImportAttributes { attributes })))
     }
 
     fn parse_import_attribute(&mut self) -> ParseResult<ImportAttribute<'a>> {
@@ -4364,7 +4437,7 @@ impl<'a> Parser<'a> {
 
         let key = if matches!(&self.token, Token::StringLiteral(_)) {
             let literal = self.parse_string_literal()?;
-            p(Expression::String(literal))
+            p!(self, Expression::String(literal))
         } else {
             let id = self.parse_identifier_name()?;
 
@@ -4372,14 +4445,14 @@ impl<'a> Parser<'a> {
                 return self.error(self.loc, ParseError::ImportAttributeInvalidKey);
             }
 
-            p(Expression::Id(id.unwrap()))
+            p!(self, Expression::Id(id.unwrap()))
         };
 
         self.expect(Token::Colon)?;
 
         // Value must be a string literal
         let value = if matches!(&self.token, Token::StringLiteral(_)) {
-            p(self.parse_string_literal()?)
+            p!(self, self.parse_string_literal()?)
         } else {
             return self.error(self.loc, ParseError::ImportAttributeInvalidValue);
         };
@@ -4412,7 +4485,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::As)?;
 
-        let local = p(self.parse_imported_namespace_identifier()?);
+        let local = p!(self, self.parse_imported_namespace_identifier()?);
         let loc = self.mark_loc(start_pos);
 
         Ok(ImportSpecifier::Namespace(ImportNamespaceSpecifier { loc, local }))
@@ -4435,20 +4508,20 @@ impl<'a> Parser<'a> {
 
                 self.expect(Token::As)?;
 
-                let local = p(self.parse_imported_identifier()?);
+                let local = p!(self, self.parse_imported_identifier()?);
                 let loc = self.mark_loc(start_pos);
 
-                ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
+                ImportNamedSpecifier { loc, imported: Some(p!(self, imported)), local }
             } else if let Some(mut id) = self.parse_identifier_name()? {
                 // This is an import as specifier, so the id can be any name including reserved words
                 if self.token == Token::As {
                     self.advance()?;
 
                     let imported = self.create_export_name_identifier(id);
-                    let local = p(self.parse_imported_identifier()?);
+                    let local = p!(self, self.parse_imported_identifier()?);
                     let loc = self.mark_loc(start_pos);
 
-                    ImportNamedSpecifier { loc, imported: Some(p(imported)), local }
+                    ImportNamedSpecifier { loc, imported: Some(p!(self, imported)), local }
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
@@ -4459,7 +4532,7 @@ impl<'a> Parser<'a> {
                     // Must add an import binding since not parsed as an imported identifier
                     self.add_binding(&mut id, BindingKind::Import { is_namespace: false })?;
 
-                    ImportNamedSpecifier { loc: id.loc, imported: None, local: p(id) }
+                    ImportNamedSpecifier { loc: id.loc, imported: None, local: p!(self, id) }
                 }
             } else {
                 return self.error_unexpected_token(self.loc, &self.token);
@@ -4494,12 +4567,12 @@ impl<'a> Parser<'a> {
                 // Parse list of specifiers between braces
                 while self.token != Token::RightBrace {
                     let start_pos = self.current_start_pos();
-                    let local = p(self.parse_export_name()?);
+                    let local = p!(self, self.parse_export_name()?);
 
                     // Specifiers optionally have an export alias
                     let exported = if self.token == Token::As {
                         self.advance()?;
-                        Some(p(self.parse_export_name()?))
+                        Some(p!(self, self.parse_export_name()?))
                     } else {
                         None
                     };
@@ -4561,7 +4634,7 @@ impl<'a> Parser<'a> {
                 // Optional exported alias
                 let exported = if self.token == Token::As {
                     self.advance()?;
-                    Some(p(self.parse_export_name()?))
+                    Some(p!(self, self.parse_export_name()?))
                 } else {
                     None
                 };
@@ -4587,7 +4660,7 @@ impl<'a> Parser<'a> {
                 // From the perspective of function declaration scoping, being inside an export
                 // declaration makes them not toplevel.
                 let declaration =
-                    Some(p(self.parse_statement_list_item(FunctionContext::empty())?));
+                    Some(p!(self, self.parse_statement_list_item(FunctionContext::empty())?));
                 let loc = self.mark_loc(start_pos);
 
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
@@ -4676,7 +4749,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::From)?;
 
         if matches!(&self.token, Token::StringLiteral(_)) {
-            let source = p(self.parse_string_literal()?);
+            let source = p!(self, self.parse_string_literal()?);
 
             let attributes = self.parse_optional_import_attributes()?;
             self.expect_semicolon()?;
@@ -4784,7 +4857,7 @@ impl<'a> Parser<'a> {
                 let value = match AstBox::into_inner(property.key) {
                     Expression::Object(_) | Expression::Array(_) => return None,
                     lhs_pattern => {
-                        p(self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
+                        p!(self, self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
                     }
                 };
 
@@ -4797,17 +4870,23 @@ impl<'a> Parser<'a> {
                 }
             } else if property.value.is_none() {
                 // Shorthand properties
-                let id_pattern = p(self.reparse_left_hand_side_expression_as_pattern(
-                    AstBox::into_inner(property.key),
-                )?);
+                let id_pattern = p!(
+                    self,
+                    self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
+                        property.key
+                    ),)?
+                );
 
                 // Check the property kind to see if this is a shorthand pattern initializer
                 let value = if let PropertyKind::PatternInitializer(initializer) = property.kind {
-                    p(Pattern::Assign(AssignmentPattern {
-                        loc: property.loc,
-                        left: id_pattern,
-                        right: initializer,
-                    }))
+                    p!(
+                        self,
+                        Pattern::Assign(AssignmentPattern {
+                            loc: property.loc,
+                            left: id_pattern,
+                            right: initializer,
+                        })
+                    )
                 } else {
                     id_pattern
                 };
@@ -4822,9 +4901,12 @@ impl<'a> Parser<'a> {
             } else {
                 // If the value is an assignment expression with an identifier lhs, this can be
                 // reparsed to an assignment pattern.
-                let value = p(self.reparse_expression_as_maybe_assignment_pattern(
-                    AstBox::into_inner(property.value.unwrap()),
-                )?);
+                let value = p!(
+                    self,
+                    self.reparse_expression_as_maybe_assignment_pattern(AstBox::into_inner(
+                        property.value.unwrap()
+                    ),)?
+                );
 
                 ObjectPatternProperty {
                     loc: property.loc,
@@ -4864,9 +4946,12 @@ impl<'a> Parser<'a> {
                         return None;
                     }
 
-                    let argument = p(self.reparse_left_hand_side_expression_as_pattern(
-                        AstBox::into_inner(spread.argument),
-                    )?);
+                    let argument = p!(
+                        self,
+                        self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
+                            spread.argument
+                        ),)?
+                    );
                     ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
                 }
             };
@@ -4926,12 +5011,13 @@ fn wrap_outer(expr: Expression) -> OuterExpression {
 }
 
 impl<'a> OuterExpression<'a> {
-    fn from_inner(expr: Expression<'a>) -> P<'a, OuterExpression<'a>> {
-        p(wrap_outer(expr))
+    fn from_inner(expr: Expression<'a>, alloc: AstAlloc<'a>) -> P<'a, OuterExpression<'a>> {
+        AstBox::new_in(wrap_outer(expr), alloc)
     }
 
     fn from_inner_box(expr: P<'a, Expression<'a>>) -> P<'a, OuterExpression<'a>> {
-        p(wrap_outer(AstBox::into_inner(expr)))
+        let alloc = *P::<'a, Expression<'a>>::allocator(&expr);
+        AstBox::new_in(wrap_outer(AstBox::into_inner(expr)), alloc)
     }
 }
 

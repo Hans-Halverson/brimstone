@@ -58,8 +58,11 @@ impl<'a, T> AstPtr<T> {
     }
 }
 
-pub fn p<'a, T>(node: T) -> P<'a, T> {
-    AstBox::new_in(node)
+#[macro_export]
+macro_rules! p {
+    ($self:ident, $value:expr) => {
+        $crate::js::parser::ast::AstBox::new_in($value, $self.alloc)
+    };
 }
 
 /// Reference to AST node without lifetime constraints. Only valid to use while AST is still live.
@@ -356,16 +359,18 @@ pub struct Function<'a> {
 
 impl<'a> Function<'a> {
     pub fn new_uninit(alloc: AstAlloc<'a>) -> Function<'a> {
+        let body = FunctionBody::Block(FunctionBlockBody {
+            loc: EMPTY_LOC,
+            body: alloc::vec![in alloc],
+            scope: None,
+        });
+
         Function {
             // Default values that will be overwritten by `init`
             loc: EMPTY_LOC,
             id: None,
             params: alloc::vec![in alloc],
-            body: p(FunctionBody::Block(FunctionBlockBody {
-                loc: EMPTY_LOC,
-                body: alloc::vec![in alloc],
-                scope: None,
-            })),
+            body: AstBox::new_in(body, alloc),
             flags: FunctionFlags::empty(),
             scope: AstPtr::uninit(),
         }

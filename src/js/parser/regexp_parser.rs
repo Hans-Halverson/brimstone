@@ -5,23 +5,26 @@ use std::{
 
 use brimstone_macros::match_u32;
 
-use crate::js::common::{
-    alloc,
-    options::Options,
-    unicode::{
-        as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
-        is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
-        is_high_surrogate_code_unit, is_id_continue_unicode, is_low_surrogate_code_point,
-        is_low_surrogate_code_unit,
+use crate::{
+    js::common::{
+        alloc,
+        options::Options,
+        unicode::{
+            as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
+            is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
+            is_high_surrogate_code_unit, is_id_continue_unicode, is_low_surrogate_code_point,
+            is_low_surrogate_code_unit,
+        },
+        unicode_property::{
+            BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
+        },
+        wtf_8::Wtf8String,
     },
-    unicode_property::{
-        BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
-    },
-    wtf_8::Wtf8String,
+    p,
 };
 
 use super::{
-    ast::{p, AstAlloc, AstPtr, AstStr, AstString, AstVec},
+    ast::{AstAlloc, AstPtr, AstStr, AstString, AstVec},
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
@@ -481,7 +484,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                             // Save indexed backreference to be analyzed after parsing
                             self.indexed_backreferences.push((index, start_pos));
 
-                            Term::Backreference(p(Backreference { index }))
+                            Term::Backreference(p!(self, Backreference { index }))
                         } else {
                             return self.error(start_pos, ParseError::InvalidBackreferenceIndex);
                         }
@@ -496,7 +499,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         self.expect('>')?;
 
                         // Initialize backreference with a fake index that will be resolved later
-                        let backreference = p(Backreference { index: 0 });
+                        let backreference = p!(self, Backreference { index: 0 });
 
                         // Save named backreference to be analyzed and resolved after parsing
                         self.named_backreferences.push((
@@ -625,7 +628,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 _ => {}
             }
 
-            Ok(Term::Quantifier(Quantifier { term: p(term), min, max, is_greedy }))
+            Ok(Term::Quantifier(Quantifier { term: p!(self, term), min, max, is_greedy }))
         } else {
             Ok(term)
         }

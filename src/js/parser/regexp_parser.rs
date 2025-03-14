@@ -537,14 +537,14 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
                         let code_point = self.parse_regexp_escape_sequence()?;
-                        Term::Literal(Wtf8String::from_code_point(code_point))
+                        Term::Literal(Wtf8String::from_code_point_in(code_point, self.alloc))
                     }
                 })
             }
             // Otherwise this must be a literal term
             _ => {
                 let code_point = self.parse_unicode_codepoint()?;
-                Term::Literal(Wtf8String::from_code_point(code_point))
+                Term::Literal(Wtf8String::from_code_point_in(code_point, self.alloc))
             }
         });
 

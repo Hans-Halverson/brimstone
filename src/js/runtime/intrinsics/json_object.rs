@@ -226,7 +226,7 @@ impl JSONObject {
             if space_number < 1.0 {
                 Wtf8String::new()
             } else {
-                Wtf8String::from_str(" ").repeat(space_number as usize)
+                Wtf8String::from_string(" ".repeat(space_number as usize))
             }
         } else if space_value.is_string() {
             let space_string = space_value.as_string();

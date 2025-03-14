@@ -4302,7 +4302,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_create_private_symbol(&mut self, private_id: &ast::Identifier) -> EmitResult<()> {
-        match private_id.get_private_name_binding().vm_location().unwrap() {
+        // Private name binding has `#` prefix
+        let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
+        let binding = private_id
+            .scope
+            .unwrap_resolved()
+            .get_binding(&private_name);
+
+        match binding.vm_location().unwrap() {
             VMLocation::Scope { scope_id, index } => {
                 // Add the name to the constant table (without the "#" prefix)
                 let name_index = self.add_wtf8_string_constant(&private_id.name)?;
@@ -4325,7 +4332,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match private_id.scope.kind() {
             // If resolved then directly load from the scope directly
             ResolvedScope::Resolved => {
-                match private_id.get_private_name_binding().vm_location().unwrap() {
+                // Private name binding has `#` prefix
+                let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
+                let binding = private_id
+                    .scope
+                    .unwrap_resolved()
+                    .get_binding(&private_name);
+
+                match binding.vm_location().unwrap() {
                     VMLocation::Scope { scope_id, index } => {
                         self.gen_load_scope_binding(scope_id, index, ExprDest::Any)
                     }

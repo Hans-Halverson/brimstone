@@ -780,7 +780,7 @@ impl<'a> Parser<'a> {
 
         // Function node must be allocated on heap and then initialized later, so that a pointer to
         // the function node can be passed to the scope builder.
-        let mut func = p(Function::new_uninit());
+        let mut func = p(Function::new_uninit(self.alloc));
 
         // For declarations name is required and await/yield inherited from surrounding context,
         // and name is introduces into current scope.
@@ -1735,6 +1735,7 @@ impl<'a> Parser<'a> {
                     body,
                     param_flags | strict_flags | FunctionFlags::IS_ARROW,
                     scope,
+                    self.alloc,
                 )))));
             }
 
@@ -1783,7 +1784,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(p(Expression::ArrowFunction(p(Function::new(
-            loc, /* id */ None, params, body, flags, scope,
+            loc, /* id */ None, params, body, flags, scope, self.alloc,
         )))))
     }
 
@@ -2721,7 +2722,7 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let value = value.clone();
                 self.advance()?;
-                Ok(p(Expression::BigInt(BigIntLiteral::new(loc, value))))
+                Ok(p(Expression::BigInt(BigIntLiteral::new(loc, value, self.alloc))))
             }
             // RegExp may be started by "/=" which is treated as a single token
             Token::Divide | Token::DivideEq => {
@@ -3690,7 +3691,7 @@ impl<'a> Parser<'a> {
             is_method: true,
             kind,
             value: Some(p(Expression::Function(p(Function::new(
-                loc, /* id */ None, params, body, flags, scope,
+                loc, /* id */ None, params, body, flags, scope, self.alloc,
             ))))),
         };
 
@@ -3877,6 +3878,7 @@ impl<'a> Parser<'a> {
                         p(FunctionBody::Block(block)),
                         param_flags | FunctionFlags::IS_STRICT_MODE,
                         scope,
+                        self.alloc,
                     )),
                     ClassMethodKind::StaticInitializer,
                     /* is_computed */ false,

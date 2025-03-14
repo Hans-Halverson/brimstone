@@ -901,7 +901,7 @@ impl<'a> AstScopeNode<'a> {
         self.bindings.contains_key(name)
     }
 
-    pub fn get_binding<'b: 'a>(&self, name: AstStr<'b>) -> &Binding {
+    pub fn get_binding<'b: 'a>(&self, name: AstStr<'b>) -> &Binding<'a> {
         self.bindings.get(name).unwrap()
     }
 

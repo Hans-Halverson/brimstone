@@ -27,8 +27,19 @@ impl Wtf8String<Global> {
     }
 
     #[inline]
-    pub fn from_string(string: String) -> Self {
-        Wtf8String { buf: string.into_bytes() }
+    pub fn from_string(mut string: String) -> Self {
+        // Decompose the string into its constituent parts
+        let ptr = string.as_mut_ptr();
+        let len = string.len();
+        let capacity = string.capacity();
+
+        // Do not drop the String as its memory will be reused in-place by the Vec
+        std::mem::forget(string);
+
+        // Reconstruct the Vec from the parts
+        let buf = unsafe { alloc::Vec::from_raw_parts(ptr, len, capacity) };
+
+        Wtf8String { buf }
     }
 
     #[inline]
@@ -71,8 +82,8 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn from_code_point(code_point: u32) -> Self {
-        let mut string = Self::new();
+    pub fn from_code_point_in(code_point: u32, alloc: A) -> Self {
+        let mut string = Self::new_in(alloc);
         string.push(code_point);
 
         string
@@ -134,10 +145,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn truncate(&mut self, new_length: usize) {
         self.buf.truncate(new_length);
-    }
-
-    pub fn repeat(&self, num_times: usize) -> Self {
-        Wtf8String { buf: self.buf.repeat(num_times) }
     }
 
     /// Returns true if the string does not have any unpaired surrogates.

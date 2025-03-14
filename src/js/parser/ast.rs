@@ -14,7 +14,7 @@ use num_bigint::{BigInt, Sign};
 
 use crate::js::{
     common::{
-        alloc,
+        alloc::{self, slice_to_alloc_vec},
         wtf_8::{Wtf8Str, Wtf8String},
     },
     runtime::eval_result::EvalResult,
@@ -187,11 +187,6 @@ impl<'a> Identifier<'a> {
     pub fn get_binding(&self) -> &Binding {
         self.scope.unwrap_resolved().get_binding(&self.name)
     }
-
-    pub fn get_private_name_binding(&self) -> &Binding {
-        let private_name = AstString::from_string(format!("#{}", self.name));
-        self.scope.unwrap_resolved().get_binding(&private_name)
-    }
 }
 
 /// Reference to a scope node without lifetime constraints. Only valid to use while scope tree is
@@ -315,7 +310,7 @@ impl<'a> VariableDeclarator<'a> {
         VariableDeclarator { loc, id, init, id_has_assign_expr: false }
     }
 
-    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -360,15 +355,15 @@ pub struct Function<'a> {
 }
 
 impl<'a> Function<'a> {
-    pub fn new_uninit() -> Function<'a> {
+    pub fn new_uninit(alloc: AstAlloc<'a>) -> Function<'a> {
         Function {
             // Default values that will be overwritten by `init`
             loc: EMPTY_LOC,
             id: None,
-            params: alloc::vec![],
+            params: alloc::vec![in alloc],
             body: p(FunctionBody::Block(FunctionBlockBody {
                 loc: EMPTY_LOC,
-                body: alloc::vec![],
+                body: alloc::vec![in alloc],
                 scope: None,
             })),
             flags: FunctionFlags::empty(),
@@ -400,8 +395,9 @@ impl<'a> Function<'a> {
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
         scope: AstPtr<AstScopeNode<'a>>,
+        alloc: AstAlloc<'a>,
     ) -> Function<'a> {
-        let mut func = Function::new_uninit();
+        let mut func = Function::new_uninit(alloc);
         func.init(loc, id, params, body, flags, scope);
         func
     }
@@ -476,7 +472,7 @@ pub enum FunctionParam<'a> {
     },
 }
 
-impl FunctionParam<'_> {
+impl<'a> FunctionParam<'a> {
     pub fn new_pattern(pattern: Pattern) -> FunctionParam {
         FunctionParam::Pattern { pattern, has_assign_expr: false }
     }
@@ -492,7 +488,7 @@ impl FunctionParam<'_> {
         }
     }
 
-    pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&self, f: &mut F) {
+    pub fn iter_patterns<F: FnMut(&Pattern<'a>)>(&self, f: &mut F) {
         match &self {
             FunctionParam::Pattern { pattern, .. } => pattern.iter_patterns(f),
             FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
@@ -971,9 +967,11 @@ pub struct BigIntLiteral<'a> {
 }
 
 impl<'a> BigIntLiteral<'a> {
-    pub fn new(loc: Loc, value: BigInt) -> BigIntLiteral<'a> {
+    pub fn new(loc: Loc, value: BigInt, alloc: AstAlloc<'a>) -> BigIntLiteral<'a> {
         let (sign, unsigned) = value.into_parts();
-        BigIntLiteral { loc, sign, digits: unsigned.to_u32_digits() }
+        let digits = slice_to_alloc_vec(&unsigned.to_u32_digits(), alloc);
+
+        BigIntLiteral { loc, sign, digits }
     }
 
     /// Return a clone of the BigInt value.
@@ -1431,7 +1429,7 @@ impl<'a> Pattern<'a> {
         matches!(self, Pattern::Id(_))
     }
 
-    pub fn iter_patterns<F: FnMut(&'a Pattern<'a>)>(&self, f: &mut F) {
+    pub fn iter_patterns<F: FnMut(&Pattern<'a>)>(&self, f: &mut F) {
         f(self);
 
         match &self {
@@ -1455,7 +1453,7 @@ impl<'a> Pattern<'a> {
         }
     }
 
-    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -1497,7 +1495,7 @@ pub enum ArrayPatternElement<'a> {
 }
 
 impl<'a> ArrayPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -1526,7 +1524,7 @@ pub struct ObjectPattern<'a> {
 }
 
 impl<'a> ObjectPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -1554,7 +1552,7 @@ pub struct AssignmentPattern<'a> {
 }
 
 impl<'a> AssignmentPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
@@ -1612,7 +1610,7 @@ pub struct ExportNamedDeclaration<'a> {
 }
 
 impl<'a> ExportNamedDeclaration<'a> {
-    pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&'a Identifier<'a>)) {
+    pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&Identifier<'a>)) {
         if let Some(declaration) = self.declaration.as_deref() {
             match declaration {
                 Statement::VarDecl(VariableDeclaration { declarations, .. }) => {

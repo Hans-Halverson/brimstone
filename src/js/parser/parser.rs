@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Return the next token.
-    fn peek(&mut self) -> ParseResult<Token> {
+    fn peek(&mut self) -> ParseResult<Token<'a>> {
         let lexer_state = self.lexer.save();
         let (token, _) = self.lexer.next()?;
         self.lexer.restore(&lexer_state);
@@ -237,7 +237,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Return the next token, along with whether it is directly preceded by a newline.
-    fn peek_with_newline(&mut self) -> ParseResult<(Token, bool)> {
+    fn peek_with_newline(&mut self) -> ParseResult<(Token<'a>, bool)> {
         let lexer_state = self.lexer.save();
         let (token, _) = self.lexer.next()?;
         let has_newline = self.lexer.is_new_line_before_current();
@@ -3175,8 +3175,8 @@ impl<'a> Parser<'a> {
 
     fn parse_template_literal(
         &mut self,
-        raw: AstString,
-        cooked: Option<AstString>,
+        raw: AstString<'a>,
+        cooked: Option<AstString<'a>>,
         is_single_quasi: bool,
         is_tagged: bool,
     ) -> ParseResult<TemplateLiteral<'a>> {

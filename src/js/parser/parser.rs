@@ -582,8 +582,12 @@ impl<'a> Parser<'a> {
 
                 // Parse labeled statement
                 if self.token == Token::Colon {
-                    if let Expression::Id(label) = expr.expr {
+                    if matches!(&expr.expr, Expression::Id(_)) {
                         self.advance()?;
+
+                        let Expression::Id(label) = AstBox::into_inner(expr).expr else {
+                            unreachable!()
+                        };
 
                         // Functions can be labeled items
                         let body = if self.is_function_start()? {
@@ -1266,7 +1270,7 @@ impl<'a> Parser<'a> {
                 expr
             };
 
-            match (self.token.clone(), expr.expr) {
+            match (self.token.clone(), AstBox::into_inner(expr).expr) {
                 // If this is a for each loop the parsed expression must actually be a pattern
                 (Token::In, expr) | (Token::Of, expr) => {
                     let pattern =
@@ -1286,8 +1290,10 @@ impl<'a> Parser<'a> {
                     }),
                 ) => {
                     self.expect(Token::RightParen)?;
-                    let pattern =
-                        self.reparse_expression_as_for_left_hand_side(*left, expr_start_pos)?;
+                    let pattern = self.reparse_expression_as_for_left_hand_side(
+                        AstBox::into_inner(left),
+                        expr_start_pos,
+                    )?;
                     let left = p(ForEachInit::new_pattern(pattern));
                     let body = p(self.parse_statement()?);
                     let loc = self.mark_loc(start_pos);
@@ -1588,10 +1594,10 @@ impl<'a> Parser<'a> {
         let expr = self.parse_assignment_expression()?;
 
         if self.token == Token::Comma {
-            let mut expressions = self.alloc_vec_with_element(*expr);
+            let mut expressions = self.alloc_vec_with_element(AstBox::into_inner(expr));
             while self.token == Token::Comma {
                 self.advance()?;
-                expressions.push(*self.parse_assignment_expression()?);
+                expressions.push(AstBox::into_inner(self.parse_assignment_expression()?));
             }
 
             let loc = self.mark_loc(start_pos);
@@ -1653,10 +1659,14 @@ impl<'a> Parser<'a> {
                 let operator_pos = self.current_start_pos();
 
                 let left = if operator == AssignmentOperator::Equals {
-                    p(self.reparse_expression_as_assignment_left_hand_side(*expr, start_pos)?)
+                    p(self.reparse_expression_as_assignment_left_hand_side(
+                        AstBox::into_inner(expr),
+                        start_pos,
+                    )?)
                 } else {
                     p(self.reparse_expression_as_operator_assignment_left_hand_side(
-                        *expr, start_pos,
+                        AstBox::into_inner(expr),
+                        start_pos,
                     )?)
                 };
 
@@ -1795,7 +1805,9 @@ impl<'a> Parser<'a> {
             }
 
             Ok((
-                p(FunctionBody::Expression(wrap_outer(*self.parse_assignment_expression()?))),
+                p(FunctionBody::Expression(wrap_outer(AstBox::into_inner(
+                    self.parse_assignment_expression()?,
+                )))),
                 strict_flags,
             ))
         }
@@ -2664,7 +2676,9 @@ impl<'a> Parser<'a> {
             if self.token == Token::Spread {
                 arguments.push(CallArgument::Spread(self.parse_spread_element()?))
             } else {
-                arguments.push(CallArgument::Expression(*self.parse_assignment_expression()?));
+                arguments.push(CallArgument::Expression(AstBox::into_inner(
+                    self.parse_assignment_expression()?,
+                )));
             }
 
             if self.token == Token::Comma {
@@ -3025,7 +3039,12 @@ impl<'a> Parser<'a> {
             let regexp = if flags.has_any_unicode_flag() {
                 let create_lexer_stream =
                     || Utf8LexerStream::new(pattern_start_pos, source.clone(), pattern.as_bytes());
-                p(RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options)?)
+                p(RegExpParser::parse_regexp(
+                    &create_lexer_stream,
+                    flags,
+                    self.options,
+                    self.alloc,
+                )?)
             } else {
                 // Otherwise must first translate UTF-8 to UTF-16, then treat as individual code
                 // units.
@@ -3039,8 +3058,12 @@ impl<'a> Parser<'a> {
 
                 let create_lexer_stream =
                     || HeapTwoByteCodeUnitLexerStream::new(&utf16_pattern, Some(source.clone()));
-                let parse_result =
-                    RegExpParser::parse_regexp(&create_lexer_stream, flags, self.options);
+                let parse_result = RegExpParser::parse_regexp(
+                    &create_lexer_stream,
+                    flags,
+                    self.options,
+                    self.alloc,
+                );
 
                 match parse_result {
                     Ok(regexp) => p(regexp),
@@ -3102,7 +3125,7 @@ impl<'a> Parser<'a> {
 
         if !is_single_quasi {
             loop {
-                expressions.push(*self.parse_expression()?);
+                expressions.push(AstBox::into_inner(self.parse_expression()?));
 
                 if self.token != Token::RightBrace {
                     return self.error_expected_token(self.loc, &self.token, &Token::RightBrace);
@@ -3175,7 +3198,9 @@ impl<'a> Parser<'a> {
                     elements.push(ArrayElement::Spread(self.parse_spread_element()?));
                 }
                 _ => {
-                    elements.push(ArrayElement::Expression(*self.parse_assignment_expression()?));
+                    elements.push(ArrayElement::Expression(AstBox::into_inner(
+                        self.parse_assignment_expression()?,
+                    )));
                 }
             }
 
@@ -3978,7 +4003,7 @@ impl<'a> Parser<'a> {
             self.scope_builder.set_current_scope(scope_to_restore);
         }
 
-        let func_value = if let Expression::Function(func) = *value.unwrap() {
+        let func_value = if let Expression::Function(func) = AstBox::into_inner(value.unwrap()) {
             func
         } else {
             unreachable!("method properties must have function expression")
@@ -4180,7 +4205,7 @@ impl<'a> Parser<'a> {
 
         // Shorthand property
         if property_name.is_shorthand {
-            let value = if let Expression::Id(mut id) = *property_name.key {
+            let value = if let Expression::Id(mut id) = AstBox::into_inner(property_name.key) {
                 if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
@@ -4754,7 +4779,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Object and array patterns are not allowed as rest elements
-                let value = match *property.key {
+                let value = match AstBox::into_inner(property.key) {
                     Expression::Object(_) | Expression::Array(_) => return None,
                     lhs_pattern => {
                         p(self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
@@ -4770,8 +4795,9 @@ impl<'a> Parser<'a> {
                 }
             } else if property.value.is_none() {
                 // Shorthand properties
-                let id_pattern =
-                    p(self.reparse_left_hand_side_expression_as_pattern(*property.key)?);
+                let id_pattern = p(self.reparse_left_hand_side_expression_as_pattern(
+                    AstBox::into_inner(property.key),
+                )?);
 
                 // Check the property kind to see if this is a shorthand pattern initializer
                 let value = if let PropertyKind::PatternInitializer(initializer) = property.kind {
@@ -4794,9 +4820,9 @@ impl<'a> Parser<'a> {
             } else {
                 // If the value is an assignment expression with an identifier lhs, this can be
                 // reparsed to an assignment pattern.
-                let value = p(
-                    self.reparse_expression_as_maybe_assignment_pattern(*property.value.unwrap())?
-                );
+                let value = p(self.reparse_expression_as_maybe_assignment_pattern(
+                    AstBox::into_inner(property.value.unwrap()),
+                )?);
 
                 ObjectPatternProperty {
                     loc: property.loc,
@@ -4836,8 +4862,9 @@ impl<'a> Parser<'a> {
                         return None;
                     }
 
-                    let argument =
-                        p(self.reparse_left_hand_side_expression_as_pattern(*spread.argument)?);
+                    let argument = p(self.reparse_left_hand_side_expression_as_pattern(
+                        AstBox::into_inner(spread.argument),
+                    )?);
                     ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
                 }
             };

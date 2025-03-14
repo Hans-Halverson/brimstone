@@ -204,7 +204,7 @@ impl Context {
 
     pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse script and perform semantic analysis
-        let mut parse_result = parse_script(&source, self.options.as_ref())?;
+        let mut parse_result = parse_script(&source, self.options.clone())?;
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {
@@ -226,7 +226,7 @@ impl Context {
 
     pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse module and perform semantic analysis
-        let mut parse_result = parse_module(&source, self.options.as_ref())?;
+        let mut parse_result = parse_module(&source, self.options.clone())?;
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {

@@ -212,7 +212,7 @@ pub fn host_load_imported_module(
     };
 
     // Parse the source, returning AST
-    let mut parse_result = match parse_module(&source, cx.options.as_ref()) {
+    let mut parse_result = match parse_module(&source, cx.options.clone()) {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
     };

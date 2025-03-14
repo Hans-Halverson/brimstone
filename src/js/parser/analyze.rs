@@ -1666,9 +1666,7 @@ impl<'a> Analyzer<'a> {
     }
 }
 
-pub fn analyze<'a>(
-    parse_result: &'a mut ParseProgramResult<'a>,
-) -> Result<(), LocalizedParseErrors> {
+pub fn analyze<'a>(parse_result: &mut ParseProgramResult<'a>) -> Result<(), LocalizedParseErrors> {
     let source = parse_result.source.clone();
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
     analyzer.visit_program(&mut parse_result.program);
@@ -1682,7 +1680,7 @@ pub fn analyze<'a>(
 }
 
 pub fn analyze_for_eval<'a>(
-    parse_result: &'a mut ParseProgramResult<'a>,
+    parse_result: &mut ParseProgramResult<'a>,
     source: Rc<Source>,
     private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
     in_function: bool,
@@ -1735,7 +1733,7 @@ pub fn analyze_for_eval<'a>(
 }
 
 pub fn analyze_function_for_function_constructor<'a>(
-    parse_result: &'a mut ParseFunctionResult<'a>,
+    parse_result: &mut ParseFunctionResult<'a>,
     source: Rc<Source>,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);

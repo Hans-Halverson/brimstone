@@ -111,7 +111,7 @@ pub fn create_dynamic_function(
     };
     if let Err(err) = parse_function_params_for_function_constructor(
         &params_source,
-        cx.options.as_ref(),
+        cx.options.clone(),
         is_async,
         is_generator,
     ) {
@@ -124,7 +124,7 @@ pub fn create_dynamic_function(
     };
     if let Err(err) = parse_function_body_for_function_constructor(
         &body_source,
-        cx.options.as_ref(),
+        cx.options.clone(),
         is_async,
         is_generator,
     ) {
@@ -137,7 +137,7 @@ pub fn create_dynamic_function(
         Err(err) => return syntax_parse_error(cx, &err),
     };
     let mut parse_result =
-        match parse_function_for_function_constructor(&full_source, cx.options.as_ref()) {
+        match parse_function_for_function_constructor(&full_source, cx.options.clone()) {
             Ok(parse_result) => parse_result,
             Err(err) => return syntax_parse_error(cx, &err),
         };

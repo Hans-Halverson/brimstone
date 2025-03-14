@@ -52,7 +52,7 @@ pub fn perform_eval(
     };
 
     let parse_result =
-        parse_script_for_eval(&source, cx.options.as_ref(), is_direct, is_strict_caller);
+        parse_script_for_eval(&source, cx.options.clone(), is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
@@ -61,7 +61,7 @@ pub fn perform_eval(
     // Analyze source code
     let analyze_result = analyze_for_eval(
         &mut parse_result,
-        source,
+        source.clone(),
         private_names,
         flags.contains(EvalFlags::IN_FUNCTION),
         flags.contains(EvalFlags::IN_METHOD),

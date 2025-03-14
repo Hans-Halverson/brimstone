@@ -153,7 +153,7 @@ impl Test262Object {
             Err(error) => return syntax_parse_error(cx, &error),
         };
 
-        let parse_result = parse_script(&source, cx.options.as_ref());
+        let parse_result = parse_script(&source, cx.options.clone());
         let mut parse_result = match parse_result {
             Ok(parse_result) => parse_result,
             Err(error) => return syntax_parse_error(cx, &error),

@@ -52,7 +52,7 @@ fn print_ast(path: &str) -> GenericResult<String> {
         .annex_b(path.contains("annex_b"))
         .build();
 
-    let parse_result = parse_script_or_module(path, &options)?;
+    let parse_result = parse_script_or_module(path, Rc::new(options))?;
     Ok(parser::print_program(&parse_result))
 }
 
@@ -160,7 +160,7 @@ enum BytecodeResult {
 fn generate_bytecode(cx: Context, path: &str) -> GenericResult<BytecodeResult> {
     let realm = cx.initial_realm();
 
-    let mut parse_result = parse_script_or_module(path, cx.options.as_ref())?;
+    let mut parse_result = parse_script_or_module(path, cx.options.clone())?;
     parser::analyze::analyze(&mut parse_result)?;
 
     match parse_result.program.kind {
@@ -197,7 +197,7 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
 
 fn parse_script_or_module(
     path: &str,
-    options: &Options,
+    options: Rc<Options>,
 ) -> GenericResult<parser::parser::ParseProgramResult> {
     let source = Rc::new(Source::new_from_file(path)?);
 

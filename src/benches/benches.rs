@@ -73,9 +73,9 @@ fn parse_step(
     flags: TestFlags,
 ) -> (Context, ParseProgramResult) {
     let parse_result = if flags.contains(TestFlags::MODULE) {
-        parse_module(&source, cx.options.as_ref()).unwrap()
+        parse_module(&source, cx.options.clone()).unwrap()
     } else {
-        parse_script(&source, cx.options.as_ref()).unwrap()
+        parse_script(&source, cx.options.clone()).unwrap()
     };
 
     (cx, parse_result)

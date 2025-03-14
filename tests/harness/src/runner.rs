@@ -324,7 +324,7 @@ fn run_single_test(
 
 fn parse_file(
     file: &str,
-    options: &Options,
+    options: Rc<Options>,
     test: Option<&Test>,
     suite_root: &str,
     force_strict_mode: bool,
@@ -358,7 +358,7 @@ fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
 
     let parse_result =
-        parse_file(full_path.to_str().unwrap(), cx.options.as_ref(), None, test262_root, false);
+        parse_file(full_path.to_str().unwrap(), cx.options.clone(), None, test262_root, false);
     let mut ast = match parse_result {
         Ok(ast) => ast,
         Err(_) => {

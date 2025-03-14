@@ -101,7 +101,7 @@ struct Parser<'a> {
     /// The program kind that is currently being parsed - script vs module.
     program_kind: ProgramKind,
     /// Options set for the compiler
-    options: &'a Options,
+    options: Rc<Options>,
     /// Allocator used for allocating AST nodes
     alloc: AstAlloc<'a>,
 }
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
     fn new(
         lexer: Lexer<'a>,
         scope_builder: ScopeTree<'a>,
-        options: &'a Options,
+        options: Rc<Options>,
         alloc: AstAlloc<'a>,
     ) -> Parser<'a> {
         Parser {
@@ -3107,7 +3107,7 @@ impl<'a> Parser<'a> {
                     RegExpParser::parse_regexp(
                         &create_lexer_stream,
                         flags,
-                        self.options,
+                        &self.options,
                         self.alloc,
                     )?
                 )
@@ -3127,7 +3127,7 @@ impl<'a> Parser<'a> {
                 let parse_result = RegExpParser::parse_regexp(
                     &create_lexer_stream,
                     flags,
-                    self.options,
+                    &self.options,
                     self.alloc,
                 );
 
@@ -5035,7 +5035,7 @@ pub struct ParseFunctionResult<'a> {
 
 pub fn parse_script<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
     let alloc = source.alloc();
@@ -5050,7 +5050,7 @@ pub fn parse_script<'a>(
 
 pub fn parse_module<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
     let alloc = source.alloc();
@@ -5063,7 +5063,7 @@ pub fn parse_module<'a>(
 
 pub fn parse_script_for_eval<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
     is_direct: bool,
     inherit_strict_mode: bool,
 ) -> ParseResult<ParseProgramResult<'a>> {
@@ -5083,7 +5083,7 @@ pub fn parse_script_for_eval<'a>(
 
 pub fn parse_function_params_for_function_constructor<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
@@ -5105,7 +5105,7 @@ pub fn parse_function_params_for_function_constructor<'a>(
 
 pub fn parse_function_body_for_function_constructor<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
@@ -5128,7 +5128,7 @@ pub fn parse_function_body_for_function_constructor<'a>(
 
 pub fn parse_function_for_function_constructor<'a>(
     source: &'a Rc<Source>,
-    options: &'a Options,
+    options: Rc<Options>,
 ) -> ParseResult<ParseFunctionResult<'a>> {
     // Create and prime parser
     let alloc = source.alloc();

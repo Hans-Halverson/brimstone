@@ -3,9 +3,11 @@ use std::{
     rc::Rc,
 };
 
+use allocator_api2::alloc::Global;
+
 use crate::{
     js::{
-        common::wtf_8::Wtf8String,
+        common::wtf_8::{Wtf8Str, Wtf8String},
         parser::{
             parse_error::InvalidDuplicateParametersReason,
             scope_tree::{VMLocation, ARGUMENTS_NAME},
@@ -33,13 +35,13 @@ pub struct Analyzer<'a> {
     /// Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
     /// Scope tree for the AST that is being analyzed
-    scope_tree: &'a mut ScopeTree,
+    scope_tree: &'a mut ScopeTree<'a>,
     /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     /// Set of all names exported by the current module
-    export_names: HashSet<Wtf8String>,
+    export_names: HashSet<&'a Wtf8Str>,
     /// Set of labels defined where the visitor is currently in
-    labels: HashMap<Wtf8String, LabelInfo>,
+    labels: HashMap<&'a Wtf8Str, LabelInfo>,
     /// Number of labeled statements that the visitor is currently inside. Multiple labels on the
     /// same statement all count as a single "label depth", and will receive the same label id.
     label_depth: LabelId,
@@ -52,7 +54,7 @@ pub struct Analyzer<'a> {
     /// The classes that the visitor is currently inside, if any
     class_stack: Vec<ClassStackEntry>,
     /// Stack of scopes that the visitor is currently inside
-    scope_stack: Vec<AstPtr<AstScopeNode>>,
+    scope_stack: Vec<AstPtr<AstScopeNode<'a>>>,
     /// Whether the "arguments" identifier is currently disallowed due to being in a class initializer
     allow_arguments: bool,
     /// Whether a return statement is allowed
@@ -101,8 +103,8 @@ struct LabelInfo {
 }
 
 // Saved state from entering a function or class that can be restored from
-struct AnalyzerSavedState {
-    labels: HashMap<Wtf8String, LabelInfo>,
+struct AnalyzerSavedState<'a> {
+    labels: HashMap<&'a Wtf8Str, LabelInfo>,
     label_depth: LabelId,
     breakable_depth: usize,
     iterable_depth: usize,
@@ -223,7 +225,7 @@ impl<'a> Analyzer<'a> {
 
     // Save state before visiting a function or class. This prevents labels and some context from
     // leaking into the inner function or class.
-    fn save_state(&mut self) -> AnalyzerSavedState {
+    fn save_state(&mut self) -> AnalyzerSavedState<'a> {
         let mut state = AnalyzerSavedState {
             labels: HashMap::new(),
             label_depth: self.label_depth,
@@ -242,7 +244,7 @@ impl<'a> Analyzer<'a> {
     }
 
     // Restore state after visiting a function or class
-    fn restore_state(&mut self, mut state: AnalyzerSavedState) {
+    fn restore_state(&mut self, mut state: AnalyzerSavedState<'a>) {
         std::mem::swap(&mut self.labels, &mut state.labels);
         self.label_depth = state.label_depth;
         self.breakable_depth = state.breakable_depth;
@@ -263,7 +265,7 @@ impl<'a> Analyzer<'a> {
         }
     }
 
-    fn enter_scope(&mut self, scope: AstPtr<AstScopeNode>) {
+    fn enter_scope(&mut self, scope: AstPtr<AstScopeNode<'a>>) {
         self.scope_stack.push(scope);
     }
 
@@ -301,8 +303,8 @@ impl<'a> Analyzer<'a> {
     }
 }
 
-impl AstVisitor for Analyzer<'_> {
-    fn visit_program(&mut self, program: &mut Program) {
+impl<'a> AstVisitor<'a> for Analyzer<'a> {
+    fn visit_program(&mut self, program: &mut Program<'a>) {
         if program.is_strict_mode {
             self.enter_strict_mode_context();
         }
@@ -321,7 +323,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_function_declaration(&mut self, func: &mut Function) {
+    fn visit_function_declaration(&mut self, func: &mut Function<'a>) {
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
             /* is_static_method */ false, /*is_derived_constructor */ false,
@@ -329,7 +331,7 @@ impl AstVisitor for Analyzer<'_> {
         );
     }
 
-    fn visit_function_param(&mut self, param: &mut FunctionParam) {
+    fn visit_function_param(&mut self, param: &mut FunctionParam<'a>) {
         match param {
             FunctionParam::Pattern { pattern, has_assign_expr } => {
                 // Pattern is in its own "has assignment expression" context
@@ -346,7 +348,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_function_block_body(&mut self, body: &mut FunctionBlockBody) {
+    fn visit_function_block_body(&mut self, body: &mut FunctionBlockBody<'a>) {
         // Body of function may have its own scope
         if let Some(scope) = body.scope {
             self.enter_scope(scope);
@@ -359,14 +361,14 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_outer_expression(&mut self, expr: &mut OuterExpression) {
+    fn visit_outer_expression(&mut self, expr: &mut OuterExpression<'a>) {
         // Outer expressions are in their own "has assignment expression" context
         self.enter_has_assign_expr_context();
         self.visit_expression(&mut expr.expr);
         expr.has_assign_expr = self.exit_has_assign_expr_context();
     }
 
-    fn visit_expression_statement(&mut self, stmt: &mut ExpressionStatement) {
+    fn visit_expression_statement(&mut self, stmt: &mut ExpressionStatement<'a>) {
         if let Expression::Assign(assign) = &mut stmt.expr.expr {
             // Top level assignment expression "has assignment expression" context refers to whether
             // the left or right side of the assignment expression has an assignment expression, and
@@ -379,7 +381,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement) {
+    fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement<'a>) {
         self.inc_breakable_depth();
 
         let mut seen_default = false;
@@ -405,11 +407,11 @@ impl AstVisitor for Analyzer<'_> {
         self.dec_breakable_depth();
     }
 
-    fn visit_variable_declaration(&mut self, var_decl: &mut VariableDeclaration) {
+    fn visit_variable_declaration(&mut self, var_decl: &mut VariableDeclaration<'a>) {
         self.visit_variable_declaration_common(var_decl, false)
     }
 
-    fn visit_labeled_statement(&mut self, stmt: &mut LabeledStatement) {
+    fn visit_labeled_statement(&mut self, stmt: &mut LabeledStatement<'a>) {
         let (inner_stmt, label_stack) = self.push_all_labels(stmt);
 
         self.visit_statement(inner_stmt);
@@ -417,7 +419,7 @@ impl AstVisitor for Analyzer<'_> {
         self.pop_all_labels(label_stack);
     }
 
-    fn visit_function_expression(&mut self, func: &mut Function) {
+    fn visit_function_expression(&mut self, func: &mut Function<'a>) {
         self.visit_function_common(
             func, /* is_arrow_function */ false, /* is_method */ false,
             /* is_static_method */ false, /* is_derived_constructor */ false,
@@ -425,7 +427,7 @@ impl AstVisitor for Analyzer<'_> {
         );
     }
 
-    fn visit_arrow_function(&mut self, func: &mut Function) {
+    fn visit_arrow_function(&mut self, func: &mut Function<'a>) {
         self.visit_function_common(
             func, /* is_arrow_function */ true, /* is_method */ false,
             /* is_static_method */ false, /*is_derived_constructor */ false,
@@ -433,7 +435,7 @@ impl AstVisitor for Analyzer<'_> {
         );
     }
 
-    fn visit_return_statement(&mut self, stmt: &mut ReturnStatement) {
+    fn visit_return_statement(&mut self, stmt: &mut ReturnStatement<'a>) {
         match self.allow_return_stack.last() {
             Some(true) => {}
             _ => self.emit_error(stmt.loc, ParseError::ReturnOutsideFunction),
@@ -451,7 +453,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_return_statement(self, stmt);
     }
 
-    fn visit_break_statement(&mut self, stmt: &mut BreakStatement) {
+    fn visit_break_statement(&mut self, stmt: &mut BreakStatement<'a>) {
         self.visit_label_use(stmt.label.as_mut(), false);
 
         if stmt.label.is_none() && !self.is_in_breakable() {
@@ -459,7 +461,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_continue_statement(&mut self, stmt: &mut ContinueStatement) {
+    fn visit_continue_statement(&mut self, stmt: &mut ContinueStatement<'a>) {
         self.visit_label_use(stmt.label.as_mut(), true);
 
         if !self.is_in_iterable() {
@@ -467,7 +469,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_with_statement(&mut self, stmt: &mut WithStatement) {
+    fn visit_with_statement(&mut self, stmt: &mut WithStatement<'a>) {
         if self.is_in_strict_mode_context() {
             self.emit_error(stmt.loc, ParseError::WithInStrictMode);
         }
@@ -487,7 +489,7 @@ impl AstVisitor for Analyzer<'_> {
         self.exit_scope();
     }
 
-    fn visit_if_statement(&mut self, stmt: &mut IfStatement) {
+    fn visit_if_statement(&mut self, stmt: &mut IfStatement<'a>) {
         self.check_for_labeled_function(&stmt.conseq);
         if let Some(altern) = stmt.altern.as_ref() {
             self.check_for_labeled_function(altern);
@@ -496,7 +498,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_if_statement(self, stmt);
     }
 
-    fn visit_while_statement(&mut self, stmt: &mut WhileStatement) {
+    fn visit_while_statement(&mut self, stmt: &mut WhileStatement<'a>) {
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
@@ -505,7 +507,7 @@ impl AstVisitor for Analyzer<'_> {
         self.dec_iterable_depth();
     }
 
-    fn visit_do_while_statement(&mut self, stmt: &mut DoWhileStatement) {
+    fn visit_do_while_statement(&mut self, stmt: &mut DoWhileStatement<'a>) {
         self.inc_iterable_depth();
 
         self.check_for_labeled_function(&stmt.body);
@@ -514,7 +516,7 @@ impl AstVisitor for Analyzer<'_> {
         self.dec_iterable_depth();
     }
 
-    fn visit_for_statement(&mut self, stmt: &mut ForStatement) {
+    fn visit_for_statement(&mut self, stmt: &mut ForStatement<'a>) {
         self.inc_iterable_depth();
         self.enter_scope(stmt.scope);
 
@@ -525,7 +527,7 @@ impl AstVisitor for Analyzer<'_> {
         self.dec_iterable_depth();
     }
 
-    fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement) {
+    fn visit_for_each_statement(&mut self, stmt: &mut ForEachStatement<'a>) {
         self.inc_iterable_depth();
         self.enter_scope(stmt.scope);
 
@@ -536,7 +538,7 @@ impl AstVisitor for Analyzer<'_> {
         self.dec_iterable_depth();
     }
 
-    fn visit_for_each_init(&mut self, init: &mut ForEachInit) {
+    fn visit_for_each_init(&mut self, init: &mut ForEachInit<'a>) {
         match init {
             ForEachInit::Pattern { pattern, has_assign_expr } => {
                 // Pattern is in its own "has assignment expression" context
@@ -548,7 +550,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_catch_clause(&mut self, catch: &mut CatchClause) {
+    fn visit_catch_clause(&mut self, catch: &mut CatchClause<'a>) {
         // Catch scope includes the catch parameter
         self.enter_scope(catch.scope);
 
@@ -572,13 +574,13 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_block(&mut self, block: &mut Block) {
+    fn visit_block(&mut self, block: &mut Block<'a>) {
         self.enter_scope(block.scope);
         default_visit_block(self, block);
         self.exit_scope();
     }
 
-    fn visit_member_expression(&mut self, expr: &mut MemberExpression) {
+    fn visit_member_expression(&mut self, expr: &mut MemberExpression<'a>) {
         if expr.is_private {
             self.visit_private_name_use(&mut expr.property);
         }
@@ -591,7 +593,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_binary_expression(&mut self, expr: &mut BinaryExpression) {
+    fn visit_binary_expression(&mut self, expr: &mut BinaryExpression<'a>) {
         if expr.operator == BinaryOperator::InPrivate {
             self.visit_private_name_use(&mut expr.left);
             self.visit_expression(&mut expr.right);
@@ -600,14 +602,14 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_assignment_expression(&mut self, expr: &mut AssignmentExpression) {
+    fn visit_assignment_expression(&mut self, expr: &mut AssignmentExpression<'a>) {
         // Mark the current context as having an assignment expression
         self.has_assign_expr = true;
 
         default_visit_assignment_expression(self, expr);
     }
 
-    fn visit_object_expression(&mut self, expr: &mut ObjectExpression) {
+    fn visit_object_expression(&mut self, expr: &mut ObjectExpression<'a>) {
         // Do not allow duplicate __proto__ initializer properties
         let mut has_proto_init = false;
         for property in &expr.properties {
@@ -636,7 +638,7 @@ impl AstVisitor for Analyzer<'_> {
         self.exit_scope();
     }
 
-    fn visit_property(&mut self, prop: &mut Property) {
+    fn visit_property(&mut self, prop: &mut Property<'a>) {
         if let PropertyKind::PatternInitializer(_) = prop.kind {
             self.emit_error(prop.loc, ParseError::InvalidPatternInitializer);
         }
@@ -663,7 +665,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_object_pattern_property(&mut self, prop: &mut ObjectPatternProperty) {
+    fn visit_object_pattern_property(&mut self, prop: &mut ObjectPatternProperty<'a>) {
         // Visit pattern for computed properties, but not id of named property
         if prop.is_computed {
             visit_opt!(self, prop.key, visit_expression);
@@ -672,7 +674,7 @@ impl AstVisitor for Analyzer<'_> {
         self.visit_pattern(&mut prop.value);
     }
 
-    fn visit_meta_property(&mut self, expr: &mut MetaProperty) {
+    fn visit_meta_property(&mut self, expr: &mut MetaProperty<'a>) {
         match &mut expr.kind {
             // new.target is treated as a binding that is implicitly created on a parent function
             // scope. Store the scope node of the function that contains this new.target expression.
@@ -687,7 +689,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_await_expression(&mut self, expr: &mut AwaitExpression) {
+    fn visit_await_expression(&mut self, expr: &mut AwaitExpression<'a>) {
         // Mark if the program has a top level await
         if self.is_at_top_level() {
             self.has_top_level_await = true;
@@ -704,7 +706,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_await_expression(self, expr)
     }
 
-    fn visit_yield_expression(&mut self, expr: &mut YieldExpression) {
+    fn visit_yield_expression(&mut self, expr: &mut YieldExpression<'a>) {
         if let Some(true) = self.in_parameters_stack.last() {
             self.emit_error(expr.loc, ParseError::YieldInParameters)
         }
@@ -712,7 +714,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_yield_expression(self, expr)
     }
 
-    fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression) {
+    fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression<'a>) {
         match self.allow_super_member_stack.last() {
             Some(AllowSuperStackEntry::Allow { is_static }) => {
                 expr.is_static = *is_static;
@@ -730,7 +732,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_super_member_expression(self, expr)
     }
 
-    fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression) {
+    fn visit_super_call_expression(&mut self, expr: &mut SuperCallExpression<'a>) {
         match self.enclosing_non_arrow_function() {
             Some(FunctionStackEntry { is_derived_constructor: true, .. }) => {
                 // A super call implicitly uses the current derived constructor, new.target, and
@@ -745,7 +747,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_super_call_expression(self, expr)
     }
 
-    fn visit_unary_expression(&mut self, expr: &mut UnaryExpression) {
+    fn visit_unary_expression(&mut self, expr: &mut UnaryExpression<'a>) {
         if expr.operator == UnaryOperator::Delete && self.is_in_strict_mode_context() {
             match expr.argument.as_ref() {
                 Expression::Id(_) => {
@@ -761,11 +763,11 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_unary_expression(self, expr);
     }
 
-    fn visit_this_expression(&mut self, this: &mut ThisExpression) {
+    fn visit_this_expression(&mut self, this: &mut ThisExpression<'a>) {
         self.resolve_this_use(this.loc, |scope| this.scope = Some(scope));
     }
 
-    fn visit_call_expression(&mut self, expr: &mut CallExpression) {
+    fn visit_call_expression(&mut self, expr: &mut CallExpression<'a>) {
         // If a potential direct eval is ever seen, conservatively force all visible bindings to
         // have VM scope locations instead of local registers so they can be dynamically looked up.
         match expr.callee.as_ref() {
@@ -789,7 +791,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_call_expression(self, expr);
     }
 
-    fn visit_identifier_expression(&mut self, id: &mut Identifier) {
+    fn visit_identifier_expression(&mut self, id: &mut Identifier<'a>) {
         if id.name == "arguments" && !self.allow_arguments {
             self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
         }
@@ -799,7 +801,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_identifier_expression(self, id)
     }
 
-    fn visit_identifier_pattern(&mut self, id: &mut Identifier) {
+    fn visit_identifier_pattern(&mut self, id: &mut Identifier<'a>) {
         if id.name == "arguments" && !self.allow_arguments {
             self.emit_error(id.loc, ParseError::ArgumentsInClassInitializer);
         } else {
@@ -815,7 +817,7 @@ impl AstVisitor for Analyzer<'_> {
         default_visit_identifier_pattern(self, id)
     }
 
-    fn visit_variable_declarator(&mut self, decl: &mut VariableDeclarator) {
+    fn visit_variable_declarator(&mut self, decl: &mut VariableDeclarator<'a>) {
         // Variable declarator pattern is in its own "has assignment expression" context
         self.enter_has_assign_expr_context();
         self.visit_pattern(&mut decl.id);
@@ -824,7 +826,7 @@ impl AstVisitor for Analyzer<'_> {
         visit_opt!(self, decl.init, visit_outer_expression);
     }
 
-    fn visit_class(&mut self, class: &mut Class) {
+    fn visit_class(&mut self, class: &mut Class<'a>) {
         // Entire class is in strict mode, including super class expression
         self.enter_strict_mode_context();
 
@@ -916,7 +918,7 @@ impl AstVisitor for Analyzer<'_> {
         self.exit_strict_mode_context();
     }
 
-    fn visit_import_declaration(&mut self, import: &mut ImportDeclaration) {
+    fn visit_import_declaration(&mut self, import: &mut ImportDeclaration<'a>) {
         for specifier in &import.specifiers {
             match specifier {
                 ImportSpecifier::Default(ImportDefaultSpecifier { local, .. })
@@ -932,7 +934,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_import_attributes(&mut self, attributes: &mut ImportAttributes) {
+    fn visit_import_attributes(&mut self, attributes: &mut ImportAttributes<'a>) {
         // Check for duplicate keys
         let mut seen_keys: HashSet<&[u8]> = HashSet::new();
 
@@ -949,7 +951,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration) {
+    fn visit_export_default_declaration(&mut self, export: &mut ExportDefaultDeclaration<'a>) {
         default_visit_export_default_declaration(self, export);
 
         // Mark local bindings as exported
@@ -957,16 +959,16 @@ impl AstVisitor for Analyzer<'_> {
             id.get_binding().set_is_exported(true);
         }
 
-        self.add_export(export.loc, Wtf8String::from_str("default"));
+        self.add_export(export.loc, Wtf8Str::from_str("default"));
     }
 
-    fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration) {
+    fn visit_export_named_declaration(&mut self, export: &mut ExportNamedDeclaration<'a>) {
         default_visit_export_named_declaration(self, export);
 
         // Mark local bindings as exported
         export.iter_declaration_ids(&mut |id| {
             id.get_binding().set_is_exported(true);
-            self.add_export(id.loc, id.name.clone());
+            self.add_export(id.loc, id.name.as_arena_str());
         });
 
         for specifier in &mut export.specifiers {
@@ -996,7 +998,7 @@ impl AstVisitor for Analyzer<'_> {
         }
     }
 
-    fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration) {
+    fn visit_export_all_declaration(&mut self, export: &mut ExportAllDeclaration<'a>) {
         default_visit_export_all_declaration(self, export);
 
         if let Some(export_name) = export.exported.as_deref() {
@@ -1009,10 +1011,10 @@ impl AstVisitor for Analyzer<'_> {
     }
 }
 
-impl Analyzer<'_> {
+impl<'a> Analyzer<'a> {
     fn visit_function_common(
         &mut self,
-        func: &mut Function,
+        func: &mut Function<'a>,
         is_arrow_function: bool,
         is_method: bool,
         is_static_method: bool,
@@ -1085,7 +1087,7 @@ impl Analyzer<'_> {
 
         self.in_parameters_stack.pop();
 
-        for (param_index, param) in &mut func.params.iter_mut().enumerate() {
+        for (param_index, param) in func.params.iter_mut().enumerate() {
             // Check if this is a top level id pattern, optionally with a default
             let toplevel_id = match param {
                 FunctionParam::Pattern { pattern: Pattern::Id(id), .. } => Some(id),
@@ -1106,7 +1108,7 @@ impl Analyzer<'_> {
             // directly by index. This may be overriden later if captured.
             if let Some(id) = toplevel_id {
                 let scope = id.scope.unwrap_resolved_mut();
-                let binding = scope.get_binding_mut(&id.name);
+                let binding = scope.get_binding_mut(id.name.as_arena_str());
 
                 // Allow later arguments to overwrite earlier ones but do not overwrite a WithVar.
                 if !binding.needs_tdz_check()
@@ -1198,7 +1200,7 @@ impl Analyzer<'_> {
 
     fn collect_class_private_names(
         &mut self,
-        class: &mut Class,
+        class: &mut Class<'a>,
     ) -> HashMap<Wtf8String, PrivateNameUsage> {
         // Create new private name scope for stack and initialize with defined private names
         let mut private_names = HashMap::new();
@@ -1210,10 +1212,12 @@ impl Analyzer<'_> {
                     let private_id = key.expr.to_id_mut();
 
                     // If this name has been used at all so far it is a duplicate name
-                    if private_names.contains_key(&private_id.name) {
+                    if private_names.contains_key(private_id.name.as_str()) {
                         self.emit_error(
                             private_id.loc,
-                            ParseError::new_duplicate_private_name(private_id.name.clone()),
+                            ParseError::new_duplicate_private_name(
+                                private_id.name.clone_in(Global),
+                            ),
                         );
                     } else {
                         // Create a complete usage that does not allow any other uses of this name
@@ -1222,7 +1226,7 @@ impl Analyzer<'_> {
                             has_getter: true,
                             has_setter: true,
                         };
-                        private_names.insert(private_id.name.clone(), usage);
+                        private_names.insert(private_id.name.clone_in(Global), usage);
                     }
 
                     private_id
@@ -1239,7 +1243,7 @@ impl Analyzer<'_> {
 
                     // Check for duplicate name definitions. Only allow multiple definitions if
                     // there is exactly one getter and setter that have the same static property.
-                    match private_names.get_mut(&private_id.name) {
+                    match private_names.get_mut(private_id.name.as_str()) {
                         // Mark usage for private name and its method type
                         None => {
                             let is_static = *is_static;
@@ -1251,7 +1255,7 @@ impl Analyzer<'_> {
                                 PrivateNameUsage { is_static, has_getter: true, has_setter: true }
                             };
 
-                            private_names.insert(private_id.name.clone(), usage);
+                            private_names.insert(private_id.name.clone_in(Global), usage);
                         }
                         // This private name has already been seen. Only avoid erroring if this use
                         // is a getter or setter which has not yet been seen.
@@ -1273,9 +1277,10 @@ impl Analyzer<'_> {
                             }
 
                             if is_duplicate {
+                                let private_name = private_id.name.clone_in(Global);
                                 self.emit_error(
                                     private_id.loc,
-                                    ParseError::new_duplicate_private_name(private_id.name.clone()),
+                                    ParseError::new_duplicate_private_name(private_name),
                                 );
                             }
                         }
@@ -1307,7 +1312,7 @@ impl Analyzer<'_> {
                 }) = element
                 {
                     let private_id = key.expr.to_id();
-                    let usage = private_names.get(&private_id.name).unwrap();
+                    let usage = private_names.get(private_id.name.as_str()).unwrap();
                     if usage.has_getter && usage.has_setter {
                         if marked_pairs.insert(&private_id.name) {
                             *is_private_pair_start = true;
@@ -1320,7 +1325,7 @@ impl Analyzer<'_> {
         private_names
     }
 
-    fn visit_class_method(&mut self, method: &mut ClassMethod) {
+    fn visit_class_method(&mut self, method: &mut ClassMethod<'a>) {
         let key_name_bytes = if method.is_computed {
             None
         } else {
@@ -1371,8 +1376,8 @@ impl Analyzer<'_> {
 
     fn visit_class_property(
         &mut self,
-        prop: &mut ClassProperty,
-        init_scope: Option<AstPtr<AstScopeNode>>,
+        prop: &mut ClassProperty<'a>,
+        init_scope: Option<AstPtr<AstScopeNode<'a>>>,
     ) {
         let key_name_bytes = if prop.is_computed {
             None
@@ -1434,7 +1439,7 @@ impl Analyzer<'_> {
 
     fn visit_variable_declaration_common(
         &mut self,
-        var_decl: &mut VariableDeclaration,
+        var_decl: &mut VariableDeclaration<'a>,
         is_for_each_init: bool,
     ) {
         for declaration in &var_decl.declarations {
@@ -1458,10 +1463,10 @@ impl Analyzer<'_> {
     // Visit all nested labeled statements, adding labels to scope and returning the inner
     // non-labeled statement. Labels that are directly nested within each other all have the same
     // label id.
-    fn push_all_labels<'a>(
+    fn push_all_labels<'b>(
         &mut self,
-        stmt: &'a mut LabeledStatement,
-    ) -> (&'a mut Statement, Vec<(Wtf8String, bool)>) {
+        stmt: &'b mut LabeledStatement<'a>,
+    ) -> (&'b mut Statement<'a>, Vec<(&'a Wtf8Str, bool)>) {
         // Always use 1 more than the current lable depth, so that a label id of 0 marks the
         // empty label.
         let label_id = self.label_depth + 1;
@@ -1470,12 +1475,13 @@ impl Analyzer<'_> {
         let mut labels = vec![];
         // Keep track of duplicate labels so that we don't pop the duplicate labels at the end
         let is_label_duplicate = self.visit_label_def(stmt, label_id);
-        labels.push((stmt.label.name.clone(), is_label_duplicate));
+        let label_name = stmt.label.name.as_arena_str();
+        labels.push((label_name, is_label_duplicate));
 
         let mut inner_stmt = stmt.body.as_mut();
         while let Statement::Labeled(stmt) = inner_stmt {
             let is_label_duplicate = self.visit_label_def(stmt, label_id);
-            labels.push((stmt.label.name.clone(), is_label_duplicate));
+            labels.push((label_name, is_label_duplicate));
 
             inner_stmt = stmt.body.as_mut()
         }
@@ -1499,7 +1505,7 @@ impl Analyzer<'_> {
         (inner_stmt, labels)
     }
 
-    fn pop_all_labels(&mut self, label_stack: Vec<(Wtf8String, bool)>) {
+    fn pop_all_labels(&mut self, label_stack: Vec<(&'a Wtf8Str, bool)>) {
         // Exit all label scopes in reverse order that they were entered
         for (label_name, is_duplicate) in label_stack.iter().rev() {
             if !is_duplicate {
@@ -1510,15 +1516,15 @@ impl Analyzer<'_> {
         self.label_depth -= 1;
     }
 
-    fn visit_label_def(&mut self, stmt: &mut LabeledStatement, label_id: LabelId) -> bool {
-        let label_name = &stmt.label.name;
+    fn visit_label_def(&mut self, stmt: &mut LabeledStatement<'a>, label_id: LabelId) -> bool {
+        let label_name = &stmt.label.name.as_arena_str();
         let is_duplicate = self.labels.contains_key(label_name);
 
         if is_duplicate {
             self.emit_error(stmt.label.loc, ParseError::DuplicateLabel);
         } else {
             self.labels
-                .insert(label_name.clone(), LabelInfo { label_id, is_continue_target: false });
+                .insert(label_name, LabelInfo { label_id, is_continue_target: false });
         }
 
         stmt.label.id = label_id;
@@ -1551,9 +1557,9 @@ impl Analyzer<'_> {
         }
     }
 
-    fn visit_label_use(&mut self, label: Option<&mut Label>, is_continue: bool) {
+    fn visit_label_use(&mut self, label: Option<&mut Label<'a>>, is_continue: bool) {
         if let Some(label) = label {
-            match self.labels.get(&label.name) {
+            match self.labels.get(label.name.as_arena_str()) {
                 None => self.emit_error(label.loc, ParseError::LabelNotFound),
                 Some(label_info) if is_continue && !label_info.is_continue_target => {
                     self.emit_error(label.loc, ParseError::LabelNotFound)
@@ -1565,7 +1571,7 @@ impl Analyzer<'_> {
         }
     }
 
-    fn visit_private_name_use(&mut self, expr: &mut Expression) {
+    fn visit_private_name_use(&mut self, expr: &mut Expression<'a>) {
         let id = expr.to_id_mut();
 
         if self.class_stack.is_empty() {
@@ -1574,7 +1580,7 @@ impl Analyzer<'_> {
             // Check if private name is defined in this class or a parent class in its scope
             let mut is_defined = false;
             for class_entry in self.class_stack.iter().rev() {
-                if class_entry.private_names.contains_key(&id.name) {
+                if class_entry.private_names.contains_key(id.name.as_str()) {
                     is_defined = true;
                     break;
                 }
@@ -1583,48 +1589,55 @@ impl Analyzer<'_> {
             self.resolve_private_identifier_use(id);
 
             if !is_defined {
-                self.emit_error(id.loc, ParseError::new_private_name_not_defined(id.name.clone()));
+                let private_name = id.name.clone_in(Global);
+                self.emit_error(id.loc, ParseError::new_private_name_not_defined(private_name));
             }
         }
     }
 
-    fn add_export(&mut self, loc: Loc, name: Wtf8String) {
+    fn add_export(&mut self, loc: Loc, name: &'a Wtf8Str) {
         if self.export_names.contains(&name) {
-            self.emit_error(loc, ParseError::DuplicateExport(Box::new(name)));
+            let boxed_name = Box::new(name.to_owned_in(Global));
+            self.emit_error(loc, ParseError::DuplicateExport(boxed_name));
             return;
         }
 
         self.export_names.insert(name);
     }
 
-    fn add_exported_name(&mut self, export_name: &ExportName) {
+    fn add_exported_name(&mut self, export_name: &ExportName<'a>) {
         match export_name {
             ExportName::Id(id) => {
-                self.add_export(id.loc, id.name.clone());
+                self.add_export(id.loc, id.name.as_arena_str());
             }
             ExportName::String(string) => {
-                self.add_export(string.loc, string.value.clone());
+                self.add_export(string.loc, string.value.as_arena_str());
             }
         }
     }
 
-    fn resolve_use(&mut self, result_scope: &mut TaggedResolvedScope, name: &Wtf8String, loc: Loc) {
+    fn resolve_use(
+        &mut self,
+        result_scope: &mut TaggedResolvedScope<'a>,
+        name: &Wtf8Str,
+        loc: Loc,
+    ) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
         let (def_scope, _) = self.scope_tree.resolve_use(current_scope, name, loc);
         *result_scope = def_scope;
     }
 
-    fn resolve_identifier_use(&mut self, id: &mut Identifier) {
+    fn resolve_identifier_use(&mut self, id: &mut Identifier<'a>) {
         self.resolve_use(&mut id.scope, &id.name, id.loc);
     }
 
-    fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier) {
+    fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier<'a>) {
         // Private name has a "#" prefix
         let private_name = Wtf8String::from_string(format!("#{}", &private_id.name));
         self.resolve_use(&mut private_id.scope, &private_name, private_id.loc);
     }
 
-    fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode>)) {
+    fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode<'a>>)) {
         let current_scope = self.scope_stack.last().unwrap().as_ref().id();
         let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, &THIS_NAME, loc);
 
@@ -1640,20 +1653,22 @@ impl Analyzer<'_> {
         }
     }
 
-    fn resolve_new_target_use(&mut self, result_scope: &mut TaggedResolvedScope, loc: Loc) {
+    fn resolve_new_target_use(&mut self, result_scope: &mut TaggedResolvedScope<'a>, loc: Loc) {
         self.resolve_use(result_scope, &NEW_TARGET_BINDING_NAME, loc);
     }
 
     fn resolve_derived_constructor_use(
         &mut self,
-        result_scope: &mut TaggedResolvedScope,
+        result_scope: &mut TaggedResolvedScope<'a>,
         loc: Loc,
     ) {
         self.resolve_use(result_scope, &DERIVED_CONSTRUCTOR_BINDING_NAME, loc);
     }
 }
 
-pub fn analyze(parse_result: &mut ParseProgramResult) -> Result<(), LocalizedParseErrors> {
+pub fn analyze<'a>(
+    parse_result: &'a mut ParseProgramResult<'a>,
+) -> Result<(), LocalizedParseErrors> {
     let source = parse_result.source.clone();
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
     analyzer.visit_program(&mut parse_result.program);
@@ -1666,8 +1681,8 @@ pub fn analyze(parse_result: &mut ParseProgramResult) -> Result<(), LocalizedPar
     }
 }
 
-pub fn analyze_for_eval(
-    parse_result: &mut ParseProgramResult,
+pub fn analyze_for_eval<'a>(
+    parse_result: &'a mut ParseProgramResult<'a>,
     source: Rc<Source>,
     private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
     in_function: bool,
@@ -1719,8 +1734,8 @@ pub fn analyze_for_eval(
     }
 }
 
-pub fn analyze_function_for_function_constructor(
-    parse_result: &mut ParseFunctionResult,
+pub fn analyze_function_for_function_constructor<'a>(
+    parse_result: &'a mut ParseFunctionResult<'a>,
     source: Rc<Source>,
 ) -> Result<(), LocalizedParseErrors> {
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);

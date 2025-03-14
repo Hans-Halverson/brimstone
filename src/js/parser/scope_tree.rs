@@ -311,7 +311,7 @@ impl<'a> ScopeTree<'a> {
     ///
     /// Marks the binding as captured if it is used by a nested function. Returns the resolved scope
     /// and whether the use is a capture.
-    pub fn resolve_use<'b: 'a>(
+    pub fn resolve_use<'b>(
         &mut self,
         use_scope_id: ScopeNodeId,
         name: AstStr<'b>,

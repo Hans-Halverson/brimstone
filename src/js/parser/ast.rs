@@ -237,7 +237,7 @@ impl<'a> TaggedResolvedScope<'a> {
         }
     }
 
-    pub fn unwrap_resolved(&self) -> &AstScopeNode {
+    pub fn unwrap_resolved(&self) -> &AstScopeNode<'a> {
         if self.is_unresolved() {
             panic!("Expected resolved scope")
         }
@@ -245,7 +245,7 @@ impl<'a> TaggedResolvedScope<'a> {
         unsafe { &*(self.ptr as *mut AstScopeNode) }
     }
 
-    pub fn unwrap_resolved_mut(&mut self) -> &mut AstScopeNode {
+    pub fn unwrap_resolved_mut(&mut self) -> &mut AstScopeNode<'a> {
         if self.is_unresolved() {
             panic!("Expected resolved scope")
         }
@@ -316,7 +316,7 @@ impl<'a> VariableDeclarator<'a> {
     }
 
     pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
-        &'a self,
+        &self,
         f: &mut F,
     ) -> EvalResult<()> {
         self.id.iter_bound_names(f)
@@ -492,7 +492,7 @@ impl FunctionParam<'_> {
         }
     }
 
-    pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&'a self, f: &mut F) {
+    pub fn iter_patterns<'a, F: FnMut(&'a Pattern)>(&self, f: &mut F) {
         match &self {
             FunctionParam::Pattern { pattern, .. } => pattern.iter_patterns(f),
             FunctionParam::Rest { rest: RestElement { argument, .. }, .. } => {
@@ -1431,7 +1431,7 @@ impl<'a> Pattern<'a> {
         matches!(self, Pattern::Id(_))
     }
 
-    pub fn iter_patterns<F: FnMut(&'a Pattern<'a>)>(&'a self, f: &mut F) {
+    pub fn iter_patterns<F: FnMut(&'a Pattern<'a>)>(&self, f: &mut F) {
         f(self);
 
         match &self {
@@ -1456,7 +1456,7 @@ impl<'a> Pattern<'a> {
     }
 
     pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
-        &'a self,
+        &self,
         f: &mut F,
     ) -> EvalResult<()> {
         match &self {
@@ -1498,7 +1498,7 @@ pub enum ArrayPatternElement<'a> {
 
 impl<'a> ArrayPattern<'a> {
     pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
-        &'a self,
+        &self,
         f: &mut F,
     ) -> EvalResult<()> {
         for element in &self.elements {
@@ -1527,7 +1527,7 @@ pub struct ObjectPattern<'a> {
 
 impl<'a> ObjectPattern<'a> {
     pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
-        &'a self,
+        &self,
         f: &mut F,
     ) -> EvalResult<()> {
         for prop in &self.properties {
@@ -1555,7 +1555,7 @@ pub struct AssignmentPattern<'a> {
 
 impl<'a> AssignmentPattern<'a> {
     pub fn iter_bound_names<F: FnMut(&'a Identifier<'a>) -> EvalResult<()>>(
-        &'a self,
+        &self,
         f: &mut F,
     ) -> EvalResult<()> {
         self.left.iter_bound_names(f)
@@ -1612,7 +1612,7 @@ pub struct ExportNamedDeclaration<'a> {
 }
 
 impl<'a> ExportNamedDeclaration<'a> {
-    pub fn iter_declaration_ids(&'a self, f: &mut impl FnMut(&'a Identifier<'a>)) {
+    pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&'a Identifier<'a>)) {
         if let Some(declaration) = self.declaration.as_deref() {
             match declaration {
                 Statement::VarDecl(VariableDeclaration { declarations, .. }) => {

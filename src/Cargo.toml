@@ -25,6 +25,9 @@ rand.workspace = true
 ryu-js.workspace = true
 supports-color.workspace = true
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
 # Internal crates
 brimstone_icu_collections.workspace = true
 brimstone_macros.workspace = true

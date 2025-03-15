@@ -5032,10 +5032,7 @@ pub struct ParseFunctionResult<'a> {
     pub scope_tree: ScopeTree<'a>,
 }
 
-pub fn parse_script<'a>(
-    pcx: &'a ParseContext,
-    options: Rc<Options>,
-) -> ParseResult<ParseProgramResult<'a>> {
+pub fn parse_script(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -5047,10 +5044,7 @@ pub fn parse_script<'a>(
     parser.parse_script(initial_state)
 }
 
-pub fn parse_module<'a>(
-    pcx: &'a ParseContext,
-    options: Rc<Options>,
-) -> ParseResult<ParseProgramResult<'a>> {
+pub fn parse_module(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -5060,12 +5054,12 @@ pub fn parse_module<'a>(
     parser.parse_module()
 }
 
-pub fn parse_script_for_eval<'a>(
-    pcx: &'a ParseContext,
+pub fn parse_script_for_eval(
+    pcx: &ParseContext,
     options: Rc<Options>,
     is_direct: bool,
     inherit_strict_mode: bool,
-) -> ParseResult<ParseProgramResult<'a>> {
+) -> ParseResult<ParseProgramResult> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -5080,8 +5074,8 @@ pub fn parse_script_for_eval<'a>(
     parser.parse_script(initial_state)
 }
 
-pub fn parse_function_params_for_function_constructor<'a>(
-    pcx: &'a ParseContext,
+pub fn parse_function_params_for_function_constructor(
+    pcx: &ParseContext,
     options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
@@ -5102,8 +5096,8 @@ pub fn parse_function_params_for_function_constructor<'a>(
     Ok(())
 }
 
-pub fn parse_function_body_for_function_constructor<'a>(
-    pcx: &'a ParseContext,
+pub fn parse_function_body_for_function_constructor(
+    pcx: &ParseContext,
     options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
@@ -5125,10 +5119,10 @@ pub fn parse_function_body_for_function_constructor<'a>(
     Ok(())
 }
 
-pub fn parse_function_for_function_constructor<'a>(
-    pcx: &'a ParseContext,
+pub fn parse_function_for_function_constructor(
+    pcx: &ParseContext,
     options: Rc<Options>,
-) -> ParseResult<ParseFunctionResult<'a>> {
+) -> ParseResult<ParseFunctionResult> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let source = pcx.source();

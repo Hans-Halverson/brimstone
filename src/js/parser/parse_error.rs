@@ -18,7 +18,9 @@ pub enum ParseError {
     Io(io::Error),
     #[allow(clippy::box_collection)]
     UnknownToken(Box<String>),
+    #[allow(clippy::box_collection)]
     UnexpectedToken(Box<String>),
+    #[allow(clippy::box_collection)]
     ExpectedToken(Box<(String, String)>),
     SourceTooLarge(bool),
     InvalidUnicode,

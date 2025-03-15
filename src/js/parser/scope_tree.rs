@@ -543,7 +543,7 @@ impl<'a> ScopeTree<'a> {
 }
 
 /// Functions for constructing the VM scope tree.
-impl<'a> ScopeTree<'a> {
+impl ScopeTree<'_> {
     /// Complete an AST scope node and create a corresponding VM scope node if necessary.
     ///
     /// Optionally provide the number of arguments for a mapped arguments object if one needs to be

@@ -51,6 +51,8 @@ impl<'a> AstString<'a> {
     }
 }
 
+/// False positive from clippy
+#[allow(clippy::needless_lifetimes)]
 impl<'a, T> AstPtr<T> {
     /// Convert `AstPtr` to a reference with the same lifetime as the underlying arena.
     pub fn as_arena_ref(&self) -> &'a T {
@@ -182,7 +184,7 @@ pub struct Identifier<'a> {
     pub scope: TaggedResolvedScope<'a>,
 }
 
-impl<'a> Identifier<'a> {
+impl Identifier<'_> {
     pub fn new(loc: Loc, name: AstString) -> Identifier {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
@@ -508,7 +510,7 @@ pub enum FunctionBody<'a> {
     Expression(OuterExpression<'a>),
 }
 
-impl<'a> FunctionBody<'a> {
+impl FunctionBody<'_> {
     pub fn unwrap_block(&self) -> &FunctionBlockBody {
         match self {
             FunctionBody::Block(block) => block,
@@ -710,7 +712,7 @@ pub enum ForEachInit<'a> {
     },
 }
 
-impl<'a> ForEachInit<'a> {
+impl ForEachInit<'_> {
     pub fn new_pattern(pattern: Pattern) -> ForEachInit {
         ForEachInit::Pattern { pattern, has_assign_expr: false }
     }
@@ -847,7 +849,7 @@ pub struct OuterExpression<'a> {
     pub has_assign_expr: bool,
 }
 
-impl<'a> OuterExpression<'a> {
+impl OuterExpression<'_> {
     /// The source position of the start of the expression.
     pub fn pos(&self) -> Pos {
         self.expr.loc().start

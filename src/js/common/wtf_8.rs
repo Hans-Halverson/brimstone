@@ -310,6 +310,7 @@ impl Wtf8Str {
         unsafe { std::mem::transmute::<&[u8], &Wtf8Str>(bytes) }
     }
 
+    #[allow(clippy::should_implement_trait)]
     #[inline]
     pub fn from_str(str: &str) -> &Wtf8Str {
         Self::from_bytes_unchecked(str.as_bytes())

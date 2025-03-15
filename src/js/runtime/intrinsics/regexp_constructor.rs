@@ -381,12 +381,12 @@ fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<Reg
     }
 }
 
-fn parse_pattern<'a>(
+fn parse_pattern(
     cx: Context,
     pattern_string: Handle<StringValue>,
     flags: RegExpFlags,
-    alloc: AstAlloc<'a>,
-) -> EvalResult<RegExp<'a>> {
+    alloc: AstAlloc,
+) -> EvalResult<RegExp> {
     fn parse_lexer_stream<'a, T: LexerStream>(
         cx: Context,
         create_lexer_stream: &dyn Fn() -> T,

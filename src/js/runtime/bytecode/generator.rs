@@ -9717,7 +9717,7 @@ struct ClassFieldsInitializer<'a> {
     class: AstPtr<ast::Class<'a>>,
 }
 
-impl<'a> ClassFieldsInitializer<'a> {
+impl ClassFieldsInitializer<'_> {
     fn none() -> Self {
         Self { fields: vec![], scope: None, class: AstPtr::uninit() }
     }

@@ -9751,13 +9751,6 @@ impl<'a> AnyStr<'a> {
         AnyStr::Wtf8(&id.name)
     }
 
-    fn to_wtf8_str(self) -> &'a Wtf8Str {
-        match self {
-            AnyStr::Wtf8(wtf8) => wtf8,
-            AnyStr::Str(str) => Wtf8Str::from_str(str),
-        }
-    }
-
     fn to_wtf8_string(self) -> Wtf8String {
         match self {
             AnyStr::Wtf8(wtf8) => wtf8.to_owned_in(Global),

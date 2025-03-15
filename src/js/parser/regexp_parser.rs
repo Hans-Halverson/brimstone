@@ -555,8 +555,6 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         self.parse_quantifier(atom)
     }
 
-    fn asdf() {}
-
     fn character_class_from_shorthand(&self, shorthand: ClassRange<'a>) -> CharacterClass<'a> {
         let mut operands = alloc::vec![in self.alloc];
         operands.push(shorthand);

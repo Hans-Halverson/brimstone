@@ -278,10 +278,6 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
-    fn p<T>(&self, node: T) -> P<'a, T> {
-        P::new_in(node, self.alloc)
-    }
-
     fn alloc_str(&self, string: &str) -> AstString<'a> {
         AstString::from_str_in(string, self.alloc)
     }
@@ -5031,7 +5027,6 @@ pub struct ParseProgramResult<'a> {
 pub struct ParseFunctionResult<'a> {
     pub function: P<'a, Function<'a>>,
     pub scope_tree: ScopeTree<'a>,
-    pub source: Rc<Source>,
 }
 
 pub fn parse_script<'a>(
@@ -5142,5 +5137,5 @@ pub fn parse_function_for_function_constructor<'a>(
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;
     let scope_tree = parser.scope_builder.finish_ast_scope_tree();
 
-    Ok(ParseFunctionResult { function: func_node, scope_tree, source: source.clone() })
+    Ok(ParseFunctionResult { function: func_node, scope_tree })
 }

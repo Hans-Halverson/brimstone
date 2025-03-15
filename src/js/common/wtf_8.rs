@@ -45,7 +45,12 @@ impl Wtf8String<Global> {
     #[inline]
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(string: &str) -> Self {
-        Self::from_bytes_unchecked_in(string.as_bytes(), Global)
+        Self::from_bytes_unchecked(string.as_bytes())
+    }
+
+    #[inline]
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        Self::from_bytes_unchecked_in(bytes, Global)
     }
 }
 

@@ -26,6 +26,7 @@ use brimstone::js::{
         options::{Options, OptionsBuilder},
         wtf_8::Wtf8String,
     },
+    parser::ParseContext,
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
         to_console_string, to_string, Context, ContextBuilder, EvalResult, Handle, Value,
@@ -253,10 +254,10 @@ fn run_single_test(
         }
 
         // Try to parse file
-        let parse_result =
-            parse_file(&test.path, options.as_ref(), Some(test), suite_root, force_strict_mode);
-        let mut ast = match parse_result {
-            Ok(ast) => ast,
+        let mut pcx = new_parse_context(&test.path, suite_root, force_strict_mode).unwrap();
+        let parse_result = parse_file(&mut pcx, options, Some(test));
+        let parse_result = match parse_result {
+            Ok(parse_result) => parse_result,
             // An error during parse may be a success or failure depending on the expected result of
             // the test.
             Err(err) => {
@@ -279,9 +280,9 @@ fn run_single_test(
         };
 
         // Perform static analysis on file
-        let analyze_result = js::parser::analyze::analyze(&mut ast);
-        match analyze_result {
-            Ok(_) => {}
+        let analyzed_result = js::parser::analyze::analyze(parse_result);
+        let analyzed_result = match analyzed_result {
+            Ok(analyzed_result) => analyzed_result,
             // An error during analysis may be a success or failure depending on the expected result
             // of the test.
             Err(err) => {
@@ -298,12 +299,12 @@ fn run_single_test(
                     ),
                 };
             }
-        }
+        };
 
         let completion = if test.mode == TestMode::Module {
-            execute_module_as_bytecode(cx, &ast)
+            execute_module_as_bytecode(cx, &analyzed_result)
         } else {
-            execute_script_as_bytecode(cx, &ast)
+            execute_script_as_bytecode(cx, &analyzed_result)
         };
 
         let duration = start_timestamp.elapsed().unwrap();
@@ -322,56 +323,60 @@ fn run_single_test(
     }
 }
 
-fn parse_file(
+fn new_parse_context(
     file: &str,
-    options: Rc<Options>,
-    test: Option<&Test>,
     suite_root: &str,
     force_strict_mode: bool,
-) -> js::parser::ParseResult<js::parser::parser::ParseProgramResult> {
+) -> js::parser::ParseResult<ParseContext> {
     let full_path = Path::new(suite_root).join(file);
-
     let mut source = js::parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
 
+    // Manually insert use strict directive when forcing strict mode
+    if force_strict_mode {
+        let mut source_with_directive = Wtf8String::from_str("\"use strict\";\n");
+        source_with_directive.push_wtf8_str(&source.contents);
+
+        source.contents = source_with_directive;
+    }
+
+    Ok(ParseContext::new(Rc::new(source)))
+}
+
+fn parse_file<'a>(
+    pcx: &'a mut ParseContext,
+    options: Rc<Options>,
+    test: Option<&Test>,
+) -> js::parser::ParseResult<js::parser::parser::ParseProgramResult<'a>> {
     if let Some(Test { mode: TestMode::Module, .. }) = test {
-        let source = Rc::new(source);
-        let parse_result = js::parser::parse_module(&source, options)?;
-
-        Ok(parse_result)
+        js::parser::parse_module(pcx, options)
     } else {
-        // Manually insert use strict directive when forcing strict mode
-        if force_strict_mode {
-            let mut source_with_directive = Wtf8String::from_str("\"use strict\";\n");
-            source_with_directive.push_wtf8_str(&source.contents);
-
-            source.contents = source_with_directive;
-        }
-
-        let source = Rc::new(source);
-        let parse_result = js::parser::parse_script(&source, options)?;
-
-        Ok(parse_result)
+        js::parser::parse_script(pcx, options)
     }
 }
 
 fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
-
-    let parse_result =
-        parse_file(full_path.to_str().unwrap(), cx.options.clone(), None, test262_root, false);
-    let mut ast = match parse_result {
-        Ok(ast) => ast,
+    let mut pcx = match new_parse_context(full_path.to_str().unwrap(), test262_root, false) {
+        Ok(pcx) => pcx,
         Err(_) => {
             panic!("Failed to parse test harness file {}", full_path.display());
         }
     };
 
-    let analyze_result = js::parser::analyze::analyze(&mut ast);
-    if analyze_result.is_err() {
+    let parse_result = parse_file(&mut pcx, cx.options.clone(), None);
+    let parse_result = match parse_result {
+        Ok(parse_result) => parse_result,
+        Err(_) => {
+            panic!("Failed to parse test harness file {}", full_path.display());
+        }
+    };
+
+    let analyzed_result = js::parser::analyze::analyze(parse_result);
+    if analyzed_result.is_err() {
         panic!("Failed to parse test harness file {}", full_path.display());
     }
 
-    let eval_result = execute_script_as_bytecode(cx, &ast);
+    let eval_result = execute_script_as_bytecode(cx, &analyzed_result.unwrap());
     if eval_result.is_err() {
         panic!("Failed to evaluate test harness file {}", full_path.display())
     }
@@ -379,11 +384,11 @@ fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
 
 fn execute_script_as_bytecode(
     mut cx: Context,
-    parse_result: &js::parser::parser::ParseProgramResult,
+    analyzed_result: &js::parser::analyze::AnalyzedProgramResult,
 ) -> EvalResult<()> {
     let realm = cx.initial_realm();
     let generate_result =
-        BytecodeProgramGenerator::generate_from_parse_script_result(cx, parse_result, realm);
+        BytecodeProgramGenerator::generate_from_parse_script_result(cx, analyzed_result, realm);
     let bytecode_script = match generate_result {
         Ok(bytecode_script) => bytecode_script,
         Err(err) => {
@@ -397,11 +402,11 @@ fn execute_script_as_bytecode(
 
 fn execute_module_as_bytecode(
     mut cx: Context,
-    parse_result: &js::parser::parser::ParseProgramResult,
+    analyzed_result: &js::parser::analyze::AnalyzedProgramResult,
 ) -> EvalResult<()> {
     let realm = cx.initial_realm();
     let generate_result =
-        BytecodeProgramGenerator::generate_from_parse_module_result(cx, parse_result, realm);
+        BytecodeProgramGenerator::generate_from_parse_module_result(cx, analyzed_result, realm);
     let module = match generate_result {
         Ok(module) => module,
         Err(err) => {

@@ -7,7 +7,11 @@ use bitflags::bitflags;
 use brimstone::js::{
     common::options::OptionsBuilder,
     parser::{
-        analyze::analyze, parse_module, parse_script, parser::ParseProgramResult, source::Source,
+        analyze::{analyze, AnalyzedProgramResult},
+        parse_module, parse_script,
+        parser::ParseProgramResult,
+        source::Source,
+        ParseContext,
     },
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
@@ -57,7 +61,7 @@ bitflags! {
     }
 }
 
-fn setup_step(file: &str, flags: TestFlags) -> (Context, Rc<Source>) {
+fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
     // Use a 10 MB heap size
     let options = OptionsBuilder::new()
         .annex_b(flags.contains(TestFlags::ANNEX_B))
@@ -65,33 +69,41 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, Rc<Source>) {
         .build();
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
     let source = Rc::new(Source::new_from_file(&format!("benches/{}", file)).unwrap());
-    (cx, source)
+    let pcx = ParseContext::new(source);
+    (cx, pcx)
 }
 
-fn parse_step(
-    (cx, source): (Context, Rc<Source>),
+fn parse_step<'a>(
+    (cx, pcx): (Context, ParseContext),
     flags: TestFlags,
-) -> (Context, ParseProgramResult) {
+) -> (Context, ParseContext, ParseProgramResult<'a>) {
     let parse_result = if flags.contains(TestFlags::MODULE) {
-        parse_module(&source, cx.options.clone()).unwrap()
+        parse_module(&pcx, cx.options.clone()).unwrap()
     } else {
-        parse_script(&source, cx.options.clone()).unwrap()
+        parse_script(&pcx, cx.options.clone()).unwrap()
     };
 
-    (cx, parse_result)
+    // Break the lifetime but keep parse context around for lifetime of AST
+    let parse_result = unsafe {
+        std::mem::transmute::<ParseProgramResult<'_>, ParseProgramResult<'a>>(parse_result)
+    };
+
+    (cx, pcx, parse_result)
 }
 
-fn analyze_step(
-    (cx, mut parse_result): (Context, ParseProgramResult),
-) -> (Context, ParseProgramResult) {
-    analyze(&mut parse_result).unwrap();
-    (cx, parse_result)
+fn analyze_step<'a>(
+    (cx, pcx, parse_result): (Context, ParseContext, ParseProgramResult<'a>),
+) -> (Context, ParseContext, AnalyzedProgramResult<'a>) {
+    let analyzed_result = analyze(parse_result).unwrap();
+    (cx, pcx, analyzed_result)
 }
 
-fn generate_step((cx, parse_result): (Context, ParseProgramResult)) -> (Context, BytecodeScript) {
+fn generate_step(
+    (cx, _pcx, analyzed_result): (Context, ParseContext, AnalyzedProgramResult),
+) -> (Context, BytecodeScript) {
     let bytecode_program = BytecodeProgramGenerator::generate_from_parse_script_result(
         cx,
-        &parse_result,
+        &analyzed_result,
         cx.initial_realm(),
     )
     .unwrap();
@@ -103,7 +115,11 @@ fn execute_step((mut cx, bytecode_script): (Context, BytecodeScript)) -> (Contex
     (cx, result)
 }
 
-fn cleanup_step<T>((cx, _): (Context, T)) {
+fn cleanup2_step<T>((cx, _): (Context, T)) {
+    cx.drop();
+}
+
+fn cleanup3_step<T, U>((cx, _, _): (Context, T, U)) {
     cx.drop();
 }
 
@@ -114,7 +130,7 @@ fn bench_program_parser(c: &mut Criterion, file: &str, flags: TestFlags) {
         &format!("{} > parse", file),
         || setup_step(file, flags),
         |input| parse_step(input, flags),
-        cleanup_step,
+        cleanup3_step,
     );
 }
 
@@ -134,8 +150,8 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
             let setup_result = setup_step(file, flags);
             parse_step(setup_result, flags)
         },
-        |(cx, parse_result)| analyze_step((cx, parse_result)),
-        cleanup_step,
+        |parse_result| analyze_step(parse_result),
+        cleanup3_step,
     );
 
     // Isolate bytecode generation phase
@@ -148,7 +164,7 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
             analyze_step(parse_result)
         },
         generate_step,
-        cleanup_step,
+        cleanup2_step,
     );
 
     // Isolate bytecode generation phase
@@ -162,13 +178,13 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
             generate_step(analyzed_result)
         },
         execute_step,
-        cleanup_step,
+        cleanup2_step,
     );
 }
 
 /// Benchmark context creation.
 fn context_benches(c: &mut Criterion) {
-    isolated_test(c, "context creation", || {}, |_| (Context::default(), ()), cleanup_step);
+    isolated_test(c, "context creation", || {}, |_| (Context::default(), ()), cleanup2_step);
 }
 
 pub fn program_benches(c: &mut Criterion) {

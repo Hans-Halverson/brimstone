@@ -292,7 +292,7 @@ impl<'a> ScopeTree<'a> {
             } else {
                 // Add var name to all scopes except for hoist target, so that later lexical
                 // declarations can check for name conflicts.
-                node.extra_var_names.insert(name.clone());
+                node.extra_var_names.insert(name);
             }
 
             node_id = node.parent.unwrap();

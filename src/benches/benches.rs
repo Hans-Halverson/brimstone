@@ -115,11 +115,14 @@ fn execute_step((mut cx, bytecode_script): (Context, BytecodeScript)) -> (Contex
     (cx, result)
 }
 
-fn cleanup2_step<T>((cx, _): (Context, T)) {
+fn cleanup2_step<T>((cx, x1): (Context, T)) {
+    std::mem::drop(x1);
     cx.drop();
 }
 
-fn cleanup3_step<T, U>((cx, _, _): (Context, T, U)) {
+fn cleanup3_step<T, U>((cx, x1, x2): (Context, T, U)) {
+    std::mem::drop(x2);
+    std::mem::drop(x1);
     cx.drop();
 }
 

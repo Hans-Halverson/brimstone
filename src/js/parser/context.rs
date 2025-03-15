@@ -9,12 +9,12 @@ pub struct ParseContext {
     /// The source file that is being parsed
     source: Rc<Source>,
     /// An arena allocator for the nodes parsed from the source
-    alloc: Bump,
+    alloc: Box<Bump>,
 }
 
 impl ParseContext {
     pub fn new(source: Rc<Source>) -> Self {
-        Self { source, alloc: Bump::new() }
+        Self { source, alloc: Box::new(Bump::new()) }
     }
 
     pub fn source(&self) -> &Rc<Source> {

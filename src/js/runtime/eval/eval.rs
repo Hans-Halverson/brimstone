@@ -54,15 +54,15 @@ pub fn perform_eval(
     let pcx = ParseContext::new(source);
 
     let parse_result = parse_script_for_eval(&pcx, cx.options.clone(), is_direct, is_strict_caller);
-    let mut parse_result = match parse_result {
+    let parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
     };
 
     // Analyze source code
-    let analyze_result = analyze_for_eval(
+    let analyzed_result = analyze_for_eval(
         &pcx,
-        &mut parse_result,
+        parse_result,
         private_names,
         flags.contains(EvalFlags::IN_FUNCTION),
         flags.contains(EvalFlags::IN_METHOD),
@@ -73,21 +73,22 @@ pub fn perform_eval(
     );
 
     // Return the first syntax error
-    if let Err(errors) = analyze_result {
-        return syntax_parse_error(cx, &errors.errors[0]);
-    }
+    let analyzed_result = match analyzed_result {
+        Ok(analyzed_result) => analyzed_result,
+        Err(errors) => return syntax_parse_error(cx, &errors.errors[0]),
+    };
 
     // Sloppy direct evals must perform EvalDeclarationInstantiation as var scoped bindings will
     // be placed in the parent var scope. Strict direct evals do not need to call EDI as var scoped
     // bindings are handled normally when setting up a call frame in the VM.
-    if !parse_result.program.is_strict_mode {
-        eval_declaration_instantiation(cx, &parse_result.program)?;
+    if !analyzed_result.program.is_strict_mode {
+        eval_declaration_instantiation(cx, &analyzed_result.program)?;
     }
 
     // Generate bytecode for the program
     let realm = cx.current_realm();
     let generate_result =
-        BytecodeProgramGenerator::generate_from_eval_parse_result(cx, &parse_result, realm);
+        BytecodeProgramGenerator::generate_from_eval_parse_result(cx, &analyzed_result, realm);
     let bytecode_function = match generate_result {
         Ok(func) => func,
         Err(error) => return syntax_error(cx, &error.to_string()),

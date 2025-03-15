@@ -18,11 +18,11 @@ use crate::{
             wtf_8::{Wtf8Str, Wtf8String},
         },
         parser::{
+            analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
             ast::{
                 self, AstPtr, AstString, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope,
             },
             loc::{Pos, NO_POS},
-            parser::{ParseFunctionResult, ParseProgramResult},
             scope_tree::{
                 AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
                 VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME,
@@ -168,7 +168,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_parse_script_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult<'a>,
         realm: Handle<Realm>,
     ) -> EmitResult<BytecodeScript> {
         debug_assert!(parse_result.program.kind == ProgramKind::Script);
@@ -234,7 +234,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_parse_module_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<SourceTextModule>> {
         debug_assert!(parse_result.program.kind == ProgramKind::Module);
@@ -627,7 +627,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
     pub fn generate_from_eval_parse_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
@@ -724,7 +724,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     pub fn generate_from_function_constructor_parse_result(
         cx: Context,
-        parse_result: &'a ParseFunctionResult,
+        parse_result: &'a AnalyzedFunctionResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {

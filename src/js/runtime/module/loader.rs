@@ -213,24 +213,25 @@ pub fn host_load_imported_module(
 
     // Parse the source, returning AST
     let pcx = ParseContext::new(source);
-    let mut parse_result = match parse_module(&pcx, cx.options.clone()) {
+    let parse_result = match parse_module(&pcx, cx.options.clone()) {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
     };
-
-    // Analyze AST
-    if let Err(parse_errors) = analyze(&mut parse_result) {
-        return syntax_parse_error(cx, &parse_errors.errors[0]);
-    }
 
     if cx.options.print_ast {
         println!("{}", print_program(&parse_result));
     }
 
+    // Analyze AST
+    let analyzed_result = match analyze(parse_result) {
+        Ok(analyzed_result) => analyzed_result,
+        Err(parse_errors) => return syntax_parse_error(cx, &parse_errors.errors[0]),
+    };
+
     // Finally generate the SourceTextModule for the parsed module
     let bytecode_result = BytecodeProgramGenerator::generate_from_parse_module_result(
         cx,
-        &Rc::new(parse_result),
+        &Rc::new(analyzed_result),
         realm,
     );
 

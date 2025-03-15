@@ -143,15 +143,16 @@ pub fn create_dynamic_function(
     };
     let full_pcx = ParseContext::new(full_source);
 
-    let mut parse_result =
-        match parse_function_for_function_constructor(&full_pcx, cx.options.clone()) {
-            Ok(parse_result) => parse_result,
-            Err(err) => return syntax_parse_error(cx, &err),
-        };
+    let parse_result = match parse_function_for_function_constructor(&full_pcx, cx.options.clone())
+    {
+        Ok(parse_result) => parse_result,
+        Err(err) => return syntax_parse_error(cx, &err),
+    };
 
-    if let Err(errs) = analyze_function_for_function_constructor(&full_pcx, &mut parse_result) {
-        return syntax_error(cx, &format!("could not parse function: {}", errs));
-    }
+    let analyzed_result = match analyze_function_for_function_constructor(&full_pcx, parse_result) {
+        Ok(analyzed_result) => analyzed_result,
+        Err(errs) => return syntax_error(cx, &format!("could not parse function: {}", errs)),
+    };
 
     // Create function object
     let proto = get_prototype_from_constructor(cx, new_target, fallback_proto)?;
@@ -160,7 +161,7 @@ pub fn create_dynamic_function(
     let realm = cx.current_realm();
     let generate_result = BytecodeProgramGenerator::generate_from_function_constructor_parse_result(
         cx,
-        &parse_result,
+        &analyzed_result,
         realm,
     );
     let bytecode_function = match generate_result {

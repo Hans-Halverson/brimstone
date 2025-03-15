@@ -35,7 +35,7 @@ pub struct Analyzer<'a> {
     /// Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
     /// Scope tree for the AST that is being analyzed
-    scope_tree: &'a mut ScopeTree<'a>,
+    scope_tree: ScopeTree<'a>,
     /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     /// Set of all names exported by the current module
@@ -69,6 +69,18 @@ pub struct Analyzer<'a> {
     has_assign_expr: bool,
     /// Whether we are in a module and there is a top-level await
     has_top_level_await: bool,
+}
+
+pub struct AnalyzedProgramResult<'a> {
+    pub program: Program<'a>,
+    pub scope_tree: ScopeTree<'a>,
+    pub source: Rc<Source>,
+}
+
+pub struct AnalyzedFunctionResult<'a> {
+    pub function: P<'a, Function<'a>>,
+    pub scope_tree: ScopeTree<'a>,
+    pub source: Rc<Source>,
 }
 
 struct FunctionStackEntry {
@@ -126,7 +138,7 @@ impl PrivateNameUsage {
 }
 
 impl<'a> Analyzer<'a> {
-    pub fn new(source: Rc<Source>, scope_tree: &'a mut ScopeTree<'a>) -> Analyzer<'a> {
+    pub fn new(source: Rc<Source>, scope_tree: ScopeTree<'a>) -> Analyzer<'a> {
         Analyzer {
             source,
             errors: Vec::new(),
@@ -298,8 +310,9 @@ impl<'a> Analyzer<'a> {
         self.scope_stack.last().unwrap().as_ref().id()
     }
 
-    fn finish(self) {
+    fn finish(mut self) -> ScopeTree<'a> {
         self.scope_tree.finish_vm_scope_tree();
+        self.scope_tree
     }
 }
 
@@ -1666,14 +1679,17 @@ impl<'a> Analyzer<'a> {
     }
 }
 
-pub fn analyze<'a>(parse_result: &mut ParseProgramResult<'a>) -> Result<(), LocalizedParseErrors> {
-    let source = parse_result.source.clone();
-    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
-    analyzer.visit_program(&mut parse_result.program);
+pub fn analyze<'a>(
+    parse_result: ParseProgramResult<'a>,
+) -> Result<AnalyzedProgramResult<'a>, LocalizedParseErrors> {
+    let ParseProgramResult { mut program, scope_tree, source } = parse_result;
+
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
+    analyzer.visit_program(&mut program);
 
     if analyzer.errors.is_empty() {
-        analyzer.finish();
-        Ok(())
+        let scope_tree = analyzer.finish();
+        Ok(AnalyzedProgramResult { program, scope_tree, source })
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))
     }
@@ -1681,7 +1697,7 @@ pub fn analyze<'a>(parse_result: &mut ParseProgramResult<'a>) -> Result<(), Loca
 
 pub fn analyze_for_eval<'a>(
     pcx: &'a ParseContext,
-    parse_result: &mut ParseProgramResult<'a>,
+    parse_result: ParseProgramResult<'a>,
     private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
@@ -1689,9 +1705,11 @@ pub fn analyze_for_eval<'a>(
     in_derived_constructor: bool,
     in_static_initializer: bool,
     in_class_field_initializer: bool,
-) -> Result<(), LocalizedParseErrors> {
+) -> Result<AnalyzedProgramResult<'a>, LocalizedParseErrors> {
+    let ParseProgramResult { mut program, scope_tree, .. } = parse_result;
+
     let source = pcx.source().clone();
-    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
 
     // Initialize private names from surrounding context if supplied
     if let Some(private_names) = private_names {
@@ -1723,11 +1741,11 @@ pub fn analyze_for_eval<'a>(
         analyzer.allow_arguments = false;
     }
 
-    analyzer.visit_program(&mut parse_result.program);
+    analyzer.visit_program(&mut program);
 
     if analyzer.errors.is_empty() {
-        analyzer.finish();
-        Ok(())
+        let scope_tree = analyzer.finish();
+        Ok(AnalyzedProgramResult { program, scope_tree, source })
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))
     }
@@ -1735,15 +1753,17 @@ pub fn analyze_for_eval<'a>(
 
 pub fn analyze_function_for_function_constructor<'a>(
     pcx: &'a ParseContext,
-    parse_result: &mut ParseFunctionResult<'a>,
-) -> Result<(), LocalizedParseErrors> {
+    parse_result: ParseFunctionResult<'a>,
+) -> Result<AnalyzedFunctionResult<'a>, LocalizedParseErrors> {
+    let ParseFunctionResult { mut function, scope_tree, .. } = parse_result;
+
     let source = pcx.source().clone();
-    let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
-    analyzer.visit_function_expression(&mut parse_result.function);
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
+    analyzer.visit_function_expression(&mut function);
 
     if analyzer.errors.is_empty() {
-        analyzer.finish();
-        Ok(())
+        let scope_tree = analyzer.finish();
+        Ok(AnalyzedFunctionResult { function, scope_tree, source })
     } else {
         Err(LocalizedParseErrors::new(analyzer.errors))
     }

@@ -208,17 +208,18 @@ impl Context {
     pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse script and perform semantic analysis
         let pcx = ParseContext::new(source);
-        let mut parse_result = parse_script(&pcx, self.options.clone())?;
-        analyze(&mut parse_result)?;
+        let parse_result = parse_script(&pcx, self.options.clone())?;
 
         if self.options.print_ast {
             println!("{}", print_program(&parse_result));
         }
 
+        let analyzed_result = analyze(parse_result)?;
+
         // Generate bytecode for the program
         let bytecode_script = BytecodeProgramGenerator::generate_from_parse_script_result(
             *self,
-            &parse_result,
+            &analyzed_result,
             self.initial_realm(),
         )?;
 
@@ -231,17 +232,18 @@ impl Context {
     pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse module and perform semantic analysis
         let pcx = ParseContext::new(source);
-        let mut parse_result = parse_module(&pcx, self.options.clone())?;
-        analyze(&mut parse_result)?;
+        let parse_result = parse_module(&pcx, self.options.clone())?;
 
         if self.options.print_ast {
             println!("{}", print_program(&parse_result));
         }
 
+        let analyzed_result = analyze(parse_result)?;
+
         // Generate bytecode for the program
         let module = BytecodeProgramGenerator::generate_from_parse_module_result(
             *self,
-            &parse_result,
+            &analyzed_result,
             self.initial_realm(),
         )?;
 

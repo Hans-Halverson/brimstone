@@ -4023,6 +4023,9 @@ impl<'a> Parser<'a> {
             let private_name = self.alloc_string(format!("#{}", &property.key.to_id().name));
             self.scope_builder
                 .add_binding_to_current_node(private_name.as_arena_str(), BindingKind::PrivateName);
+
+            // Intentionally leak private name so it remains in arena and is not deallocated
+            std::mem::forget(private_name);
         }
 
         // Translate from object property to class property or method

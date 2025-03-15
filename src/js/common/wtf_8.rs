@@ -338,3 +338,15 @@ impl PartialEq<str> for Wtf8Str {
         &self.buf == other.as_bytes()
     }
 }
+
+impl fmt::Display for Wtf8Str {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        String::from_utf8_lossy(&self.buf).to_string().fmt(f)
+    }
+}
+
+impl fmt::Debug for Wtf8Str {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.to_string())
+    }
+}

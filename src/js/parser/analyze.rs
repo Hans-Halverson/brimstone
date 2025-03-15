@@ -1494,6 +1494,7 @@ impl<'a> Analyzer<'a> {
         let mut inner_stmt = stmt.body.as_mut();
         while let Statement::Labeled(stmt) = inner_stmt {
             let is_label_duplicate = self.visit_label_def(stmt, label_id);
+            let label_name = stmt.label.name.as_arena_str();
             labels.push((label_name, is_label_duplicate));
 
             inner_stmt = stmt.body.as_mut()

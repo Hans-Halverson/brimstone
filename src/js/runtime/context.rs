@@ -13,7 +13,10 @@ use crate::{
             options::Options,
             wtf_8::{Wtf8Str, Wtf8String},
         },
-        parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
+        parser::{
+            analyze::analyze, parse_module, parse_script, print_program, source::Source,
+            ParseContext,
+        },
     },
 };
 
@@ -204,7 +207,8 @@ impl Context {
 
     pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse script and perform semantic analysis
-        let mut parse_result = parse_script(&source, self.options.clone())?;
+        let pcx = ParseContext::new(source);
+        let mut parse_result = parse_script(&pcx, self.options.clone())?;
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {
@@ -226,7 +230,8 @@ impl Context {
 
     pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse module and perform semantic analysis
-        let mut parse_result = parse_module(&source, self.options.clone())?;
+        let pcx = ParseContext::new(source);
+        let mut parse_result = parse_module(&pcx, self.options.clone())?;
         analyze(&mut parse_result)?;
 
         if self.options.print_ast {

@@ -9,6 +9,7 @@ use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, 
 use crate::p;
 
 use super::ast::*;
+use super::context::ParseContext;
 use super::lexer::{Lexer, SavedLexerState};
 use super::lexer_stream::{HeapTwoByteCodeUnitLexerStream, Utf8LexerStream};
 use super::loc::{Loc, Pos, EMPTY_LOC};
@@ -5034,12 +5035,12 @@ pub struct ParseFunctionResult<'a> {
 }
 
 pub fn parse_script<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let alloc = source.alloc();
-    let lexer = Lexer::new(source, alloc);
+    let alloc = pcx.alloc();
+    let lexer = Lexer::new(pcx.source(), alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     let initial_state = parser.save();
@@ -5049,12 +5050,12 @@ pub fn parse_script<'a>(
 }
 
 pub fn parse_module<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let alloc = source.alloc();
-    let lexer = Lexer::new(source, alloc);
+    let alloc = pcx.alloc();
+    let lexer = Lexer::new(pcx.source(), alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_module(alloc), options, alloc);
     parser.advance()?;
 
@@ -5062,14 +5063,14 @@ pub fn parse_module<'a>(
 }
 
 pub fn parse_script_for_eval<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
     is_direct: bool,
     inherit_strict_mode: bool,
 ) -> ParseResult<ParseProgramResult<'a>> {
     // Create and prime parser
-    let alloc = source.alloc();
-    let lexer = Lexer::new(source, alloc);
+    let alloc = pcx.alloc();
+    let lexer = Lexer::new(pcx.source(), alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct, alloc), options, alloc);
 
     // Inherit strict mode from context
@@ -5082,14 +5083,14 @@ pub fn parse_script_for_eval<'a>(
 }
 
 pub fn parse_function_params_for_function_constructor<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
-    let alloc = source.alloc();
-    let lexer = Lexer::new(source, alloc);
+    let alloc = pcx.alloc();
+    let lexer = Lexer::new(pcx.source(), alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     parser.allow_await = is_async;
@@ -5104,14 +5105,14 @@ pub fn parse_function_params_for_function_constructor<'a>(
 }
 
 pub fn parse_function_body_for_function_constructor<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
     is_async: bool,
     is_generator: bool,
 ) -> ParseResult<()> {
     // Create and prime parser
-    let alloc = source.alloc();
-    let lexer = Lexer::new(source, alloc);
+    let alloc = pcx.alloc();
+    let lexer = Lexer::new(pcx.source(), alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
 
     parser.allow_await = is_async;
@@ -5127,11 +5128,13 @@ pub fn parse_function_body_for_function_constructor<'a>(
 }
 
 pub fn parse_function_for_function_constructor<'a>(
-    source: &'a Rc<Source>,
+    pcx: &'a ParseContext,
     options: Rc<Options>,
 ) -> ParseResult<ParseFunctionResult<'a>> {
     // Create and prime parser
-    let alloc = source.alloc();
+    let alloc = pcx.alloc();
+    let source = pcx.source();
+
     let lexer = Lexer::new(source, alloc);
     let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
     parser.advance()?;

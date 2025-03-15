@@ -9,6 +9,7 @@ use crate::js::{
             parse_function_params_for_function_constructor,
         },
         source::Source,
+        ParseContext,
     },
     runtime::{
         bytecode::{function::Closure, generator::BytecodeProgramGenerator},
@@ -109,8 +110,10 @@ pub fn create_dynamic_function(
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_parse_error(cx, &err),
     };
+    let params_pcx = ParseContext::new(params_source);
+
     if let Err(err) = parse_function_params_for_function_constructor(
-        &params_source,
+        &params_pcx,
         cx.options.clone(),
         is_async,
         is_generator,
@@ -122,8 +125,10 @@ pub fn create_dynamic_function(
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_parse_error(cx, &err),
     };
+    let body_pcx = ParseContext::new(body_source);
+
     if let Err(err) = parse_function_body_for_function_constructor(
-        &body_source,
+        &body_pcx,
         cx.options.clone(),
         is_async,
         is_generator,
@@ -136,15 +141,15 @@ pub fn create_dynamic_function(
         Ok(source) => Rc::new(source),
         Err(err) => return syntax_parse_error(cx, &err),
     };
+    let full_pcx = ParseContext::new(full_source);
+
     let mut parse_result =
-        match parse_function_for_function_constructor(&full_source, cx.options.clone()) {
+        match parse_function_for_function_constructor(&full_pcx, cx.options.clone()) {
             Ok(parse_result) => parse_result,
             Err(err) => return syntax_parse_error(cx, &err),
         };
 
-    if let Err(errs) =
-        analyze_function_for_function_constructor(&mut parse_result, full_source.clone())
-    {
+    if let Err(errs) = analyze_function_for_function_constructor(&full_pcx, &mut parse_result) {
         return syntax_error(cx, &format!("could not parse function: {}", errs));
     }
 

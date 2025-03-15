@@ -7,6 +7,7 @@ use crate::js::{
         ast, parse_script_for_eval,
         scope_tree::BindingKind,
         source::Source,
+        ParseContext,
     },
     runtime::{
         abstract_operations::call_object,
@@ -50,9 +51,9 @@ pub fn perform_eval(
         Ok(source) => Rc::new(source),
         Err(error) => return syntax_parse_error(cx, &error),
     };
+    let pcx = ParseContext::new(source);
 
-    let parse_result =
-        parse_script_for_eval(&source, cx.options.clone(), is_direct, is_strict_caller);
+    let parse_result = parse_script_for_eval(&pcx, cx.options.clone(), is_direct, is_strict_caller);
     let mut parse_result = match parse_result {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
@@ -60,8 +61,8 @@ pub fn perform_eval(
 
     // Analyze source code
     let analyze_result = analyze_for_eval(
+        &pcx,
         &mut parse_result,
-        source.clone(),
         private_names,
         flags.contains(EvalFlags::IN_FUNCTION),
         flags.contains(EvalFlags::IN_METHOD),

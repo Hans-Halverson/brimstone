@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
     js::{
-        parser::{analyze::analyze, parse_module, print_program, source::Source},
+        parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
         runtime::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
@@ -212,7 +212,8 @@ pub fn host_load_imported_module(
     };
 
     // Parse the source, returning AST
-    let mut parse_result = match parse_module(&source, cx.options.clone()) {
+    let pcx = ParseContext::new(source);
+    let mut parse_result = match parse_module(&pcx, cx.options.clone()) {
         Ok(parse_result) => parse_result,
         Err(error) => return syntax_parse_error(cx, &error),
     };

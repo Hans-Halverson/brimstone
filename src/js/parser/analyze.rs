@@ -26,7 +26,7 @@ use super::{
         NEW_TARGET_BINDING_NAME, THIS_NAME,
     },
     source::Source,
-    LocalizedParseError, LocalizedParseErrors, ParseError,
+    LocalizedParseError, LocalizedParseErrors, ParseContext, ParseError,
 };
 
 pub struct Analyzer<'a> {
@@ -1680,8 +1680,8 @@ pub fn analyze<'a>(parse_result: &mut ParseProgramResult<'a>) -> Result<(), Loca
 }
 
 pub fn analyze_for_eval<'a>(
+    pcx: &'a ParseContext,
     parse_result: &mut ParseProgramResult<'a>,
-    source: Rc<Source>,
     private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
@@ -1690,6 +1690,7 @@ pub fn analyze_for_eval<'a>(
     in_static_initializer: bool,
     in_class_field_initializer: bool,
 ) -> Result<(), LocalizedParseErrors> {
+    let source = pcx.source().clone();
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
 
     // Initialize private names from surrounding context if supplied
@@ -1733,9 +1734,10 @@ pub fn analyze_for_eval<'a>(
 }
 
 pub fn analyze_function_for_function_constructor<'a>(
+    pcx: &'a ParseContext,
     parse_result: &mut ParseFunctionResult<'a>,
-    source: Rc<Source>,
 ) -> Result<(), LocalizedParseErrors> {
+    let source = pcx.source().clone();
     let mut analyzer = Analyzer::new(source, &mut parse_result.scope_tree);
     analyzer.visit_function_expression(&mut parse_result.function);
 

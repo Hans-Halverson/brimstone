@@ -18,8 +18,10 @@ pub enum ParseError {
     Io(io::Error),
     #[allow(clippy::box_collection)]
     UnknownToken(Box<String>),
-    UnexpectedToken(Box<Token>),
-    ExpectedToken(Box<(Token, Token)>),
+    #[allow(clippy::box_collection)]
+    UnexpectedToken(Box<String>),
+    #[allow(clippy::box_collection)]
+    ExpectedToken(Box<(String, String)>),
     SourceTooLarge(bool),
     InvalidUnicode,
     UnterminatedStringLiteral,
@@ -47,7 +49,7 @@ pub enum ParseError {
     NullishCoalesceMixedWithLogical,
     HashNotFollowedByIdentifier,
     ForEachInitInvalidVarDecl,
-    NameRedeclaration(Box<(Wtf8String, BindingKind)>),
+    NameRedeclaration(Box<(Wtf8String, String)>),
     DuplicateLabel,
     LabelNotFound,
     WithInStrictMode,
@@ -133,15 +135,33 @@ impl ParseError {
     }
 
     pub fn new_unexpected_token(token: Token) -> ParseError {
-        ParseError::UnexpectedToken(Box::new(token))
+        ParseError::UnexpectedToken(Box::new(token.to_string()))
     }
 
     pub fn new_expected_token(actual: Token, expected: Token) -> ParseError {
-        ParseError::ExpectedToken(Box::new((actual, expected)))
+        ParseError::ExpectedToken(Box::new((actual.to_string(), expected.to_string())))
     }
 
     pub fn new_name_redeclaration(name: Wtf8String, kind: BindingKind) -> ParseError {
-        ParseError::NameRedeclaration(Box::new((name, kind)))
+        let kind_string = match kind {
+            BindingKind::Var => "var",
+            BindingKind::Const { .. } => "const",
+            BindingKind::Let { .. } => "let",
+            BindingKind::Function { .. } => "function",
+            BindingKind::FunctionParameter { .. } => "function parameter",
+            BindingKind::Class { .. } => "class",
+            BindingKind::CatchParameter { .. } => "catch parameter",
+            BindingKind::Import { .. } => "import",
+            BindingKind::ImplicitThis { .. } => "`this`",
+            BindingKind::ImplicitArguments => "`arguments`",
+            BindingKind::ImplicitNewTarget => "`new.target`",
+            BindingKind::DerivedConstructor => "constructor",
+            BindingKind::HomeObject => "home object",
+            BindingKind::PrivateName => "private name",
+            BindingKind::DefaultExportExpression => "default export",
+        };
+
+        ParseError::NameRedeclaration(Box::new((name, kind_string.to_owned())))
     }
 
     pub fn new_duplicate_private_name(name: Wtf8String) -> ParseError {
@@ -247,24 +267,7 @@ impl fmt::Display for ParseError {
                 if name == &*ANONYMOUS_DEFAULT_EXPORT_NAME {
                     write!(f, "Default export was already declared in this module")
                 } else {
-                    let kind_string = match kind {
-                        BindingKind::Var => "var",
-                        BindingKind::Const { .. } => "const",
-                        BindingKind::Let { .. } => "let",
-                        BindingKind::Function { .. } => "function",
-                        BindingKind::FunctionParameter { .. } => "function parameter",
-                        BindingKind::Class { .. } => "class",
-                        BindingKind::CatchParameter { .. } => "catch parameter",
-                        BindingKind::Import { .. } => "import",
-                        BindingKind::ImplicitThis { .. } => "`this`",
-                        BindingKind::ImplicitArguments => "`arguments`",
-                        BindingKind::ImplicitNewTarget => "`new.target`",
-                        BindingKind::DerivedConstructor => "constructor",
-                        BindingKind::HomeObject => "home object",
-                        BindingKind::PrivateName => "private name",
-                        BindingKind::DefaultExportExpression => "default export",
-                    };
-                    write!(f, "Redeclaration of {} {}", kind_string, name)
+                    write!(f, "Redeclaration of {} {}", kind, name)
                 }
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),

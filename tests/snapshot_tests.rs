@@ -3,7 +3,7 @@ use brimstone::js::{
         error::FormatOptions,
         options::{Options, OptionsBuilder},
     },
-    parser::{self, ast, source::Source},
+    parser::{self, ast, source::Source, ParseContext},
     runtime::{
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         module::source_text_module::SourceTextModule,
@@ -52,7 +52,9 @@ fn print_ast(path: &str) -> GenericResult<String> {
         .annex_b(path.contains("annex_b"))
         .build();
 
-    let parse_result = parse_script_or_module(path, &options)?;
+    let pcx = new_parse_context(path)?;
+    let parse_result = parse_script_or_module(&pcx, path, Rc::new(options))?;
+
     Ok(parser::print_program(&parse_result))
 }
 
@@ -160,21 +162,22 @@ enum BytecodeResult {
 fn generate_bytecode(cx: Context, path: &str) -> GenericResult<BytecodeResult> {
     let realm = cx.initial_realm();
 
-    let mut parse_result = parse_script_or_module(path, cx.options.as_ref())?;
-    parser::analyze::analyze(&mut parse_result)?;
+    let pcx = new_parse_context(path)?;
+    let parse_result = parse_script_or_module(&pcx, path, cx.options.clone())?;
+    let analyzed_result = parser::analyze::analyze(parse_result)?;
 
-    match parse_result.program.kind {
+    match analyzed_result.program.kind {
         ast::ProgramKind::Script => Ok(BytecodeResult::Script(
             BytecodeProgramGenerator::generate_from_parse_script_result(
                 cx,
-                &Rc::new(parse_result),
+                &analyzed_result,
                 realm,
             )?,
         )),
         ast::ProgramKind::Module => Ok(BytecodeResult::Module(
             BytecodeProgramGenerator::generate_from_parse_module_result(
                 cx,
-                &Rc::new(parse_result),
+                &analyzed_result,
                 realm,
             )?,
         )),
@@ -195,16 +198,20 @@ fn run_and_print_bytecode(path: &str) -> GenericResult<String> {
     })
 }
 
-fn parse_script_or_module(
-    path: &str,
-    options: &Options,
-) -> GenericResult<parser::parser::ParseProgramResult> {
+fn new_parse_context(path: &str) -> GenericResult<ParseContext> {
     let source = Rc::new(Source::new_from_file(path)?);
+    Ok(ParseContext::new(source))
+}
 
+fn parse_script_or_module<'a>(
+    pcx: &'a ParseContext,
+    path: &str,
+    options: Rc<Options>,
+) -> GenericResult<parser::parser::ParseProgramResult<'a>> {
     let parse_result = if path.contains("module") {
-        parser::parse_module(&source, options)?
+        parser::parse_module(&pcx, options)?
     } else {
-        parser::parse_script(&source, options)?
+        parser::parse_script(&pcx, options)?
     };
 
     Ok(parse_result)

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::{
     handle_scope,
     js::{
-        parser::{analyze::analyze, parse_script, source::Source},
+        parser::{analyze::analyze, parse_script, source::Source, ParseContext},
         runtime::{bytecode::generator::BytecodeProgramGenerator, get},
     },
     must,
@@ -153,22 +153,28 @@ impl Test262Object {
             Err(error) => return syntax_parse_error(cx, &error),
         };
 
-        let parse_result = parse_script(&source, cx.options.as_ref());
-        let mut parse_result = match parse_result {
+        let pcx = ParseContext::new(source);
+        let parse_result = parse_script(&pcx, cx.options.clone());
+        let parse_result = match parse_result {
             Ok(parse_result) => parse_result,
             Err(error) => return syntax_parse_error(cx, &error),
         };
 
-        let analyze_result = analyze(&mut parse_result);
-        if let Err(errors) = analyze_result {
-            // Choose an arbitrary syntax error to return
-            let error = &errors.errors[0];
-            return syntax_parse_error(cx, error);
-        }
+        let analyzed_result = match analyze(parse_result) {
+            Ok(analyzed_result) => analyzed_result,
+            Err(errors) => {
+                // Choose an arbitrary syntax error to return
+                let error = &errors.errors[0];
+                return syntax_parse_error(cx, error);
+            }
+        };
 
         let realm = cx.current_realm();
-        let gen_result =
-            BytecodeProgramGenerator::generate_from_parse_script_result(cx, &parse_result, realm);
+        let gen_result = BytecodeProgramGenerator::generate_from_parse_script_result(
+            cx,
+            &analyzed_result,
+            realm,
+        );
         let bytecode_script = match gen_result {
             Ok(bytecode_script) => bytecode_script,
             Err(error) => return syntax_error(cx, &error.to_string()),

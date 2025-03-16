@@ -1,15 +1,15 @@
 use bitflags::bitflags;
 
-use crate::js::common::{unicode_property::UnicodeProperty, wtf_8::Wtf8String};
+use crate::js::common::unicode_property::UnicodeProperty;
 
-use super::ast::P;
+use super::ast::{AstString, AstVec, P};
 
-pub struct RegExp {
-    pub disjunction: Disjunction,
+pub struct RegExp<'a> {
+    pub disjunction: Disjunction<'a>,
     pub flags: RegExpFlags,
     pub has_duplicate_named_capture_groups: bool,
     // All capture groups with their names if one was provided
-    pub capture_groups: Vec<Option<Wtf8String>>,
+    pub capture_groups: AstVec<'a, Option<AstString<'a>>>,
 }
 
 bitflags! {
@@ -84,41 +84,41 @@ impl RegExpFlags {
     }
 }
 
-pub struct Disjunction {
+pub struct Disjunction<'a> {
     /// List of alternatives separated by `|`. This list is non-empty, empty disjunctions are
     /// represented by a single empty alternative.
-    pub alternatives: Vec<Alternative>,
+    pub alternatives: AstVec<'a, Alternative<'a>>,
 }
 
-pub struct Alternative {
+pub struct Alternative<'a> {
     /// Sequence of terms that make up this alternative. May be empty in which case it always matches.
-    pub terms: Vec<Term>,
+    pub terms: AstVec<'a, Term<'a>>,
 }
 
-pub enum Term {
+pub enum Term<'a> {
     /// A literal string of characters with escape codes decoded into code points. Must be nonempty.
-    Literal(Wtf8String),
+    Literal(AstString<'a>),
     /// The wildcard which matches any single character: `.`
     Wildcard,
     /// A repition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.
-    Quantifier(Quantifier),
+    Quantifier(Quantifier<'a>),
     /// Assert a property e.g. `^` or `\b`
     Assertion(Assertion),
     /// Assert a condition before or after the current position without consuming any characters:
     /// (?=pattern), (?!pattern), (?<=pattern), or (?<!pattern
-    Lookaround(Lookaround),
+    Lookaround(Lookaround<'a>),
     /// Group that does capture: (pattern) or (?<name>pattern)
-    CaptureGroup(CaptureGroup),
+    CaptureGroup(CaptureGroup<'a>),
     /// Group that does not capture: (?:pattern)
-    AnonymousGroup(AnonymousGroup),
+    AnonymousGroup(AnonymousGroup<'a>),
     /// Matches any characters in a set e.g. [a-b]
-    CharacterClass(CharacterClass),
+    CharacterClass(CharacterClass<'a>),
     /// References to a capture group: `\1` or `\k<name>`
-    Backreference(P<Backreference>),
+    Backreference(P<'a, Backreference>),
 }
 
-pub struct Quantifier {
-    pub term: P<Term>,
+pub struct Quantifier<'a> {
+    pub term: P<'a, Term<'a>>,
     /// The minimum number of times the term must match
     pub min: u64,
     /// The maximum number of times the term can match, inclusive. If None then there is no maximum.
@@ -141,23 +141,23 @@ pub enum Assertion {
 /// Capture group indices are 1-indexed to match their syntax in RegExp literals.
 pub type CaptureGroupIndex = u32;
 
-pub struct CaptureGroup {
+pub struct CaptureGroup<'a> {
     /// Optional capture group name
-    pub name: Option<Wtf8String>,
+    pub name: Option<AstString<'a>>,
     /// Index of the capture group in the RegExp
     pub index: CaptureGroupIndex,
-    pub disjunction: Disjunction,
+    pub disjunction: Disjunction<'a>,
 }
 
-pub struct AnonymousGroup {
-    pub disjunction: Disjunction,
+pub struct AnonymousGroup<'a> {
+    pub disjunction: Disjunction<'a>,
     /// Optional positive modifier flags. Only `i`, `m`, and `s` are allowed.
     pub positive_modifiers: RegExpFlags,
     /// Optional negative modifier flags. Only `i`, `m`, and `s` are allowed.
     pub negative_modifiers: RegExpFlags,
 }
 
-pub enum ClassRange {
+pub enum ClassRange<'a> {
     /// A single code point: `a`
     Single(u32),
     /// A range of code points: `a-z`
@@ -179,9 +179,9 @@ pub enum ClassRange {
     /// All code points that do not match a unicode property `\P{UnicodeProperty}`
     NotUnicodeProperty(UnicodeProperty),
     /// A nested character class
-    NestedClass(CharacterClass),
+    NestedClass(CharacterClass<'a>),
     /// A string disjunction: `\q{...}`
-    StringDisjunction(StringDisjunction),
+    StringDisjunction(StringDisjunction<'a>),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -194,37 +194,27 @@ pub enum ClassExpressionType {
     Difference,
 }
 
-pub struct CharacterClass {
+pub struct CharacterClass<'a> {
     /// Whether this character class is a union, intersection, or difference. Standard and all
     /// non-`v`-mode character classes are unions.
     pub expression_type: ClassExpressionType,
     /// Whether to only match characters not listed in this class
     pub is_inverted: bool,
     /// Collection of operands to this classes expression
-    pub operands: Vec<ClassRange>,
+    pub operands: AstVec<'a, ClassRange<'a>>,
 }
 
-impl CharacterClass {
-    pub fn from_shorthand(shorthand: ClassRange) -> Self {
-        CharacterClass {
-            expression_type: ClassExpressionType::Union,
-            is_inverted: false,
-            operands: vec![shorthand],
-        }
-    }
-}
-
-pub struct StringDisjunction {
+pub struct StringDisjunction<'a> {
     /// The individual options in this disjunction, e.g. `[a, b, c]` for `\q{a|b|c}`
-    pub alternatives: Vec<Wtf8String>,
+    pub alternatives: AstVec<'a, AstString<'a>>,
 }
 
-pub struct Lookaround {
+pub struct Lookaround<'a> {
     /// Whether this is lookahead or lookbehind
     pub is_ahead: bool,
     /// Whether this is positive or negative lookaround
     pub is_positive: bool,
-    pub disjunction: Disjunction,
+    pub disjunction: Disjunction<'a>,
 }
 
 pub struct Backreference {

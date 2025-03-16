@@ -1,31 +1,45 @@
-use std::{borrow::Borrow, fmt, hash};
+use std::{borrow::Borrow, fmt, hash, ops::Deref};
 
-use super::unicode::{
-    decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
-    is_low_surrogate_code_point, is_surrogate_code_point,
+use allocator_api2::{
+    alloc::{Allocator, Global},
+    SliceExt,
 };
 
-/// A string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
+use super::{
+    alloc,
+    unicode::{
+        decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,
+        is_low_surrogate_code_point, is_surrogate_code_point,
+    },
+};
+
+/// An owned string using the WTF-8 encoding: https://simonsapin.github.io/wtf-8/.
 /// Identical to UTf-8 but also allows unpaired surrogate code points.
 #[derive(Clone)]
-pub struct Wtf8String {
-    buf: Vec<u8>,
+pub struct Wtf8String<A: Allocator + Clone = Global> {
+    buf: alloc::Vec<u8, A>,
 }
 
-impl Wtf8String {
+impl Wtf8String<Global> {
     #[inline]
     pub fn new() -> Self {
-        Wtf8String { buf: Vec::new() }
+        Wtf8String { buf: alloc::Vec::new() }
     }
 
     #[inline]
-    pub fn from_string(string: String) -> Self {
-        Wtf8String { buf: string.into_bytes() }
-    }
+    pub fn from_string(mut string: String) -> Self {
+        // Decompose the string into its constituent parts
+        let ptr = string.as_mut_ptr();
+        let len = string.len();
+        let capacity = string.capacity();
 
-    #[inline]
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
-        Wtf8String { buf: bytes.to_vec() }
+        // Do not drop the String as its memory will be reused in-place by the Vec
+        std::mem::forget(string);
+
+        // Reconstruct the Vec from the parts
+        let buf = unsafe { alloc::Vec::from_raw_parts(ptr, len, capacity) };
+
+        Wtf8String { buf }
     }
 
     #[inline]
@@ -35,11 +49,55 @@ impl Wtf8String {
     }
 
     #[inline]
-    pub fn from_code_point(code_point: u32) -> Self {
-        let mut string = Self::new();
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> Self {
+        Self::from_bytes_unchecked_in(bytes, Global)
+    }
+}
+
+impl<A: Allocator + Clone> Wtf8String<A> {
+    #[inline]
+    pub fn new_in(alloc: A) -> Self {
+        Wtf8String { buf: alloc::Vec::new_in(alloc) }
+    }
+
+    #[inline]
+    pub fn from_string_in(string: String, alloc: A) -> Self {
+        Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
+    }
+
+    #[inline]
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str_in(string: &str, alloc: A) -> Self {
+        Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
+    }
+
+    #[inline]
+    pub fn from_bytes_unchecked_in(bytes: &[u8], alloc: A) -> Self {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: bytes.to_vec_in(alloc) }
+    }
+
+    #[inline]
+    pub fn from_char_in(c: char, alloc: A) -> Self {
+        let mut buf = [0; 4];
+        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
+
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: buf[..byte_length].to_vec_in(alloc) }
+    }
+
+    #[inline]
+    pub fn from_code_point_in(code_point: u32, alloc: A) -> Self {
+        let mut string = Self::new_in(alloc);
         string.push(code_point);
 
         string
+    }
+
+    #[inline]
+    pub fn clone_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: self.buf.to_vec_in(alloc) }
     }
 
     #[inline]
@@ -50,6 +108,11 @@ impl Wtf8String {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.buf.is_empty()
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &Wtf8Str {
+        Wtf8Str::from_bytes_unchecked(&self.buf)
     }
 
     #[inline]
@@ -75,7 +138,7 @@ impl Wtf8String {
     }
 
     #[inline]
-    pub fn push_wtf8_str(&mut self, string: &Wtf8String) {
+    pub fn push_wtf8_str<A2: Allocator + Clone>(&mut self, string: &Wtf8String<A2>) {
         self.push_bytes_unchecked(string.as_bytes())
     }
 
@@ -87,10 +150,6 @@ impl Wtf8String {
     #[inline]
     pub fn truncate(&mut self, new_length: usize) {
         self.buf.truncate(new_length);
-    }
-
-    pub fn repeat(&self, num_times: usize) -> Wtf8String {
-        Wtf8String { buf: self.buf.repeat(num_times) }
     }
 
     /// Returns true if the string does not have any unpaired surrogates.
@@ -167,62 +226,128 @@ impl Iterator for Wtf8CodePointsIterator<'_> {
     }
 }
 
-impl fmt::Display for Wtf8String {
+impl<A: Allocator + Clone> fmt::Display for Wtf8String<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         String::from_utf8_lossy(&self.buf).to_string().fmt(f)
     }
 }
 
-impl fmt::Debug for Wtf8String {
+impl<A: Allocator + Clone> fmt::Debug for Wtf8String<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.to_string())
     }
 }
 
-impl PartialEq for Wtf8String {
+impl<A1, A2> PartialEq<Wtf8String<A1>> for Wtf8String<A2>
+where
+    A1: Allocator + Clone,
+    A2: Allocator + Clone,
+{
     // Must use the same eq as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Wtf8String<A1>) -> bool {
         self.as_bytes() == other.as_bytes()
     }
 }
 
-impl Eq for Wtf8String {}
+impl<A: Allocator + Clone> Eq for Wtf8String<A> {}
 
-impl PartialEq<str> for Wtf8String {
+impl<A: Allocator + Clone> PartialEq<str> for Wtf8String<A> {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self.buf == other.as_bytes()
+        self.as_str() == other
     }
 }
 
-impl PartialEq<&str> for Wtf8String {
+impl<A: Allocator + Clone> PartialEq<&str> for Wtf8String<A> {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
         self.buf == other.as_bytes()
     }
 }
 
-impl hash::Hash for Wtf8String {
+impl<A: Allocator + Clone> hash::Hash for Wtf8String<A> {
     // Must use the same hash function as `&[u8]` so that Wtf8String can implement Borrow<[u8]>
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_bytes().hash(state);
+        self.as_str().hash(state);
     }
 }
 
-impl Borrow<[u8]> for Wtf8String {
+impl<A: Allocator + Clone> Borrow<[u8]> for Wtf8String<A> {
     #[inline]
     fn borrow(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl From<char> for Wtf8String {
-    fn from(c: char) -> Self {
-        let mut buf = [0; 4];
-        let byte_length = encode_utf8_codepoint(&mut buf, c as u32);
+impl<A: Allocator + Clone> Borrow<Wtf8Str> for Wtf8String<A> {
+    #[inline]
+    fn borrow(&self) -> &Wtf8Str {
+        self.as_str()
+    }
+}
 
-        Wtf8String { buf: buf[..byte_length].to_vec() }
+impl<A: Allocator + Clone> Deref for Wtf8String<A> {
+    type Target = Wtf8Str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        Wtf8Str::from_bytes_unchecked(&self.buf)
+    }
+}
+
+/// A slice of a string using the WTF-8 encoding. The relationship between `Wtf8String` and
+/// `Wtf8Str` is equivalent to the relationship between `String` and `str`.
+#[derive(Eq, Hash, PartialEq)]
+pub struct Wtf8Str {
+    buf: [u8],
+}
+
+impl Wtf8Str {
+    #[inline]
+    pub fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
+        unsafe { std::mem::transmute::<&[u8], &Wtf8Str>(bytes) }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_str(str: &str) -> &Wtf8Str {
+        Self::from_bytes_unchecked(str.as_bytes())
+    }
+
+    #[inline]
+    pub fn to_owned_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
+        #[allow(unstable_name_collisions)]
+        Wtf8String { buf: self.buf.to_vec_in(alloc) }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buf
+    }
+}
+
+impl PartialEq<str> for Wtf8Str {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        &self.buf == other.as_bytes()
+    }
+}
+
+impl fmt::Display for Wtf8Str {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        String::from_utf8_lossy(&self.buf).to_string().fmt(f)
+    }
+}
+
+impl fmt::Debug for Wtf8Str {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.to_string())
     }
 }

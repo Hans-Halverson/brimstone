@@ -6,6 +6,7 @@ use std::{
     rc::Rc,
 };
 
+use allocator_api2::alloc::Global;
 use bitflags::bitflags;
 use indexmap_allocator_api::IndexSet;
 
@@ -14,12 +15,14 @@ use crate::{
     js::{
         common::{
             error::{ErrorFormatter, FormatOptions},
-            wtf_8::Wtf8String,
+            wtf_8::{Wtf8Str, Wtf8String},
         },
         parser::{
-            ast::{self, AstPtr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
+            analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
+            ast::{
+                self, AstPtr, AstString, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope,
+            },
             loc::{Pos, NO_POS},
-            parser::{ParseFunctionResult, ParseProgramResult},
             scope_tree::{
                 AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
                 VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME,
@@ -75,7 +78,7 @@ use super::{
 /// functions within the program.
 pub struct BytecodeProgramGenerator<'a> {
     cx: Context,
-    scope_tree: &'a ScopeTree,
+    scope_tree: &'a ScopeTree<'a>,
     realm: Handle<Realm>,
 
     /// Source file of the functions that are being generated.
@@ -86,7 +89,7 @@ pub struct BytecodeProgramGenerator<'a> {
 
     /// Queue of functions that still need to be generated, along with the information needed to
     /// patch their creation into their parent function.
-    pending_functions_queue: VecDeque<PendingFunction>,
+    pending_functions_queue: VecDeque<PendingFunction<'a>>,
 
     /// List of all functions that have been generated in the order they were generated in.
     ///
@@ -112,7 +115,7 @@ impl Escapable for BytecodeScript {
 impl<'a> BytecodeProgramGenerator<'a> {
     pub fn new(
         cx: Context,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         realm: Handle<Realm>,
         source: Rc<Source>,
     ) -> Self {
@@ -165,7 +168,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_parse_script_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult<'a>,
         realm: Handle<Realm>,
     ) -> EmitResult<BytecodeScript> {
         debug_assert!(parse_result.program.kind == ProgramKind::Script);
@@ -181,7 +184,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
         })
     }
 
-    fn generate_script_program(&mut self, program: &ast::Program) -> EmitResult<BytecodeScript> {
+    fn generate_script_program(
+        &mut self,
+        program: &'a ast::Program<'a>,
+    ) -> EmitResult<BytecodeScript> {
         let program_function = self.gen_script_function(program)?;
 
         while let Some(pending_function) = self.pending_functions_queue.pop_front() {
@@ -191,7 +197,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(program_function)
     }
 
-    fn gen_script_function(&mut self, program: &ast::Program) -> EmitResult<BytecodeScript> {
+    fn gen_script_function(&mut self, program: &'a ast::Program<'a>) -> EmitResult<BytecodeScript> {
         let mut emit_result = EmitFunctionResult::empty();
 
         let global_names = handle_scope!(self.cx, {
@@ -228,7 +234,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_parse_module_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<SourceTextModule>> {
         debug_assert!(parse_result.program.kind == ProgramKind::Module);
@@ -246,7 +252,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn generate_module_program(
         &mut self,
-        program: &ast::Program,
+        program: &'a ast::Program<'a>,
     ) -> EmitResult<Handle<SourceTextModule>> {
         let program_function = self.gen_module_function(program)?;
         let source_text_module = self.gen_source_text_module(program, program_function);
@@ -262,7 +268,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn gen_module_function(
         &mut self,
-        program: &ast::Program,
+        program: &'a ast::Program<'a>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let mut emit_result = EmitFunctionResult::empty();
 
@@ -315,7 +321,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for toplevel in &program.toplevels {
             match toplevel {
                 ast::Toplevel::Import(import) => {
-                    let module_specifier = self.cx.alloc_wtf8_string(&import.source.value);
+                    let module_specifier = self.cx.alloc_wtf8_str(&import.source.value);
 
                     let module_request =
                         self.gen_module_request(module_specifier, import.attributes.as_deref());
@@ -331,14 +337,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                     .imported
                                     .as_ref()
                                     .map(|imported| self.alloc_export_name_string(imported))
-                                    .unwrap_or_else(|| {
-                                        self.cx.alloc_wtf8_string(&import.local.name)
-                                    });
+                                    .unwrap_or_else(|| self.cx.alloc_wtf8_str(&import.local.name));
                                 (&import.local, Some(imported))
                             }
                         };
 
-                        let local_name = self.cx.alloc_wtf8_string(&local_id.name);
+                        let local_name = self.cx.alloc_wtf8_str(&local_id.name);
                         let slot_index = Self::id_module_slot_index(local_id);
                         let is_exported = local_id.get_binding().is_exported();
 
@@ -362,7 +366,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     source_attributes,
                     ..
                 }) => {
-                    let module_specifier = self.cx.alloc_wtf8_string(&source.value);
+                    let module_specifier = self.cx.alloc_wtf8_str(&source.value);
                     let module_request =
                         self.gen_module_request(module_specifier, source_attributes.as_deref());
 
@@ -407,11 +411,11 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     let module_specifier = export
                         .source
                         .as_ref()
-                        .map(|source| self.cx.alloc_wtf8_string(&source.value));
+                        .map(|source| self.cx.alloc_wtf8_str(&source.value));
 
                     // Exporting a full named declaration adds export entries for each exported id
                     export.iter_declaration_ids(&mut |id| {
-                        let local_name = self.cx.alloc_wtf8_string(&id.name);
+                        let local_name = self.cx.alloc_wtf8_str(&id.name);
                         let slot_index = Self::id_module_slot_index(id);
 
                         local_exports.push(LocalExportEntry {
@@ -477,7 +481,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     }
                 }
                 ast::Toplevel::ExportAll(export) => {
-                    let module_specifier = self.cx.alloc_wtf8_string(&export.source.value);
+                    let module_specifier = self.cx.alloc_wtf8_str(&export.source.value);
                     let module_request = self
                         .gen_module_request(module_specifier, export.source_attributes.as_deref());
 
@@ -602,8 +606,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn alloc_export_name_string(&mut self, module_name: &ast::ExportName) -> Handle<FlatString> {
         match module_name {
-            ast::ExportName::Id(id) => self.cx.alloc_wtf8_string(&id.name),
-            ast::ExportName::String(lit) => self.cx.alloc_wtf8_string(&lit.value),
+            ast::ExportName::Id(id) => self.cx.alloc_wtf8_str(&id.name),
+            ast::ExportName::String(lit) => self.cx.alloc_wtf8_str(&lit.value),
         }
     }
 
@@ -623,7 +627,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
     pub fn generate_from_eval_parse_result(
         cx: Context,
-        parse_result: &'a ParseProgramResult,
+        parse_result: &'a AnalyzedProgramResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
@@ -639,7 +643,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn generate_eval(
         &mut self,
-        eval_program: &ast::Program,
+        eval_program: &'a ast::Program<'a>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let program_function = self.gen_eval_function(eval_program)?;
 
@@ -652,7 +656,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn gen_eval_function(
         &mut self,
-        eval_program: &ast::Program,
+        eval_program: &'a ast::Program<'a>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         let mut emit_result = EmitFunctionResult::empty();
 
@@ -720,7 +724,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     pub fn generate_from_function_constructor_parse_result(
         cx: Context,
-        parse_result: &'a ParseFunctionResult,
+        parse_result: &'a AnalyzedFunctionResult,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
@@ -736,7 +740,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     fn generate_function_constructor(
         &mut self,
-        function: &ast::Function,
+        function: &'a ast::Function<'a>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         // Create a dummy global scope stack node that will not conflict with any real scope id
         let scope = Rc::new(ScopeStackNode { scope_id: usize::MAX, parent: None });
@@ -775,7 +779,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         Ok(emit_result.bytecode_function)
     }
 
-    fn gen_enqueued_function(&mut self, pending_function: PendingFunction) -> EmitResult<()> {
+    fn gen_enqueued_function(&mut self, pending_function: PendingFunction<'a>) -> EmitResult<()> {
         let PendingFunction { mut func_node, scope, patch } = pending_function;
 
         let mut emit_result = EmitFunctionResult::empty();
@@ -810,7 +814,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 class,
             } = func_node
             {
-                let init_func_scope = init_func_scope.as_ref();
+                let init_func_scope = init_func_scope.as_arena_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
                     class,
@@ -830,7 +834,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 class,
             } = func_node
             {
-                let init_func_scope = init_func_scope.as_ref();
+                let init_func_scope = init_func_scope.as_arena_ref();
                 let generator = BytecodeFunctionGenerator::new_for_class_initializer(
                     self.cx,
                     class,
@@ -846,7 +850,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     generator.generate_class_static_initializer(elements, init_func_scope)?;
             } else {
                 let func_ptr = func_node.ast_ptr();
-                let func = func_ptr.as_ref();
+                let func = func_ptr.as_arena_ref();
 
                 let is_constructor = func_node.is_constructor();
                 let is_class_constructor;
@@ -880,12 +884,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 // If the generated function is an exported anonymous function
                 let anonymous_default_name =
                     if default_name.is_none() && matches!(patch, Patch::Export { .. }) {
-                        Some(Wtf8String::from_str("default"))
+                        Some(Wtf8Str::from_str("default"))
                     } else {
                         None
                     };
 
-                let default_name = default_name.or(anonymous_default_name.as_ref());
+                let default_name = default_name
+                    .map(|name| name.as_str())
+                    .or(anonymous_default_name);
 
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
@@ -961,7 +967,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     fn enqueue_pending_functions(
         &mut self,
         parent_function: Handle<BytecodeFunction>,
-        pending_functions: PendingFunctionNodes,
+        pending_functions: PendingFunctionNodes<'a>,
     ) {
         for (func_node, func_gen_patch, scope) in pending_functions {
             let patch = match func_gen_patch {
@@ -981,7 +987,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 pub struct BytecodeFunctionGenerator<'a> {
     pub writer: BytecodeWriter,
     cx: Context,
-    scope_tree: &'a ScopeTree,
+    scope_tree: &'a ScopeTree<'a>,
     realm: Handle<Realm>,
 
     /// A chain of VM scopes that the generator is currently inside. The first node is the innermost
@@ -1018,7 +1024,7 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Stack of finally scopes that the generator is currently inside. The top of the stack is the
     /// innermost finally scope.
-    finally_scopes: Vec<FinallyScope>,
+    finally_scopes: Vec<FinallyScope<'a>>,
 
     /// Number of toplevel parameters to this function, not counting the rest parameter.
     num_parameters: u32,
@@ -1064,7 +1070,7 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Class field initializer that must be called by this function. Only set if this is a
     /// constructor.
-    class_fields: ClassFieldsInitializer,
+    class_fields: ClassFieldsInitializer<'a>,
 
     /// End position of the derived constructor, if this is a derived constructor. Used to report
     /// errors if the super constructor was not called.
@@ -1075,7 +1081,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     exception_handler_builder: ExceptionHandlersBuilder,
 
     /// Queue of functions that still need to be generated.
-    pending_functions_queue: PendingFunctionNodes,
+    pending_functions_queue: PendingFunctionNodes<'a>,
 }
 
 impl<'a> BytecodeFunctionGenerator<'a> {
@@ -1088,7 +1094,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
         derived_constructor_end_pos: Option<Pos>,
-        class_fields: ClassFieldsInitializer,
+        class_fields: ClassFieldsInitializer<'a>,
         num_parameters: u32,
         function_length: u32,
         num_local_registers: u32,
@@ -1143,10 +1149,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope_tree: &'a ScopeTree,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
-        default_name: Option<&Wtf8String>,
+        default_name: Option<&Wtf8Str>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
-        class_fields: ClassFieldsInitializer,
+        class_fields: ClassFieldsInitializer<'a>,
         is_constructor: bool,
         is_class_constructor: bool,
         is_base_constructor: bool,
@@ -1186,8 +1192,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = func
             .id
             .as_ref()
-            .map(|id| id.name.clone())
-            .or_else(|| default_name.cloned());
+            .map(|id| id.name.clone_in(Global))
+            .or_else(|| default_name.map(|name| name.to_owned_in(Global)));
 
         let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
             Some(func.loc.end)
@@ -1258,13 +1264,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn new_for_default_constructor(
         cx: Context,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
-        class_fields: ClassFieldsInitializer,
+        class_fields: ClassFieldsInitializer<'a>,
         is_base_constructor: bool,
     ) -> EmitResult<Self> {
         // First local register used for new target in derived constructors
@@ -1275,7 +1281,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             scope,
             realm,
-            Some(name.clone()),
+            Some(name.to_owned_in(Global)),
             source_file,
             source_range,
             /* derived_constructor_end_pos */ None,
@@ -1660,7 +1666,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(ConstantIndex::new(constant_index))
     }
 
-    fn add_wtf8_string_constant(&mut self, str: &Wtf8String) -> EmitResult<GenConstantIndex> {
+    fn add_wtf8_string_constant(&mut self, str: &Wtf8Str) -> EmitResult<GenConstantIndex> {
         let string = InternedStrings::get_wtf8_str(self.cx, str).as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
@@ -1670,7 +1676,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// where the function will be patched in.
     fn enqueue_function_to_generate(
         &mut self,
-        function: PendingFunctionNode,
+        function: PendingFunctionNode<'a>,
     ) -> EmitResult<ConstantTableIndex> {
         let constant_index = self
             .constant_table_builder
@@ -1688,7 +1694,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// at the provided slot.
     fn enqueue_export_function_to_generate(
         &mut self,
-        function: PendingFunctionNode,
+        function: PendingFunctionNode<'a>,
         slot_index: usize,
     ) {
         self.pending_functions_queue.push((
@@ -1699,7 +1705,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a function.
-    fn generate(mut self, func: &ast::Function) -> EmitResult<EmitFunctionResult> {
+    fn generate(mut self, func: &'a ast::Function<'a>) -> EmitResult<EmitFunctionResult<'a>> {
         let func_pos = func.loc.start;
 
         // Base constructors initialize class fields immediately
@@ -1872,7 +1878,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match func.body.as_ref() {
             ast::FunctionBody::Block(block_body) => {
                 // Function body may be the start of a new scope
-                if let Some(body_scope) = block_body.scope {
+                if let Some(body_scope) = &block_body.scope {
                     self.gen_scope_start(body_scope.as_ref(), None)?;
                 }
 
@@ -1943,7 +1949,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Finish generating the bytecode for a function. Returns the bytecode function and the
     /// queue of AST node functions from the body that need to be generated.
-    fn finish(self) -> EmitFunctionResult {
+    fn finish(self) -> EmitFunctionResult<'a> {
         debug_assert!(self.block_offsets.len() == self.num_blocks);
         debug_assert!(self.unresolved_forward_jumps.is_empty());
         debug_assert!(self.register_allocator.is_empty());
@@ -1990,7 +1996,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate the bytecode for a default constructor.
-    fn generate_default_constructor(mut self, class_pos: Pos) -> EmitResult<EmitFunctionResult> {
+    fn generate_default_constructor(
+        mut self,
+        class_pos: Pos,
+    ) -> EmitResult<EmitFunctionResult<'a>> {
         // Call super constructor if necessary
         if self.is_derived_constructor() {
             self.writer.default_super_call_instruction(class_pos);
@@ -2009,9 +2018,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Generate the bytecode for a function that initializes the instances fields of a class.
     fn generate_class_fields_initializer(
         mut self,
-        class_fields: Vec<ClassField>,
-        init_func_scope: &AstScopeNode,
-    ) -> EmitResult<EmitFunctionResult> {
+        class_fields: Vec<ClassField<'a>>,
+        init_func_scope: &'a AstScopeNode<'a>,
+    ) -> EmitResult<EmitFunctionResult<'a>> {
         self.gen_class_initializer_start(init_func_scope)?;
 
         // Private methods and accessors are initialized first
@@ -2037,9 +2046,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// including static fields and static block initializers.
     fn generate_class_static_initializer(
         mut self,
-        static_elements: Vec<ClassStaticElement>,
-        init_func_scope: &AstScopeNode,
-    ) -> EmitResult<EmitFunctionResult> {
+        static_elements: Vec<ClassStaticElement<'a>>,
+        init_func_scope: &'a AstScopeNode<'a>,
+    ) -> EmitResult<EmitFunctionResult<'a>> {
         self.gen_class_initializer_start(init_func_scope)?;
 
         // Evaluate the static elements in order
@@ -2052,10 +2061,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
                 ClassStaticElement::Initializer(static_initializer) => {
                     // Static initializers are each in their own block scope
-                    let block_scope = static_initializer.as_ref().value.scope.as_ref();
+                    let block_scope = static_initializer.as_arena_ref().value.scope.as_ref();
                     self.gen_scope_start(block_scope, None)?;
 
-                    let statements = &static_initializer.as_ref().value.body.unwrap_block().body;
+                    let statements = &static_initializer
+                        .as_arena_ref()
+                        .value
+                        .body
+                        .unwrap_block()
+                        .body;
                     self.gen_statement_list(statements)?;
 
                     self.gen_scope_end(block_scope);
@@ -2068,7 +2082,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(self.finish())
     }
 
-    fn gen_class_initializer_start(&mut self, init_func_scope: &AstScopeNode) -> EmitResult<()> {
+    fn gen_class_initializer_start(
+        &mut self,
+        init_func_scope: &'a AstScopeNode<'a>,
+    ) -> EmitResult<()> {
         self.gen_scope_start(init_func_scope, None)?;
 
         // Store the captured `this` if necessary
@@ -2089,7 +2106,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_program_body(&mut self, program: &ast::Program) -> EmitResult<()> {
+    fn gen_program_body(&mut self, program: &'a ast::Program<'a>) -> EmitResult<()> {
         let scope = program.scope.as_ref();
 
         // Modules with top level await create an async function. Promise is passed as the first
@@ -2170,7 +2187,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_toplevel(&mut self, program: &ast::Program, toplevel: &ast::Toplevel) -> EmitResult<()> {
+    fn gen_toplevel(
+        &mut self,
+        program: &'a ast::Program<'a>,
+        toplevel: &'a ast::Toplevel<'a>,
+    ) -> EmitResult<()> {
         match toplevel {
             ast::Toplevel::Statement(stmt) => {
                 // Ignore completion of toplevel statements, generate later toplevels even if abrupt
@@ -2199,7 +2220,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_statement(&mut self, stmt: &ast::Statement) -> EmitResult<StmtCompletion> {
+    fn gen_statement(&mut self, stmt: &'a ast::Statement<'a>) -> EmitResult<StmtCompletion> {
         // Every statement is generated with its own temporary register scope. Check that the number
         // of registers allocated before and after has not changed, meaning all registers in the
         // statement were released.
@@ -2239,7 +2260,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_expression_with_dest(
         &mut self,
-        expr: &ast::Expression,
+        expr: &'a ast::Expression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         match expr {
@@ -2299,12 +2320,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate an expression with any destination register.
     #[inline]
-    fn gen_expression(&mut self, expr: &ast::Expression) -> EmitResult<GenRegister> {
+    fn gen_expression(&mut self, expr: &'a ast::Expression<'a>) -> EmitResult<GenRegister> {
         self.gen_expression_with_dest(expr, ExprDest::Any)
     }
 
     #[inline]
-    fn gen_outer_expression(&mut self, expr: &ast::OuterExpression) -> EmitResult<GenRegister> {
+    fn gen_outer_expression(
+        &mut self,
+        expr: &'a ast::OuterExpression<'a>,
+    ) -> EmitResult<GenRegister> {
         // Starts a "has assign expression" context
         self.enter_has_assign_expr_context(expr.has_assign_expr);
         let result = self.gen_expression(&expr.expr);
@@ -2316,7 +2340,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     #[inline]
     fn gen_outer_expression_with_dest(
         &mut self,
-        expr: &ast::OuterExpression,
+        expr: &'a ast::OuterExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Starts a "has assign expression" context
@@ -2344,7 +2368,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_binding(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         binding: &Binding,
         pos: Pos,
         dest: ExprDest,
@@ -2396,7 +2420,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// TDZ check is performed directly on the source register itself.
     fn gen_load_fixed_register_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         fixed_reg: GenRegister,
         add_tdz_check: bool,
         pos: Pos,
@@ -2427,7 +2451,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// perform the TDZ check on the loaded value.
     fn gen_load_non_fixed_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         add_tdz_check: bool,
         pos: Pos,
         dest: ExprDest,
@@ -2464,7 +2488,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_global_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -2526,7 +2550,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_dynamic_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         pos: Pos,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -2563,7 +2587,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     #[inline]
     fn gen_initialize_binding(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         binding: &Binding,
         value: GenRegister,
     ) -> EmitResult<()> {
@@ -2573,7 +2597,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_binding(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         binding: &Binding,
         value: GenRegister,
         flags: StoreFlags,
@@ -2630,7 +2654,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_global_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         value: GenRegister,
         pos: Pos,
     ) -> EmitResult<()> {
@@ -2675,7 +2699,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_dynamic_identifier(
         &mut self,
-        name: &Wtf8String,
+        name: &Wtf8Str,
         value: GenRegister,
         pos: Pos,
     ) -> EmitResult<()> {
@@ -2983,7 +3007,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_unary_minus_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // A unary minus on a number literal is inlined as a negative number literal
@@ -3003,7 +3027,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_unary_plus_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // A unary plus on a number literal is inlined as that number literal
@@ -3024,7 +3048,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_logical_not_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let argument = self.gen_expression(&expr.argument)?;
@@ -3038,7 +3062,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_bitwise_not_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let argument = self.gen_expression(&expr.argument)?;
@@ -3053,7 +3077,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_typeof_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Unresolved identifiers must be treated as undefined
@@ -3102,7 +3126,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_void_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Void expressions are evaluated for side effects only, so simply evaluate the argument
@@ -3118,7 +3142,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_delete_expression(
         &mut self,
-        expr: &ast::UnaryExpression,
+        expr: &'a ast::UnaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let delete_pos = expr.loc.start;
@@ -3246,7 +3270,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_load_property_to_value(
         &mut self,
-        member_expr: &ast::MemberExpression,
+        member_expr: &'a ast::MemberExpression<'a>,
     ) -> EmitResult<GenRegister> {
         if member_expr.is_computed {
             self.gen_expression(&member_expr.property)
@@ -3261,7 +3285,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_binary_expression(
         &mut self,
-        expr: &ast::BinaryExpression,
+        expr: &'a ast::BinaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Special handling for private `in` operator
@@ -3331,7 +3355,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_private_in_expression(
         &mut self,
-        expr: &ast::BinaryExpression,
+        expr: &'a ast::BinaryExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let key = self.gen_load_private_symbol(expr.left.to_id())?;
@@ -3349,7 +3373,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_logical_expression(
         &mut self,
-        expr: &ast::LogicalExpression,
+        expr: &'a ast::LogicalExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
@@ -3397,7 +3421,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_conditional_expression(
         &mut self,
-        expr: &ast::ConditionalExpression,
+        expr: &'a ast::ConditionalExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let join_block = self.new_block();
@@ -3424,7 +3448,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_call_expression(
         &mut self,
-        expr: &ast::CallExpression,
+        expr: &'a ast::CallExpression<'a>,
         dest: ExprDest,
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
@@ -3544,7 +3568,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_tagged_template_expression(
         &mut self,
-        expr: &ast::TaggedTemplateExpression,
+        expr: &'a ast::TaggedTemplateExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Find the callee and this value to use for the tagged template call
@@ -3612,7 +3636,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// if a this value is bound (e.g. the callee is a member expression).
     fn gen_callee_and_this_value(
         &mut self,
-        callee: &ast::Expression,
+        callee: &'a ast::Expression<'a>,
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<(GenRegister, Option<GenRegister>)> {
         // Calls on a property accesses must pass the object's value as the this value
@@ -3680,7 +3704,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Releases all registers in the argv + argc slice before returning.
     fn gen_stack_arguments(
         &mut self,
-        arguments: &[ast::CallArgument],
+        arguments: &'a [ast::CallArgument<'a>],
         default_argv: GenRegister,
     ) -> EmitResult<(GenRegister, GenUInt)> {
         // Generate code for each argument, loading each into a new temporary register forming a
@@ -3743,7 +3767,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// If there is a spread element then we must create an array that contains all arguments.
     fn gen_call_varargs_array(
         &mut self,
-        arguments: &[ast::CallArgument],
+        arguments: &'a [ast::CallArgument<'a>],
     ) -> EmitResult<GenRegister> {
         let array_elements = arguments
             .iter()
@@ -3758,7 +3782,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_call_arguments(
         &mut self,
-        arguments: &[ast::CallArgument],
+        arguments: &'a [ast::CallArgument<'a>],
         default_argv: GenRegister,
     ) -> EmitResult<CallArgs> {
         if Self::is_call_with_spread(self, arguments) {
@@ -3777,7 +3801,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_new_expresssion(
         &mut self,
-        expr: &ast::NewExpression,
+        expr: &'a ast::NewExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let callee = self.gen_expression(&expr.callee)?;
@@ -3810,7 +3834,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_sequence_expression(
         &mut self,
-        expr: &ast::SequenceExpression,
+        expr: &'a ast::SequenceExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // All expressions except the last are evaluated for side effects only
@@ -3825,7 +3849,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_array_literal(
         &mut self,
-        expr: &ast::ArrayExpression,
+        expr: &'a ast::ArrayExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let elements = expr
@@ -3843,7 +3867,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_array_from_elements(
         &mut self,
-        elements: &[ArrayElement],
+        elements: &[ArrayElement<'a>],
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let array = self.allocate_destination(dest)?;
@@ -3942,7 +3966,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_object_literal(
         &mut self,
-        expr: &ast::ObjectExpression,
+        expr: &'a ast::ObjectExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let body_scope = expr.scope.as_ref();
@@ -4182,7 +4206,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// one is provided, if evaluating a callee. Otherwise release the object's register.
     fn gen_member_expression(
         &mut self,
-        expr: &ast::MemberExpression,
+        expr: &'a ast::MemberExpression<'a>,
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
         optional_nullish_block: Option<BlockId>,
@@ -4223,7 +4247,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_member_property(
         &mut self,
-        expr: &ast::MemberExpression,
+        expr: &'a ast::MemberExpression<'a>,
         object: GenRegister,
         dest: ExprDest,
         release_object: bool,
@@ -4278,7 +4302,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_create_private_symbol(&mut self, private_id: &ast::Identifier) -> EmitResult<()> {
-        match private_id.get_private_name_binding().vm_location().unwrap() {
+        // Private name binding has `#` prefix
+        let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
+        let binding = private_id
+            .scope
+            .unwrap_resolved()
+            .get_binding(&private_name);
+
+        match binding.vm_location().unwrap() {
             VMLocation::Scope { scope_id, index } => {
                 // Add the name to the constant table (without the "#" prefix)
                 let name_index = self.add_wtf8_string_constant(&private_id.name)?;
@@ -4301,7 +4332,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         match private_id.scope.kind() {
             // If resolved then directly load from the scope directly
             ResolvedScope::Resolved => {
-                match private_id.get_private_name_binding().vm_location().unwrap() {
+                // Private name binding has `#` prefix
+                let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
+                let binding = private_id
+                    .scope
+                    .unwrap_resolved()
+                    .get_binding(&private_name);
+
+                match binding.vm_location().unwrap() {
                     VMLocation::Scope { scope_id, index } => {
                         self.gen_load_scope_binding(scope_id, index, ExprDest::Any)
                     }
@@ -4334,7 +4372,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// will be written if it is a member expression, if evaluating a callee.
     fn gen_chain_expression(
         &mut self,
-        expr: &ast::ChainExpression,
+        expr: &'a ast::ChainExpression<'a>,
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
     ) -> EmitResult<GenRegister> {
@@ -4374,7 +4412,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// will be written if it is a member expression, if evaluating a callee.
     fn gen_maybe_chain_part_expression(
         &mut self,
-        expr: &ast::Expression,
+        expr: &'a ast::Expression<'a>,
         dest: ExprDest,
         call_receiver: Option<&mut CallReceiver>,
         optional_nullish_block: Option<BlockId>,
@@ -4395,7 +4433,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_assignment_expression(
         &mut self,
-        expr: &ast::AssignmentExpression,
+        expr: &'a ast::AssignmentExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         match expr.left.as_ref() {
@@ -4726,7 +4764,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_update_expression(
         &mut self,
-        expr: &ast::UpdateExpression,
+        expr: &'a ast::UpdateExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let pos = expr.loc.start;
@@ -4976,7 +5014,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_named_expression(
         &mut self,
         name: AnyStr,
-        expr: &ast::Expression,
+        expr: &'a ast::Expression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         self.gen_named_expression_if(name, expr, dest, || true)
@@ -4985,7 +5023,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_named_expression_if(
         &mut self,
         name: AnyStr,
-        expr: &ast::Expression,
+        expr: &'a ast::Expression<'a>,
         dest: ExprDest,
         if_predicate: impl Fn() -> bool,
     ) -> EmitResult<GenRegister> {
@@ -5010,7 +5048,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_named_outer_expression(
         &mut self,
         name: AnyStr,
-        expr: &ast::OuterExpression,
+        expr: &'a ast::OuterExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Starts a "has assign expression" context
@@ -5038,7 +5076,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_function_expression(
         &mut self,
-        func: &ast::Function,
+        func: &ast::Function<'a>,
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -5053,7 +5091,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_arrow_function_expression(
         &mut self,
-        func: &ast::Function,
+        func: &ast::Function<'a>,
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -5068,7 +5106,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_await_expression(
         &mut self,
-        expr: &ast::AwaitExpression,
+        expr: &'a ast::AwaitExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let argument = self.gen_expression(&expr.argument)?;
@@ -5121,7 +5159,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_yield_expression(
         &mut self,
-        expr: &ast::YieldExpression,
+        expr: &'a ast::YieldExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let yield_value = if let Some(argument) = expr.argument.as_ref() {
@@ -5534,7 +5572,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// one is provided, if evaluating a callee. Otherwise release the object's register.
     fn gen_super_member_expression(
         &mut self,
-        expr: &ast::SuperMemberExpression,
+        expr: &'a ast::SuperMemberExpression<'a>,
         dest: ExprDest,
         mut call_receiver: Option<&mut CallReceiver>,
     ) -> EmitResult<GenRegister> {
@@ -5562,7 +5600,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_super_member_property(
         &mut self,
-        expr: &ast::SuperMemberExpression,
+        expr: &'a ast::SuperMemberExpression<'a>,
         home_object: GenRegister,
         receiver: GenRegister,
         dest: ExprDest,
@@ -5623,7 +5661,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_super_call_expression(
         &mut self,
-        super_call: &ast::SuperCallExpression,
+        super_call: &'a ast::SuperCallExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let super_pos = super_call.loc.start;
@@ -5754,7 +5792,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_template_literal_expression(
         &mut self,
-        template: &ast::TemplateLiteral,
+        template: &'a ast::TemplateLiteral<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Special case if there is only one quasi, load string directly to destination
@@ -5937,7 +5975,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_dynamic_import_expression(
         &mut self,
-        expr: &ast::ImportExpression,
+        expr: &'a ast::ImportExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let dest = self.allocate_destination(dest)?;
@@ -5966,7 +6004,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_variable_declaration(
         &mut self,
-        var_decl: &ast::VariableDeclaration,
+        var_decl: &'a ast::VariableDeclaration<'a>,
     ) -> EmitResult<StmtCompletion> {
         for decl in &var_decl.declarations {
             if let Some(init) = decl.init.as_deref() {
@@ -6008,7 +6046,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Store a value to a pattern, performing destructuring when necessary.
     fn gen_store_to_pattern(
         &mut self,
-        pattern: &ast::Pattern,
+        pattern: &'a ast::Pattern<'a>,
         value: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
@@ -6025,7 +6063,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ///   instead called when storing to the reference.
     /// - Identifier references are not resolved ahead of time, even though evaluating the RHS may
     ///   change them.
-    fn gen_pattern_to_reference<'b>(
+    fn gen_pattern_to_reference<'b: 'a>(
         &mut self,
         pattern: &'b ast::Pattern,
     ) -> EmitResult<Reference<'b>> {
@@ -6048,9 +6086,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_member_expression_to_reference<'b>(
+    fn gen_member_expression_to_reference<'b: 'a>(
         &mut self,
-        member: &'b ast::MemberExpression,
+        member: &'b ast::MemberExpression<'b>,
     ) -> EmitResult<Reference<'b>> {
         let object = self.gen_expression(&member.object)?;
         let operator_pos = member.operator_pos;
@@ -6077,9 +6115,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_super_member_expression_to_reference<'b>(
+    fn gen_super_member_expression_to_reference<'b: 'a>(
         &mut self,
-        member: &'b ast::SuperMemberExpression,
+        member: &'b ast::SuperMemberExpression<'b>,
     ) -> EmitResult<Reference<'b>> {
         let super_pos = member.loc.start;
 
@@ -6110,7 +6148,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_store_to_reference(
         &mut self,
-        reference: Reference,
+        reference: Reference<'a>,
         value: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
@@ -6192,12 +6230,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_object_destructuring(
         &mut self,
-        pattern: &ast::ObjectPattern,
+        pattern: &'a ast::ObjectPattern<'a>,
         object_value: GenRegister,
         store_flags: StoreFlags,
     ) -> EmitResult<()> {
         enum Property<'a> {
-            Named(&'a ast::Identifier),
+            Named(&'a ast::Identifier<'a>),
             Computed(GenRegister, Pos),
         }
 
@@ -6354,7 +6392,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_iterator_destructuring(
         &mut self,
-        array_pattern: &ast::ArrayPattern,
+        array_pattern: &'a ast::ArrayPattern<'a>,
         iterable: GenRegister,
         flags: StoreFlags,
     ) -> EmitResult<()> {
@@ -6612,8 +6650,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_function_declaration(
         &mut self,
-        func_decl: &ast::Function,
-        binding: &Binding,
+        func_decl: &ast::Function<'a>,
+        binding: &Binding<'a>,
     ) -> EmitResult<StmtCompletion> {
         // Exported functions are enqueued to be added to the module scope during initialization
         if binding.is_exported() {
@@ -6684,14 +6722,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_class_declaration(&mut self, class: &ast::Class) -> EmitResult<StmtCompletion> {
+    fn gen_class_declaration(&mut self, class: &'a ast::Class<'a>) -> EmitResult<StmtCompletion> {
         self.gen_class(class, GenClassKind::Declaration, None, ExprDest::Any)?;
         Ok(StmtCompletion::Normal)
     }
 
     fn gen_class_expression(
         &mut self,
-        class: &ast::Class,
+        class: &'a ast::Class<'a>,
         name: Option<Wtf8String>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -6700,7 +6738,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_class(
         &mut self,
-        class: &ast::Class,
+        class: &'a ast::Class<'a>,
         kind: GenClassKind,
         name: Option<Wtf8String>,
         dest: ExprDest,
@@ -6917,13 +6955,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let name = if let Some(id) = class.id.as_ref() {
             // Constructor has name of class
-            id.name.clone()
+            id.name.clone_in(Global)
         } else if let Some(name) = name {
             // Handle name passed from named evaluation
             name
         } else if let GenClassKind::Export { name, .. } = &kind {
             // Handle name passed from export, such as the anonymous default export name
-            (*name).clone()
+            name.to_owned_in(Global)
         } else {
             // Otherwise name is the empty string if class has no name
             Wtf8String::new()
@@ -7045,7 +7083,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_class_method(
         &mut self,
-        method: &ast::ClassMethod,
+        method: &'a ast::ClassMethod<'a>,
         new_class_arguments: &mut Vec<GenRegister>,
     ) -> EmitResult<(Method, GenRegister)> {
         enum Name<'a> {
@@ -7138,7 +7176,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok((method_info, method_value))
     }
 
-    fn gen_class_field(&mut self, field: &ClassField, target: GenRegister) -> EmitResult<()> {
+    fn gen_class_field(&mut self, field: &ClassField<'a>, target: GenRegister) -> EmitResult<()> {
         // Private methods and accessors had their closure value created and stored in the class's
         // scope when the class definition was evaluated.
         if let ClassField::PrivateMethodOrAccessor {
@@ -7183,7 +7221,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let field_node = match field {
             ClassField::Named { field, .. }
             | ClassField::Computed { field, .. }
-            | ClassField::PrivateField { field, .. } => field.as_ref(),
+            | ClassField::PrivateField { field, .. } => field.as_arena_ref(),
             ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
         };
 
@@ -7258,7 +7296,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_expression_statement(
         &mut self,
-        stmt: &ast::ExpressionStatement,
+        stmt: &'a ast::ExpressionStatement<'a>,
     ) -> EmitResult<StmtCompletion> {
         // If a completion destination is provided, store expression value into it. Otherwise
         // discard the expressions's value.
@@ -7272,7 +7310,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_block_statement(&mut self, stmt: &ast::Block) -> EmitResult<StmtCompletion> {
+    fn gen_block_statement(&mut self, stmt: &'a ast::Block<'a>) -> EmitResult<StmtCompletion> {
         // Block body forms a new scope
         let block_scope = stmt.scope.as_ref();
         self.gen_scope_start(block_scope, None)?;
@@ -7290,7 +7328,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_export_default_declaration(
         &mut self,
         program: &ast::Program,
-        export: &ast::ExportDefaultDeclaration,
+        export: &'a ast::ExportDefaultDeclaration<'a>,
     ) -> EmitResult<()> {
         let scope = program.scope.as_ref();
 
@@ -7302,10 +7340,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // if the class is anonymous.
             ast::ExportDefaultKind::Class(class) => {
                 let (name, binding) = if let Some(id) = class.id.as_ref() {
-                    (&id.name, id.get_binding())
+                    (id.name.as_str(), id.get_binding())
                 } else {
                     let anonymous_binding = scope.get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME);
-                    (&*DEFAULT_EXPORT_NAME, anonymous_binding)
+                    (DEFAULT_EXPORT_NAME.as_str(), anonymous_binding)
                 };
 
                 self.gen_class(class, GenClassKind::Export { name, binding }, None, ExprDest::Any)?;
@@ -7330,7 +7368,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_scope_start(
         &mut self,
-        scope: &AstScopeNode,
+        scope: &'a AstScopeNode<'a>,
         flags: Option<ScopeFlags>,
     ) -> EmitResult<()> {
         self.gen_push_scope(scope, flags)?;
@@ -7439,7 +7477,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     /// Generate all function declarations in this scope, hoisted to the top of the scope.
-    fn gen_scope_functions(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+    fn gen_scope_functions(&mut self, scope: &'a AstScopeNode<'a>) -> EmitResult<()> {
         for (_, binding) in scope.iter_bindings() {
             if let BindingKind::Function { is_expression: false, func_node, .. } = binding.kind() {
                 self.gen_function_declaration(func_node.as_ref(), binding)?;
@@ -7505,7 +7543,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_start_global_scope(&mut self, scope: &AstScopeNode) -> EmitResult<()> {
+    fn gen_start_global_scope(&mut self, scope: &'a AstScopeNode<'a>) -> EmitResult<()> {
         // VM scope node is guaranteed to exist, since at minimum the realm is always stored
         let vm_scope_id = scope.vm_scope_id().unwrap();
         self.push_scope_stack_node(vm_scope_id);
@@ -7562,7 +7600,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         all_flags
     }
 
-    fn gen_statement_list(&mut self, stmts: &[ast::Statement]) -> EmitResult<StmtCompletion> {
+    fn gen_statement_list(
+        &mut self,
+        stmts: &'a [ast::Statement<'a>],
+    ) -> EmitResult<StmtCompletion> {
         for stmt in stmts {
             let completion = self.gen_statement(stmt)?;
 
@@ -7582,7 +7623,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_if_statement(&mut self, stmt: &ast::IfStatement) -> EmitResult<StmtCompletion> {
+    fn gen_if_statement(&mut self, stmt: &'a ast::IfStatement<'a>) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
 
         let condition = self.gen_outer_expression(&stmt.test)?;
@@ -7650,7 +7691,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_switch_statement(&mut self, stmt: &ast::SwitchStatement) -> EmitResult<StmtCompletion> {
+    fn gen_switch_statement(
+        &mut self,
+        stmt: &'a ast::SwitchStatement<'a>,
+    ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
 
         let jump_targets = self.push_jump_statement_target(None, TargetKind::Switch);
@@ -7716,7 +7760,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_for_statement(
         &mut self,
-        stmt: &ast::ForStatement,
+        stmt: &'a ast::ForStatement<'a>,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
@@ -7805,7 +7849,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_for_of_statement(
         &mut self,
-        stmt: &ast::ForEachStatement,
+        stmt: &'a ast::ForEachStatement<'a>,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
@@ -8036,7 +8080,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_for_in_statement(
         &mut self,
-        stmt: &ast::ForEachStatement,
+        stmt: &'a ast::ForEachStatement<'a>,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
@@ -8169,7 +8213,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_while_statement(
         &mut self,
-        stmt: &ast::WhileStatement,
+        stmt: &'a ast::WhileStatement<'a>,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
@@ -8203,7 +8247,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_do_while_statement(
         &mut self,
-        stmt: &ast::DoWhileStatement,
+        stmt: &'a ast::DoWhileStatement<'a>,
         jump_targets: Option<JumpStatementTarget>,
     ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
@@ -8234,7 +8278,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Normal)
     }
 
-    fn gen_with_statement(&mut self, stmt: &ast::WithStatement) -> EmitResult<StmtCompletion> {
+    fn gen_with_statement(
+        &mut self,
+        stmt: &'a ast::WithStatement<'a>,
+    ) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
 
         let object = self.gen_outer_expression(&stmt.object)?;
@@ -8259,7 +8306,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(body_completion)
     }
 
-    fn gen_try_statement(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+    fn gen_try_statement(&mut self, stmt: &'a ast::TryStatement<'a>) -> EmitResult<StmtCompletion> {
         if stmt.finalizer.is_none() {
             self.gen_try_catch(stmt)
         } else {
@@ -8267,7 +8314,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_try_catch(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+    fn gen_try_catch(&mut self, stmt: &'a ast::TryStatement<'a>) -> EmitResult<StmtCompletion> {
         self.gen_undefined_completion_if_necessary();
 
         // Save the scope when entering the try statement so it can be restored when leaving
@@ -8299,14 +8346,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_catch_clause(
         &mut self,
-        catch_clause: &ast::CatchClause,
+        catch_clause: &'a ast::CatchClause<'a>,
         scope_to_restore: GenRegister,
         mut body_handler: ExceptionHandlerBuilder,
     ) -> EmitResult<(StmtCompletion, ExceptionHandlerBuilder)> {
         enum Param<'a> {
             LocalRegister { index: usize },
             Scope { scope_id: ScopeNodeId, index: usize, error_reg: GenRegister },
-            Destructuring { param: &'a ast::Pattern, error_reg: GenRegister },
+            Destructuring { param: &'a ast::Pattern<'a>, error_reg: GenRegister },
             None,
         }
 
@@ -8524,7 +8571,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Optionally takes a completion that is restored when taking the normal path.
     fn gen_end_finally_block(
         &mut self,
-        finally_scope: &FinallyScope,
+        finally_scope: &FinallyScope<'a>,
         finally_block_completion: StmtCompletion,
         saved_normal_completion: Option<GenRegister>,
     ) -> EmitResult<()> {
@@ -8546,7 +8593,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_try_finally(&mut self, stmt: &ast::TryStatement) -> EmitResult<StmtCompletion> {
+    fn gen_try_finally(&mut self, stmt: &'a ast::TryStatement<'a>) -> EmitResult<StmtCompletion> {
         let join_block = self.new_block();
 
         // If break or continue reaches this target then the finally scope has been left
@@ -8633,7 +8680,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_finally_footer(
         &mut self,
-        finally_scope: &FinallyScope,
+        finally_scope: &FinallyScope<'a>,
         saved_normal_completion: Option<GenRegister>,
     ) -> EmitResult<()> {
         let discriminant = finally_scope.discriminant_register;
@@ -8764,7 +8811,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(())
     }
 
-    fn gen_throw_statement(&mut self, stmt: &ast::ThrowStatement) -> EmitResult<StmtCompletion> {
+    fn gen_throw_statement(
+        &mut self,
+        stmt: &'a ast::ThrowStatement<'a>,
+    ) -> EmitResult<StmtCompletion> {
         let error = self.gen_outer_expression(&stmt.argument)?;
         self.writer.throw_instruction(error);
         self.register_allocator.release(error);
@@ -8772,7 +8822,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Abrupt)
     }
 
-    fn gen_return_statement(&mut self, stmt: &ast::ReturnStatement) -> EmitResult<StmtCompletion> {
+    fn gen_return_statement(
+        &mut self,
+        stmt: &'a ast::ReturnStatement<'a>,
+    ) -> EmitResult<StmtCompletion> {
         let derived_constructor_scope = stmt.this_scope;
 
         if stmt.argument.is_none() {
@@ -8800,7 +8853,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_return(
         &mut self,
         return_arg: Option<GenRegister>,
-        derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
+        derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
     ) -> EmitResult<()> {
         // If not in a finally scope we can return directly
         if self.finally_scopes.is_empty() {
@@ -8957,7 +9010,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_labeled_statement(
         &mut self,
-        stmt: &ast::LabeledStatement,
+        stmt: &'a ast::LabeledStatement<'a>,
     ) -> EmitResult<StmtCompletion> {
         // Find the innermost labeled statement
         let mut inner_stmt = stmt;
@@ -9091,15 +9144,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         (index + 1, target)
     }
 
-    fn push_finally_scope(&mut self, finally_scope: FinallyScope) {
+    fn push_finally_scope(&mut self, finally_scope: FinallyScope<'a>) {
         self.finally_scopes.push(finally_scope);
     }
 
-    fn pop_finally_scope(&mut self) -> FinallyScope {
+    fn pop_finally_scope(&mut self) -> FinallyScope<'a> {
         self.finally_scopes.pop().unwrap()
     }
 
-    fn current_finally_scope(&mut self) -> Option<&mut FinallyScope> {
+    fn current_finally_scope(&mut self) -> Option<&mut FinallyScope<'a>> {
         self.finally_scopes.last_mut()
     }
 
@@ -9190,7 +9243,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         if let Some(id) = id {
-            cx.alloc_wtf8_string(&id.name)
+            cx.alloc_wtf8_str(&id.name)
         } else {
             cx.names.default_name().as_string().as_flat()
         }
@@ -9260,41 +9313,41 @@ type GenUInt = UInt<ExtraWide>;
 type GenSInt = SInt<ExtraWide>;
 type GenConstantIndex = ConstantIndex<ExtraWide>;
 
-enum PendingFunctionNode {
-    Declaration(AstPtr<ast::Function>),
+enum PendingFunctionNode<'a> {
+    Declaration(AstPtr<ast::Function<'a>>),
     Expression {
-        node: AstPtr<ast::Function>,
+        node: AstPtr<ast::Function<'a>>,
         name: Option<Wtf8String>,
     },
     Arrow {
-        node: AstPtr<ast::Function>,
+        node: AstPtr<ast::Function<'a>>,
         name: Option<Wtf8String>,
     },
     Method {
-        node: AstPtr<ast::Function>,
+        node: AstPtr<ast::Function<'a>>,
         name: Option<Wtf8String>,
     },
     Constructor {
-        node: Option<AstPtr<ast::Function>>,
+        node: Option<AstPtr<ast::Function<'a>>>,
         name: Wtf8String,
-        fields: ClassFieldsInitializer,
+        fields: ClassFieldsInitializer<'a>,
         is_base: bool,
         source_range: Range<Pos>,
     },
     ClassFieldsInitializer {
-        scope: AstPtr<AstScopeNode>,
-        fields: Vec<ClassField>,
-        class: AstPtr<ast::Class>,
+        scope: AstPtr<AstScopeNode<'a>>,
+        fields: Vec<ClassField<'a>>,
+        class: AstPtr<ast::Class<'a>>,
     },
     ClassStaticInitializer {
-        scope: AstPtr<AstScopeNode>,
-        elements: Vec<ClassStaticElement>,
-        class: AstPtr<ast::Class>,
+        scope: AstPtr<AstScopeNode<'a>>,
+        elements: Vec<ClassStaticElement<'a>>,
+        class: AstPtr<ast::Class<'a>>,
     },
 }
 
-impl PendingFunctionNode {
-    fn ast_ptr(&self) -> AstPtr<ast::Function> {
+impl<'a> PendingFunctionNode<'a> {
+    fn ast_ptr(&self) -> AstPtr<ast::Function<'a>> {
         match self {
             PendingFunctionNode::Declaration(node)
             | PendingFunctionNode::Expression { node, .. }
@@ -9337,7 +9390,7 @@ impl PendingFunctionNode {
 
 /// Collection of functions that still need to be generated, along with their index in the
 /// function's constant table and the scope they should be generated in.
-type PendingFunctionNodes = Vec<(PendingFunctionNode, FuncGenPatch, Rc<ScopeStackNode>)>;
+type PendingFunctionNodes<'a> = Vec<(PendingFunctionNode<'a>, FuncGenPatch, Rc<ScopeStackNode>)>;
 
 enum FuncGenPatch {
     ParentFunction(ConstantTableIndex),
@@ -9360,20 +9413,20 @@ enum Patch {
     },
 }
 
-struct PendingFunction {
+struct PendingFunction<'a> {
     /// This pending function's AST node.
-    func_node: PendingFunctionNode,
+    func_node: PendingFunctionNode<'a>,
     /// The scope that this function should be generated in.
     scope: Rc<ScopeStackNode>,
     patch: Patch,
 }
 
-pub struct EmitFunctionResult {
+pub struct EmitFunctionResult<'a> {
     pub bytecode_function: Handle<BytecodeFunction>,
-    pending_functions: PendingFunctionNodes,
+    pending_functions: PendingFunctionNodes<'a>,
 }
 
-impl EmitFunctionResult {
+impl EmitFunctionResult<'_> {
     fn empty() -> Self {
         EmitFunctionResult {
             bytecode_function: Handle::dangling(),
@@ -9395,7 +9448,7 @@ enum ExprDest {
 
 struct Reference<'a> {
     kind: ReferenceKind<'a>,
-    init: Option<&'a ast::Expression>,
+    init: Option<&'a ast::Expression<'a>>,
 }
 
 impl<'a> Reference<'a> {
@@ -9405,7 +9458,7 @@ impl<'a> Reference<'a> {
 }
 
 enum ReferenceKind<'a> {
-    Id(&'a ast::Identifier),
+    Id(&'a ast::Identifier<'a>),
     NamedProperty {
         object: GenRegister,
         property: GenConstantIndex,
@@ -9427,8 +9480,8 @@ enum ReferenceKind<'a> {
         property: GenRegister,
         operator_pos: Pos,
     },
-    ArrayPattern(&'a ast::ArrayPattern),
-    ObjectPattern(&'a ast::ObjectPattern),
+    ArrayPattern(&'a ast::ArrayPattern<'a>),
+    ObjectPattern(&'a ast::ObjectPattern<'a>),
 }
 
 pub enum JumpOperand {
@@ -9490,7 +9543,7 @@ type FinallyBranchId = u32;
 
 /// A finally scope tracks all abnormal completions that occur within it, since those branches must
 /// all be threaded through the same finally block. Branches are distinguished with a branch id.
-struct FinallyScope {
+struct FinallyScope<'a> {
     /// Register in which to place an integer indicating the branch to take
     discriminant_register: GenRegister,
     /// Register in which to place the return value or exception
@@ -9515,7 +9568,7 @@ struct FinallyScope {
     return_branch: Option<FinallyBranchId>,
     /// The scope of the derived constructor that this finally scope is within, if any. Only set if
     /// there is a return branch within a derived constructor.
-    derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
+    derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
     /// All break and continue statements in the target block, which muts first continue to the
     /// finally block before performing the break or continue.
     jump_target_branches: Vec<JumpTargetBranch>,
@@ -9536,7 +9589,7 @@ struct JumpTargetBranch {
     is_break: bool,
 }
 
-impl FinallyScope {
+impl<'a> FinallyScope<'a> {
     fn new(
         discriminant_register: GenRegister,
         result_register: GenRegister,
@@ -9591,7 +9644,7 @@ impl FinallyScope {
 
     fn add_return_branch(
         &mut self,
-        derived_constructor_scope: Option<AstPtr<AstScopeNode>>,
+        derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
     ) -> FinallyBranchId {
         if let Some(return_branch) = self.return_branch {
             return_branch
@@ -9631,26 +9684,26 @@ impl FinallyScope {
 }
 
 enum ArrayElement<'a> {
-    Expression(&'a ast::Expression),
-    Spread(&'a ast::SpreadElement),
+    Expression(&'a ast::Expression<'a>),
+    Spread(&'a ast::SpreadElement<'a>),
     Hole,
 }
 
-enum ClassField {
+enum ClassField<'a> {
     Named {
-        name: Wtf8String,
-        field: AstPtr<ast::ClassProperty>,
+        name: AstString<'a>,
+        field: AstPtr<ast::ClassProperty<'a>>,
     },
     Computed {
         scope_id: usize,
         scope_index: usize,
-        field: AstPtr<ast::ClassProperty>,
+        field: AstPtr<ast::ClassProperty<'a>>,
     },
     PrivateField {
-        field: AstPtr<ast::ClassProperty>,
+        field: AstPtr<ast::ClassProperty<'a>>,
     },
     PrivateMethodOrAccessor {
-        name: AstPtr<ast::Identifier>,
+        name: AstPtr<ast::Identifier<'a>>,
         scope_id: usize,
         scope_index: usize,
         is_getter: bool,
@@ -9658,21 +9711,21 @@ enum ClassField {
     },
 }
 
-struct ClassFieldsInitializer {
-    fields: Vec<ClassField>,
-    scope: Option<AstPtr<AstScopeNode>>,
-    class: AstPtr<ast::Class>,
+struct ClassFieldsInitializer<'a> {
+    fields: Vec<ClassField<'a>>,
+    scope: Option<AstPtr<AstScopeNode<'a>>>,
+    class: AstPtr<ast::Class<'a>>,
 }
 
-impl ClassFieldsInitializer {
+impl ClassFieldsInitializer<'_> {
     fn none() -> Self {
         Self { fields: vec![], scope: None, class: AstPtr::uninit() }
     }
 }
 
-enum ClassStaticElement {
-    Initializer(AstPtr<ast::ClassMethod>),
-    Field(ClassField),
+enum ClassStaticElement<'a> {
+    Initializer(AstPtr<ast::ClassMethod<'a>>),
+    Field(ClassField<'a>),
 }
 
 enum CallArgs {
@@ -9683,24 +9736,24 @@ enum CallArgs {
 enum GenClassKind<'a> {
     Declaration,
     Expression,
-    Export { name: &'a Wtf8String, binding: &'a Binding },
+    Export { name: &'a Wtf8Str, binding: &'a Binding<'a> },
 }
 
 /// A reference to a string that may be either wtf8 or utf8.
 #[derive(Copy, Clone)]
 enum AnyStr<'a> {
-    Wtf8(&'a Wtf8String),
+    Wtf8(&'a Wtf8Str),
     Str(&'a str),
 }
 
-impl AnyStr<'_> {
-    fn from_id(id: &ast::Identifier) -> AnyStr {
+impl<'a> AnyStr<'a> {
+    fn from_id(id: &'a ast::Identifier<'a>) -> AnyStr<'a> {
         AnyStr::Wtf8(&id.name)
     }
 
     fn to_wtf8_string(self) -> Wtf8String {
         match self {
-            AnyStr::Wtf8(wtf8) => wtf8.clone(),
+            AnyStr::Wtf8(wtf8) => wtf8.to_owned_in(Global),
             AnyStr::Str(str) => Wtf8String::from_str(str),
         }
     }

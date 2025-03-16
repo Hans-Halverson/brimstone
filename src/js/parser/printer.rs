@@ -1,5 +1,4 @@
 use crate::js::common::unicode::to_string_or_unicode_escape_sequence;
-use crate::js::common::wtf_8::Wtf8String;
 
 use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};
@@ -42,7 +41,7 @@ impl<'a> Printer<'a> {
         self.buf.push_str(str);
     }
 
-    fn print_wtf8_string(&mut self, string: &Wtf8String) {
+    fn print_wtf8_string(&mut self, string: &AstString) {
         self.buf.push('\"');
         self.buf.push_str(&string.to_string());
         self.buf.push('\"');
@@ -113,12 +112,7 @@ impl<'a> Printer<'a> {
         self.string(",\n");
     }
 
-    fn array_property<T>(
-        &mut self,
-        name: &str,
-        values: &Vec<T>,
-        print_value_fn: fn(&mut Self, &T),
-    ) {
+    fn array_property<T>(&mut self, name: &str, values: &[T], print_value_fn: fn(&mut Self, &T)) {
         self.indent();
         self.string(name);
         self.string(": ");
@@ -371,7 +365,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_for_init(&mut self, init: Option<&P<ForInit>>) {
+    fn print_for_init<'b>(&'b mut self, init: Option<&P<'b, ForInit<'b>>>) {
         match init {
             None => self.print_null(),
             Some(init) => match init.as_ref() {
@@ -819,7 +813,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_property(&mut self, prop: &Property) {
+    fn print_property<'b>(&'b mut self, prop: &Property<'b>) {
         if let PropertyKind::Spread(_) = prop.kind {
             self.start_node("SpreadElement", &prop.loc);
             self.property("argument", prop.key.as_ref(), Printer::print_expression);
@@ -962,7 +956,7 @@ impl<'a> Printer<'a> {
         self.print_identifier_parts(&id.loc, &id.name);
     }
 
-    fn print_identifier_parts(&mut self, loc: &Loc, name: &Wtf8String) {
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &AstString) {
         self.start_node("Identifier", loc);
         self.property("name", name, Printer::print_wtf8_string);
         self.end_node();
@@ -1043,7 +1037,10 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_import_attributes_property(&mut self, attributes: Option<&P<ImportAttributes>>) {
+    fn print_import_attributes_property<'b>(
+        &'b mut self,
+        attributes: Option<&P<'b, ImportAttributes<'b>>>,
+    ) {
         if let Some(attributes) = attributes {
             self.array_property(
                 "attributes",
@@ -1095,10 +1092,8 @@ impl<'a> Printer<'a> {
 
     fn print_export_default_kind(&mut self, kind: &ExportDefaultKind) {
         match kind {
-            ExportDefaultKind::Function(func) => {
-                self.print_function(func.as_ref(), "FunctionDeclaration")
-            }
-            ExportDefaultKind::Class(class) => self.print_class(class.as_ref(), "ClassDeclaration"),
+            ExportDefaultKind::Function(func) => self.print_function(func, "FunctionDeclaration"),
+            ExportDefaultKind::Class(class) => self.print_class(class, "ClassDeclaration"),
             ExportDefaultKind::Expression(expr) => self.print_outer_expression(expr),
         }
     }
@@ -1142,28 +1137,28 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_expression(&mut self, expr: Option<&P<Expression>>) {
+    fn print_optional_expression<'b>(&'b mut self, expr: Option<&'b P<'b, Expression<'b>>>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_expression(expr),
         }
     }
 
-    fn print_optional_outer_expression(&mut self, expr: Option<&P<OuterExpression>>) {
+    fn print_optional_outer_expression<'b>(&'b mut self, expr: Option<&'b P<'b, OuterExpression>>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_outer_expression(expr),
         }
     }
 
-    fn print_optional_statement(&mut self, stmt: Option<&P<Statement>>) {
+    fn print_optional_statement<'b>(&'b mut self, stmt: Option<&'b P<'b, Statement<'b>>>) {
         match stmt {
             None => self.print_null(),
             Some(stmt) => self.print_statement(stmt),
         }
     }
 
-    fn print_optional_identifier(&mut self, id: Option<&P<Identifier>>) {
+    fn print_optional_identifier<'b>(&'b mut self, id: Option<&'b P<'b, Identifier<'b>>>) {
         match id {
             None => self.print_null(),
             Some(id) => self.print_identifier(id),
@@ -1177,28 +1172,28 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_block(&mut self, block: Option<&P<Block>>) {
+    fn print_optional_block<'b>(&'b mut self, block: Option<&'b P<'b, Block<'b>>>) {
         match block {
             None => self.print_null(),
             Some(block) => self.print_block(block),
         }
     }
 
-    fn print_optional_pattern(&mut self, pattern: Option<&P<Pattern>>) {
+    fn print_optional_pattern<'b>(&'b mut self, pattern: Option<&'b P<'b, Pattern<'b>>>) {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),
         }
     }
 
-    fn print_optional_string_literal(&mut self, lit: Option<&P<StringLiteral>>) {
+    fn print_optional_string_literal<'b>(&'b mut self, lit: Option<&'b P<'b, StringLiteral<'b>>>) {
         match lit {
             None => self.print_null(),
             Some(lit) => self.print_string_literal(lit),
         }
     }
 
-    fn print_optional_wtf8_string(&mut self, string: Option<&Wtf8String>) {
+    fn print_optional_wtf8_string(&mut self, string: Option<&AstString>) {
         match string {
             None => self.print_null(),
             Some(string) => self.print_wtf8_string(string),
@@ -1212,7 +1207,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_export_name(&mut self, export_name: Option<&P<ExportName>>) {
+    fn print_optional_export_name<'b>(&'b mut self, export_name: Option<&P<'b, ExportName<'b>>>) {
         match export_name {
             None => self.print_null(),
             Some(export_name) => self.print_export_name(export_name),
@@ -1245,13 +1240,11 @@ impl<'a> Printer<'a> {
             Term::CaptureGroup(group) => self.print_regexp_capture_group(group),
             Term::AnonymousGroup(group) => self.print_regexp_anonymous_group(group),
             Term::CharacterClass(class) => self.print_regexp_character_class(class),
-            Term::Backreference(backreference) => {
-                self.print_regexp_backreference(backreference.as_ref())
-            }
+            Term::Backreference(backreference) => self.print_regexp_backreference(backreference),
         }
     }
 
-    fn print_regexp_literal_pattern(&mut self, literal: &Wtf8String) {
+    fn print_regexp_literal_pattern(&mut self, literal: &AstString) {
         self.start_regexp_node("Literal");
         self.property("value", literal, Printer::print_wtf8_string);
         self.end_node();

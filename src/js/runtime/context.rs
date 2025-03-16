@@ -9,8 +9,14 @@ use std::{
 use crate::{
     handle_scope,
     js::{
-        common::{options::Options, wtf_8::Wtf8String},
-        parser::{analyze::analyze, parse_module, parse_script, print_program, source::Source},
+        common::{
+            options::Options,
+            wtf_8::{Wtf8Str, Wtf8String},
+        },
+        parser::{
+            analyze::analyze, parse_module, parse_script, print_program, source::Source,
+            ParseContext,
+        },
     },
 };
 
@@ -201,17 +207,19 @@ impl Context {
 
     pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse script and perform semantic analysis
-        let mut parse_result = parse_script(&source, self.options.as_ref())?;
-        analyze(&mut parse_result)?;
+        let pcx = ParseContext::new(source);
+        let parse_result = parse_script(&pcx, self.options.clone())?;
 
         if self.options.print_ast {
             println!("{}", print_program(&parse_result));
         }
 
+        let analyzed_result = analyze(parse_result)?;
+
         // Generate bytecode for the program
         let bytecode_script = BytecodeProgramGenerator::generate_from_parse_script_result(
             *self,
-            &parse_result,
+            &analyzed_result,
             self.initial_realm(),
         )?;
 
@@ -223,17 +231,19 @@ impl Context {
 
     pub fn evaluate_module(&mut self, source: Rc<Source>) -> BsResult<()> {
         // Parse module and perform semantic analysis
-        let mut parse_result = parse_module(&source, self.options.as_ref())?;
-        analyze(&mut parse_result)?;
+        let pcx = ParseContext::new(source);
+        let parse_result = parse_module(&pcx, self.options.clone())?;
 
         if self.options.print_ast {
             println!("{}", print_program(&parse_result));
         }
 
+        let analyzed_result = analyze(parse_result)?;
+
         // Generate bytecode for the program
         let module = BytecodeProgramGenerator::generate_from_parse_module_result(
             *self,
-            &parse_result,
+            &analyzed_result,
             self.initial_realm(),
         )?;
 
@@ -364,6 +374,11 @@ impl Context {
     }
 
     #[inline]
+    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> HeapPtr<FlatString> {
+        FlatString::from_wtf8(*self, str.as_bytes())
+    }
+
+    #[inline]
     pub fn alloc_string(&mut self, str: &str) -> Handle<FlatString> {
         self.alloc_string_ptr(str).to_handle()
     }
@@ -371,6 +386,11 @@ impl Context {
     #[inline]
     pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<FlatString> {
         self.alloc_wtf8_string_ptr(str).to_handle()
+    }
+
+    #[inline]
+    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> Handle<FlatString> {
+        self.alloc_wtf8_str_ptr(str).to_handle()
     }
 
     #[inline]

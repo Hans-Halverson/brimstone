@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use brimstone_macros::match_u32;
+use bumpalo::Bump;
 
 use crate::{
     extend_object,
@@ -13,6 +14,7 @@ use crate::{
             wtf_8::Wtf8String,
         },
         parser::{
+            ast::AstAlloc,
             lexer_stream::{
                 HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
                 HeapTwoByteCodeUnitLexerStream, LexerStream,
@@ -330,7 +332,8 @@ pub fn regexp_create(
                 }
             };
 
-            let regexp = parse_pattern(cx, pattern_string, flags)?;
+            let alloc = Bump::new();
+            let regexp = parse_pattern(cx, pattern_string, flags, &alloc)?;
             let source = escape_pattern_string(cx, pattern_string);
 
             let compiled_regexp = compile_regexp(cx, &regexp, source);
@@ -382,13 +385,15 @@ fn parse_pattern(
     cx: Context,
     pattern_string: Handle<StringValue>,
     flags: RegExpFlags,
+    alloc: AstAlloc,
 ) -> EvalResult<RegExp> {
-    fn parse_lexer_stream<T: LexerStream>(
+    fn parse_lexer_stream<'a, T: LexerStream>(
         cx: Context,
         create_lexer_stream: &dyn Fn() -> T,
         flags: RegExpFlags,
-    ) -> EvalResult<RegExp> {
-        match RegExpParser::parse_regexp(create_lexer_stream, flags, cx.options.as_ref()) {
+        alloc: AstAlloc<'a>,
+    ) -> EvalResult<RegExp<'a>> {
+        match RegExpParser::parse_regexp(create_lexer_stream, flags, cx.options.as_ref(), alloc) {
             Ok(regexp) => Ok(regexp),
             Err(error) => syntax_parse_error(cx, &error),
         }
@@ -399,17 +404,17 @@ fn parse_pattern(
         StringWidth::OneByte => {
             let create_lexer_stream =
                 || HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
-            parse_lexer_stream(cx, &create_lexer_stream, flags)
+            parse_lexer_stream(cx, &create_lexer_stream, flags, alloc)
         }
         StringWidth::TwoByte => {
             if flags.has_any_unicode_flag() {
                 let create_lexer_stream =
                     || HeapTwoByteCodePointLexerStream::new(flat_string.as_two_byte_slice());
-                parse_lexer_stream(cx, &create_lexer_stream, flags)
+                parse_lexer_stream(cx, &create_lexer_stream, flags, alloc)
             } else {
                 let create_lexer_stream =
                     || HeapTwoByteCodeUnitLexerStream::new(flat_string.as_two_byte_slice(), None);
-                parse_lexer_stream(cx, &create_lexer_stream, flags)
+                parse_lexer_stream(cx, &create_lexer_stream, flags, alloc)
             }
         }
     }

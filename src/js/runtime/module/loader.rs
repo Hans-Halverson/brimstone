@@ -2,10 +2,7 @@ use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
     js::{
-        parser::{
-            analyze::analyze, parse_module, parser::ParseProgramResult, print_program,
-            source::Source, ParseResult,
-        },
+        parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
         runtime::{
             abstract_operations::call_object,
             bytecode::generator::BytecodeProgramGenerator,
@@ -208,25 +205,33 @@ pub fn host_load_imported_module(
         }
     }
 
-    // Parse the file at the given path, returning AST
-    let mut parse_result = match parse_file_at_path(cx, new_module_path.as_path()) {
-        Ok(parse_result) => parse_result,
+    // Find the source file at the given path
+    let source = match Source::new_from_file(new_module_path.to_str().unwrap()) {
+        Ok(source) => Rc::new(source),
         Err(error) => return syntax_parse_error(cx, &error),
     };
 
-    // Analyze AST
-    if let Err(parse_errors) = analyze(&mut parse_result) {
-        return syntax_parse_error(cx, &parse_errors.errors[0]);
-    }
+    // Parse the source, returning AST
+    let pcx = ParseContext::new(source);
+    let parse_result = match parse_module(&pcx, cx.options.clone()) {
+        Ok(parse_result) => parse_result,
+        Err(error) => return syntax_parse_error(cx, &error),
+    };
 
     if cx.options.print_ast {
         println!("{}", print_program(&parse_result));
     }
 
+    // Analyze AST
+    let analyzed_result = match analyze(parse_result) {
+        Ok(analyzed_result) => analyzed_result,
+        Err(parse_errors) => return syntax_parse_error(cx, &parse_errors.errors[0]),
+    };
+
     // Finally generate the SourceTextModule for the parsed module
     let bytecode_result = BytecodeProgramGenerator::generate_from_parse_module_result(
         cx,
-        &Rc::new(parse_result),
+        &Rc::new(analyzed_result),
         realm,
     );
 
@@ -240,11 +245,6 @@ pub fn host_load_imported_module(
     cx.insert_module(module_cache_key, module.as_dyn_module());
 
     Ok(module.as_dyn_module())
-}
-
-fn parse_file_at_path(cx: Context, path: &Path) -> ParseResult<ParseProgramResult> {
-    let source = Rc::new(Source::new_from_file(path.to_str().unwrap())?);
-    parse_module(&source, cx.options.as_ref())
 }
 
 fn parse_json_file_at_path(mut cx: Context, path: &Path) -> EvalResult<Handle<Value>> {

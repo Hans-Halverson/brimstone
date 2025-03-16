@@ -3,6 +3,7 @@ use std::{
     fmt::{self, Debug},
     hash,
     marker::PhantomData,
+    ops::{Deref, DerefMut},
     ptr::{self, NonNull},
 };
 
@@ -30,8 +31,6 @@ use super::{
 
 pub type AstAlloc<'a> = &'a Bump;
 
-pub type AstBox<'a, T> = alloc::Box<T, AstAlloc<'a>>;
-
 pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
 
 pub type AstStr<'a> = &'a Wtf8Str;
@@ -41,6 +40,56 @@ pub type AstString<'a> = Wtf8String<AstAlloc<'a>>;
 pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
 
 pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
+
+/// An owned, arena-allocated node in the AST.
+///
+/// Assumes that contents are fully arena-allocated and does not own data from outside the arena.
+/// This allows for not needing to call a destructor.
+pub struct AstBox<'a, T> {
+    ptr: NonNull<T>,
+    data: PhantomData<&'a T>,
+}
+
+impl<'a, T> AstBox<'a, T> {
+    #[inline]
+    pub fn new_in(value: T, alloc: AstAlloc<'a>) -> AstBox<'a, T> {
+        let ptr = unsafe { NonNull::new_unchecked(alloc.alloc(value) as *mut _) };
+
+        AstBox { ptr, data: PhantomData }
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> T {
+        let ptr = self.ptr.as_ptr();
+        unsafe { ptr.read() }
+    }
+
+    #[inline]
+    pub fn as_ref(&self) -> &T {
+        self.deref()
+    }
+
+    #[inline]
+    pub fn as_mut(&mut self) -> &mut T {
+        self.deref_mut()
+    }
+}
+
+impl<T> Deref for AstBox<'_, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl<T> DerefMut for AstBox<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { self.ptr.as_mut() }
+    }
+}
 
 pub type P<'a, T> = AstBox<'a, T>;
 

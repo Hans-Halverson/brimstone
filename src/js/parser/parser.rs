@@ -587,7 +587,7 @@ impl<'a> Parser<'a> {
                     if matches!(&expr.expr, Expression::Id(_)) {
                         self.advance()?;
 
-                        let Expression::Id(label) = AstBox::into_inner(expr).expr else {
+                        let Expression::Id(label) = expr.into_inner().expr else {
                             unreachable!()
                         };
 
@@ -701,7 +701,10 @@ impl<'a> Parser<'a> {
             let init = match self.token {
                 Token::Equals => {
                     self.advance()?;
-                    Some(OuterExpression::from_inner_box(self.parse_assignment_expression()?))
+                    Some(OuterExpression::from_inner_box(
+                        self.parse_assignment_expression()?,
+                        self.alloc,
+                    ))
                 }
                 _ => None,
             };
@@ -1275,7 +1278,7 @@ impl<'a> Parser<'a> {
                 expr
             };
 
-            match (self.token.clone(), AstBox::into_inner(expr).expr) {
+            match (self.token.clone(), expr.into_inner().expr) {
                 // If this is a for each loop the parsed expression must actually be a pattern
                 (Token::In, expr) | (Token::Of, expr) => {
                     let pattern =
@@ -1296,7 +1299,7 @@ impl<'a> Parser<'a> {
                 ) => {
                     self.expect(Token::RightParen)?;
                     let pattern = self.reparse_expression_as_for_left_hand_side(
-                        AstBox::into_inner(left),
+                        left.into_inner(),
                         expr_start_pos,
                     )?;
                     let left = p!(self, ForEachInit::new_pattern(pattern));
@@ -1307,7 +1310,7 @@ impl<'a> Parser<'a> {
                         loc,
                         kind: ForEachKind::In,
                         left,
-                        right: OuterExpression::from_inner_box(right),
+                        right: OuterExpression::from_inner_box(right, self.alloc),
                         body,
                         is_await: false,
                         in_of_pos: operator_pos,
@@ -1379,7 +1382,9 @@ impl<'a> Parser<'a> {
 
         let right = match kind {
             ForEachKind::In => self.parse_outer_expression()?,
-            ForEachKind::Of => OuterExpression::from_inner_box(self.parse_assignment_expression()?),
+            ForEachKind::Of => {
+                OuterExpression::from_inner_box(self.parse_assignment_expression()?, self.alloc)
+            }
         };
 
         // Mark the end of the right hand side now that it is known, in order to check for TDZ uses
@@ -1590,7 +1595,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_outer_expression(&mut self) -> ParseResult<P<'a, OuterExpression<'a>>> {
-        Ok(OuterExpression::from_inner_box(self.parse_expression()?))
+        Ok(OuterExpression::from_inner_box(self.parse_expression()?, self.alloc))
     }
 
     /// Expression (https://tc39.es/ecma262/#sec-comma-operator)
@@ -1599,10 +1604,10 @@ impl<'a> Parser<'a> {
         let expr = self.parse_assignment_expression()?;
 
         if self.token == Token::Comma {
-            let mut expressions = self.alloc_vec_with_element(AstBox::into_inner(expr));
+            let mut expressions = self.alloc_vec_with_element(expr.into_inner());
             while self.token == Token::Comma {
                 self.advance()?;
-                expressions.push(AstBox::into_inner(self.parse_assignment_expression()?));
+                expressions.push(self.parse_assignment_expression()?.into_inner());
             }
 
             let loc = self.mark_loc(start_pos);
@@ -1667,7 +1672,7 @@ impl<'a> Parser<'a> {
                     p!(
                         self,
                         self.reparse_expression_as_assignment_left_hand_side(
-                            AstBox::into_inner(expr),
+                            expr.into_inner(),
                             start_pos,
                         )?
                     )
@@ -1675,7 +1680,7 @@ impl<'a> Parser<'a> {
                     p!(
                         self,
                         self.reparse_expression_as_operator_assignment_left_hand_side(
-                            AstBox::into_inner(expr),
+                            expr.into_inner(),
                             start_pos,
                         )?
                     )
@@ -1832,9 +1837,9 @@ impl<'a> Parser<'a> {
             Ok((
                 p!(
                     self,
-                    FunctionBody::Expression(wrap_outer(AstBox::into_inner(
-                        self.parse_assignment_expression()?,
-                    )))
+                    FunctionBody::Expression(wrap_outer(
+                        self.parse_assignment_expression()?.into_inner(),
+                    ))
                 ),
                 strict_flags,
             ))
@@ -2735,9 +2740,9 @@ impl<'a> Parser<'a> {
             if self.token == Token::Spread {
                 arguments.push(CallArgument::Spread(self.parse_spread_element()?))
             } else {
-                arguments.push(CallArgument::Expression(AstBox::into_inner(
-                    self.parse_assignment_expression()?,
-                )));
+                arguments.push(CallArgument::Expression(
+                    self.parse_assignment_expression()?.into_inner(),
+                ));
             }
 
             if self.token == Token::Comma {
@@ -3188,7 +3193,7 @@ impl<'a> Parser<'a> {
 
         if !is_single_quasi {
             loop {
-                expressions.push(AstBox::into_inner(self.parse_expression()?));
+                expressions.push(self.parse_expression()?.into_inner());
 
                 if self.token != Token::RightBrace {
                     return self.error_expected_token(self.loc, &self.token, &Token::RightBrace);
@@ -3261,9 +3266,9 @@ impl<'a> Parser<'a> {
                     elements.push(ArrayElement::Spread(self.parse_spread_element()?));
                 }
                 _ => {
-                    elements.push(ArrayElement::Expression(AstBox::into_inner(
-                        self.parse_assignment_expression()?,
-                    )));
+                    elements.push(ArrayElement::Expression(
+                        self.parse_assignment_expression()?.into_inner(),
+                    ));
                 }
             }
 
@@ -3809,7 +3814,10 @@ impl<'a> Parser<'a> {
 
         let super_class = if self.token == Token::Extends {
             self.advance()?;
-            Some(OuterExpression::from_inner_box(self.parse_left_hand_side_expression()?))
+            Some(OuterExpression::from_inner_box(
+                self.parse_left_hand_side_expression()?,
+                self.alloc,
+            ))
         } else {
             None
         };
@@ -4078,7 +4086,7 @@ impl<'a> Parser<'a> {
             self.scope_builder.set_current_scope(scope_to_restore);
         }
 
-        let func_value = if let Expression::Function(func) = AstBox::into_inner(value.unwrap()) {
+        let func_value = if let Expression::Function(func) = value.unwrap().into_inner() {
             func
         } else {
             unreachable!("method properties must have function expression")
@@ -4103,7 +4111,7 @@ impl<'a> Parser<'a> {
 
         Ok(ClassMethod::new(
             loc,
-            OuterExpression::from_inner_box(key),
+            OuterExpression::from_inner_box(key, self.alloc),
             func_value,
             kind,
             is_computed,
@@ -4129,8 +4137,8 @@ impl<'a> Parser<'a> {
     ) -> ClassProperty<'a> {
         let Property { key, value, is_computed, .. } = property;
 
-        let key = OuterExpression::from_inner_box(key);
-        let value = value.map(OuterExpression::from_inner_box);
+        let key = OuterExpression::from_inner_box(key, self.alloc);
+        let value = value.map(|v| OuterExpression::from_inner_box(v, self.alloc));
 
         ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
@@ -4280,7 +4288,7 @@ impl<'a> Parser<'a> {
 
         // Shorthand property
         if property_name.is_shorthand {
-            let value = if let Expression::Id(mut id) = AstBox::into_inner(property_name.key) {
+            let value = if let Expression::Id(mut id) = property_name.key.into_inner() {
                 if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
@@ -4692,7 +4700,10 @@ impl<'a> Parser<'a> {
                     Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 } else {
                     // Otherwise default export is an expression
-                    let expr = OuterExpression::from_inner_box(self.parse_assignment_expression()?);
+                    let expr = OuterExpression::from_inner_box(
+                        self.parse_assignment_expression()?,
+                        self.alloc,
+                    );
                     let declaration = ExportDefaultKind::Expression(expr);
 
                     self.expect_semicolon()?;
@@ -4854,7 +4865,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Object and array patterns are not allowed as rest elements
-                let value = match AstBox::into_inner(property.key) {
+                let value = match property.key.into_inner() {
                     Expression::Object(_) | Expression::Array(_) => return None,
                     lhs_pattern => {
                         p!(self, self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
@@ -4872,9 +4883,7 @@ impl<'a> Parser<'a> {
                 // Shorthand properties
                 let id_pattern = p!(
                     self,
-                    self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
-                        property.key
-                    ),)?
+                    self.reparse_left_hand_side_expression_as_pattern(property.key.into_inner(),)?
                 );
 
                 // Check the property kind to see if this is a shorthand pattern initializer
@@ -4903,9 +4912,9 @@ impl<'a> Parser<'a> {
                 // reparsed to an assignment pattern.
                 let value = p!(
                     self,
-                    self.reparse_expression_as_maybe_assignment_pattern(AstBox::into_inner(
-                        property.value.unwrap()
-                    ),)?
+                    self.reparse_expression_as_maybe_assignment_pattern(
+                        property.value.unwrap().into_inner()
+                    )?
                 );
 
                 ObjectPatternProperty {
@@ -4948,9 +4957,9 @@ impl<'a> Parser<'a> {
 
                     let argument = p!(
                         self,
-                        self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
-                            spread.argument
-                        ),)?
+                        self.reparse_left_hand_side_expression_as_pattern(
+                            spread.argument.into_inner()
+                        )?
                     );
                     ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
                 }
@@ -5015,9 +5024,11 @@ impl<'a> OuterExpression<'a> {
         AstBox::new_in(wrap_outer(expr), alloc)
     }
 
-    fn from_inner_box(expr: P<'a, Expression<'a>>) -> P<'a, OuterExpression<'a>> {
-        let alloc = *P::<'a, Expression<'a>>::allocator(&expr);
-        AstBox::new_in(wrap_outer(AstBox::into_inner(expr)), alloc)
+    fn from_inner_box(
+        expr: P<'a, Expression<'a>>,
+        alloc: AstAlloc<'a>,
+    ) -> P<'a, OuterExpression<'a>> {
+        AstBox::new_in(wrap_outer(expr.into_inner()), alloc)
     }
 }
 

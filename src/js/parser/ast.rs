@@ -33,6 +33,8 @@ pub type AstAlloc<'a> = &'a Bump;
 
 pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
 
+pub type ArenaVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
+
 pub type AstStr<'a> = &'a Wtf8Str;
 
 pub type AstString<'a> = Wtf8String<AstAlloc<'a>>;
@@ -40,6 +42,8 @@ pub type AstString<'a> = Wtf8String<AstAlloc<'a>>;
 pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
 
 pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
+
+pub type P<'a, T> = AstBox<'a, T>;
 
 /// An owned, arena-allocated node in the AST.
 ///
@@ -91,7 +95,36 @@ impl<T> DerefMut for AstBox<'_, T> {
     }
 }
 
-pub type P<'a, T> = AstBox<'a, T>;
+pub struct AstVecBuilder<'a, T>(ArenaVec<'a, T>);
+
+impl<'a, T> AstVecBuilder<'a, T> {
+    pub fn new(vec: ArenaVec<'a, T>) -> Self {
+        AstVecBuilder(vec)
+    }
+
+    pub fn build(mut self) -> &'a mut [T] {
+        // Intentionally leak inner vector
+        let ptr = self.as_mut_ptr();
+        let len = self.len();
+        std::mem::forget(self);
+
+        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
+    }
+}
+
+impl<'a, T> Deref for AstVecBuilder<'a, T> {
+    type Target = ArenaVec<'a, T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, T> DerefMut for AstVecBuilder<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 impl<'a> AstString<'a> {
     /// Convert `AstString` to an `AstStr` that has the same lifetime as the underlying arena.

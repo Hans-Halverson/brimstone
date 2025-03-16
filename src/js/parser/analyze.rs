@@ -35,7 +35,7 @@ pub struct Analyzer<'a> {
     /// Accumulator or errors reported during analysis
     errors: Vec<LocalizedParseError>,
     /// Scope tree for the AST that is being analyzed
-    scope_tree: ScopeTree<'a>,
+    scope_tree: P<'a, ScopeTree<'a>>,
     /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     /// Set of all names exported by the current module
@@ -72,14 +72,14 @@ pub struct Analyzer<'a> {
 }
 
 pub struct AnalyzedProgramResult<'a> {
-    pub program: Program<'a>,
-    pub scope_tree: ScopeTree<'a>,
+    pub program: P<'a, Program<'a>>,
+    pub scope_tree: P<'a, ScopeTree<'a>>,
     pub source: Rc<Source>,
 }
 
 pub struct AnalyzedFunctionResult<'a> {
     pub function: P<'a, Function<'a>>,
-    pub scope_tree: ScopeTree<'a>,
+    pub scope_tree: P<'a, ScopeTree<'a>>,
     pub source: Rc<Source>,
 }
 
@@ -138,7 +138,7 @@ impl PrivateNameUsage {
 }
 
 impl<'a> Analyzer<'a> {
-    pub fn new(source: Rc<Source>, scope_tree: ScopeTree<'a>) -> Analyzer<'a> {
+    pub fn new(source: Rc<Source>, scope_tree: P<'a, ScopeTree<'a>>) -> Analyzer<'a> {
         Analyzer {
             source,
             errors: Vec::new(),
@@ -310,7 +310,7 @@ impl<'a> Analyzer<'a> {
         self.scope_stack.last().unwrap().as_ref().id()
     }
 
-    fn finish(mut self) -> ScopeTree<'a> {
+    fn finish(mut self) -> P<'a, ScopeTree<'a>> {
         self.scope_tree.finish_vm_scope_tree();
         self.scope_tree
     }
@@ -493,8 +493,9 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
         // Must conservatively use VM scope locations for all visible bindings so that they can be
         // dynamcally looked up from within the with statement.
+        let current_scope_id = self.current_scope_id();
         self.scope_tree
-            .support_dynamic_access_in_visible_bindings(self.current_scope_id());
+            .support_dynamic_access_in_visible_bindings(current_scope_id);
 
         // With statement bodies are in their own scope
         self.enter_scope(stmt.scope);
@@ -785,8 +786,9 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // have VM scope locations instead of local registers so they can be dynamically looked up.
         match expr.callee.as_ref() {
             Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
+                let current_scope_id = self.current_scope_id();
                 self.scope_tree
-                    .support_dynamic_access_in_visible_bindings(self.current_scope_id());
+                    .support_dynamic_access_in_visible_bindings(current_scope_id);
 
                 if let Some(current_func) = self.enclosing_non_arrow_function() {
                     expr.maybe_eval_in_function = true;

@@ -1627,7 +1627,7 @@ impl<'a> Analyzer<'a> {
                 self.add_export(id.loc, id.name.as_arena_str());
             }
             ExportName::String(string) => {
-                self.add_export(string.loc, string.value.as_arena_str());
+                self.add_export(string.loc, string.value);
             }
         }
     }

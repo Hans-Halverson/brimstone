@@ -152,37 +152,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
         self.buf.truncate(new_length);
     }
 
-    /// Returns true if the string does not have any unpaired surrogates.
-    ///
-    /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)
-    pub fn is_well_formed(&self) -> bool {
-        let mut iter = self.iter_code_points();
-
-        let mut is_well_formed = true;
-
-        while let Some(code_point) = iter.next() {
-            if is_surrogate_code_point(code_point) {
-                // Only way to be well formed at this point is to be a high surrogate followed by
-                // a low surrogate.
-                if is_high_surrogate_code_point(code_point) {
-                    if let Some(next_code_point) = iter.next() {
-                        if is_low_surrogate_code_point(next_code_point) {
-                            // A surrogate pair is well formed so proceed to next code point
-                            continue;
-                        }
-                    }
-                }
-
-                is_well_formed = false;
-                break;
-            }
-
-            // Not a surrogate, proceed to next code point
-        }
-
-        is_well_formed
-    }
-
     #[inline]
     pub fn iter_code_points(&self) -> Wtf8CodePointsIterator<'_> {
         Wtf8CodePointsIterator::new(&self.buf)
@@ -330,6 +299,42 @@ impl Wtf8Str {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf
+    }
+
+    #[inline]
+    pub fn iter_code_points(&self) -> Wtf8CodePointsIterator<'_> {
+        Wtf8CodePointsIterator::new(&self.buf)
+    }
+
+    /// Returns true if the string does not have any unpaired surrogates.
+    ///
+    /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)
+    pub fn is_well_formed(&self) -> bool {
+        let mut iter = self.iter_code_points();
+
+        let mut is_well_formed = true;
+
+        while let Some(code_point) = iter.next() {
+            if is_surrogate_code_point(code_point) {
+                // Only way to be well formed at this point is to be a high surrogate followed by
+                // a low surrogate.
+                if is_high_surrogate_code_point(code_point) {
+                    if let Some(next_code_point) = iter.next() {
+                        if is_low_surrogate_code_point(next_code_point) {
+                            // A surrogate pair is well formed so proceed to next code point
+                            continue;
+                        }
+                    }
+                }
+
+                is_well_formed = false;
+                break;
+            }
+
+            // Not a surrogate, proceed to next code point
+        }
+
+        is_well_formed
     }
 }
 

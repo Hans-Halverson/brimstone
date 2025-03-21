@@ -41,10 +41,14 @@ impl<'a> Printer<'a> {
         self.buf.push_str(str);
     }
 
-    fn print_wtf8_string(&mut self, string: &AstString) {
+    fn print_wtf8_str(&mut self, string: &AstStr) {
         self.buf.push('\"');
         self.buf.push_str(&string.to_string());
         self.buf.push('\"');
+    }
+
+    fn print_wtf8_string(&mut self, string: &AstString) {
+        self.print_wtf8_str(&string.as_str())
     }
 
     fn print_str(&mut self, string: &str) {
@@ -561,7 +565,7 @@ impl<'a> Printer<'a> {
 
     fn print_string_literal(&mut self, lit: &StringLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("value", &lit.value, Printer::print_wtf8_string);
+        self.property("value", &lit.value, Printer::print_wtf8_str);
         self.end_node();
     }
 

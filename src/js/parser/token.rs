@@ -2,13 +2,16 @@ use std::fmt;
 
 use num_bigint::BigInt;
 
-use super::{ast::AstString, loc::Loc};
+use super::{
+    ast::{AstStr, AstString},
+    loc::Loc,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
     Identifier(AstString<'a>),
     NumberLiteral(f64),
-    StringLiteral(AstString<'a>),
+    StringLiteral(AstStr<'a>),
     BigIntLiteral(BigInt),
     RegExpLiteral {
         raw: AstString<'a>,

@@ -12,6 +12,7 @@ use crate::js::common::unicode::{
     is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
     is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
 };
+use crate::js::common::wtf_8::Wtf8Str;
 
 use super::ast::{AstAlloc, AstString};
 use super::loc::{Loc, Pos};
@@ -901,12 +902,44 @@ impl<'a> Lexer<'a> {
 
     fn lex_string_literal(&mut self) -> LexResult<'a> {
         let quote_char = self.current;
-        let start_pos = self.pos;
+        let quote_start_pos = self.pos;
         self.advance();
 
-        let mut value = AstString::new_in(self.alloc);
+        let content_start_pos = self.pos;
 
-        while self.current != quote_char {
+        // Fast path until an escape is encountered
+        loop {
+            match_u32!(match self.current {
+                // If we find the end of the string then directly return a slice of the underlying
+                // buffer.
+                quote if quote == quote_char => {
+                    let value =
+                        Wtf8Str::from_bytes_unchecked(&self.buf[content_start_pos..self.pos]);
+
+                    self.advance();
+
+                    return self.emit(Token::StringLiteral(value), quote_start_pos);
+                }
+                // Break out to slow path if an escape sequence is encountered
+                '\\' => break,
+                // Check for unterminated string literals
+                '\n' | '\r' | EOF_CHAR => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnterminatedStringLiteral);
+                }
+                // Otherwise skip the next character, performing UTF-8 validation
+                _ => {
+                    let _ = self.lex_ascii_or_unicode_character()?;
+                }
+            })
+        }
+
+        // Must build our own string since escaped characters exist. Can copy in the slice of the
+        // string up to the first escape sequence.
+        let mut value =
+            AstString::from_bytes_unchecked_in(&self.buf[content_start_pos..self.pos], self.alloc);
+
+        loop {
             match_u32!(match self.current {
                 // Escape sequences
                 '\\' => match_u32!(match self.peek() {
@@ -1045,19 +1078,21 @@ impl<'a> Lexer<'a> {
                         }
                     }
                 }),
+                // If we find the end of the string then return the newly allocated string
+                quote if quote == quote_char => {
+                    self.advance();
+                    return self
+                        .emit(Token::StringLiteral(value.into_arena_str()), quote_start_pos);
+                }
                 // Unterminated string literal
                 '\n' | '\r' | EOF_CHAR => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
-                quote if quote == quote_char => break,
+                // Otherwise add
                 _ => value.push(self.lex_ascii_or_unicode_character()?),
             })
         }
-
-        self.advance();
-
-        self.emit(Token::StringLiteral(value), start_pos)
     }
 
     // Lex a regexp literal. Must be called when the previously lexed token was either a '/' or '/='

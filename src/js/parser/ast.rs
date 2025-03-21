@@ -175,6 +175,11 @@ impl<'a> AstString<'a> {
     pub fn as_arena_str(&self) -> AstStr<'a> {
         unsafe { std::mem::transmute(<AstString<'a> as std::ops::Deref>::deref(self)) }
     }
+
+    pub fn into_arena_str(self) -> AstStr<'a> {
+        // Prevent destructor so that we can keep reference to memory in the arena
+        std::mem::ManuallyDrop::new(self).as_arena_str()
+    }
 }
 
 /// False positive from clippy
@@ -1088,7 +1093,7 @@ pub struct NumberLiteral {
 
 pub struct StringLiteral<'a> {
     pub loc: Loc,
-    pub value: AstString<'a>,
+    pub value: AstStr<'a>,
 }
 
 pub struct BigIntLiteral<'a> {

@@ -435,7 +435,8 @@ impl<'a> Parser<'a> {
 
         while let Token::StringLiteral(str) = &self.token {
             // Use strict directive cannot have any escape characters in it, so check length
-            let is_unscaped_use_strict = str == "use strict" && self.loc.end - self.loc.start == 12;
+            let is_unscaped_use_strict =
+                *str == "use strict" && self.loc.end - self.loc.start == 12;
 
             self.advance()?;
 
@@ -2886,7 +2887,7 @@ impl<'a> Parser<'a> {
     fn parse_string_literal(&mut self) -> ParseResult<StringLiteral<'a>> {
         if let Token::StringLiteral(value) = &self.token {
             let loc = self.loc;
-            let value = value.clone();
+            let value = *value;
             self.advance()?;
 
             Ok(StringLiteral { loc, value })
@@ -4541,7 +4542,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported = self.create_export_name_string(self.loc, value.clone())?;
+                let imported = self.create_export_name_string(self.loc, *value)?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4755,7 +4756,7 @@ impl<'a> Parser<'a> {
 
     fn parse_export_name(&mut self) -> ParseResult<ExportName<'a>> {
         if let Token::StringLiteral(value) = &self.token {
-            let export_name = self.create_export_name_string(self.loc, value.clone())?;
+            let export_name = self.create_export_name_string(self.loc, *value)?;
             self.advance()?;
 
             Ok(export_name)
@@ -4769,7 +4770,7 @@ impl<'a> Parser<'a> {
     fn create_export_name_string(
         &mut self,
         loc: Loc,
-        value: AstString<'a>,
+        value: AstStr<'a>,
     ) -> ParseResult<ExportName<'a>> {
         if !value.is_well_formed() {
             return self.error(loc, ParseError::ExportNameNotWellFormed);

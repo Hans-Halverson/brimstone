@@ -351,7 +351,7 @@ impl CompiledRegExpBuilder {
             }
             let mut alternative_blocks: Vec<AlternativeBlock> = vec![];
 
-            for alternative in &disjunction.alternatives {
+            for alternative in disjunction.alternatives.iter() {
                 let alternative_block_id = self.new_block();
                 self.set_current_block(alternative_block_id);
 
@@ -470,9 +470,9 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn emit_alternative_terms<'a>(
+    fn emit_alternative_terms<'a, 'b: 'a>(
         &mut self,
-        iter: impl Iterator<Item = &'a Term<'a>>,
+        iter: impl Iterator<Item = &'a Term<'b>>,
     ) -> SubExpressionInfo {
         // If any term always consumes then the alternative always consumes
         let mut always_consumes = false;
@@ -1012,7 +1012,7 @@ impl CompiledRegExpBuilder {
         let set = match character_class.expression_type {
             ClassExpressionType::Union => {
                 // Add code points and strings that are in any operand
-                for class_range in &character_class.operands {
+                for class_range in character_class.operands.iter() {
                     self.add_character_class_range_to_set(
                         class_range,
                         &mut set_builder,
@@ -1212,7 +1212,7 @@ impl CompiledRegExpBuilder {
                 strings_set_builder.extend(string_set.iter());
             }
             ClassRange::StringDisjunction(disjunction) => {
-                for string in &disjunction.alternatives {
+                for string in disjunction.alternatives.iter() {
                     // Check if the string has exactly one code point (only need to check at most
                     // the first two code points to be sure).
                     if string.iter_code_points().take(2).count() == 1 {

@@ -382,9 +382,9 @@ fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     }
 }
 
-fn execute_script_as_bytecode(
+fn execute_script_as_bytecode<'a>(
     mut cx: Context,
-    analyzed_result: &js::parser::analyze::AnalyzedProgramResult,
+    analyzed_result: &'a js::parser::analyze::AnalyzedProgramResult<'a>,
 ) -> EvalResult<()> {
     let realm = cx.initial_realm();
     let generate_result =
@@ -400,9 +400,9 @@ fn execute_script_as_bytecode(
     cx.run_script(bytecode_script)
 }
 
-fn execute_module_as_bytecode(
+fn execute_module_as_bytecode<'a>(
     mut cx: Context,
-    analyzed_result: &js::parser::analyze::AnalyzedProgramResult,
+    analyzed_result: &'a js::parser::analyze::AnalyzedProgramResult<'a>,
 ) -> EvalResult<()> {
     let realm = cx.initial_realm();
     let generate_result =

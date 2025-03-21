@@ -6,8 +6,8 @@ use crate::js::common::{alloc, wtf_8::Wtf8String};
 
 use super::{
     ast::{
-        self, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstStr, AstVec, FunctionId,
-        TaggedResolvedScope,
+        self, ArenaVec, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice,
+        AstSliceBuilder, AstStr, FunctionId, TaggedResolvedScope,
     },
     loc::{Loc, Pos},
     ParseError,
@@ -15,8 +15,8 @@ use super::{
 
 pub struct ScopeTree<'a> {
     #[allow(clippy::vec_box)]
-    ast_nodes: AstVec<'a, AstBox<'a, AstScopeNode<'a>>>,
-    vm_nodes: AstVec<'a, VMScopeNode<'a>>,
+    ast_nodes: ArenaVec<'a, AstBox<'a, AstScopeNode<'a>>>,
+    vm_nodes: ArenaVec<'a, VMScopeNode<'a>>,
     current_node_id: ScopeNodeId,
     alloc: AstAlloc<'a>,
 }
@@ -107,7 +107,7 @@ impl<'a> ScopeTree<'a> {
         self.current_node_id = self.ast_nodes[self.current_node_id].parent.unwrap();
     }
 
-    pub fn current_scope(&self) -> AstPtr<AstScopeNode> {
+    pub fn current_scope(&self) -> AstPtr<AstScopeNode<'a>> {
         AstPtr::from_ref(self.ast_nodes[self.current_node_id].as_ref())
     }
 
@@ -127,7 +127,7 @@ impl<'a> ScopeTree<'a> {
         AstPtr::from_ref(self.ast_nodes[node_id].as_ref())
     }
 
-    pub fn get_vm_node(&self, node_id: ScopeNodeId) -> &VMScopeNode {
+    pub fn get_vm_node(&self, node_id: ScopeNodeId) -> &VMScopeNode<'a> {
         &self.vm_nodes[node_id]
     }
 
@@ -560,7 +560,8 @@ impl ScopeTree<'_> {
         let ast_node = self.get_ast_node_mut(ast_node_id);
         let enclosing_scope = ast_node.enclosing_scope;
 
-        let mut bindings = alloc::vec![in alloc];
+        let mut bindings = AstSliceBuilder::new(alloc::vec![in alloc]);
+
         let has_mapped_arguments_object =
             num_extra_slots.is_some() && matches!(ast_node.kind(), ScopeNodeKind::Function { .. });
 
@@ -578,11 +579,9 @@ impl ScopeTree<'_> {
             // overriden by the actual binding name for accessible arguments. Some arguments cannot
             // be accessed by name (since they are shadowed by another binding) and will remain
             // unresolvable.
-            bindings = alloc::vec![
-                in alloc;
-                SHADOWED_SCOPE_SLOT_NAME.as_str();
-                num_extra_slots.unwrap()
-            ];
+            for _ in 0..num_extra_slots.unwrap() {
+                bindings.push(SHADOWED_SCOPE_SLOT_NAME.as_str());
+            }
 
             for (name, binding) in ast_node.bindings.iter_mut() {
                 let arg_index = if let BindingKind::FunctionParameter { index, .. } = binding.kind()
@@ -604,11 +603,9 @@ impl ScopeTree<'_> {
             }
         } else if num_extra_slots.is_some() && ast_node.kind() == ScopeNodeKind::Class {
             // Extra slots for a class scope will hold computed and private field names
-            bindings = alloc::vec![
-                in alloc;
-                CLASS_FIELD_SLOT_NAME.as_str();
-                num_extra_slots.unwrap()
-            ];
+            for _ in 0..num_extra_slots.unwrap() {
+                bindings.push(CLASS_FIELD_SLOT_NAME.as_str());
+            }
         }
 
         // Collect all bindings that must appear in a VM scope node
@@ -706,7 +703,8 @@ impl ScopeTree<'_> {
             || ast_node.supports_dynamic_bindings
             || ast_node.allow_empty_vm_node
         {
-            self.vm_nodes.push(VMScopeNode { bindings });
+            self.vm_nodes
+                .push(VMScopeNode { bindings: bindings.build() });
             self.get_ast_node_mut(ast_node_id).vm_scope = Some(vm_node_id)
         }
 
@@ -839,7 +837,7 @@ pub struct AstScopeNode<'a> {
     enclosing_scope: ScopeNodeId,
     /// The set of all descendant AST scope nodes that are enclosed by this AST scope node. Meaning
     /// the set of all scope nodes directly owned by each global and function node. Includes self.
-    enclosed_scopes: AstVec<'a, ScopeNodeId>,
+    enclosed_scopes: ArenaVec<'a, ScopeNodeId>,
     /// If this is global or function AST scope node, the total number of local registers needed for
     /// the locals in all enclosed scopes.
     num_local_registers: usize,
@@ -901,15 +899,15 @@ impl<'a> AstScopeNode<'a> {
         self.bindings.contains_key(name)
     }
 
-    pub fn get_binding<'b: 'a>(&self, name: AstStr<'b>) -> &Binding<'a> {
+    pub fn get_binding<'b>(&self, name: AstStr<'b>) -> &Binding<'a> {
         self.bindings.get(name).unwrap()
     }
 
-    pub fn get_binding_opt<'b: 'a>(&self, name: AstStr<'b>) -> Option<&Binding> {
+    pub fn get_binding_opt<'b>(&self, name: AstStr<'b>) -> Option<&Binding<'a>> {
         self.bindings.get(name)
     }
 
-    pub fn get_binding_mut<'b: 'a>(&mut self, name: AstStr<'b>) -> &mut Binding<'a> {
+    pub fn get_binding_mut<'b>(&mut self, name: AstStr<'b>) -> &mut Binding<'a> {
         self.bindings.get_mut(name).unwrap()
     }
 
@@ -1148,7 +1146,7 @@ impl<'a> Binding<'a> {
         }
     }
 
-    pub fn kind(&self) -> &BindingKind {
+    pub fn kind(&self) -> &BindingKind<'a> {
         &self.kind
     }
 
@@ -1218,7 +1216,7 @@ pub enum VMLocation {
 }
 
 pub struct VMScopeNode<'a> {
-    bindings: AstVec<'a, AstStr<'a>>,
+    bindings: AstSlice<'a, AstStr<'a>>,
 }
 
 impl<'a> VMScopeNode<'a> {

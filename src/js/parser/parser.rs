@@ -286,14 +286,14 @@ impl<'a> Parser<'a> {
         AstString::from_string_in(string, self.alloc)
     }
 
-    fn alloc_vec<T>(&self) -> AstVec<'a, T> {
-        AstVec::new_in(self.alloc)
+    fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
+        AstSliceBuilder::new(ArenaVec::new_in(self.alloc))
     }
 
-    fn alloc_vec_with_element<T>(&self, element: T) -> AstVec<'a, T> {
-        let mut vec = AstVec::new_in(self.alloc);
+    fn alloc_vec_with_element<U>(&self, element: U) -> AstSliceBuilder<'a, U> {
+        let mut vec = ArenaVec::new_in(self.alloc);
         vec.push(element);
-        vec
+        AstSliceBuilder::new(vec)
     }
 
     fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
 
         let program = Program::new(
             loc,
-            toplevels,
+            toplevels.build(),
             ProgramKind::Script,
             scope,
             self.in_strict_mode,
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
 
         let program = Program::new(
             loc,
-            toplevels,
+            toplevels.build(),
             ProgramKind::Module,
             scope,
             self.in_strict_mode,
@@ -587,7 +587,7 @@ impl<'a> Parser<'a> {
                     if matches!(&expr.expr, Expression::Id(_)) {
                         self.advance()?;
 
-                        let Expression::Id(label) = AstBox::into_inner(expr).expr else {
+                        let Expression::Id(label) = expr.into_inner().expr else {
                             unreachable!()
                         };
 
@@ -701,7 +701,10 @@ impl<'a> Parser<'a> {
             let init = match self.token {
                 Token::Equals => {
                     self.advance()?;
-                    Some(OuterExpression::from_inner_box(self.parse_assignment_expression()?))
+                    Some(OuterExpression::from_inner_box(
+                        self.parse_assignment_expression()?,
+                        self.alloc,
+                    ))
                 }
                 _ => None,
             };
@@ -728,7 +731,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(VariableDeclaration { loc, kind, declarations })
+        Ok(VariableDeclaration { loc, kind, declarations: declarations.build() })
     }
 
     fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
@@ -904,7 +907,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a list of function parameters, returning the function parameters themselves and
     /// whether the list contains any parameter expressions.
-    fn parse_function_params(&mut self) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    fn parse_function_params(&mut self) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         self.expect(Token::LeftParen)?;
         let params = self.parse_function_params_until_terminator(Token::RightParen)?;
         self.expect(Token::RightParen)?;
@@ -915,7 +918,7 @@ impl<'a> Parser<'a> {
     fn parse_function_params_until_terminator(
         &mut self,
         terminator: Token,
-    ) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    ) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         // Read all function params until the terminator token
         let mut params = self.alloc_vec();
         let mut index = 0;
@@ -952,12 +955,12 @@ impl<'a> Parser<'a> {
             index += 1;
         }
 
-        Ok(params)
+        Ok(params.build())
     }
 
     fn parse_function_params_without_parens(
         &mut self,
-    ) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    ) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         self.parse_function_params_until_terminator(Token::Eof)
     }
 
@@ -1077,13 +1080,13 @@ impl<'a> Parser<'a> {
             strict_flags |= FunctionFlags::HAS_USE_STRICT_DIRECTIVE;
         }
 
-        Ok((FunctionBlockBody { loc, body, scope }, strict_flags))
+        Ok((FunctionBlockBody { loc, body: body.build(), scope }, strict_flags))
     }
 
     fn parse_function_body_statements(
         &mut self,
         initial_state: ParserSaveState<'a>,
-    ) -> ParseResult<AstVec<'a, Statement<'a>>> {
+    ) -> ParseResult<AstSlice<'a, Statement<'a>>> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Restore to initial state, then reparse directives with strict mode properly set
@@ -1106,7 +1109,7 @@ impl<'a> Parser<'a> {
         // Restore to strict mode context from before this function
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok(body)
+        Ok(body.build())
     }
 
     fn parse_block(&mut self) -> ParseResult<Block<'a>> {
@@ -1125,7 +1128,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Block { loc, body, scope })
+        Ok(Block { loc, body: body.build(), scope })
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Statement<'a>> {
@@ -1189,7 +1192,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let loc = self.mark_loc(case_start_pos);
-                    cases.push(SwitchCase { loc, test, body })
+                    cases.push(SwitchCase { loc, test, body: body.build() })
                 }
                 _ => return self.error_expected_token(self.loc, &self.token, &Token::Catch),
             }
@@ -1200,7 +1203,12 @@ impl<'a> Parser<'a> {
 
         self.scope_builder.exit_scope();
 
-        Ok(Statement::Switch(SwitchStatement { loc, discriminant, cases, scope }))
+        Ok(Statement::Switch(SwitchStatement {
+            loc,
+            discriminant,
+            cases: cases.build(),
+            scope,
+        }))
     }
 
     fn parse_any_for_statement(&mut self) -> ParseResult<Statement<'a>> {
@@ -1275,7 +1283,7 @@ impl<'a> Parser<'a> {
                 expr
             };
 
-            match (self.token.clone(), AstBox::into_inner(expr).expr) {
+            match (self.token.clone(), expr.into_inner().expr) {
                 // If this is a for each loop the parsed expression must actually be a pattern
                 (Token::In, expr) | (Token::Of, expr) => {
                     let pattern =
@@ -1296,7 +1304,7 @@ impl<'a> Parser<'a> {
                 ) => {
                     self.expect(Token::RightParen)?;
                     let pattern = self.reparse_expression_as_for_left_hand_side(
-                        AstBox::into_inner(left),
+                        left.into_inner(),
                         expr_start_pos,
                     )?;
                     let left = p!(self, ForEachInit::new_pattern(pattern));
@@ -1307,7 +1315,7 @@ impl<'a> Parser<'a> {
                         loc,
                         kind: ForEachKind::In,
                         left,
-                        right: OuterExpression::from_inner_box(right),
+                        right: OuterExpression::from_inner_box(right, self.alloc),
                         body,
                         is_await: false,
                         in_of_pos: operator_pos,
@@ -1379,14 +1387,16 @@ impl<'a> Parser<'a> {
 
         let right = match kind {
             ForEachKind::In => self.parse_outer_expression()?,
-            ForEachKind::Of => OuterExpression::from_inner_box(self.parse_assignment_expression()?),
+            ForEachKind::Of => {
+                OuterExpression::from_inner_box(self.parse_assignment_expression()?, self.alloc)
+            }
         };
 
         // Mark the end of the right hand side now that it is known, in order to check for TDZ uses
         // in the right hand side during analysis.
         if let ForEachInit::VarDecl(var_decl) = left.as_ref() {
             if var_decl.kind != VarKind::Var {
-                for declarator in &var_decl.declarations {
+                for declarator in var_decl.declarations.iter() {
                     Self::set_binding_init_pos(&declarator.id, self.prev_loc.end);
                 }
             }
@@ -1590,7 +1600,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_outer_expression(&mut self) -> ParseResult<P<'a, OuterExpression<'a>>> {
-        Ok(OuterExpression::from_inner_box(self.parse_expression()?))
+        Ok(OuterExpression::from_inner_box(self.parse_expression()?, self.alloc))
     }
 
     /// Expression (https://tc39.es/ecma262/#sec-comma-operator)
@@ -1599,15 +1609,18 @@ impl<'a> Parser<'a> {
         let expr = self.parse_assignment_expression()?;
 
         if self.token == Token::Comma {
-            let mut expressions = self.alloc_vec_with_element(AstBox::into_inner(expr));
+            let mut expressions = self.alloc_vec_with_element(expr.into_inner());
             while self.token == Token::Comma {
                 self.advance()?;
-                expressions.push(AstBox::into_inner(self.parse_assignment_expression()?));
+                expressions.push(self.parse_assignment_expression()?.into_inner());
             }
 
             let loc = self.mark_loc(start_pos);
 
-            Ok(p!(self, Expression::Sequence(SequenceExpression { loc, expressions })))
+            Ok(p!(
+                self,
+                Expression::Sequence(SequenceExpression { loc, expressions: expressions.build() })
+            ))
         } else {
             Ok(expr)
         }
@@ -1667,7 +1680,7 @@ impl<'a> Parser<'a> {
                     p!(
                         self,
                         self.reparse_expression_as_assignment_left_hand_side(
-                            AstBox::into_inner(expr),
+                            expr.into_inner(),
                             start_pos,
                         )?
                     )
@@ -1675,7 +1688,7 @@ impl<'a> Parser<'a> {
                     p!(
                         self,
                         self.reparse_expression_as_operator_assignment_left_hand_side(
-                            AstBox::into_inner(expr),
+                            expr.into_inner(),
                             start_pos,
                         )?
                     )
@@ -1749,7 +1762,7 @@ impl<'a> Parser<'a> {
                         Function::new(
                             loc,
                             /* id */ None,
-                            params,
+                            params.build(),
                             body,
                             param_flags | strict_flags | FunctionFlags::IS_ARROW,
                             scope,
@@ -1778,6 +1791,7 @@ impl<'a> Parser<'a> {
                 Self::set_id_binding_init_pos(&id, self.prev_loc.end);
 
                 self.alloc_vec_with_element(FunctionParam::new_pattern(Pattern::Id(id)))
+                    .build()
             }
         };
         let param_flags = self.analyze_function_params(&params);
@@ -1832,9 +1846,9 @@ impl<'a> Parser<'a> {
             Ok((
                 p!(
                     self,
-                    FunctionBody::Expression(wrap_outer(AstBox::into_inner(
-                        self.parse_assignment_expression()?,
-                    )))
+                    FunctionBody::Expression(wrap_outer(
+                        self.parse_assignment_expression()?.into_inner(),
+                    ))
                 ),
                 strict_flags,
             ))
@@ -2588,7 +2602,7 @@ impl<'a> Parser<'a> {
         let arguments = if self.token == Token::LeftParen {
             self.parse_call_arguments()?
         } else {
-            self.alloc_vec()
+            AstSlice::new_empty()
         };
 
         let loc = self.mark_loc(start_pos);
@@ -2727,7 +2741,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call_arguments(&mut self) -> ParseResult<AstVec<'a, CallArgument<'a>>> {
+    fn parse_call_arguments(&mut self) -> ParseResult<AstSlice<'a, CallArgument<'a>>> {
         self.expect(Token::LeftParen)?;
 
         let mut arguments = self.alloc_vec();
@@ -2735,9 +2749,9 @@ impl<'a> Parser<'a> {
             if self.token == Token::Spread {
                 arguments.push(CallArgument::Spread(self.parse_spread_element()?))
             } else {
-                arguments.push(CallArgument::Expression(AstBox::into_inner(
-                    self.parse_assignment_expression()?,
-                )));
+                arguments.push(CallArgument::Expression(
+                    self.parse_assignment_expression()?.into_inner(),
+                ));
             }
 
             if self.token == Token::Comma {
@@ -2749,7 +2763,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightParen)?;
 
-        Ok(arguments)
+        Ok(arguments.build())
     }
 
     /// PrimaryExpression (https://tc39.es/ecma262/#sec-primary-expression)
@@ -3188,7 +3202,7 @@ impl<'a> Parser<'a> {
 
         if !is_single_quasi {
             loop {
-                expressions.push(AstBox::into_inner(self.parse_expression()?));
+                expressions.push(self.parse_expression()?.into_inner());
 
                 if self.token != Token::RightBrace {
                     return self.error_expected_token(self.loc, &self.token, &Token::RightBrace);
@@ -3230,7 +3244,11 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(TemplateLiteral { loc, quasis, expressions })
+        Ok(TemplateLiteral {
+            loc,
+            quasis: quasis.build(),
+            expressions: expressions.build(),
+        })
     }
 
     fn parse_spread_element(&mut self) -> ParseResult<SpreadElement<'a>> {
@@ -3261,9 +3279,9 @@ impl<'a> Parser<'a> {
                     elements.push(ArrayElement::Spread(self.parse_spread_element()?));
                 }
                 _ => {
-                    elements.push(ArrayElement::Expression(AstBox::into_inner(
-                        self.parse_assignment_expression()?,
-                    )));
+                    elements.push(ArrayElement::Expression(
+                        self.parse_assignment_expression()?.into_inner(),
+                    ));
                 }
             }
 
@@ -3279,7 +3297,11 @@ impl<'a> Parser<'a> {
 
         Ok(p!(
             self,
-            Expression::Array(ArrayExpression { loc, elements, is_parenthesized: false })
+            Expression::Array(ArrayExpression {
+                loc,
+                elements: elements.build(),
+                is_parenthesized: false
+            })
         ))
     }
 
@@ -3330,7 +3352,7 @@ impl<'a> Parser<'a> {
             self,
             Expression::Object(ObjectExpression {
                 loc,
-                properties,
+                properties: properties.build(),
                 is_parenthesized: false,
                 scope,
             })
@@ -3809,7 +3831,10 @@ impl<'a> Parser<'a> {
 
         let super_class = if self.token == Token::Extends {
             self.advance()?;
-            Some(OuterExpression::from_inner_box(self.parse_left_hand_side_expression()?))
+            Some(OuterExpression::from_inner_box(
+                self.parse_left_hand_side_expression()?,
+                self.alloc,
+            ))
         } else {
             None
         };
@@ -3869,7 +3894,15 @@ impl<'a> Parser<'a> {
 
         Ok(p!(
             self,
-            Class::new(loc, id, super_class, body, scope, field_init_scope, static_init_scope,)
+            Class::new(
+                loc,
+                id,
+                super_class,
+                body.build(),
+                scope,
+                field_init_scope,
+                static_init_scope
+            )
         ))
     }
 
@@ -3943,7 +3976,7 @@ impl<'a> Parser<'a> {
                         Function::new(
                             loc,
                             None,
-                            params,
+                            params.build(),
                             p!(self, FunctionBody::Block(block)),
                             param_flags | FunctionFlags::IS_STRICT_MODE,
                             scope,
@@ -4078,7 +4111,7 @@ impl<'a> Parser<'a> {
             self.scope_builder.set_current_scope(scope_to_restore);
         }
 
-        let func_value = if let Expression::Function(func) = AstBox::into_inner(value.unwrap()) {
+        let func_value = if let Expression::Function(func) = value.unwrap().into_inner() {
             func
         } else {
             unreachable!("method properties must have function expression")
@@ -4103,7 +4136,7 @@ impl<'a> Parser<'a> {
 
         Ok(ClassMethod::new(
             loc,
-            OuterExpression::from_inner_box(key),
+            OuterExpression::from_inner_box(key, self.alloc),
             func_value,
             kind,
             is_computed,
@@ -4129,8 +4162,8 @@ impl<'a> Parser<'a> {
     ) -> ClassProperty<'a> {
         let Property { key, value, is_computed, .. } = property;
 
-        let key = OuterExpression::from_inner_box(key);
-        let value = value.map(OuterExpression::from_inner_box);
+        let key = OuterExpression::from_inner_box(key, self.alloc);
+        let value = value.map(|v| OuterExpression::from_inner_box(v, self.alloc));
 
         ClassProperty { loc, key, value, is_computed, is_static, is_private }
     }
@@ -4216,7 +4249,7 @@ impl<'a> Parser<'a> {
 
         self.allow_in = old_allow_in;
 
-        Ok(Pattern::Array(ArrayPattern { loc, elements }))
+        Ok(Pattern::Array(ArrayPattern { loc, elements: elements.build() }))
     }
 
     fn parse_rest_element(
@@ -4267,7 +4300,7 @@ impl<'a> Parser<'a> {
 
         self.allow_in = old_allow_in;
 
-        Ok(Pattern::Object(ObjectPattern { loc, properties }))
+        Ok(Pattern::Object(ObjectPattern { loc, properties: properties.build() }))
     }
 
     fn parse_object_pattern_property(
@@ -4280,7 +4313,7 @@ impl<'a> Parser<'a> {
 
         // Shorthand property
         if property_name.is_shorthand {
-            let value = if let Expression::Id(mut id) = AstBox::into_inner(property_name.key) {
+            let value = if let Expression::Id(mut id) = property_name.key.into_inner() {
                 if self.is_reserved_word_in_current_context(&id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
@@ -4372,7 +4405,7 @@ impl<'a> Parser<'a> {
 
             return Ok(Toplevel::Import(ImportDeclaration {
                 loc,
-                specifiers: self.alloc_vec(),
+                specifiers: AstSlice::new_empty(),
                 source,
                 attributes,
             }));
@@ -4401,7 +4434,12 @@ impl<'a> Parser<'a> {
         let (source, attributes) = self.parse_source_and_attributes()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Toplevel::Import(ImportDeclaration { loc, specifiers, source, attributes }))
+        Ok(Toplevel::Import(ImportDeclaration {
+            loc,
+            specifiers: specifiers.build(),
+            source,
+            attributes,
+        }))
     }
 
     fn parse_optional_import_attributes(
@@ -4429,7 +4467,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightBrace)?;
 
-        Ok(Some(p!(self, ImportAttributes { attributes })))
+        Ok(Some(p!(self, ImportAttributes { attributes: attributes.build() })))
     }
 
     fn parse_import_attribute(&mut self) -> ParseResult<ImportAttribute<'a>> {
@@ -4464,7 +4502,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_or_namespace_specifier(
         &mut self,
-        specifiers: &mut AstVec<'a, ImportSpecifier<'a>>,
+        specifiers: &mut AstSliceBuilder<'a, ImportSpecifier<'a>>,
     ) -> ParseResult<()> {
         match self.token {
             Token::Multiply => {
@@ -4493,7 +4531,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_specifiers(
         &mut self,
-        specifiers: &mut AstVec<'a, ImportSpecifier<'a>>,
+        specifiers: &mut AstSliceBuilder<'a, ImportSpecifier<'a>>,
     ) -> ParseResult<()> {
         self.advance()?;
 
@@ -4597,7 +4635,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // If there is no `from` clause then the local name of each specifier must be an
                     // identifier that is not a reserved word.
-                    for specifier in &specifiers {
+                    for specifier in specifiers.iter() {
                         match specifier.local.as_ref() {
                             ExportName::Id(id) => {
                                 if self.is_reserved_word_in_current_context(&id.name) {
@@ -4622,7 +4660,7 @@ impl<'a> Parser<'a> {
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
                     loc,
                     declaration: None,
-                    specifiers,
+                    specifiers: specifiers.build(),
                     source,
                     source_attributes,
                 }))
@@ -4666,7 +4704,7 @@ impl<'a> Parser<'a> {
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
                     loc,
                     declaration,
-                    specifiers: self.alloc_vec(),
+                    specifiers: AstSlice::new_empty(),
                     source: None,
                     source_attributes: None,
                 }))
@@ -4692,7 +4730,10 @@ impl<'a> Parser<'a> {
                     Ok(Toplevel::ExportDefault(ExportDefaultDeclaration { loc, declaration }))
                 } else {
                     // Otherwise default export is an expression
-                    let expr = OuterExpression::from_inner_box(self.parse_assignment_expression()?);
+                    let expr = OuterExpression::from_inner_box(
+                        self.parse_assignment_expression()?,
+                        self.alloc,
+                    );
                     let declaration = ExportDefaultKind::Expression(expr);
 
                     self.expect_semicolon()?;
@@ -4844,7 +4885,7 @@ impl<'a> Parser<'a> {
 
         let mut properties = self.alloc_vec();
 
-        for property in expr.properties {
+        for property in expr.properties.into_vec(self.alloc).into_iter() {
             let property = if let PropertyKind::Spread(has_spread_comma) = property.kind {
                 // Convert spread property to rest property
 
@@ -4854,7 +4895,7 @@ impl<'a> Parser<'a> {
                 }
 
                 // Object and array patterns are not allowed as rest elements
-                let value = match AstBox::into_inner(property.key) {
+                let value = match property.key.into_inner() {
                     Expression::Object(_) | Expression::Array(_) => return None,
                     lhs_pattern => {
                         p!(self, self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?)
@@ -4872,9 +4913,7 @@ impl<'a> Parser<'a> {
                 // Shorthand properties
                 let id_pattern = p!(
                     self,
-                    self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
-                        property.key
-                    ),)?
+                    self.reparse_left_hand_side_expression_as_pattern(property.key.into_inner(),)?
                 );
 
                 // Check the property kind to see if this is a shorthand pattern initializer
@@ -4903,9 +4942,9 @@ impl<'a> Parser<'a> {
                 // reparsed to an assignment pattern.
                 let value = p!(
                     self,
-                    self.reparse_expression_as_maybe_assignment_pattern(AstBox::into_inner(
-                        property.value.unwrap()
-                    ),)?
+                    self.reparse_expression_as_maybe_assignment_pattern(
+                        property.value.unwrap().into_inner()
+                    )?
                 );
 
                 ObjectPatternProperty {
@@ -4920,7 +4959,7 @@ impl<'a> Parser<'a> {
             properties.push(property);
         }
 
-        Some(Pattern::Object(ObjectPattern { loc: expr.loc, properties }))
+        Some(Pattern::Object(ObjectPattern { loc: expr.loc, properties: properties.build() }))
     }
 
     fn reparse_array_expression_as_pattern(
@@ -4933,7 +4972,7 @@ impl<'a> Parser<'a> {
 
         let mut elements = self.alloc_vec();
 
-        for element in expr.elements {
+        for element in expr.elements.into_vec(self.alloc).into_iter() {
             let element = match element {
                 ArrayElement::Expression(expr) => {
                     let pattern = self.reparse_expression_as_maybe_assignment_pattern(expr)?;
@@ -4948,9 +4987,9 @@ impl<'a> Parser<'a> {
 
                     let argument = p!(
                         self,
-                        self.reparse_left_hand_side_expression_as_pattern(AstBox::into_inner(
-                            spread.argument
-                        ),)?
+                        self.reparse_left_hand_side_expression_as_pattern(
+                            spread.argument.into_inner()
+                        )?
                     );
                     ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
                 }
@@ -4959,7 +4998,7 @@ impl<'a> Parser<'a> {
             elements.push(element);
         }
 
-        Some(Pattern::Array(ArrayPattern { loc: expr.loc, elements }))
+        Some(Pattern::Array(ArrayPattern { loc: expr.loc, elements: elements.build() }))
     }
 
     // If the value is an assignment expression with an identifier lhs, it can be reparsed to an
@@ -5015,9 +5054,11 @@ impl<'a> OuterExpression<'a> {
         AstBox::new_in(wrap_outer(expr), alloc)
     }
 
-    fn from_inner_box(expr: P<'a, Expression<'a>>) -> P<'a, OuterExpression<'a>> {
-        let alloc = *P::<'a, Expression<'a>>::allocator(&expr);
-        AstBox::new_in(wrap_outer(AstBox::into_inner(expr)), alloc)
+    fn from_inner_box(
+        expr: P<'a, Expression<'a>>,
+        alloc: AstAlloc<'a>,
+    ) -> P<'a, OuterExpression<'a>> {
+        AstBox::new_in(wrap_outer(expr.into_inner()), alloc)
     }
 }
 

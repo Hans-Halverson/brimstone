@@ -2,14 +2,14 @@ use bitflags::bitflags;
 
 use crate::js::common::unicode_property::UnicodeProperty;
 
-use super::ast::{AstString, AstVec, P};
+use super::ast::{AstSlice, AstString, P};
 
 pub struct RegExp<'a> {
     pub disjunction: Disjunction<'a>,
     pub flags: RegExpFlags,
     pub has_duplicate_named_capture_groups: bool,
     // All capture groups with their names if one was provided
-    pub capture_groups: AstVec<'a, Option<AstString<'a>>>,
+    pub capture_groups: AstSlice<'a, Option<AstString<'a>>>,
 }
 
 bitflags! {
@@ -87,12 +87,12 @@ impl RegExpFlags {
 pub struct Disjunction<'a> {
     /// List of alternatives separated by `|`. This list is non-empty, empty disjunctions are
     /// represented by a single empty alternative.
-    pub alternatives: AstVec<'a, Alternative<'a>>,
+    pub alternatives: AstSlice<'a, Alternative<'a>>,
 }
 
 pub struct Alternative<'a> {
     /// Sequence of terms that make up this alternative. May be empty in which case it always matches.
-    pub terms: AstVec<'a, Term<'a>>,
+    pub terms: AstSlice<'a, Term<'a>>,
 }
 
 pub enum Term<'a> {
@@ -201,12 +201,12 @@ pub struct CharacterClass<'a> {
     /// Whether to only match characters not listed in this class
     pub is_inverted: bool,
     /// Collection of operands to this classes expression
-    pub operands: AstVec<'a, ClassRange<'a>>,
+    pub operands: AstSlice<'a, ClassRange<'a>>,
 }
 
 pub struct StringDisjunction<'a> {
     /// The individual options in this disjunction, e.g. `[a, b, c]` for `\q{a|b|c}`
-    pub alternatives: AstVec<'a, AstString<'a>>,
+    pub alternatives: AstSlice<'a, AstString<'a>>,
 }
 
 pub struct Lookaround<'a> {

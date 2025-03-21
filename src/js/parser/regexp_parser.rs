@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    ast::{AstAlloc, AstPtr, AstStr, AstString, AstVec},
+    ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
@@ -46,7 +46,7 @@ pub struct RegExpParser<'a, T: LexerStream> {
     /// Number of capture groups seen so far
     num_capture_groups: usize,
     /// All capture groups seen so far, with name if a name was specified
-    capture_groups: AstVec<'a, Option<AstString<'a>>>,
+    capture_groups: ArenaVec<'a, Option<AstString<'a>>>,
     /// Map of capture group names that have been encountered so far to the index of their last
     /// occurrence in the RegExp.
     capture_group_names: HashMap<AstStr<'a>, CaptureGroupIndex>,
@@ -188,14 +188,14 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         AstString::from_str_in(string, self.alloc)
     }
 
-    fn alloc_vec<U>(&self) -> AstVec<'a, U> {
-        AstVec::new_in(self.alloc)
+    fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
+        AstSliceBuilder::new(alloc::Vec::new_in(self.alloc))
     }
 
-    fn alloc_vec_with_element<U>(&self, element: U) -> AstVec<'a, U> {
-        let mut vec = AstVec::new_in(self.alloc);
+    fn alloc_vec_with_element<U>(&self, element: U) -> AstSliceBuilder<'a, U> {
+        let mut vec = alloc::Vec::new_in(self.alloc);
         vec.push(element);
-        vec
+        AstSliceBuilder::new(vec)
     }
 
     #[inline]
@@ -270,16 +270,16 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         };
 
-        let regexp = RegExp {
-            disjunction,
-            flags,
-            capture_groups: parser.capture_groups.clone(),
-            has_duplicate_named_capture_groups: parser.has_duplicate_named_capture_groups,
-        };
-
         parser.resolve_backreferences()?;
 
-        Ok(regexp)
+        let RegExpParser { capture_groups, has_duplicate_named_capture_groups, .. } = parser;
+
+        Ok(RegExp {
+            disjunction,
+            flags,
+            capture_groups: AstSliceBuilder::new(capture_groups).build(),
+            has_duplicate_named_capture_groups,
+        })
     }
 
     // On failure return the error along with the offset into the input buffer
@@ -345,12 +345,12 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             // A trailing `|` means there is a final empty alternative
             if self.is_end() {
-                alternatives.push(Alternative { terms: self.alloc_vec() });
+                alternatives.push(Alternative { terms: AstSlice::new_empty() });
                 break;
             }
         }
 
-        Ok(Disjunction { alternatives })
+        Ok(Disjunction { alternatives: alternatives.build() })
     }
 
     fn parse_alternative(&mut self) -> ParseResult<Alternative<'a>> {
@@ -393,7 +393,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         }
 
-        Ok(Alternative { terms })
+        Ok(Alternative { terms: terms.build() })
     }
 
     fn parse_term(&mut self) -> ParseResult<Term<'a>> {
@@ -556,13 +556,12 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     }
 
     fn character_class_from_shorthand(&self, shorthand: ClassRange<'a>) -> CharacterClass<'a> {
-        let mut operands = alloc::vec![in self.alloc];
-        operands.push(shorthand);
+        let operands = self.alloc_vec_with_element(shorthand);
 
         CharacterClass {
             expression_type: ClassExpressionType::Union,
             is_inverted: false,
-            operands,
+            operands: operands.build(),
         }
     }
 
@@ -942,7 +941,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok(Term::CharacterClass(CharacterClass {
             expression_type: ClassExpressionType::Union,
             is_inverted,
-            operands: ranges,
+            operands: ranges.build(),
         }))
     }
 
@@ -1050,7 +1049,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 CharacterClass {
                     expression_type: ClassExpressionType::Union,
                     is_inverted,
-                    operands: self.alloc_vec(),
+                    operands: AstSlice::new_empty(),
                 },
                 false,
             ));
@@ -1141,7 +1140,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             return self.error(first_operand_pos, ParseError::InvertedCharacterClassContainStrings);
         }
 
-        Ok((CharacterClass { expression_type, is_inverted, operands }, may_contain_strings))
+        Ok((
+            CharacterClass { expression_type, is_inverted, operands: operands.build() },
+            may_contain_strings,
+        ))
     }
 
     /// Parse a single ClassSetOperand, returning whether it MayContainStrings.
@@ -1426,7 +1428,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         self.expect('}')?;
 
-        Ok((StringDisjunction { alternatives }, may_contain_strings))
+        Ok((StringDisjunction { alternatives: alternatives.build() }, may_contain_strings))
     }
 
     /// Parse a single alternative in a class string disjunction. Return both the string and its

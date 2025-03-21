@@ -410,7 +410,7 @@ pub trait AstVisitor<'a>: Sized {
 #[macro_export]
 macro_rules! visit_vec {
     ($visitor:expr, $field:expr, $func:ident) => {
-        for node in &mut $field {
+        for node in $field.iter_mut() {
             $visitor.$func(node)
         }
     };
@@ -780,7 +780,7 @@ pub fn default_visit_array_expression<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     expr: &mut ArrayExpression<'a>,
 ) {
-    for element in &mut expr.elements {
+    for element in expr.elements.iter_mut() {
         match element {
             ArrayElement::Expression(expr) => visitor.visit_expression(expr),
             ArrayElement::Spread(spread) => visitor.visit_spread_element(spread),
@@ -895,7 +895,7 @@ pub fn default_visit_array_pattern<'a, V: AstVisitor<'a>>(
     visitor: &mut V,
     patt: &mut ArrayPattern<'a>,
 ) {
-    for element in &mut patt.elements {
+    for element in patt.elements.iter_mut() {
         match element {
             ArrayPatternElement::Pattern(pattern) => visitor.visit_pattern(pattern),
             ArrayPatternElement::Rest(rest) => visitor.visit_rest_element(rest),

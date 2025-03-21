@@ -234,7 +234,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// used to execute the program.
     pub fn generate_from_parse_module_result(
         cx: Context,
-        parse_result: &'a AnalyzedProgramResult,
+        parse_result: &'a AnalyzedProgramResult<'a>,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<SourceTextModule>> {
         debug_assert!(parse_result.program.kind == ProgramKind::Module);
@@ -318,7 +318,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         // ParseModule (https://tc39.es/ecma262/#sec-parsemodule)
 
         // First generate all imports and gather all module specifiers in source code order
-        for toplevel in &program.toplevels {
+        for toplevel in program.toplevels.iter() {
             match toplevel {
                 ast::Toplevel::Import(import) => {
                     let module_specifier = self.cx.alloc_wtf8_str(&import.source.value);
@@ -328,7 +328,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     module_requests.insert(module_request);
 
                     // Each specifier will generate an import entry
-                    for specifier in &import.specifiers {
+                    for specifier in import.specifiers.iter() {
                         let (local_id, import_name) = match specifier {
                             ast::ImportSpecifier::Default(import) => (&import.local, Some(default)),
                             ast::ImportSpecifier::Namespace(import) => (&import.local, None),
@@ -378,7 +378,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // After import entries have been generated then generate all export entries. Two passes
         // are need because export entries must be able to lookup import entries.
-        for toplevel in &program.toplevels {
+        for toplevel in program.toplevels.iter() {
             match toplevel {
                 ast::Toplevel::ExportDefault(export) => {
                     // Default specifiers are always local exports
@@ -426,7 +426,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     });
 
                     // Each specifier will generate an export entry of some form
-                    for specifier in &export.specifiers {
+                    for specifier in export.specifiers.iter() {
                         let local_name = self.alloc_export_name_string(&specifier.local);
                         let export_name = specifier
                             .exported
@@ -627,7 +627,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     /// Generate the contents of an eval as a function. Return the function used to execute the eval.
     pub fn generate_from_eval_parse_result(
         cx: Context,
-        parse_result: &'a AnalyzedProgramResult,
+        parse_result: &'a AnalyzedProgramResult<'a>,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
@@ -724,7 +724,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     pub fn generate_from_function_constructor_parse_result(
         cx: Context,
-        parse_result: &'a AnalyzedFunctionResult,
+        parse_result: &'a AnalyzedFunctionResult<'a>,
         realm: Handle<Realm>,
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
@@ -1087,7 +1087,7 @@ pub struct BytecodeFunctionGenerator<'a> {
 impl<'a> BytecodeFunctionGenerator<'a> {
     fn new(
         cx: Context,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
         name: Option<Wtf8String>,
@@ -1146,7 +1146,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new_for_function(
         cx: Context,
         func: &ast::Function,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
         default_name: Option<&Wtf8Str>,
@@ -1166,7 +1166,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Function length only counts parameters before the first default value or rest parameter
         let mut function_length = 0;
-        for param in &func.params {
+        for param in func.params.iter() {
             match param {
                 ast::FunctionParam::Rest { .. }
                 | ast::FunctionParam::Pattern { pattern: ast::Pattern::Assign(_), .. } => break,
@@ -1225,7 +1225,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new_for_program(
         cx: Context,
         program: &ast::Program,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         name: &str,
         source_file: Handle<SourceFile>,
         realm: Handle<Realm>,
@@ -1306,7 +1306,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn new_for_class_initializer(
         cx: Context,
         class: AstPtr<ast::Class>,
-        scope_tree: &'a ScopeTree,
+        scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
         name: &str,
@@ -3593,7 +3593,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Generate code for each argument, loading each into a new temporary register forming a
         // contiguous range of registers.
-        for arg in &expr.quasi.expressions {
+        for arg in expr.quasi.expressions.iter() {
             let arg_reg = self.gen_expression_with_dest(arg, ExprDest::NewTemporary)?;
             arg_regs.push(arg_reg);
         }
@@ -3981,7 +3981,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.gen_store_captured_home_object(body_scope, object)?;
         }
 
-        for property in &expr.properties {
+        for property in expr.properties.iter() {
             let property_pos = property.loc.start;
 
             // Spread elements represented by a CopyDataProperties instruction with argc=0 and an
@@ -6006,7 +6006,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         &mut self,
         var_decl: &'a ast::VariableDeclaration<'a>,
     ) -> EmitResult<StmtCompletion> {
-        for decl in &var_decl.declarations {
+        for decl in var_decl.declarations.iter() {
             if let Some(init) = decl.init.as_deref() {
                 let store_flags = StoreFlags::INITIALIZATION;
                 let init_value_dest =
@@ -6063,10 +6063,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ///   instead called when storing to the reference.
     /// - Identifier references are not resolved ahead of time, even though evaluating the RHS may
     ///   change them.
-    fn gen_pattern_to_reference<'b: 'a>(
+    fn gen_pattern_to_reference(
         &mut self,
-        pattern: &'b ast::Pattern,
-    ) -> EmitResult<Reference<'b>> {
+        pattern: &'a ast::Pattern<'a>,
+    ) -> EmitResult<Reference<'a>> {
         match pattern {
             ast::Pattern::Id(id) => Ok(Reference::new(ReferenceKind::Id(id))),
             ast::Pattern::Member(member) => self.gen_member_expression_to_reference(member),
@@ -6086,10 +6086,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_member_expression_to_reference<'b: 'a>(
+    fn gen_member_expression_to_reference(
         &mut self,
-        member: &'b ast::MemberExpression<'b>,
-    ) -> EmitResult<Reference<'b>> {
+        member: &'a ast::MemberExpression<'a>,
+    ) -> EmitResult<Reference<'a>> {
         let object = self.gen_expression(&member.object)?;
         let operator_pos = member.operator_pos;
 
@@ -6115,10 +6115,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_super_member_expression_to_reference<'b: 'a>(
+    fn gen_super_member_expression_to_reference(
         &mut self,
-        member: &'b ast::SuperMemberExpression<'b>,
-    ) -> EmitResult<Reference<'b>> {
+        member: &'a ast::SuperMemberExpression<'a>,
+    ) -> EmitResult<Reference<'a>> {
         let super_pos = member.loc.start;
 
         let home_object = self.gen_load_home_object(member, ExprDest::Any)?;
@@ -6770,7 +6770,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         // Create private symbols and store to body scope
-        for element in &class.body {
+        for element in class.body.iter() {
             match element {
                 ast::ClassElement::Method(method) => {
                     // Ensure that we only create private symbol once for pair
@@ -6799,7 +6799,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let mut private_accessor_pairs = HashMap::new();
 
-        for element in &class.body {
+        for element in class.body.iter() {
             match element {
                 ast::ClassElement::Method(method) => {
                     // Constructor is already handled
@@ -7327,7 +7327,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_export_default_declaration(
         &mut self,
-        program: &ast::Program,
+        program: &'a ast::Program<'a>,
         export: &'a ast::ExportDefaultDeclaration<'a>,
     ) -> EmitResult<()> {
         let scope = program.scope.as_ref();

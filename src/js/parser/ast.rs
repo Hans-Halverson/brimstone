@@ -3,9 +3,11 @@ use std::{
     fmt::{self, Debug},
     hash,
     marker::PhantomData,
+    ops::{Deref, DerefMut},
     ptr::{self, NonNull},
 };
 
+use allocator_api2::alloc::Allocator;
 use bitflags::bitflags;
 use bumpalo::Bump;
 use hashbrown::{DefaultHashBuilder, HashSet};
@@ -30,9 +32,7 @@ use super::{
 
 pub type AstAlloc<'a> = &'a Bump;
 
-pub type AstBox<'a, T> = alloc::Box<T, AstAlloc<'a>>;
-
-pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
+pub type ArenaVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
 
 pub type AstStr<'a> = &'a Wtf8Str;
 
@@ -43,6 +43,132 @@ pub type AstHashSet<'a, T> = HashSet<T, DefaultHashBuilder, AstAlloc<'a>>;
 pub type AstIndexMap<'a, K, V> = IndexMap<K, V, RandomState, AstAlloc<'a>>;
 
 pub type P<'a, T> = AstBox<'a, T>;
+
+/// An owned, arena-allocated node in the AST.
+///
+/// Assumes that contents are fully arena-allocated and does not own data from outside the arena.
+/// This allows for not needing to call a destructor.
+pub struct AstBox<'a, T> {
+    ptr: NonNull<T>,
+    data: PhantomData<&'a T>,
+}
+
+impl<'a, T> AstBox<'a, T> {
+    #[inline]
+    pub fn new_in(value: T, alloc: AstAlloc<'a>) -> AstBox<'a, T> {
+        let ptr = unsafe { NonNull::new_unchecked(alloc.alloc(value) as *mut _) };
+
+        AstBox { ptr, data: PhantomData }
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> T {
+        let ptr = self.ptr.as_ptr();
+        unsafe { ptr.read() }
+    }
+}
+
+impl<T> Deref for AstBox<'_, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        unsafe { self.ptr.as_ref() }
+    }
+}
+
+impl<T> DerefMut for AstBox<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { self.ptr.as_mut() }
+    }
+}
+
+impl<T> AsRef<T> for AstBox<'_, T> {
+    #[inline]
+    fn as_ref(&self) -> &T {
+        self.deref()
+    }
+}
+
+impl<T> AsMut<T> for AstBox<'_, T> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut T {
+        self.deref_mut()
+    }
+}
+
+/// An owned, arena allocated slice in the AST.
+///
+/// Assumes that contents are fully arena-allocated and does not own data from outside the arena.
+/// This allows for not needing to call a destructor.
+pub struct AstSlice<'a, T> {
+    ptr: *mut T,
+    len: usize,
+    data: PhantomData<&'a T>,
+}
+
+impl<'a, T> AstSlice<'a, T> {
+    fn new_from_raw_parts(ptr: *mut T, len: usize) -> AstSlice<'a, T> {
+        AstSlice { ptr, len, data: PhantomData }
+    }
+
+    pub fn new_empty() -> AstSlice<'a, T> {
+        let ptr = unsafe { NonNull::dangling().as_mut() };
+        Self::new_from_raw_parts(ptr, 0)
+    }
+
+    pub fn into_vec<A: Allocator>(self, alloc: A) -> alloc::Vec<T, A> {
+        unsafe { alloc::Vec::from_raw_parts_in(self.ptr, self.len, self.len, alloc) }
+    }
+}
+
+impl<T> Deref for AstSlice<'_, T> {
+    type Target = [T];
+
+    #[inline]
+    fn deref(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(self.ptr.cast_const(), self.len) }
+    }
+}
+
+impl<T> DerefMut for AstSlice<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+pub struct AstSliceBuilder<'a, T>(ArenaVec<'a, T>);
+
+impl<'a, T> AstSliceBuilder<'a, T> {
+    pub fn new(vec: ArenaVec<'a, T>) -> Self {
+        AstSliceBuilder(vec)
+    }
+
+    pub fn build(mut self) -> AstSlice<'a, T> {
+        // Intentionally leak inner vector
+        let ptr = self.as_mut_ptr();
+        let len = self.len();
+        std::mem::forget(self);
+
+        AstSlice::new_from_raw_parts(ptr, len)
+    }
+}
+
+impl<'a, T> Deref for AstSliceBuilder<'a, T> {
+    type Target = ArenaVec<'a, T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for AstSliceBuilder<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 impl<'a> AstString<'a> {
     /// Convert `AstString` to an `AstStr` that has the same lifetime as the underlying arena.
@@ -83,13 +209,13 @@ impl<T> AstPtr<T> {
     }
 }
 
-impl<T> std::convert::AsRef<T> for AstPtr<T> {
+impl<T> AsRef<T> for AstPtr<T> {
     fn as_ref(&self) -> &T {
         unsafe { self.ptr.as_ref() }
     }
 }
 
-impl<T> std::convert::AsMut<T> for AstPtr<T> {
+impl<T> AsMut<T> for AstPtr<T> {
     fn as_mut(&mut self) -> &mut T {
         unsafe { self.ptr.as_mut() }
     }
@@ -125,7 +251,7 @@ impl<T> Debug for AstPtr<T> {
 
 pub struct Program<'a> {
     pub loc: Loc,
-    pub toplevels: AstVec<'a, Toplevel<'a>>,
+    pub toplevels: AstSlice<'a, Toplevel<'a>>,
     pub kind: ProgramKind,
     /// Whether the function is in strict mode, which could be inherited from surrounding context
     /// (e.g. in a direct eval or module)
@@ -141,7 +267,7 @@ pub struct Program<'a> {
 impl<'a> Program<'a> {
     pub fn new(
         loc: Loc,
-        toplevels: AstVec<'a, Toplevel<'a>>,
+        toplevels: AstSlice<'a, Toplevel<'a>>,
         kind: ProgramKind,
         scope: AstPtr<AstScopeNode<'a>>,
         is_strict_mode: bool,
@@ -184,12 +310,12 @@ pub struct Identifier<'a> {
     pub scope: TaggedResolvedScope<'a>,
 }
 
-impl Identifier<'_> {
-    pub fn new(loc: Loc, name: AstString) -> Identifier {
+impl<'a> Identifier<'a> {
+    pub fn new(loc: Loc, name: AstString<'a>) -> Identifier<'a> {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
-    pub fn get_binding(&self) -> &Binding {
+    pub fn get_binding(&self) -> &Binding<'a> {
         self.scope.unwrap_resolved().get_binding(&self.name)
     }
 }
@@ -215,11 +341,11 @@ pub enum ResolvedScope {
 }
 
 impl<'a> TaggedResolvedScope<'a> {
-    pub const fn unresolved_global() -> TaggedResolvedScope<'static> {
+    pub const fn unresolved_global() -> TaggedResolvedScope<'a> {
         TaggedResolvedScope { ptr: ptr::null_mut(), data: PhantomData }
     }
 
-    pub const fn unresolved_dynamic() -> TaggedResolvedScope<'static> {
+    pub const fn unresolved_dynamic() -> TaggedResolvedScope<'a> {
         TaggedResolvedScope { ptr: 1 as *mut u8, data: PhantomData }
     }
 
@@ -295,7 +421,7 @@ pub enum VarKind {
 pub struct VariableDeclaration<'a> {
     pub loc: Loc,
     pub kind: VarKind,
-    pub declarations: AstVec<'a, VariableDeclarator<'a>>,
+    pub declarations: AstSlice<'a, VariableDeclarator<'a>>,
 }
 
 pub struct VariableDeclarator<'a> {
@@ -351,7 +477,7 @@ bitflags! {
 pub struct Function<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
-    pub params: AstVec<'a, FunctionParam<'a>>,
+    pub params: AstSlice<'a, FunctionParam<'a>>,
     pub body: P<'a, FunctionBody<'a>>,
     pub flags: FunctionFlags,
 
@@ -363,7 +489,7 @@ impl<'a> Function<'a> {
     pub fn new_uninit(alloc: AstAlloc<'a>) -> Function<'a> {
         let body = FunctionBody::Block(FunctionBlockBody {
             loc: EMPTY_LOC,
-            body: alloc::vec![in alloc],
+            body: AstSlice::new_empty(),
             scope: None,
         });
 
@@ -371,7 +497,7 @@ impl<'a> Function<'a> {
             // Default values that will be overwritten by `init`
             loc: EMPTY_LOC,
             id: None,
-            params: alloc::vec![in alloc],
+            params: AstSlice::new_empty(),
             body: AstBox::new_in(body, alloc),
             flags: FunctionFlags::empty(),
             scope: AstPtr::uninit(),
@@ -382,7 +508,7 @@ impl<'a> Function<'a> {
         &mut self,
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        params: AstVec<'a, FunctionParam<'a>>,
+        params: AstSlice<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
         scope: AstPtr<AstScopeNode<'a>>,
@@ -398,7 +524,7 @@ impl<'a> Function<'a> {
     pub fn new(
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        params: AstVec<'a, FunctionParam<'a>>,
+        params: AstSlice<'a, FunctionParam<'a>>,
         body: P<'a, FunctionBody<'a>>,
         flags: FunctionFlags,
         scope: AstPtr<AstScopeNode<'a>>,
@@ -510,8 +636,8 @@ pub enum FunctionBody<'a> {
     Expression(OuterExpression<'a>),
 }
 
-impl FunctionBody<'_> {
-    pub fn unwrap_block(&self) -> &FunctionBlockBody {
+impl<'a> FunctionBody<'a> {
+    pub fn unwrap_block(&self) -> &FunctionBlockBody<'a> {
         match self {
             FunctionBody::Block(block) => block,
             _ => panic!("Expected block body"),
@@ -521,7 +647,7 @@ impl FunctionBody<'_> {
 
 pub struct FunctionBlockBody<'a> {
     pub loc: Loc,
-    pub body: AstVec<'a, Statement<'a>>,
+    pub body: AstSlice<'a, Statement<'a>>,
 
     /// Scope node for the function body, not including parameters. Only present if the function has
     /// parameter expressions, otherwise only the function's scope node is needed.
@@ -532,7 +658,7 @@ pub struct Class<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
     pub super_class: Option<P<'a, OuterExpression<'a>>>,
-    pub body: AstVec<'a, ClassElement<'a>>,
+    pub body: AstSlice<'a, ClassElement<'a>>,
 
     pub constructor: Option<AstPtr<ClassMethod<'a>>>,
 
@@ -553,7 +679,7 @@ impl<'a> Class<'a> {
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
         super_class: Option<P<'a, OuterExpression<'a>>>,
-        body: AstVec<'a, ClassElement<'a>>,
+        body: AstSlice<'a, ClassElement<'a>>,
         scope: AstPtr<AstScopeNode<'a>>,
         fields_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
         static_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
@@ -638,7 +764,7 @@ pub struct ExpressionStatement<'a> {
 
 pub struct Block<'a> {
     pub loc: Loc,
-    pub body: AstVec<'a, Statement<'a>>,
+    pub body: AstSlice<'a, Statement<'a>>,
 
     /// Block scope node for the block.
     pub scope: AstPtr<AstScopeNode<'a>>,
@@ -654,7 +780,7 @@ pub struct IfStatement<'a> {
 pub struct SwitchStatement<'a> {
     pub loc: Loc,
     pub discriminant: P<'a, OuterExpression<'a>>,
-    pub cases: AstVec<'a, SwitchCase<'a>>,
+    pub cases: AstSlice<'a, SwitchCase<'a>>,
 
     /// Block scope node for the switch statement body.
     pub scope: AstPtr<AstScopeNode<'a>>,
@@ -663,7 +789,7 @@ pub struct SwitchStatement<'a> {
 pub struct SwitchCase<'a> {
     pub loc: Loc,
     pub test: Option<P<'a, OuterExpression<'a>>>,
-    pub body: AstVec<'a, Statement<'a>>,
+    pub body: AstSlice<'a, Statement<'a>>,
 }
 
 pub struct ForStatement<'a> {
@@ -712,12 +838,12 @@ pub enum ForEachInit<'a> {
     },
 }
 
-impl ForEachInit<'_> {
+impl<'a> ForEachInit<'a> {
     pub fn new_pattern(pattern: Pattern) -> ForEachInit {
         ForEachInit::Pattern { pattern, has_assign_expr: false }
     }
 
-    pub fn pattern(&self) -> &Pattern {
+    pub fn pattern(&self) -> &Pattern<'a> {
         match self {
             ForEachInit::VarDecl(decl) => &decl.declarations[0].id,
             ForEachInit::Pattern { pattern, .. } => pattern,
@@ -892,7 +1018,7 @@ pub enum Expression<'a> {
 }
 
 impl<'a> Expression<'a> {
-    pub fn to_id(&self) -> &Identifier {
+    pub fn to_id(&self) -> &Identifier<'a> {
         match self {
             Expression::Id(id) => id,
             _ => panic!("Expected identifier expression"),
@@ -970,7 +1096,7 @@ pub struct BigIntLiteral<'a> {
     /// Sign of the BigInt value.
     sign: Sign,
     /// Digits of the BigInt value.
-    digits: AstVec<'a, u32>,
+    digits: AstSlice<'a, u32>,
 }
 
 impl<'a> BigIntLiteral<'a> {
@@ -978,7 +1104,7 @@ impl<'a> BigIntLiteral<'a> {
         let (sign, unsigned) = value.into_parts();
         let digits = slice_to_alloc_vec(&unsigned.to_u32_digits(), alloc);
 
-        BigIntLiteral { loc, sign, digits }
+        BigIntLiteral { loc, sign, digits: AstSliceBuilder::new(digits).build() }
     }
 
     /// Return a clone of the BigInt value.
@@ -1149,7 +1275,7 @@ pub struct ConditionalExpression<'a> {
 pub struct CallExpression<'a> {
     pub loc: Loc,
     pub callee: P<'a, Expression<'a>>,
-    pub arguments: AstVec<'a, CallArgument<'a>>,
+    pub arguments: AstSlice<'a, CallArgument<'a>>,
     pub is_optional: bool,
 
     // The reamining fields are only set if the call expression is potentially a direct eval.
@@ -1178,7 +1304,7 @@ impl<'a> CallExpression<'a> {
     pub fn new(
         loc: Loc,
         callee: P<'a, Expression<'a>>,
-        arguments: AstVec<'a, CallArgument<'a>>,
+        arguments: AstSlice<'a, CallArgument<'a>>,
         is_optional: bool,
     ) -> CallExpression<'a> {
         CallExpression {
@@ -1204,17 +1330,17 @@ pub enum CallArgument<'a> {
 pub struct NewExpression<'a> {
     pub loc: Loc,
     pub callee: P<'a, Expression<'a>>,
-    pub arguments: AstVec<'a, CallArgument<'a>>,
+    pub arguments: AstSlice<'a, CallArgument<'a>>,
 }
 
 pub struct SequenceExpression<'a> {
     pub loc: Loc,
-    pub expressions: AstVec<'a, Expression<'a>>,
+    pub expressions: AstSlice<'a, Expression<'a>>,
 }
 
 pub struct ArrayExpression<'a> {
     pub loc: Loc,
-    pub elements: AstVec<'a, ArrayElement<'a>>,
+    pub elements: AstSlice<'a, ArrayElement<'a>>,
     // Needed for reparsing into a pattern
     pub is_parenthesized: bool,
 }
@@ -1233,7 +1359,7 @@ pub struct SpreadElement<'a> {
 
 pub struct ObjectExpression<'a> {
     pub loc: Loc,
-    pub properties: AstVec<'a, Property<'a>>,
+    pub properties: AstSlice<'a, Property<'a>>,
     // Needed for reparsing into a pattern
     pub is_parenthesized: bool,
 
@@ -1338,7 +1464,7 @@ impl<'a> SuperMemberExpression<'a> {
 pub struct SuperCallExpression<'a> {
     pub loc: Loc,
     pub super_: Loc,
-    pub arguments: AstVec<'a, CallArgument<'a>>,
+    pub arguments: AstSlice<'a, CallArgument<'a>>,
 
     /// Reference to the function scope that contains the binding for the containing derived
     /// constructor, or tagged as unresolved dynamic if the scope could not be statically determined.
@@ -1354,7 +1480,7 @@ pub struct SuperCallExpression<'a> {
 }
 
 impl<'a> SuperCallExpression<'a> {
-    pub fn new(loc: Loc, super_loc: Loc, arguments: AstVec<'a, CallArgument<'a>>) -> Self {
+    pub fn new(loc: Loc, super_loc: Loc, arguments: AstSlice<'a, CallArgument<'a>>) -> Self {
         Self {
             loc,
             super_: super_loc,
@@ -1368,8 +1494,8 @@ impl<'a> SuperCallExpression<'a> {
 
 pub struct TemplateLiteral<'a> {
     pub loc: Loc,
-    pub quasis: AstVec<'a, TemplateElement<'a>>,
-    pub expressions: AstVec<'a, Expression<'a>>,
+    pub quasis: AstSlice<'a, TemplateElement<'a>>,
+    pub expressions: AstSlice<'a, Expression<'a>>,
 }
 
 pub struct TemplateElement<'a> {
@@ -1425,7 +1551,7 @@ pub enum Pattern<'a> {
 }
 
 impl<'a> Pattern<'a> {
-    pub fn to_id(&self) -> &Identifier {
+    pub fn to_id(&self) -> &Identifier<'a> {
         match self {
             Pattern::Id(id) => id,
             _ => panic!("Expected identifier pattern"),
@@ -1442,7 +1568,7 @@ impl<'a> Pattern<'a> {
         match &self {
             Pattern::Id(_) => {}
             Pattern::Array(patt) => {
-                for element in &patt.elements {
+                for element in patt.elements.iter() {
                     match element {
                         ArrayPatternElement::Pattern(pattern) => pattern.iter_patterns(f),
                         ArrayPatternElement::Rest(rest) => rest.argument.iter_patterns(f),
@@ -1451,7 +1577,7 @@ impl<'a> Pattern<'a> {
                 }
             }
             Pattern::Object(patt) => {
-                for prop in &patt.properties {
+                for prop in patt.properties.iter() {
                     prop.value.iter_patterns(f)
                 }
             }
@@ -1492,7 +1618,7 @@ impl<'a> Pattern<'a> {
 
 pub struct ArrayPattern<'a> {
     pub loc: Loc,
-    pub elements: AstVec<'a, ArrayPatternElement<'a>>,
+    pub elements: AstSlice<'a, ArrayPatternElement<'a>>,
 }
 
 pub enum ArrayPatternElement<'a> {
@@ -1506,7 +1632,7 @@ impl<'a> ArrayPattern<'a> {
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
-        for element in &self.elements {
+        for element in self.elements.iter() {
             match element {
                 ArrayPatternElement::Pattern(pattern) => pattern.iter_bound_names(f)?,
                 ArrayPatternElement::Rest(RestElement { argument, .. }) => {
@@ -1527,7 +1653,7 @@ pub struct RestElement<'a> {
 
 pub struct ObjectPattern<'a> {
     pub loc: Loc,
-    pub properties: AstVec<'a, ObjectPatternProperty<'a>>,
+    pub properties: AstSlice<'a, ObjectPatternProperty<'a>>,
 }
 
 impl<'a> ObjectPattern<'a> {
@@ -1535,7 +1661,7 @@ impl<'a> ObjectPattern<'a> {
         &self,
         f: &mut F,
     ) -> EvalResult<()> {
-        for prop in &self.properties {
+        for prop in self.properties.iter() {
             prop.value.iter_bound_names(f)?
         }
 
@@ -1569,13 +1695,13 @@ impl<'a> AssignmentPattern<'a> {
 
 pub struct ImportDeclaration<'a> {
     pub loc: Loc,
-    pub specifiers: AstVec<'a, ImportSpecifier<'a>>,
+    pub specifiers: AstSlice<'a, ImportSpecifier<'a>>,
     pub source: P<'a, StringLiteral<'a>>,
     pub attributes: Option<P<'a, ImportAttributes<'a>>>,
 }
 
 pub struct ImportAttributes<'a> {
-    pub attributes: AstVec<'a, ImportAttribute<'a>>,
+    pub attributes: AstSlice<'a, ImportAttribute<'a>>,
 }
 
 pub struct ImportAttribute<'a> {
@@ -1611,7 +1737,7 @@ pub struct ExportNamedDeclaration<'a> {
     pub loc: Loc,
     // Must be variable declaration, function declaration, or class declaration
     pub declaration: Option<P<'a, Statement<'a>>>,
-    pub specifiers: AstVec<'a, ExportSpecifier<'a>>,
+    pub specifiers: AstSlice<'a, ExportSpecifier<'a>>,
     pub source: Option<P<'a, StringLiteral<'a>>>,
     pub source_attributes: Option<P<'a, ImportAttributes<'a>>>,
 }
@@ -1621,7 +1747,7 @@ impl<'a> ExportNamedDeclaration<'a> {
         if let Some(declaration) = self.declaration.as_deref() {
             match declaration {
                 Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
-                    for decl in declarations {
+                    for decl in declarations.iter() {
                         let _ = decl.iter_bound_names(&mut |id| {
                             f(id);
                             Ok(())
@@ -1687,7 +1813,7 @@ pub enum ExportName<'a> {
 }
 
 impl<'a> ExportName<'a> {
-    pub fn to_id(&self) -> &Identifier {
+    pub fn to_id(&self) -> &Identifier<'a> {
         match self {
             ExportName::Id(id) => id,
             _ => panic!("Expected identifier export name"),

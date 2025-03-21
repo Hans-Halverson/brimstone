@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    ast::{ArenaVec, AstAlloc, AstPtr, AstStr, AstString, AstVecBuilder},
+    ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
     lexer_stream::{LexerStream, SavedLexerStreamState},
     loc::Pos,
     regexp::{
@@ -188,14 +188,14 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         AstString::from_str_in(string, self.alloc)
     }
 
-    fn alloc_vec<U>(&self) -> AstVecBuilder<'a, U> {
-        AstVecBuilder::new(alloc::Vec::new_in(self.alloc))
+    fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
+        AstSliceBuilder::new(alloc::Vec::new_in(self.alloc))
     }
 
-    fn alloc_vec_with_element<U>(&self, element: U) -> AstVecBuilder<'a, U> {
+    fn alloc_vec_with_element<U>(&self, element: U) -> AstSliceBuilder<'a, U> {
         let mut vec = alloc::Vec::new_in(self.alloc);
         vec.push(element);
-        AstVecBuilder::new(vec)
+        AstSliceBuilder::new(vec)
     }
 
     #[inline]
@@ -277,7 +277,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok(RegExp {
             disjunction,
             flags,
-            capture_groups: AstVecBuilder::new(capture_groups).build(),
+            capture_groups: AstSliceBuilder::new(capture_groups).build(),
             has_duplicate_named_capture_groups,
         })
     }
@@ -345,7 +345,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             // A trailing `|` means there is a final empty alternative
             if self.is_end() {
-                alternatives.push(Alternative { terms: &[] });
+                alternatives.push(Alternative { terms: AstSlice::new_empty() });
                 break;
             }
         }
@@ -1049,7 +1049,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 CharacterClass {
                     expression_type: ClassExpressionType::Union,
                     is_inverted,
-                    operands: &[],
+                    operands: AstSlice::new_empty(),
                 },
                 false,
             ));

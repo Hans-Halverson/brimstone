@@ -365,7 +365,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_for_init<'b>(&'b mut self, init: Option<&P<'b, ForInit<'b>>>) {
+    fn print_for_init(&mut self, init: Option<&P<'_, ForInit>>) {
         match init {
             None => self.print_null(),
             Some(init) => match init.as_ref() {
@@ -813,7 +813,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_property<'b>(&'b mut self, prop: &Property<'b>) {
+    fn print_property(&mut self, prop: &Property) {
         if let PropertyKind::Spread(_) = prop.kind {
             self.start_node("SpreadElement", &prop.loc);
             self.property("argument", prop.key.as_ref(), Printer::print_expression);
@@ -1037,10 +1037,7 @@ impl<'a> Printer<'a> {
         self.end_node();
     }
 
-    fn print_import_attributes_property<'b>(
-        &'b mut self,
-        attributes: Option<&P<'b, ImportAttributes<'b>>>,
-    ) {
+    fn print_import_attributes_property(&mut self, attributes: Option<&P<'_, ImportAttributes>>) {
         if let Some(attributes) = attributes {
             self.array_property(
                 "attributes",
@@ -1137,28 +1134,28 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_expression<'b>(&'b mut self, expr: Option<&'b P<'b, Expression<'b>>>) {
+    fn print_optional_expression(&mut self, expr: Option<&P<'_, Expression>>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_expression(expr),
         }
     }
 
-    fn print_optional_outer_expression<'b>(&'b mut self, expr: Option<&'b P<'b, OuterExpression>>) {
+    fn print_optional_outer_expression(&mut self, expr: Option<&P<'_, OuterExpression>>) {
         match expr {
             None => self.print_null(),
             Some(expr) => self.print_outer_expression(expr),
         }
     }
 
-    fn print_optional_statement<'b>(&'b mut self, stmt: Option<&'b P<'b, Statement<'b>>>) {
+    fn print_optional_statement(&mut self, stmt: Option<&P<'_, Statement>>) {
         match stmt {
             None => self.print_null(),
             Some(stmt) => self.print_statement(stmt),
         }
     }
 
-    fn print_optional_identifier<'b>(&'b mut self, id: Option<&'b P<'b, Identifier<'b>>>) {
+    fn print_optional_identifier(&mut self, id: Option<&P<'_, Identifier>>) {
         match id {
             None => self.print_null(),
             Some(id) => self.print_identifier(id),
@@ -1172,21 +1169,21 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_block<'b>(&'b mut self, block: Option<&'b P<'b, Block<'b>>>) {
+    fn print_optional_block(&mut self, block: Option<&P<'_, Block>>) {
         match block {
             None => self.print_null(),
             Some(block) => self.print_block(block),
         }
     }
 
-    fn print_optional_pattern<'b>(&'b mut self, pattern: Option<&'b P<'b, Pattern<'b>>>) {
+    fn print_optional_pattern(&mut self, pattern: Option<&P<'_, Pattern>>) {
         match pattern {
             None => self.print_null(),
             Some(pattern) => self.print_pattern(pattern),
         }
     }
 
-    fn print_optional_string_literal<'b>(&'b mut self, lit: Option<&'b P<'b, StringLiteral<'b>>>) {
+    fn print_optional_string_literal(&mut self, lit: Option<&P<'_, StringLiteral>>) {
         match lit {
             None => self.print_null(),
             Some(lit) => self.print_string_literal(lit),
@@ -1207,7 +1204,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_optional_export_name<'b>(&'b mut self, export_name: Option<&P<'b, ExportName<'b>>>) {
+    fn print_optional_export_name(&mut self, export_name: Option<&P<'_, ExportName>>) {
         match export_name {
             None => self.print_null(),
             Some(export_name) => self.print_export_name(export_name),

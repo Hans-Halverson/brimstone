@@ -286,14 +286,14 @@ impl<'a> Parser<'a> {
         AstString::from_string_in(string, self.alloc)
     }
 
-    fn alloc_vec<T>(&self) -> AstVec<'a, T> {
-        AstVec::new_in(self.alloc)
+    fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
+        AstSliceBuilder::new(ArenaVec::new_in(self.alloc))
     }
 
-    fn alloc_vec_with_element<T>(&self, element: T) -> AstVec<'a, T> {
-        let mut vec = AstVec::new_in(self.alloc);
+    fn alloc_vec_with_element<U>(&self, element: U) -> AstSliceBuilder<'a, U> {
+        let mut vec = ArenaVec::new_in(self.alloc);
         vec.push(element);
-        vec
+        AstSliceBuilder::new(vec)
     }
 
     fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
 
         let program = Program::new(
             loc,
-            toplevels,
+            toplevels.build(),
             ProgramKind::Script,
             scope,
             self.in_strict_mode,
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
 
         let program = Program::new(
             loc,
-            toplevels,
+            toplevels.build(),
             ProgramKind::Module,
             scope,
             self.in_strict_mode,
@@ -731,7 +731,7 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(VariableDeclaration { loc, kind, declarations })
+        Ok(VariableDeclaration { loc, kind, declarations: declarations.build() })
     }
 
     fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
@@ -907,7 +907,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a list of function parameters, returning the function parameters themselves and
     /// whether the list contains any parameter expressions.
-    fn parse_function_params(&mut self) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    fn parse_function_params(&mut self) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         self.expect(Token::LeftParen)?;
         let params = self.parse_function_params_until_terminator(Token::RightParen)?;
         self.expect(Token::RightParen)?;
@@ -918,7 +918,7 @@ impl<'a> Parser<'a> {
     fn parse_function_params_until_terminator(
         &mut self,
         terminator: Token,
-    ) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    ) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         // Read all function params until the terminator token
         let mut params = self.alloc_vec();
         let mut index = 0;
@@ -955,12 +955,12 @@ impl<'a> Parser<'a> {
             index += 1;
         }
 
-        Ok(params)
+        Ok(params.build())
     }
 
     fn parse_function_params_without_parens(
         &mut self,
-    ) -> ParseResult<AstVec<'a, FunctionParam<'a>>> {
+    ) -> ParseResult<AstSlice<'a, FunctionParam<'a>>> {
         self.parse_function_params_until_terminator(Token::Eof)
     }
 
@@ -1080,13 +1080,13 @@ impl<'a> Parser<'a> {
             strict_flags |= FunctionFlags::HAS_USE_STRICT_DIRECTIVE;
         }
 
-        Ok((FunctionBlockBody { loc, body, scope }, strict_flags))
+        Ok((FunctionBlockBody { loc, body: body.build(), scope }, strict_flags))
     }
 
     fn parse_function_body_statements(
         &mut self,
         initial_state: ParserSaveState<'a>,
-    ) -> ParseResult<AstVec<'a, Statement<'a>>> {
+    ) -> ParseResult<AstSlice<'a, Statement<'a>>> {
         let has_use_strict_directive = self.parse_directive_prologue()?;
 
         // Restore to initial state, then reparse directives with strict mode properly set
@@ -1109,7 +1109,7 @@ impl<'a> Parser<'a> {
         // Restore to strict mode context from before this function
         self.set_in_strict_mode(old_in_strict_mode);
 
-        Ok(body)
+        Ok(body.build())
     }
 
     fn parse_block(&mut self) -> ParseResult<Block<'a>> {
@@ -1128,7 +1128,7 @@ impl<'a> Parser<'a> {
         self.advance()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Block { loc, body, scope })
+        Ok(Block { loc, body: body.build(), scope })
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Statement<'a>> {
@@ -1192,7 +1192,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let loc = self.mark_loc(case_start_pos);
-                    cases.push(SwitchCase { loc, test, body })
+                    cases.push(SwitchCase { loc, test, body: body.build() })
                 }
                 _ => return self.error_expected_token(self.loc, &self.token, &Token::Catch),
             }
@@ -1203,7 +1203,12 @@ impl<'a> Parser<'a> {
 
         self.scope_builder.exit_scope();
 
-        Ok(Statement::Switch(SwitchStatement { loc, discriminant, cases, scope }))
+        Ok(Statement::Switch(SwitchStatement {
+            loc,
+            discriminant,
+            cases: cases.build(),
+            scope,
+        }))
     }
 
     fn parse_any_for_statement(&mut self) -> ParseResult<Statement<'a>> {
@@ -1391,7 +1396,7 @@ impl<'a> Parser<'a> {
         // in the right hand side during analysis.
         if let ForEachInit::VarDecl(var_decl) = left.as_ref() {
             if var_decl.kind != VarKind::Var {
-                for declarator in &var_decl.declarations {
+                for declarator in var_decl.declarations.iter() {
                     Self::set_binding_init_pos(&declarator.id, self.prev_loc.end);
                 }
             }
@@ -1612,7 +1617,10 @@ impl<'a> Parser<'a> {
 
             let loc = self.mark_loc(start_pos);
 
-            Ok(p!(self, Expression::Sequence(SequenceExpression { loc, expressions })))
+            Ok(p!(
+                self,
+                Expression::Sequence(SequenceExpression { loc, expressions: expressions.build() })
+            ))
         } else {
             Ok(expr)
         }
@@ -1754,7 +1762,7 @@ impl<'a> Parser<'a> {
                         Function::new(
                             loc,
                             /* id */ None,
-                            params,
+                            params.build(),
                             body,
                             param_flags | strict_flags | FunctionFlags::IS_ARROW,
                             scope,
@@ -1783,6 +1791,7 @@ impl<'a> Parser<'a> {
                 Self::set_id_binding_init_pos(&id, self.prev_loc.end);
 
                 self.alloc_vec_with_element(FunctionParam::new_pattern(Pattern::Id(id)))
+                    .build()
             }
         };
         let param_flags = self.analyze_function_params(&params);
@@ -2593,7 +2602,7 @@ impl<'a> Parser<'a> {
         let arguments = if self.token == Token::LeftParen {
             self.parse_call_arguments()?
         } else {
-            self.alloc_vec()
+            AstSlice::new_empty()
         };
 
         let loc = self.mark_loc(start_pos);
@@ -2732,7 +2741,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call_arguments(&mut self) -> ParseResult<AstVec<'a, CallArgument<'a>>> {
+    fn parse_call_arguments(&mut self) -> ParseResult<AstSlice<'a, CallArgument<'a>>> {
         self.expect(Token::LeftParen)?;
 
         let mut arguments = self.alloc_vec();
@@ -2754,7 +2763,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightParen)?;
 
-        Ok(arguments)
+        Ok(arguments.build())
     }
 
     /// PrimaryExpression (https://tc39.es/ecma262/#sec-primary-expression)
@@ -3235,7 +3244,11 @@ impl<'a> Parser<'a> {
 
         let loc = self.mark_loc(start_pos);
 
-        Ok(TemplateLiteral { loc, quasis, expressions })
+        Ok(TemplateLiteral {
+            loc,
+            quasis: quasis.build(),
+            expressions: expressions.build(),
+        })
     }
 
     fn parse_spread_element(&mut self) -> ParseResult<SpreadElement<'a>> {
@@ -3284,7 +3297,11 @@ impl<'a> Parser<'a> {
 
         Ok(p!(
             self,
-            Expression::Array(ArrayExpression { loc, elements, is_parenthesized: false })
+            Expression::Array(ArrayExpression {
+                loc,
+                elements: elements.build(),
+                is_parenthesized: false
+            })
         ))
     }
 
@@ -3335,7 +3352,7 @@ impl<'a> Parser<'a> {
             self,
             Expression::Object(ObjectExpression {
                 loc,
-                properties,
+                properties: properties.build(),
                 is_parenthesized: false,
                 scope,
             })
@@ -3877,7 +3894,15 @@ impl<'a> Parser<'a> {
 
         Ok(p!(
             self,
-            Class::new(loc, id, super_class, body, scope, field_init_scope, static_init_scope,)
+            Class::new(
+                loc,
+                id,
+                super_class,
+                body.build(),
+                scope,
+                field_init_scope,
+                static_init_scope
+            )
         ))
     }
 
@@ -3951,7 +3976,7 @@ impl<'a> Parser<'a> {
                         Function::new(
                             loc,
                             None,
-                            params,
+                            params.build(),
                             p!(self, FunctionBody::Block(block)),
                             param_flags | FunctionFlags::IS_STRICT_MODE,
                             scope,
@@ -4224,7 +4249,7 @@ impl<'a> Parser<'a> {
 
         self.allow_in = old_allow_in;
 
-        Ok(Pattern::Array(ArrayPattern { loc, elements }))
+        Ok(Pattern::Array(ArrayPattern { loc, elements: elements.build() }))
     }
 
     fn parse_rest_element(
@@ -4275,7 +4300,7 @@ impl<'a> Parser<'a> {
 
         self.allow_in = old_allow_in;
 
-        Ok(Pattern::Object(ObjectPattern { loc, properties }))
+        Ok(Pattern::Object(ObjectPattern { loc, properties: properties.build() }))
     }
 
     fn parse_object_pattern_property(
@@ -4380,7 +4405,7 @@ impl<'a> Parser<'a> {
 
             return Ok(Toplevel::Import(ImportDeclaration {
                 loc,
-                specifiers: self.alloc_vec(),
+                specifiers: AstSlice::new_empty(),
                 source,
                 attributes,
             }));
@@ -4409,7 +4434,12 @@ impl<'a> Parser<'a> {
         let (source, attributes) = self.parse_source_and_attributes()?;
         let loc = self.mark_loc(start_pos);
 
-        Ok(Toplevel::Import(ImportDeclaration { loc, specifiers, source, attributes }))
+        Ok(Toplevel::Import(ImportDeclaration {
+            loc,
+            specifiers: specifiers.build(),
+            source,
+            attributes,
+        }))
     }
 
     fn parse_optional_import_attributes(
@@ -4437,7 +4467,7 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::RightBrace)?;
 
-        Ok(Some(p!(self, ImportAttributes { attributes })))
+        Ok(Some(p!(self, ImportAttributes { attributes: attributes.build() })))
     }
 
     fn parse_import_attribute(&mut self) -> ParseResult<ImportAttribute<'a>> {
@@ -4472,7 +4502,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_or_namespace_specifier(
         &mut self,
-        specifiers: &mut AstVec<'a, ImportSpecifier<'a>>,
+        specifiers: &mut AstSliceBuilder<'a, ImportSpecifier<'a>>,
     ) -> ParseResult<()> {
         match self.token {
             Token::Multiply => {
@@ -4501,7 +4531,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import_named_specifiers(
         &mut self,
-        specifiers: &mut AstVec<'a, ImportSpecifier<'a>>,
+        specifiers: &mut AstSliceBuilder<'a, ImportSpecifier<'a>>,
     ) -> ParseResult<()> {
         self.advance()?;
 
@@ -4605,7 +4635,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // If there is no `from` clause then the local name of each specifier must be an
                     // identifier that is not a reserved word.
-                    for specifier in &specifiers {
+                    for specifier in specifiers.iter() {
                         match specifier.local.as_ref() {
                             ExportName::Id(id) => {
                                 if self.is_reserved_word_in_current_context(&id.name) {
@@ -4630,7 +4660,7 @@ impl<'a> Parser<'a> {
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
                     loc,
                     declaration: None,
-                    specifiers,
+                    specifiers: specifiers.build(),
                     source,
                     source_attributes,
                 }))
@@ -4674,7 +4704,7 @@ impl<'a> Parser<'a> {
                 Ok(Toplevel::ExportNamed(ExportNamedDeclaration {
                     loc,
                     declaration,
-                    specifiers: self.alloc_vec(),
+                    specifiers: AstSlice::new_empty(),
                     source: None,
                     source_attributes: None,
                 }))
@@ -4855,7 +4885,7 @@ impl<'a> Parser<'a> {
 
         let mut properties = self.alloc_vec();
 
-        for property in expr.properties {
+        for property in expr.properties.into_vec(self.alloc).into_iter() {
             let property = if let PropertyKind::Spread(has_spread_comma) = property.kind {
                 // Convert spread property to rest property
 
@@ -4929,7 +4959,7 @@ impl<'a> Parser<'a> {
             properties.push(property);
         }
 
-        Some(Pattern::Object(ObjectPattern { loc: expr.loc, properties }))
+        Some(Pattern::Object(ObjectPattern { loc: expr.loc, properties: properties.build() }))
     }
 
     fn reparse_array_expression_as_pattern(
@@ -4942,7 +4972,7 @@ impl<'a> Parser<'a> {
 
         let mut elements = self.alloc_vec();
 
-        for element in expr.elements {
+        for element in expr.elements.into_vec(self.alloc).into_iter() {
             let element = match element {
                 ArrayElement::Expression(expr) => {
                     let pattern = self.reparse_expression_as_maybe_assignment_pattern(expr)?;
@@ -4968,7 +4998,7 @@ impl<'a> Parser<'a> {
             elements.push(element);
         }
 
-        Some(Pattern::Array(ArrayPattern { loc: expr.loc, elements }))
+        Some(Pattern::Array(ArrayPattern { loc: expr.loc, elements: elements.build() }))
     }
 
     // If the value is an assignment expression with an identifier lhs, it can be reparsed to an

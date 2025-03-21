@@ -404,7 +404,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // Body of switch statement is in its own scope
         self.enter_scope(stmt.scope);
 
-        for case in &mut stmt.cases {
+        for case in stmt.cases.iter_mut() {
             if case.test.is_none() {
                 if !seen_default {
                     seen_default = true;
@@ -626,7 +626,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
     fn visit_object_expression(&mut self, expr: &mut ObjectExpression<'a>) {
         // Do not allow duplicate __proto__ initializer properties
         let mut has_proto_init = false;
-        for property in &expr.properties {
+        for property in expr.properties.iter() {
             if let PropertyKind::Init = property.kind {
                 // Must be a simple proto initializer
                 if !property.is_computed && !property.is_method && property.value.is_some() {
@@ -875,7 +875,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         let field_init_scope = class.fields_initializer_scope;
         let static_init_scope = class.static_initializer_scope;
 
-        for element in &mut class.body {
+        for element in class.body.iter_mut() {
             match element {
                 ClassElement::Method(method) => {
                     if method.kind == ClassMethodKind::Constructor {
@@ -934,7 +934,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
     }
 
     fn visit_import_declaration(&mut self, import: &mut ImportDeclaration<'a>) {
-        for specifier in &import.specifiers {
+        for specifier in import.specifiers.iter() {
             match specifier {
                 ImportSpecifier::Default(ImportDefaultSpecifier { local, .. })
                 | ImportSpecifier::Named(ImportNamedSpecifier { local, .. })
@@ -953,7 +953,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // Check for duplicate keys
         let mut seen_keys: HashSet<&[u8]> = HashSet::new();
 
-        for attribute in &attributes.attributes {
+        for attribute in attributes.attributes.iter() {
             let name_slice = match attribute.key.as_ref() {
                 Expression::Id(id) => id.name.as_bytes(),
                 Expression::String(literal) => literal.value.as_bytes(),
@@ -986,7 +986,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
             self.add_export(id.loc, id.name.as_arena_str());
         });
 
-        for specifier in &mut export.specifiers {
+        for specifier in export.specifiers.iter_mut() {
             // Only need to resolve the specifier's local binding if it is not a re-export
             if export.source.is_none() {
                 // Local is guaranteed to be an identifier if this is not a re-export
@@ -1096,7 +1096,7 @@ impl<'a> Analyzer<'a> {
         // function parameters.
         self.in_parameters_stack.push(true);
 
-        for param in &mut func.params {
+        for param in func.params.iter_mut() {
             self.visit_function_param(param);
         }
 
@@ -1221,7 +1221,7 @@ impl<'a> Analyzer<'a> {
         let mut private_names = HashMap::new();
         let mut has_private_accessor_pair = false;
 
-        for element in &mut class.body {
+        for element in class.body.iter_mut() {
             let private_id = match element {
                 ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
                     let private_id = key.expr.to_id_mut();
@@ -1317,7 +1317,7 @@ impl<'a> Analyzer<'a> {
         // the AST so that it can be identified during bytecode generation.
         if has_private_accessor_pair {
             let mut marked_pairs = HashSet::new();
-            for element in &mut class.body {
+            for element in class.body.iter_mut() {
                 if let ClassElement::Method(ClassMethod {
                     is_private: true,
                     kind: ClassMethodKind::Get | ClassMethodKind::Set,
@@ -1457,7 +1457,7 @@ impl<'a> Analyzer<'a> {
         var_decl: &mut VariableDeclaration<'a>,
         is_for_each_init: bool,
     ) {
-        for declaration in &var_decl.declarations {
+        for declaration in var_decl.declarations.iter() {
             if var_decl.kind == VarKind::Const && declaration.init.is_none() && !is_for_each_init {
                 self.emit_error(declaration.loc, ParseError::ConstWithoutInitializer);
             }

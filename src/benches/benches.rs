@@ -101,6 +101,9 @@ fn analyze_step<'a>(
 fn generate_step(
     (cx, _pcx, analyzed_result): (Context, ParseContext, AnalyzedProgramResult),
 ) -> (Context, BytecodeScript) {
+    // Fix the lifetime
+    let analyzed_result = unsafe { std::mem::transmute(analyzed_result) };
+
     let bytecode_program = BytecodeProgramGenerator::generate_from_parse_script_result(
         cx,
         &analyzed_result,

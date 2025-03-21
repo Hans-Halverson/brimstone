@@ -214,6 +214,10 @@ impl Context {
             println!("{}", print_program(&parse_result));
         }
 
+        if self.options.parse_stats {
+            println!("{:#?}", pcx.stats());
+        }
+
         let analyzed_result = analyze(parse_result)?;
 
         // Generate bytecode for the program
@@ -236,6 +240,10 @@ impl Context {
 
         if self.options.print_ast {
             println!("{}", print_program(&parse_result));
+        }
+
+        if self.options.parse_stats {
+            println!("{:#?}", pcx.stats());
         }
 
         let analyzed_result = analyze(parse_result)?;

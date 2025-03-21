@@ -24,4 +24,24 @@ impl ParseContext {
     pub fn alloc(&self) -> &Bump {
         &self.alloc
     }
+
+    pub fn stats(&self) -> ParseStats {
+        ParseStats {
+            name: self.source.display_name().to_owned(),
+            source_size: self.source.contents.len(),
+            total_arena_size: self.alloc.allocated_bytes_including_metadata(),
+        }
+    }
+}
+
+#[allow(unused)]
+#[derive(Debug)]
+pub struct ParseStats {
+    /// Display name of the source file
+    name: String,
+    /// Size of the source file in bytes
+    source_size: usize,
+    /// Total size of the arena allocated for the AST in bytes. Includes arena metadata and space
+    /// allocated for the arena but not yet used.
+    total_arena_size: usize,
 }

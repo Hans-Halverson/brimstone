@@ -44,6 +44,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub no_color: bool,
 
+    /// Print statistics about the parse phase
+    #[arg(long, default_value_t = false)]
+    pub parse_stats: bool,
+
     #[arg(required = true)]
     pub files: Vec<String>,
 }
@@ -70,6 +74,9 @@ pub struct Options {
 
     /// Whether to use colors when printing to the terminal
     pub no_color: bool,
+
+    /// Print statistics about the parse phase
+    pub parse_stats: bool,
 }
 
 impl Options {
@@ -82,6 +89,7 @@ impl Options {
             .print_regexp_bytecode(args.print_regexp_bytecode)
             .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
             .no_color(args.no_color)
+            .parse_stats(args.parse_stats)
             .build()
     }
 
@@ -113,6 +121,7 @@ impl OptionsBuilder {
             dump_buffer: None,
             min_heap_size: DEFAULT_HEAP_SIZE,
             no_color: false,
+            parse_stats: false,
         })
     }
 
@@ -154,6 +163,11 @@ impl OptionsBuilder {
 
     pub fn no_color(mut self, no_color: bool) -> Self {
         self.0.no_color = no_color;
+        self
+    }
+
+    pub fn parse_stats(mut self, parse_stats: bool) -> Self {
+        self.0.parse_stats = parse_stats;
         self
     }
 }

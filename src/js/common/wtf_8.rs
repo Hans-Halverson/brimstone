@@ -1,4 +1,9 @@
-use std::{borrow::Borrow, fmt, hash, ops::Deref};
+use std::{
+    borrow::Borrow,
+    fmt,
+    hash::{self, Hash},
+    ops::Deref,
+};
 
 use allocator_api2::{
     alloc::{Allocator, Global},
@@ -352,5 +357,39 @@ impl fmt::Display for Wtf8Str {
 impl fmt::Debug for Wtf8Str {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.to_string())
+    }
+}
+
+pub enum Wtf8Cow<'a, A: Allocator + Clone = Global> {
+    Borrowed(&'a Wtf8Str),
+    Owned(Wtf8String<A>),
+}
+
+impl<'a, A: Allocator + Clone> Wtf8Cow<'a, A> {
+    pub fn as_str(&'a self) -> &'a Wtf8Str {
+        match self {
+            Wtf8Cow::Borrowed(borrowed) => borrowed,
+            Wtf8Cow::Owned(owned) => owned.as_str(),
+        }
+    }
+}
+
+impl<A1, A2> PartialEq<Wtf8Cow<'_, A1>> for Wtf8Cow<'_, A2>
+where
+    A1: Allocator + Clone,
+    A2: Allocator + Clone,
+{
+    #[inline]
+    fn eq(&self, other: &Wtf8Cow<'_, A1>) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl<A: Allocator + Clone> Eq for Wtf8Cow<'_, A> {}
+
+impl<A: Allocator + Clone> Hash for Wtf8Cow<'_, A> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
     }
 }

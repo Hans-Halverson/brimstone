@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     rc::Rc,
 };
 
@@ -7,7 +7,7 @@ use allocator_api2::alloc::Global;
 
 use crate::{
     js::{
-        common::wtf_8::{Wtf8Str, Wtf8String},
+        common::wtf_8::{Wtf8Cow, Wtf8Str},
         parser::{
             parse_error::InvalidDuplicateParametersReason,
             scope_tree::{VMLocation, ARGUMENTS_NAME},
@@ -52,7 +52,7 @@ pub struct Analyzer<'a> {
     /// The functions that the visitor is currently inside, if any
     function_stack: Vec<FunctionStackEntry>,
     /// The classes that the visitor is currently inside, if any
-    class_stack: Vec<ClassStackEntry>,
+    class_stack: Vec<ClassStackEntry<'a>>,
     /// Stack of scopes that the visitor is currently inside
     scope_stack: Vec<AstPtr<AstScopeNode<'a>>>,
     /// Whether the "arguments" identifier is currently disallowed due to being in a class initializer
@@ -100,9 +100,9 @@ enum AllowSuperStackEntry {
     Disallow,
 }
 
-struct ClassStackEntry {
+struct ClassStackEntry<'a> {
     // All private names bound in the body of this class
-    private_names: HashMap<Wtf8String, PrivateNameUsage>,
+    private_names: HashMap<Wtf8Cow<'a>, PrivateNameUsage>,
     // Whether this class extends a base class
     is_derived: bool,
 }
@@ -1216,7 +1216,7 @@ impl<'a> Analyzer<'a> {
     fn collect_class_private_names(
         &mut self,
         class: &mut Class<'a>,
-    ) -> HashMap<Wtf8String, PrivateNameUsage> {
+    ) -> HashMap<Wtf8Cow<'a>, PrivateNameUsage> {
         // Create new private name scope for stack and initialize with defined private names
         let mut private_names = HashMap::new();
         let mut has_private_accessor_pair = false;
@@ -1225,23 +1225,23 @@ impl<'a> Analyzer<'a> {
             let private_id = match element {
                 ClassElement::Property(ClassProperty { is_private: true, key, .. }) => {
                     let private_id = key.expr.to_id_mut();
+                    let private_names_key = Wtf8Cow::Borrowed(private_id.name);
 
-                    // If this name has been used at all so far it is a duplicate name
-                    if private_names.contains_key(private_id.name) {
-                        self.emit_error(
-                            private_id.loc,
-                            ParseError::new_duplicate_private_name(
-                                private_id.name.to_owned_in(Global),
-                            ),
-                        );
-                    } else {
+                    if let Entry::Vacant(entry) = private_names.entry(private_names_key) {
                         // Create a complete usage that does not allow any other uses of this name
                         let usage = PrivateNameUsage {
                             is_static: false,
                             has_getter: true,
                             has_setter: true,
                         };
-                        private_names.insert(private_id.name.to_owned_in(Global), usage);
+                        entry.insert(usage);
+                    } else {
+                        // If this name has been used at all so far it is a duplicate name
+                        let private_name = private_id.name.to_owned_in(Global);
+                        self.emit_error(
+                            private_id.loc,
+                            ParseError::new_duplicate_private_name(private_name),
+                        );
                     }
 
                     private_id
@@ -1255,10 +1255,11 @@ impl<'a> Analyzer<'a> {
                     ..
                 }) => {
                     let private_id = key.expr.to_id_mut();
+                    let private_id_key = Wtf8Cow::Borrowed(private_id.name);
 
                     // Check for duplicate name definitions. Only allow multiple definitions if
                     // there is exactly one getter and setter that have the same static property.
-                    match private_names.get_mut(private_id.name) {
+                    match private_names.get_mut(&private_id_key) {
                         // Mark usage for private name and its method type
                         None => {
                             let is_static = *is_static;
@@ -1270,7 +1271,7 @@ impl<'a> Analyzer<'a> {
                                 PrivateNameUsage { is_static, has_getter: true, has_setter: true }
                             };
 
-                            private_names.insert(private_id.name.to_owned_in(Global), usage);
+                            private_names.insert(private_id_key, usage);
                         }
                         // This private name has already been seen. Only avoid erroring if this use
                         // is a getter or setter which has not yet been seen.
@@ -1327,7 +1328,9 @@ impl<'a> Analyzer<'a> {
                 }) = element
                 {
                     let private_id = key.expr.to_id();
-                    let usage = private_names.get(private_id.name).unwrap();
+                    let private_id_key = Wtf8Cow::Borrowed(private_id.name);
+
+                    let usage = private_names.get(&private_id_key).unwrap();
                     if usage.has_getter && usage.has_setter {
                         if marked_pairs.insert(&private_id.name) {
                             *is_private_pair_start = true;
@@ -1594,7 +1597,10 @@ impl<'a> Analyzer<'a> {
             // Check if private name is defined in this class or a parent class in its scope
             let mut is_defined = false;
             for class_entry in self.class_stack.iter().rev() {
-                if class_entry.private_names.contains_key(id.name) {
+                if class_entry
+                    .private_names
+                    .contains_key(&Wtf8Cow::Borrowed(id.name))
+                {
                     is_defined = true;
                     break;
                 }
@@ -1647,8 +1653,8 @@ impl<'a> Analyzer<'a> {
 
     fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier<'a>) {
         // Private name has a "#" prefix
-        let private_name = Wtf8String::from_string(format!("#{}", &private_id.name));
-        self.resolve_use(&mut private_id.scope, &private_name, private_id.loc);
+        let private_name = &format!("#{}", &private_id.name);
+        self.resolve_use(&mut private_id.scope, Wtf8Str::from_str(private_name), private_id.loc);
     }
 
     fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode<'a>>)) {
@@ -1699,7 +1705,7 @@ pub fn analyze(
 pub fn analyze_for_eval<'a>(
     pcx: &'a ParseContext,
     parse_result: ParseProgramResult<'a>,
-    private_names: Option<HashMap<Wtf8String, PrivateNameUsage>>,
+    private_names: Option<HashMap<Wtf8Cow<'a>, PrivateNameUsage>>,
     in_function: bool,
     in_method: bool,
     in_static: bool,

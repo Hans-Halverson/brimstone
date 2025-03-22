@@ -1,10 +1,11 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::js::{
-    common::wtf_8::Wtf8String,
+    common::wtf_8::{Wtf8Cow, Wtf8String},
     parser::{
         analyze::{analyze_for_eval, PrivateNameUsage},
-        ast, parse_script_for_eval,
+        ast::{self},
+        parse_script_for_eval,
         scope_tree::BindingKind,
         source::Source,
         ParseContext,
@@ -114,7 +115,7 @@ pub fn perform_eval(
 /// Gather private names from parent class scopes.
 fn get_private_names_from_scopes(
     scope: Option<HeapPtr<Scope>>,
-) -> Option<HashMap<Wtf8String, PrivateNameUsage>> {
+) -> Option<HashMap<Wtf8Cow<'static>, PrivateNameUsage>> {
     let mut private_names = None;
     let mut scope_opt = scope;
 
@@ -134,7 +135,7 @@ fn get_private_names_from_scopes(
                     private_names
                         .as_mut()
                         .unwrap()
-                        .insert(private_name, PrivateNameUsage::used());
+                        .insert(Wtf8Cow::Owned(private_name), PrivateNameUsage::used());
                 }
             }
         }

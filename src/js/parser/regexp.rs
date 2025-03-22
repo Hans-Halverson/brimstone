@@ -2,7 +2,7 @@ use bitflags::bitflags;
 
 use crate::js::common::unicode_property::UnicodeProperty;
 
-use super::ast::{AstSlice, AstString, P};
+use super::ast::{AstSlice, AstStr, AstString, P};
 
 pub struct RegExp<'a> {
     pub disjunction: Disjunction<'a>,
@@ -97,7 +97,7 @@ pub struct Alternative<'a> {
 
 pub enum Term<'a> {
     /// A literal string of characters with escape codes decoded into code points. Must be nonempty.
-    Literal(AstString<'a>),
+    Literal(AstStr<'a>),
     /// The wildcard which matches any single character: `.`
     Wildcard,
     /// A repition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.

@@ -137,7 +137,7 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn push_wtf8_str<A2: Allocator + Clone>(&mut self, string: &Wtf8String<A2>) {
+    pub fn push_wtf8_str(&mut self, string: &Wtf8Str) {
         self.push_bytes_unchecked(string.as_bytes())
     }
 

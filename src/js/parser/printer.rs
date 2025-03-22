@@ -1252,9 +1252,9 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_regexp_literal_pattern(&mut self, literal: &AstString) {
+    fn print_regexp_literal_pattern(&mut self, literal: &AstStr) {
         self.start_regexp_node("Literal");
-        self.property("value", literal, Printer::print_wtf8_string);
+        self.property("value", literal, Printer::print_wtf8_str);
         self.end_node();
     }
 

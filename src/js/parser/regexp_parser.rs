@@ -18,7 +18,6 @@ use crate::{
         unicode_property::{
             BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
         },
-        wtf_8::Wtf8String,
     },
     p,
 };
@@ -355,6 +354,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
     fn parse_alternative(&mut self) -> ParseResult<Alternative<'a>> {
         let mut terms = self.alloc_vec();
+        let mut current_literal = AstString::new_in(self.alloc);
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
@@ -384,13 +384,24 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             let term = self.parse_term()?;
 
-            match (&term, terms.last_mut()) {
-                // Coalesce adjacent string literals
-                (Term::Literal(new_string), Some(Term::Literal(prev_string))) => {
-                    prev_string.push_wtf8_str(new_string);
-                }
-                _ => terms.push(term),
+            if let Term::Literal(next_string) = &term {
+                // Accumulate adjacent literals into a single literal term
+                current_literal.push_wtf8_str(next_string);
+            } else if !current_literal.is_empty() {
+                // Write the accumulated literal term once a non-literal term is encountered
+                terms.push(Term::Literal(current_literal.into_arena_str()));
+                terms.push(term);
+
+                // Start a new literal accumulator
+                current_literal = AstString::new_in(self.alloc);
+            } else {
+                terms.push(term);
             }
+        }
+
+        // Write the final accumulated literal term, if one exists
+        if !current_literal.is_empty() {
+            terms.push(Term::Literal(current_literal.into_arena_str()));
         }
 
         Ok(Alternative { terms: terms.build() })
@@ -540,14 +551,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     // Otherwise must be a regular regexp escape sequence
                     _ => {
                         let code_point = self.parse_regexp_escape_sequence()?;
-                        Term::Literal(Wtf8String::from_code_point_in(code_point, self.alloc))
+                        Term::Literal(
+                            AstString::from_code_point_in(code_point, self.alloc).into_arena_str(),
+                        )
                     }
                 })
             }
             // Otherwise this must be a literal term
             _ => {
                 let code_point = self.parse_unicode_codepoint()?;
-                Term::Literal(Wtf8String::from_code_point_in(code_point, self.alloc))
+                Term::Literal(
+                    AstString::from_code_point_in(code_point, self.alloc).into_arena_str(),
+                )
             }
         });
 

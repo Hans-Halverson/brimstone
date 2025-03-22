@@ -1120,9 +1120,9 @@ impl<'a> BigIntLiteral<'a> {
 
 pub struct RegExpLiteral<'a> {
     pub loc: Loc,
-    pub raw: P<'a, AstString<'a>>,
-    pub pattern: P<'a, AstString<'a>>,
-    pub flags: P<'a, AstString<'a>>,
+    pub raw: AstStr<'a>,
+    pub pattern: AstStr<'a>,
+    pub flags: AstStr<'a>,
     pub regexp: P<'a, RegExp<'a>>,
 }
 

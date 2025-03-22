@@ -14,9 +14,9 @@ pub enum Token<'a> {
     StringLiteral(AstStr<'a>),
     BigIntLiteral(BigInt),
     RegExpLiteral {
-        raw: AstString<'a>,
-        pattern: AstString<'a>,
-        flags: AstString<'a>,
+        raw: AstStr<'a>,
+        pattern: AstStr<'a>,
+        flags: AstStr<'a>,
     },
     TemplatePart {
         raw: AstString<'a>,

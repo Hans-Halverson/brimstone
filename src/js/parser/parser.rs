@@ -3093,9 +3093,9 @@ impl<'a> Parser<'a> {
         self.advance_regexp_literal()?;
 
         if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
-            let raw = p!(self, raw.clone());
-            let pattern = p!(self, pattern.clone());
-            let flags_string = p!(self, flags.clone());
+            let raw = *raw;
+            let pattern = *pattern;
+            let flags_string = *flags;
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);

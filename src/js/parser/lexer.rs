@@ -1149,13 +1149,9 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let pattern = AstString::from_bytes_unchecked_in(
-            &self.buf[pattern_start_pos..pattern_end_pos],
-            self.alloc,
-        );
-        let flags =
-            AstString::from_bytes_unchecked_in(&self.buf[flags_start_pos..self.pos], self.alloc);
-        let raw = AstString::from_bytes_unchecked_in(&self.buf[start_pos..self.pos], self.alloc);
+        let pattern = Wtf8Str::from_bytes_unchecked(&self.buf[pattern_start_pos..pattern_end_pos]);
+        let flags = Wtf8Str::from_bytes_unchecked(&self.buf[flags_start_pos..self.pos]);
+        let raw = Wtf8Str::from_bytes_unchecked(&self.buf[start_pos..self.pos]);
 
         self.emit(Token::RegExpLiteral { raw, pattern, flags }, start_pos)
     }

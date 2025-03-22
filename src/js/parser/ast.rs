@@ -175,6 +175,11 @@ impl<'a> AstString<'a> {
     pub fn as_arena_str(&self) -> AstStr<'a> {
         unsafe { std::mem::transmute(<AstString<'a> as std::ops::Deref>::deref(self)) }
     }
+
+    pub fn into_arena_str(self) -> AstStr<'a> {
+        // Prevent destructor so that we can keep reference to memory in the arena
+        std::mem::ManuallyDrop::new(self).as_arena_str()
+    }
 }
 
 /// False positive from clippy
@@ -301,7 +306,7 @@ pub enum Toplevel<'a> {
 
 pub struct Identifier<'a> {
     pub loc: Loc,
-    pub name: AstString<'a>,
+    pub name: AstStr<'a>,
 
     /// Reference to the scope that contains the binding for this identifier, or tagged as
     /// unresolved if the scope could not be statically determined.
@@ -311,12 +316,12 @@ pub struct Identifier<'a> {
 }
 
 impl<'a> Identifier<'a> {
-    pub fn new(loc: Loc, name: AstString<'a>) -> Identifier<'a> {
+    pub fn new(loc: Loc, name: AstStr<'a>) -> Identifier<'a> {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
     pub fn get_binding(&self) -> &Binding<'a> {
-        self.scope.unwrap_resolved().get_binding(&self.name)
+        self.scope.unwrap_resolved().get_binding(self.name)
     }
 }
 
@@ -954,12 +959,12 @@ pub type LabelId = u16;
 
 pub struct Label<'a> {
     pub loc: Loc,
-    pub name: AstString<'a>,
+    pub name: AstStr<'a>,
     pub id: LabelId,
 }
 
 impl<'a> Label<'a> {
-    pub fn new(loc: Loc, name: AstString<'a>) -> Label<'a> {
+    pub fn new(loc: Loc, name: AstStr<'a>) -> Label<'a> {
         Label { loc, name, id: 0 }
     }
 }
@@ -1088,7 +1093,7 @@ pub struct NumberLiteral {
 
 pub struct StringLiteral<'a> {
     pub loc: Loc,
-    pub value: AstString<'a>,
+    pub value: AstStr<'a>,
 }
 
 pub struct BigIntLiteral<'a> {
@@ -1115,9 +1120,9 @@ impl<'a> BigIntLiteral<'a> {
 
 pub struct RegExpLiteral<'a> {
     pub loc: Loc,
-    pub raw: P<'a, AstString<'a>>,
-    pub pattern: P<'a, AstString<'a>>,
-    pub flags: P<'a, AstString<'a>>,
+    pub raw: AstStr<'a>,
+    pub pattern: AstStr<'a>,
+    pub flags: AstStr<'a>,
     pub regexp: P<'a, RegExp<'a>>,
 }
 
@@ -1500,9 +1505,9 @@ pub struct TemplateLiteral<'a> {
 
 pub struct TemplateElement<'a> {
     pub loc: Loc,
-    pub raw: AstString<'a>,
+    pub raw: AstStr<'a>,
     /// Guaranteed to exist for template literals. Tagged templates allow this to be None.
-    pub cooked: Option<AstString<'a>>,
+    pub cooked: Option<AstStr<'a>>,
 }
 
 pub struct TaggedTemplateExpression<'a> {

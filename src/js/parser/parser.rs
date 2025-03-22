@@ -6,6 +6,7 @@ use bitflags::bitflags;
 
 use crate::js::common::options::Options;
 use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
+use crate::js::common::wtf_8::Wtf8Str;
 use crate::p;
 
 use super::ast::*;
@@ -83,6 +84,9 @@ bitflags! {
         const LABELED = 1 << 3;
     }
 }
+
+const ASYNC_ID: &Wtf8Str = Wtf8Str::from_str("async");
+const STATIC_ID: &Wtf8Str = Wtf8Str::from_str("static");
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -278,10 +282,6 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
-    fn alloc_str(&self, string: &str) -> AstString<'a> {
-        AstString::from_str_in(string, self.alloc)
-    }
-
     fn alloc_string(&self, string: String) -> AstString<'a> {
         AstString::from_string_in(string, self.alloc)
     }
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
     }
 
     fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
-        match self.scope_builder.add_binding(id.name.as_arena_str(), kind) {
+        match self.scope_builder.add_binding(id.name, kind) {
             Ok(scope) => {
                 id.scope = TaggedResolvedScope::resolved(scope);
                 Ok(())
@@ -435,7 +435,8 @@ impl<'a> Parser<'a> {
 
         while let Token::StringLiteral(str) = &self.token {
             // Use strict directive cannot have any escape characters in it, so check length
-            let is_unscaped_use_strict = str == "use strict" && self.loc.end - self.loc.start == 12;
+            let is_unscaped_use_strict =
+                *str == "use strict" && self.loc.end - self.loc.start == 12;
 
             self.advance()?;
 
@@ -742,7 +743,7 @@ impl<'a> Parser<'a> {
     }
 
     fn set_id_binding_init_pos(id: &Identifier, pos: Pos) {
-        let binding = id.scope.unwrap_resolved().get_binding(&id.name);
+        let binding = id.scope.unwrap_resolved().get_binding(id.name);
         match binding.kind() {
             BindingKind::Const { init_pos }
             | BindingKind::Let { init_pos }
@@ -980,10 +981,10 @@ impl<'a> Parser<'a> {
 
             param.iter_patterns(&mut |patt| match patt {
                 Pattern::Id(id) => {
-                    if parameter_names.contains(id.name.as_str()) {
+                    if parameter_names.contains(id.name) {
                         has_duplicate_parameters = true;
                     } else {
-                        parameter_names.insert(id.name.as_arena_str());
+                        parameter_names.insert(id.name);
                     }
                 }
                 Pattern::Array(_) => {
@@ -1742,7 +1743,7 @@ impl<'a> Parser<'a> {
 
                 self.advance()?;
 
-                let mut async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let mut async_id = Identifier::new(async_loc, ASYNC_ID);
                 self.add_binding(&mut async_id, BindingKind::new_function_parameter(0))?;
                 Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
@@ -2342,7 +2343,7 @@ impl<'a> Parser<'a> {
 
                 // A potential sloppy direct eval needs to marked in the scope tree before analysis
                 match expr.as_ref() {
-                    Expression::Id(Identifier { name, .. }) if name == "eval" => {
+                    Expression::Id(Identifier { name, .. }) if *name == "eval" => {
                         if !self.in_strict_mode {
                             self.scope_builder.mark_sloppy_direct_eval();
                         }
@@ -2392,19 +2393,11 @@ impl<'a> Parser<'a> {
 
                 // Malformed escape sequence errors are swalled in tagged template, and cooked
                 // string is marked as None.
-                let cooked = match cooked {
-                    Ok(cooked) => Some(cooked.clone()),
-                    Err(_) => None,
-                };
+                let cooked = cooked.ok();
 
                 let quasi = p!(
                     self,
-                    self.parse_template_literal(
-                        raw.clone(),
-                        cooked,
-                        *is_tail,
-                        /* is_tagged */ true,
-                    )?
+                    self.parse_template_literal(raw, cooked, *is_tail, /* is_tagged */ true,)?
                 );
                 let loc = self.mark_loc(start_pos);
 
@@ -2830,16 +2823,12 @@ impl<'a> Parser<'a> {
             Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
-                    Ok(cooked) => Some(cooked.clone()),
+                    Ok(cooked) => Some(*cooked),
                     Err(loc) => return self.error(*loc, ParseError::MalformedEscapeSeqence),
                 };
 
-                let template_literal = self.parse_template_literal(
-                    raw.clone(),
-                    cooked,
-                    *is_tail,
-                    /* is_tagged */ false,
-                )?;
+                let template_literal =
+                    self.parse_template_literal(raw, cooked, *is_tail, /* is_tagged */ false)?;
                 Ok(p!(self, Expression::Template(template_literal)))
             }
             _ => {
@@ -2855,7 +2844,7 @@ impl<'a> Parser<'a> {
                     // `async [newline] id` is an `async` identifier with ASI followed by another
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
-                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                        let async_id = Identifier::new(async_loc, ASYNC_ID);
                         return Ok(p!(self, Expression::Id(async_id)));
                     }
 
@@ -2873,7 +2862,7 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
-                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                        let async_id = Identifier::new(async_loc, ASYNC_ID);
                         return Ok(p!(self, Expression::Id(async_id)));
                     }
                 }
@@ -2886,7 +2875,7 @@ impl<'a> Parser<'a> {
     fn parse_string_literal(&mut self) -> ParseResult<StringLiteral<'a>> {
         if let Token::StringLiteral(value) = &self.token {
             let loc = self.loc;
-            let value = value.clone();
+            let value = *value;
             self.advance()?;
 
             Ok(StringLiteral { loc, value })
@@ -2934,15 +2923,15 @@ impl<'a> Parser<'a> {
         if Self::is_identifier(&self.token, self.in_strict_mode, self.allow_await, self.allow_yield)
         {
             if let Token::Identifier(name) = &self.token {
+                let name = *name;
                 let loc = self.loc;
-                let name = name.clone();
                 self.advance()?;
                 Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
                 let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
-                Ok(Identifier::new(loc, name))
+                Ok(Identifier::new(loc, name.into_arena_str()))
             }
         } else {
             self.error_unexpected_token(self.loc, &self.token)
@@ -2987,7 +2976,7 @@ impl<'a> Parser<'a> {
         match &self.token {
             Token::Identifier(name) => {
                 let loc = self.loc;
-                let name = name.clone();
+                let name = *name;
                 self.advance()?;
                 Ok(Some(Identifier::new(loc, name)))
             }
@@ -3043,13 +3032,13 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
-                Ok(Some(Identifier::new(loc, name)))
+                Ok(Some(Identifier::new(loc, name.into_arena_str())))
             }
             _ => Ok(None),
         }
     }
 
-    fn is_reserved_word_in_current_context(&self, str: &AstString) -> bool {
+    fn is_reserved_word_in_current_context(&self, str: AstStr) -> bool {
         Self::is_reserved_word(
             str.as_bytes(),
             self.in_strict_mode,
@@ -3092,9 +3081,9 @@ impl<'a> Parser<'a> {
         self.advance_regexp_literal()?;
 
         if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
-            let raw = p!(self, raw.clone());
-            let pattern = p!(self, pattern.clone());
-            let flags_string = p!(self, flags.clone());
+            let raw = *raw;
+            let pattern = *pattern;
+            let flags_string = *flags;
 
             self.advance()?;
             let loc = self.mark_loc(start_pos);
@@ -3186,14 +3175,14 @@ impl<'a> Parser<'a> {
 
     fn parse_template_literal(
         &mut self,
-        raw: AstString<'a>,
-        cooked: Option<AstString<'a>>,
+        raw: AstStr<'a>,
+        cooked: Option<AstStr<'a>>,
         is_single_quasi: bool,
         is_tagged: bool,
     ) -> ParseResult<TemplateLiteral<'a>> {
         let start_pos = self.current_start_pos();
 
-        let head_quasi = TemplateElement { loc: self.loc, raw: raw.clone(), cooked };
+        let head_quasi = TemplateElement { loc: self.loc, raw, cooked };
 
         self.advance()?;
 
@@ -3214,7 +3203,7 @@ impl<'a> Parser<'a> {
                     // In non-tagged templates malformed escape sequences throw an error, otherwise
                     // malformed sequences are swallowed and cooked string is marked as None.
                     let cooked = match cooked {
-                        Ok(cooked) => Some(cooked.clone()),
+                        Ok(cooked) => Some(*cooked),
                         Err(loc) => {
                             if is_tagged {
                                 None
@@ -3224,11 +3213,7 @@ impl<'a> Parser<'a> {
                         }
                     };
 
-                    quasis.push(TemplateElement {
-                        loc: self.loc,
-                        raw: raw.clone(),
-                        cooked: cooked.clone(),
-                    });
+                    quasis.push(TemplateElement { loc: self.loc, raw, cooked });
 
                     let is_tail = *is_tail;
                     self.advance()?;
@@ -3383,7 +3368,7 @@ impl<'a> Parser<'a> {
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
                     let token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, token_name);
+                    let id = Identifier::new(id_loc, token_name.into_arena_str());
                     let name = p!(self, Expression::Id(id));
 
                     return self.parse_method_property(
@@ -3403,7 +3388,7 @@ impl<'a> Parser<'a> {
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
                     let id_token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, id_token_name);
+                    let id = Identifier::new(id_loc, id_token_name.into_arena_str());
                     let name = p!(self, Expression::Id(id));
 
                     return self.parse_init_property(
@@ -3442,7 +3427,7 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let async_id = Identifier::new(async_loc, ASYNC_ID);
                 let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_method_property(
@@ -3462,7 +3447,7 @@ impl<'a> Parser<'a> {
                 || self.is_pattern_initializer_in_object(prop_context)
                 || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
-                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let async_id = Identifier::new(async_loc, ASYNC_ID);
                 let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_init_property(
@@ -3653,7 +3638,7 @@ impl<'a> Parser<'a> {
         let value = if is_shorthand {
             if prop_context != PropertyContext::Class {
                 let key_id = key.to_id();
-                if self.is_reserved_word_in_current_context(&key_id.name) {
+                if self.is_reserved_word_in_current_context(key_id.name) {
                     return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
                 }
             }
@@ -3852,7 +3837,7 @@ impl<'a> Parser<'a> {
         if let Some(id) = id.as_ref() {
             self.scope_builder
                 .add_binding(
-                    id.name.as_arena_str(),
+                    id.name,
                     BindingKind::Class {
                         in_body_scope: true,
                         init_pos: Cell::new(binding_init_pos),
@@ -3992,7 +3977,7 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
+                let static_id = Identifier::new(static_loc, STATIC_ID);
                 let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
@@ -4019,7 +4004,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
+                let static_id = Identifier::new(static_loc, STATIC_ID);
                 let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
@@ -4314,7 +4299,7 @@ impl<'a> Parser<'a> {
         // Shorthand property
         if property_name.is_shorthand {
             let value = if let Expression::Id(mut id) = property_name.key.into_inner() {
-                if self.is_reserved_word_in_current_context(&id.name) {
+                if self.is_reserved_word_in_current_context(id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
 
@@ -4541,7 +4526,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported = self.create_export_name_string(self.loc, value.clone())?;
+                let imported = self.create_export_name_string(self.loc, value)?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4563,7 +4548,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
-                    if self.is_reserved_word_in_current_context(&id.name) {
+                    if self.is_reserved_word_in_current_context(id.name) {
                         return self.error_unexpected_token(id.loc, &start_token);
                     }
 
@@ -4638,7 +4623,7 @@ impl<'a> Parser<'a> {
                     for specifier in specifiers.iter() {
                         match specifier.local.as_ref() {
                             ExportName::Id(id) => {
-                                if self.is_reserved_word_in_current_context(&id.name) {
+                                if self.is_reserved_word_in_current_context(id.name) {
                                     return self
                                         .error(id.loc, ParseError::IdentifierIsReservedWord);
                                 }
@@ -4755,7 +4740,7 @@ impl<'a> Parser<'a> {
 
     fn parse_export_name(&mut self) -> ParseResult<ExportName<'a>> {
         if let Token::StringLiteral(value) = &self.token {
-            let export_name = self.create_export_name_string(self.loc, value.clone())?;
+            let export_name = self.create_export_name_string(self.loc, value)?;
             self.advance()?;
 
             Ok(export_name)
@@ -4769,7 +4754,7 @@ impl<'a> Parser<'a> {
     fn create_export_name_string(
         &mut self,
         loc: Loc,
-        value: AstString<'a>,
+        value: AstStr<'a>,
     ) -> ParseResult<ExportName<'a>> {
         if !value.is_well_formed() {
             return self.error(loc, ParseError::ExportNameNotWellFormed);

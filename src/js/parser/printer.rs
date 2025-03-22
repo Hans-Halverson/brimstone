@@ -41,10 +41,14 @@ impl<'a> Printer<'a> {
         self.buf.push_str(str);
     }
 
-    fn print_wtf8_string(&mut self, string: &AstString) {
+    fn print_wtf8_str(&mut self, string: &AstStr) {
         self.buf.push('\"');
         self.buf.push_str(&string.to_string());
         self.buf.push('\"');
+    }
+
+    fn print_wtf8_string(&mut self, string: &AstString) {
+        self.print_wtf8_str(&string.as_str())
     }
 
     fn print_str(&mut self, string: &str) {
@@ -561,7 +565,7 @@ impl<'a> Printer<'a> {
 
     fn print_string_literal(&mut self, lit: &StringLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("value", &lit.value, Printer::print_wtf8_string);
+        self.property("value", &lit.value, Printer::print_wtf8_str);
         self.end_node();
     }
 
@@ -574,7 +578,7 @@ impl<'a> Printer<'a> {
 
     fn print_regexp_literal(&mut self, lit: &RegExpLiteral) {
         self.start_node("Literal", &lit.loc);
-        self.property("raw", lit.raw.as_ref(), Printer::print_wtf8_string);
+        self.property("raw", &lit.raw, Printer::print_wtf8_str);
         self.property("value", lit, Printer::print_regex_value);
         self.property("regexp", lit.regexp.as_ref(), Printer::print_regexp);
         self.end_node();
@@ -584,8 +588,8 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("pattern", lit.pattern.as_ref(), Printer::print_wtf8_string);
-        self.property("flags", lit.flags.as_ref(), Printer::print_wtf8_string);
+        self.property("pattern", &lit.pattern, Printer::print_wtf8_str);
+        self.property("flags", &lit.flags, Printer::print_wtf8_str);
 
         self.dec_indent();
         self.indent();
@@ -742,7 +746,7 @@ impl<'a> Printer<'a> {
         let id = expr.to_id();
 
         self.start_node("PrivateIdentifier", &id.loc);
-        self.property("name", &id.name, Printer::print_wtf8_string);
+        self.property("name", &id.name, Printer::print_wtf8_str);
         self.end_node();
     }
 
@@ -902,8 +906,8 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_string);
-        self.property("raw", &element.raw, Printer::print_wtf8_string);
+        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_str);
+        self.property("raw", &element.raw, Printer::print_wtf8_str);
 
         self.dec_indent();
         self.indent();
@@ -956,9 +960,9 @@ impl<'a> Printer<'a> {
         self.print_identifier_parts(&id.loc, &id.name);
     }
 
-    fn print_identifier_parts(&mut self, loc: &Loc, name: &AstString) {
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &AstStr) {
         self.start_node("Identifier", loc);
-        self.property("name", name, Printer::print_wtf8_string);
+        self.property("name", name, Printer::print_wtf8_str);
         self.end_node();
     }
 
@@ -1187,6 +1191,13 @@ impl<'a> Printer<'a> {
         match lit {
             None => self.print_null(),
             Some(lit) => self.print_string_literal(lit),
+        }
+    }
+
+    fn print_optional_wtf8_str(&mut self, string: Option<&AstStr>) {
+        match string {
+            None => self.print_null(),
+            Some(string) => self.print_wtf8_str(string),
         }
     }
 

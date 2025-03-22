@@ -785,7 +785,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // If a potential direct eval is ever seen, conservatively force all visible bindings to
         // have VM scope locations instead of local registers so they can be dynamically looked up.
         match expr.callee.as_ref() {
-            Expression::Id(Identifier { name, .. }) if name == "eval" && !expr.is_optional => {
+            Expression::Id(Identifier { name, .. }) if *name == "eval" && !expr.is_optional => {
                 let current_scope_id = self.current_scope_id();
                 self.scope_tree
                     .support_dynamic_access_in_visible_bindings(current_scope_id);
@@ -983,7 +983,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // Mark local bindings as exported
         export.iter_declaration_ids(&mut |id| {
             id.get_binding().set_is_exported(true);
-            self.add_export(id.loc, id.name.as_arena_str());
+            self.add_export(id.loc, id.name);
         });
 
         for specifier in export.specifiers.iter_mut() {
@@ -1123,7 +1123,7 @@ impl<'a> Analyzer<'a> {
             // directly by index. This may be overriden later if captured.
             if let Some(id) = toplevel_id {
                 let scope = id.scope.unwrap_resolved_mut();
-                let binding = scope.get_binding_mut(id.name.as_arena_str());
+                let binding = scope.get_binding_mut(id.name);
 
                 // Allow later arguments to overwrite earlier ones but do not overwrite a WithVar.
                 if !binding.needs_tdz_check()
@@ -1227,11 +1227,11 @@ impl<'a> Analyzer<'a> {
                     let private_id = key.expr.to_id_mut();
 
                     // If this name has been used at all so far it is a duplicate name
-                    if private_names.contains_key(private_id.name.as_str()) {
+                    if private_names.contains_key(private_id.name) {
                         self.emit_error(
                             private_id.loc,
                             ParseError::new_duplicate_private_name(
-                                private_id.name.clone_in(Global),
+                                private_id.name.to_owned_in(Global),
                             ),
                         );
                     } else {
@@ -1241,7 +1241,7 @@ impl<'a> Analyzer<'a> {
                             has_getter: true,
                             has_setter: true,
                         };
-                        private_names.insert(private_id.name.clone_in(Global), usage);
+                        private_names.insert(private_id.name.to_owned_in(Global), usage);
                     }
 
                     private_id
@@ -1258,7 +1258,7 @@ impl<'a> Analyzer<'a> {
 
                     // Check for duplicate name definitions. Only allow multiple definitions if
                     // there is exactly one getter and setter that have the same static property.
-                    match private_names.get_mut(private_id.name.as_str()) {
+                    match private_names.get_mut(private_id.name) {
                         // Mark usage for private name and its method type
                         None => {
                             let is_static = *is_static;
@@ -1270,7 +1270,7 @@ impl<'a> Analyzer<'a> {
                                 PrivateNameUsage { is_static, has_getter: true, has_setter: true }
                             };
 
-                            private_names.insert(private_id.name.clone_in(Global), usage);
+                            private_names.insert(private_id.name.to_owned_in(Global), usage);
                         }
                         // This private name has already been seen. Only avoid erroring if this use
                         // is a getter or setter which has not yet been seen.
@@ -1292,7 +1292,7 @@ impl<'a> Analyzer<'a> {
                             }
 
                             if is_duplicate {
-                                let private_name = private_id.name.clone_in(Global);
+                                let private_name = private_id.name.to_owned_in(Global);
                                 self.emit_error(
                                     private_id.loc,
                                     ParseError::new_duplicate_private_name(private_name),
@@ -1327,7 +1327,7 @@ impl<'a> Analyzer<'a> {
                 }) = element
                 {
                     let private_id = key.expr.to_id();
-                    let usage = private_names.get(private_id.name.as_str()).unwrap();
+                    let usage = private_names.get(private_id.name).unwrap();
                     if usage.has_getter && usage.has_setter {
                         if marked_pairs.insert(&private_id.name) {
                             *is_private_pair_start = true;
@@ -1490,14 +1490,12 @@ impl<'a> Analyzer<'a> {
         let mut labels = vec![];
         // Keep track of duplicate labels so that we don't pop the duplicate labels at the end
         let is_label_duplicate = self.visit_label_def(stmt, label_id);
-        let label_name = stmt.label.name.as_arena_str();
-        labels.push((label_name, is_label_duplicate));
+        labels.push((stmt.label.name, is_label_duplicate));
 
         let mut inner_stmt = stmt.body.as_mut();
         while let Statement::Labeled(stmt) = inner_stmt {
             let is_label_duplicate = self.visit_label_def(stmt, label_id);
-            let label_name = stmt.label.name.as_arena_str();
-            labels.push((label_name, is_label_duplicate));
+            labels.push((stmt.label.name, is_label_duplicate));
 
             inner_stmt = stmt.body.as_mut()
         }
@@ -1533,7 +1531,7 @@ impl<'a> Analyzer<'a> {
     }
 
     fn visit_label_def(&mut self, stmt: &mut LabeledStatement<'a>, label_id: LabelId) -> bool {
-        let label_name = &stmt.label.name.as_arena_str();
+        let label_name = stmt.label.name;
         let is_duplicate = self.labels.contains_key(label_name);
 
         if is_duplicate {
@@ -1575,7 +1573,7 @@ impl<'a> Analyzer<'a> {
 
     fn visit_label_use(&mut self, label: Option<&mut Label<'a>>, is_continue: bool) {
         if let Some(label) = label {
-            match self.labels.get(label.name.as_arena_str()) {
+            match self.labels.get(label.name) {
                 None => self.emit_error(label.loc, ParseError::LabelNotFound),
                 Some(label_info) if is_continue && !label_info.is_continue_target => {
                     self.emit_error(label.loc, ParseError::LabelNotFound)
@@ -1596,7 +1594,7 @@ impl<'a> Analyzer<'a> {
             // Check if private name is defined in this class or a parent class in its scope
             let mut is_defined = false;
             for class_entry in self.class_stack.iter().rev() {
-                if class_entry.private_names.contains_key(id.name.as_str()) {
+                if class_entry.private_names.contains_key(id.name) {
                     is_defined = true;
                     break;
                 }
@@ -1605,7 +1603,7 @@ impl<'a> Analyzer<'a> {
             self.resolve_private_identifier_use(id);
 
             if !is_defined {
-                let private_name = id.name.clone_in(Global);
+                let private_name = id.name.to_owned_in(Global);
                 self.emit_error(id.loc, ParseError::new_private_name_not_defined(private_name));
             }
         }
@@ -1624,10 +1622,10 @@ impl<'a> Analyzer<'a> {
     fn add_exported_name(&mut self, export_name: &ExportName<'a>) {
         match export_name {
             ExportName::Id(id) => {
-                self.add_export(id.loc, id.name.as_arena_str());
+                self.add_export(id.loc, id.name);
             }
             ExportName::String(string) => {
-                self.add_export(string.loc, string.value.as_arena_str());
+                self.add_export(string.loc, string.value);
             }
         }
     }
@@ -1644,7 +1642,7 @@ impl<'a> Analyzer<'a> {
     }
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier<'a>) {
-        self.resolve_use(&mut id.scope, &id.name, id.loc);
+        self.resolve_use(&mut id.scope, id.name, id.loc);
     }
 
     fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier<'a>) {

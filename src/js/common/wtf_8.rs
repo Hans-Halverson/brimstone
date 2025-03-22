@@ -95,12 +95,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn clone_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
-        #[allow(unstable_name_collisions)]
-        Wtf8String { buf: self.buf.to_vec_in(alloc) }
-    }
-
-    #[inline]
     pub fn len(&self) -> usize {
         self.buf.len()
     }
@@ -150,37 +144,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     #[inline]
     pub fn truncate(&mut self, new_length: usize) {
         self.buf.truncate(new_length);
-    }
-
-    /// Returns true if the string does not have any unpaired surrogates.
-    ///
-    /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)
-    pub fn is_well_formed(&self) -> bool {
-        let mut iter = self.iter_code_points();
-
-        let mut is_well_formed = true;
-
-        while let Some(code_point) = iter.next() {
-            if is_surrogate_code_point(code_point) {
-                // Only way to be well formed at this point is to be a high surrogate followed by
-                // a low surrogate.
-                if is_high_surrogate_code_point(code_point) {
-                    if let Some(next_code_point) = iter.next() {
-                        if is_low_surrogate_code_point(next_code_point) {
-                            // A surrogate pair is well formed so proceed to next code point
-                            continue;
-                        }
-                    }
-                }
-
-                is_well_formed = false;
-                break;
-            }
-
-            // Not a surrogate, proceed to next code point
-        }
-
-        is_well_formed
     }
 
     #[inline]
@@ -306,13 +269,13 @@ pub struct Wtf8Str {
 
 impl Wtf8Str {
     #[inline]
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
+    pub const fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
         unsafe { std::mem::transmute::<&[u8], &Wtf8Str>(bytes) }
     }
 
     #[allow(clippy::should_implement_trait)]
     #[inline]
-    pub fn from_str(str: &str) -> &Wtf8Str {
+    pub const fn from_str(str: &str) -> &Wtf8Str {
         Self::from_bytes_unchecked(str.as_bytes())
     }
 
@@ -330,6 +293,46 @@ impl Wtf8Str {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.buf
+    }
+
+    #[inline]
+    pub fn iter_code_points(&self) -> Wtf8CodePointsIterator<'_> {
+        Wtf8CodePointsIterator::new(&self.buf)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
+    }
+
+    /// Returns true if the string does not have any unpaired surrogates.
+    ///
+    /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)
+    pub fn is_well_formed(&self) -> bool {
+        let mut iter = self.iter_code_points();
+
+        let mut is_well_formed = true;
+
+        while let Some(code_point) = iter.next() {
+            if is_surrogate_code_point(code_point) {
+                // Only way to be well formed at this point is to be a high surrogate followed by
+                // a low surrogate.
+                if is_high_surrogate_code_point(code_point) {
+                    if let Some(next_code_point) = iter.next() {
+                        if is_low_surrogate_code_point(next_code_point) {
+                            // A surrogate pair is well formed so proceed to next code point
+                            continue;
+                        }
+                    }
+                }
+
+                is_well_formed = false;
+                break;
+            }
+
+            // Not a surrogate, proceed to next code point
+        }
+
+        is_well_formed
     }
 }
 

@@ -2629,16 +2629,18 @@ impl<'a> Parser<'a> {
 
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p!(
+                let super_member = p!(
                     self,
-                    Expression::SuperMember(SuperMemberExpression::new(
+                    SuperMemberExpression::new(
                         loc,
                         super_loc,
                         operator_pos,
                         p!(self, Expression::Id(id)),
                         /* is_computed */ false,
-                    ))
-                ))
+                    )
+                );
+
+                Ok(p!(self, Expression::SuperMember(super_member)))
             }
             Token::LeftBracket => {
                 let operator_pos = self.current_start_pos();
@@ -2648,16 +2650,18 @@ impl<'a> Parser<'a> {
                 self.expect(Token::RightBracket)?;
                 let loc = self.mark_loc(start_pos);
 
-                Ok(p!(
+                let super_member = p!(
                     self,
-                    Expression::SuperMember(SuperMemberExpression::new(
+                    SuperMemberExpression::new(
                         loc,
                         super_loc,
                         operator_pos,
                         property,
                         /* is_computed */ true,
-                    ))
-                ))
+                    )
+                );
+
+                Ok(p!(self, Expression::SuperMember(super_member)))
             }
             Token::LeftParen if allow_call => {
                 let arguments = self.parse_call_arguments()?;
@@ -2801,7 +2805,8 @@ impl<'a> Parser<'a> {
             }
             // RegExp may be started by "/=" which is treated as a single token
             Token::Divide | Token::DivideEq => {
-                Ok(p!(self, Expression::RegExp(self.parse_regexp_literal()?)))
+                let regexp = p!(self, self.parse_regexp_literal()?);
+                Ok(p!(self, Expression::RegExp(regexp)))
             }
             Token::This => {
                 let loc = self.loc;
@@ -4874,7 +4879,7 @@ impl<'a> Parser<'a> {
             Expression::Object(object) => self.reparse_object_expression_as_pattern(object),
             Expression::Array(array) => self.reparse_array_expression_as_pattern(array),
             Expression::Member(expr) => Some(Pattern::Member(expr)),
-            Expression::SuperMember(expr) => Some(Pattern::SuperMember(expr)),
+            Expression::SuperMember(expr) => Some(Pattern::SuperMember(expr.into_inner())),
             _ => None,
         }
     }

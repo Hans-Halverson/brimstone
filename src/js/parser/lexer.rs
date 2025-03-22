@@ -1202,10 +1202,71 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_template_literal(&mut self, start_pos: Pos, is_head: bool) -> LexResult<'a> {
-        let mut value = AstString::new_in(self.alloc);
-
         let is_tail;
         let raw_start_pos = self.pos;
+        let raw_end_pos;
+
+        // Fast path until an escape or '\r' is encountered, which causes cooked string to not match
+        // raw string.
+        loop {
+            match_u32!(match self.current {
+                '$' => match_u32!(match self.peek() {
+                    // Start of an expression in the template literal
+                    '{' => {
+                        raw_end_pos = self.pos;
+                        is_tail = false;
+
+                        self.advance2();
+
+                        break;
+                    }
+                    // Just a '$' that can be skipped
+                    _ => self.advance(),
+                }),
+                // End of the entire template literal
+                '`' => {
+                    raw_end_pos = self.pos;
+                    is_tail = true;
+
+                    self.advance();
+
+                    break;
+                }
+                // Break out to slow path if either an escape sequence or CR is encountered
+                '\\' | '\r' => {
+                    // Must build our own string. Can copy in the slice of the string up to the
+                    // first problematic byte.
+                    let value = AstString::from_bytes_unchecked_in(
+                        &self.buf[raw_start_pos..self.pos],
+                        self.alloc,
+                    );
+                    return self.lex_template_literal_slow(
+                        start_pos,
+                        raw_start_pos,
+                        is_head,
+                        value,
+                    );
+                }
+                // Otherwise skip the next character, performing UTF-8 validation
+                _ => {
+                    let _ = self.lex_ascii_or_unicode_character()?;
+                }
+            })
+        }
+
+        let raw = Wtf8Str::from_bytes_unchecked(&self.buf[raw_start_pos..raw_end_pos]);
+
+        self.emit(Token::TemplatePart { raw, cooked: Ok(raw), is_head, is_tail }, start_pos)
+    }
+
+    fn lex_template_literal_slow(
+        &mut self,
+        start_pos: Pos,
+        raw_start_pos: Pos,
+        is_head: bool,
+        mut value: AstString<'a>,
+    ) -> LexResult<'a> {
+        let is_tail;
         let raw_end_pos;
 
         let mut has_cr = false;
@@ -1361,8 +1422,7 @@ impl<'a> Lexer<'a> {
             })
         }
 
-        let mut raw =
-            AstString::from_bytes_unchecked_in(&self.buf[raw_start_pos..raw_end_pos], self.alloc);
+        let mut raw = Wtf8Str::from_bytes_unchecked(&self.buf[raw_start_pos..raw_end_pos]);
 
         // CR and CRLF are both converted to LF in raw string. This requires copying the string
         // again, so only perform the replace if a CR was encountered.
@@ -1384,12 +1444,12 @@ impl<'a> Lexer<'a> {
                 new_raw.push_bytes_unchecked(slice);
             }
 
-            raw = new_raw;
+            raw = new_raw.into_arena_str();
         }
 
         // Only return cooked string if a malformed error location was not found
         let cooked = match malformed_error_loc {
-            None => Ok(value),
+            None => Ok(value.into_arena_str()),
             Some(loc) => Err(loc),
         };
 

@@ -2,10 +2,7 @@ use std::fmt;
 
 use num_bigint::BigInt;
 
-use super::{
-    ast::{AstStr, AstString},
-    loc::Loc,
-};
+use super::{ast::AstStr, loc::Loc};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
@@ -19,9 +16,9 @@ pub enum Token<'a> {
         flags: AstStr<'a>,
     },
     TemplatePart {
-        raw: AstString<'a>,
+        raw: AstStr<'a>,
         // Either a successful string, or a malformed escape sequence error at the given loc
-        cooked: Result<AstString<'a>, Loc>,
+        cooked: Result<AstStr<'a>, Loc>,
         is_head: bool,
         is_tail: bool,
     },

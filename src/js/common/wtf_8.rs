@@ -300,6 +300,10 @@ impl Wtf8Str {
         Wtf8CodePointsIterator::new(&self.buf)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
+    }
+
     /// Returns true if the string does not have any unpaired surrogates.
     ///
     /// IsWellFormedUnicode (https://tc39.es/ecma262/#sec-isstringwellformedunicode)

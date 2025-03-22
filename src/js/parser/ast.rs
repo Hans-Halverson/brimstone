@@ -1505,9 +1505,9 @@ pub struct TemplateLiteral<'a> {
 
 pub struct TemplateElement<'a> {
     pub loc: Loc,
-    pub raw: AstString<'a>,
+    pub raw: AstStr<'a>,
     /// Guaranteed to exist for template literals. Tagged templates allow this to be None.
-    pub cooked: Option<AstString<'a>>,
+    pub cooked: Option<AstStr<'a>>,
 }
 
 pub struct TaggedTemplateExpression<'a> {

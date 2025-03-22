@@ -906,8 +906,8 @@ impl<'a> Printer<'a> {
         self.string("{\n");
         self.inc_indent();
 
-        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_string);
-        self.property("raw", &element.raw, Printer::print_wtf8_string);
+        self.property("cooked", element.cooked.as_ref(), Printer::print_optional_wtf8_str);
+        self.property("raw", &element.raw, Printer::print_wtf8_str);
 
         self.dec_indent();
         self.indent();
@@ -1191,6 +1191,13 @@ impl<'a> Printer<'a> {
         match lit {
             None => self.print_null(),
             Some(lit) => self.print_string_literal(lit),
+        }
+    }
+
+    fn print_optional_wtf8_str(&mut self, string: Option<&AstStr>) {
+        match string {
+            None => self.print_null(),
+            Some(string) => self.print_wtf8_str(string),
         }
     }
 

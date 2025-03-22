@@ -45,7 +45,7 @@ pub struct RegExpParser<'a, T: LexerStream> {
     /// Number of capture groups seen so far
     num_capture_groups: usize,
     /// All capture groups seen so far, with name if a name was specified
-    capture_groups: ArenaVec<'a, Option<AstString<'a>>>,
+    capture_groups: ArenaVec<'a, Option<AstStr<'a>>>,
     /// Map of capture group names that have been encountered so far to the index of their last
     /// occurrence in the RegExp.
     capture_group_names: HashMap<AstStr<'a>, CaptureGroupIndex>,
@@ -181,10 +181,6 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         } else {
             false
         }
-    }
-
-    fn alloc_str(&self, string: &str) -> AstString<'a> {
-        AstString::from_str_in(string, self.alloc)
     }
 
     fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
@@ -514,7 +510,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
                         // Save named backreference to be analyzed and resolved after parsing
                         self.named_backreferences.push((
-                            name.as_arena_str(),
+                            name,
                             start_pos,
                             AstPtr::from_ref(backreference.as_ref()),
                         ));
@@ -790,31 +786,23 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                             // Generate the next capture group index and add name to list of all
                             // capture groups.
                             let index = self.next_capture_group_index(left_paren_pos)?;
-                            self.capture_groups.push(Some(name.clone()));
+                            self.capture_groups.push(Some(name));
 
                             // Add index to `capture_group_names`, overwriting earlier index
-                            if self
-                                .capture_group_names
-                                .insert(name.as_arena_str(), index)
-                                .is_some()
-                            {
+                            if self.capture_group_names.insert(name, index).is_some() {
                                 self.has_duplicate_named_capture_groups = true;
                             }
 
                             // If name is currently in scope then error
-                            if self
-                                .current_capture_group_names
-                                .contains(name.as_arena_str())
-                            {
+                            if self.current_capture_group_names.contains(name) {
                                 return self
                                     .error(name_start_pos, ParseError::DuplicateCaptureGroupName);
                             }
 
                             // Add to set of all capture groups in scope, and to the current
                             // scope.
-                            self.current_capture_group_names.insert(name.as_arena_str());
-                            self.current_capture_group_name_scope
-                                .push(name.as_arena_str());
+                            self.current_capture_group_names.insert(name);
+                            self.current_capture_group_name_scope.push(name);
 
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
@@ -1448,8 +1436,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
     /// Parse a single alternative in a class string disjunction. Return both the string and its
     /// length in code points.
-    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<(AstString<'a>, u64)> {
-        let mut string = self.alloc_str("");
+    fn parse_string_disjunction_alternative(&mut self) -> ParseResult<(AstStr<'a>, u64)> {
+        let mut string = AstString::new_in(self.alloc);
         let mut num_code_points = 0;
 
         while self.current() != '|' as u32 && self.current() != '}' as u32 {
@@ -1458,11 +1446,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             num_code_points += 1;
         }
 
-        Ok((string, num_code_points))
+        Ok((string.into_arena_str(), num_code_points))
     }
 
-    fn parse_identifier(&mut self) -> ParseResult<AstString<'a>> {
-        let mut string_builder = self.alloc_str("");
+    fn parse_identifier(&mut self) -> ParseResult<AstStr<'a>> {
+        let mut string_builder = AstString::new_in(self.alloc);
 
         // First character must be an id start, which can be an escape sequence
         let code_point = if self.current() == '\\' as u32 {
@@ -1527,7 +1515,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         }
 
-        Ok(string_builder)
+        Ok(string_builder.into_arena_str())
     }
 
     fn parse_regex_unicode_escape_sequence(&mut self, is_unicode_aware: bool) -> ParseResult<u32> {

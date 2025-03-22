@@ -86,6 +86,8 @@ bitflags! {
 }
 
 const ASYNC_ID: &Wtf8Str = Wtf8Str::from_str("async");
+const GET_ID: &Wtf8Str = Wtf8Str::from_str("get");
+const SET_ID: &Wtf8Str = Wtf8Str::from_str("set");
 const STATIC_ID: &Wtf8Str = Wtf8Str::from_str("static");
 
 struct Parser<'a> {
@@ -3356,7 +3358,6 @@ impl<'a> Parser<'a> {
         match self.token {
             Token::Get | Token::Set => {
                 let id_loc = self.loc;
-                let id_token = self.token.clone();
                 let kind = if let Token::Get = self.token {
                     PropertyKind::Get
                 } else {
@@ -3367,9 +3368,13 @@ impl<'a> Parser<'a> {
 
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
-                    let token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, token_name.into_arena_str());
-                    let name = p!(self, Expression::Id(id));
+                    let id_name = if matches!(kind, PropertyKind::Get) {
+                        GET_ID
+                    } else {
+                        SET_ID
+                    };
+
+                    let name = p!(self, Expression::Id(Identifier::new(id_loc, id_name)));
 
                     return self.parse_method_property(
                         name,
@@ -3387,9 +3392,13 @@ impl<'a> Parser<'a> {
                 let is_init_property = self.is_property_initializer(prop_context)
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
-                    let id_token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, id_token_name.into_arena_str());
-                    let name = p!(self, Expression::Id(id));
+                    let id_name = if matches!(kind, PropertyKind::Get) {
+                        GET_ID
+                    } else {
+                        SET_ID
+                    };
+
+                    let name = p!(self, Expression::Id(Identifier::new(id_loc, id_name)));
 
                     return self.parse_init_property(
                         name,

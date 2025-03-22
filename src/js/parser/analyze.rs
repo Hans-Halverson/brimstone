@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     rc::Rc,
 };
 
@@ -1227,21 +1227,21 @@ impl<'a> Analyzer<'a> {
                     let private_id = key.expr.to_id_mut();
                     let private_names_key = Wtf8Cow::Borrowed(private_id.name);
 
-                    // If this name has been used at all so far it is a duplicate name
-                    if private_names.contains_key(&private_names_key) {
-                        let private_name = private_id.name.to_owned_in(Global);
-                        self.emit_error(
-                            private_id.loc,
-                            ParseError::new_duplicate_private_name(private_name),
-                        );
-                    } else {
+                    if let Entry::Vacant(entry) = private_names.entry(private_names_key) {
                         // Create a complete usage that does not allow any other uses of this name
                         let usage = PrivateNameUsage {
                             is_static: false,
                             has_getter: true,
                             has_setter: true,
                         };
-                        private_names.insert(private_names_key, usage);
+                        entry.insert(usage);
+                    } else {
+                        // If this name has been used at all so far it is a duplicate name
+                        let private_name = private_id.name.to_owned_in(Global);
+                        self.emit_error(
+                            private_id.loc,
+                            ParseError::new_duplicate_private_name(private_name),
+                        );
                     }
 
                     private_id

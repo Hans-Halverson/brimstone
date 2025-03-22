@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -296,6 +297,13 @@ impl<'a> Parser<'a> {
         let mut vec = ArenaVec::new_in(self.alloc);
         vec.push(element);
         AstSliceBuilder::new(vec)
+    }
+
+    fn token_str(&self) -> &'a Wtf8Str {
+        match self.token.as_cow() {
+            Cow::Borrowed(name) => Wtf8Str::from_str(name),
+            Cow::Owned(name) => AstString::from_string_in(name, self.alloc).into_arena_str(),
+        }
     }
 
     fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
@@ -2931,9 +2939,11 @@ impl<'a> Parser<'a> {
                 Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
-                let name = self.alloc_string(self.token.to_string());
+                let name = self.token_str();
+
                 self.advance()?;
-                Ok(Identifier::new(loc, name.into_arena_str()))
+
+                Ok(Identifier::new(loc, name))
             }
         } else {
             self.error_unexpected_token(self.loc, &self.token)
@@ -3032,9 +3042,9 @@ impl<'a> Parser<'a> {
             | Token::Meta
             | Token::Enum => {
                 let loc = self.loc;
-                let name = self.alloc_string(self.token.to_string());
+                let name = self.token_str();
                 self.advance()?;
-                Ok(Some(Identifier::new(loc, name.into_arena_str())))
+                Ok(Some(Identifier::new(loc, name)))
             }
             _ => Ok(None),
         }

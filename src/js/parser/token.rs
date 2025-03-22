@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 use num_bigint::BigInt;
 
@@ -136,25 +136,25 @@ pub enum Token<'a> {
     Enum,
 }
 
-impl fmt::Display for Token<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Token<'_> {
+    pub fn as_cow(&self) -> Cow<'static, str> {
         let str = match self {
-            Token::Identifier(name) => return f.write_str(&name.to_string()),
-            Token::NumberLiteral(lit) => return f.write_str(&lit.to_string()),
-            Token::StringLiteral(lit) => return f.write_str(&lit.to_string()),
-            Token::BigIntLiteral(lit) => return write!(f, "{}n", lit),
-            Token::RegExpLiteral { raw, .. } => return write!(f, "{}", raw),
+            Token::Identifier(name) => return Cow::Owned(name.to_string()),
+            Token::NumberLiteral(lit) => return Cow::Owned(lit.to_string()),
+            Token::StringLiteral(lit) => return Cow::Owned(lit.to_string()),
+            Token::BigIntLiteral(lit) => return Cow::Owned(format!("{}n", lit)),
+            Token::RegExpLiteral { raw, .. } => return Cow::Owned(raw.to_string()),
             Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {
-                return write!(f, "`{}`", raw)
+                return Cow::Owned(format!("`{}`", raw))
             }
             Token::TemplatePart { raw, is_head: true, is_tail: false, .. } => {
-                return write!(f, "`{}${{`", raw)
+                return Cow::Owned(format!("`{}${{`", raw))
             }
             Token::TemplatePart { raw, is_head: false, is_tail: true, .. } => {
-                return write!(f, "}}{}`", raw)
+                return Cow::Owned(format!("}}{}`", raw))
             }
             Token::TemplatePart { raw, is_head: false, is_tail: false, .. } => {
-                return write!(f, "}}{}${{`", raw)
+                return Cow::Owned(format!("}}{}${{`", raw))
             }
             Token::Plus => "+",
             Token::Minus => "-",
@@ -265,6 +265,15 @@ impl fmt::Display for Token<'_> {
             Token::Enum => "enum",
         };
 
-        f.write_str(str)
+        Cow::Borrowed(str)
+    }
+}
+
+impl fmt::Display for Token<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.as_cow() {
+            Cow::Borrowed(s) => f.write_str(s),
+            Cow::Owned(s) => f.write_str(&s),
+        }
     }
 }

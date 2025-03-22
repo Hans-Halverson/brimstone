@@ -1642,7 +1642,7 @@ impl<'a> Analyzer<'a> {
     }
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier<'a>) {
-        self.resolve_use(&mut id.scope, &id.name, id.loc);
+        self.resolve_use(&mut id.scope, id.name, id.loc);
     }
 
     fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier<'a>) {

@@ -55,7 +55,7 @@ pub fn generate_template_object(
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
-        let raw_value = InternedStrings::get_wtf8_str(cx, &quasi.raw);
+        let raw_value = InternedStrings::get_wtf8_str(cx, quasi.raw);
         let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
         must!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }

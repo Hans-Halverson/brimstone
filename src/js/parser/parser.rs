@@ -743,7 +743,7 @@ impl<'a> Parser<'a> {
     }
 
     fn set_id_binding_init_pos(id: &Identifier, pos: Pos) {
-        let binding = id.scope.unwrap_resolved().get_binding(&id.name);
+        let binding = id.scope.unwrap_resolved().get_binding(id.name);
         match binding.kind() {
             BindingKind::Const { init_pos }
             | BindingKind::Let { init_pos }
@@ -2397,7 +2397,7 @@ impl<'a> Parser<'a> {
 
                 let quasi = p!(
                     self,
-                    self.parse_template_literal(*raw, cooked, *is_tail, /* is_tagged */ true,)?
+                    self.parse_template_literal(raw, cooked, *is_tail, /* is_tagged */ true,)?
                 );
                 let loc = self.mark_loc(start_pos);
 
@@ -2827,8 +2827,8 @@ impl<'a> Parser<'a> {
                     Err(loc) => return self.error(*loc, ParseError::MalformedEscapeSeqence),
                 };
 
-                let template_literal = self
-                    .parse_template_literal(*raw, cooked, *is_tail, /* is_tagged */ false)?;
+                let template_literal =
+                    self.parse_template_literal(raw, cooked, *is_tail, /* is_tagged */ false)?;
                 Ok(p!(self, Expression::Template(template_literal)))
             }
             _ => {
@@ -4526,7 +4526,7 @@ impl<'a> Parser<'a> {
 
             // String literal must be the start of an import as specifier
             let spec = if let Token::StringLiteral(value) = &self.token {
-                let imported = self.create_export_name_string(self.loc, *value)?;
+                let imported = self.create_export_name_string(self.loc, value)?;
                 self.advance()?;
 
                 self.expect(Token::As)?;
@@ -4740,7 +4740,7 @@ impl<'a> Parser<'a> {
 
     fn parse_export_name(&mut self) -> ParseResult<ExportName<'a>> {
         if let Token::StringLiteral(value) = &self.token {
-            let export_name = self.create_export_name_string(self.loc, *value)?;
+            let export_name = self.create_export_name_string(self.loc, value)?;
             self.advance()?;
 
             Ok(export_name)

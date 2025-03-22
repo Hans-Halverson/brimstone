@@ -321,7 +321,7 @@ impl<'a> Identifier<'a> {
     }
 
     pub fn get_binding(&self) -> &Binding<'a> {
-        self.scope.unwrap_resolved().get_binding(&self.name)
+        self.scope.unwrap_resolved().get_binding(self.name)
     }
 }
 

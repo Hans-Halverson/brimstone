@@ -2,14 +2,14 @@ use bitflags::bitflags;
 
 use crate::js::common::unicode_property::UnicodeProperty;
 
-use super::ast::{AstSlice, AstString, P};
+use super::ast::{AstSlice, AstStr, P};
 
 pub struct RegExp<'a> {
     pub disjunction: Disjunction<'a>,
     pub flags: RegExpFlags,
     pub has_duplicate_named_capture_groups: bool,
     // All capture groups with their names if one was provided
-    pub capture_groups: AstSlice<'a, Option<AstString<'a>>>,
+    pub capture_groups: AstSlice<'a, Option<AstStr<'a>>>,
 }
 
 bitflags! {
@@ -97,7 +97,7 @@ pub struct Alternative<'a> {
 
 pub enum Term<'a> {
     /// A literal string of characters with escape codes decoded into code points. Must be nonempty.
-    Literal(AstString<'a>),
+    Literal(AstStr<'a>),
     /// The wildcard which matches any single character: `.`
     Wildcard,
     /// A repition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.
@@ -143,7 +143,7 @@ pub type CaptureGroupIndex = u32;
 
 pub struct CaptureGroup<'a> {
     /// Optional capture group name
-    pub name: Option<AstString<'a>>,
+    pub name: Option<AstStr<'a>>,
     /// Index of the capture group in the RegExp
     pub index: CaptureGroupIndex,
     pub disjunction: Disjunction<'a>,
@@ -206,7 +206,7 @@ pub struct CharacterClass<'a> {
 
 pub struct StringDisjunction<'a> {
     /// The individual options in this disjunction, e.g. `[a, b, c]` for `\q{a|b|c}`
-    pub alternatives: AstSlice<'a, AstString<'a>>,
+    pub alternatives: AstSlice<'a, AstStr<'a>>,
 }
 
 pub struct Lookaround<'a> {

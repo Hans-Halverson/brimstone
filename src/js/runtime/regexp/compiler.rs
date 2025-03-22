@@ -1,6 +1,5 @@
 use std::{collections::HashSet, sync::LazyLock};
 
-use allocator_api2::alloc::{Allocator, Global};
 use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
 };
@@ -10,12 +9,15 @@ use crate::js::{
     common::{
         icu::ICU,
         unicode::{is_surrogate_code_point, CodePoint, MAX_CODE_POINT},
-        wtf_8::{Wtf8Str, Wtf8String},
+        wtf_8::Wtf8Str,
     },
-    parser::regexp::{
-        Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex, CharacterClass,
-        ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
-        Term,
+    parser::{
+        ast::AstStr,
+        regexp::{
+            Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex,
+            CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
+            RegExp, RegExpFlags, Term,
+        },
     },
     runtime::{
         debug_print::{DebugPrint, DebugPrintMode},
@@ -546,10 +548,7 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn emit_literal<A>(&mut self, string: &Wtf8String<A>)
-    where
-        A: Allocator + Clone,
-    {
+    fn emit_literal(&mut self, string: AstStr) {
         if self.is_forwards() {
             for code_point in string.iter_code_points() {
                 self.emit_code_point_literal(code_point)
@@ -1343,7 +1342,7 @@ impl CompiledRegExpBuilder {
         // block if successful.
         for (i, string) in strings.iter().enumerate() {
             self.set_current_block(alternative_block_ids[i]);
-            self.emit_literal(&string.to_owned_in(Global));
+            self.emit_literal(string);
             self.emit_jump_instruction(success_block);
         }
 

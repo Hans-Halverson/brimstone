@@ -71,12 +71,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str_in(string: &str, alloc: A) -> Self {
-        Self::from_bytes_unchecked_in(string.as_bytes(), alloc)
-    }
-
-    #[inline]
     pub fn from_bytes_unchecked_in(bytes: &[u8], alloc: A) -> Self {
         #[allow(unstable_name_collisions)]
         Wtf8String { buf: bytes.to_vec_in(alloc) }
@@ -137,7 +131,7 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn push_wtf8_str<A2: Allocator + Clone>(&mut self, string: &Wtf8String<A2>) {
+    pub fn push_wtf8_str(&mut self, string: &Wtf8Str) {
         self.push_bytes_unchecked(string.as_bytes())
     }
 

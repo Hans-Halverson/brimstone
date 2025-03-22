@@ -306,7 +306,7 @@ pub enum Toplevel<'a> {
 
 pub struct Identifier<'a> {
     pub loc: Loc,
-    pub name: AstString<'a>,
+    pub name: AstStr<'a>,
 
     /// Reference to the scope that contains the binding for this identifier, or tagged as
     /// unresolved if the scope could not be statically determined.
@@ -316,7 +316,7 @@ pub struct Identifier<'a> {
 }
 
 impl<'a> Identifier<'a> {
-    pub fn new(loc: Loc, name: AstString<'a>) -> Identifier<'a> {
+    pub fn new(loc: Loc, name: AstStr<'a>) -> Identifier<'a> {
         Identifier { loc, name, scope: TaggedResolvedScope::unresolved_global() }
     }
 
@@ -959,12 +959,12 @@ pub type LabelId = u16;
 
 pub struct Label<'a> {
     pub loc: Loc,
-    pub name: AstString<'a>,
+    pub name: AstStr<'a>,
     pub id: LabelId,
 }
 
 impl<'a> Label<'a> {
-    pub fn new(loc: Loc, name: AstString<'a>) -> Label<'a> {
+    pub fn new(loc: Loc, name: AstStr<'a>) -> Label<'a> {
         Label { loc, name, id: 0 }
     }
 }

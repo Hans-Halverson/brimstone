@@ -1531,15 +1531,13 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        // Same since this slice is ASCII only and therefore valid UTF-8
-        let id_string =
-            unsafe { String::from_utf8_unchecked(self.buf[start_pos..self.pos].to_vec()) };
+        // Safe since this slice is ASCII only and therefore valid UTF-8
+        let id_str = unsafe { std::str::from_utf8_unchecked(&self.buf[start_pos..self.pos]) };
 
-        if let Some(keyword_token) = self.ascii_id_to_keyword(&id_string) {
+        if let Some(keyword_token) = self.ascii_id_to_keyword(id_str) {
             self.emit(keyword_token, start_pos)
         } else {
-            let wtf8_id_string = AstString::from_string_in(id_string, self.alloc);
-            self.emit(Token::Identifier(wtf8_id_string), start_pos)
+            self.emit(Token::Identifier(Wtf8Str::from_str(id_str)), start_pos)
         }
     }
 
@@ -1586,7 +1584,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        self.emit(Token::Identifier(string_builder), start_pos)
+        self.emit(Token::Identifier(string_builder.into_arena_str()), start_pos)
     }
 
     fn lex_identifier_unicode_escape_sequence(&mut self) -> ParseResult<CodePoint> {

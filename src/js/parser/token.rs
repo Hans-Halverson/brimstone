@@ -9,7 +9,7 @@ use super::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
-    Identifier(AstString<'a>),
+    Identifier(AstStr<'a>),
     NumberLiteral(f64),
     StringLiteral(AstStr<'a>),
     BigIntLiteral(BigInt),

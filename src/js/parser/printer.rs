@@ -746,7 +746,7 @@ impl<'a> Printer<'a> {
         let id = expr.to_id();
 
         self.start_node("PrivateIdentifier", &id.loc);
-        self.property("name", &id.name, Printer::print_wtf8_string);
+        self.property("name", &id.name, Printer::print_wtf8_str);
         self.end_node();
     }
 
@@ -960,9 +960,9 @@ impl<'a> Printer<'a> {
         self.print_identifier_parts(&id.loc, &id.name);
     }
 
-    fn print_identifier_parts(&mut self, loc: &Loc, name: &AstString) {
+    fn print_identifier_parts(&mut self, loc: &Loc, name: &AstStr) {
         self.start_node("Identifier", loc);
-        self.property("name", name, Printer::print_wtf8_string);
+        self.property("name", name, Printer::print_wtf8_str);
         self.end_node();
     }
 

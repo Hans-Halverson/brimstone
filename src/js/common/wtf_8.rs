@@ -95,12 +95,6 @@ impl<A: Allocator + Clone> Wtf8String<A> {
     }
 
     #[inline]
-    pub fn clone_in<A2: Allocator + Clone>(&self, alloc: A2) -> Wtf8String<A2> {
-        #[allow(unstable_name_collisions)]
-        Wtf8String { buf: self.buf.to_vec_in(alloc) }
-    }
-
-    #[inline]
     pub fn len(&self) -> usize {
         self.buf.len()
     }
@@ -275,13 +269,13 @@ pub struct Wtf8Str {
 
 impl Wtf8Str {
     #[inline]
-    pub fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
+    pub const fn from_bytes_unchecked(bytes: &[u8]) -> &Wtf8Str {
         unsafe { std::mem::transmute::<&[u8], &Wtf8Str>(bytes) }
     }
 
     #[allow(clippy::should_implement_trait)]
     #[inline]
-    pub fn from_str(str: &str) -> &Wtf8Str {
+    pub const fn from_str(str: &str) -> &Wtf8Str {
         Self::from_bytes_unchecked(str.as_bytes())
     }
 

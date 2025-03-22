@@ -19,10 +19,7 @@ use crate::{
         },
         parser::{
             analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
-            ast::{
-                self, AstPtr, AstStr, AstString, LabelId, ProgramKind, ResolvedScope,
-                TaggedResolvedScope,
-            },
+            ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
             loc::{Pos, NO_POS},
             scope_tree::{
                 AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
@@ -1193,7 +1190,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = func
             .id
             .as_ref()
-            .map(|id| id.name.clone_in(Global))
+            .map(|id| id.name.to_owned_in(Global))
             .or_else(|| default_name.map(|name| name.to_owned_in(Global)));
 
         let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
@@ -6902,8 +6899,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // Determine if field has a statically known string name
                     let name = match &property.key.expr {
                         _ if property.is_computed => None,
-                        ast::Expression::Id(id) => Some(AstCow::Owned(id.name.clone())),
-                        ast::Expression::String(string) => Some(AstCow::Borrowed(string.value)),
+                        ast::Expression::Id(id) => Some(id.name),
+                        ast::Expression::String(string) => Some(string.value),
                         ast::Expression::Number(_) | ast::Expression::BigInt(_) => None,
                         _ => unreachable!("invalid class property key"),
                     };
@@ -6953,10 +6950,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .constructor
             .as_ref()
             .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
-
         let name = if let Some(id) = class.id.as_ref() {
             // Constructor has name of class
-            id.name.clone_in(Global)
+            id.name.to_owned_in(Global)
         } else if let Some(name) = name {
             // Handle name passed from named evaluation
             name
@@ -7231,11 +7227,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Evaluate the initializer, otherwise field is set to undefined
         let value = if let Some(initializer) = field_node.value.as_deref() {
             match field {
-                ClassField::Named { name, .. } => self.gen_named_outer_expression(
-                    AnyStr::Wtf8(name.as_str()),
-                    initializer,
-                    ExprDest::Any,
-                )?,
+                ClassField::Named { name, .. } => {
+                    self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
+                }
                 ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
                 ClassField::PrivateField { field } => {
                     let name = format!("#{}", field.as_ref().key.expr.to_id().name);
@@ -7251,7 +7245,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match field {
             ClassField::Named { name, .. } => {
-                let name_constant_index = self.add_wtf8_string_constant(name.as_str())?;
+                let name_constant_index = self.add_wtf8_string_constant(name)?;
                 self.writer.define_named_property_instruction(
                     target,
                     name_constant_index,
@@ -7343,7 +7337,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // if the class is anonymous.
             ast::ExportDefaultKind::Class(class) => {
                 let (name, binding) = if let Some(id) = class.id.as_ref() {
-                    (id.name.as_str(), id.get_binding())
+                    (id.name, id.get_binding())
                 } else {
                     let anonymous_binding = scope.get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME);
                     (DEFAULT_EXPORT_NAME.as_str(), anonymous_binding)
@@ -9694,7 +9688,7 @@ enum ArrayElement<'a> {
 
 enum ClassField<'a> {
     Named {
-        name: AstCow<'a>,
+        name: AstStr<'a>,
         field: AstPtr<ast::ClassProperty<'a>>,
     },
     Computed {
@@ -9758,20 +9752,6 @@ impl<'a> AnyStr<'a> {
         match self {
             AnyStr::Wtf8(wtf8) => wtf8.to_owned_in(Global),
             AnyStr::Str(str) => Wtf8String::from_str(str),
-        }
-    }
-}
-
-enum AstCow<'a> {
-    Borrowed(AstStr<'a>),
-    Owned(AstString<'a>),
-}
-
-impl<'a> AstCow<'a> {
-    fn as_str(&'a self) -> AstStr<'a> {
-        match self {
-            AstCow::Borrowed(s) => s,
-            AstCow::Owned(s) => s.as_str(),
         }
     }
 }

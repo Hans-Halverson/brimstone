@@ -6,6 +6,7 @@ use bitflags::bitflags;
 
 use crate::js::common::options::Options;
 use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
+use crate::js::common::wtf_8::Wtf8Str;
 use crate::p;
 
 use super::ast::*;
@@ -83,6 +84,9 @@ bitflags! {
         const LABELED = 1 << 3;
     }
 }
+
+const ASYNC_ID: &Wtf8Str = Wtf8Str::from_str("async");
+const STATIC_ID: &Wtf8Str = Wtf8Str::from_str("static");
 
 struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -278,10 +282,6 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
-    fn alloc_str(&self, string: &str) -> AstString<'a> {
-        AstString::from_str_in(string, self.alloc)
-    }
-
     fn alloc_string(&self, string: String) -> AstString<'a> {
         AstString::from_string_in(string, self.alloc)
     }
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
     }
 
     fn add_binding(&mut self, id: &mut Identifier<'a>, kind: BindingKind<'a>) -> ParseResult<()> {
-        match self.scope_builder.add_binding(id.name.as_arena_str(), kind) {
+        match self.scope_builder.add_binding(id.name, kind) {
             Ok(scope) => {
                 id.scope = TaggedResolvedScope::resolved(scope);
                 Ok(())
@@ -981,10 +981,10 @@ impl<'a> Parser<'a> {
 
             param.iter_patterns(&mut |patt| match patt {
                 Pattern::Id(id) => {
-                    if parameter_names.contains(id.name.as_str()) {
+                    if parameter_names.contains(id.name) {
                         has_duplicate_parameters = true;
                     } else {
-                        parameter_names.insert(id.name.as_arena_str());
+                        parameter_names.insert(id.name);
                     }
                 }
                 Pattern::Array(_) => {
@@ -1743,7 +1743,7 @@ impl<'a> Parser<'a> {
 
                 self.advance()?;
 
-                let mut async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let mut async_id = Identifier::new(async_loc, ASYNC_ID);
                 self.add_binding(&mut async_id, BindingKind::new_function_parameter(0))?;
                 Self::set_id_binding_init_pos(&async_id, self.prev_loc.end);
 
@@ -2343,7 +2343,7 @@ impl<'a> Parser<'a> {
 
                 // A potential sloppy direct eval needs to marked in the scope tree before analysis
                 match expr.as_ref() {
-                    Expression::Id(Identifier { name, .. }) if name == "eval" => {
+                    Expression::Id(Identifier { name, .. }) if *name == "eval" => {
                         if !self.in_strict_mode {
                             self.scope_builder.mark_sloppy_direct_eval();
                         }
@@ -2856,7 +2856,7 @@ impl<'a> Parser<'a> {
                     // `async [newline] id` is an `async` identifier with ASI followed by another
                     // identifier instead of the start of an async arrow function.
                     if self.lexer.is_new_line_before_current() {
-                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                        let async_id = Identifier::new(async_loc, ASYNC_ID);
                         return Ok(p!(self, Expression::Id(async_id)));
                     }
 
@@ -2874,7 +2874,7 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         // If not followed by an identifier this is just the identifier `async`
-                        let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                        let async_id = Identifier::new(async_loc, ASYNC_ID);
                         return Ok(p!(self, Expression::Id(async_id)));
                     }
                 }
@@ -2935,15 +2935,15 @@ impl<'a> Parser<'a> {
         if Self::is_identifier(&self.token, self.in_strict_mode, self.allow_await, self.allow_yield)
         {
             if let Token::Identifier(name) = &self.token {
+                let name = *name;
                 let loc = self.loc;
-                let name = name.clone();
                 self.advance()?;
                 Ok(Identifier::new(loc, name))
             } else {
                 let loc = self.loc;
                 let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
-                Ok(Identifier::new(loc, name))
+                Ok(Identifier::new(loc, name.into_arena_str()))
             }
         } else {
             self.error_unexpected_token(self.loc, &self.token)
@@ -2988,7 +2988,7 @@ impl<'a> Parser<'a> {
         match &self.token {
             Token::Identifier(name) => {
                 let loc = self.loc;
-                let name = name.clone();
+                let name = *name;
                 self.advance()?;
                 Ok(Some(Identifier::new(loc, name)))
             }
@@ -3044,13 +3044,13 @@ impl<'a> Parser<'a> {
                 let loc = self.loc;
                 let name = self.alloc_string(self.token.to_string());
                 self.advance()?;
-                Ok(Some(Identifier::new(loc, name)))
+                Ok(Some(Identifier::new(loc, name.into_arena_str())))
             }
             _ => Ok(None),
         }
     }
 
-    fn is_reserved_word_in_current_context(&self, str: &AstString) -> bool {
+    fn is_reserved_word_in_current_context(&self, str: AstStr) -> bool {
         Self::is_reserved_word(
             str.as_bytes(),
             self.in_strict_mode,
@@ -3384,7 +3384,7 @@ impl<'a> Parser<'a> {
                 // Handle `get` or `set` as name of method
                 if self.token == Token::LeftParen {
                     let token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, token_name);
+                    let id = Identifier::new(id_loc, token_name.into_arena_str());
                     let name = p!(self, Expression::Id(id));
 
                     return self.parse_method_property(
@@ -3404,7 +3404,7 @@ impl<'a> Parser<'a> {
                     || self.is_pattern_initializer_in_object(prop_context);
                 if is_init_property || self.is_property_end(prop_context) {
                     let id_token_name = self.alloc_string(id_token.to_string());
-                    let id = Identifier::new(id_loc, id_token_name);
+                    let id = Identifier::new(id_loc, id_token_name.into_arena_str());
                     let name = p!(self, Expression::Id(id));
 
                     return self.parse_init_property(
@@ -3443,7 +3443,7 @@ impl<'a> Parser<'a> {
 
             // Handle `async` as name of method: `async() {}`
             if self.token == Token::LeftParen {
-                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let async_id = Identifier::new(async_loc, ASYNC_ID);
                 let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_method_property(
@@ -3463,7 +3463,7 @@ impl<'a> Parser<'a> {
                 || self.is_pattern_initializer_in_object(prop_context)
                 || newline_after_async;
             if is_init_property || self.is_property_end(prop_context) {
-                let async_id = Identifier::new(async_loc, self.alloc_str("async"));
+                let async_id = Identifier::new(async_loc, ASYNC_ID);
                 let name = p!(self, Expression::Id(async_id));
 
                 return self.parse_init_property(
@@ -3654,7 +3654,7 @@ impl<'a> Parser<'a> {
         let value = if is_shorthand {
             if prop_context != PropertyContext::Class {
                 let key_id = key.to_id();
-                if self.is_reserved_word_in_current_context(&key_id.name) {
+                if self.is_reserved_word_in_current_context(key_id.name) {
                     return self.error(key_id.loc, ParseError::IdentifierIsReservedWord);
                 }
             }
@@ -3853,7 +3853,7 @@ impl<'a> Parser<'a> {
         if let Some(id) = id.as_ref() {
             self.scope_builder
                 .add_binding(
-                    id.name.as_arena_str(),
+                    id.name,
                     BindingKind::Class {
                         in_body_scope: true,
                         init_pos: Cell::new(binding_init_pos),
@@ -3993,7 +3993,7 @@ impl<'a> Parser<'a> {
 
             // Handle `static` as name of method: `static() {}`
             if self.token == Token::LeftParen {
-                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
+                let static_id = Identifier::new(static_loc, STATIC_ID);
                 let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_method_property(
@@ -4020,7 +4020,7 @@ impl<'a> Parser<'a> {
             // Handle `static` as shorthand or init property
             let is_init_property = self.is_property_initializer(PropertyContext::Class);
             if is_init_property || self.is_property_end(PropertyContext::Class) {
-                let static_id = Identifier::new(static_loc, self.alloc_str("static"));
+                let static_id = Identifier::new(static_loc, STATIC_ID);
                 let name = p!(self, Expression::Id(static_id));
 
                 let (property, is_private) = self.parse_init_property(
@@ -4315,7 +4315,7 @@ impl<'a> Parser<'a> {
         // Shorthand property
         if property_name.is_shorthand {
             let value = if let Expression::Id(mut id) = property_name.key.into_inner() {
-                if self.is_reserved_word_in_current_context(&id.name) {
+                if self.is_reserved_word_in_current_context(id.name) {
                     return self.error(id.loc, ParseError::IdentifierIsReservedWord);
                 }
 
@@ -4564,7 +4564,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // This is the binding for a simple named specifier, identifier cannot be a
                     // reserved word.
-                    if self.is_reserved_word_in_current_context(&id.name) {
+                    if self.is_reserved_word_in_current_context(id.name) {
                         return self.error_unexpected_token(id.loc, &start_token);
                     }
 
@@ -4639,7 +4639,7 @@ impl<'a> Parser<'a> {
                     for specifier in specifiers.iter() {
                         match specifier.local.as_ref() {
                             ExportName::Id(id) => {
-                                if self.is_reserved_word_in_current_context(&id.name) {
+                                if self.is_reserved_word_in_current_context(id.name) {
                                     return self
                                         .error(id.loc, ParseError::IdentifierIsReservedWord);
                                 }

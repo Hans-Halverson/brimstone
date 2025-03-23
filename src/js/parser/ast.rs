@@ -394,26 +394,26 @@ impl<'a> TaggedResolvedScope<'a> {
 }
 
 pub enum Statement<'a> {
-    VarDecl(VariableDeclaration<'a>),
+    VarDecl(P<'a, VariableDeclaration<'a>>),
     FuncDecl(P<'a, Function<'a>>),
     ClassDecl(P<'a, Class<'a>>),
-    Expr(ExpressionStatement<'a>),
-    Block(Block<'a>),
-    If(IfStatement<'a>),
-    Switch(SwitchStatement<'a>),
-    For(ForStatement<'a>),
-    ForEach(ForEachStatement<'a>),
-    While(WhileStatement<'a>),
-    DoWhile(DoWhileStatement<'a>),
-    With(WithStatement<'a>),
-    Try(TryStatement<'a>),
-    Throw(ThrowStatement<'a>),
-    Return(ReturnStatement<'a>),
-    Break(BreakStatement<'a>),
-    Continue(ContinueStatement<'a>),
-    Labeled(LabeledStatement<'a>),
-    Empty(Loc),
-    Debugger(Loc),
+    Expr(P<'a, ExpressionStatement<'a>>),
+    Block(P<'a, Block<'a>>),
+    If(P<'a, IfStatement<'a>>),
+    Switch(P<'a, SwitchStatement<'a>>),
+    For(P<'a, ForStatement<'a>>),
+    ForEach(P<'a, ForEachStatement<'a>>),
+    While(P<'a, WhileStatement<'a>>),
+    DoWhile(P<'a, DoWhileStatement<'a>>),
+    With(P<'a, WithStatement<'a>>),
+    Try(P<'a, TryStatement<'a>>),
+    Throw(P<'a, ThrowStatement<'a>>),
+    Return(P<'a, ReturnStatement<'a>>),
+    Break(P<'a, BreakStatement<'a>>),
+    Continue(P<'a, ContinueStatement<'a>>),
+    Labeled(P<'a, LabeledStatement<'a>>),
+    Empty(P<'a, Loc>),
+    Debugger(P<'a, Loc>),
 }
 
 #[derive(PartialEq)]
@@ -431,8 +431,8 @@ pub struct VariableDeclaration<'a> {
 
 pub struct VariableDeclarator<'a> {
     pub loc: Loc,
-    pub id: P<'a, Pattern<'a>>,
-    pub init: Option<P<'a, OuterExpression<'a>>>,
+    pub id: Pattern<'a>,
+    pub init: Option<OuterExpression<'a>>,
     /// Whether an assignment expression appears in the pattern.
     pub id_has_assign_expr: bool,
 }
@@ -440,8 +440,8 @@ pub struct VariableDeclarator<'a> {
 impl<'a> VariableDeclarator<'a> {
     pub fn new(
         loc: Loc,
-        id: P<'a, Pattern<'a>>,
-        init: Option<P<'a, OuterExpression<'a>>>,
+        id: Pattern<'a>,
+        init: Option<OuterExpression<'a>>,
     ) -> VariableDeclarator<'a> {
         VariableDeclarator { loc, id, init, id_has_assign_expr: false }
     }
@@ -662,7 +662,7 @@ pub struct FunctionBlockBody<'a> {
 pub struct Class<'a> {
     pub loc: Loc,
     pub id: Option<P<'a, Identifier<'a>>>,
-    pub super_class: Option<P<'a, OuterExpression<'a>>>,
+    pub super_class: Option<OuterExpression<'a>>,
     pub body: AstSlice<'a, ClassElement<'a>>,
 
     pub constructor: Option<AstPtr<ClassMethod<'a>>>,
@@ -683,7 +683,7 @@ impl<'a> Class<'a> {
     pub fn new(
         loc: Loc,
         id: Option<P<'a, Identifier<'a>>>,
-        super_class: Option<P<'a, OuterExpression<'a>>>,
+        super_class: Option<OuterExpression<'a>>,
         body: AstSlice<'a, ClassElement<'a>>,
         scope: AstPtr<AstScopeNode<'a>>,
         fields_initializer_scope: Option<AstPtr<AstScopeNode<'a>>>,
@@ -709,7 +709,7 @@ pub enum ClassElement<'a> {
 
 pub struct ClassMethod<'a> {
     pub loc: Loc,
-    pub key: P<'a, OuterExpression<'a>>,
+    pub key: OuterExpression<'a>,
     pub value: P<'a, Function<'a>>,
     pub kind: ClassMethodKind,
     pub is_computed: bool,
@@ -723,7 +723,7 @@ pub struct ClassMethod<'a> {
 impl<'a> ClassMethod<'a> {
     pub fn new(
         loc: Loc,
-        key: P<'a, OuterExpression<'a>>,
+        key: OuterExpression<'a>,
         value: P<'a, Function<'a>>,
         kind: ClassMethodKind,
         is_computed: bool,
@@ -755,8 +755,8 @@ pub enum ClassMethodKind {
 
 pub struct ClassProperty<'a> {
     pub loc: Loc,
-    pub key: P<'a, OuterExpression<'a>>,
-    pub value: Option<P<'a, OuterExpression<'a>>>,
+    pub key: OuterExpression<'a>,
+    pub value: Option<OuterExpression<'a>>,
     pub is_computed: bool,
     pub is_static: bool,
     pub is_private: bool,
@@ -764,7 +764,7 @@ pub struct ClassProperty<'a> {
 
 pub struct ExpressionStatement<'a> {
     pub loc: Loc,
-    pub expr: P<'a, OuterExpression<'a>>,
+    pub expr: OuterExpression<'a>,
 }
 
 pub struct Block<'a> {
@@ -777,14 +777,14 @@ pub struct Block<'a> {
 
 pub struct IfStatement<'a> {
     pub loc: Loc,
-    pub test: P<'a, OuterExpression<'a>>,
-    pub conseq: P<'a, Statement<'a>>,
-    pub altern: Option<P<'a, Statement<'a>>>,
+    pub test: OuterExpression<'a>,
+    pub conseq: Statement<'a>,
+    pub altern: Option<Statement<'a>>,
 }
 
 pub struct SwitchStatement<'a> {
     pub loc: Loc,
-    pub discriminant: P<'a, OuterExpression<'a>>,
+    pub discriminant: OuterExpression<'a>,
     pub cases: AstSlice<'a, SwitchCase<'a>>,
 
     /// Block scope node for the switch statement body.
@@ -793,16 +793,16 @@ pub struct SwitchStatement<'a> {
 
 pub struct SwitchCase<'a> {
     pub loc: Loc,
-    pub test: Option<P<'a, OuterExpression<'a>>>,
+    pub test: Option<OuterExpression<'a>>,
     pub body: AstSlice<'a, Statement<'a>>,
 }
 
 pub struct ForStatement<'a> {
     pub loc: Loc,
     pub init: Option<P<'a, ForInit<'a>>>,
-    pub test: Option<P<'a, OuterExpression<'a>>>,
-    pub update: Option<P<'a, OuterExpression<'a>>>,
-    pub body: P<'a, Statement<'a>>,
+    pub test: Option<OuterExpression<'a>>,
+    pub update: Option<OuterExpression<'a>>,
+    pub body: Statement<'a>,
 
     /// Block scope node that contains the for statement variable declarations and the body.
     pub scope: AstPtr<AstScopeNode<'a>>,
@@ -817,8 +817,8 @@ pub struct ForEachStatement<'a> {
     pub loc: Loc,
     pub kind: ForEachKind,
     pub left: P<'a, ForEachInit<'a>>,
-    pub right: P<'a, OuterExpression<'a>>,
-    pub body: P<'a, Statement<'a>>,
+    pub right: OuterExpression<'a>,
+    pub body: Statement<'a>,
     pub is_await: bool,
 
     /// Source position of start of the `in` or `of` keyword.
@@ -870,20 +870,20 @@ impl<'a> ForEachInit<'a> {
 
 pub struct WhileStatement<'a> {
     pub loc: Loc,
-    pub test: P<'a, OuterExpression<'a>>,
-    pub body: P<'a, Statement<'a>>,
+    pub test: OuterExpression<'a>,
+    pub body: Statement<'a>,
 }
 
 pub struct DoWhileStatement<'a> {
     pub loc: Loc,
-    pub test: P<'a, OuterExpression<'a>>,
-    pub body: P<'a, Statement<'a>>,
+    pub test: OuterExpression<'a>,
+    pub body: Statement<'a>,
 }
 
 pub struct WithStatement<'a> {
     pub loc: Loc,
-    pub object: P<'a, OuterExpression<'a>>,
-    pub body: P<'a, Statement<'a>>,
+    pub object: OuterExpression<'a>,
+    pub body: Statement<'a>,
 
     /// Scope node for the with statement body
     pub scope: AstPtr<AstScopeNode<'a>>,
@@ -898,7 +898,7 @@ pub struct TryStatement<'a> {
 
 pub struct CatchClause<'a> {
     pub loc: Loc,
-    pub param: Option<P<'a, Pattern<'a>>>,
+    pub param: Option<Pattern<'a>>,
     pub body: P<'a, Block<'a>>,
     /// Whether the parameter is a pattern with an assignment expression.
     pub param_has_assign_expr: bool,
@@ -910,7 +910,7 @@ pub struct CatchClause<'a> {
 impl<'a> CatchClause<'a> {
     pub fn new(
         loc: Loc,
-        param: Option<P<'a, Pattern<'a>>>,
+        param: Option<Pattern<'a>>,
         body: P<'a, Block<'a>>,
         scope: AstPtr<AstScopeNode<'a>>,
     ) -> CatchClause<'a> {
@@ -920,12 +920,12 @@ impl<'a> CatchClause<'a> {
 
 pub struct ThrowStatement<'a> {
     pub loc: Loc,
-    pub argument: P<'a, OuterExpression<'a>>,
+    pub argument: OuterExpression<'a>,
 }
 
 pub struct ReturnStatement<'a> {
     pub loc: Loc,
-    pub argument: Option<P<'a, OuterExpression<'a>>>,
+    pub argument: Option<OuterExpression<'a>>,
 
     /// Reference to the scope that contains the binding for `this`. Similar to the scope in the
     /// `ThisExpression` node, but only set if this return is in a derived constructor (meaning the
@@ -934,7 +934,7 @@ pub struct ReturnStatement<'a> {
 }
 
 impl<'a> ReturnStatement<'a> {
-    pub fn new(loc: Loc, argument: Option<P<'a, OuterExpression<'a>>>) -> ReturnStatement<'a> {
+    pub fn new(loc: Loc, argument: Option<OuterExpression<'a>>) -> ReturnStatement<'a> {
         ReturnStatement { loc, argument, this_scope: None }
     }
 }
@@ -952,7 +952,7 @@ pub struct ContinueStatement<'a> {
 pub struct LabeledStatement<'a> {
     pub loc: Loc,
     pub label: P<'a, Label<'a>>,
-    pub body: P<'a, Statement<'a>>,
+    pub body: Statement<'a>,
 }
 
 pub type LabelId = u16;
@@ -988,39 +988,41 @@ impl OuterExpression<'_> {
 }
 
 pub enum Expression<'a> {
-    Id(Identifier<'a>),
-    Null(Loc),
-    Boolean(BooleanLiteral),
-    Number(NumberLiteral),
-    String(StringLiteral<'a>),
-    BigInt(BigIntLiteral<'a>),
+    Id(P<'a, Identifier<'a>>),
+    Null(P<'a, Loc>),
+    Boolean(P<'a, BooleanLiteral>),
+    Number(P<'a, NumberLiteral>),
+    String(P<'a, StringLiteral<'a>>),
+    BigInt(P<'a, BigIntLiteral<'a>>),
     RegExp(P<'a, RegExpLiteral<'a>>),
-    Unary(UnaryExpression<'a>),
-    Binary(BinaryExpression<'a>),
-    Logical(LogicalExpression<'a>),
-    Assign(AssignmentExpression<'a>),
-    Update(UpdateExpression<'a>),
-    Member(MemberExpression<'a>),
-    Chain(ChainExpression<'a>),
-    Conditional(ConditionalExpression<'a>),
-    Call(CallExpression<'a>),
-    New(NewExpression<'a>),
-    Sequence(SequenceExpression<'a>),
-    Array(ArrayExpression<'a>),
-    Object(ObjectExpression<'a>),
+    Unary(P<'a, UnaryExpression<'a>>),
+    Binary(P<'a, BinaryExpression<'a>>),
+    Logical(P<'a, LogicalExpression<'a>>),
+    Assign(P<'a, AssignmentExpression<'a>>),
+    Update(P<'a, UpdateExpression<'a>>),
+    Member(P<'a, MemberExpression<'a>>),
+    Chain(P<'a, ChainExpression<'a>>),
+    Conditional(P<'a, ConditionalExpression<'a>>),
+    Call(P<'a, CallExpression<'a>>),
+    New(P<'a, NewExpression<'a>>),
+    Sequence(P<'a, SequenceExpression<'a>>),
+    Array(P<'a, ArrayExpression<'a>>),
+    Object(P<'a, ObjectExpression<'a>>),
     Function(P<'a, Function<'a>>),
     ArrowFunction(P<'a, Function<'a>>),
     Class(P<'a, Class<'a>>),
-    This(ThisExpression<'a>),
-    Await(AwaitExpression<'a>),
-    Yield(YieldExpression<'a>),
+    This(P<'a, ThisExpression<'a>>),
+    Await(P<'a, AwaitExpression<'a>>),
+    Yield(P<'a, YieldExpression<'a>>),
     SuperMember(P<'a, SuperMemberExpression<'a>>),
     SuperCall(P<'a, SuperCallExpression<'a>>),
-    Template(TemplateLiteral<'a>),
-    TaggedTemplate(TaggedTemplateExpression<'a>),
-    MetaProperty(MetaProperty<'a>),
-    Import(ImportExpression<'a>),
+    Template(P<'a, TemplateLiteral<'a>>),
+    TaggedTemplate(P<'a, TaggedTemplateExpression<'a>>),
+    MetaProperty(P<'a, MetaProperty<'a>>),
+    Import(P<'a, ImportExpression<'a>>),
 }
+
+const EXPRESSION_SIZE: usize = std::mem::size_of::<Expression<'_>>();
 
 impl<'a> Expression<'a> {
     pub fn to_id(&self) -> &Identifier<'a> {
@@ -1041,7 +1043,7 @@ impl<'a> Expression<'a> {
     pub fn loc(&self) -> Loc {
         match self {
             Expression::Id(id) => id.loc,
-            Expression::Null(loc) => *loc,
+            Expression::Null(loc) => *loc.as_ref(),
             Expression::Boolean(lit) => lit.loc,
             Expression::Number(lit) => lit.loc,
             Expression::String(lit) => lit.loc,
@@ -1078,6 +1080,12 @@ impl<'a> Expression<'a> {
     /// The source position of the start of the expression.
     pub fn pos(&self) -> Pos {
         self.loc().start
+    }
+
+    /// Return the raw bytes of this expression. These can be compared directly to check for
+    /// expression equality.
+    pub fn as_raw(&self) -> [u8; EXPRESSION_SIZE] {
+        unsafe { std::mem::transmute_copy(self) }
     }
 }
 
@@ -1140,7 +1148,7 @@ pub enum UnaryOperator {
 pub struct UnaryExpression<'a> {
     pub loc: Loc,
     pub operator: UnaryOperator,
-    pub argument: P<'a, Expression<'a>>,
+    pub argument: Expression<'a>,
 }
 
 #[derive(PartialEq)]
@@ -1175,8 +1183,8 @@ pub enum BinaryOperator {
 pub struct BinaryExpression<'a> {
     pub loc: Loc,
     pub operator: BinaryOperator,
-    pub left: P<'a, Expression<'a>>,
-    pub right: P<'a, Expression<'a>>,
+    pub left: Expression<'a>,
+    pub right: Expression<'a>,
 
     /// Source position of the start of the operator
     pub operator_pos: Pos,
@@ -1192,8 +1200,8 @@ pub enum LogicalOperator {
 pub struct LogicalExpression<'a> {
     pub loc: Loc,
     pub operator: LogicalOperator,
-    pub left: P<'a, Expression<'a>>,
-    pub right: P<'a, Expression<'a>>,
+    pub left: Expression<'a>,
+    pub right: Expression<'a>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -1230,8 +1238,8 @@ impl AssignmentOperator {
 pub struct AssignmentExpression<'a> {
     pub loc: Loc,
     pub operator: AssignmentOperator,
-    pub left: P<'a, Pattern<'a>>,
-    pub right: P<'a, Expression<'a>>,
+    pub left: Pattern<'a>,
+    pub right: Expression<'a>,
 
     /// Source position of the start of the operator
     pub operator_pos: Pos,
@@ -1249,14 +1257,14 @@ pub enum UpdateOperator {
 pub struct UpdateExpression<'a> {
     pub loc: Loc,
     pub operator: UpdateOperator,
-    pub argument: P<'a, Expression<'a>>,
+    pub argument: Expression<'a>,
     pub is_prefix: bool,
 }
 
 pub struct MemberExpression<'a> {
     pub loc: Loc,
-    pub object: P<'a, Expression<'a>>,
-    pub property: P<'a, Expression<'a>>,
+    pub object: Expression<'a>,
+    pub property: Expression<'a>,
     pub is_computed: bool,
     pub is_optional: bool,
     pub is_private: bool,
@@ -1267,19 +1275,19 @@ pub struct MemberExpression<'a> {
 
 pub struct ChainExpression<'a> {
     pub loc: Loc,
-    pub expression: P<'a, Expression<'a>>,
+    pub expression: Expression<'a>,
 }
 
 pub struct ConditionalExpression<'a> {
     pub loc: Loc,
-    pub test: P<'a, Expression<'a>>,
-    pub altern: P<'a, Expression<'a>>,
-    pub conseq: P<'a, Expression<'a>>,
+    pub test: Expression<'a>,
+    pub altern: Expression<'a>,
+    pub conseq: Expression<'a>,
 }
 
 pub struct CallExpression<'a> {
     pub loc: Loc,
-    pub callee: P<'a, Expression<'a>>,
+    pub callee: Expression<'a>,
     pub arguments: AstSlice<'a, CallArgument<'a>>,
     pub is_optional: bool,
 
@@ -1308,7 +1316,7 @@ pub struct CallExpression<'a> {
 impl<'a> CallExpression<'a> {
     pub fn new(
         loc: Loc,
-        callee: P<'a, Expression<'a>>,
+        callee: Expression<'a>,
         arguments: AstSlice<'a, CallArgument<'a>>,
         is_optional: bool,
     ) -> CallExpression<'a> {
@@ -1334,7 +1342,7 @@ pub enum CallArgument<'a> {
 
 pub struct NewExpression<'a> {
     pub loc: Loc,
-    pub callee: P<'a, Expression<'a>>,
+    pub callee: Expression<'a>,
     pub arguments: AstSlice<'a, CallArgument<'a>>,
 }
 
@@ -1358,7 +1366,7 @@ pub enum ArrayElement<'a> {
 
 pub struct SpreadElement<'a> {
     pub loc: Loc,
-    pub argument: P<'a, Expression<'a>>,
+    pub argument: Expression<'a>,
     pub has_trailing_comma: bool,
 }
 
@@ -1374,8 +1382,8 @@ pub struct ObjectExpression<'a> {
 
 pub struct Property<'a> {
     pub loc: Loc,
-    pub key: P<'a, Expression<'a>>,
-    pub value: Option<P<'a, Expression<'a>>>,
+    pub key: Expression<'a>,
+    pub value: Option<Expression<'a>>,
     pub is_computed: bool,
     pub is_method: bool,
     pub kind: PropertyKind<'a>,
@@ -1391,7 +1399,7 @@ pub enum PropertyKind<'a> {
     // A pattern initializer that is not valid in a final AST, but can be reparsed into an object
     // pattern property with an initializer. The single expression argument is the initializer. If
     // a PatternInitializer is found during analysis the analyzer will error.
-    PatternInitializer(P<'a, Expression<'a>>),
+    PatternInitializer(Expression<'a>),
 }
 
 pub struct ThisExpression<'a> {
@@ -1406,19 +1414,19 @@ pub struct ThisExpression<'a> {
 
 pub struct AwaitExpression<'a> {
     pub loc: Loc,
-    pub argument: P<'a, Expression<'a>>,
+    pub argument: Expression<'a>,
 }
 
 pub struct YieldExpression<'a> {
     pub loc: Loc,
-    pub argument: Option<P<'a, Expression<'a>>>,
+    pub argument: Option<Expression<'a>>,
     pub is_delegate: bool,
 }
 
 pub struct SuperMemberExpression<'a> {
     pub loc: Loc,
     pub super_: Loc,
-    pub property: P<'a, Expression<'a>>,
+    pub property: Expression<'a>,
     pub is_computed: bool,
 
     /// Whether this super member expression is in a static method. Set during analysis.
@@ -1442,7 +1450,7 @@ impl<'a> SuperMemberExpression<'a> {
         loc: Loc,
         super_: Loc,
         operator_pos: Pos,
-        property: P<'a, Expression<'a>>,
+        property: Expression<'a>,
         is_computed: bool,
     ) -> Self {
         Self {
@@ -1512,7 +1520,7 @@ pub struct TemplateElement<'a> {
 
 pub struct TaggedTemplateExpression<'a> {
     pub loc: Loc,
-    pub tag: P<'a, Expression<'a>>,
+    pub tag: Expression<'a>,
     pub quasi: P<'a, TemplateLiteral<'a>>,
 }
 
@@ -1542,17 +1550,17 @@ pub enum MetaPropertyKind<'a> {
 
 pub struct ImportExpression<'a> {
     pub loc: Loc,
-    pub source: P<'a, Expression<'a>>,
-    pub options: Option<P<'a, Expression<'a>>>,
+    pub source: Expression<'a>,
+    pub options: Option<Expression<'a>>,
 }
 
 pub enum Pattern<'a> {
-    Id(Identifier<'a>),
-    Array(ArrayPattern<'a>),
-    Object(ObjectPattern<'a>),
-    Assign(AssignmentPattern<'a>),
-    Member(MemberExpression<'a>),
-    SuperMember(SuperMemberExpression<'a>),
+    Id(P<'a, Identifier<'a>>),
+    Array(P<'a, ArrayPattern<'a>>),
+    Object(P<'a, ObjectPattern<'a>>),
+    Assign(P<'a, AssignmentPattern<'a>>),
+    Member(P<'a, MemberExpression<'a>>),
+    SuperMember(P<'a, SuperMemberExpression<'a>>),
 }
 
 impl<'a> Pattern<'a> {
@@ -1653,7 +1661,7 @@ impl<'a> ArrayPattern<'a> {
 
 pub struct RestElement<'a> {
     pub loc: Loc,
-    pub argument: P<'a, Pattern<'a>>,
+    pub argument: Pattern<'a>,
 }
 
 pub struct ObjectPattern<'a> {
@@ -1676,8 +1684,8 @@ impl<'a> ObjectPattern<'a> {
 
 pub struct ObjectPatternProperty<'a> {
     pub loc: Loc,
-    pub key: Option<P<'a, Expression<'a>>>,
-    pub value: P<'a, Pattern<'a>>,
+    pub key: Option<Expression<'a>>,
+    pub value: Pattern<'a>,
     pub is_computed: bool,
     // For rest properties the value is the argument and must be an id. All other fields are ignored.
     pub is_rest: bool,
@@ -1685,8 +1693,8 @@ pub struct ObjectPatternProperty<'a> {
 
 pub struct AssignmentPattern<'a> {
     pub loc: Loc,
-    pub left: P<'a, Pattern<'a>>,
-    pub right: P<'a, Expression<'a>>,
+    pub left: Pattern<'a>,
+    pub right: Expression<'a>,
 }
 
 impl<'a> AssignmentPattern<'a> {
@@ -1712,7 +1720,7 @@ pub struct ImportAttributes<'a> {
 pub struct ImportAttribute<'a> {
     pub loc: Loc,
     // Must be a string literal or identifier
-    pub key: P<'a, Expression<'a>>,
+    pub key: Expression<'a>,
     pub value: P<'a, StringLiteral<'a>>,
 }
 
@@ -1741,7 +1749,7 @@ pub struct ImportNamespaceSpecifier<'a> {
 pub struct ExportNamedDeclaration<'a> {
     pub loc: Loc,
     // Must be variable declaration, function declaration, or class declaration
-    pub declaration: Option<P<'a, Statement<'a>>>,
+    pub declaration: Option<Statement<'a>>,
     pub specifiers: AstSlice<'a, ExportSpecifier<'a>>,
     pub source: Option<P<'a, StringLiteral<'a>>>,
     pub source_attributes: Option<P<'a, ImportAttributes<'a>>>,
@@ -1749,10 +1757,10 @@ pub struct ExportNamedDeclaration<'a> {
 
 impl<'a> ExportNamedDeclaration<'a> {
     pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&Identifier<'a>)) {
-        if let Some(declaration) = self.declaration.as_deref() {
+        if let Some(declaration) = self.declaration.as_ref() {
             match declaration {
-                Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
-                    for decl in declarations.iter() {
+                Statement::VarDecl(var_decl) => {
+                    for decl in var_decl.declarations.iter() {
                         let _ = decl.iter_bound_names(&mut |id| {
                             f(id);
                             Ok(())
@@ -1800,7 +1808,7 @@ impl<'a> ExportDefaultDeclaration<'a> {
 pub enum ExportDefaultKind<'a> {
     Function(P<'a, Function<'a>>),
     Class(P<'a, Class<'a>>),
-    Expression(P<'a, OuterExpression<'a>>),
+    Expression(OuterExpression<'a>),
 }
 
 pub struct ExportAllDeclaration<'a> {

@@ -547,12 +547,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         // Gather all key value pairs from AST
         for attribute in attributes.iter() {
-            let key = match attribute.key.as_ref() {
-                ast::Expression::Id(ast::Identifier { name, .. }) => {
-                    InternedStrings::get_wtf8_str(self.cx, name).as_flat()
+            let key = match &attribute.key {
+                ast::Expression::Id(id) => {
+                    InternedStrings::get_wtf8_str(self.cx, id.name).as_flat()
                 }
-                ast::Expression::String(ast::StringLiteral { value, .. }) => {
-                    InternedStrings::get_wtf8_str(self.cx, value).as_flat()
+                ast::Expression::String(string) => {
+                    InternedStrings::get_wtf8_str(self.cx, string.value).as_flat()
                 }
                 _ => unreachable!("expected string or identifier"),
             };
@@ -3009,7 +3009,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // A unary minus on a number literal is inlined as a negative number literal
-        if let ast::Expression::Number(number_expr) = expr.argument.as_ref() {
+        if let ast::Expression::Number(number_expr) = &expr.argument {
             return self.gen_number_literal(-number_expr.value, dest);
         }
 
@@ -3029,7 +3029,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // A unary plus on a number literal is inlined as that number literal
-        if let ast::Expression::Number(number_expr) = expr.argument.as_ref() {
+        if let ast::Expression::Number(number_expr) = &expr.argument {
             return self.gen_number_literal(number_expr.value, dest);
         }
 
@@ -3079,7 +3079,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Unresolved identifiers must be treated as undefined
-        let argument = match expr.argument.as_ref() {
+        let argument = match &expr.argument {
             ast::Expression::Id(id) => match id.scope.kind() {
                 // Special instruction for unresolved global bindings
                 ResolvedScope::UnresolvedGlobal => {
@@ -3145,7 +3145,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<GenRegister> {
         let delete_pos = expr.loc.start;
 
-        match expr.argument.as_ref() {
+        match &expr.argument {
             ast::Expression::Member(member_expr) => {
                 let object = self.gen_maybe_chain_part_expression(
                     &member_expr.object,
@@ -3168,9 +3168,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Ok(dest)
             }
             ast::Expression::Chain(chain_expr)
-                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
+                if matches!(&chain_expr.expression, ast::Expression::Member(_)) =>
             {
-                let member_expr = match chain_expr.expression.as_ref() {
+                let member_expr = match &chain_expr.expression {
                     ast::Expression::Member(member_expr) => member_expr,
                     _ => unreachable!(),
                 };
@@ -3451,7 +3451,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<GenRegister> {
         // Check if this might be a direct eval
-        let is_maybe_direct_eval = matches!(expr.callee.as_ref(), ast::Expression::Id(id) if id.name == "eval")
+        let is_maybe_direct_eval = matches!(&expr.callee, ast::Expression::Id(id) if id.name == "eval")
             && !expr.is_optional;
 
         // Find the callee and this value to use for the call
@@ -3671,7 +3671,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // If the callee is a chain member expression there will either be a receiver or the
             // chain expression short circuits and the callee is undefined.
             ast::Expression::Chain(chain_expr)
-                if matches!(chain_expr.expression.as_ref(), ast::Expression::Member(_)) =>
+                if matches!(&chain_expr.expression, ast::Expression::Member(_)) =>
             {
                 // Dummy receiver that will be overwritten when generating member expression
                 let mut call_receiver = CallReceiver { receiver: Register::this(), is_chain: true };
@@ -4010,7 +4010,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let mut key = if property.is_computed {
                 Property::Computed(self.gen_expression(&property.key)?)
             } else {
-                match property.key.as_ref() {
+                match &property.key {
                     ast::Expression::Id(id) => {
                         let constant_index = self.add_wtf8_string_constant(id.name)?;
                         let name = AnyStr::from_id(id);
@@ -4036,7 +4036,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let value = if property.value.is_none() {
                 // Identifier shorthand properties
-                let value_id = property.key.as_ref().to_id();
+                let value_id = property.key.to_id();
                 self.gen_load_identifier(value_id, ExprDest::Any)?
             } else if property.is_method {
                 // Method properties
@@ -4083,7 +4083,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Function node is added to the pending functions queue
                 let func_node = if let ast::Expression::Function(func_node) =
-                    &property.value.as_ref().unwrap().as_ref()
+                    &property.value.as_ref().unwrap()
                 {
                     func_node
                 } else {
@@ -4434,7 +4434,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &'a ast::AssignmentExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        match expr.left.as_ref() {
+        match &expr.left {
             ast::Pattern::Id(id) => {
                 // Right side expression is only named (meaning name is used for anonymous functions
                 // and classes) if it is a simple id assignment and id is not parenthesized.
@@ -4768,7 +4768,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let pos = expr.loc.start;
 
         if let member @ (ast::Expression::Member(_) | ast::Expression::SuperMember(_)) =
-            expr.argument.as_ref()
+            &expr.argument
         {
             enum Property {
                 Computed(GenRegister),
@@ -6005,12 +6005,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         var_decl: &'a ast::VariableDeclaration<'a>,
     ) -> EmitResult<StmtCompletion> {
         for decl in var_decl.declarations.iter() {
-            if let Some(init) = decl.init.as_deref() {
+            if let Some(init) = decl.init.as_ref() {
                 let store_flags = StoreFlags::INITIALIZATION;
                 let init_value_dest =
                     self.expr_dest_for_destructuring_assignment(&decl.id, store_flags);
 
-                let init_value = if let ast::Pattern::Id(id) = decl.id.as_ref() {
+                let init_value = if let ast::Pattern::Id(id) = &decl.id {
                     self.gen_named_outer_expression(AnyStr::from_id(id), init, init_value_dest)?
                 } else {
                     self.gen_outer_expression_with_dest(init, init_value_dest)?
@@ -6077,7 +6077,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Pattern::Array(array) => Ok(Reference::new(ReferenceKind::ArrayPattern(array))),
             ast::Pattern::Assign(assign) => {
                 let mut reference = self.gen_pattern_to_reference(&assign.left)?;
-                reference.init = Some(assign.right.as_ref());
+                reference.init = Some(&assign.right);
 
                 Ok(reference)
             }
@@ -6260,9 +6260,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.expr_dest_for_destructuring_assignment(&property.value, store_flags);
             let property_value = self.allocate_destination(property_value_dest)?;
 
-            let key = match property.key.as_deref() {
+            let key = match property.key.as_ref() {
                 // Shorthand properties must have an id pattern, optionally with a default value
-                None => match property.value.as_ref() {
+                None => match &property.value {
                     ast::Pattern::Id(id) => Property::Named(id),
                     ast::Pattern::Assign(assign) => Property::Named(assign.left.to_id()),
                     _ => unreachable!("invalid shorthand property pattern"),
@@ -6330,7 +6330,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if has_rest_element {
             let rest_element_node = pattern.properties.last().unwrap();
             let rest_element_pos = rest_element_node.loc.start;
-            let rest_element_pattern = rest_element_node.value.as_ref();
+            let rest_element_pattern = &rest_element_node.value;
 
             let rest_element_dest =
                 self.expr_dest_for_destructuring_assignment(rest_element_pattern, store_flags);
@@ -7225,7 +7225,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let field_pos = field_node.loc.start;
 
         // Evaluate the initializer, otherwise field is set to undefined
-        let value = if let Some(initializer) = field_node.value.as_deref() {
+        let value = if let Some(initializer) = field_node.value.as_ref() {
             match field {
                 ClassField::Named { name, .. } => {
                     self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
@@ -7260,7 +7260,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Set up flags for DefineProperty instruction
                 let mut flags = DefinePropertyFlags::empty();
                 if field_node.value.is_some()
-                    && Self::expression_needs_name(&field_node.value.as_deref().unwrap().expr)
+                    && Self::expression_needs_name(&field_node.value.as_ref().unwrap().expr)
                 {
                     flags |= DefinePropertyFlags::NEEDS_NAME;
                 }
@@ -7802,7 +7802,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.start_block(loop_start_block);
 
         // Evaluate the test expression and either continue to body or break out of loop
-        if let Some(test_expr) = stmt.test.as_deref() {
+        if let Some(test_expr) = stmt.test.as_ref() {
             let test = self.gen_outer_expression(test_expr)?;
             self.register_allocator.release(test);
 
@@ -7823,7 +7823,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // Evaluate the update expression and return to the beginning of the loop
-        if let Some(update_expr) = stmt.update.as_deref() {
+        if let Some(update_expr) = stmt.update.as_ref() {
             let update = self.gen_outer_expression(update_expr)?;
             self.register_allocator.release(update);
         }
@@ -8295,7 +8295,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(object);
         self.gen_scope_start(with_scope, None)?;
 
-        let body_completion = self.gen_statement(stmt.body.as_ref())?;
+        let body_completion = self.gen_statement(&stmt.body)?;
 
         // End with scope
         self.gen_scope_end(with_scope);
@@ -8356,7 +8356,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Determine the type of catch parameter, and if a temporary register is needed then
         // allocate it immediately so that it cannot be clobbered before use e.g. by destructuring.
-        let param = if let Some(param) = catch_clause.param.as_deref() {
+        let param = if let Some(param) = catch_clause.param.as_ref() {
             if param.is_id() {
                 match param.to_id().get_binding().vm_location().unwrap() {
                     VMLocation::LocalRegister(index) => Param::LocalRegister { index },
@@ -9011,14 +9011,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<StmtCompletion> {
         // Find the innermost labeled statement
         let mut inner_stmt = stmt;
-        while let ast::Statement::Labeled(labeled_stmt) = inner_stmt.body.as_ref() {
+        while let ast::Statement::Labeled(labeled_stmt) = &inner_stmt.body {
             inner_stmt = labeled_stmt;
         }
 
         // All nested labels share the same id
         let label_id = inner_stmt.label.id;
 
-        match inner_stmt.body.as_ref() {
+        match &inner_stmt.body {
             ast::Statement::For(stmt) => {
                 let jump_targets =
                     self.push_jump_statement_target(Some(label_id), TargetKind::Loop);

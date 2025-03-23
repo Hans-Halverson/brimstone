@@ -630,7 +630,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
             if let PropertyKind::Init = property.kind {
                 // Must be a simple proto initializer
                 if !property.is_computed && !property.is_method && property.value.is_some() {
-                    let is_proto_key = match property.key.as_ref() {
+                    let is_proto_key = match &property.key {
                         Expression::Id(id) if id.name == "__proto__" => true,
                         Expression::String(lit) if lit.value == "__proto__" => true,
                         _ => false,
@@ -663,7 +663,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         }
 
         if prop.is_method {
-            let func = if let Some(Expression::Function(func)) = prop.value.as_deref_mut() {
+            let func = if let Some(Expression::Function(func)) = prop.value.as_mut() {
                 func
             } else {
                 unreachable!("method must have function value");
@@ -763,7 +763,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
     fn visit_unary_expression(&mut self, expr: &mut UnaryExpression<'a>) {
         if expr.operator == UnaryOperator::Delete && self.is_in_strict_mode_context() {
-            match expr.argument.as_ref() {
+            match &expr.argument {
                 Expression::Id(_) => {
                     self.emit_error(expr.loc, ParseError::DeleteIdentifierInStrictMode);
                 }
@@ -784,8 +784,8 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
     fn visit_call_expression(&mut self, expr: &mut CallExpression<'a>) {
         // If a potential direct eval is ever seen, conservatively force all visible bindings to
         // have VM scope locations instead of local registers so they can be dynamically looked up.
-        match expr.callee.as_ref() {
-            Expression::Id(Identifier { name, .. }) if *name == "eval" && !expr.is_optional => {
+        match &expr.callee {
+            Expression::Id(id) if id.name == "eval" && !expr.is_optional => {
                 let current_scope_id = self.current_scope_id();
                 self.scope_tree
                     .support_dynamic_access_in_visible_bindings(current_scope_id);
@@ -855,7 +855,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         // Body (including extends clause) is in its own scope
         self.enter_scope(class.scope);
 
-        if let Some(super_class) = class.super_class.as_deref_mut() {
+        if let Some(super_class) = class.super_class.as_mut() {
             self.visit_outer_expression(super_class);
         }
 
@@ -954,7 +954,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         let mut seen_keys: HashSet<&[u8]> = HashSet::new();
 
         for attribute in attributes.attributes.iter() {
-            let name_slice = match attribute.key.as_ref() {
+            let name_slice = match &attribute.key {
                 Expression::Id(id) => id.name.as_bytes(),
                 Expression::String(literal) => literal.value.as_bytes(),
                 _ => unreachable!("import attribute key must be id or string"),
@@ -1105,13 +1105,10 @@ impl<'a> Analyzer<'a> {
         for (param_index, param) in func.params.iter_mut().enumerate() {
             // Check if this is a top level id pattern, optionally with a default
             let toplevel_id = match param {
-                FunctionParam::Pattern { pattern: Pattern::Id(id), .. } => Some(id),
-                FunctionParam::Pattern {
-                    pattern: Pattern::Assign(AssignmentPattern { left, .. }),
-                    ..
-                } => {
-                    if let Pattern::Id(id) = left.as_mut() {
-                        Some(id)
+                FunctionParam::Pattern { pattern: Pattern::Id(id), .. } => Some(id.as_mut()),
+                FunctionParam::Pattern { pattern: Pattern::Assign(assign), .. } => {
+                    if let Pattern::Id(id) = &mut assign.left {
+                        Some(id.as_mut())
                     } else {
                         None
                     }
@@ -1495,12 +1492,12 @@ impl<'a> Analyzer<'a> {
         let is_label_duplicate = self.visit_label_def(stmt, label_id);
         labels.push((stmt.label.name, is_label_duplicate));
 
-        let mut inner_stmt = stmt.body.as_mut();
+        let mut inner_stmt = &mut stmt.body;
         while let Statement::Labeled(stmt) = inner_stmt {
             let is_label_duplicate = self.visit_label_def(stmt, label_id);
             labels.push((stmt.label.name, is_label_duplicate));
 
-            inner_stmt = stmt.body.as_mut()
+            inner_stmt = &mut stmt.body;
         }
 
         // Only some statements can be a continue target
@@ -1548,7 +1545,7 @@ impl<'a> Analyzer<'a> {
 
         // Annex B: Always error on labeled function declarations in strict mode
         if self.is_in_strict_mode_context() {
-            if let Statement::FuncDecl(_) = stmt.body.as_ref() {
+            if let Statement::FuncDecl(_) = &stmt.body {
                 self.emit_error(stmt.label.loc, ParseError::InvalidLabeledFunction(true));
             }
         }
@@ -1561,12 +1558,12 @@ impl<'a> Analyzer<'a> {
     fn check_for_labeled_function(&mut self, stmt: &Statement) {
         if let Statement::Labeled(labeled) = stmt {
             // Descend past nested labels to labeled statement
-            let mut current_labeled = labeled;
-            while let Statement::Labeled(next_labeled) = current_labeled.body.as_ref() {
+            let mut current_labeled = labeled.as_ref();
+            while let Statement::Labeled(next_labeled) = &current_labeled.body {
                 current_labeled = next_labeled;
             }
 
-            if let Statement::FuncDecl(_) = current_labeled.body.as_ref() {
+            if let Statement::FuncDecl(_) = current_labeled.body {
                 if !self.is_in_strict_mode_context() {
                     self.emit_error(labeled.label.loc, ParseError::InvalidLabeledFunction(false))
                 }

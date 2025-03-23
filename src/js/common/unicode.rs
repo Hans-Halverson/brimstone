@@ -194,17 +194,56 @@ pub fn get_hex_value(code_point: CodePoint) -> Option<u32> {
     })
 }
 
+/// Lookup table for ASCII code points that can appear as the first character of an identifier.
+///
+/// Generated from:
+///   is_ascii_alphabetic(code_point) || code_point == '_' as u32 || code_point == '$' as u32
+const ASCII_ID_START: [bool; 128] = [
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, true, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true, true, true, false, false, false, false, true,
+    false, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true, true, true, true, true, false, false, false,
+    false, false,
+];
+
+/// Lookup table for ASCII code points that can appear in an identifier after the first character.
+///
+/// Generated from:
+///   is_ascii_alphabetic(code_point)
+///       || is_decimal_digit(code_point)
+///       || code_point == '_' as u32
+///       || code_point == '$' as u32
+const ASCII_ID_PART: [bool; 128] = [
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, true, false, false,
+    false, false, false, false, false, false, false, false, false, true, true, true, true, true,
+    true, true, true, true, true, false, false, false, false, false, false, false, true, true,
+    true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true, false, false, false, false, true, false, true,
+    true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true, true, false, false, false, false, false,
+];
+
 /// Can this code point appear as the first code point of an identifier.
 pub fn is_id_start_ascii(code_point: CodePoint) -> bool {
-    is_ascii_alphabetic(code_point) || code_point == '_' as u32 || code_point == '$' as u32
+    ASCII_ID_START
+        .get(code_point as usize)
+        .copied()
+        .unwrap_or(false)
 }
 
 /// Can this code point appear in an identifier (after the first character).
 pub fn is_id_part_ascii(code_point: CodePoint) -> bool {
-    is_ascii_alphabetic(code_point)
-        || is_decimal_digit(code_point)
-        || code_point == '_' as u32
-        || code_point == '$' as u32
+    ASCII_ID_PART
+        .get(code_point as usize)
+        .copied()
+        .unwrap_or(false)
 }
 
 #[inline]

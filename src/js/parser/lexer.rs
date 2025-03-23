@@ -8,9 +8,9 @@ use num_traits::ToPrimitive;
 use crate::js::common::unicode::{
     as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
     decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
-    is_ascii_newline, is_ascii_whitespace, is_decimal_digit, is_id_part_ascii, is_id_part_unicode,
-    is_id_start_ascii, is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
-    is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
+    is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start_ascii, is_id_start_unicode,
+    is_in_unicode_range, is_newline, is_unicode_newline, is_unicode_whitespace,
+    to_string_or_unicode_escape_sequence, CodePoint,
 };
 use crate::js::common::wtf_8::Wtf8Str;
 
@@ -157,23 +157,30 @@ impl<'a> Lexer<'a> {
         Err(self.localized_parse_error(loc, error))
     }
 
+    /// Lookup table for ASCII whitespace and newline characters.
+    /// - 0 means other
+    /// - 1 means whitespace
+    /// - 2 means newline
+    const ASCII_WHITESPACE_AND_NEWLINES: [u8; 128] = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+
     pub fn next(&mut self) -> LexResult<'a> {
         self.is_new_line_before_current = false;
         loop {
             // Fast pass for skipping ASCII whitespace and newlines
-            loop {
-                if is_ascii(self.current) {
-                    if is_ascii_whitespace(self.current) {
-                        self.advance();
-                    } else if is_ascii_newline(self.current) {
-                        self.is_new_line_before_current = true;
-                        self.advance();
-                    } else {
-                        break;
-                    }
-                } else {
+            while let Some(sigil) = Self::ASCII_WHITESPACE_AND_NEWLINES.get(self.current as usize) {
+                if *sigil == 0 {
                     break;
+                } else if *sigil == 2 {
+                    self.is_new_line_before_current = true;
                 }
+
+                self.advance();
             }
 
             let start_pos = self.pos;

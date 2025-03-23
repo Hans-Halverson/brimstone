@@ -1022,6 +1022,8 @@ pub enum Expression<'a> {
     Import(P<'a, ImportExpression<'a>>),
 }
 
+const EXPRESSION_SIZE: usize = std::mem::size_of::<Expression<'_>>();
+
 impl<'a> Expression<'a> {
     pub fn to_id(&self) -> &Identifier<'a> {
         match self {
@@ -1041,7 +1043,7 @@ impl<'a> Expression<'a> {
     pub fn loc(&self) -> Loc {
         match self {
             Expression::Id(id) => id.loc,
-            Expression::Null(loc) => *loc,
+            Expression::Null(loc) => *loc.as_ref(),
             Expression::Boolean(lit) => lit.loc,
             Expression::Number(lit) => lit.loc,
             Expression::String(lit) => lit.loc,
@@ -1078,6 +1080,12 @@ impl<'a> Expression<'a> {
     /// The source position of the start of the expression.
     pub fn pos(&self) -> Pos {
         self.loc().start
+    }
+
+    /// Return the raw bytes of this expression. These can be compared directly to check for
+    /// expression equality.
+    pub fn as_raw(&self) -> [u8; EXPRESSION_SIZE] {
+        unsafe { std::mem::transmute_copy(self) }
     }
 }
 
@@ -1749,10 +1757,10 @@ pub struct ExportNamedDeclaration<'a> {
 
 impl<'a> ExportNamedDeclaration<'a> {
     pub fn iter_declaration_ids(&self, f: &mut impl FnMut(&Identifier<'a>)) {
-        if let Some(declaration) = self.declaration.as_deref() {
+        if let Some(declaration) = self.declaration.as_ref() {
             match declaration {
-                Statement::VarDecl(VariableDeclaration { declarations, .. }) => {
-                    for decl in declarations.iter() {
+                Statement::VarDecl(var_decl) => {
+                    for decl in var_decl.declarations.iter() {
                         let _ = decl.iter_bound_names(&mut |id| {
                             f(id);
                             Ok(())

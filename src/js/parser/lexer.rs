@@ -18,7 +18,7 @@ use super::ast::{AstAlloc, AstString};
 use super::loc::{Loc, Pos};
 use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
 use super::source::Source;
-use super::token::Token;
+use super::token::{RegExpToken, TemplatePartToken, Token};
 
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,
@@ -667,7 +667,7 @@ impl<'a> Lexer<'a> {
         Ok(has_numeric_separator)
     }
 
-    fn lex_decimal_literal(&mut self) -> LexResult<'static> {
+    fn lex_decimal_literal(&mut self) -> LexResult<'a> {
         let start_pos = self.pos;
         let mut has_numeric_separator = false;
 
@@ -679,8 +679,7 @@ impl<'a> Lexer<'a> {
 
         // This is a bigint literal
         if self.current == 'n' as u32 {
-            let digits_slice = &self.buf[start_pos..self.pos];
-            let value = BigInt::parse_bytes(digits_slice, 10).unwrap();
+            let digits_slice = Wtf8Str::from_bytes_unchecked(&self.buf[start_pos..self.pos]);
             self.advance();
 
             // BigInts do not allow a leading zeros
@@ -689,7 +688,7 @@ impl<'a> Lexer<'a> {
                 return self.error(loc, ParseError::BigIntLeadingZero);
             }
 
-            return self.emit(Token::BigIntLiteral(value), start_pos);
+            return self.emit(Token::BigIntLiteral { digits_slice, base: 10 }, start_pos);
         }
 
         // Read optional decimal point with its optional following digits
@@ -733,9 +732,9 @@ impl<'a> Lexer<'a> {
     #[inline]
     fn lex_literal_with_base(
         &mut self,
-        base: u32,
+        base: u8,
         char_to_digit: fn(u32) -> Option<u32>,
-    ) -> LexResult<'static> {
+    ) -> LexResult<'a> {
         let start_pos = self.pos;
         self.advance2();
 
@@ -792,17 +791,16 @@ impl<'a> Lexer<'a> {
 
         // A `n` suffix indicates a BigInt literal
         if self.current == 'n' as u32 {
-            let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let value = BigInt::parse_bytes(digits_slice, base).unwrap();
+            let digits_slice = Wtf8Str::from_bytes_unchecked(&self.buf[(start_pos + 2)..self.pos]);
             self.advance();
 
-            return self.emit(Token::BigIntLiteral(value), start_pos);
+            return self.emit(Token::BigIntLiteral { digits_slice, base }, start_pos);
         }
 
         // If the value overflows then we must first reparse to a BigInt, then convert to an f64
         if overflows_u64 {
             let digits_slice = &self.buf[(start_pos + 2)..self.pos];
-            let bigint_value = BigInt::parse_bytes(digits_slice, base).unwrap();
+            let bigint_value = BigInt::parse_bytes(digits_slice, base as u32).unwrap();
 
             // Never returns None, as BigInt -> float conversion goes to infinity instead of failing
             let value = bigint_value.to_f64().unwrap();
@@ -812,15 +810,15 @@ impl<'a> Lexer<'a> {
         self.emit(Token::NumberLiteral(value as f64), start_pos)
     }
 
-    fn lex_binary_literal(&mut self) -> LexResult<'static> {
+    fn lex_binary_literal(&mut self) -> LexResult<'a> {
         self.lex_literal_with_base(2, get_binary_value)
     }
 
-    fn lex_octal_literal(&mut self) -> LexResult<'static> {
+    fn lex_octal_literal(&mut self) -> LexResult<'a> {
         self.lex_literal_with_base(8, get_octal_value)
     }
 
-    fn lex_hex_literal(&mut self) -> LexResult<'static> {
+    fn lex_hex_literal(&mut self) -> LexResult<'a> {
         self.lex_literal_with_base(16, get_hex_value)
     }
 
@@ -1153,7 +1151,9 @@ impl<'a> Lexer<'a> {
         let flags = Wtf8Str::from_bytes_unchecked(&self.buf[flags_start_pos..self.pos]);
         let raw = Wtf8Str::from_bytes_unchecked(&self.buf[start_pos..self.pos]);
 
-        self.emit(Token::RegExpLiteral { raw, pattern, flags }, start_pos)
+        let regexp_token = self.alloc.alloc(RegExpToken { raw, pattern, flags });
+
+        self.emit(Token::RegExpLiteral(regexp_token), start_pos)
     }
 
     fn lex_regex_character(&mut self, in_class: bool) -> ParseResult<()> {
@@ -1256,7 +1256,11 @@ impl<'a> Lexer<'a> {
 
         let raw = Wtf8Str::from_bytes_unchecked(&self.buf[raw_start_pos..raw_end_pos]);
 
-        self.emit(Token::TemplatePart { raw, cooked: Ok(raw), is_head, is_tail }, start_pos)
+        let template_part_token =
+            self.alloc
+                .alloc(TemplatePartToken { raw, cooked: Ok(raw), is_head, is_tail });
+
+        self.emit(Token::TemplatePart(template_part_token), start_pos)
     }
 
     fn lex_template_literal_slow(
@@ -1453,7 +1457,11 @@ impl<'a> Lexer<'a> {
             Some(loc) => Err(loc),
         };
 
-        self.emit(Token::TemplatePart { raw, cooked, is_head, is_tail }, start_pos)
+        let template_part_token =
+            self.alloc
+                .alloc(TemplatePartToken { raw, cooked, is_head, is_tail });
+
+        self.emit(Token::TemplatePart(template_part_token), start_pos)
     }
 
     /// Lex any valid codepoint whether it is ASCII or unicode

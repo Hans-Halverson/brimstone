@@ -1,7 +1,5 @@
 use std::{borrow::Cow, fmt};
 
-use num_bigint::BigInt;
-
 use super::{ast::AstStr, loc::Loc};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,19 +7,14 @@ pub enum Token<'a> {
     Identifier(AstStr<'a>),
     NumberLiteral(f64),
     StringLiteral(AstStr<'a>),
-    BigIntLiteral(BigInt),
-    RegExpLiteral {
-        raw: AstStr<'a>,
-        pattern: AstStr<'a>,
-        flags: AstStr<'a>,
+    BigIntLiteral {
+        /// Slice of the original source containing the sequence of digits that make up the BigInt
+        digits_slice: AstStr<'a>,
+        /// The base of the BigInt, either 2, 8, 10, or 16
+        base: u8,
     },
-    TemplatePart {
-        raw: AstStr<'a>,
-        // Either a successful string, or a malformed escape sequence error at the given loc
-        cooked: Result<AstStr<'a>, Loc>,
-        is_head: bool,
-        is_tail: bool,
-    },
+    RegExpLiteral(&'a RegExpToken<'a>),
+    TemplatePart(&'a TemplatePartToken<'a>),
     Eof,
     // Operators
     Plus,
@@ -136,26 +129,44 @@ pub enum Token<'a> {
     Enum,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct RegExpToken<'a> {
+    pub raw: AstStr<'a>,
+    pub pattern: AstStr<'a>,
+    pub flags: AstStr<'a>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TemplatePartToken<'a> {
+    pub raw: AstStr<'a>,
+    // Either a successful string, or a malformed escape sequence error at the given loc
+    pub cooked: Result<AstStr<'a>, Loc>,
+    pub is_head: bool,
+    pub is_tail: bool,
+}
+
 impl Token<'_> {
     pub fn as_cow(&self) -> Cow<'static, str> {
         let str = match self {
             Token::Identifier(name) => return Cow::Owned(name.to_string()),
             Token::NumberLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::StringLiteral(lit) => return Cow::Owned(lit.to_string()),
-            Token::BigIntLiteral(lit) => return Cow::Owned(format!("{}n", lit)),
-            Token::RegExpLiteral { raw, .. } => return Cow::Owned(raw.to_string()),
-            Token::TemplatePart { raw, is_head: true, is_tail: true, .. } => {
-                return Cow::Owned(format!("`{}`", raw))
+            Token::BigIntLiteral { digits_slice, .. } => {
+                return Cow::Owned(format!("{}n", digits_slice))
             }
-            Token::TemplatePart { raw, is_head: true, is_tail: false, .. } => {
-                return Cow::Owned(format!("`{}${{`", raw))
-            }
-            Token::TemplatePart { raw, is_head: false, is_tail: true, .. } => {
-                return Cow::Owned(format!("}}{}`", raw))
-            }
-            Token::TemplatePart { raw, is_head: false, is_tail: false, .. } => {
-                return Cow::Owned(format!("}}{}${{`", raw))
-            }
+            Token::RegExpLiteral(RegExpToken { raw, .. }) => return Cow::Owned(raw.to_string()),
+            Token::TemplatePart(TemplatePartToken {
+                raw, is_head: true, is_tail: true, ..
+            }) => return Cow::Owned(format!("`{}`", raw)),
+            Token::TemplatePart(TemplatePartToken {
+                raw, is_head: true, is_tail: false, ..
+            }) => return Cow::Owned(format!("`{}${{`", raw)),
+            Token::TemplatePart(TemplatePartToken {
+                raw, is_head: false, is_tail: true, ..
+            }) => return Cow::Owned(format!("}}{}`", raw)),
+            Token::TemplatePart(TemplatePartToken {
+                raw, is_head: false, is_tail: false, ..
+            }) => return Cow::Owned(format!("}}{}${{`", raw)),
             Token::Plus => "+",
             Token::Minus => "-",
             Token::Multiply => "*",

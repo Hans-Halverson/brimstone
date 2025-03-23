@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use bitflags::bitflags;
+use num_bigint::BigInt;
 
 use crate::js::common::options::Options;
 use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
@@ -23,7 +24,7 @@ use super::scope_tree::{
     STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
 };
 use super::source::Source;
-use super::token::Token;
+use super::token::{RegExpToken, TemplatePartToken, Token};
 
 // Arbitrary error used to fail try parse
 const FAIL_TRY_PARSED_ERROR: ParseError = ParseError::MalformedNumericLiteral;
@@ -2345,7 +2346,7 @@ impl<'a> Parser<'a> {
 
                 self.parse_call_expression(member_expr, start_pos, allow_call, in_optional_chain)
             }
-            Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
+            Token::TemplatePart(TemplatePartToken { raw, cooked, is_tail, is_head: _ }) => {
                 if in_optional_chain {
                     return self.error(self.loc, ParseError::TaggedTemplateInChain);
                 }
@@ -2717,10 +2718,13 @@ impl<'a> Parser<'a> {
                 Ok(Expression::Number(p!(self, NumberLiteral { loc, value })))
             }
             Token::StringLiteral(_) => Ok(Expression::String(self.parse_string_literal()?)),
-            Token::BigIntLiteral(value) => {
+            Token::BigIntLiteral { digits_slice, base } => {
+                // Parse the BigInt value directly from the slice of source digits
+                let value = BigInt::parse_bytes(digits_slice.as_bytes(), *base as u32).unwrap();
+
                 let loc = self.loc;
-                let value = value.clone();
                 self.advance()?;
+
                 Ok(Expression::BigInt(p!(self, BigIntLiteral::new(loc, value, self.alloc))))
             }
             // RegExp may be started by "/=" which is treated as a single token
@@ -2756,7 +2760,7 @@ impl<'a> Parser<'a> {
                     self.parse_class(/* is_decl */ false, /* is_export */ false)?;
                 Ok(Expression::Class(class))
             }
-            Token::TemplatePart { raw, cooked, is_tail, is_head: _ } => {
+            Token::TemplatePart(TemplatePartToken { raw, cooked, is_tail, is_head: _ }) => {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
                     Ok(cooked) => Some(*cooked),
@@ -3018,7 +3022,7 @@ impl<'a> Parser<'a> {
 
         self.advance_regexp_literal()?;
 
-        if let Token::RegExpLiteral { raw, pattern, flags } = &self.token {
+        if let Token::RegExpLiteral(RegExpToken { raw, pattern, flags }) = &self.token {
             let raw = *raw;
             let pattern = *pattern;
             let flags_string = *flags;
@@ -3137,7 +3141,13 @@ impl<'a> Parser<'a> {
 
                 self.advance_template_part()?;
 
-                if let Token::TemplatePart { raw, cooked, is_tail, is_head: false } = &self.token {
+                if let Token::TemplatePart(TemplatePartToken {
+                    raw,
+                    cooked,
+                    is_tail,
+                    is_head: false,
+                }) = &self.token
+                {
                     // In non-tagged templates malformed escape sequences throw an error, otherwise
                     // malformed sequences are swallowed and cooked string is marked as None.
                     let cooked = match cooked {
@@ -3524,7 +3534,7 @@ impl<'a> Parser<'a> {
                 is_computed = true;
                 expr
             }
-            Token::NumberLiteral(_) | Token::StringLiteral(_) | Token::BigIntLiteral(_) => {
+            Token::NumberLiteral(_) | Token::StringLiteral(_) | Token::BigIntLiteral { .. } => {
                 self.parse_primary_expression()?
             }
             // Private properties are only allowed in classes

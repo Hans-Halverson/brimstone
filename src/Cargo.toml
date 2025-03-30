@@ -51,10 +51,15 @@ zerovec.workspace = true
 criterion.workspace = true
 
 [features]
+default = ["jemalloc"]
 # Run the garbage collector in stress test mode
 gc_stress_test = []
 # Collect handle use statistics
 handle_stats = []
+# Use the jemalloc allocator
+jemalloc = []
+# Do not use the jemalloc allocator, overrides the `jemalloc` feature
+no_jemalloc = []
 
 [lints]
 workspace = true

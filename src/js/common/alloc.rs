@@ -1,9 +1,10 @@
-#[cfg(not(target_env = "msvc"))]
-use tikv_jemallocator::Jemalloc;
+#[cfg(all(feature = "jemalloc", not(feature = "no_jemalloc"), not(target_env = "msvc")))]
+mod jemalloc {
+    use tikv_jemallocator::Jemalloc;
 
-#[cfg(not(target_env = "msvc"))]
-#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
+    #[global_allocator]
+    static GLOBAL: Jemalloc = Jemalloc;
+}
 
 use allocator_api2::alloc::Allocator;
 

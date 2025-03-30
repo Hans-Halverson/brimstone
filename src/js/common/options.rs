@@ -2,7 +2,10 @@ use std::sync::{Mutex, MutexGuard};
 
 use clap::Parser;
 
-use super::constants::DEFAULT_HEAP_SIZE;
+use super::{
+    constants::DEFAULT_HEAP_SIZE,
+    serialized_heap::{get_default_serialized_heap, SerializedHeap},
+};
 
 /// Raw command line arguments.
 #[derive(Parser)]
@@ -77,20 +80,15 @@ pub struct Options {
 
     /// Print statistics about the parse phase
     pub parse_stats: bool,
+
+    /// Create the heap from this SerializedHeap if set, otherwise create heap from scratch.
+    pub serialized_heap: Option<&'static SerializedHeap<'static>>,
 }
 
 impl Options {
-    /// Create a new options struct from the command line arguments.
+    /// Create a new options struct from command line arguments.
     pub fn new_from_args(args: &Args) -> Self {
-        OptionsBuilder::new()
-            .annex_b(args.annex_b)
-            .print_ast(args.print_ast)
-            .print_bytecode(args.print_bytecode)
-            .print_regexp_bytecode(args.print_regexp_bytecode)
-            .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
-            .no_color(args.no_color)
-            .parse_stats(args.parse_stats)
-            .build()
+        OptionsBuilder::new_from_args(args).build()
     }
 
     pub fn dump_buffer(&self) -> Option<MutexGuard<'_, String>> {
@@ -121,7 +119,20 @@ impl OptionsBuilder {
             min_heap_size: DEFAULT_HEAP_SIZE,
             no_color: false,
             parse_stats: false,
+            serialized_heap: get_default_serialized_heap(),
         })
+    }
+
+    /// Create new options from command line arguments.
+    pub fn new_from_args(args: &Args) -> Self {
+        OptionsBuilder::new()
+            .annex_b(args.annex_b)
+            .print_ast(args.print_ast)
+            .print_bytecode(args.print_bytecode)
+            .print_regexp_bytecode(args.print_regexp_bytecode)
+            .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
+            .no_color(args.no_color)
+            .parse_stats(args.parse_stats)
     }
 
     /// Return the options that have been built, consuming the builder.
@@ -166,6 +177,14 @@ impl OptionsBuilder {
 
     pub fn parse_stats(mut self, parse_stats: bool) -> Self {
         self.0.parse_stats = parse_stats;
+        self
+    }
+
+    pub fn serialized_heap(
+        mut self,
+        serialized_heap: Option<&'static SerializedHeap<'static>>,
+    ) -> Self {
+        self.0.serialized_heap = serialized_heap;
         self
     }
 }

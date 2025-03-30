@@ -75,7 +75,7 @@ impl GarbageCollector {
         let mut gc = Self::new(cx);
 
         // First visit roots in the context and copy their objects to the to-heap
-        cx.visit_roots(&mut gc);
+        cx.visit_roots_for_gc(&mut gc);
 
         // Then visit all the roots in the permanent heap and copy their objects to the to-heap
         gc.visit_permanent_heap_roots();

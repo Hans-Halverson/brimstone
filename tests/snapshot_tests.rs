@@ -37,12 +37,18 @@ struct TestEnv {
     errors: Vec<String>,
 }
 
+fn init() {
+    brimstone_serialized_heap::init();
+}
+
 fn get_test_root(dirname: &str) -> PathBuf {
     std::env::current_dir().unwrap().join(dirname)
 }
 
 #[test]
 fn js_parser_snapshot_tests() -> GenericResult<()> {
+    init();
+
     let parser_tests_dir = get_test_root("js_parser");
     run_snapshot_tests(&parser_tests_dir, &mut |path| print_ast(path))
 }
@@ -60,6 +66,8 @@ fn print_ast(path: &str) -> GenericResult<String> {
 
 #[test]
 fn js_error_snapshot_tests() -> GenericResult<()> {
+    init();
+
     let error_tests_dir = get_test_root("js_error");
     run_snapshot_tests(&error_tests_dir, &mut |path| print_error(path))
 }
@@ -89,12 +97,16 @@ fn print_error(path: &str) -> GenericResult<String> {
 
 #[test]
 fn js_bytecode_snapshot_tests() -> GenericResult<()> {
+    init();
+
     let bytecode_tests_dir = get_test_root("js_bytecode");
     run_snapshot_tests(&bytecode_tests_dir, &mut |path| print_bytecode(path))
 }
 
 #[test]
 fn js_regexp_bytecode_snapshot_tests() -> GenericResult<()> {
+    init();
+
     let regexp_bytecode_tests_dir = get_test_root("js_regexp_bytecode");
     run_snapshot_tests(&regexp_bytecode_tests_dir, &mut |path| print_regexp_bytecode(path))
 }

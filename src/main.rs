@@ -52,6 +52,9 @@ fn evaluate(mut cx: Context, args: &Args) -> BsResult<()> {
 
 /// Wrapper to pretty print errors
 fn main() {
+    // Global initialization
+    brimstone_serialized_heap::init();
+
     let args = Args::parse();
     let cx = create_context(&args);
 

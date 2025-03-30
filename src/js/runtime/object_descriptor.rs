@@ -219,15 +219,22 @@ pub struct BaseDescriptors {
 }
 
 impl BaseDescriptors {
-    pub fn uninit() -> BaseDescriptors {
+    pub fn uninit_empty() -> Self {
         BaseDescriptors { descriptors: vec![] }
     }
 
-    pub fn new(cx: Context) -> BaseDescriptors {
+    pub fn uninit() -> Self {
         let mut descriptors = vec![];
 
         descriptors.reserve_exact(ObjectKind::count());
         unsafe { descriptors.set_len(ObjectKind::count()) };
+
+        BaseDescriptors { descriptors }
+    }
+
+    pub fn new(cx: Context) -> BaseDescriptors {
+        let mut base_descriptors = Self::uninit();
+        let descriptors = &mut base_descriptors.descriptors;
 
         // Create fake handle which will be read from, in order to initialize descriptor descriptor
         let value = Value::empty();
@@ -387,11 +394,17 @@ impl BaseDescriptors {
 
         other_heap_object_descriptor!(ObjectKind::ValueVec);
 
-        BaseDescriptors { descriptors }
+        base_descriptors
     }
 
     pub fn get(&self, kind: ObjectKind) -> HeapPtr<ObjectDescriptor> {
         self.descriptors[kind as usize]
+    }
+
+    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        for descriptor in &mut self.descriptors {
+            visitor.visit_pointer(descriptor);
+        }
     }
 }
 
@@ -402,5 +415,6 @@ impl HeapObject for HeapPtr<ObjectDescriptor> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.descriptor);
+        visitor.visit_rust_vtable_pointer(&mut self.vtable);
     }
 }

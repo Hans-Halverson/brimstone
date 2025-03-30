@@ -1,0 +1,11 @@
+[package]
+name = "brimstone_serialized_heap"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+brimstone_core.workspace = true
+
+[build-dependencies]
+brimstone_core.workspace = true

@@ -115,6 +115,9 @@ impl WeakMapObjectMapField {
     pub fn visit_pointers(map: &mut HeapPtr<WeakValueMap>, visitor: &mut impl HeapVisitor) {
         map.visit_pointers(visitor);
 
-        // Intentionally do not visit entries
+        for (key, value) in map.iter_mut_gc_unsafe() {
+            visitor.visit_weak_value(key.value_mut());
+            visitor.visit_weak_value(value);
+        }
     }
 }

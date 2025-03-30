@@ -98,9 +98,9 @@ impl HeapItem {
     }
 }
 
-impl HeapObject for HeapPtr<HeapItem> {
-    fn byte_size(&self) -> usize {
-        match self.descriptor().kind() {
+impl HeapPtr<HeapItem> {
+    pub fn byte_size_for_kind(&self, kind: ObjectKind) -> usize {
+        match kind {
             ObjectKind::Descriptor => self.cast::<ObjectDescriptor>().byte_size(),
             ObjectKind::OrdinaryObject => self.cast::<ObjectValue>().byte_size(),
             ObjectKind::Proxy => self.cast::<ProxyObject>().byte_size(),
@@ -206,8 +206,8 @@ impl HeapObject for HeapPtr<HeapItem> {
         }
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
-        match self.descriptor().kind() {
+    pub fn visit_pointers_for_kind(&mut self, visitor: &mut impl HeapVisitor, kind: ObjectKind) {
+        match kind {
             ObjectKind::Descriptor => self.cast::<ObjectDescriptor>().visit_pointers(visitor),
             ObjectKind::OrdinaryObject => self.cast::<ObjectValue>().visit_pointers(visitor),
             ObjectKind::Proxy => self.cast::<ProxyObject>().visit_pointers(visitor),
@@ -361,5 +361,15 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
             ObjectKind::Last => unreachable!("No objects are created with this descriptor"),
         }
+    }
+}
+
+impl HeapObject for HeapPtr<HeapItem> {
+    fn byte_size(&self) -> usize {
+        self.byte_size_for_kind(self.descriptor().kind())
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.visit_pointers_for_kind(visitor, self.descriptor().kind());
     }
 }

@@ -241,7 +241,11 @@ impl HeapObject for HeapPtr<FinalizationRegistryCells> {
             if let Some(cell) = self.cells.get_unchecked_mut(i) {
                 visitor.visit_value(&mut cell.held_value);
 
-                // Intentionally do not visit target and unregister_token
+                visitor.visit_weak_value(&mut cell.target);
+
+                if let Some(unregister_token) = cell.unregister_token.as_mut() {
+                    visitor.visit_weak_value(unregister_token);
+                }
             }
         }
     }

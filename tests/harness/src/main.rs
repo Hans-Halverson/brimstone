@@ -66,6 +66,9 @@ struct Args {
 }
 
 fn main_impl() -> GenericResult {
+    // Global initialization
+    brimstone_serialized_heap::init();
+
     let args = Args::parse();
 
     let manifest_path = args

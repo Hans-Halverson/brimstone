@@ -1,8 +1,11 @@
 use std::{alloc::Layout, mem::size_of, ptr::NonNull};
 
-use crate::runtime::{gc::garbage_collector::GarbageCollector, Context};
+use crate::{
+    common::serialized_heap::SerializedHeap,
+    runtime::{gc::garbage_collector::GarbageCollector, Context},
+};
 
-use super::{handle::HandleContext, HeapPtr, HeapVisitor};
+use super::{handle::HandleContext, heap_serializer::HeapSpaceDeserializer, HeapPtr, HeapVisitor};
 
 /// Heap Layout:
 ///
@@ -14,8 +17,10 @@ use super::{handle::HandleContext, HeapPtr, HeapVisitor};
 /// Heap is aligned to a 1GB boundary and contains a reference to the context. This allows any heap
 /// pointer to be masked to find the start of the heap along with its context.
 pub struct Heap {
-    /// Pointer to the heap info which is at the very start of the heap
-    heap_info: *const u8,
+    /// Pointer to the start of the heap, where HeapInfo is stored
+    heap_start: *const u8,
+    /// Pointer to the end of the heap
+    heap_end: *const u8,
     /// Pointer to the start of the permanent region
     permanent_start: *const u8,
     /// Pointer to the end of the permanent region
@@ -40,31 +45,33 @@ pub struct Heap {
 /// greater than the heap size so that we can mask heap pointers to find start of heap.
 const HEAP_ALIGNMENT: usize = 1024 * 1024 * 1024;
 
-/// All heap objects are aligned to 8-byte boundaries
-const HEAP_OBJECT_ALIGNMENT: usize = 8;
+/// All heap items are aligned to 8-byte boundaries
+type HeapItemAlignmentType = u64;
+const HEAP_ITEM_ALIGNMENT: usize = std::mem::size_of::<HeapItemAlignmentType>();
 
 impl Heap {
     pub fn new(initial_size: usize) -> Heap {
         // Create uninitialized buffer of memory for heap
         unsafe {
             let layout = Layout::from_size_align(initial_size, HEAP_ALIGNMENT).unwrap();
-            let heap_info = std::alloc::alloc(layout);
+            let heap_start = std::alloc::alloc(layout);
+            let heap_end = heap_start.add(initial_size);
 
-            // Amount of heap space that can be used for allocation
-            let usable_heap_size = (initial_size - size_of::<HeapInfo>()) / 2;
+            let semispace_size = (initial_size - size_of::<HeapInfo>()) / 2;
 
             // Leave room for heap info struct at start of heap
-            let start = heap_info.add(size_of::<HeapInfo>());
-            let end = start.add(usable_heap_size);
+            let start = heap_start.add(size_of::<HeapInfo>());
+            let end = start.add(semispace_size);
 
             // Find bounds of other heap part
             let next_heap_start = end;
-            let next_heap_end = end.add(usable_heap_size);
+            let next_heap_end = end.add(semispace_size);
 
-            HeapInfo::from_raw_heap_ptr(heap_info).init();
+            HeapInfo::from_raw_heap_ptr(heap_start).init();
 
             Heap {
-                heap_info,
+                heap_start,
+                heap_end,
                 // Permament region is empty to start
                 permanent_start: NonNull::dangling().as_ptr(),
                 permanent_end: NonNull::dangling().as_ptr(),
@@ -81,9 +88,70 @@ impl Heap {
         }
     }
 
+    /// Initialize an unitialized heap with a serialized heap. This will copy the serialized heap
+    /// over and fix all pointers within the new heap.
+    ///
+    /// Pointers were encoded as offsets and can be restored by adding to the new heap base pointer.
+    pub fn init_from_serialized(&mut self, cx: Context, serialized: &SerializedHeap) {
+        // Ensure actual heap has enough room for the serialized heap
+        let permanent_size = serialized.permanent_space.bytes.len();
+        let semispace_size = (self.heap_size() - serialized.current_space.start_offset) / 2;
+        if serialized.current_space.bytes.len() > semispace_size {
+            panic!("Serialized heap is larger than the actual heap");
+        }
+
+        // Find bounds of permanent space
+        self.permanent_start =
+            unsafe { self.heap_start.add(serialized.permanent_space.start_offset) };
+        self.permanent_end = unsafe { self.permanent_start.add(permanent_size) };
+
+        // Copy permanent semispace into the actual heap
+        self.permanent_heap_mut()
+            .copy_from_slice(serialized.permanent_space.bytes);
+
+        // Rewrite offsets in the permanent space to pointers in the new heap
+        HeapSpaceDeserializer::deserialize(cx, self.permanent_heap_mut());
+
+        // Find bounds of used part of current semispace
+        self.start = unsafe { self.heap_start.add(serialized.current_space.start_offset) };
+        self.current = unsafe { self.start.add(serialized.current_space.bytes.len()) };
+
+        // Copy used portion of current semispace into the actual heap
+        self.current_used_heap_mut()
+            .copy_from_slice(serialized.current_space.bytes);
+
+        // Rewrite offsets in the current semispace to pointers in the new heap
+        HeapSpaceDeserializer::deserialize(cx, self.current_used_heap_mut());
+
+        // Write the end of the current semispace
+        self.end = unsafe { self.start.add(semispace_size) };
+
+        // Write the bounds of the next semispace, making sure it is aligned
+        self.next_heap_start = align_pointer_up(self.end, HEAP_ITEM_ALIGNMENT);
+        self.next_heap_end = unsafe { self.next_heap_start.add(semispace_size) };
+
+        self.debug_assert_heap_well_formed();
+    }
+
+    fn debug_assert_heap_well_formed(&self) {
+        // The semispaces must not extend beyond the end of the heap
+        debug_assert!(self.end <= self.heap_end);
+        debug_assert!(self.next_heap_end <= self.heap_end);
+
+        // The semispaces must be aligned to the heap item alignment
+        debug_assert!(is_heap_item_aligned(self.start));
+        debug_assert!(is_heap_item_aligned(self.next_heap_start));
+
+        // The semispaces must have the exact same size
+        debug_assert_eq!(
+            self.end as usize - self.start as usize,
+            self.next_heap_end as usize - self.next_heap_start as usize
+        );
+    }
+
     #[inline]
     pub fn info<'a>(&self) -> &'a mut HeapInfo {
-        unsafe { &mut *(self.heap_info as *const _ as *mut HeapInfo) }
+        unsafe { &mut *(self.heap_start as *const _ as *mut HeapInfo) }
     }
 
     pub fn alloc_uninit<T>(cx: Context) -> HeapPtr<T> {
@@ -145,6 +213,14 @@ impl Heap {
         }
     }
 
+    pub fn heap_size(&self) -> usize {
+        self.heap_end as usize - self.heap_start as usize
+    }
+
+    pub fn heap_start(&self) -> *const u8 {
+        self.heap_start
+    }
+
     pub fn current_heap_bounds(&self) -> (*const u8, *const u8) {
         (self.start, self.end)
     }
@@ -157,8 +233,44 @@ impl Heap {
         (self.permanent_start, self.permanent_end)
     }
 
+    pub fn permanent_heap(&self) -> &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(self.permanent_start, self.permanent_bytes_allocated())
+        }
+    }
+
+    pub fn permanent_heap_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.permanent_start.cast_mut(),
+                self.permanent_bytes_allocated(),
+            )
+        }
+    }
+
+    pub fn current_used_heap_bounds(&self) -> (*const u8, *const u8) {
+        (self.start, self.current)
+    }
+
+    pub fn current_used_heap(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.start, self.bytes_allocated()) }
+    }
+
+    pub fn current_used_heap_mut(&mut self) -> &mut [u8] {
+        unsafe { std::slice::from_raw_parts_mut(self.start.cast_mut(), self.bytes_allocated()) }
+    }
+
     pub fn bytes_allocated(&self) -> usize {
         self.current as usize - self.start as usize
+    }
+
+    pub fn permanent_bytes_allocated(&self) -> usize {
+        self.permanent_end as usize - self.permanent_start as usize
+    }
+
+    /// Returns true if the current semispace is before the next semispace in memory.
+    pub fn is_current_before_next(&self) -> bool {
+        self.start < self.next_heap_start
     }
 
     pub fn swap_heaps(&mut self, free_space_start_ptr: *const u8) {
@@ -175,7 +287,7 @@ impl Heap {
     }
 
     pub fn alloc_size_for_request_size(request_byte_size: usize) -> usize {
-        align_up(request_byte_size, HEAP_OBJECT_ALIGNMENT)
+        align_up(request_byte_size, HEAP_ITEM_ALIGNMENT)
     }
 
     pub fn visit_roots(&self, visitor: &mut impl HeapVisitor) {
@@ -207,7 +319,7 @@ impl Heap {
 
         // Make sure that we can evenly divide the remaining heap into semispaces with the correct
         // alignment and the exact same size.
-        let semispaces_start_ptr = align_pointer_up(self.permanent_end, HEAP_OBJECT_ALIGNMENT * 2);
+        let semispaces_start_ptr = align_pointer_up(self.permanent_end, HEAP_ITEM_ALIGNMENT * 2);
         let semispaces_end_ptr = if self.end < self.next_heap_end {
             self.next_heap_end
         } else {
@@ -227,12 +339,14 @@ impl Heap {
 
         // Reset current pointer to start of newly empty start semispace
         self.current = self.start;
+
+        self.debug_assert_heap_well_formed();
     }
 }
 
 impl Drop for Heap {
     fn drop(&mut self) {
-        unsafe { std::alloc::dealloc(self.heap_info as *mut u8, self.layout) };
+        unsafe { std::alloc::dealloc(self.heap_start as *mut u8, self.layout) };
     }
 }
 
@@ -244,6 +358,10 @@ fn align_up(ptr_bits: usize, alignment: usize) -> usize {
 // Align a heap pointer, rounding up to infinity
 fn align_pointer_up(ptr: *const u8, alignment: usize) -> *const u8 {
     align_up(ptr as usize, alignment) as *const u8
+}
+
+fn is_heap_item_aligned(ptr: *const u8) -> bool {
+    ptr.cast::<HeapItemAlignmentType>().is_aligned()
 }
 
 /// Heap data stored at the beginning of the heap

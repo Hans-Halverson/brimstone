@@ -3,7 +3,8 @@ use std::cmp::Ordering;
 use num_bigint::{BigUint, Sign};
 
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             call_object, construct, has_property, invoke, length_of_array_like, set,
             species_constructor,
@@ -27,7 +28,6 @@ use crate::{
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-    must,
 };
 
 use super::{

@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
         },
@@ -20,7 +21,6 @@ use crate::{
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
         Context, Handle, HeapPtr, Value,
     },
-    must,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_undefined};

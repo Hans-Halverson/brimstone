@@ -5,7 +5,7 @@ use std::{
     ptr::NonNull,
 };
 
-use crate::js::runtime::{
+use crate::runtime::{
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
@@ -231,7 +231,7 @@ impl Drop for HandleScopeGuard {
 #[macro_export]
 macro_rules! handle_scope_guard {
     ($cx:expr) => {
-        let _guard = $crate::js::runtime::gc::HandleScopeGuard::new($cx);
+        let _guard = $crate::runtime::gc::HandleScopeGuard::new($cx);
     };
 }
 
@@ -240,7 +240,7 @@ macro_rules! handle_scope_guard {
 #[macro_export]
 macro_rules! handle_scope {
     ($cx:expr, $body:stmt) => {
-        $crate::js::runtime::gc::HandleScope::new($cx, |_| {
+        $crate::runtime::gc::HandleScope::new($cx, |_| {
             let result = { $body };
             result
         })
@@ -300,7 +300,6 @@ pub struct HandleContext {
     max_handles: usize,
 }
 
-#[allow(unused)]
 #[cfg(feature = "handle_stats")]
 #[derive(Debug)]
 pub struct HandleStats {

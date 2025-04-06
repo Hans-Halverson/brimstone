@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,

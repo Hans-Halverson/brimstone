@@ -1,12 +1,9 @@
 use std::rc::Rc;
 
 use crate::{
-    handle_scope,
-    js::{
-        parser::{analyze::analyze, parse_script, source::Source, ParseContext},
-        runtime::{bytecode::generator::BytecodeProgramGenerator, get},
-    },
-    must,
+    handle_scope, must,
+    parser::{analyze::analyze, parse_script, source::Source, ParseContext},
+    runtime::{bytecode::generator::BytecodeProgramGenerator, get},
 };
 
 use super::{

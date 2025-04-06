@@ -1,9 +1,7 @@
 use crate::{
     field_offset,
-    js::{
-        parser::{loc::calculate_line_offsets, source::Source},
-        runtime::object_descriptor::ObjectKind,
-    },
+    parser::{loc::calculate_line_offsets, source::Source},
+    runtime::object_descriptor::ObjectKind,
     set_uninit,
 };
 

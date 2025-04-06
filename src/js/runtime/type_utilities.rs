@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
-use crate::{js::common::math::modulo, must};
+use crate::{common::math::modulo, must};
 
 use super::{
     abstract_operations::{call_object, get, get_method},

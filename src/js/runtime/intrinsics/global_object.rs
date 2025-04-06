@@ -1,25 +1,23 @@
 use crate::{
+    common::{
+        unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
+        wtf_8::Wtf8String,
+    },
     handle_scope, handle_scope_guard,
-    js::{
-        common::{
-            unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
-            wtf_8::Wtf8String,
-        },
-        runtime::{
-            abstract_operations::define_property_or_throw,
-            builtin_function::BuiltinFunction,
-            bytecode::instruction::EvalFlags,
-            console::ConsoleObject,
-            error::uri_error,
-            eval::eval::perform_eval,
-            function::get_argument,
-            property_descriptor::PropertyDescriptor,
-            string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
-            string_value::{FlatString, StringValue},
-            to_string,
-            type_utilities::{to_int32, to_number},
-            Context, EvalResult, Handle, Realm, Value,
-        },
+    runtime::{
+        abstract_operations::define_property_or_throw,
+        builtin_function::BuiltinFunction,
+        bytecode::instruction::EvalFlags,
+        console::ConsoleObject,
+        error::uri_error,
+        eval::eval::perform_eval,
+        function::get_argument,
+        property_descriptor::PropertyDescriptor,
+        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
+        string_value::{FlatString, StringValue},
+        to_string,
+        type_utilities::{to_int32, to_number},
+        Context, EvalResult, Handle, Realm, Value,
     },
 };
 

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash};
 
-use crate::js::runtime::{gc::HeapItem, string_value::FlatString, Context, Handle, Value};
+use crate::runtime::{gc::HeapItem, string_value::FlatString, Context, Handle, Value};
 
 use super::{
     constant_table::ConstantTable,

@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use brimstone_macros::wrap_ordinary_object;
 
-use crate::{extend_object, js::runtime::type_utilities::is_array, must, set_uninit};
+use crate::{extend_object, must, runtime::type_utilities::is_array, set_uninit};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},

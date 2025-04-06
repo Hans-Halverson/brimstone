@@ -1,6 +1,6 @@
 use crate::{
-    handle_scope, handle_scope_guard,
-    js::runtime::{
+    handle_scope, handle_scope_guard, must,
+    runtime::{
         abstract_operations::define_property_or_throw,
         builtin_function::BuiltinFunction,
         collections::InlineArray,
@@ -96,7 +96,6 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr, Value,
     },
-    must,
 };
 
 #[repr(u8)]

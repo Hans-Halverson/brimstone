@@ -4,7 +4,7 @@ use num_traits::ToPrimitive;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,

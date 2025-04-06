@@ -9,7 +9,7 @@ macro_rules! heap_trait_object {
         #[derive(Clone, Copy)]
         #[repr(C)]
         pub struct $stack_object {
-            pub data: $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue>,
+            pub data: $crate::runtime::Handle<$crate::runtime::object_value::ObjectValue>,
             vtable: *const (),
         }
 
@@ -17,13 +17,13 @@ macro_rules! heap_trait_object {
         #[derive(Clone, Copy)]
         #[repr(C)]
         pub struct $heap_object {
-            data: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>,
+            data: $crate::runtime::HeapPtr<$crate::runtime::object_value::ObjectValue>,
             vtable: *const (),
         }
 
-        impl<T> $crate::js::runtime::Handle<T>
+        impl<T> $crate::runtime::Handle<T>
         where
-            $crate::js::runtime::Handle<T>: $trait,
+            $crate::runtime::Handle<T>: $trait,
         {
             #[inline]
             pub fn $into_dyn(self) -> $stack_object
@@ -39,16 +39,13 @@ macro_rules! heap_trait_object {
             #[allow(dead_code)]
             pub fn uninit() -> $heap_object {
                 $heap_object {
-                    data: $crate::js::runtime::HeapPtr::uninit(),
+                    data: $crate::runtime::HeapPtr::uninit(),
                     vtable: std::ptr::null(),
                 }
             }
 
             #[allow(dead_code)]
-            pub fn visit_pointers(
-                &mut self,
-                visitor: &mut impl $crate::js::runtime::gc::HeapVisitor,
-            ) {
+            pub fn visit_pointers(&mut self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
                 visitor.visit_pointer(&mut self.data);
             }
         }

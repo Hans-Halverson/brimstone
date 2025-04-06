@@ -3,32 +3,30 @@ use std::convert::TryInto;
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    js::{
-        parser::ast,
-        runtime::{
-            abstract_operations::{
-                call_object, define_property_or_throw, get_method, has_property,
-                ordinary_has_instance, set_integrity_level, IntegrityLevel,
-            },
-            array_object::array_create_in_realm,
-            error::{range_error, type_error},
-            eval_result::EvalResult,
-            interned_strings::InternedStrings,
-            numeric_operations::number_exponentiate,
-            object_descriptor::ObjectKind,
-            object_value::ObjectValue,
-            property_descriptor::PropertyDescriptor,
-            property_key::PropertyKey,
-            string_value::StringValue,
-            type_utilities::{
-                is_less_than, to_boolean, to_int32, to_numeric, to_object, to_primitive,
-                to_property_key, to_string, to_uint32, ToPrimitivePreferredType,
-            },
-            value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-            Context, Handle, Realm,
-        },
-    },
     must,
+    parser::ast,
+    runtime::{
+        abstract_operations::{
+            call_object, define_property_or_throw, get_method, has_property, ordinary_has_instance,
+            set_integrity_level, IntegrityLevel,
+        },
+        array_object::array_create_in_realm,
+        error::{range_error, type_error},
+        eval_result::EvalResult,
+        interned_strings::InternedStrings,
+        numeric_operations::number_exponentiate,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        string_value::StringValue,
+        type_utilities::{
+            is_less_than, to_boolean, to_int32, to_numeric, to_object, to_primitive,
+            to_property_key, to_string, to_uint32, ToPrimitivePreferredType,
+        },
+        value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
+        Context, Handle, Realm,
+    },
 };
 
 /// GetTemplateObject (https://tc39.es/ecma262/#sec-gettemplateobject)

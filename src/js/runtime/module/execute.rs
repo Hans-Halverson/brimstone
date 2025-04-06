@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-    if_abrupt_reject_promise,
-    js::runtime::{
+    if_abrupt_reject_promise, must,
+    runtime::{
         abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
         builtin_function::BuiltinFunction,
         context::ModuleCacheKey,
@@ -24,7 +24,6 @@ use crate::{
         string_value::FlatString,
         to_string, Context, EvalResult, Handle, PropertyKey, Value,
     },
-    must,
 };
 
 use super::{

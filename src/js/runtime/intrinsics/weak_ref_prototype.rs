@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     error::type_error, eval_result::EvalResult, object_value::ObjectValue, property::Property,
     realm::Realm, Context, Handle, Value,
 };

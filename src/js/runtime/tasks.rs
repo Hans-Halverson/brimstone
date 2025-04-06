@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::{
     handle_scope,
-    js::runtime::{
+    runtime::{
         abstract_operations::{call, call_object},
         intrinsics::promise_constructor::execute_then,
     },

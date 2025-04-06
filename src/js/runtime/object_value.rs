@@ -55,18 +55,18 @@ macro_rules! extend_object_without_conversions {
         #[repr(C)]
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
-            descriptor: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor>,
+            descriptor: $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor>,
 
             // Inherited object fields
 
             // None represents the null value
-            prototype: Option<$crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue>>,
+            prototype: Option<$crate::runtime::HeapPtr<$crate::runtime::object_value::ObjectValue>>,
 
             // String and symbol properties by their property key. Includes private properties.
-            named_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::collections::BsIndexMap<$crate::js::runtime::property_key::PropertyKey, $crate::js::runtime::property::HeapProperty>>,
+            named_properties: $crate::runtime::HeapPtr<$crate::runtime::collections::BsIndexMap<$crate::runtime::property_key::PropertyKey, $crate::runtime::property::HeapProperty>>,
 
             // Array index properties by their property key
-            array_properties: $crate::js::runtime::HeapPtr<$crate::js::runtime::array_properties::ArrayProperties>,
+            array_properties: $crate::runtime::HeapPtr<$crate::runtime::array_properties::ArrayProperties>,
 
             // Whether this object can be extended with new properties
             is_extensible_field: bool,
@@ -81,41 +81,41 @@ macro_rules! extend_object_without_conversions {
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[allow(dead_code)]
             #[inline]
-            pub fn descriptor(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor> {
+            pub fn descriptor(&self) -> $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor> {
                 self.descriptor
             }
 
             #[allow(dead_code)]
             #[inline]
-            pub fn set_descriptor(&mut self, descriptor: $crate::js::runtime::HeapPtr<$crate::js::runtime::object_descriptor::ObjectDescriptor>)  {
+            pub fn set_descriptor(&mut self, descriptor: $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor>)  {
                 self.descriptor = descriptor
             }
         }
 
-        impl $(<$($generics),*>)? $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
+        impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[allow(dead_code)]
             #[inline]
-            pub fn as_object(&self) -> $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
+            pub fn as_object(&self) -> $crate::runtime::HeapPtr<$crate::runtime::object_value::ObjectValue> {
                 self.cast()
             }
 
             #[allow(dead_code)]
             #[inline]
-            pub fn as_value(&self) -> $crate::js::runtime::Value {
+            pub fn as_value(&self) -> $crate::runtime::Value {
                 self.as_object().into()
             }
         }
 
-        impl $(<$($generics),*>)? $crate::js::runtime::Handle<$name $(<$($generics),*>)?> {
+        impl $(<$($generics),*>)? $crate::runtime::Handle<$name $(<$($generics),*>)?> {
             #[allow(dead_code)]
             #[inline]
-            pub fn as_object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
+            pub fn as_object(&self) -> $crate::runtime::Handle<$crate::runtime::object_value::ObjectValue> {
                 self.cast()
             }
 
             #[allow(dead_code)]
             #[inline]
-            pub fn as_value(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::Value> {
+            pub fn as_value(&self) -> $crate::runtime::Handle<$crate::runtime::Value> {
                 self.cast()
             }
 
@@ -123,7 +123,7 @@ macro_rules! extend_object_without_conversions {
             /// used when we know we want the default ordinary methods to be called.
             #[allow(dead_code)]
             #[inline]
-            pub fn ordinary_object(&self) -> $crate::js::runtime::Handle<$crate::js::runtime::ordinary_object::OrdinaryObject> {
+            pub fn ordinary_object(&self) -> $crate::runtime::Handle<$crate::runtime::ordinary_object::OrdinaryObject> {
                 self.cast()
             }
         }
@@ -143,22 +143,22 @@ macro_rules! extend_object {
             }
         }
 
-        impl $(<$($generics),*>)? From<$crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?>> for $crate::js::runtime::HeapPtr<$crate::js::runtime::object_value::ObjectValue> {
-            fn from(value: $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?>) -> Self {
+        impl $(<$($generics),*>)? From<$crate::runtime::HeapPtr<$name $(<$($generics),*>)?>> for $crate::runtime::HeapPtr<$crate::runtime::object_value::ObjectValue> {
+            fn from(value: $crate::runtime::HeapPtr<$name $(<$($generics),*>)?>) -> Self {
                 value.cast()
             }
         }
 
-        impl $(<$($generics),*>)? From<$crate::js::runtime::Handle<$name $(<$($generics),*>)?>> for $crate::js::runtime::Handle<$crate::js::runtime::object_value::ObjectValue> {
-            fn from(value: $crate::js::runtime::Handle<$name $(<$($generics),*>)?>) -> Self {
-                value.cast::<$crate::js::runtime::object_value::ObjectValue>()
+        impl $(<$($generics),*>)? From<$crate::runtime::Handle<$name $(<$($generics),*>)?>> for $crate::runtime::Handle<$crate::runtime::object_value::ObjectValue> {
+            fn from(value: $crate::runtime::Handle<$name $(<$($generics),*>)?>) -> Self {
+                value.cast::<$crate::runtime::object_value::ObjectValue>()
             }
         }
 
-        impl $(<$($generics),*>)? $crate::js::runtime::HeapPtr<$name $(<$($generics),*>)?> {
+        impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
-            pub fn visit_object_pointers(&self, visitor: &mut impl $crate::js::runtime::gc::HeapVisitor) {
-                use $crate::js::runtime::gc::HeapObject;
+            pub fn visit_object_pointers(&self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
+                use $crate::runtime::gc::HeapObject;
                 self.as_object().visit_pointers(visitor);
             }
         }
@@ -772,7 +772,6 @@ macro_rules! impl_subtype_casts {
     ($subtype:ident, $desc:expr, $is_func:ident, $as_func:ident) => {
         impl ObjectValue {
             #[inline]
-            #[allow(unused)]
             pub fn $is_func(&self) -> bool {
                 self.descriptor().kind() == $desc
             }
@@ -780,7 +779,6 @@ macro_rules! impl_subtype_casts {
 
         impl HeapPtr<ObjectValue> {
             #[inline]
-            #[allow(unused)]
             pub fn $as_func(&self) -> Option<HeapPtr<$subtype>> {
                 if self.$is_func() {
                     Some(self.cast())
@@ -792,7 +790,6 @@ macro_rules! impl_subtype_casts {
 
         impl Handle<ObjectValue> {
             #[inline]
-            #[allow(unused)]
             pub fn $as_func(&self) -> Option<Handle<$subtype>> {
                 if self.$is_func() {
                     Some(self.cast())

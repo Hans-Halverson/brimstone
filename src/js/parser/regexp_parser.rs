@@ -6,7 +6,7 @@ use std::{
 use brimstone_macros::match_u32;
 
 use crate::{
-    js::common::{
+    common::{
         alloc,
         options::Options,
         unicode::{

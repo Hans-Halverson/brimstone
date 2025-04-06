@@ -5,36 +5,33 @@ use half::f16;
 use num_bigint::{BigInt, Sign};
 
 use crate::{
+    common::math::f64_to_f16,
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
-    js::{
-        common::math::f64_to_f16,
-        runtime::{
-            abstract_operations::{get, get_method, length_of_array_like, set},
-            builtin_function::BuiltinFunction,
-            error::{range_error, type_error},
-            eval_result::EvalResult,
-            function::get_argument,
-            gc::{HeapObject, HeapVisitor},
-            iterator::iter_iterator_method_values,
-            object_descriptor::ObjectKind,
-            object_value::{ObjectValue, VirtualObject},
-            ordinary_object::{
-                get_prototype_from_constructor, object_create_with_proto,
-                ordinary_define_own_property, ordinary_delete, ordinary_get,
-                ordinary_get_own_property, ordinary_has_property,
-                ordinary_own_string_symbol_property_keys, ordinary_set,
-            },
-            property_descriptor::PropertyDescriptor,
-            property_key::PropertyKey,
-            realm::Realm,
-            string_value::StringValue,
-            type_utilities::{
-                to_big_int64, to_big_uint64, to_index, to_int16, to_int32, to_int8, to_number,
-                to_uint16, to_uint32, to_uint8, to_uint8_clamp,
-            },
-            value::{BigIntValue, Value},
-            Context, Handle, HeapPtr,
+    runtime::{
+        abstract_operations::{get, get_method, length_of_array_like, set},
+        builtin_function::BuiltinFunction,
+        error::{range_error, type_error},
+        eval_result::EvalResult,
+        function::get_argument,
+        gc::{HeapObject, HeapVisitor},
+        iterator::iter_iterator_method_values,
+        object_descriptor::ObjectKind,
+        object_value::{ObjectValue, VirtualObject},
+        ordinary_object::{
+            get_prototype_from_constructor, object_create_with_proto, ordinary_define_own_property,
+            ordinary_delete, ordinary_get, ordinary_get_own_property, ordinary_has_property,
+            ordinary_own_string_symbol_property_keys, ordinary_set,
         },
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        realm::Realm,
+        string_value::StringValue,
+        type_utilities::{
+            to_big_int64, to_big_uint64, to_index, to_int16, to_int32, to_int8, to_number,
+            to_uint16, to_uint32, to_uint8, to_uint8_clamp,
+        },
+        value::{BigIntValue, Value},
+        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

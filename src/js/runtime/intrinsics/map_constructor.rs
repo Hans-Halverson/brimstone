@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
@@ -15,7 +16,6 @@ use crate::{
         value::Value,
         Context, Handle,
     },
-    must,
 };
 
 use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_this};

@@ -45,13 +45,21 @@ checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 name = "brimstone"
 version = "0.1.0"
 dependencies = [
+ "brimstone_core",
+ "clap",
+ "criterion",
+]
+
+[[package]]
+name = "brimstone_core"
+version = "0.1.0"
+dependencies = [
  "allocator-api2",
  "bitflags 2.9.0",
  "brimstone_icu_collections",
  "brimstone_macros",
  "bumpalo",
  "clap",
- "criterion",
  "half",
  "hashbrown",
  "icu_casemap",
@@ -95,7 +103,7 @@ dependencies = [
 name = "brimstone_integration_test_harness"
 version = "0.1.0"
 dependencies = [
- "brimstone",
+ "brimstone_core",
  "clap",
  "regex",
  "serde",
@@ -116,7 +124,7 @@ dependencies = [
 name = "brimstone_tests"
 version = "0.1.0"
 dependencies = [
- "brimstone",
+ "brimstone_core",
 ]
 
 [[package]]

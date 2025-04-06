@@ -1,4 +1,4 @@
-use crate::js::runtime::bytecode::function::Closure;
+use crate::runtime::bytecode::function::Closure;
 
 use super::{
     bytecode::function::BytecodeFunction,

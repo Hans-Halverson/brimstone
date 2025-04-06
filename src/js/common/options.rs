@@ -93,7 +93,6 @@ impl Options {
             .build()
     }
 
-    #[allow(unused)]
     pub fn dump_buffer(&self) -> Option<MutexGuard<'_, String>> {
         self.dump_buffer
             .as_ref()
@@ -155,7 +154,6 @@ impl OptionsBuilder {
         self
     }
 
-    #[allow(unused)]
     pub fn dump_buffer(mut self, dump_buffer: Option<Mutex<String>>) -> Self {
         self.0.dump_buffer = dump_buffer;
         self

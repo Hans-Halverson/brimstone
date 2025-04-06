@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
             define_property_or_throw,
@@ -16,7 +17,6 @@ use crate::{
         type_utilities::to_string,
         Context, Handle, Value,
     },
-    must,
 };
 
 use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};

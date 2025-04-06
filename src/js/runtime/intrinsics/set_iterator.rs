@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     cast_from_value_fn, extend_object,
-    js::runtime::{
+    runtime::{
         array_object::create_array_from_list,
         collections::{index_map::GcSafeEntriesIter, BsIndexMap},
         error::type_error,

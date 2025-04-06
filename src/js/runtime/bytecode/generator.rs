@@ -11,53 +11,51 @@ use bitflags::bitflags;
 use indexmap_allocator_api::IndexSet;
 
 use crate::{
+    common::{
+        error::{ErrorFormatter, FormatOptions},
+        wtf_8::{Wtf8Str, Wtf8String},
+    },
     handle_scope,
-    js::{
-        common::{
-            error::{ErrorFormatter, FormatOptions},
-            wtf_8::{Wtf8Str, Wtf8String},
+    parser::{
+        analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
+        ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
+        loc::{Pos, NO_POS},
+        scope_tree::{
+            AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
+            VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME, DEFAULT_EXPORT_NAME,
+            DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME,
+            STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
         },
-        parser::{
-            analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
-            ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
-            loc::{Pos, NO_POS},
-            scope_tree::{
-                AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree,
-                VMLocation, VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME,
-                DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
-                NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
-            },
-            source::Source,
+        source::Source,
+    },
+    runtime::{
+        boxed_value::BoxedValue,
+        bytecode::{
+            function::{dump_bytecode_function, BytecodeFunction},
+            instruction::DefinePropertyFlags,
+            source_map::BytecodeSourceMap,
         },
-        runtime::{
-            boxed_value::BoxedValue,
-            bytecode::{
-                function::{dump_bytecode_function, BytecodeFunction},
-                instruction::DefinePropertyFlags,
-                source_map::BytecodeSourceMap,
+        class_names::{ClassNames, HomeObjectLocation, Method},
+        collections::{BsVec, BsVecField},
+        eval::expression::generate_template_object,
+        gc::Escapable,
+        global_names::GlobalNames,
+        interned_strings::InternedStrings,
+        module::{
+            import_attributes::ImportAttributes,
+            source_text_module::{
+                DirectReExportEntry, ImportEntry, LocalExportEntry, ModuleRequest,
+                NamedReExportEntry, SourceTextModule,
             },
-            class_names::{ClassNames, HomeObjectLocation, Method},
-            collections::{BsVec, BsVecField},
-            eval::expression::generate_template_object,
-            gc::Escapable,
-            global_names::GlobalNames,
-            interned_strings::InternedStrings,
-            module::{
-                import_attributes::ImportAttributes,
-                source_text_module::{
-                    DirectReExportEntry, ImportEntry, LocalExportEntry, ModuleRequest,
-                    NamedReExportEntry, SourceTextModule,
-                },
-            },
-            object_descriptor::ObjectKind,
-            regexp::compiler::compile_regexp,
-            scope::Scope,
-            scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
-            source_file::SourceFile,
-            string_value::FlatString,
-            value::BigIntValue,
-            Context, Handle, HeapPtr, Realm, Value,
         },
+        object_descriptor::ObjectKind,
+        regexp::compiler::compile_regexp,
+        scope::Scope,
+        scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        source_file::SourceFile,
+        string_value::FlatString,
+        value::BigIntValue,
+        Context, Handle, HeapPtr, Realm, Value,
     },
 };
 

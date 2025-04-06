@@ -1,14 +1,12 @@
 use std::mem::size_of;
 
 use crate::{
+    common::math::modulo,
     extend_object,
-    js::{
-        common::math::modulo,
-        runtime::{
-            gc::HeapObject, intrinsics::intrinsics::Intrinsic, object_descriptor::ObjectKind,
-            object_value::ObjectValue, ordinary_object::object_create_from_constructor,
-            type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
-        },
+    runtime::{
+        gc::HeapObject, intrinsics::intrinsics::Intrinsic, object_descriptor::ObjectKind,
+        object_value::ObjectValue, ordinary_object::object_create_from_constructor,
+        type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
     },
     set_uninit,
 };
@@ -352,7 +350,7 @@ impl HeapObject for HeapPtr<DateObject> {
         size_of::<DateObject>()
     }
 
-    fn visit_pointers(&mut self, visitor: &mut impl crate::js::runtime::gc::HeapVisitor) {
+    fn visit_pointers(&mut self, visitor: &mut impl crate::runtime::gc::HeapVisitor) {
         self.visit_object_pointers(visitor);
     }
 }

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::js::{
+use crate::{
     common::wtf_8::Wtf8String,
     parser::{
         analyze::analyze_function_for_function_constructor,

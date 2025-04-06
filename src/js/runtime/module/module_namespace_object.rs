@@ -2,7 +2,7 @@ use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         boxed_value::BoxedValue,
         error::reference_error,
         gc::{HeapObject, HeapVisitor},

@@ -4,7 +4,7 @@ use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
         intrinsics::intrinsics::Intrinsic,

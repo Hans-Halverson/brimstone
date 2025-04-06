@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     heap_trait_object,
-    js::runtime::{
+    runtime::{
         boxed_value::BoxedValue, gc::HeapItem, promise_object::PromiseObject,
         string_value::FlatString, Context, EvalResult, Handle, HeapPtr,
     },

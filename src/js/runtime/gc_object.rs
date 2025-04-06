@@ -1,7 +1,6 @@
 use crate::{
-    handle_scope,
-    js::runtime::{abstract_operations::define_property_or_throw, PropertyDescriptor},
-    must,
+    handle_scope, must,
+    runtime::{abstract_operations::define_property_or_throw, PropertyDescriptor},
 };
 
 use super::{
@@ -22,7 +21,6 @@ impl GcObject {
     }
 
     /// Install the GC object on the realm's global object.
-    #[allow(unused)]
     pub fn install(cx: Context, realm: Handle<Realm>) {
         handle_scope!(cx, {
             let gc_object = GcObject::new(cx, realm);

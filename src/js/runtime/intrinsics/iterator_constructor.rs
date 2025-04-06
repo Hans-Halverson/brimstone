@@ -1,6 +1,6 @@
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         builtin_function::BuiltinFunction,
         error::type_error,

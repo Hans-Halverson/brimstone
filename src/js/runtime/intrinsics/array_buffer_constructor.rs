@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         builtin_function::BuiltinFunction,
         collections::{array::ByteArray, BsArray},
         error::{range_error, type_error},

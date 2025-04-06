@@ -1,4 +1,4 @@
-use crate::{handle_scope_guard, js::parser::loc::find_line_col_for_pos};
+use crate::{handle_scope_guard, parser::loc::find_line_col_for_pos};
 
 use super::{
     bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},

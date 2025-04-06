@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             call_object, construct, create_data_property_or_throw, get_method,
             length_of_array_like, set,
@@ -17,7 +18,6 @@ use crate::{
         type_utilities::{is_array, is_callable, is_constructor_value, to_object, to_uint32},
         Context, EvalResult, Handle, Realm, Value,
     },
-    must,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};

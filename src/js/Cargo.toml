@@ -1,0 +1,58 @@
+[package]
+name = "brimstone_core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+path = "lib.rs"
+
+[dependencies]
+allocator-api2.workspace = true
+bitflags.workspace = true
+bumpalo = { workspace = true, features = ["allocator-api2"] }
+clap = { workspace = true, features = ["derive"] }
+half.workspace = true
+hashbrown.workspace = true
+indexmap-allocator-api.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+rand.workspace = true
+ryu-js.workspace = true
+supports-color.workspace = true
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.6"
+
+# Internal crates
+brimstone_icu_collections.workspace = true
+brimstone_macros.workspace = true
+
+# ICU4X crates must all be the same version
+icu_casemap.workspace = true
+icu_collator.workspace = true
+icu_collections.workspace = true
+icu_locale.workspace = true
+icu_normalizer.workspace = true
+icu_properties.workspace = true
+icu_provider = { workspace = true, features = ["sync"] }
+icu_provider_baked.workspace = true
+icu_provider_adapters.workspace = true
+zerotrie.workspace = true
+zerovec.workspace = true
+
+[features]
+default = ["jemalloc"]
+# Run the garbage collector in stress test mode
+gc_stress_test = []
+# Collect handle use statistics
+handle_stats = []
+# Use the jemalloc allocator
+jemalloc = []
+# Do not use the jemalloc allocator, overrides the `jemalloc` feature
+no_jemalloc = []
+
+[lints]
+workspace = true
+

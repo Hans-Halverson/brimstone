@@ -1,4 +1,4 @@
-use crate::js::runtime::{object_value::ObjectValue, realm::Realm, Context, Handle};
+use crate::runtime::{object_value::ObjectValue, realm::Realm, Context, Handle};
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 

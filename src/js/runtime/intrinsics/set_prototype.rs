@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
@@ -18,7 +19,6 @@ use crate::{
         value::{Value, ValueCollectionKey},
         Context, Handle,
     },
-    must,
 };
 
 use super::{

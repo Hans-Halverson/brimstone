@@ -1,6 +1,6 @@
 use std::{alloc::Layout, mem::size_of, ptr::NonNull};
 
-use crate::js::runtime::{gc::garbage_collector::GarbageCollector, Context};
+use crate::runtime::{gc::garbage_collector::GarbageCollector, Context};
 
 use super::{handle::HandleContext, HeapPtr, HeapVisitor};
 

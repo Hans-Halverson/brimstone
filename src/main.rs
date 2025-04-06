@@ -1,10 +1,8 @@
-mod js;
-
 use clap::Parser;
 
 use std::rc::Rc;
 
-use js::{
+use brimstone_core::{
     common::{
         error::{print_error_message_and_exit, FormatOptions},
         options::{Args, Options},

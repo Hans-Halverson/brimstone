@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use crate::js::common::wtf_8::Wtf8String;
+use crate::common::wtf_8::Wtf8String;
 
 use super::loc::calculate_line_offsets;
 use super::parse_error::ParseResult;

@@ -1,7 +1,8 @@
 use std::cmp::Ordering;
 
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
@@ -27,7 +28,6 @@ use crate::{
         },
         Context, EvalResult, Handle, Value,
     },
-    must,
 };
 
 use super::{

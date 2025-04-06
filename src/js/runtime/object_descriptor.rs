@@ -3,7 +3,7 @@ use std::mem::size_of;
 use bitflags::bitflags;
 
 use crate::{
-    js::runtime::{
+    runtime::{
         arguments_object::MappedArgumentsObject,
         module::module_namespace_object::ModuleNamespaceObject, ordinary_object::OrdinaryObject,
         Value,

@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::js::{
+use crate::{
     common::varint::encode_varint,
     parser::loc::{Pos, NO_POS},
 };

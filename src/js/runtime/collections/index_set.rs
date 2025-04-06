@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use crate::js::runtime::{
+use crate::runtime::{
     gc::{HeapObject, HeapVisitor},
     object_descriptor::ObjectKind,
     Context, Handle, HeapPtr,

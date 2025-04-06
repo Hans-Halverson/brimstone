@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         array_object::{array_create, ArrayObject},
         builtin_function::BuiltinFunction,
@@ -18,7 +19,6 @@ use crate::{
         type_utilities::is_callable,
         Context, Handle, PropertyKey, Value,
     },
-    must,
 };
 
 use super::{

@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     cast_from_value_fn, extend_object,
-    js::runtime::{
+    runtime::{
         abstract_operations::length_of_array_like,
         array_object::create_array_from_list,
         error::type_error,

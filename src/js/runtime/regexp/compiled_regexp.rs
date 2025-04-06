@@ -1,18 +1,16 @@
 use std::mem::size_of;
 
 use crate::{
+    common::math::round_to_power_of_two,
     field_offset,
-    js::{
-        common::math::round_to_power_of_two,
-        parser::regexp::{RegExp, RegExpFlags},
-        runtime::{
-            collections::InlineArray,
-            debug_print::{DebugPrint, DebugPrinter},
-            gc::{HeapObject, HeapVisitor},
-            object_descriptor::{ObjectDescriptor, ObjectKind},
-            string_value::{FlatString, StringValue},
-            Context, Handle, HeapPtr,
-        },
+    parser::regexp::{RegExp, RegExpFlags},
+    runtime::{
+        collections::InlineArray,
+        debug_print::{DebugPrint, DebugPrinter},
+        gc::{HeapObject, HeapVisitor},
+        object_descriptor::{ObjectDescriptor, ObjectKind},
+        string_value::{FlatString, StringValue},
+        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

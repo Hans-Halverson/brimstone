@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    js::runtime::{
+    runtime::{
         async_generator_object, bound_function_object::BoundFunctionObject, console::ConsoleObject,
         gc_object::GcObject, global_names, module, promise_object::PromiseCapability,
         test_262_object::Test262Object, Context, EvalResult, Handle, Value,

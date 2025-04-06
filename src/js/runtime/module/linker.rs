@@ -1,6 +1,6 @@
 use crate::{
     handle_scope,
-    js::runtime::{
+    runtime::{
         boxed_value::BoxedValue,
         error::syntax_error,
         module::{module::ModuleEnum, source_text_module::ModuleState},

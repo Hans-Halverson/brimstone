@@ -14,7 +14,7 @@ use hashbrown::{DefaultHashBuilder, HashSet};
 use indexmap_allocator_api::IndexMap;
 use num_bigint::{BigInt, Sign};
 
-use crate::js::{
+use crate::{
     common::{
         alloc::{self, slice_to_alloc_vec},
         wtf_8::{Wtf8Str, Wtf8String},
@@ -194,7 +194,7 @@ impl<'a, T> AstPtr<T> {
 #[macro_export]
 macro_rules! p {
     ($self:ident, $value:expr) => {
-        $crate::js::parser::ast::AstBox::new_in($value, $self.alloc)
+        $crate::parser::ast::AstBox::new_in($value, $self.alloc)
     };
 }
 

@@ -1,4 +1,4 @@
-use crate::js::runtime::bytecode::{generator::EmitError, operand::Register, width::ExtraWide};
+use crate::runtime::bytecode::{generator::EmitError, operand::Register, width::ExtraWide};
 
 use super::generator::{EmitResult, GenRegister};
 

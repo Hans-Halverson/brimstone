@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     abstract_operations::invoke,
     builtin_function::BuiltinFunction,
     error::{range_error, type_error},

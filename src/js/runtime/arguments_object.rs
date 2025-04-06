@@ -23,6 +23,7 @@ use super::{
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    rust_vtables::extract_virtual_object_vtable,
     scope::Scope,
     type_utilities::same_object_value_handles,
     Context, EvalResult, HeapPtr, Value,
@@ -63,6 +64,8 @@ extend_object! {
 }
 
 impl MappedArgumentsObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+
     pub fn new(
         cx: Context,
         callee: Handle<Closure>,

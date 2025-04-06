@@ -211,6 +211,9 @@ macro_rules! create_typed_array_constructor {
         }
 
         impl $typed_array {
+            pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+            pub const TYPED_ARRAY_VTABLE: *const () = extract_typed_array_vtable::<Self>();
+
             fn new_with_proto(
                 cx: Context,
                 proto: Handle<ObjectValue>,

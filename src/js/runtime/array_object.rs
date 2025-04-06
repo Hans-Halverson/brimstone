@@ -19,6 +19,7 @@ use super::{
     },
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    rust_vtables::extract_virtual_object_vtable,
     type_utilities::{is_constructor_value, same_object_value, to_number, to_uint32},
     Context, EvalResult, Handle, HeapPtr, Realm, Value,
 };
@@ -33,6 +34,8 @@ extend_object! {
 }
 
 impl ArrayObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+
     pub fn new(cx: Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
         let mut array = object_create_with_proto::<ArrayObject>(cx, ObjectKind::ArrayObject, proto);
 

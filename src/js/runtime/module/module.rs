@@ -7,7 +7,8 @@ use crate::{
     heap_trait_object,
     runtime::{
         boxed_value::BoxedValue, gc::HeapItem, promise_object::PromiseObject,
-        string_value::FlatString, Context, EvalResult, Handle, HeapPtr,
+        rust_vtables::extract_module_vtable, string_value::FlatString, Context, EvalResult, Handle,
+        HeapPtr,
     },
 };
 
@@ -68,7 +69,7 @@ pub enum ResolveExportName {
     Local { name: HeapPtr<FlatString>, boxed_value: HeapPtr<BoxedValue> },
 }
 
-heap_trait_object!(Module, DynModule, HeapDynModule, into_dyn_module);
+heap_trait_object!(Module, DynModule, HeapDynModule, into_dyn_module, extract_module_vtable);
 
 impl DynModule {
     pub fn as_heap_item(self) -> Handle<HeapItem> {

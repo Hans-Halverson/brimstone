@@ -16,6 +16,7 @@ use super::{
     ordinary_object::{is_compatible_property_descriptor, object_create},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
     property_key::PropertyKey,
+    rust_vtables::extract_virtual_object_vtable,
     type_utilities::{
         is_callable_object, is_constructor_object_value, same_opt_object_value_handles, same_value,
         to_boolean,
@@ -34,6 +35,8 @@ extend_object! {
 }
 
 impl ProxyObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+
     pub fn new(
         cx: Context,
         proxy_target: Handle<ObjectValue>,

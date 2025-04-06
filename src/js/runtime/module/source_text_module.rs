@@ -16,6 +16,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
         promise_object::{PromiseCapability, PromiseObject},
+        rust_vtables::extract_module_vtable,
         scope::Scope,
         string_value::FlatString,
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
@@ -105,6 +106,8 @@ type ModuleOptionArray = BsArray<Option<HeapDynModule>>;
 pub type ExportMap = BsHashMap<PropertyKey, HeapPtr<HeapItem>>;
 
 impl SourceTextModule {
+    pub const MODULE_VTABLE: *const () = extract_module_vtable::<Self>();
+
     pub fn new(
         cx: Context,
         program_function: Handle<BytecodeFunction>,

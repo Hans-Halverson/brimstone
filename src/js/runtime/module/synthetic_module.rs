@@ -11,6 +11,7 @@ use crate::{
         module::module::next_module_id,
         object_descriptor::{ObjectDescriptor, ObjectKind},
         promise_object::{coerce_to_ordinary_promise, PromiseCapability, PromiseObject},
+        rust_vtables::extract_module_vtable,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         string_value::FlatString,
@@ -44,6 +45,8 @@ pub enum SyntheticModuleKind {
 }
 
 impl SyntheticModule {
+    pub const MODULE_VTABLE: *const () = extract_module_vtable::<Self>();
+
     /// Create a new SyntheticModule with the given exported names. Caller is responsible for
     /// initializing the kind field.
     fn new(

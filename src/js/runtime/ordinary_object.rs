@@ -11,6 +11,7 @@ use super::{
     property::Property,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
+    rust_vtables::extract_virtual_object_vtable,
     type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
     value::Value,
     Context,
@@ -92,6 +93,10 @@ impl Handle<ObjectValue> {
 
         Ok(true)
     }
+}
+
+impl OrdinaryObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 }
 
 impl VirtualObject for Handle<OrdinaryObject> {

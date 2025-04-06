@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use crate::js::{
+use crate::{
     common::math::f64_to_f16,
     runtime::{
         eval_result::EvalResult,

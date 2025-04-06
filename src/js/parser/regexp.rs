@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 
-use crate::js::common::unicode_property::UnicodeProperty;
+use crate::common::unicode_property::UnicodeProperty;
 
 use super::ast::{AstSlice, AstStr, P};
 

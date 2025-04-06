@@ -1,4 +1,4 @@
-use crate::js::common::{
+use crate::common::{
     error::{ErrorFormatter, FormatOptions, SourceInfo},
     terminal::stdout_should_use_colors,
 };

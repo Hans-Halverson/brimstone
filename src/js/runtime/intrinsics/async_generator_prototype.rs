@@ -1,6 +1,6 @@
 use crate::{
-    if_abrupt_reject_promise,
-    js::runtime::{
+    if_abrupt_reject_promise, must,
+    runtime::{
         abstract_operations::{call_object, define_property_or_throw},
         async_generator_object::{
             async_generator_await_return, async_generator_resume, async_generator_validate,
@@ -20,7 +20,6 @@ use crate::{
         realm::Realm,
         Context, Handle, Value,
     },
-    must,
 };
 
 use super::intrinsics::Intrinsic;

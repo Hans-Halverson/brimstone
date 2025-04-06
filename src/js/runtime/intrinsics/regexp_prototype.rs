@@ -1,39 +1,37 @@
 use std::collections::HashSet;
 
 use crate::{
-    js::{
-        common::unicode::{needs_surrogate_pair, CodePoint},
-        parser::regexp::RegExpFlags,
-        runtime::{
-            abstract_operations::{
-                call, call_object, construct, create_data_property_or_throw, length_of_array_like,
-                set, species_constructor,
-            },
-            array_object::{array_create, create_array_from_list},
-            error::type_error,
-            eval_result::EvalResult,
-            function::get_argument,
-            get,
-            interned_strings::InternedStrings,
-            intrinsics::{
-                regexp_string_iterator::RegExpStringIterator,
-                string_prototype::SubstitutionTemplateParser,
-            },
-            object_descriptor::ObjectKind,
-            object_value::ObjectValue,
-            ordinary_object::object_create_with_optional_proto,
-            realm::Realm,
-            regexp::matcher::run_matcher,
-            string_value::StringValue,
-            to_string,
-            type_utilities::{
-                is_callable, same_object_value, same_value, to_boolean, to_integer_or_infinity,
-                to_length, to_object, to_uint32,
-            },
-            Context, Handle, PropertyKey, Value,
-        },
-    },
+    common::unicode::{needs_surrogate_pair, CodePoint},
     must,
+    parser::regexp::RegExpFlags,
+    runtime::{
+        abstract_operations::{
+            call, call_object, construct, create_data_property_or_throw, length_of_array_like, set,
+            species_constructor,
+        },
+        array_object::{array_create, create_array_from_list},
+        error::type_error,
+        eval_result::EvalResult,
+        function::get_argument,
+        get,
+        interned_strings::InternedStrings,
+        intrinsics::{
+            regexp_string_iterator::RegExpStringIterator,
+            string_prototype::SubstitutionTemplateParser,
+        },
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create_with_optional_proto,
+        realm::Realm,
+        regexp::matcher::run_matcher,
+        string_value::StringValue,
+        to_string,
+        type_utilities::{
+            is_callable, same_object_value, same_value, to_boolean, to_integer_or_infinity,
+            to_length, to_object, to_uint32,
+        },
+        Context, Handle, PropertyKey, Value,
+    },
 };
 
 use super::{

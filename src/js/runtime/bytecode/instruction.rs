@@ -11,7 +11,7 @@ use super::{
     writer::BytecodeWriter,
 };
 
-use crate::{count, js::runtime::debug_print::DebugPrinter, replace_expr};
+use crate::{count, replace_expr, runtime::debug_print::DebugPrinter};
 
 /// Generic properties of instructions.
 #[allow(dead_code)]

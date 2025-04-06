@@ -1,13 +1,13 @@
 use crate::{
-    field_offset,
-    js::runtime::{
+    field_offset, must,
+    runtime::{
         abstract_operations::define_property_or_throw, bytecode::function::Closure,
         error::type_error, function::build_function_name, get, intrinsics::intrinsics::Intrinsic,
         object_descriptor::ObjectKind, object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto, type_utilities::is_constructor_value,
         PropertyDescriptor, PropertyKey,
     },
-    must, set_uninit,
+    set_uninit,
 };
 
 use super::{

@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,

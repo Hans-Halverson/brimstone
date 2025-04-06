@@ -1,7 +1,7 @@
 use allocator_api2::alloc::Global;
 
 use crate::{
-    js::common::wtf_8::{Wtf8Str, Wtf8String},
+    common::wtf_8::{Wtf8Str, Wtf8String},
     set_uninit,
 };
 

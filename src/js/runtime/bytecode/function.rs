@@ -1,30 +1,28 @@
 use std::{mem::size_of, ops::Range};
 
 use crate::{
-    extend_object, field_offset,
-    js::{
-        parser::loc::Pos,
-        runtime::{
-            abstract_operations::define_property_or_throw,
-            collections::{array::ByteArray, InlineArray},
-            debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
-            function::{set_function_length, set_function_name},
-            gc::{HeapObject, HeapVisitor},
-            intrinsics::{
-                intrinsics::Intrinsic,
-                rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
-            },
-            object_descriptor::{ObjectDescriptor, ObjectKind},
-            object_value::ObjectValue,
-            ordinary_object::{object_create, object_create_with_proto},
-            property::Property,
-            scope::Scope,
-            source_file::SourceFile,
-            string_value::StringValue,
-            Context, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+    extend_object, field_offset, must,
+    parser::loc::Pos,
+    runtime::{
+        abstract_operations::define_property_or_throw,
+        collections::{array::ByteArray, InlineArray},
+        debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
+        function::{set_function_length, set_function_name},
+        gc::{HeapObject, HeapVisitor},
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
         },
+        object_descriptor::{ObjectDescriptor, ObjectKind},
+        object_value::ObjectValue,
+        ordinary_object::{object_create, object_create_with_proto},
+        property::Property,
+        scope::Scope,
+        source_file::SourceFile,
+        string_value::StringValue,
+        Context, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
     },
-    must, set_uninit,
+    set_uninit,
 };
 
 use super::{

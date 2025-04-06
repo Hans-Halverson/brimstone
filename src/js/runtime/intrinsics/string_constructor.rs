@@ -1,4 +1,4 @@
-use crate::js::{
+use crate::{
     common::unicode::CodePoint,
     runtime::{
         abstract_operations::length_of_array_like,

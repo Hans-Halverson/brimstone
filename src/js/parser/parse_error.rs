@@ -2,9 +2,9 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use crate::js::common::error::{ErrorFormatter, FormatOptions, SourceInfo};
-use crate::js::common::wtf_8::Wtf8String;
-use crate::js::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
+use crate::common::error::{ErrorFormatter, FormatOptions, SourceInfo};
+use crate::common::wtf_8::Wtf8String;
+use crate::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
 
 use super::scope_tree::BindingKind;
 use super::{

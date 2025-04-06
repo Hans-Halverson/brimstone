@@ -1,4 +1,4 @@
-use crate::js::runtime::Value;
+use crate::runtime::Value;
 
 use super::{
     instruction::{

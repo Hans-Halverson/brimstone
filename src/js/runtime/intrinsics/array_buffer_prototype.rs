@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     abstract_operations::{construct, species_constructor},
     collections::BsArray,
     error::{range_error, type_error},

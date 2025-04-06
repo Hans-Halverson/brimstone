@@ -3,12 +3,10 @@ use std::mem::size_of;
 use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
-    extend_object, field_offset,
-    js::{
-        parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
-        runtime::{interned_strings::InternedStrings, ordinary_object::object_create_with_size},
-    },
-    must, set_uninit,
+    extend_object, field_offset, must,
+    parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
+    runtime::{interned_strings::InternedStrings, ordinary_object::object_create_with_size},
+    set_uninit,
 };
 
 use super::{

@@ -4,45 +4,43 @@ use brimstone_macros::match_u32;
 use bumpalo::Bump;
 
 use crate::{
-    extend_object,
-    js::{
-        common::{
-            unicode::{
-                is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline,
-                is_surrogate_code_point, is_whitespace,
-            },
-            wtf_8::Wtf8String,
+    common::{
+        unicode::{
+            is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline, is_surrogate_code_point,
+            is_whitespace,
         },
-        parser::{
-            ast::AstAlloc,
-            lexer_stream::{
-                HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
-                HeapTwoByteCodeUnitLexerStream, LexerStream,
-            },
-            regexp::{RegExp, RegExpFlags},
-            regexp_parser::RegExpParser,
-        },
-        runtime::{
-            abstract_operations::{define_property_or_throw, set},
-            builtin_function::BuiltinFunction,
-            error::{syntax_parse_error, type_error},
-            eval_result::EvalResult,
-            function::get_argument,
-            gc::{Handle, HeapObject, HeapVisitor},
-            get,
-            interned_strings::InternedStrings,
-            object_descriptor::ObjectKind,
-            object_value::ObjectValue,
-            ordinary_object::object_create_from_constructor,
-            realm::Realm,
-            regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
-            string_value::{StringValue, StringWidth},
-            to_string,
-            type_utilities::{is_regexp, same_value},
-            Context, HeapPtr, PropertyDescriptor, Value,
-        },
+        wtf_8::Wtf8String,
     },
-    must, set_uninit,
+    extend_object, must,
+    parser::{
+        ast::AstAlloc,
+        lexer_stream::{
+            HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream,
+            HeapTwoByteCodeUnitLexerStream, LexerStream,
+        },
+        regexp::{RegExp, RegExpFlags},
+        regexp_parser::RegExpParser,
+    },
+    runtime::{
+        abstract_operations::{define_property_or_throw, set},
+        builtin_function::BuiltinFunction,
+        error::{syntax_parse_error, type_error},
+        eval_result::EvalResult,
+        function::get_argument,
+        gc::{Handle, HeapObject, HeapVisitor},
+        get,
+        interned_strings::InternedStrings,
+        object_descriptor::ObjectKind,
+        object_value::ObjectValue,
+        ordinary_object::object_create_from_constructor,
+        realm::Realm,
+        regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
+        string_value::{StringValue, StringWidth},
+        to_string,
+        type_utilities::{is_regexp, same_value},
+        Context, HeapPtr, PropertyDescriptor, Value,
+    },
+    set_uninit,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};

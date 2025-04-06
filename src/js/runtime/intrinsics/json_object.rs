@@ -1,30 +1,28 @@
 use std::collections::HashSet;
 
 use crate::{
-    js::{
-        common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
-        runtime::{
-            abstract_operations::{
-                call, call_object, create_data_property, create_data_property_or_throw,
-                enumerable_own_property_names, get_v, length_of_array_like, KeyOrValue,
-            },
-            array_object::array_create,
-            error::{syntax_error, type_error},
-            function::get_argument,
-            get,
-            object_value::ObjectValue,
-            ordinary_object::ordinary_object_create,
-            property::Property,
-            string_parsing::{parse_signed_decimal_literal, StringLexer},
-            string_value::StringValue,
-            to_string,
-            type_utilities::{
-                is_array, is_callable, number_to_string, to_integer_or_infinity, to_number,
-            },
-            Context, EvalResult, Handle, PropertyKey, Realm, Value,
-        },
-    },
+    common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
     must,
+    runtime::{
+        abstract_operations::{
+            call, call_object, create_data_property, create_data_property_or_throw,
+            enumerable_own_property_names, get_v, length_of_array_like, KeyOrValue,
+        },
+        array_object::array_create,
+        error::{syntax_error, type_error},
+        function::get_argument,
+        get,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
+        property::Property,
+        string_parsing::{parse_signed_decimal_literal, StringLexer},
+        string_value::StringValue,
+        to_string,
+        type_utilities::{
+            is_array, is_callable, number_to_string, to_integer_or_infinity, to_number,
+        },
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
+    },
 };
 
 use super::intrinsics::Intrinsic;

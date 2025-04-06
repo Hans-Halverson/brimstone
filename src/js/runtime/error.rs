@@ -1,4 +1,4 @@
-use crate::js::{
+use crate::{
     common::error::FormatOptions,
     parser::{LocalizedParseError, LocalizedParseErrors},
 };

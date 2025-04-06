@@ -4,7 +4,7 @@ use std::{
 };
 
 use bitflags::bitflags;
-use brimstone::js::{
+use brimstone_core::{
     common::options::OptionsBuilder,
     parser::{
         analyze::{analyze, AnalyzedProgramResult},

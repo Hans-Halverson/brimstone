@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     error::type_error,
     generator_object::GeneratorState,
     iterator::{create_iter_result_object, iterator_close},

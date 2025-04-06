@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         array_object::create_array_from_list,
         error::{range_error_value, type_error, type_error_value},
@@ -10,7 +11,6 @@ use crate::{
         type_utilities::{is_callable, to_boolean, to_integer_or_infinity, to_number},
         Context, EvalResult, Handle, Value,
     },
-    must,
 };
 
 use super::{

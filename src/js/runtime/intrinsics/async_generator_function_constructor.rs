@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     builtin_function::BuiltinFunction, eval::create_dynamic_function::create_dynamic_function,
     eval_result::EvalResult, object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };

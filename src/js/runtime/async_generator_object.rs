@@ -1,6 +1,6 @@
 use crate::{
-    extend_object, field_offset,
-    js::runtime::{
+    extend_object, field_offset, must,
+    runtime::{
         abstract_operations::call_object,
         eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},
@@ -14,7 +14,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr,
     },
-    must, set_uninit,
+    set_uninit,
 };
 
 use super::{

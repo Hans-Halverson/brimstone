@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    js::runtime::{error::type_error, object_descriptor::ObjectKind},
+    runtime::{error::type_error, object_descriptor::ObjectKind},
     set_uninit,
 };
 

@@ -6,14 +6,13 @@ use std::{
 use allocator_api2::alloc::Global;
 
 use crate::{
-    js::{
-        common::wtf_8::{Wtf8Cow, Wtf8Str},
-        parser::{
-            parse_error::InvalidDuplicateParametersReason,
-            scope_tree::{VMLocation, ARGUMENTS_NAME},
-        },
+    common::wtf_8::{Wtf8Cow, Wtf8Str},
+    must,
+    parser::{
+        parse_error::InvalidDuplicateParametersReason,
+        scope_tree::{VMLocation, ARGUMENTS_NAME},
     },
-    must, visit_opt, visit_vec,
+    visit_opt, visit_vec,
 };
 
 use super::{

@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::create_data_property_or_throw,
         builtin_function::BuiltinFunction,
         error::type_error,
@@ -12,7 +13,6 @@ use crate::{
         realm::Realm,
         Context, Value,
     },
-    must,
 };
 
 pub struct ProxyConstructor;

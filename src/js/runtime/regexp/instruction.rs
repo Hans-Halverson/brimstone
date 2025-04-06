@@ -1,9 +1,7 @@
 use std::{marker::PhantomData, mem::size_of};
 
 use crate::{
-    js::common::{
-        unicode::to_string_or_unicode_escape_sequence, unicode_property::UnicodeProperty,
-    },
+    common::{unicode::to_string_or_unicode_escape_sequence, unicode_property::UnicodeProperty},
     static_assert,
 };
 

@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,

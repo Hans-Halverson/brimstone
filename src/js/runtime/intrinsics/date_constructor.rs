@@ -1,4 +1,4 @@
-use crate::js::{
+use crate::{
     common::time::get_current_unix_time,
     runtime::{
         builtin_function::BuiltinFunction,

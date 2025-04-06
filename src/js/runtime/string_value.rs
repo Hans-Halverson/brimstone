@@ -11,8 +11,7 @@ use std::{
 };
 
 use crate::{
-    field_offset,
-    js::common::{
+    common::{
         unicode::{
             code_point_from_surrogate_pair, is_ascii, is_high_surrogate_code_unit, is_latin1,
             is_low_surrogate_code_unit, is_newline, is_surrogate_code_point, is_whitespace,
@@ -20,7 +19,7 @@ use crate::{
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
-    set_uninit, static_assert,
+    field_offset, set_uninit, static_assert,
 };
 
 use super::{

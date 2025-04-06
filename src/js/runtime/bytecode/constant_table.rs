@@ -1,6 +1,6 @@
 use crate::{
     field_offset,
-    js::runtime::{
+    runtime::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapObject, HeapVisitor},

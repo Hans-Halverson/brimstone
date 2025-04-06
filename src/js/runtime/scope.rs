@@ -1,4 +1,4 @@
-use crate::{field_offset, js::runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{field_offset, runtime::object_descriptor::ObjectKind, set_uninit};
 
 use super::{
     abstract_operations::has_property,

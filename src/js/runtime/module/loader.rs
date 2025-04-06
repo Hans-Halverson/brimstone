@@ -1,21 +1,19 @@
 use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
-    js::{
-        parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
-        runtime::{
-            abstract_operations::call_object,
-            bytecode::generator::BytecodeProgramGenerator,
-            context::ModuleCacheKey,
-            error::{syntax_error, syntax_parse_error},
-            eval_result::EvalResult,
-            intrinsics::{intrinsics::Intrinsic, json_object::JSONObject},
-            promise_object::{PromiseCapability, PromiseObject},
-            string_value::FlatString,
-            Context, Handle, Realm, Value,
-        },
-    },
     must,
+    parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
+    runtime::{
+        abstract_operations::call_object,
+        bytecode::generator::BytecodeProgramGenerator,
+        context::ModuleCacheKey,
+        error::{syntax_error, syntax_parse_error},
+        eval_result::EvalResult,
+        intrinsics::{intrinsics::Intrinsic, json_object::JSONObject},
+        promise_object::{PromiseCapability, PromiseObject},
+        string_value::FlatString,
+        Context, Handle, Realm, Value,
+    },
 };
 
 use super::{

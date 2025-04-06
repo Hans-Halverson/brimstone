@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         collections::{BsHashMap, BsHashMapField},
         eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},

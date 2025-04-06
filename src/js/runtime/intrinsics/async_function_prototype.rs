@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     object_value::ObjectValue, property::Property, realm::Realm, Context, Handle,
 };
 

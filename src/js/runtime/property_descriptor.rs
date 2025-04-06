@@ -1,4 +1,4 @@
-use crate::{js::runtime::abstract_operations::create_data_property_or_throw, must};
+use crate::{must, runtime::abstract_operations::create_data_property_or_throw};
 
 use super::{
     abstract_operations::{get, has_property},

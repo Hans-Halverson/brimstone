@@ -1,4 +1,4 @@
-use brimstone::js::common::terminal::RESET;
+use brimstone_core::common::terminal::RESET;
 
 /// A cell in a table with associated formatting properties.
 pub struct TableCell {

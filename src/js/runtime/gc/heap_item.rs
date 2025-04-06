@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     accessor::Accessor,
     arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,

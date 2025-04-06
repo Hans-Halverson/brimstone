@@ -1,6 +1,6 @@
 use std::ptr::NonNull;
 
-use crate::js::runtime::{
+use crate::runtime::{
     gc::Heap,
     interned_strings::InternedStrings,
     intrinsics::{

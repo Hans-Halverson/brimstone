@@ -5,7 +5,7 @@ use brimstone_icu_collections::{
 };
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
-use crate::js::{
+use crate::{
     common::{
         icu::ICU,
         unicode::{is_surrogate_code_point, CodePoint, MAX_CODE_POINT},

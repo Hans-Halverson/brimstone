@@ -1,4 +1,4 @@
-use crate::js::common::unicode::to_string_or_unicode_escape_sequence;
+use crate::common::unicode::to_string_or_unicode_escape_sequence;
 
 use super::ast::*;
 use super::loc::{find_line_col_for_pos, Loc};

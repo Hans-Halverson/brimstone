@@ -4,7 +4,7 @@ use indexmap_allocator_api::IndexSet;
 
 use crate::{
     field_offset, handle_scope,
-    js::runtime::{
+    runtime::{
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
         gc::{HeapItem, HeapObject, HeapVisitor},

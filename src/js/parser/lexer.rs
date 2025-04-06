@@ -5,14 +5,14 @@ use brimstone_macros::match_u32;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::js::common::unicode::{
+use crate::common::unicode::{
     as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
     decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
     is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start_ascii, is_id_start_unicode,
     is_in_unicode_range, is_newline, is_unicode_newline, is_unicode_whitespace,
     to_string_or_unicode_escape_sequence, CodePoint,
 };
-use crate::js::common::wtf_8::Wtf8Str;
+use crate::common::wtf_8::Wtf8Str;
 
 use super::ast::{AstAlloc, AstString};
 use super::loc::{Loc, Pos};

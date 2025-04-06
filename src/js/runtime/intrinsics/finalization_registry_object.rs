@@ -2,7 +2,7 @@ use std::{mem::size_of, slice};
 
 use crate::{
     extend_object, field_offset,
-    js::runtime::{
+    runtime::{
         collections::InlineArray,
         eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},

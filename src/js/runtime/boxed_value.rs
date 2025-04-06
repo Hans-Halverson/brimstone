@@ -1,4 +1,4 @@
-use crate::{js::runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{runtime::object_descriptor::ObjectKind, set_uninit};
 
 use super::{
     gc::{HeapObject, HeapVisitor},

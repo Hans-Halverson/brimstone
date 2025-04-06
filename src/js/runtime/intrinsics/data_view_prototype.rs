@@ -1,6 +1,6 @@
 use half::f16;
 
-use crate::js::runtime::{
+use crate::runtime::{
     error::{range_error, type_error},
     function::get_argument,
     object_value::ObjectValue,

@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     abstract_operations::define_property_or_throw,
     bytecode::function::Closure,
     eval_result::EvalResult,

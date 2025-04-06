@@ -1,4 +1,4 @@
-use brimstone::js::{
+use brimstone_core::{
     common::{
         error::FormatOptions,
         options::{Options, OptionsBuilder},

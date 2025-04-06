@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{
             create_data_property_or_throw, define_property_or_throw, enumerable_own_property_names,
             get, group_by, has_own_property, is_extensible, set, set_integrity_level,
@@ -22,7 +23,6 @@ use crate::{
         type_utilities::{require_object_coercible, same_value, to_object, to_property_key},
         Context, Handle, Value,
     },
-    must,
 };
 
 use super::{intrinsics::Intrinsic, map_constructor::add_entries_from_iterable};

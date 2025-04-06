@@ -6,9 +6,9 @@ use std::rc::Rc;
 use bitflags::bitflags;
 use num_bigint::BigInt;
 
-use crate::js::common::options::Options;
-use crate::js::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
-use crate::js::common::wtf_8::Wtf8Str;
+use crate::common::options::Options;
+use crate::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
+use crate::common::wtf_8::Wtf8Str;
 use crate::p;
 
 use super::ast::*;

@@ -1,5 +1,6 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         builtin_function::BuiltinFunction,
         error::type_error,
@@ -15,7 +16,6 @@ use crate::{
         value::Value,
         Context, Handle, PropertyKey, Realm,
     },
-    must,
 };
 
 use super::{

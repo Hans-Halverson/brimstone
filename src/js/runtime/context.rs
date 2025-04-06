@@ -7,16 +7,13 @@ use std::{
 };
 
 use crate::{
+    common::{
+        options::Options,
+        wtf_8::{Wtf8Str, Wtf8String},
+    },
     handle_scope,
-    js::{
-        common::{
-            options::Options,
-            wtf_8::{Wtf8Str, Wtf8String},
-        },
-        parser::{
-            analyze::analyze, parse_module, parse_script, print_program, source::Source,
-            ParseContext,
-        },
+    parser::{
+        analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
 };
 

@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     cast_from_value_fn, extend_object,
-    js::runtime::{
+    runtime::{
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapObject, HeapVisitor},

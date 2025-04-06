@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::call_object,
         boxed_value::BoxedValue,
         gc::{HeapObject, HeapVisitor},
@@ -15,7 +16,7 @@ use crate::{
         string_value::FlatString,
         Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
-    must, set_uninit,
+    set_uninit,
 };
 
 use super::{

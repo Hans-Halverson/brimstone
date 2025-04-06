@@ -1,6 +1,6 @@
 use crate::{
-    extend_object, if_abrupt_reject_promise,
-    js::runtime::{
+    extend_object, if_abrupt_reject_promise, must,
+    runtime::{
         abstract_operations::{call_object, get_method},
         builtin_function::BuiltinFunction,
         error::type_error_value,
@@ -19,7 +19,7 @@ use crate::{
         realm::Realm,
         Context, Handle, HeapPtr, Value,
     },
-    must, set_uninit,
+    set_uninit,
 };
 
 use super::intrinsics::Intrinsic;

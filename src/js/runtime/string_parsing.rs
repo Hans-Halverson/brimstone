@@ -3,7 +3,7 @@ use std::str::FromStr;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::js::common::unicode::{
+use crate::common::unicode::{
     is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace, CodeUnit,
 };
 

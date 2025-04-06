@@ -1,4 +1,4 @@
-use crate::js::{
+use crate::{
     common::{
         icu::ICU,
         unicode::{is_newline, CodePoint},

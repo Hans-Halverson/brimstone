@@ -1,45 +1,42 @@
 use std::cmp::Ordering;
 
 use crate::{
-    js::{
-        common::{
-            icu::ICU,
-            unicode::{
-                is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit,
-                CodePoint,
-            },
-            wtf_8::Wtf8String,
+    common::{
+        icu::ICU,
+        unicode::{
+            is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit, CodePoint,
         },
-        parser::regexp::RegExpFlags,
-        runtime::{
-            abstract_operations::{call_object, get_method, invoke},
-            array_object::{array_create, create_array_from_list},
-            error::{range_error, type_error},
-            eval_result::EvalResult,
-            function::get_argument,
-            get,
-            interned_strings::InternedStrings,
-            intrinsics::{
-                intrinsics::Intrinsic,
-                regexp_constructor::{regexp_create, RegExpSource},
-                regexp_prototype::flags_string_contains,
-                string_iterator::StringIterator,
-            },
-            numeric_constants::MAX_U32_AS_F64,
-            object_value::ObjectValue,
-            realm::Realm,
-            string_object::StringObject,
-            string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
-            to_string,
-            type_utilities::{
-                is_callable, is_regexp, require_object_coercible, to_integer_or_infinity,
-                to_length, to_number, to_uint32,
-            },
-            value::Value,
-            Context, Handle, HeapPtr, PropertyKey,
-        },
+        wtf_8::Wtf8String,
     },
     must,
+    parser::regexp::RegExpFlags,
+    runtime::{
+        abstract_operations::{call_object, get_method, invoke},
+        array_object::{array_create, create_array_from_list},
+        error::{range_error, type_error},
+        eval_result::EvalResult,
+        function::get_argument,
+        get,
+        interned_strings::InternedStrings,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            regexp_constructor::{regexp_create, RegExpSource},
+            regexp_prototype::flags_string_contains,
+            string_iterator::StringIterator,
+        },
+        numeric_constants::MAX_U32_AS_F64,
+        object_value::ObjectValue,
+        realm::Realm,
+        string_object::StringObject,
+        string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
+        to_string,
+        type_utilities::{
+            is_callable, is_regexp, require_object_coercible, to_integer_or_infinity, to_length,
+            to_number, to_uint32,
+        },
+        value::Value,
+        Context, Handle, HeapPtr, PropertyKey,
+    },
 };
 
 use super::regexp_constructor::FlagsSource;

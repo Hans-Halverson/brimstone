@@ -3,6 +3,7 @@ members = [
   "src",
   "src/brimstone_icu_collections",
   "src/brimstone_macros",
+  "src/js",
   "tests",
   "tests/harness",
 ]
@@ -16,6 +17,7 @@ authors = ["hanshalverson <hansghalverson@gmail.com>"]
 [workspace.dependencies]
 # Internal Crates
 brimstone = { path = "src" }
+brimstone_core = { path = "src/js" }
 brimstone_icu_collections = { path = "src/brimstone_icu_collections" }
 brimstone_macros = { path = "src/brimstone_macros" }
 

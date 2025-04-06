@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::js::{
+use crate::{
     common::unicode::{
         code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
         is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,

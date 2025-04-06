@@ -1,5 +1,5 @@
 use crate::{
-    field_offset, handle_scope, js::parser::scope_tree::REALM_SCOPE_SLOT_NAME, must, set_uninit,
+    field_offset, handle_scope, must, parser::scope_tree::REALM_SCOPE_SLOT_NAME, set_uninit,
 };
 
 use super::{

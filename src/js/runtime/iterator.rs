@@ -1,11 +1,11 @@
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         abstract_operations::{call_object, get_method},
         error::type_error,
         get,
         intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
     },
-    must,
 };
 
 use super::{

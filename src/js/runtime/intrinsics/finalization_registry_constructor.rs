@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     builtin_function::BuiltinFunction, error::type_error, eval_result::EvalResult,
     function::get_argument, object_value::ObjectValue, realm::Realm, type_utilities::is_callable,
     Context, Handle, Value,

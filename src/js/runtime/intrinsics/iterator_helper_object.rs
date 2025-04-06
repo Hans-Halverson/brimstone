@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     extend_object,
-    js::runtime::{
+    runtime::{
         abstract_operations::call_object,
         gc::{HeapObject, HeapVisitor},
         generator_object::GeneratorState,

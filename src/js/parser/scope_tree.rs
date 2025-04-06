@@ -2,7 +2,7 @@ use std::{cell::Cell, sync::LazyLock};
 
 use allocator_api2::alloc::Global;
 
-use crate::js::common::{alloc, wtf_8::Wtf8String};
+use crate::common::{alloc, wtf_8::Wtf8String};
 
 use super::{
     ast::{

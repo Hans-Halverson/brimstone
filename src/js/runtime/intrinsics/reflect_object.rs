@@ -1,4 +1,4 @@
-use crate::js::runtime::{
+use crate::runtime::{
     abstract_operations::{call_object, construct, create_list_from_array_like},
     array_object::create_array_from_list,
     error::type_error,

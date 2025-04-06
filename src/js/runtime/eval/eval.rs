@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::js::{
+use crate::{
     common::wtf_8::{Wtf8Cow, Wtf8String},
     parser::{
         analyze::{analyze_for_eval, PrivateNameUsage},

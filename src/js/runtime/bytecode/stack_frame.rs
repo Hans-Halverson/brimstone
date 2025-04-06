@@ -1,4 +1,4 @@
-use crate::js::runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value};
+use crate::runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value};
 
 use super::{constant_table::ConstantTable, function::Closure};
 
@@ -252,7 +252,6 @@ impl StackFrame {
     }
 
     /// Iterate upwards through stack frames, starting at this stack frame.
-    #[allow(unused)]
     #[inline]
     pub fn iter(&self) -> StackFrameIter {
         StackFrameIter { current_frame: Some(*self) }

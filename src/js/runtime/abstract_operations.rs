@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use crate::{
-    js::runtime::{
+    must,
+    runtime::{
         iterator::iter_iterator_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         type_utilities::{same_value_zero, to_property_key},
     },
-    must,
 };
 
 use super::{

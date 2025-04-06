@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::js::parser::{
+use crate::parser::{
     loc::{find_line_col_for_pos, Pos},
     source::Source,
 };

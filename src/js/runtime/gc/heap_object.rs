@@ -1,6 +1,6 @@
 use std::mem::transmute;
 
-use crate::js::runtime::{PropertyKey, Value};
+use crate::runtime::{PropertyKey, Value};
 
 use super::{HeapItem, HeapPtr};
 

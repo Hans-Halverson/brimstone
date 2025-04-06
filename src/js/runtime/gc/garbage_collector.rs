@@ -487,8 +487,9 @@ impl GarbageCollector {
         }
 
         // Then check values of interned strings map
-        let mut string_map = InternedStrings::str_cache(cx);
-        for (wtf8_str, string_ref) in string_map.clone().iter_mut_gc_unsafe() {
+        let mut cloned_cx = cx;
+        let string_map = cloned_cx.interned_strings.generator_cache_mut();
+        string_map.retain(|_, string_ref| {
             let string_descriptor = string_ref.descriptor();
 
             if self.is_in_from_space(string_ref.as_ptr().cast()) {
@@ -496,14 +497,13 @@ impl GarbageCollector {
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
                     *string_ref = forwarding_ptr.cast::<FlatString>();
                 } else {
-                    // Otherwise string was garbage collected so remove string from map.
-                    // It is safe to remove during iteration for a BsHashMap.
-                    string_map.remove(wtf8_str);
-
-                    // TODO: Drop the Wtf8String to avoid leaking memory
+                    // Otherwise string was garbage collected so remove string from map
+                    return false;
                 }
             }
-        }
+
+            true
+        });
     }
 }
 

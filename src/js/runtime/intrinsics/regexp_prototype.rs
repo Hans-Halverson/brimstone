@@ -14,7 +14,6 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        interned_strings::InternedStrings,
         intrinsics::{
             regexp_string_iterator::RegExpStringIterator,
             string_prototype::SubstitutionTemplateParser,
@@ -555,7 +554,7 @@ impl RegExpPrototype {
 
     /// RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
     pub fn split(
-        cx: Context,
+        mut cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
@@ -586,7 +585,7 @@ impl RegExpPrototype {
 
         // Make sure the sticky flag is included in the flags string
         if !is_sticky {
-            let y_string = InternedStrings::get_str(cx, "y");
+            let y_string = cx.alloc_string("y").as_string();
             flags_string = StringValue::concat(cx, flags_string, y_string);
         }
 
@@ -741,7 +740,7 @@ impl RegExpPrototype {
         let flags_value = get(cx, this_object, cx.names.flags())?;
         let flags_string = to_string(cx, flags_value)?;
 
-        let slash_string = InternedStrings::get_str(cx, "/");
+        let slash_string = cx.names.slash().as_string();
 
         let full_string = StringValue::concat_all(
             cx,

@@ -12,7 +12,6 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
-        interned_strings::InternedStrings,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -835,7 +834,7 @@ impl ArrayPrototype {
 
         let separator = get_argument(cx, arguments, 0);
         let separator = if separator.is_undefined() {
-            InternedStrings::get_str(cx, ",")
+            cx.names.comma().as_string()
         } else {
             to_string(cx, separator)?
         };
@@ -1492,7 +1491,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         let mut result = cx.names.empty_string().as_string();
-        let separator = InternedStrings::get_str(cx, ",");
+        let separator = cx.names.comma().as_string();
 
         // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);

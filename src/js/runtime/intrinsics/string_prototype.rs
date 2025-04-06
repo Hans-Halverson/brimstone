@@ -17,7 +17,6 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        interned_strings::InternedStrings,
         intrinsics::{
             intrinsics::Intrinsic,
             regexp_constructor::{regexp_create, RegExpSource},
@@ -587,7 +586,7 @@ impl StringPrototype {
         let int_max_length = int_max_length as u32;
 
         let fill_string = if fill_string_arg.is_undefined() {
-            InternedStrings::get_str(cx, " ")
+            cx.names.space().as_string()
         } else {
             to_string(cx, fill_string_arg)?
         };

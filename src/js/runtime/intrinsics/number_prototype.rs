@@ -2,7 +2,6 @@ use crate::runtime::{
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
-    interned_strings::InternedStrings,
     object_value::ObjectValue,
     realm::Realm,
     string_value::FlatString,
@@ -285,12 +284,12 @@ impl NumberPrototype {
         if number_value.is_nan() {
             return Ok(cx.names.nan().as_string().as_value());
         } else if number_value.is_zero() {
-            return Ok(InternedStrings::get_str(cx, "0").as_value());
+            return Ok(cx.names.zero().as_string().as_value());
         } else if number_value.is_infinity() {
             return if number_value.as_number() == f64::INFINITY {
                 Ok(cx.names.infinity().as_string().as_value())
             } else {
-                Ok(InternedStrings::get_str(cx, "-Infinity").as_value())
+                Ok(cx.names.negative_infinity_literal().as_string().as_value())
             };
         }
 

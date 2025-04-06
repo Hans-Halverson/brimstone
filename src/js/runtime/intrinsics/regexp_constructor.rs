@@ -29,7 +29,6 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapObject, HeapVisitor},
         get,
-        interned_strings::InternedStrings,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
@@ -424,7 +423,7 @@ fn escape_pattern_string(
 ) -> Handle<StringValue> {
     // Special case the empty pattern string - equivalent to an empty non-capturing group
     if pattern_string.is_empty() {
-        return InternedStrings::get_str(cx, "(?:)");
+        return cx.alloc_string("(?:)").as_string();
     }
 
     // Only need to escape line terminators and forward slash

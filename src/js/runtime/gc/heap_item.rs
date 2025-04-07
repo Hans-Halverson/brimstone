@@ -22,7 +22,7 @@ use crate::runtime::{
     for_in_iterator::ForInIterator,
     generator_object::GeneratorObject,
     global_names::GlobalNames,
-    interned_strings::{InternedStringsMapField, InternedStringsSetField},
+    interned_strings::InternedStringsSetField,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject,
         array_iterator::ArrayIterator,
@@ -188,7 +188,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             ObjectKind::GlobalSymbolRegistryMap => {
                 GlobalSymbolRegistryField::byte_size(&self.cast())
             }
-            ObjectKind::InternedStringsMap => InternedStringsMapField::byte_size(&self.cast()),
             ObjectKind::InternedStringsSet => InternedStringsSetField::byte_size(&self.cast()),
             ObjectKind::LexicalNamesMap => LexicalNamesMapField::byte_size(&self.cast()),
             ObjectKind::ModuleCacheMap => ModuleCacheField::byte_size(&self.cast()),
@@ -333,9 +332,6 @@ impl HeapObject for HeapPtr<HeapItem> {
             }
             ObjectKind::GlobalSymbolRegistryMap => {
                 GlobalSymbolRegistryField::visit_pointers(self.cast_mut(), visitor)
-            }
-            ObjectKind::InternedStringsMap => {
-                InternedStringsMapField::visit_pointers(self.cast_mut(), visitor)
             }
             ObjectKind::InternedStringsSet => {
                 InternedStringsSetField::visit_pointers(self.cast_mut(), visitor)

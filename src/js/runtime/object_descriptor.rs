@@ -143,7 +143,6 @@ pub enum ObjectKind {
     WeakSetObjectWeakValueSet,
     WeakMapObjectWeakValueMap,
     GlobalSymbolRegistryMap,
-    InternedStringsMap,
     InternedStringsSet,
     LexicalNamesMap,
     ModuleCacheMap,
@@ -373,7 +372,6 @@ impl BaseDescriptors {
         other_heap_object_descriptor!(ObjectKind::WeakMapObjectWeakValueMap);
         other_heap_object_descriptor!(ObjectKind::WeakSetObjectWeakValueSet);
         other_heap_object_descriptor!(ObjectKind::GlobalSymbolRegistryMap);
-        other_heap_object_descriptor!(ObjectKind::InternedStringsMap);
         other_heap_object_descriptor!(ObjectKind::InternedStringsSet);
         other_heap_object_descriptor!(ObjectKind::LexicalNamesMap);
         other_heap_object_descriptor!(ObjectKind::ModuleCacheMap);

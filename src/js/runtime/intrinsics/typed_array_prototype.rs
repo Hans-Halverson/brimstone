@@ -13,7 +13,6 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
-        interned_strings::InternedStrings,
         intrinsics::{
             array_buffer_constructor::clone_array_buffer,
             array_iterator::{ArrayIterator, ArrayIteratorKind},
@@ -743,7 +742,7 @@ impl TypedArrayPrototype {
 
         let separator = get_argument(cx, arguments, 0);
         let separator = if separator.is_undefined() {
-            InternedStrings::get_str(cx, ",")
+            cx.names.comma().as_string()
         } else {
             to_string(cx, separator)?
         };
@@ -1438,7 +1437,7 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record);
 
         let mut result = cx.names.empty_string().as_string();
-        let separator = InternedStrings::get_str(cx, ",");
+        let separator = cx.names.comma().as_string();
 
         for i in 0..length {
             if i > 0 {

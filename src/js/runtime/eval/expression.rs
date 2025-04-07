@@ -13,7 +13,6 @@ use crate::{
         array_object::array_create_in_realm,
         error::{range_error, type_error},
         eval_result::EvalResult,
-        interned_strings::InternedStrings,
         numeric_operations::number_exponentiate,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
@@ -31,7 +30,7 @@ use crate::{
 
 /// GetTemplateObject (https://tc39.es/ecma262/#sec-gettemplateobject)
 pub fn generate_template_object(
-    cx: Context,
+    mut cx: Context,
     realm: Handle<Realm>,
     lit: &ast::TemplateLiteral,
 ) -> Handle<ObjectValue> {
@@ -48,12 +47,12 @@ pub fn generate_template_object(
 
         let cooked_value = match &quasi.cooked {
             None => cx.undefined(),
-            Some(cooked) => InternedStrings::get_wtf8_str(cx, cooked).into(),
+            Some(cooked) => cx.alloc_wtf8_str(cooked).as_value(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
-        let raw_value = InternedStrings::get_wtf8_str(cx, quasi.raw);
+        let raw_value = cx.alloc_wtf8_str(quasi.raw);
         let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
         must!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }

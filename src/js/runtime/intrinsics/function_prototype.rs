@@ -11,7 +11,6 @@ use crate::{
         eval_result::EvalResult,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
-        interned_strings::InternedStrings,
         object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
@@ -206,11 +205,11 @@ impl FunctionPrototype {
 
             // Builtin functions have special formatting using the function name
             if function.rust_runtime_function_id().is_some() {
-                let mut string_parts = vec![InternedStrings::get_str(cx, "function ")];
+                let mut string_parts = vec![cx.alloc_string("function ").as_string()];
                 if let Some(name) = function.name() {
                     string_parts.push(name);
                 }
-                string_parts.push(InternedStrings::get_str(cx, "() { [native code] }"));
+                string_parts.push(cx.alloc_string("() { [native code] }").as_string());
 
                 return Ok(StringValue::concat_all(cx, &string_parts).as_value());
             }

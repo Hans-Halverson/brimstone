@@ -53,7 +53,7 @@ use crate::{
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         source_file::SourceFile,
-        string_value::FlatString,
+        string_value::{FlatString, StringValue},
         value::BigIntValue,
         Context, Handle, HeapPtr, Realm, Value,
     },
@@ -547,14 +547,16 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for attribute in attributes.iter() {
             let key = match &attribute.key {
                 ast::Expression::Id(id) => {
-                    InternedStrings::get_wtf8_str(self.cx, id.name).as_flat()
+                    InternedStrings::get_generator_cache_wtf8_str(self.cx, id.name).as_flat()
                 }
                 ast::Expression::String(string) => {
-                    InternedStrings::get_wtf8_str(self.cx, string.value).as_flat()
+                    InternedStrings::get_generator_cache_wtf8_str(self.cx, string.value).as_flat()
                 }
                 _ => unreachable!("expected string or identifier"),
             };
-            let value = InternedStrings::get_wtf8_str(self.cx, attribute.value.value).as_flat();
+            let value =
+                InternedStrings::get_generator_cache_wtf8_str(self.cx, attribute.value.value)
+                    .as_flat();
 
             attribute_pairs.push((key, value));
         }
@@ -1656,14 +1658,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.mov_instruction(dest, src);
     }
 
+    fn get_cached_str(&mut self, str: &str) -> Handle<StringValue> {
+        InternedStrings::get_generator_cache_str(self.cx, str)
+    }
+
+    fn get_cached_wtf8_str(&mut self, str: &Wtf8Str) -> Handle<StringValue> {
+        InternedStrings::get_generator_cache_wtf8_str(self.cx, str)
+    }
+
     fn add_string_constant(&mut self, str: &str) -> EmitResult<GenConstantIndex> {
-        let string = InternedStrings::get_str(self.cx, str).as_flat();
+        let string = self.get_cached_str(str).as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
     }
 
     fn add_wtf8_string_constant(&mut self, str: &Wtf8Str) -> EmitResult<GenConstantIndex> {
-        let string = InternedStrings::get_wtf8_str(self.cx, str).as_flat();
+        let string = self.get_cached_wtf8_str(str).as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
     }
@@ -1959,7 +1969,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = self
             .name
             .as_ref()
-            .map(|name| InternedStrings::get_wtf8_str(self.cx, name));
+            .map(|name| InternedStrings::get_generator_cache_wtf8_str(self.cx, name));
         let (bytecode, source_positions) = self.writer.finish();
 
         let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions);
@@ -2921,7 +2931,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Can use source directly as "escaped" pattern source string
-        let source = InternedStrings::get_wtf8_str(self.cx, lit.pattern);
+        let source = self.get_cached_wtf8_str(lit.pattern);
 
         // Compile regexp and store compiled regexp in constant table
         let compiled_regexp = compile_regexp(self.cx, &lit.regexp, source);
@@ -7155,7 +7165,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         let method_name = if let Name::Named(name) = key {
-            Some(InternedStrings::get_wtf8_str(self.cx, &name.to_wtf8_string()).as_flat())
+            Some(self.get_cached_wtf8_str(&name.to_wtf8_string()).as_flat())
         } else {
             None
         };
@@ -7515,7 +7525,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         vm_node
             .bindings()
             .iter()
-            .map(|name| InternedStrings::get_wtf8_str(cx, name).as_flat())
+            .map(|name| InternedStrings::get_generator_cache_wtf8_str(cx, name).as_flat())
             .collect::<Vec<_>>()
     }
 
@@ -9201,7 +9211,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut global_funcs = HashSet::new();
 
         for (name, binding) in global_scope.iter_var_decls() {
-            let name = InternedStrings::get_wtf8_str(self.cx, name).as_flat();
+            let name = self.get_cached_wtf8_str(name).as_flat();
             if let BindingKind::Function { .. } = binding.kind() {
                 global_funcs.insert(name);
             } else {

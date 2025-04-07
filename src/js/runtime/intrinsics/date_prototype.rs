@@ -3,7 +3,6 @@ use crate::runtime::{
     builtin_function::BuiltinFunction,
     error::{range_error, type_error},
     function::get_argument,
-    interned_strings::InternedStrings,
     intrinsics::date_object::{day, make_date, make_time, time_clip},
     object_value::ObjectValue,
     property::Property,
@@ -1215,7 +1214,7 @@ impl DatePrototype {
 
     fn to_date_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date").as_value());
         }
 
         let date_value = local_time(date_value);
@@ -1374,7 +1373,7 @@ impl DatePrototype {
 
     fn to_time_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date").as_value());
         }
 
         let local_date_value = local_time(date_value);
@@ -1403,7 +1402,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(InternedStrings::get_str(cx, "Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date").as_value());
         }
 
         let year = year_from_time(date_value);
@@ -1546,7 +1545,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
 /// ToDateString (https://tc39.es/ecma262/#sec-todatestring)
 pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
     if time_value.is_nan() {
-        return InternedStrings::get_str(cx, "Invalid Date");
+        return cx.alloc_string("Invalid Date").as_string();
     }
 
     let local_time_value = local_time(time_value);

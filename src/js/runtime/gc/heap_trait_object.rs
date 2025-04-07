@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! heap_trait_object {
-    ($trait:ident, $stack_object:ident, $heap_object:ident, $into_dyn:ident) => {
+    ($trait:ident, $stack_object:ident, $heap_object:ident, $into_dyn:ident, $extract_vtable:ident) => {
         /// A custom trait object to the heap, containing both a pointer to an object on the heap along with
         /// the object's vtable for the trait.
         ///
@@ -30,7 +30,7 @@ macro_rules! heap_trait_object {
             where
                 Self: Sized,
             {
-                let vtable = extract_trait_vtable::<Self>();
+                let vtable = $extract_vtable();
                 $stack_object { data: self.cast(), vtable }
             }
         }
@@ -95,19 +95,6 @@ macro_rules! heap_trait_object {
                 let data = &self.data as *const _ as *const ();
                 let trait_object = RustTraitObject { data, vtable: self.vtable };
                 unsafe { std::mem::transmute::<RustTraitObject, &mut dyn $trait>(trait_object) }
-            }
-        }
-
-        /// Compile time shenanigans to extract the trait object vtable for a particular type that
-        /// implements the trait so that we can construct our own trait objects manually.
-        const fn extract_trait_vtable<T: $trait>() -> *const () {
-            unsafe {
-                let example_ptr: *const T = std::ptr::NonNull::dangling().as_ptr();
-                let example_trait_object: *const dyn $trait = example_ptr;
-                let trait_object =
-                    std::mem::transmute::<*const dyn $trait, $stack_object>(example_trait_object);
-
-                trait_object.vtable
             }
         }
     };

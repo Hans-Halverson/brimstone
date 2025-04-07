@@ -1,7 +1,7 @@
 use rand::Rng;
 
 use std::{
-    mem::{size_of, transmute, transmute_copy},
+    mem::{size_of, transmute_copy},
     num::NonZeroU32,
 };
 
@@ -721,19 +721,6 @@ impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
 struct ObjectTraitObject {
     data: *const Handle<ObjectValue>,
     vtable: *const (),
-}
-
-/// Compile time shenanigans to extract the trait object vtable for a particular type that
-/// implements Object so that we can construct our own trait objects manually.
-pub const fn extract_object_vtable<T: VirtualObject>() -> *const () {
-    unsafe {
-        let example_ptr: *const T = std::ptr::null();
-        let example_trait_object: *const dyn VirtualObject = example_ptr;
-        let object_trait_object =
-            transmute::<*const dyn VirtualObject, ObjectTraitObject>(example_trait_object);
-
-        object_trait_object.vtable
-    }
 }
 
 impl HeapObject for HeapPtr<ObjectValue> {

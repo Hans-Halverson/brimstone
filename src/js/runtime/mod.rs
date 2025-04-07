@@ -39,6 +39,7 @@ mod property_key;
 mod proxy_object;
 mod realm;
 mod regexp;
+mod rust_vtables;
 pub mod scope;
 pub mod scope_names;
 mod source_file;

@@ -28,6 +28,7 @@ use crate::{
 use super::{
     gc::{HeapObject, HeapVisitor},
     property::Property,
+    rust_vtables::extract_virtual_object_vtable,
     string_value::FlatString,
 };
 
@@ -40,6 +41,8 @@ extend_object! {
 }
 
 impl StringObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+
     pub fn new_from_value(
         cx: Context,
         string_data_handle: Handle<StringValue>,

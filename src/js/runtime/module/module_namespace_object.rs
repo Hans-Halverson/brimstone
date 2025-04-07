@@ -15,6 +15,7 @@ use crate::{
             ordinary_own_string_symbol_property_keys,
         },
         property::Property,
+        rust_vtables::extract_virtual_object_vtable,
         type_utilities::same_value,
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
@@ -37,6 +38,8 @@ extend_object! {
 }
 
 impl ModuleNamespaceObject {
+    pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
+
     pub fn new(cx: Context, module: DynModule) -> HeapPtr<ModuleNamespaceObject> {
         // Module namespace object does not have a prototype. This satisfies:
         // - [[GetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-getprototypeof)

@@ -6,7 +6,7 @@ use crate::{
     runtime::{
         arguments_object::MappedArgumentsObject,
         module::module_namespace_object::ModuleNamespaceObject, ordinary_object::OrdinaryObject,
-        Value,
+        rust_vtables::extract_virtual_object_vtable, Value,
     },
     set_uninit,
 };
@@ -18,7 +18,7 @@ use super::{
         BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
         Int32Array, Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
     },
-    object_value::{extract_object_vtable, VirtualObject, VirtualObjectVtable},
+    object_value::{VirtualObject, VirtualObjectVtable},
     proxy_object::ProxyObject,
     string_object::StringObject,
     Context,
@@ -192,7 +192,7 @@ impl ObjectDescriptor {
         let mut desc = cx.alloc_uninit::<ObjectDescriptor>();
 
         set_uninit!(desc.descriptor, *descriptor);
-        set_uninit!(desc.vtable, extract_object_vtable::<Handle<T>>());
+        set_uninit!(desc.vtable, extract_virtual_object_vtable::<T>());
         set_uninit!(desc.kind, kind);
         set_uninit!(desc.flags, flags);
 

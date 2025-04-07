@@ -25,6 +25,7 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         realm::Realm,
+        rust_vtables::{extract_typed_array_vtable, extract_virtual_object_vtable},
         string_value::StringValue,
         type_utilities::{
             to_big_int64, to_big_uint64, to_index, to_int16, to_int32, to_int8, to_number,
@@ -100,7 +101,13 @@ pub trait TypedArray {
     ) -> EvalResult<()>;
 }
 
-heap_trait_object!(TypedArray, DynTypedArray, HeapDynTypedArray, into_dyn_typed_array);
+heap_trait_object!(
+    TypedArray,
+    DynTypedArray,
+    HeapDynTypedArray,
+    into_dyn_typed_array,
+    extract_typed_array_vtable
+);
 
 impl DynTypedArray {
     pub fn into_object_value(self) -> Handle<ObjectValue> {

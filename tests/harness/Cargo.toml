@@ -6,6 +6,7 @@ edition.workspace = true
 
 [dependencies]
 brimstone_core.workspace = true
+brimstone_serialized_heap.workspace = true
 
 clap = { workspace = true, features = ["derive"] }
 regex.workspace = true

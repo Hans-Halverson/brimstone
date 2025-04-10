@@ -47,6 +47,7 @@ macro_rules! heap_trait_object {
             #[allow(dead_code)]
             pub fn visit_pointers(&mut self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
                 visitor.visit_pointer(&mut self.data);
+                visitor.visit_rust_vtable_pointer(&mut self.vtable);
             }
         }
 

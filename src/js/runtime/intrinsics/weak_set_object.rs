@@ -115,6 +115,8 @@ impl WeakSetObjectSetField {
     pub fn visit_pointers(set: &mut HeapPtr<WeakValueSet>, visitor: &mut impl HeapVisitor) {
         set.visit_pointers(visitor);
 
-        // Intentionally do not visit elements
+        for value in set.iter_mut_gc_unsafe() {
+            visitor.visit_weak_value(value.value_mut());
+        }
     }
 }

@@ -45,7 +45,9 @@ checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 name = "brimstone"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.9.0",
  "brimstone_core",
+ "brimstone_serialized_heap",
  "clap",
  "criterion",
 ]
@@ -104,6 +106,7 @@ name = "brimstone_integration_test_harness"
 version = "0.1.0"
 dependencies = [
  "brimstone_core",
+ "brimstone_serialized_heap",
  "clap",
  "regex",
  "serde",
@@ -121,10 +124,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "brimstone_serialized_heap"
+version = "0.1.0"
+dependencies = [
+ "brimstone_core",
+]
+
+[[package]]
 name = "brimstone_tests"
 version = "0.1.0"
 dependencies = [
  "brimstone_core",
+ "brimstone_serialized_heap",
 ]
 
 [[package]]

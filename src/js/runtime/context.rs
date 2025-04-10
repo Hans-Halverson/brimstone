@@ -9,6 +9,7 @@ use std::{
 use crate::{
     common::{
         options::Options,
+        serialized_heap::SerializedHeap,
         wtf_8::{Wtf8Str, Wtf8String},
     },
     handle_scope,
@@ -26,7 +27,7 @@ use super::{
     },
     collections::{BsHashMap, BsHashMapField},
     error::BsResult,
-    gc::{Heap, HeapVisitor},
+    gc::{Heap, HeapRootsDeserializer, HeapVisitor},
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
     module::{
@@ -122,7 +123,7 @@ impl Context {
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
             well_known_symbols: BuiltinSymbols::uninit(),
-            base_descriptors: BaseDescriptors::uninit(),
+            base_descriptors: BaseDescriptors::uninit_empty(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
             initial_realm: HeapPtr::uninit(),
@@ -140,7 +141,7 @@ impl Context {
             modules: HeapPtr::uninit(),
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
-            options,
+            options: options.clone(),
             has_finished_module_resolution: false,
             async_evaluation_counter: NonZeroUsize::MIN,
         });
@@ -149,6 +150,18 @@ impl Context {
 
         cx.heap.info().set_context(cx);
         cx.vm = Some(Box::new(VM::new(cx)));
+
+        if let Some(serialized_heap) = options.serialized_heap {
+            cx.init_heap_from_serialized(serialized_heap);
+        } else {
+            cx.init_heap_allocated_context_fields();
+        }
+
+        cx
+    }
+
+    fn init_heap_allocated_context_fields(&mut self) {
+        let mut cx = *self;
 
         handle_scope!(cx, {
             // Initialize all uninitialized fields
@@ -171,8 +184,21 @@ impl Context {
 
         // Stop allocating into the permanent heap
         cx.heap.mark_current_semispace_as_permanent();
+    }
 
-        cx
+    /// Initialize this context from a serialized heap.
+    ///
+    /// Deserializes heap including fixing up heap roots for all heap allocated fields in the
+    /// context.
+    fn init_heap_from_serialized(&mut self, serialized: &SerializedHeap) {
+        let mut cx = *self;
+
+        // Initialize all uninitialized fields
+        cx.base_descriptors = BaseDescriptors::uninit();
+
+        // Deserialize the heap roots
+        HeapRootsDeserializer::deserialize(cx, serialized);
+        self.heap.init_from_serialized(cx, serialized);
     }
 
     pub fn from_ptr(ptr: NonNull<ContextCell>) -> Context {
@@ -452,7 +478,9 @@ impl Context {
         Value::number(value).to_handle(*self)
     }
 
-    pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+    /// Visit all heap roots for a garbage collection. This visits all pointers other than those
+    /// that are guaranteed to be in the permanent semispace.
+    pub fn visit_roots_for_gc(&mut self, visitor: &mut impl HeapVisitor) {
         self.heap.visit_roots(visitor);
 
         visitor.visit_pointer(&mut self.global_symbol_registry);
@@ -463,14 +491,27 @@ impl Context {
         if let Some(vm) = &mut self.vm {
             vm.visit_roots(visitor);
         }
+    }
 
-        // The following fields must be in the permanent semispace so they do not need to be visited
-        //
-        // - All builtin names
-        // - All builtin symbols
-        // - All builtin descriptors
-        // - default_named_properties
-        // - default_array_properties
+    /// Visit all heap roots that are needed for heap serialization. This includes all pointers to
+    /// the permanent semispace.
+    pub fn visit_roots_for_serialization(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.global_symbol_registry);
+        self.interned_strings.visit_roots(visitor);
+        visitor.visit_pointer(&mut self.modules);
+
+        self.names.visit_roots(visitor);
+        self.well_known_symbols.visit_roots(visitor);
+        self.base_descriptors.visit_roots(visitor);
+        visitor.visit_pointer(&mut self.initial_realm);
+
+        visitor.visit_pointer(&mut self.default_named_properties);
+        visitor.visit_pointer(&mut self.default_array_properties);
+
+        // Itentionally ignore:
+        // - heap
+        // - task_queue
+        // - vm
     }
 
     #[cfg(feature = "gc_stress_test")]

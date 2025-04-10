@@ -115,7 +115,10 @@ impl InternedStrings {
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.strings);
 
-        // Intentionally do not visit generator cache as all heap strings are weak references
+        // Interned strings are weak references
+        for (_, string) in self.generator_cache.iter_mut() {
+            visitor.visit_weak_pointer(string);
+        }
     }
 }
 
@@ -144,6 +147,9 @@ impl InternedStringsSetField {
     pub fn visit_pointers(set: &mut HeapPtr<InternedStringsSet>, visitor: &mut impl HeapVisitor) {
         set.visit_pointers(visitor);
 
-        // Intentionally do not visit interned strings as they are treated as weak references
+        // Interned strings are weak references
+        for string in set.iter_mut_gc_unsafe() {
+            visitor.visit_weak_pointer(string);
+        }
     }
 }

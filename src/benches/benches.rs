@@ -5,7 +5,7 @@ use std::{
 
 use bitflags::bitflags;
 use brimstone_core::{
-    common::options::OptionsBuilder,
+    common::{options::OptionsBuilder, serialized_heap::get_default_serialized_heap},
     parser::{
         analyze::{analyze, AnalyzedProgramResult},
         parse_module, parse_script,
@@ -188,12 +188,45 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
     );
 }
 
+fn init() {
+    brimstone_serialized_heap::init();
+}
+
 /// Benchmark context creation.
 fn context_benches(c: &mut Criterion) {
-    isolated_test(c, "context creation", || {}, |_| (Context::default(), ()), cleanup2_step);
+    init();
+
+    isolated_test(
+        c,
+        "context creation",
+        || {},
+        |_| {
+            let options = OptionsBuilder::new().serialized_heap(None).build();
+            let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+            (cx, ())
+        },
+        cleanup2_step,
+    );
+
+    isolated_test(
+        c,
+        "context deserialization",
+        || {},
+        |_| {
+            let serialized_heap = get_default_serialized_heap().unwrap();
+            let options = OptionsBuilder::new()
+                .serialized_heap(Some(serialized_heap))
+                .build();
+            let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+            (cx, ())
+        },
+        cleanup2_step,
+    );
 }
 
 pub fn program_benches(c: &mut Criterion) {
+    init();
+
     bench_program_all_steps(c, "empty.js", TestFlags::empty());
     bench_program_parser(c, "fixtures/acorn.js", TestFlags::empty());
     bench_program_parser(c, "fixtures/react.js", TestFlags::empty());

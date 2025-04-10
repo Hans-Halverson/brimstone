@@ -10,9 +10,11 @@ name = "bs"
 path = "main.rs"
 
 [dependencies]
+bitflags.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
 brimstone_core.workspace = true
+brimstone_serialized_heap.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

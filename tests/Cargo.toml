@@ -6,6 +6,7 @@ publish = false
 
 [dev-dependencies]
 brimstone_core.workspace = true
+brimstone_serialized_heap.workspace = true
 
 [[test]]
 name = "snapshot_tests"

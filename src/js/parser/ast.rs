@@ -14,12 +14,9 @@ use hashbrown::{DefaultHashBuilder, HashSet};
 use indexmap_allocator_api::IndexMap;
 use num_bigint::{BigInt, Sign};
 
-use crate::{
-    common::{
-        alloc::{self, slice_to_alloc_vec},
-        wtf_8::{Wtf8Str, Wtf8String},
-    },
-    runtime::eval_result::EvalResult,
+use crate::common::{
+    alloc::{self, slice_to_alloc_vec},
+    wtf_8::{Wtf8Str, Wtf8String},
 };
 
 use super::{
@@ -446,10 +443,7 @@ impl<'a> VariableDeclarator<'a> {
         VariableDeclarator { loc, id, init, id_has_assign_expr: false }
     }
 
-    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
-        &self,
-        f: &mut F,
-    ) -> EvalResult<()> {
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>)>(&self, f: &mut F) {
         self.id.iter_bound_names(f)
     }
 }
@@ -1599,16 +1593,13 @@ impl<'a> Pattern<'a> {
         }
     }
 
-    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
-        &self,
-        f: &mut F,
-    ) -> EvalResult<()> {
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>)>(&self, f: &mut F) {
         match &self {
             Pattern::Id(id) => f(id),
             Pattern::Array(patt) => patt.iter_bound_names(f),
             Pattern::Object(patt) => patt.iter_bound_names(f),
             Pattern::Assign(patt) => patt.iter_bound_names(f),
-            Pattern::Member(_) | Pattern::SuperMember(_) => Ok(()),
+            Pattern::Member(_) | Pattern::SuperMember(_) => {}
         }
     }
 
@@ -1641,21 +1632,16 @@ pub enum ArrayPatternElement<'a> {
 }
 
 impl<'a> ArrayPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
-        &self,
-        f: &mut F,
-    ) -> EvalResult<()> {
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>)>(&self, f: &mut F) {
         for element in self.elements.iter() {
             match element {
-                ArrayPatternElement::Pattern(pattern) => pattern.iter_bound_names(f)?,
+                ArrayPatternElement::Pattern(pattern) => pattern.iter_bound_names(f),
                 ArrayPatternElement::Rest(RestElement { argument, .. }) => {
-                    argument.iter_bound_names(f)?
+                    argument.iter_bound_names(f)
                 }
                 ArrayPatternElement::Hole(_) => {}
             }
         }
-
-        Ok(())
     }
 }
 
@@ -1670,15 +1656,10 @@ pub struct ObjectPattern<'a> {
 }
 
 impl<'a> ObjectPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
-        &self,
-        f: &mut F,
-    ) -> EvalResult<()> {
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>)>(&self, f: &mut F) {
         for prop in self.properties.iter() {
-            prop.value.iter_bound_names(f)?
+            prop.value.iter_bound_names(f);
         }
-
-        Ok(())
     }
 }
 
@@ -1698,10 +1679,7 @@ pub struct AssignmentPattern<'a> {
 }
 
 impl<'a> AssignmentPattern<'a> {
-    pub fn iter_bound_names<F: FnMut(&Identifier<'a>) -> EvalResult<()>>(
-        &self,
-        f: &mut F,
-    ) -> EvalResult<()> {
+    pub fn iter_bound_names<F: FnMut(&Identifier<'a>)>(&self, f: &mut F) {
         self.left.iter_bound_names(f)
     }
 }
@@ -1761,9 +1739,8 @@ impl<'a> ExportNamedDeclaration<'a> {
             match declaration {
                 Statement::VarDecl(var_decl) => {
                     for decl in var_decl.declarations.iter() {
-                        let _ = decl.iter_bound_names(&mut |id| {
+                        decl.iter_bound_names(&mut |id| {
                             f(id);
-                            Ok(())
                         });
                     }
                 }

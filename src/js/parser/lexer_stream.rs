@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use crate::{
-    common::unicode::{
+use crate::common::{
+    string_iterators::{CodePointIterator, CodeUnitIterator},
+    unicode::{
         code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
         is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
     },
-    runtime::string_value::{CodePointIterator, CodeUnitIterator},
 };
 
 use super::{
@@ -235,7 +235,7 @@ impl LexerStream for Utf8LexerStream<'_> {
     #[allow(refining_impl_trait)]
     fn iter_slice<'b>(&self, _: Pos, _: Pos) -> impl 'b + DoubleEndedIterator<Item = u32> {
         // Stub implementation
-        CodePointIterator::from_raw_one_byte_slice(&[])
+        [].iter().copied()
     }
 
     fn slice(&self, _: Pos, _: Pos) -> &[u8] {

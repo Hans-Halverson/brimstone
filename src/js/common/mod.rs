@@ -8,6 +8,8 @@ pub mod math;
 pub mod memory;
 pub mod options;
 pub mod serialized_heap;
+pub mod string;
+pub mod string_iterators;
 pub mod terminal;
 pub mod time;
 pub mod unicode;

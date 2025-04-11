@@ -3,8 +3,12 @@ use std::str::FromStr;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::common::unicode::{
-    is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace, CodeUnit,
+use crate::common::{
+    string::StringWidth,
+    string_iterators::GenericCodeUnitIterator,
+    unicode::{
+        is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace, CodeUnit,
+    },
 };
 
 use super::{
@@ -12,12 +16,12 @@ use super::{
         year_month_day_to_days_since_unix_epoch, MAX_TIME_VALUE, MS_PER_DAY, MS_PER_HOUR,
         MS_PER_MINUTE, MS_PER_SECOND,
     },
-    string_value::{CodeUnitIterator, GenericCodeUnitIterator, StringValue, StringWidth},
+    string_value::{StringValue, UnsafeCodeUnitIterator},
     Handle,
 };
 
 pub struct StringLexer {
-    iter: CodeUnitIterator,
+    iter: UnsafeCodeUnitIterator,
     // Pointer to start of the previously read character (aka the character in the current field)
     prev_ptr: *const u8,
     current: Option<CodeUnit>,

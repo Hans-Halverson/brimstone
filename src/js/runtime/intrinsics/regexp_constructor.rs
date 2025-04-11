@@ -5,6 +5,7 @@ use bumpalo::Bump;
 
 use crate::{
     common::{
+        string::StringWidth,
         unicode::{
             is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline, is_surrogate_code_point,
             is_whitespace,
@@ -34,7 +35,7 @@ use crate::{
         ordinary_object::object_create_from_constructor,
         realm::Realm,
         regexp::{compiled_regexp::CompiledRegExpObject, compiler::compile_regexp},
-        string_value::{StringValue, StringWidth},
+        string_value::StringValue,
         to_string,
         type_utilities::{is_regexp, same_value},
         Context, HeapPtr, PropertyDescriptor, Value,

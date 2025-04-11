@@ -1,17 +1,14 @@
 use crate::{
     common::{
         icu::ICU,
+        string::StringWidth,
         unicode::{is_newline, CodePoint},
     },
     parser::lexer_stream::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
         LexerStream, SavedLexerStreamState,
     },
-    runtime::{
-        regexp::instruction::OpCode,
-        string_value::{StringValue, StringWidth},
-        Handle, HeapPtr,
-    },
+    runtime::{regexp::instruction::OpCode, string_value::StringValue, Handle, HeapPtr},
 };
 
 use super::{

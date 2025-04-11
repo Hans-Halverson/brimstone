@@ -7,7 +7,6 @@ use allocator_api2::alloc::Global;
 
 use crate::{
     common::wtf_8::{Wtf8Cow, Wtf8Str},
-    must,
     parser::{
         parse_error::InvalidDuplicateParametersReason,
         scope_tree::{VMLocation, ARGUMENTS_NAME},
@@ -1462,13 +1461,11 @@ impl<'a> Analyzer<'a> {
             }
 
             // Check for invalid names depending on context
-            must!(declaration.iter_bound_names(&mut |id| {
+            declaration.iter_bound_names(&mut |id| {
                 if var_decl.kind != VarKind::Var && id.name == "let" {
                     self.emit_error(id.loc, ParseError::LetNameInLexicalDeclaration);
                 }
-
-                Ok(())
-            }));
+            });
         }
 
         default_visit_variable_declaration(self, var_decl);

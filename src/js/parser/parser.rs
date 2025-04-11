@@ -755,10 +755,9 @@ impl<'a> Parser<'a> {
     }
 
     fn set_binding_init_pos(pattern: &Pattern, pos: Pos) {
-        let _ = pattern.iter_bound_names(&mut |id| {
+        pattern.iter_bound_names(&mut |id| {
             Self::set_id_binding_init_pos(id, pos);
-            Ok(())
-        });
+        })
     }
 
     fn set_id_binding_init_pos(id: &Identifier, pos: Pos) {

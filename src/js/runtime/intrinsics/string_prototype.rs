@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use crate::{
     common::{
         icu::ICU,
+        string::StringWidth,
         unicode::{
             is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit, CodePoint,
         },
@@ -27,7 +28,7 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
-        string_value::{CodePointIterator, FlatString, StringValue, StringWidth},
+        string_value::{FlatString, StringValue, UnsafeCodePointIterator},
         to_string,
         type_utilities::{
             is_callable, is_regexp, require_object_coercible, to_integer_or_infinity, to_length,
@@ -1473,14 +1474,14 @@ fn to_valid_string_parts(string: HeapPtr<FlatString>) -> Vec<StringPart> {
     }
 }
 
-/// Wrapper around CodePointIterator that returns chars. Must only be created for CodePointIterators
-/// over valid unicode code points.
+/// Wrapper around UnsafeCodePointIterator that returns chars. Must only be created for an
+/// UnsafeCodePointIterator over valid unicode code points.
 struct CharIterator {
-    iter: CodePointIterator,
+    iter: UnsafeCodePointIterator,
 }
 
 impl CharIterator {
-    pub fn new(iter: CodePointIterator) -> Self {
+    pub fn new(iter: UnsafeCodePointIterator) -> Self {
         Self { iter }
     }
 }

@@ -510,8 +510,12 @@ impl MathObject {
     }
 
     /// Math.random (https://tc39.es/ecma262/#sec-math.random)
-    pub fn random(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
-        let n = rand::thread_rng().gen::<f64>();
+    pub fn random(
+        mut cx: Context,
+        _: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let n = cx.rand.gen::<f64>();
         Ok(cx.number(n))
     }
 

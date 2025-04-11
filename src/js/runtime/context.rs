@@ -6,6 +6,8 @@ use std::{
     rc::Rc,
 };
 
+use rand::{rngs::StdRng, SeedableRng};
+
 use crate::{
     common::{
         options::Options,
@@ -112,6 +114,9 @@ pub struct ContextCell {
 
     /// Counter for the [[AsyncEvaluation]] slot of SourceTextModule
     pub async_evaluation_counter: NonZeroUsize,
+
+    /// Random number generator used within this context.
+    pub rand: StdRng,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -144,6 +149,9 @@ impl Context {
             options: options.clone(),
             has_finished_module_resolution: false,
             async_evaluation_counter: NonZeroUsize::MIN,
+            // We want the initial heap generation to be deterministic so use seeded PRNG. After
+            // initial heap has been set up switch to a PRNG seeded from a random source.
+            rand: StdRng::from_seed([0; 32]),
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
@@ -156,6 +164,9 @@ impl Context {
         } else {
             cx.init_heap_allocated_context_fields();
         }
+
+        // Stop using deterministic PRNG
+        cx.rand = StdRng::from_entropy();
 
         cx
     }

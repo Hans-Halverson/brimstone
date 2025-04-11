@@ -103,6 +103,8 @@ impl StringValue {
         self.kind != StringKind::Concat
     }
 
+    /// Return the Context for this heap object. Only use when absolutely necessary - prefer to
+    /// instead explicitly pass in the Context.
     fn cx(&self) -> Context {
         HeapInfo::from_raw_heap_ptr(self as *const _).cx()
     }

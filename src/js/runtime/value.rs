@@ -567,7 +567,7 @@ pub struct SymbolValue {
 
 impl SymbolValue {
     pub fn new(
-        cx: Context,
+        mut cx: Context,
         description: Option<Handle<StringValue>>,
         is_private: bool,
     ) -> Handle<SymbolValue> {
@@ -576,7 +576,7 @@ impl SymbolValue {
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| *desc));
-        set_uninit!(symbol.hash_code, rand::thread_rng().gen::<u32>());
+        set_uninit!(symbol.hash_code, cx.rand.gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
 
         symbol.to_handle()

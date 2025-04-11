@@ -1,9 +1,9 @@
-use rand::Rng;
-
 use std::{
     mem::{size_of, transmute_copy},
     num::NonZeroU32,
 };
+
+use rand::Rng;
 
 use crate::{handle_scope_guard, set_uninit};
 
@@ -17,7 +17,7 @@ use super::{
     collections::{BsIndexMap, BsIndexMapField},
     error::type_error,
     eval_result::EvalResult,
-    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HeapInfo, HeapObject, HeapPtr, HeapVisitor},
     generator_object::GeneratorObject,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject, bigint_constructor::BigIntObject,
@@ -287,16 +287,11 @@ impl ObjectValue {
         set_uninit!(self.hash_code, None);
     }
 
+    /// Return the Context for this heap object. Only use when absolutely necessary - prefer to
+    /// instead explicitly pass in the Context.
     #[inline]
-    pub fn hash_code(&mut self) -> NonZeroU32 {
-        match self.hash_code {
-            Some(hash_code) => hash_code,
-            None => {
-                let hash_code = rand::thread_rng().gen::<NonZeroU32>();
-                self.hash_code = Some(hash_code);
-                hash_code
-            }
-        }
+    fn cx(&self) -> Context {
+        HeapInfo::from_raw_heap_ptr(self as *const _).cx()
     }
 }
 
@@ -318,6 +313,21 @@ impl ObjectValue {
             self.descriptor().kind(),
             ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject
         )
+    }
+}
+
+impl HeapPtr<ObjectValue> {
+    #[inline]
+    pub fn hash_code(&mut self) -> NonZeroU32 {
+        match self.hash_code {
+            Some(hash_code) => hash_code,
+            None => {
+                // May be called from std::hash::Hash so cannot pass in Context
+                let hash_code = self.cx().rand.gen::<NonZeroU32>();
+                self.hash_code = Some(hash_code);
+                hash_code
+            }
+        }
     }
 }
 

@@ -13,7 +13,7 @@ use indexmap_allocator_api::IndexSet;
 use crate::{
     common::{
         error::{ErrorFormatter, FormatOptions},
-        wtf_8::{Wtf8Str, Wtf8String},
+        wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
     },
     handle_scope,
     parser::{
@@ -798,7 +798,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     self.scope_tree,
                     scope,
                     self.realm,
-                    &name,
+                    name,
                     self.source_file,
                     source_range,
                     fields,
@@ -887,9 +887,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         None
                     };
 
-                let default_name = default_name
-                    .map(|name| name.as_str())
-                    .or(anonymous_default_name);
+                let default_name = default_name.or(anonymous_default_name);
 
                 let generator = BytecodeFunctionGenerator::new_for_function(
                     self.cx,
@@ -997,7 +995,7 @@ pub struct BytecodeFunctionGenerator<'a> {
     scope_names_cache: HashMap<usize, GenConstantIndex>,
 
     /// Optional name of the function, used for the name property.
-    name: Option<Wtf8String>,
+    name: Option<Wtf8Cow<'a>>,
 
     /// Source file of the function that is being generated.
     source_file: Handle<SourceFile>,
@@ -1088,7 +1086,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
-        name: Option<Wtf8String>,
+        name: Option<Wtf8Cow<'a>>,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
         derived_constructor_end_pos: Option<Pos>,
@@ -1143,7 +1141,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn new_for_function(
         cx: Context,
-        func: &ast::Function,
+        func: &'a ast::Function,
         scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
@@ -1190,8 +1188,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = func
             .id
             .as_ref()
-            .map(|id| id.name.to_owned_in(Global))
-            .or_else(|| default_name.map(|name| name.to_owned_in(Global)));
+            .map(|id| Wtf8Cow::Borrowed(id.name))
+            // Clone is necessary only when using default name
+            .or_else(|| default_name.map(|name| Wtf8Cow::Owned(name.to_owned_in(Global))));
 
         let derived_constructor_end_pos = if is_constructor && !is_base_constructor {
             Some(func.loc.end)
@@ -1224,7 +1223,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         cx: Context,
         program: &ast::Program,
         scope_tree: &'a ScopeTree<'a>,
-        name: &str,
+        name: &'static str,
         source_file: Handle<SourceFile>,
         realm: Handle<Realm>,
     ) -> EmitResult<Self> {
@@ -1244,7 +1243,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             scope,
             realm,
-            Some(Wtf8String::from_str(name)),
+            Some(Wtf8Cow::Borrowed(Wtf8Str::from_str(name))),
             source_file,
             program.loc.to_range(),
             /* derived_constructor_end_pos */ None,
@@ -1265,7 +1264,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
-        name: &Wtf8Str,
+        name: &'a Wtf8Str,
         source_file: Handle<SourceFile>,
         source_range: Range<Pos>,
         class_fields: ClassFieldsInitializer<'a>,
@@ -1279,7 +1278,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             scope,
             realm,
-            Some(name.to_owned_in(Global)),
+            Some(Wtf8Cow::Borrowed(name)),
             source_file,
             source_range,
             /* derived_constructor_end_pos */ None,
@@ -1307,7 +1306,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope_tree: &'a ScopeTree<'a>,
         scope: Rc<ScopeStackNode>,
         realm: Handle<Realm>,
-        name: &str,
+        name: &'static str,
         source_file: Handle<SourceFile>,
         init_func_scope: &AstScopeNode,
     ) -> EmitResult<Self> {
@@ -1326,7 +1325,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             scope_tree,
             scope,
             realm,
-            Some(Wtf8String::from_str(name)),
+            Some(Wtf8Cow::Borrowed(Wtf8Str::from_str(name))),
             source_file,
             source_range,
             /* derived_constructor_end_pos */ None,
@@ -1969,7 +1968,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = self
             .name
             .as_ref()
-            .map(|name| InternedStrings::get_generator_cache_wtf8_str(self.cx, name));
+            .map(|name| InternedStrings::get_generator_cache_wtf8_str(self.cx, name.as_str()));
         let (bytecode, source_positions) = self.writer.finish();
 
         let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions);
@@ -4009,7 +4008,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Computed(GenRegister),
                 Named {
                     constant_index: GenConstantIndex,
-                    name: AnyStr<'a>,
+                    name: &'a Wtf8Str,
                     is_proto: bool,
                 },
             }
@@ -4021,14 +4020,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 match &property.key {
                     ast::Expression::Id(id) => {
                         let constant_index = self.add_wtf8_string_constant(id.name)?;
-                        let name = AnyStr::from_id(id);
+                        let name = id.name;
                         let is_proto = id.name == "__proto__";
 
                         Property::Named { constant_index, name, is_proto }
                     }
                     ast::Expression::String(string) => {
                         let constant_index = self.add_wtf8_string_constant(string.value)?;
-                        let name = AnyStr::Wtf8(string.value);
+                        let name = string.value;
                         let is_proto = string.value == "__proto__";
 
                         Property::Named { constant_index, name, is_proto }
@@ -4051,7 +4050,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Determine method name from the property
                 let mut name = match &key {
-                    Property::Named { name, .. } => Some(name.to_wtf8_string()),
+                    Property::Named { name, .. } => Some(Wtf8Cow::Borrowed(name)),
                     Property::Computed(_) => {
                         flags |= DefinePropertyFlags::NEEDS_NAME;
                         None
@@ -4075,8 +4074,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         } else {
                             Wtf8String::from_str("set ")
                         };
-                        prefixed_name.push_wtf8_str(known_name);
-                        name = Some(prefixed_name);
+                        prefixed_name.push_wtf8_str(known_name.as_str());
+                        name = Some(Wtf8Cow::Owned(prefixed_name));
                     }
 
                     // Always use a DefineProperty instruction with flags instead of a
@@ -4124,7 +4123,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // the name of the value at runtime if necessary.
                 match &key {
                     Property::Named { name, .. } => self.gen_named_expression(
-                        *name,
+                        name,
                         property.value.as_ref().unwrap(),
                         ExprDest::Any,
                     )?,
@@ -4444,7 +4443,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     // For simple assignments, right hand side is placed directly in the dest
                     // register.
                     self.gen_named_expression_if(
-                        AnyStr::from_id(id),
+                        id.name,
                         &expr.right,
                         stored_value_dest,
                         is_non_parenthesized_id_predicate,
@@ -4455,7 +4454,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     let old_value = self.gen_load_identifier(id, ExprDest::Any)?;
 
                     let right_value = self.gen_named_expression_if(
-                        AnyStr::from_id(id),
+                        id.name,
                         &expr.right,
                         ExprDest::Any,
                         is_non_parenthesized_id_predicate,
@@ -4479,7 +4478,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                     // If evaluating right side, evaluate directly into dest register
                     self.gen_named_expression_if(
-                        AnyStr::from_id(id),
+                        id.name,
                         &expr.right,
                         stored_value_dest,
                         is_non_parenthesized_id_predicate,
@@ -5003,7 +5002,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_named_expression(
         &mut self,
-        name: AnyStr,
+        name: &'a Wtf8Str,
         expr: &'a ast::Expression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -5012,7 +5011,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_named_expression_if(
         &mut self,
-        name: AnyStr,
+        name: &'a Wtf8Str,
         expr: &'a ast::Expression<'a>,
         dest: ExprDest,
         if_predicate: impl Fn() -> bool,
@@ -5023,13 +5022,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         match expr {
             ast::Expression::Function(func) if func.id.is_none() => {
-                self.gen_function_expression(func, Some(name.to_wtf8_string()), dest)
+                self.gen_function_expression(func, Some(name), dest)
             }
             ast::Expression::ArrowFunction(func) => {
-                self.gen_arrow_function_expression(func, Some(name.to_wtf8_string()), dest)
+                self.gen_arrow_function_expression(func, Some(name), dest)
             }
             ast::Expression::Class(class) if class.id.is_none() => {
-                self.gen_class_expression(class, Some(name.to_wtf8_string()), dest)
+                self.gen_class_expression(class, Some(name), dest)
             }
             _ => self.gen_expression_with_dest(expr, dest),
         }
@@ -5037,7 +5036,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     fn gen_named_outer_expression(
         &mut self,
-        name: AnyStr,
+        name: &'a Wtf8Str,
         expr: &'a ast::OuterExpression<'a>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
@@ -5067,7 +5066,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_function_expression(
         &mut self,
         func: &ast::Function<'a>,
-        name: Option<Wtf8String>,
+        name: Option<&'a Wtf8Str>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let pending_node = PendingFunctionNode::Expression { node: AstPtr::from_ref(func), name };
@@ -5082,7 +5081,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_arrow_function_expression(
         &mut self,
         func: &ast::Function<'a>,
-        name: Option<Wtf8String>,
+        name: Option<&'a Wtf8Str>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let pending_node = PendingFunctionNode::Arrow { node: AstPtr::from_ref(func), name };
@@ -6003,7 +6002,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.expr_dest_for_destructuring_assignment(&decl.id, store_flags);
 
                 let init_value = if let ast::Pattern::Id(id) = &decl.id {
-                    self.gen_named_outer_expression(AnyStr::from_id(id), init, init_value_dest)?
+                    self.gen_named_outer_expression(id.name, init, init_value_dest)?
                 } else {
                     self.gen_outer_expression_with_dest(init, init_value_dest)?
                 };
@@ -6150,7 +6149,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // Named evaluation is performed if the pattern is an id
             if let ReferenceKind::Id(id) = &reference.kind {
-                self.gen_named_expression(AnyStr::from_id(id), init, ExprDest::Fixed(value))?;
+                self.gen_named_expression(id.name, init, ExprDest::Fixed(value))?;
             } else {
                 self.gen_expression_with_dest(init, ExprDest::Fixed(value))?;
             }
@@ -6720,7 +6719,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_class_expression(
         &mut self,
         class: &'a ast::Class<'a>,
-        name: Option<Wtf8String>,
+        name: Option<&'a Wtf8Str>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         self.gen_class(class, GenClassKind::Expression, name, dest)
@@ -6729,8 +6728,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_class(
         &mut self,
         class: &'a ast::Class<'a>,
-        kind: GenClassKind,
-        name: Option<Wtf8String>,
+        kind: GenClassKind<'a>,
+        name: Option<&'a Wtf8Str>,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Set up destination for the constructor, directly storing in binding location if possible
@@ -6944,16 +6943,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             .map(|c| AstPtr::from_ref(c.as_ref().value.as_ref()));
         let name = if let Some(id) = class.id.as_ref() {
             // Constructor has name of class
-            id.name.to_owned_in(Global)
+            id.name
         } else if let Some(name) = name {
             // Handle name passed from named evaluation
             name
         } else if let GenClassKind::Export { name, .. } = &kind {
             // Handle name passed from export, such as the anonymous default export name
-            name.to_owned_in(Global)
+            name
         } else {
             // Otherwise name is the empty string if class has no name
-            Wtf8String::new()
+            Wtf8Str::from_str("")
         };
 
         // Create the constructor's static BytecodeFunction
@@ -7076,7 +7075,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         new_class_arguments: &mut Vec<GenRegister>,
     ) -> EmitResult<(Method, GenRegister)> {
         enum Name<'a> {
-            Named(AnyStr<'a>),
+            Named(&'a Wtf8Str),
             Computed(GenRegister, Pos),
         }
 
@@ -7085,8 +7084,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             Name::Computed(self.gen_outer_expression(&method.key)?, method.key.pos())
         } else {
             match &method.key.expr {
-                ast::Expression::Id(id) => Name::Named(AnyStr::from_id(id)),
-                ast::Expression::String(string) => Name::Named(AnyStr::Wtf8(string.value)),
+                ast::Expression::Id(id) => Name::Named(id.name),
+                ast::Expression::String(string) => Name::Named(string.value),
                 expr @ (ast::Expression::Number(_) | ast::Expression::BigInt(_)) => {
                     Name::Computed(self.gen_expression(expr)?, expr.pos())
                 }
@@ -7097,19 +7096,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Find the name that should be set of the method's closure
         let closure_name = match key {
             Name::Named(name) => {
-                let name = name.to_wtf8_string();
-
                 // Add accessor prefix to the name if name is known
                 if method.kind == ast::ClassMethodKind::Get {
                     let mut prefixed_name = Wtf8String::from_str("get ");
-                    prefixed_name.push_wtf8_str(&name);
-                    Some(prefixed_name)
+                    prefixed_name.push_wtf8_str(name);
+                    Some(Wtf8Cow::Owned(prefixed_name))
                 } else if method.kind == ast::ClassMethodKind::Set {
                     let mut prefixed_name = Wtf8String::from_str("set ");
-                    prefixed_name.push_wtf8_str(&name);
-                    Some(prefixed_name)
+                    prefixed_name.push_wtf8_str(name);
+                    Some(Wtf8Cow::Owned(prefixed_name))
                 } else {
-                    Some(name)
+                    Some(Wtf8Cow::Borrowed(name))
                 }
             }
             Name::Computed(name_register, name_pos) => {
@@ -7142,7 +7139,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         let method_name = if let Name::Named(name) = key {
-            Some(self.get_cached_wtf8_str(&name.to_wtf8_string()).as_flat())
+            Some(self.get_cached_wtf8_str(name).as_flat())
         } else {
             None
         };
@@ -7213,12 +7210,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let value = if let Some(initializer) = field_node.value.as_ref() {
             match field {
                 ClassField::Named { name, .. } => {
-                    self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
+                    self.gen_named_outer_expression(name, initializer, ExprDest::Any)?
                 }
                 ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
                 ClassField::PrivateField { field } => {
                     let name = field.as_ref().key.expr.to_id().name;
-                    self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
+                    self.gen_named_outer_expression(name, initializer, ExprDest::Any)?
                 }
                 ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
             }
@@ -7335,8 +7332,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Default exported expressions are evaluated and stored as the anonymous default in
             // the current scope.
             ast::ExportDefaultKind::Expression(expr) => {
-                let value =
-                    self.gen_named_outer_expression(AnyStr::Str("default"), expr, ExprDest::Any)?;
+                let value = self.gen_named_outer_expression(
+                    Wtf8Str::from_str("default"),
+                    expr,
+                    ExprDest::Any,
+                )?;
 
                 let anonymous_binding = scope.get_binding(&ANONYMOUS_DEFAULT_EXPORT_NAME);
                 self.gen_initialize_binding(&DEFAULT_EXPORT_NAME, anonymous_binding, value)?;
@@ -9299,19 +9299,19 @@ enum PendingFunctionNode<'a> {
     Declaration(AstPtr<ast::Function<'a>>),
     Expression {
         node: AstPtr<ast::Function<'a>>,
-        name: Option<Wtf8String>,
+        name: Option<&'a Wtf8Str>,
     },
     Arrow {
         node: AstPtr<ast::Function<'a>>,
-        name: Option<Wtf8String>,
+        name: Option<&'a Wtf8Str>,
     },
     Method {
         node: AstPtr<ast::Function<'a>>,
-        name: Option<Wtf8String>,
+        name: Option<Wtf8Cow<'a>>,
     },
     Constructor {
         node: Option<AstPtr<ast::Function<'a>>>,
-        name: Wtf8String,
+        name: &'a Wtf8Str,
         fields: ClassFieldsInitializer<'a>,
         is_base: bool,
         source_range: Range<Pos>,
@@ -9356,15 +9356,15 @@ impl<'a> PendingFunctionNode<'a> {
         }
     }
 
-    /// Named given to this unnamed function (an anonymous expression or arrow function)
-    fn default_name(&self) -> Option<&Wtf8String> {
+    /// Name given to this unnamed function (an anonymous expression or arrow function)
+    fn default_name(&self) -> Option<&Wtf8Str> {
         match self {
             PendingFunctionNode::Declaration(_)
             | PendingFunctionNode::ClassFieldsInitializer { .. }
             | PendingFunctionNode::ClassStaticInitializer { .. } => None,
             PendingFunctionNode::Expression { name, .. }
-            | PendingFunctionNode::Arrow { name, .. }
-            | PendingFunctionNode::Method { name, .. } => name.as_ref(),
+            | PendingFunctionNode::Arrow { name, .. } => *name,
+            PendingFunctionNode::Method { name, .. } => name.as_ref().map(Wtf8Cow::as_str),
             PendingFunctionNode::Constructor { name, .. } => Some(name),
         }
     }
@@ -9719,26 +9719,6 @@ enum GenClassKind<'a> {
     Declaration,
     Expression,
     Export { name: &'a Wtf8Str, binding: &'a Binding<'a> },
-}
-
-/// A reference to a string that may be either wtf8 or utf8.
-#[derive(Copy, Clone)]
-enum AnyStr<'a> {
-    Wtf8(&'a Wtf8Str),
-    Str(&'a str),
-}
-
-impl<'a> AnyStr<'a> {
-    fn from_id(id: &'a ast::Identifier<'a>) -> AnyStr<'a> {
-        AnyStr::Wtf8(id.name)
-    }
-
-    fn to_wtf8_string(self) -> Wtf8String {
-        match self {
-            AnyStr::Wtf8(wtf8) => wtf8.to_owned_in(Global),
-            AnyStr::Str(str) => Wtf8String::from_str(str),
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

@@ -1302,11 +1302,11 @@ impl<'a> Analyzer<'a> {
                 _ => continue,
             };
 
-            if private_id.name == "constructor" {
+            if private_id.name == "#constructor" {
                 self.emit_error(private_id.loc, ParseError::PrivateNameConstructor);
             }
 
-            self.resolve_private_identifier_use(private_id);
+            self.resolve_identifier_use(private_id);
         }
 
         // If any private accessor pair was encountered then mark the first part of every pair in
@@ -1599,7 +1599,7 @@ impl<'a> Analyzer<'a> {
                 }
             }
 
-            self.resolve_private_identifier_use(id);
+            self.resolve_identifier_use(id);
 
             if !is_defined {
                 let private_name = id.name.to_owned_in(Global);
@@ -1642,12 +1642,6 @@ impl<'a> Analyzer<'a> {
 
     fn resolve_identifier_use(&mut self, id: &mut Identifier<'a>) {
         self.resolve_use(&mut id.scope, id.name, id.loc);
-    }
-
-    fn resolve_private_identifier_use(&mut self, private_id: &mut Identifier<'a>) {
-        // Private name has a "#" prefix
-        let private_name = &format!("#{}", &private_id.name);
-        self.resolve_use(&mut private_id.scope, Wtf8Str::from_str(private_name), private_id.loc);
     }
 
     fn resolve_this_use(&mut self, loc: Loc, mut set_scope: impl FnMut(AstPtr<AstScopeNode<'a>>)) {

@@ -2,7 +2,7 @@ use std::{
     borrow::Borrow,
     fmt,
     hash::{self, Hash},
-    ops::Deref,
+    ops::{Deref, Index, Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive},
 };
 
 use allocator_api2::{
@@ -351,6 +351,51 @@ impl fmt::Display for Wtf8Str {
 impl fmt::Debug for Wtf8Str {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.to_string())
+    }
+}
+
+impl Index<Range<usize>> for Wtf8Str {
+    type Output = Wtf8Str;
+
+    #[inline]
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        Wtf8Str::from_bytes_unchecked(&self.buf[index])
+    }
+}
+
+impl Index<RangeFrom<usize>> for Wtf8Str {
+    type Output = Wtf8Str;
+
+    #[inline]
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        Wtf8Str::from_bytes_unchecked(&self.buf[index])
+    }
+}
+
+impl Index<RangeTo<usize>> for Wtf8Str {
+    type Output = Wtf8Str;
+
+    #[inline]
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        Wtf8Str::from_bytes_unchecked(&self.buf[index])
+    }
+}
+
+impl Index<RangeInclusive<usize>> for Wtf8Str {
+    type Output = Wtf8Str;
+
+    #[inline]
+    fn index(&self, index: RangeInclusive<usize>) -> &Self::Output {
+        Wtf8Str::from_bytes_unchecked(&self.buf[index])
+    }
+}
+
+impl Index<RangeToInclusive<usize>> for Wtf8Str {
+    type Output = Wtf8Str;
+
+    #[inline]
+    fn index(&self, index: RangeToInclusive<usize>) -> &Self::Output {
+        Wtf8Str::from_bytes_unchecked(&self.buf[index])
     }
 }
 

@@ -8,9 +8,9 @@ use num_traits::ToPrimitive;
 use crate::common::unicode::{
     as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
     decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
-    is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start_ascii, is_id_start_unicode,
-    is_in_unicode_range, is_newline, is_unicode_newline, is_unicode_whitespace,
-    to_string_or_unicode_escape_sequence, CodePoint,
+    is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start, is_id_start_ascii,
+    is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
+    is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
 };
 use crate::common::wtf_8::Wtf8Str;
 
@@ -483,8 +483,8 @@ impl<'a> Lexer<'a> {
                         continue;
                     }
 
-                    self.advance();
-                    self.emit(Token::Hash, start_pos)
+                    // Otherwise must be a private identifier.
+                    self.lex_private_identifier(start_pos)
                 }
                 '0' => {
                     let token = match_u32!(match self.peek() {
@@ -1671,6 +1671,40 @@ impl<'a> Lexer<'a> {
             let loc = self.mark_loc(escape_start_pos);
             self.error(loc, ParseError::MalformedEscapeSeqence)
         }
+    }
+
+    fn lex_private_identifier(&mut self, start_pos: Pos) -> LexResult<'a> {
+        // Skip the leading '#'
+        self.advance();
+
+        // Must start with an identifier start code point. Fast path for ASCII-only identifiers.
+        let (token, loc) = if is_id_start_ascii(self.current) {
+            self.lex_identifier_ascii(start_pos)?
+        } else {
+            // Otherwise starts with either a unicode code point or an escape sequence
+            let start_code_point = if self.current == '\\' as u32 {
+                self.lex_identifier_unicode_escape_sequence()?
+            } else {
+                self.lex_utf8_codepoint()?
+            };
+
+            if is_id_start(start_code_point) {
+                // The leading '#' is included in the identifier
+                let mut string = AstString::from_char_in('#', self.alloc);
+                string.push(start_code_point);
+
+                self.lex_identifier_non_ascii(start_pos, string)?
+            } else {
+                let loc = self.mark_loc(start_pos);
+                return self.error(loc, ParseError::HashNotFollowedByIdentifier);
+            }
+        };
+
+        let Token::Identifier(id) = token else {
+            unreachable!("lex_identifier_ascii should only return identifiers");
+        };
+
+        Ok((Token::PrivateIdentifier(id), loc))
     }
 
     fn ascii_id_to_keyword(&mut self, id_string: &str) -> Option<Token<'static>> {

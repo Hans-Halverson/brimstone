@@ -148,8 +148,8 @@
             loc: "11:12-11:20",
             key: {
               type: "PrivateIdentifier",
-              loc: "11:13-11:16",
-              name: "key",
+              loc: "11:12-11:16",
+              name: "#key",
             },
             value: {
               type: "Identifier",
@@ -320,8 +320,8 @@
             loc: "23:13-23:17",
             key: {
               type: "PrivateIdentifier",
-              loc: "23:14-23:17",
-              name: "key",
+              loc: "23:13-23:17",
+              name: "#key",
             },
             value: null,
             computed: false,
@@ -674,8 +674,8 @@
             loc: "43:3-43:10",
             key: {
               type: "PrivateIdentifier",
-              loc: "43:4-43:5",
-              name: "a",
+              loc: "43:3-43:5",
+              name: "#a",
             },
             value: {
               type: "FunctionExpression",
@@ -1252,8 +1252,8 @@
             loc: "85:3-85:14",
             key: {
               type: "PrivateIdentifier",
-              loc: "85:8-85:9",
-              name: "a",
+              loc: "85:7-85:9",
+              name: "#a",
             },
             value: {
               type: "FunctionExpression",
@@ -1470,8 +1470,8 @@
             loc: "101:3-101:16",
             key: {
               type: "PrivateIdentifier",
-              loc: "101:11-101:12",
-              name: "a",
+              loc: "101:10-101:12",
+              name: "#a",
             },
             value: {
               type: "Literal",
@@ -1512,8 +1512,8 @@
             loc: "103:3-103:17",
             key: {
               type: "PrivateIdentifier",
-              loc: "103:11-103:12",
-              name: "a",
+              loc: "103:10-103:12",
+              name: "#a",
             },
             value: {
               type: "FunctionExpression",

@@ -4308,17 +4308,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     }
 
     fn gen_create_private_symbol(&mut self, private_id: &ast::Identifier) -> EmitResult<()> {
-        // Private name binding has `#` prefix
-        let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
-        let binding = private_id
-            .scope
-            .unwrap_resolved()
-            .get_binding(&private_name);
-
-        match binding.vm_location().unwrap() {
+        match private_id.get_binding().vm_location().unwrap() {
             VMLocation::Scope { scope_id, index } => {
                 // Add the name to the constant table (without the "#" prefix)
-                let name_index = self.add_wtf8_string_constant(private_id.name)?;
+                let unprefixed_name = &private_id.name[1..];
+                let name_index = self.add_wtf8_string_constant(unprefixed_name)?;
 
                 // Create a new private symbol
                 let dest = self.register_allocator.allocate()?;
@@ -4337,25 +4331,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_load_private_symbol(&mut self, private_id: &ast::Identifier) -> EmitResult<GenRegister> {
         match private_id.scope.kind() {
             // If resolved then directly load from the scope directly
-            ResolvedScope::Resolved => {
-                // Private name binding has `#` prefix
-                let private_name = Wtf8String::from_string(format!("#{}", private_id.name));
-                let binding = private_id
-                    .scope
-                    .unwrap_resolved()
-                    .get_binding(&private_name);
-
-                match binding.vm_location().unwrap() {
-                    VMLocation::Scope { scope_id, index } => {
-                        self.gen_load_scope_binding(scope_id, index, ExprDest::Any)
-                    }
-                    _ => unreachable!("private names must be stored in scope"),
+            ResolvedScope::Resolved => match private_id.get_binding().vm_location().unwrap() {
+                VMLocation::Scope { scope_id, index } => {
+                    self.gen_load_scope_binding(scope_id, index, ExprDest::Any)
                 }
-            }
+                _ => unreachable!("private names must be stored in scope"),
+            },
             // Otherwise must be dynamic, so perform a dynamic lookup
             ResolvedScope::UnresolvedDynamic => {
-                let private_name = format!("#{}", &private_id.name);
-                let private_name_index = self.add_string_constant(&private_name)?;
+                let private_name_index = self.add_wtf8_string_constant(private_id.name)?;
 
                 let dest = self.register_allocator.allocate()?;
                 self.writer.load_dynamic_instruction(
@@ -7113,14 +7097,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Find the name that should be set of the method's closure
         let closure_name = match key {
             Name::Named(name) => {
-                // Prefix name with `#` if private
-                let name = if method.is_private {
-                    let mut prefixed_name = Wtf8String::from_str("#");
-                    prefixed_name.push_wtf8_str(&name.to_wtf8_string());
-                    prefixed_name
-                } else {
-                    name.to_wtf8_string()
-                };
+                let name = name.to_wtf8_string();
 
                 // Add accessor prefix to the name if name is known
                 if method.kind == ast::ClassMethodKind::Get {
@@ -7240,8 +7217,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
                 ClassField::Computed { .. } => self.gen_outer_expression(initializer)?,
                 ClassField::PrivateField { field } => {
-                    let name = format!("#{}", field.as_ref().key.expr.to_id().name);
-                    self.gen_named_outer_expression(AnyStr::Str(&name), initializer, ExprDest::Any)?
+                    let name = field.as_ref().key.expr.to_id().name;
+                    self.gen_named_outer_expression(AnyStr::Wtf8(name), initializer, ExprDest::Any)?
                 }
                 ClassField::PrivateMethodOrAccessor { .. } => unreachable!(),
             }

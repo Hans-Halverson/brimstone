@@ -128,10 +128,7 @@ fn get_private_names_from_scopes(
 
             for (i, name) in scope_names.name_ptrs().iter().enumerate() {
                 if scope_names.is_private_name(i) {
-                    // Exclude the "#" prefix
-                    let prefixed_private_name = name.to_string();
-                    let private_name = Wtf8String::from_str(&prefixed_private_name[1..]);
-
+                    let private_name = Wtf8String::from_string(name.to_string());
                     private_names
                         .as_mut()
                         .unwrap()

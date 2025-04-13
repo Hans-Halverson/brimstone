@@ -5,6 +5,7 @@ use super::{ast::AstStr, loc::Loc};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {
     Identifier(AstStr<'a>),
+    PrivateIdentifier(AstStr<'a>),
     NumberLiteral(f64),
     StringLiteral(AstStr<'a>),
     BigIntLiteral {
@@ -77,7 +78,6 @@ pub enum Token<'a> {
     Colon,
     Arrow,
     Spread,
-    Hash,
     // Keywords
     Var,
     Let,
@@ -148,7 +148,9 @@ pub struct TemplatePartToken<'a> {
 impl Token<'_> {
     pub fn as_cow(&self) -> Cow<'static, str> {
         let str = match self {
-            Token::Identifier(name) => return Cow::Owned(name.to_string()),
+            Token::Identifier(name) | Token::PrivateIdentifier(name) => {
+                return Cow::Owned(name.to_string())
+            }
             Token::NumberLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::StringLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::BigIntLiteral { digits_slice, .. } => {
@@ -187,7 +189,6 @@ impl Token<'_> {
             Token::Semicolon => ";",
             Token::Arrow => "=>",
             Token::Spread => "...",
-            Token::Hash => "#",
             Token::LeftParen => "(",
             Token::RightParen => ")",
             Token::LeftBrace => "{",

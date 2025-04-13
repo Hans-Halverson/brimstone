@@ -620,8 +620,8 @@
         operator: "in",
         left: {
           type: "PrivateIdentifier",
-          loc: "43:2-43:3",
-          name: "a",
+          loc: "43:1-43:3",
+          name: "#a",
         },
         right: {
           type: "Identifier",

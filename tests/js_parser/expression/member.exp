@@ -139,8 +139,8 @@
         },
         property: {
           type: "PrivateIdentifier",
-          loc: "9:4-9:7",
-          name: "foo",
+          loc: "9:3-9:7",
+          name: "#foo",
         },
         computed: false,
         optional: false,

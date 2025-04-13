@@ -303,6 +303,8 @@ pub enum Toplevel<'a> {
 
 pub struct Identifier<'a> {
     pub loc: Loc,
+
+    /// Name of the identifier. May begin with a '#' if it is a private name.
     pub name: AstStr<'a>,
 
     /// Reference to the scope that contains the binding for this identifier, or tagged as

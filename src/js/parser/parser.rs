@@ -286,10 +286,6 @@ impl<'a> Parser<'a> {
         Loc { start: start_pos, end: self.prev_loc.end }
     }
 
-    fn alloc_string(&self, string: String) -> AstString<'a> {
-        AstString::from_string_in(string, self.alloc)
-    }
-
     fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
         AstSliceBuilder::new(ArenaVec::new_in(self.alloc))
     }
@@ -1897,8 +1893,8 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
 
         // Private names must be the start of an `in` expression
-        if self.token == Token::Hash {
-            let private_name = Expression::Id(p!(self, self.parse_private_name()?));
+        if matches!(self.token, Token::PrivateIdentifier(_)) {
+            let private_name = Expression::Id(p!(self, self.parse_private_identifier()?));
 
             if self.token == Token::In
                 && precedence.is_weaker_than(Precedence::Relational)
@@ -2453,20 +2449,13 @@ impl<'a> Parser<'a> {
         operator_pos: Pos,
         is_optional: bool,
     ) -> ParseResult<Expression<'a>> {
-        let is_private = self.token == Token::Hash;
-        if is_private {
-            let hash_loc = self.loc;
-            self.advance()?;
-
-            // Hash must be directly followed by the identifier, without any characters between
-            if self.loc.start != hash_loc.end {
-                return self.error(hash_loc, ParseError::HashNotFollowedByIdentifier);
-            }
-        }
-
-        let property = match self.parse_identifier_name()? {
-            Some(id) => id,
-            None => return self.error_unexpected_token(self.loc, &self.token),
+        let (property, is_private) = if let Some(id) = self.parse_identifier_name()? {
+            (id, false)
+        } else if matches!(self.token, Token::PrivateIdentifier(_)) {
+            let id = self.parse_private_identifier()?;
+            (id, true)
+        } else {
+            return self.error_unexpected_token(self.loc, &self.token);
         };
 
         let loc = self.mark_loc(start_pos);
@@ -3537,9 +3526,9 @@ impl<'a> Parser<'a> {
                 self.parse_primary_expression()?
             }
             // Private properties are only allowed in classes
-            Token::Hash if prop_context == PropertyContext::Class => {
+            Token::PrivateIdentifier(_) if prop_context == PropertyContext::Class => {
                 is_private = true;
-                Expression::Id(p!(self, self.parse_private_name()?))
+                Expression::Id(p!(self, self.parse_private_identifier()?))
             }
             _ => match self.parse_identifier_name()? {
                 Some(key) => {
@@ -3831,18 +3820,14 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_private_name(&mut self) -> ParseResult<Identifier<'a>> {
-        let hash_loc = self.loc;
-        self.expect(Token::Hash)?;
-
-        // Hash must be directly followed by the identifier, without any characters between
-        if self.loc.start != hash_loc.end {
-            return self.error(hash_loc, ParseError::HashNotFollowedByIdentifier);
-        }
-
-        match self.parse_identifier_name()? {
-            Some(id) => Ok(id),
-            None => self.error_unexpected_token(self.loc, &self.token),
+    fn parse_private_identifier(&mut self) -> ParseResult<Identifier<'a>> {
+        if let Token::PrivateIdentifier(name) = &self.token {
+            let loc = self.loc;
+            let name = *name;
+            self.advance()?;
+            Ok(Identifier::new(loc, name))
+        } else {
+            self.error_unexpected_token(self.loc, &self.token)
         }
     }
 
@@ -3979,12 +3964,9 @@ impl<'a> Parser<'a> {
 
         // All private names are added to the current class scope
         if is_private {
-            let private_name = self.alloc_string(format!("#{}", &property.key.to_id().name));
+            let private_name = property.key.to_id().name;
             self.scope_builder
-                .add_binding_to_current_node(private_name.as_arena_str(), BindingKind::PrivateName);
-
-            // Intentionally leak private name so it remains in arena and is not deallocated
-            std::mem::forget(private_name);
+                .add_binding_to_current_node(private_name, BindingKind::PrivateName);
         }
 
         // Translate from object property to class property or method

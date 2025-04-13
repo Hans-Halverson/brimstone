@@ -341,13 +341,13 @@ impl fmt::Display for ParseError {
                 write!(f, "Object property initializers do not use `=`")
             }
             ParseError::DuplicatePrivateName(name) => {
-                write!(f, "Redeclaration of private name #{}", name)
+                write!(f, "Redeclaration of private name {}", name)
             }
             ParseError::PrivateNameOutsideClass => {
                 write!(f, "Private name outside class")
             }
             ParseError::PrivateNameNotDefined(name) => {
-                write!(f, "Reference to undeclared private name #{}", name)
+                write!(f, "Reference to undeclared private name {}", name)
             }
             ParseError::PrivateNameConstructor => {
                 write!(f, "Private name not allowed to be #constructor")

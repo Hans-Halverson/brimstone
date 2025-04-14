@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-use super::{Heap, HeapItem, HeapPtr, HeapVisitor};
+use super::{Heap, HeapInfo, HeapItem, HeapPtr, HeapVisitor};
 
 pub struct HeapSerializer {
     cx: Context,
@@ -133,6 +133,7 @@ impl HeapSerializer {
                 start_offset: current_offset,
             },
             root_offsets: self.roots.as_slice(),
+            heap_info_size: size_of::<HeapInfo>(),
         }
     }
 }
@@ -164,12 +165,16 @@ pub struct HeapSpaceDeserializer {
 }
 
 impl HeapSpaceDeserializer {
-    fn new(cx: Context) -> Self {
-        Self { base: cx.heap.heap_start() }
+    fn new(cx: Context, extra_offset: usize) -> Self {
+        // Apply extra offset directly to the base pointer to account for differences in HeapInfo
+        // size when deserializing.
+        let base = cx.heap.heap_start().wrapping_add(extra_offset);
+
+        Self { base }
     }
 
-    pub fn deserialize(cx: Context, bytes: &mut [u8]) {
-        let mut deserializer = Self::new(cx);
+    pub fn deserialize(cx: Context, bytes: &mut [u8], extra_offset: usize) {
+        let mut deserializer = Self::new(cx, extra_offset);
 
         let mut item_offset = 0;
         while item_offset < bytes.len() {
@@ -221,11 +226,12 @@ pub struct HeapRootsDeserializer<'a> {
 
 impl<'a> HeapRootsDeserializer<'a> {
     fn new(cx: Context, serialized: &'a SerializedHeap) -> Self {
-        Self {
-            base: cx.heap.heap_start(),
-            root_index: 0,
-            root_offsets: serialized.root_offsets,
-        }
+        // Apply extra offset directly to the base pointer to account for differences in HeapInfo
+        // size when deserializing.
+        let extra_offset = calculate_extra_offset(serialized);
+        let base = cx.heap.heap_start().wrapping_add(extra_offset);
+
+        Self { base, root_index: 0, root_offsets: serialized.root_offsets }
     }
 
     pub fn deserialize(mut cx: Context, serialized: &'a SerializedHeap) {
@@ -254,4 +260,9 @@ impl HeapVisitor for HeapRootsDeserializer<'_> {
         // represented as the empty value.
         unsafe { self.visit(std::mem::transmute::<&mut Value, &mut HeapPtr<HeapItem>>(value)) };
     }
+}
+/// Size of the `HeapInfo` struct can be different from the serialized heap, e.g. due to
+/// feature flags. We must apply an additional offset to account for this.
+pub fn calculate_extra_offset(serialized: &SerializedHeap) -> usize {
+    size_of::<HeapInfo>() - serialized.heap_info_size
 }

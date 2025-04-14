@@ -10,6 +10,8 @@ pub struct SerializedHeap<'a> {
     pub current_space: SerializedSemispace<'a>,
     /// Offsets of all roots to the heap, in traversal order
     pub root_offsets: &'a [usize],
+    /// Size of the HeapInfo struct
+    pub heap_info_size: usize,
 }
 
 /// The serialized form of an individual semispace.

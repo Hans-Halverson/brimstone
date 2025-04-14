@@ -65,7 +65,7 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
     // Use a 10 MB heap size
     let options = OptionsBuilder::new()
         .annex_b(flags.contains(TestFlags::ANNEX_B))
-        .min_heap_size(10 * 1024 * 1024)
+        .heap_size(10 * 1024 * 1024)
         .build();
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
     let source = Rc::new(Source::new_from_file(&format!("benches/{}", file)).unwrap());

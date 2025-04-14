@@ -124,7 +124,7 @@ type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>
 impl Context {
     fn new(options: Rc<Options>) -> Context {
         let cx_cell = Box::new(ContextCell {
-            heap: Heap::new(options.min_heap_size),
+            heap: Heap::new(options.heap_size),
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
             well_known_symbols: BuiltinSymbols::uninit(),

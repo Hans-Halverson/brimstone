@@ -41,7 +41,7 @@ pub struct Args {
 
     /// The starting heap size, in bytes.
     #[arg(long)]
-    pub min_heap_size: Option<usize>,
+    pub heap_size: Option<usize>,
 
     /// Do not use colors when printing to terminal. Otherwise use colors if supported.
     #[arg(long, default_value_t = false)]
@@ -72,8 +72,8 @@ pub struct Options {
     /// Buffer to write all dumped output into instead of stdout
     pub dump_buffer: Option<Mutex<String>>,
 
-    /// The starting heap size in bytes, if set.
-    pub min_heap_size: usize,
+    /// The heap size to use in bytes.
+    pub heap_size: usize,
 
     /// Whether to use colors when printing to the terminal
     pub no_color: bool,
@@ -116,7 +116,7 @@ impl OptionsBuilder {
             print_bytecode: false,
             print_regexp_bytecode: false,
             dump_buffer: None,
-            min_heap_size: DEFAULT_HEAP_SIZE,
+            heap_size: DEFAULT_HEAP_SIZE,
             no_color: false,
             parse_stats: false,
             serialized_heap: get_default_serialized_heap(),
@@ -130,7 +130,7 @@ impl OptionsBuilder {
             .print_ast(args.print_ast)
             .print_bytecode(args.print_bytecode)
             .print_regexp_bytecode(args.print_regexp_bytecode)
-            .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
+            .heap_size(args.heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
             .no_color(args.no_color)
             .parse_stats(args.parse_stats)
     }
@@ -160,8 +160,8 @@ impl OptionsBuilder {
         self
     }
 
-    pub fn min_heap_size(mut self, min_heap_size: usize) -> Self {
-        self.0.min_heap_size = min_heap_size;
+    pub fn heap_size(mut self, heap_size: usize) -> Self {
+        self.0.heap_size = heap_size;
         self
     }
 

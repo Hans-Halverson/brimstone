@@ -74,6 +74,7 @@ pub const SERIALIZED_HEAP: SerializedHeap<'static> = SerializedHeap {{
     permanent_space: SerializedSemispace {{ bytes: SERIALIZED_PERMANENT_SPACE, start_offset: {} }},
     current_space: SerializedSemispace {{ bytes: SERIALIZED_CURRENT_SPACE, start_offset: {} }},
     root_offsets: SERIALIZED_ROOT_OFFSETS,
+    heap_info_size: {},
 }};
 "#,
         permanent_space_file.to_string_lossy(),
@@ -81,6 +82,7 @@ pub const SERIALIZED_HEAP: SerializedHeap<'static> = SerializedHeap {{
         root_offsets_file.to_string_lossy(),
         serialized_heap.permanent_space.start_offset,
         serialized_heap.current_space.start_offset,
+        serialized_heap.heap_info_size,
     )
 }
 

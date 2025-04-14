@@ -45,6 +45,9 @@ pub struct TestRunner {
 // Runner threads have an 8MB stack
 const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
 
+/// Size of the heap for each test. Use a low value that is sufficient for running all tests.
+const HEAP_SIZE: usize = 10 * 1024 * 1024;
+
 impl TestRunner {
     pub fn new(
         manifest: TestManifest,
@@ -224,7 +227,10 @@ fn run_single_test(
     start_timestamp: SystemTime,
 ) -> TestResult {
     // Set up options for test
-    let options = OptionsBuilder::new().annex_b(test.is_annex_b).build();
+    let options = OptionsBuilder::new()
+        .annex_b(test.is_annex_b)
+        .heap_size(HEAP_SIZE)
+        .build();
 
     // Each test is executed in its own realm
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();

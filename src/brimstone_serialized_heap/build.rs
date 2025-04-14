@@ -24,7 +24,7 @@ fn main() {
 const HEAP_SIZE: usize = 4 * 1024 * 1024;
 
 fn gen_serialized_heap_file(out_path: &Path) -> String {
-    let options = OptionsBuilder::new().min_heap_size(HEAP_SIZE).build();
+    let options = OptionsBuilder::new().heap_size(HEAP_SIZE).build();
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
 
     let serializer = HeapSerializer::serialize(cx);

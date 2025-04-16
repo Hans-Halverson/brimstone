@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use crate::{
     runtime::{
@@ -89,7 +89,6 @@ use super::{
 pub struct RustRuntimeFunctionRegistry {
     /// Lookup table from runtime function id to the function pointer itself
     id_to_function: [RustRuntimeFunction; NUM_RUST_RUNTIME_FUNCTIONS],
-    function_to_id: HashMap<RustRuntimeFunction, RustRuntimeFunctionId>,
 }
 
 /// Each Rust runtime function is assigned a unique id.
@@ -110,38 +109,33 @@ impl RustRuntimeFunctionRegistry {
         self.id_to_function[id as usize]
     }
 
-    pub fn get_id(&self, function: RustRuntimeFunction) -> Option<&RustRuntimeFunctionId> {
-        self.function_to_id.get(&function)
+    pub fn get_id(&self, function: RustRuntimeFunction) -> Option<RustRuntimeFunctionId> {
+        RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER.with(|functions_sorted_by_pointer| {
+            let index = functions_sorted_by_pointer
+                .binary_search_by_key(&function, |&(ptr, _)| ptr)
+                .ok()?;
+
+            Some(functions_sorted_by_pointer[index].1)
+        })
     }
 }
 
 macro_rules! rust_runtime_functions {
     ($($rust_function:expr,)*) => {
+        const RUST_RUNTIME_FUNCTIONS: [RustRuntimeFunction; NUM_RUST_RUNTIME_FUNCTIONS] = [
+            $($rust_function,)*
+        ];
+
         const NUM_RUST_RUNTIME_FUNCTIONS: usize = [
             $($rust_function,)*
         ].len();
 
         impl RustRuntimeFunctionRegistry {
             pub fn new() -> Self {
-                let mut function_to_id: HashMap<RustRuntimeFunction, RustRuntimeFunctionId> =
-                    HashMap::with_capacity(NUM_RUST_RUNTIME_FUNCTIONS);
-
-                let mut id = 0;
-
-                $(
-                    function_to_id.insert($rust_function, id);
-
-                    #[allow(unused_assignments)]
-                    {
-                        id += 1;
-                    }
-                )*
-
                 Self {
                     id_to_function: [
                         $($rust_function,)*
                     ],
-                    function_to_id,
                 }
             }
         }
@@ -683,4 +677,21 @@ pub fn return_undefined(
     _: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
     Ok(cx.undefined())
+}
+
+thread_local! {
+    /// Array of (function, index) pairs sorted by function pointer. This is used to look up the
+    /// index in RUST_RUNTIME_FUNCTIONS for a particular function pointer in O(log n) time.
+    static RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER: LazyLock<Vec<(RustRuntimeFunction, RustRuntimeFunctionId)>> =
+        LazyLock::new(|| {
+            let mut runtime_functions = Vec::with_capacity(NUM_RUST_RUNTIME_FUNCTIONS);
+
+            for (i, &runtime_function) in RUST_RUNTIME_FUNCTIONS.iter().enumerate() {
+                runtime_functions.push((runtime_function, i as RustRuntimeFunctionId));
+            }
+
+            runtime_functions.sort_by_key(|&(ptr, _)| ptr);
+
+            runtime_functions
+        });
 }

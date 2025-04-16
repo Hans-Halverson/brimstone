@@ -62,7 +62,7 @@ fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec
         if stack_frame.previous_frame().is_none() {
             let function = stack_frame.closure().function_ptr();
             if let Some(id) = function.rust_runtime_function_id() {
-                if id == *cx.rust_runtime_functions.get_id(return_undefined).unwrap() {
+                if id == cx.rust_runtime_functions.get_id(return_undefined).unwrap() {
                     break;
                 }
             }

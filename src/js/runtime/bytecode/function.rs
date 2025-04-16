@@ -303,7 +303,7 @@ impl BytecodeFunction {
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
     ) -> Handle<BytecodeFunction> {
-        let function_id = *cx.rust_runtime_functions.get_id(builtin_func).unwrap();
+        let function_id = cx.rust_runtime_functions.get_id(builtin_func).unwrap();
 
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);

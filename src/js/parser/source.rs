@@ -28,14 +28,7 @@ impl Source {
     }
 
     pub fn new_from_file(file_path: &str) -> ParseResult<Source> {
-        // Read file to string
-        let file = File::open(file_path)?;
-        let mut reader = BufReader::new(file);
-
-        let mut contents = String::new();
-        reader.read_to_string(&mut contents)?;
-
-        let wtf8_contents = Wtf8String::from_string(contents);
+        let wtf8_contents = Self::read_file_to_wtf8_string(file_path)?;
 
         // Guarantee that source size is within allowed range
         if is_source_too_large(wtf8_contents.len()) {
@@ -52,6 +45,26 @@ impl Source {
         }
 
         Ok(Self::new(file_path, Some("<eval>".to_owned()), contents))
+    }
+
+    pub fn new_for_string(file_path: &str, contents: Wtf8String) -> ParseResult<Source> {
+        // Guarantee that source size is within allowed range
+        if is_source_too_large(contents.len()) {
+            return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(false)));
+        }
+
+        Ok(Self::new(file_path.to_owned(), None, contents))
+    }
+
+    pub fn read_file_to_wtf8_string(file_path: &str) -> ParseResult<Wtf8String> {
+        // Read file to string
+        let file = File::open(file_path)?;
+        let mut reader = BufReader::new(file);
+
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+
+        Ok(Wtf8String::from_string(contents))
     }
 
     pub fn line_offsets(&self) -> &[u32] {

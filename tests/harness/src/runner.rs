@@ -7,7 +7,7 @@ use std::{
     panic::{self, AssertUnwindSafe},
     path::Path,
     rc::Rc,
-    sync::mpsc::channel,
+    sync::{mpsc::channel, LazyLock, RwLock},
     time::{Duration, SystemTime},
 };
 
@@ -25,7 +25,7 @@ use brimstone_core::{
         options::{Options, OptionsBuilder},
         wtf_8::Wtf8String,
     },
-    parser::{self, ParseContext},
+    parser::{self, source::Source, ParseContext},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
         to_console_string, to_string, Context, ContextBuilder, EvalResult, Handle, Value,
@@ -328,13 +328,40 @@ fn run_single_test(
     }
 }
 
+/// Cache of harness file contents by file path to avoid re-reading them from disk.
+static HARNESS_FILE_CACHE: LazyLock<RwLock<HashMap<String, Wtf8String>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+fn new_harness_parse_context(file_path: &str) -> parser::ParseResult<ParseContext> {
+    let cached_file = HARNESS_FILE_CACHE.read().unwrap().get(file_path).cloned();
+
+    // Use the file from cache if possible, otherwise read and insert into cache
+    let file_contents = match cached_file {
+        Some(cached_file) => cached_file,
+        None => {
+            let file_contents = Source::read_file_to_wtf8_string(file_path)?;
+
+            HARNESS_FILE_CACHE
+                .write()
+                .unwrap()
+                .insert(file_path.to_owned(), file_contents.clone());
+
+            file_contents
+        }
+    };
+
+    let source = Source::new_for_string(file_path, file_contents)?;
+
+    Ok(ParseContext::new(Rc::new(source)))
+}
+
 fn new_parse_context(
     file: &str,
     suite_root: &str,
     force_strict_mode: bool,
 ) -> parser::ParseResult<ParseContext> {
     let full_path = Path::new(suite_root).join(file);
-    let mut source = parser::source::Source::new_from_file(full_path.to_str().unwrap())?;
+    let mut source = Source::new_from_file(full_path.to_str().unwrap())?;
 
     // Manually insert use strict directive when forcing strict mode
     if force_strict_mode {
@@ -361,7 +388,7 @@ fn parse_file<'a>(
 
 fn load_harness_test_file(cx: Context, test262_root: &str, file: &str) {
     let full_path = Path::new(test262_root).join("harness").join(file);
-    let mut pcx = match new_parse_context(full_path.to_str().unwrap(), test262_root, false) {
+    let mut pcx = match new_harness_parse_context(full_path.to_str().unwrap()) {
         Ok(pcx) => pcx,
         Err(_) => {
             panic!("Failed to parse test harness file {}", full_path.display());

@@ -127,8 +127,8 @@ impl TableFormatter {
         };
 
         match cell.alignment {
-            CellAlignment::Left => format!("{}{}", modified_value, padding),
-            CellAlignment::Right => format!("{}{}", padding, modified_value),
+            CellAlignment::Left => format!("{modified_value}{padding}"),
+            CellAlignment::Right => format!("{padding}{modified_value}"),
         }
     }
 

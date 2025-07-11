@@ -94,8 +94,8 @@ fn format_error_one_line(cx: Context, error: Handle<ErrorObject>) -> String {
     let name = error_name(cx, error);
 
     match error_message(cx, error) {
-        Some(message) => format!("{}: {}", name, message),
-        None => format!("{}", name),
+        Some(message) => format!("{name}: {message}"),
+        None => format!("{name}"),
     }
 }
 

@@ -94,7 +94,7 @@ pub fn create_data_property_or_throw(
 ) -> EvalResult<()> {
     let success = create_data_property(cx, object, key, value)?;
     if !success {
-        return type_error(cx, &format!("Cannot create property {}", key));
+        return type_error(cx, &format!("Cannot create property {key}"));
     }
 
     Ok(())
@@ -120,7 +120,7 @@ pub fn define_property_or_throw(
 ) -> EvalResult<()> {
     let success = object.define_own_property(cx, key, prop_desc)?;
     if !success {
-        return type_error(cx, &format!("cannot define property {}", key));
+        return type_error(cx, &format!("cannot define property {key}"));
     }
 
     Ok(())
@@ -133,7 +133,7 @@ pub fn delete_property_or_throw(
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
     if !object.delete(cx, key)? {
-        return type_error(cx, &format!("cannot delete property {}", key));
+        return type_error(cx, &format!("cannot delete property {key}"));
     }
 
     Ok(())

@@ -89,7 +89,7 @@ fn print_error(path: &str) -> GenericResult<String> {
         };
 
         match result {
-            Ok(_) => Err(format!("{}: Expected an error", path).into()),
+            Ok(_) => Err(format!("{path}: Expected an error").into()),
             Err(err) => Ok(err.format(cx, &FormatOptions::default())),
         }
     })
@@ -221,9 +221,9 @@ fn parse_script_or_module<'a>(
     options: Rc<Options>,
 ) -> GenericResult<parser::parser::ParseProgramResult<'a>> {
     let parse_result = if path.contains("module") {
-        parser::parse_module(&pcx, options)?
+        parser::parse_module(pcx, options)?
     } else {
-        parser::parse_script(&pcx, options)?
+        parser::parse_script(pcx, options)?
     };
 
     Ok(parse_result)
@@ -259,9 +259,8 @@ fn visit_directory(
             visit_directory(env, &path, test_fn)?
         } else if path.is_file() {
             if let Some(extension) = path.extension() {
-                match extension.to_str() {
-                    Some("js") => process_snapshot_test_file(env, &path, test_fn)?,
-                    _ => (),
+                if let Some("js") = extension.to_str() {
+                    process_snapshot_test_file(env, &path, test_fn)?
                 }
             }
         }
@@ -324,7 +323,7 @@ fn find_diff_snippet(path: &Path, actual: &str, expected: &str) -> String {
     } else {
         let snippet_end = min(i + 10, actual_lines.len());
         let lines = actual_lines[i..snippet_end].join("\n+ ");
-        format!("{}{}+ {}{}", RED, BOLD, lines, RESET)
+        format!("{RED}{BOLD}+ {lines}{RESET}")
     };
 
     let expected_snippet = if i == expected_lines.len() {
@@ -332,7 +331,7 @@ fn find_diff_snippet(path: &Path, actual: &str, expected: &str) -> String {
     } else {
         let snippet_end = min(i + 10, expected_lines.len());
         let lines = expected_lines[i..snippet_end].join("\n- ");
-        format!("{}{}- {}{}", GREEN, BOLD, lines, RESET)
+        format!("{GREEN}{BOLD}- {lines}{RESET}")
     };
 
     format!(

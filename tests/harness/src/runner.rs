@@ -162,7 +162,7 @@ impl TestRunner {
 
                         let result = TestResult::failure(
                             &test,
-                            format!("Thread panicked:\n{}", message),
+                            format!("Thread panicked:\n{message}"),
                             duration,
                         );
 
@@ -277,7 +277,7 @@ fn run_single_test(
                     }
                     _ => TestResult::failure(
                         test,
-                        format!("Unexpected error during parsing:\n{}", err),
+                        format!("Unexpected error during parsing:\n{err}"),
                         duration,
                     ),
                 };
@@ -299,7 +299,7 @@ fn run_single_test(
                     }
                     _ => TestResult::failure(
                         test,
-                        format!("Unexpected error during analysis:\n{}", err),
+                        format!("Unexpected error during analysis:\n{err}"),
                         duration,
                     ),
                 };
@@ -482,7 +482,7 @@ fn check_expected_completion(
                     if print_log.contains("Test262:AsyncTestFailure:") {
                         return TestResult::failure(
                             test,
-                            format!("Async test failed with the error: {}", print_log),
+                            format!("Async test failed with the error: {print_log}"),
                             duration,
                         );
                     }
@@ -491,7 +491,7 @@ fn check_expected_completion(
                     if !print_log.contains("Test262:AsyncTestComplete") {
                         return TestResult::failure(
                             test,
-                            format!("print log does not contain Test262:AsyncTestComplete, instead contains:\n{}", print_log),
+                            format!("print log does not contain Test262:AsyncTestComplete, instead contains:\n{print_log}"),
                             duration,
                         );
                     }
@@ -501,7 +501,7 @@ fn check_expected_completion(
             }
             other => TestResult::failure(
                 test,
-                format!("Test completed without throwing, but expected {}", other),
+                format!("Test completed without throwing, but expected {other}"),
                 duration,
             ),
         },
@@ -558,8 +558,7 @@ fn check_expected_completion(
                 TestResult::failure(
                     test,
                     format!(
-                        "Test threw the following error during runtime, but expected {}:\n{}",
-                        other, thrown_string,
+                        "Test threw the following error during runtime, but expected {other}:\n{thrown_string}",
                     ),
                     duration,
                 )
@@ -725,9 +724,9 @@ impl TestResults {
         }
 
         let status = if self.failed.values().all(|failed| failed.is_empty()) {
-            format!("{}{}Passed{}", BOLD, GREEN, RESET)
+            format!("{BOLD}{GREEN}Passed{RESET}")
         } else {
-            format!("{}{}Failed{}", BOLD, RED, RESET)
+            format!("{BOLD}{RED}Failed{RESET}")
         };
 
         println!(
@@ -755,7 +754,7 @@ impl TestResults {
         }
 
         let table = TableFormatter::format(table_rows);
-        println!("{}", table);
+        println!("{table}");
     }
 
     pub fn print_test262_progress(&self) {
@@ -773,8 +772,8 @@ impl TestResults {
         let total = succeeded + failed;
         let percent = (succeeded as f64 / total as f64) * 100.0;
 
-        println!("\n{}Test262 progress: {:.2}%{}", BOLD, percent, RESET);
-        println!("{}/{} tests passed", succeeded, total);
+        println!("\n{BOLD}Test262 progress: {percent:.2}%{RESET}");
+        println!("{succeeded}/{total} tests passed");
     }
 
     pub fn save_to_result_files(&self, result_files_path: String) -> GenericResult {
@@ -801,8 +800,8 @@ impl TestResults {
         let succeeded_string = serde_json::to_string_pretty(&succeeded_paths).unwrap();
         let failed_string = serde_json::to_string_pretty(&failed_paths).unwrap();
 
-        let succeeded_file_path = format!("{}_success.json", result_files_path);
-        let failed_file_path = format!("{}_failed.json", result_files_path);
+        let succeeded_file_path = format!("{result_files_path}_success.json");
+        let failed_file_path = format!("{result_files_path}_failed.json");
 
         fs::write(succeeded_file_path, &succeeded_string)?;
         fs::write(failed_file_path, &failed_string)?;

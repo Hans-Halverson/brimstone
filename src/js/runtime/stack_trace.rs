@@ -156,7 +156,7 @@ pub fn create_stack_trace(
                     find_line_col_for_pos(source_position, line_offsets.as_slice());
 
                 // Append the line and column to the function name
-                stack_trace.push_str(&format!(":{}:{}", line, column));
+                stack_trace.push_str(&format!(":{line}:{column}"));
 
                 // Save the first source position that is found
                 if first_source_file_line_col.is_none() {

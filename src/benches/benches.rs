@@ -68,7 +68,7 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
         .heap_size(10 * 1024 * 1024)
         .build();
     let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
-    let source = Rc::new(Source::new_from_file(&format!("benches/{}", file)).unwrap());
+    let source = Rc::new(Source::new_from_file(&format!("benches/{file}")).unwrap());
     let pcx = ParseContext::new(source);
     (cx, pcx)
 }
@@ -133,7 +133,7 @@ fn cleanup3_step<T, U>((cx, x1, x2): (Context, T, U)) {
 fn bench_program_parser(c: &mut Criterion, file: &str, flags: TestFlags) {
     isolated_test(
         c,
-        &format!("{} > parse", file),
+        &format!("{file} > parse"),
         || setup_step(file, flags),
         |input| parse_step(input, flags),
         cleanup3_step,
@@ -151,7 +151,7 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
     // Isolate analysis phase
     isolated_test(
         c,
-        &format!("{} > analyze", file),
+        &format!("{file} > analyze"),
         || {
             let setup_result = setup_step(file, flags);
             parse_step(setup_result, flags)
@@ -163,7 +163,7 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
     // Isolate bytecode generation phase
     isolated_test(
         c,
-        &format!("{} > generate", file),
+        &format!("{file} > generate"),
         || {
             let setup_result = setup_step(file, flags);
             let parse_result = parse_step(setup_result, flags);
@@ -176,7 +176,7 @@ fn bench_program_all_steps(c: &mut Criterion, file: &str, flags: TestFlags) {
     // Isolate bytecode generation phase
     isolated_test(
         c,
-        &format!("{} > execute", file),
+        &format!("{file} > execute"),
         || {
             let setup_result = setup_step(file, flags);
             let parse_result = parse_step(setup_result, flags);

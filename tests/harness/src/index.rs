@@ -69,7 +69,7 @@ impl fmt::Display for ExpectedResult {
                     TestPhase::Runtime => "evaluation",
                 };
 
-                write!(f, "{} error to be thrown during {}", type_, phase_string)
+                write!(f, "{type_} error to be thrown during {phase_string}")
             }
         }
     }

@@ -44,7 +44,7 @@ pub fn build_function_name(
 
     // Add prefix to name
     if let Some(prefix) = prefix {
-        let prefix_string = cx.alloc_string(&format!("{} ", prefix)).as_string();
+        let prefix_string = cx.alloc_string(&format!("{prefix} ")).as_string();
         StringValue::concat(cx, prefix_string, name_string)
     } else {
         name_string

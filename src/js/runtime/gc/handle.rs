@@ -359,7 +359,7 @@ impl HandleContext {
         let old_current_block = std::mem::replace(&mut self.current_block, new_current_block);
 
         // Current block is moved to start of free list
-        let old_free_blocks = std::mem::replace(&mut self.free_blocks, Some(old_current_block));
+        let old_free_blocks = self.free_blocks.replace(old_current_block);
         if let Some(new_first_free_block) = &mut self.free_blocks {
             new_first_free_block.prev_block = old_free_blocks;
         }

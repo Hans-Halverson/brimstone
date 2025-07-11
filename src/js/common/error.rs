@@ -8,7 +8,7 @@ use crate::parser::{
 use super::terminal::{BOLD, DEFAULT_COLOR, DIM, RED, RESET};
 
 pub fn print_error_message_and_exit(message: &str) {
-    eprintln!("{}", message);
+    eprintln!("{message}");
     std::process::exit(1);
 }
 
@@ -146,8 +146,7 @@ impl ErrorFormatter {
             self.builder.push_str("┌ ");
             self.reset();
 
-            self.builder
-                .push_str(&format!("{}:{}:{}\n", name, line, col));
+            self.builder.push_str(&format!("{name}:{line}:{col}\n"));
 
             // Write a line of padding above the snippet
             self.snippet_padding(indent);
@@ -155,11 +154,11 @@ impl ErrorFormatter {
 
             // Write the line number and separator before the snippet
             self.dim();
-            self.builder.push_str(&format!("{} | ", line));
+            self.builder.push_str(&format!("{line} | "));
             self.reset();
 
             // Write the snippet itself
-            self.builder.push_str(&format!("{}\n", snippet));
+            self.builder.push_str(&format!("{snippet}\n"));
 
             // Write a line of padding below the snippet
             self.snippet_padding(indent);

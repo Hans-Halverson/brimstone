@@ -56,7 +56,7 @@ impl ConstantTable {
 
     /// One bit per constant, rounded up to the nearest byte.
     pub fn calculate_metadata_size(num_constants: usize) -> usize {
-        (num_constants + 7) / 8
+        num_constants.div_ceil(8)
     }
 
     pub fn get_constant(&self, index: usize) -> Value {
@@ -98,7 +98,7 @@ impl DebugPrint for HeapPtr<ConstantTable> {
 
         for (i, constant) in self.constants.as_slice().iter().enumerate() {
             printer.write_indent();
-            printer.write(&format!("{}: ", i));
+            printer.write(&format!("{i}: "));
 
             if self.is_value(i) {
                 constant.debug_format(printer);

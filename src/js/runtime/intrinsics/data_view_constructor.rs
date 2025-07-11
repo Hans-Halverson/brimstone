@@ -128,8 +128,7 @@ impl DataViewConstructor {
             return range_error(
                 cx,
                 &format!(
-                    "offset {} is out of bounds for buffer with byte length {}",
-                    offset, buffer_byte_length
+                    "offset {offset} is out of bounds for buffer with byte length {buffer_byte_length}"
                 ),
             );
         }

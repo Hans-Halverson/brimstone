@@ -465,5 +465,5 @@ pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {
     }
 
     // Code points in the surrogate pair range are encoded as a \uXXXX unicode escape sequence
-    format!("\\u{:X}", code_point)
+    format!("\\u{code_point:X}")
 }

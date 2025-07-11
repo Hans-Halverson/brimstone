@@ -629,7 +629,7 @@ impl JSONSerializer {
                 self.builder.push_str("\\\\")
             } else if code_point < 0x20 || is_surrogate_code_point(code_point) {
                 // Must be serialized as a unicode escape
-                self.builder.push_str(&format!("\\u{:04x}", code_point))
+                self.builder.push_str(&format!("\\u{code_point:04x}"))
             } else {
                 self.builder.push(code_point);
             }

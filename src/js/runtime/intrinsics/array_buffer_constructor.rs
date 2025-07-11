@@ -66,10 +66,7 @@ impl ArrayBufferObject {
         set_uninit!(object.data, None);
 
         if byte_length > MAX_ARRAY_BUFFER_SIZE {
-            return range_error(
-                cx,
-                &format!("cannot allocate array buffer of size {}", byte_length),
-            );
+            return range_error(cx, &format!("cannot allocate array buffer of size {byte_length}"));
         }
 
         if let Some(max_byte_length) = max_byte_length {

@@ -180,15 +180,15 @@ impl fmt::Display for ParseError {
                 f.write_str("Error: ")?;
                 io_error.fmt(f)
             }
-            ParseError::UnknownToken(token) => write!(f, "Unknown token {}", token),
-            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {}", token),
+            ParseError::UnknownToken(token) => write!(f, "Unknown token {token}"),
+            ParseError::UnexpectedToken(token) => write!(f, "Unexpected token {token}"),
             ParseError::ExpectedToken(payload) => {
                 let (actual, expected) = payload.as_ref();
-                write!(f, "Unexpected token {}, expected {}", actual, expected)
+                write!(f, "Unexpected token {actual}, expected {expected}")
             }
             ParseError::SourceTooLarge(is_file) => {
                 let source = if *is_file { "File" } else { "String" };
-                write!(f, "{} is too large, max size is 2^32 bytes", source)
+                write!(f, "{source} is too large, max size is 2^32 bytes")
             }
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
@@ -267,7 +267,7 @@ impl fmt::Display for ParseError {
                 if name == &*ANONYMOUS_DEFAULT_EXPORT_NAME {
                     write!(f, "Default export was already declared in this module")
                 } else {
-                    write!(f, "Redeclaration of {} {}", kind, name)
+                    write!(f, "Redeclaration of {kind} {name}")
                 }
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
@@ -308,7 +308,7 @@ impl fmt::Display for ParseError {
                         "functions with non-simple parameter lists"
                     }
                 };
-                write!(f, "Duplicate parameters not allowed in {}", reason_string)
+                write!(f, "Duplicate parameters not allowed in {reason_string}")
             }
             ParseError::InvalidLabeledFunction(true) => write!(f, "Functions cannot be labeled"),
             ParseError::InvalidLabeledFunction(false) => {
@@ -341,13 +341,13 @@ impl fmt::Display for ParseError {
                 write!(f, "Object property initializers do not use `=`")
             }
             ParseError::DuplicatePrivateName(name) => {
-                write!(f, "Redeclaration of private name {}", name)
+                write!(f, "Redeclaration of private name {name}")
             }
             ParseError::PrivateNameOutsideClass => {
                 write!(f, "Private name outside class")
             }
             ParseError::PrivateNameNotDefined(name) => {
-                write!(f, "Reference to undeclared private name {}", name)
+                write!(f, "Reference to undeclared private name {name}")
             }
             ParseError::PrivateNameConstructor => {
                 write!(f, "Private name not allowed to be #constructor")
@@ -398,7 +398,7 @@ impl fmt::Display for ParseError {
                 write!(f, "Exported name is not defined in module")
             }
             ParseError::DuplicateExport(name) => {
-                write!(f, "Export with name \"{}\" already exists in module", name)
+                write!(f, "Export with name \"{name}\" already exists in module")
             }
             ParseError::ImportAttributeInvalidKey => {
                 write!(f, "Import attribute key must be an identifier or string")

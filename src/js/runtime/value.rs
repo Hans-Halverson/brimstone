@@ -287,7 +287,7 @@ impl Value {
 
     #[inline]
     pub const fn as_smi(&self) -> i32 {
-        unsafe { std::mem::transmute::<u32, i32>(self.as_raw_bits() as u32) }
+        (self.as_raw_bits() as u32).cast_signed()
     }
 
     // Pointers are represented directly.
@@ -360,7 +360,7 @@ impl Value {
 
     #[inline]
     pub const fn smi(value: i32) -> Value {
-        let smi_value_bits = unsafe { std::mem::transmute::<i32, u32>(value) as u64 };
+        let smi_value_bits = value.cast_unsigned() as u64;
         Value::from_raw_bits(((SMI_TAG as u64) << TAG_SHIFT) | smi_value_bits)
     }
 

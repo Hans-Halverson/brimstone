@@ -96,11 +96,11 @@ impl DebugPrinter {
     }
 
     pub fn write_default(&mut self, name: &str) {
-        self.write(&format!("[{}]", name));
+        self.write(&format!("[{name}]"));
     }
 
     pub fn write_default_with_context(&mut self, name: &str, context: &str) {
-        self.write(&format!("[{}: {}]", name, context));
+        self.write(&format!("[{name}: {context}]"));
     }
 
     pub fn write_heap_item_default(&mut self, heap_item: HeapPtr<HeapItem>) {

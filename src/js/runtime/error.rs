@@ -103,15 +103,15 @@ pub fn uri_error<T>(cx: Context, message: &str) -> EvalResult<T> {
 }
 
 pub fn err_not_defined<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {
-    reference_error(cx, &format!("{} is not defined", name))
+    reference_error(cx, &format!("{name} is not defined"))
 }
 
 pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {
-    type_error(cx, &format!("can't assign constant `{}`", name))
+    type_error(cx, &format!("can't assign constant `{name}`"))
 }
 
 pub fn err_cannot_set_property<T>(cx: Context, name: impl std::fmt::Display) -> EvalResult<T> {
-    type_error(cx, &format!("can't set property {}", name))
+    type_error(cx, &format!("can't set property {name}"))
 }
 
 pub fn syntax_parse_error<T>(cx: Context, error: &LocalizedParseError) -> EvalResult<T> {

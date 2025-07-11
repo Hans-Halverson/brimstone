@@ -154,21 +154,21 @@ impl Token<'_> {
             Token::NumberLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::StringLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::BigIntLiteral { digits_slice, .. } => {
-                return Cow::Owned(format!("{}n", digits_slice))
+                return Cow::Owned(format!("{digits_slice}n"))
             }
             Token::RegExpLiteral(RegExpToken { raw, .. }) => return Cow::Owned(raw.to_string()),
             Token::TemplatePart(TemplatePartToken {
                 raw, is_head: true, is_tail: true, ..
-            }) => return Cow::Owned(format!("`{}`", raw)),
+            }) => return Cow::Owned(format!("`{raw}`")),
             Token::TemplatePart(TemplatePartToken {
                 raw, is_head: true, is_tail: false, ..
-            }) => return Cow::Owned(format!("`{}${{`", raw)),
+            }) => return Cow::Owned(format!("`{raw}${{`")),
             Token::TemplatePart(TemplatePartToken {
                 raw, is_head: false, is_tail: true, ..
-            }) => return Cow::Owned(format!("}}{}`", raw)),
+            }) => return Cow::Owned(format!("}}{raw}`")),
             Token::TemplatePart(TemplatePartToken {
                 raw, is_head: false, is_tail: false, ..
-            }) => return Cow::Owned(format!("}}{}${{`", raw)),
+            }) => return Cow::Owned(format!("}}{raw}${{`")),
             Token::Plus => "+",
             Token::Minus => "-",
             Token::Multiply => "*",

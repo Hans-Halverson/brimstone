@@ -402,7 +402,7 @@ impl Context {
 
             buffer.push_str(str);
         } else {
-            println!("{}", str);
+            println!("{str}");
         }
     }
 

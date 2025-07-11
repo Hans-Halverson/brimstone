@@ -187,7 +187,7 @@ impl ObjectPrototype {
         };
 
         Ok(cx
-            .alloc_string(&format!("[object {}]", tag_string))
+            .alloc_string(&format!("[object {tag_string}]"))
             .as_value())
     }
 

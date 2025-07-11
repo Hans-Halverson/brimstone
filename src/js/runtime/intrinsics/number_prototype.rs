@@ -56,7 +56,7 @@ impl NumberPrototype {
         // digits required to uniquely represent the number. Use Rust's default exponential
         // formatting for this, with some tweaks.
         if fraction_digits_arg.is_undefined() {
-            let mut formatted = format!("{:e}", number);
+            let mut formatted = format!("{number:e}");
 
             // Exponent must include an explicit '+' sign, unlike Rust's default formatting
             let exponent_index = formatted.find('e').unwrap();
@@ -150,7 +150,7 @@ impl NumberPrototype {
         };
 
         if is_negative {
-            m = format!("-{}", m);
+            m = format!("-{m}");
         }
 
         Ok(cx.alloc_string(&m).as_value())
@@ -409,7 +409,7 @@ fn to_exponent_and_mantissa(number: f64, precision: usize) -> (i32, String) {
         101
     };
 
-    let mut number_string = format!("{:.*}", format_precision, number);
+    let mut number_string = format!("{number:.format_precision$}");
 
     // Find the exponent of the number. For numbers >= 1 find the number of digits before
     // the decimal point. For numbers < 1 find the number of leading zeros after the decimal

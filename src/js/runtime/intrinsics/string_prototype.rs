@@ -45,7 +45,7 @@ pub struct StringPrototype;
 
 impl StringPrototype {
     /// Properties of the String Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object)
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
         let mut object = StringObject::new_with_proto(cx, object_proto, empty_string).as_object();
@@ -90,54 +90,58 @@ impl StringPrototype {
         let iterator_key = cx.well_known_symbols.iterator();
         object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
 
-        // Annex B methods
-        if cx.options.annex_b {
-            let substr_name = cx.alloc_string("substr").as_string();
-            let substr = PropertyKey::string_not_array_index(cx, substr_name).to_handle(cx);
-            object.intrinsic_func(cx, substr, Self::substr, 2, realm);
+        object
+    }
 
-            // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
-            // String.prototype.trimStart and String.prototype.trimEnd respectively.
-            let trim_start = must!(get(cx, object, cx.names.trim_start()));
-            let trim_end = must!(get(cx, object, cx.names.trim_end()));
+    /// Additional Properties of the String.prototype Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-string.prototype-object)
+    pub fn init_annex_b_methods(
+        mut string_prototype: Handle<ObjectValue>,
+        mut cx: Context,
+        realm: Handle<Realm>,
+    ) {
+        let substr_name = cx.alloc_string("substr").as_string();
+        let substr = PropertyKey::string_not_array_index(cx, substr_name).to_handle(cx);
+        string_prototype.intrinsic_func(cx, substr, Self::substr, 2, realm);
 
-            let trim_left_name = cx.alloc_string("trimLeft").as_string();
-            let trim_left = PropertyKey::string_not_array_index(cx, trim_left_name).to_handle(cx);
+        // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
+        // String.prototype.trimStart and String.prototype.trimEnd respectively.
+        let trim_start = must!(get(cx, string_prototype, cx.names.trim_start()));
+        let trim_end = must!(get(cx, string_prototype, cx.names.trim_end()));
 
-            let trim_right_name = cx.alloc_string("trimRight").as_string();
-            let trim_right = PropertyKey::string_not_array_index(cx, trim_right_name).to_handle(cx);
+        let trim_left_name = cx.alloc_string("trimLeft").as_string();
+        let trim_left = PropertyKey::string_not_array_index(cx, trim_left_name).to_handle(cx);
 
-            object.intrinsic_data_prop(cx, trim_left, trim_start);
-            object.intrinsic_data_prop(cx, trim_right, trim_end);
+        let trim_right_name = cx.alloc_string("trimRight").as_string();
+        let trim_right = PropertyKey::string_not_array_index(cx, trim_right_name).to_handle(cx);
 
-            macro_rules! html_methods {
-                ($($name:expr, $method:path, $length:expr),*) => {
-                    $(
-                        let name = cx.alloc_string($name).as_string();
-                        let key = PropertyKey::string_not_array_index(cx, name).to_handle(cx);
-                        object.intrinsic_func(cx, key, $method, $length, realm);
-                    )*
-                }
-            }
+        string_prototype.intrinsic_data_prop(cx, trim_left, trim_start);
+        string_prototype.intrinsic_data_prop(cx, trim_right, trim_end);
 
-            html_methods! {
-                "anchor", Self::anchor, 1,
-                "big", Self::big, 0,
-                "blink", Self::blink, 0,
-                "bold", Self::bold, 0,
-                "fixed", Self::fixed, 0,
-                "fontcolor", Self::font_color, 1,
-                "fontsize", Self::font_size, 1,
-                "italics", Self::italics, 0,
-                "link", Self::link, 1,
-                "small", Self::small, 0,
-                "strike", Self::strike, 0,
-                "sub", Self::sub, 0,
-                "sup", Self::sup, 0
+        macro_rules! html_methods {
+            ($($name:expr, $method:path, $length:expr),*) => {
+                $(
+                    let name = cx.alloc_string($name).as_string();
+                    let key = PropertyKey::string_not_array_index(cx, name).to_handle(cx);
+                    string_prototype.intrinsic_func(cx, key, $method, $length, realm);
+                )*
             }
         }
 
-        object
+        html_methods! {
+            "anchor", Self::anchor, 1,
+            "big", Self::big, 0,
+            "blink", Self::blink, 0,
+            "bold", Self::bold, 0,
+            "fixed", Self::fixed, 0,
+            "fontcolor", Self::font_color, 1,
+            "fontsize", Self::font_size, 1,
+            "italics", Self::italics, 0,
+            "link", Self::link, 1,
+            "small", Self::small, 0,
+            "strike", Self::strike, 0,
+            "sub", Self::sub, 0,
+            "sup", Self::sup, 0
+        }
     }
 
     /// String.prototype.at (https://tc39.es/ecma262/#sec-string.prototype.at)

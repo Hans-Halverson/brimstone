@@ -18,7 +18,7 @@ use crate::{
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
-    runtime::gc::GarbageCollector,
+    runtime::{annex_b::init_annex_b_methods, gc::GarbageCollector},
 };
 
 use super::{
@@ -168,6 +168,12 @@ impl Context {
 
         // Stop using deterministic PRNG
         cx.rand = StdRng::from_entropy();
+
+        // Annex B methods may not be included in the serialized heap so they must be initialized
+        // separately.
+        if options.annex_b {
+            init_annex_b_methods(cx, cx.initial_realm());
+        }
 
         cx
     }

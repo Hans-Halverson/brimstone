@@ -63,7 +63,7 @@ pub mod set_object;
 mod set_prototype;
 pub mod string_constructor;
 pub mod string_iterator;
-mod string_prototype;
+pub mod string_prototype;
 pub mod symbol_constructor;
 mod symbol_prototype;
 pub mod typed_array;

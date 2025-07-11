@@ -4,8 +4,12 @@ use crate::{
 };
 
 use super::{
-    eval_result::EvalResult, gc::Heap, intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
+    eval_result::EvalResult,
+    gc::{GcType, Heap},
+    intrinsics::intrinsics::Intrinsic,
+    object_value::ObjectValue,
+    realm::Realm,
+    Context, Handle, Value,
 };
 
 pub struct GcObject;
@@ -30,7 +34,7 @@ impl GcObject {
     }
 
     pub fn run(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
-        Heap::run_gc(cx);
+        Heap::run_gc(cx, GcType::Normal);
         Ok(cx.undefined())
     }
 }

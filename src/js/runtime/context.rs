@@ -18,6 +18,7 @@ use crate::{
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
+    runtime::gc::GarbageCollector,
 };
 
 use super::{
@@ -489,28 +490,37 @@ impl Context {
         Value::number(value).to_handle(*self)
     }
 
-    /// Visit all heap roots for a garbage collection. This visits all pointers other than those
-    /// that are guaranteed to be in the permanent semispace.
-    pub fn visit_roots_for_gc(&mut self, visitor: &mut impl HeapVisitor) {
-        self.heap.visit_roots(visitor);
+    /// Visit all heap roots for a garbage collection. This optionally visits pointers that are
+    /// guaranteed to be in the permanent semispace.
+    pub fn visit_roots_for_gc(&mut self, gc: &mut GarbageCollector) {
+        self.visit_common_roots(gc);
+        self.visit_post_initialization_roots(gc);
 
-        visitor.visit_pointer(&mut self.global_symbol_registry);
-        self.task_queue.visit_roots(visitor);
-        self.interned_strings.visit_roots(visitor);
-        visitor.visit_pointer(&mut self.modules);
-
-        if let Some(vm) = &mut self.vm {
-            vm.visit_roots(visitor);
+        // Only need to visit permanent roots if growing the heap, otherwise permanent space is
+        // guaranteed to not move and .
+        if gc.is_resizing() {
+            self.visit_permanent_roots(gc);
         }
     }
 
     /// Visit all heap roots that are needed for heap serialization. This includes all pointers to
     /// the permanent semispace.
     pub fn visit_roots_for_serialization(&mut self, visitor: &mut impl HeapVisitor) {
+        self.visit_common_roots(visitor);
+        self.visit_permanent_roots(visitor);
+
+        // Intentionally do not need to visit_post_initialization_roots
+    }
+
+    /// Visit all heap roots that should always be visited.
+    fn visit_common_roots(&mut self, visitor: &mut impl HeapVisitor) {
         visitor.visit_pointer(&mut self.global_symbol_registry);
         self.interned_strings.visit_roots(visitor);
         visitor.visit_pointer(&mut self.modules);
+    }
 
+    /// Visit all heap roots that are guaranteed to point to the permanent semispace.
+    fn visit_permanent_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.names.visit_roots(visitor);
         self.well_known_symbols.visit_roots(visitor);
         self.base_descriptors.visit_roots(visitor);
@@ -518,11 +528,17 @@ impl Context {
 
         visitor.visit_pointer(&mut self.default_named_properties);
         visitor.visit_pointer(&mut self.default_array_properties);
+    }
 
-        // Itentionally ignore:
-        // - heap
-        // - task_queue
-        // - vm
+    /// Visit all heap roots that can only actually contain roots after the context has been
+    /// initialized.
+    fn visit_post_initialization_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        self.heap.visit_roots(visitor);
+        self.task_queue.visit_roots(visitor);
+
+        if let Some(vm) = &mut self.vm {
+            vm.visit_roots(visitor);
+        }
     }
 
     #[cfg(feature = "gc_stress_test")]

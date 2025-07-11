@@ -7,6 +7,7 @@ mod heap_serializer;
 mod heap_trait_object;
 mod pointer;
 
+pub use garbage_collector::{GarbageCollector, GcType};
 pub use handle::{
     Escapable, Handle, HandleContents, HandleScope, HandleScopeGuard, ToHandleContents,
 };

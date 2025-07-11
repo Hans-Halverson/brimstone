@@ -1,15 +1,19 @@
-use std::ptr::NonNull;
+use std::{ops::Range, ptr::NonNull};
 
-use crate::runtime::{
-    gc::Heap,
-    interned_strings::InternedStrings,
-    intrinsics::{
-        finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
-        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+use crate::{
+    common::constants::MAX_HEAP_SIZE,
+    runtime::{
+        gc::Heap,
+        interned_strings::InternedStrings,
+        intrinsics::{
+            finalization_registry_object::FinalizationRegistryObject,
+            weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+            weak_set_object::WeakSetObject,
+        },
+        object_descriptor::{ObjectDescriptor, ObjectKind},
+        string_value::FlatString,
+        Context, Value,
     },
-    object_descriptor::{ObjectDescriptor, ObjectKind},
-    string_value::FlatString,
-    Context, Value,
 };
 
 use super::{HeapItem, HeapObject, HeapPtr, HeapVisitor};
@@ -17,17 +21,18 @@ use super::{HeapItem, HeapObject, HeapPtr, HeapVisitor};
 /// A Cheney-style semispace garbage collector. Partitions heap into from-space and to-space, and
 /// copies from one partition to the other on each GC.
 pub struct GarbageCollector {
+    // Type of GC to run. Normal or grow.
+    type_: GcType,
+
     // Bound of the region we are copying from
     from_space_start_ptr: *const u8,
     from_space_end_ptr: *const u8,
 
-    // Bounds of the region we are copying to
-    to_space_start_ptr: *const u8,
-    to_space_end_ptr: *const u8,
+    // Old bounds of the permanent space. For non-resizing GCs this is the same as the new bounds.
+    old_permanent_space_bounds: Range<*const u8>,
 
-    // Bounds of the permanent region
-    permanent_start_ptr: *const u8,
-    permanent_end_ptr: *const u8,
+    // New bounds of the permanent space. For non-resizing GCs this is the same as the old bounds.
+    new_permanent_space_bounds: Range<*const u8>,
 
     // Pointer to the next to-space object to fix
     fix_ptr: *const u8,
@@ -49,19 +54,33 @@ pub struct GarbageCollector {
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 }
 
+#[derive(Clone)]
+pub enum GcType {
+    /// Normal GC, swap semispaces in the heap.
+    Normal,
+    /// Grow the heap during this GC. Optionally specify an allocation size that must be supported.
+    Grow { alloc_size: Option<usize> },
+}
+
 impl GarbageCollector {
-    fn new(cx: Context) -> GarbageCollector {
+    fn new(cx: Context, type_: GcType, new_heap: Option<&Heap>) -> GarbageCollector {
         let (from_space_start_ptr, from_space_end_ptr) = cx.heap.current_heap_bounds();
-        let (to_space_start_ptr, to_space_end_ptr) = cx.heap.next_heap_bounds();
-        let (permanent_start_ptr, permanent_end_ptr) = cx.heap.permanent_heap_bounds();
+
+        let dest_heap = new_heap.unwrap_or(&cx.heap);
+
+        // The to-space is either the next heap for a non-resizing GC, or the new starting
+        // (aka current) heap for a resizing GC.
+        let to_space_start_ptr = match new_heap {
+            None => cx.heap.next_heap_bounds().0,
+            Some(new_heap) => new_heap.current_heap_bounds().0,
+        };
 
         GarbageCollector {
+            type_,
             from_space_start_ptr,
             from_space_end_ptr,
-            to_space_start_ptr,
-            to_space_end_ptr,
-            permanent_start_ptr,
-            permanent_end_ptr,
+            old_permanent_space_bounds: cx.heap.permanent_heap_bounds(),
+            new_permanent_space_bounds: dest_heap.permanent_heap_bounds(),
             fix_ptr: to_space_start_ptr,
             alloc_ptr: to_space_start_ptr,
             weak_ref_list: None,
@@ -71,14 +90,24 @@ impl GarbageCollector {
         }
     }
 
-    pub fn run(mut cx: Context) {
-        let mut gc = Self::new(cx);
+    pub fn run(mut cx: Context, type_: GcType) {
+        // Create the new heap size if this is a resizing GC
+        let new_heap_size = Self::calculate_new_heap_size(cx, &type_);
+        let new_heap = new_heap_size.map(|size| Heap::new_for_resize(&cx.heap, size));
 
-        // First visit roots in the context and copy their objects to the to-heap
+        let mut gc = Self::new(cx, type_, new_heap.as_ref());
+
+        // If resizing move the entire permanent space from the old to new heap
+        if gc.is_resizing() {
+            gc.move_permanent_heap();
+        }
+
+        // Start moving the from-heap by first visiting roots in the context and moving their heap
+        // items to the to-heap.
         cx.visit_roots_for_gc(&mut gc);
 
         // Then visit all the roots in the permanent heap and copy their objects to the to-heap
-        gc.visit_permanent_heap_roots();
+        gc.visit_permanent_heap_roots(gc.new_permanent_space_bounds.clone());
 
         loop {
             // Then start fixing all pointers in each new heap object until fix pointer catches up with
@@ -112,7 +141,7 @@ impl GarbageCollector {
         // pointers to the old heap.
         #[cfg(feature = "gc_stress_test")]
         {
-            if cx.heap.gc_stress_test {
+            if cx.heap.gc_stress_test && matches!(gc.type_, GcType::Normal) {
                 let (start, _) = cx.heap.current_heap_bounds();
                 unsafe {
                     std::ptr::write_bytes(start.cast_mut(), 0x01, cx.heap.bytes_allocated());
@@ -120,16 +149,49 @@ impl GarbageCollector {
             }
         }
 
-        cx.heap.swap_heaps(gc.alloc_ptr);
+        match new_heap {
+            // Normal GCs can simply swap the semispaces in the heap
+            None => cx.heap.swap_heaps(gc.alloc_ptr),
+            // If resizing then we must replace the old heap with the new heap
+            Some(mut new_heap) => {
+                new_heap.finish_resized_heap(gc.alloc_ptr);
+                cx.heap = new_heap;
+            }
+        }
+    }
+
+    /// Whether this is a resizing GC.
+    pub fn is_resizing(&self) -> bool {
+        matches!(self.type_, GcType::Grow { .. })
+    }
+
+    /// Calculate the new heap size if this should be a resizing GC. Otherwise return None.
+    fn calculate_new_heap_size(cx: Context, type_: &GcType) -> Option<usize> {
+        if let GcType::Grow { alloc_size } = &type_ {
+            // Double the size of the heap by default
+            let mut new_heap_size = cx.heap.heap_size() * 2;
+
+            if let Some(alloc_size) = alloc_size {
+                if alloc_size * 2 > cx.heap.heap_size() {
+                    new_heap_size = (alloc_size * 2).next_power_of_two();
+                }
+            }
+
+            new_heap_size = new_heap_size.min(MAX_HEAP_SIZE);
+
+            Some(new_heap_size)
+        } else {
+            None
+        }
     }
 
     /// Visit all the roots in the permanent heap and copy their objects to the to-heap.
     ///
     /// The permanent heap may contain pointers into the semispaces if a permanent heap object was
     /// mutated.
-    fn visit_permanent_heap_roots(&mut self) {
-        let mut current_ptr = self.permanent_start_ptr;
-        while current_ptr < self.permanent_end_ptr {
+    fn visit_permanent_heap_roots(&mut self, permanent_heap_bounds: Range<*const u8>) {
+        let mut current_ptr = permanent_heap_bounds.start;
+        while current_ptr < permanent_heap_bounds.end {
             let mut permanent_heap_item =
                 HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
             permanent_heap_item.visit_pointers(self);
@@ -140,14 +202,38 @@ impl GarbageCollector {
         }
     }
 
+    /// Move the entire contents of the permanent heap from the old bounds to the new bounds.
+    fn move_permanent_heap(&self) {
+        let old_permanent_bounds = self.old_permanent_space_bounds.clone();
+        let new_permanent_bounds = self.new_permanent_space_bounds.clone();
+
+        let mut current_ptr = old_permanent_bounds.start;
+        let mut dest_ptr = new_permanent_bounds.start;
+
+        while current_ptr < old_permanent_bounds.end {
+            // Move the old permanent heap item to the new permanent heap
+            let mut heap_item = HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
+            let (_, alloc_size) = Self::move_heap_item(&mut heap_item, &mut dest_ptr);
+
+            // Increment pointer to point to next old permanent heap item
+            current_ptr = unsafe { current_ptr.add(alloc_size) }
+        }
+
+        // Entire old permanent heap should have been copied 1:1 to the new permanent heap
+        debug_assert!(dest_ptr == new_permanent_bounds.end);
+    }
+
     #[inline]
     fn copy_or_fix_pointer(&mut self, heap_item: &mut HeapPtr<HeapItem>) {
-        // We only need to visit pointers to the from-space
-        if !self.is_in_from_space(heap_item.as_ptr() as *const _ as *const u8) {
+        let heap_item_ptr = heap_item.as_ptr() as *const _ as *const u8;
+
+        // We only need to visit pointers in a space that has had its objects moved. This is
+        // normally the to-space but may also include the permanent space if resizing.
+        if !self.is_in_moved_space(heap_item_ptr) {
             // The only valid pointers are either null, uninitialized (aka NonNull::dangling()), or
-            // pointers to the permanent space.
+            // pointers to the new permanent space.
             debug_assert!(
-                self.is_in_permanent_space(heap_item.as_ptr().cast_const().cast())
+                self.is_in_new_permanent_space(heap_item_ptr)
                     || heap_item.as_ptr() == NonNull::dangling().as_ptr()
                     || heap_item.as_ptr() as usize == 0
             );
@@ -165,20 +251,12 @@ impl GarbageCollector {
             return;
         }
 
-        // Calculate size of heap object. We are guaranteed to have enough space in the from-space
-        // since all allocations fit into the to-space.
-        let alloc_size = Heap::alloc_size_for_request_size(heap_item.byte_size());
+        // Move the heap item to the to-space. We are guaranteed to have enough space in the
+        // to-space since all allocations fit into the from-space.
+        let (new_heap_item, _) = Self::move_heap_item(heap_item, &mut self.alloc_ptr);
 
-        // Copy object from old to new heap, and bump alloc_ptr to point past new allocation
-        let new_heap_item = HeapPtr::from_ptr(self.alloc_ptr.cast_mut()).cast::<HeapItem>();
-        unsafe {
-            self.alloc_ptr = self.alloc_ptr.add(alloc_size);
-            std::ptr::copy_nonoverlapping::<u8>(
-                heap_item.as_ptr().cast(),
-                new_heap_item.as_ptr().cast(),
-                alloc_size,
-            );
-        }
+        // Rewrite pointer to old heap object to instead point to new heap object
+        *heap_item = new_heap_item;
 
         // Type specific actions for live objects. All weak objects must be collected in lists so
         // they can be traversed later.
@@ -197,29 +275,59 @@ impl GarbageCollector {
             ),
             _ => {}
         }
+    }
 
-        // Overwrite the descriptor inside the old heap object to be a forwarding pointer to
-        // new heap object.
+    /// Move a heap item to a destination address. Leaves a forwarding pointer at the old heap item
+    /// old heap item. Updates the destination address to point to the next heap-item-aligned
+    /// address after the new heap item.
+    ///
+    /// Return the new heap item and the allocation size for the heap item.
+    #[inline]
+    fn move_heap_item(
+        heap_item: &mut HeapPtr<HeapItem>,
+        dest_ptr: &mut *const u8,
+    ) -> (HeapPtr<HeapItem>, usize) {
+        // Calculate size of heap object. Caller must ensure that there is enough space at the
+        // destination to hold the moved object.
+        let alloc_size = Heap::alloc_size_for_request_size(heap_item.byte_size());
+
+        // Copy object from old to new heap, and bump alloc_ptr to point past new allocation
+        let new_heap_item = HeapPtr::from_ptr(dest_ptr.cast_mut()).cast::<HeapItem>();
+        unsafe {
+            std::ptr::copy_nonoverlapping::<u8>(
+                heap_item.as_ptr().cast(),
+                new_heap_item.as_ptr().cast(),
+                alloc_size,
+            );
+        }
+
+        // Overwrite the descriptor inside the old heap item to be a forwarding pointer to
+        // new heap item.
         let forwarding_pointer = encode_forwarding_pointer(new_heap_item);
         heap_item.set_descriptor(forwarding_pointer);
 
-        // Rewrite pointer to old heap object to instead point to new heap object
-        *heap_item = new_heap_item;
+        // Bump the `dest_ptr` to point to the next aligned address after the new heap item
+        unsafe { *dest_ptr = dest_ptr.add(alloc_size) };
+
+        (new_heap_item, alloc_size)
+    }
+
+    /// Whether a pointer is in a space that was moved. This includes the from space, as well as the
+    /// permanent space if the GC is a growing GC.
+    #[inline]
+    fn is_in_moved_space(&self, ptr: *const u8) -> bool {
+        (self.from_space_start_ptr <= ptr && ptr < self.from_space_end_ptr)
+            || (self.is_resizing() && self.is_in_old_permanent_space(ptr))
     }
 
     #[inline]
-    fn is_in_from_space(&self, ptr: *const u8) -> bool {
-        self.from_space_start_ptr <= ptr && ptr < self.from_space_end_ptr
+    fn is_in_old_permanent_space(&self, ptr: *const u8) -> bool {
+        self.old_permanent_space_bounds.contains(&ptr)
     }
 
     #[inline]
-    fn is_in_to_space(&self, ptr: *const u8) -> bool {
-        self.to_space_start_ptr <= ptr && ptr < self.to_space_end_ptr
-    }
-
-    #[inline]
-    fn is_in_permanent_space(&self, ptr: *const u8) -> bool {
-        self.permanent_start_ptr <= ptr && ptr < self.permanent_end_ptr
+    fn is_in_new_permanent_space(&self, ptr: *const u8) -> bool {
+        self.new_permanent_space_bounds.contains(&ptr)
     }
 
     // Add a weak ref to the linked list of weak refs that are live during this garbage collection.
@@ -261,7 +369,7 @@ impl GarbageCollector {
             debug_assert!(target.is_pointer());
             let target_ptr = target.as_pointer().as_ptr().cast();
 
-            if self.is_in_from_space(target_ptr) {
+            if self.is_in_moved_space(target_ptr) {
                 let target_descriptor = target.as_pointer().descriptor();
 
                 // Target is known to be live if it has already moved (and left a forwarding pointer)
@@ -289,7 +397,7 @@ impl GarbageCollector {
                 debug_assert!(weak_ref_value.is_pointer());
                 let weak_ref_value_ptr = weak_ref_value.as_pointer().as_ptr().cast();
 
-                if self.is_in_from_space(weak_ref_value_ptr) {
+                if self.is_in_moved_space(weak_ref_value_ptr) {
                     let weak_ref_descriptor = weak_ref_value.as_pointer().descriptor();
 
                     // Value is known to be live if it has already moved (and left a forwarding pointer)
@@ -321,7 +429,7 @@ impl GarbageCollector {
 
                 // Check if key was not live. If not, key should be garbage collected so remove
                 // entry from map. It is safe to remove during iteration for a BsHashMap.
-                if self.is_in_from_space(weak_key_ptr) {
+                if self.is_in_moved_space(weak_key_ptr) {
                     weak_map.weak_map_data().remove(weak_key);
                 }
             }
@@ -345,7 +453,7 @@ impl GarbageCollector {
                 let weak_key_ptr = weak_key_value.as_pointer().as_ptr().cast();
 
                 // Check if key has not yet been visited and moved to the to-space
-                if self.is_in_from_space(weak_key_ptr) {
+                if self.is_in_moved_space(weak_key_ptr) {
                     let weak_key_descriptor = weak_key_value.as_pointer().descriptor();
 
                     // Key is known to be live if it has already moved and left a forwarding
@@ -356,14 +464,14 @@ impl GarbageCollector {
                         found_new_live_value = true;
                         self.visit_value(value);
                     }
-                } else if self.is_in_permanent_space(weak_key_ptr) {
+                } else if self.is_in_old_permanent_space(weak_key_ptr) {
                     // Check if key was in the permanent space. If so its value is live and will
                     // always be visited.
                     //
                     // Note that we only need to visit the value if it is a pointer. Make sure to
                     // only count this as a new live value if it was not already moved.
                     if value.is_pointer()
-                        && self.is_in_from_space(value.as_pointer().as_ptr().cast())
+                        && self.is_in_moved_space(value.as_pointer().as_ptr().cast())
                     {
                         let value_descriptor = value.as_pointer().descriptor();
                         if decode_forwarding_pointer(value_descriptor).is_none() {
@@ -397,8 +505,8 @@ impl GarbageCollector {
                 debug_assert!(target_value.is_pointer());
                 let target_ptr = target_value.as_pointer().as_ptr().cast();
 
-                // Check if key has not yet been visited and moved to the to-space
-                if self.is_in_from_space(target_ptr) {
+                // Check if key has not yet been visited and moved
+                if self.is_in_moved_space(target_ptr) {
                     let target_descriptor = target_value.as_pointer().descriptor();
 
                     // Target is known to be live if it has already moved and left a forwarding
@@ -413,7 +521,7 @@ impl GarbageCollector {
                             self.visit_value(unregister_token);
                         }
                     }
-                } else if self.is_in_permanent_space(target_ptr) {
+                } else if self.is_in_old_permanent_space(target_ptr) {
                     // Check if target was in the permanent space. If so its unregister token is
                     // live and will always be visited.
                     //
@@ -421,7 +529,7 @@ impl GarbageCollector {
                     // to only count this as a new live token if it was not already moved.
                     if let Some(ref mut unregister_token) = cell.unregister_token {
                         if unregister_token.is_pointer()
-                            && self.is_in_from_space(unregister_token.as_pointer().as_ptr().cast())
+                            && self.is_in_moved_space(unregister_token.as_pointer().as_ptr().cast())
                         {
                             let token_descriptor = unregister_token.as_pointer().descriptor();
                             if decode_forwarding_pointer(token_descriptor).is_none() {
@@ -449,9 +557,9 @@ impl GarbageCollector {
                     debug_assert!(cell.target.is_pointer());
                     let target_ptr = cell.target.as_pointer().as_ptr().cast();
 
-                    // Check if target has already been visited and moved to the to-space. If not,
-                    // target should be garbage collected so remove cell from registry.
-                    if !self.is_in_to_space(target_ptr) {
+                    // Check if target has already been visited and moved. If not, target should be
+                    // garbage collected so remove cell from registry.
+                    if self.is_in_moved_space(target_ptr) {
                         // Enqueue cleanup callback, passing in the held value
                         cx.task_queue().enqueue_callback_1_task(
                             finalization_registry.cleanup_callback().into(),
@@ -474,7 +582,7 @@ impl GarbageCollector {
         for string_ref in string_set.clone().iter_mut_gc_unsafe() {
             let string_descriptor = string_ref.descriptor();
 
-            if self.is_in_from_space(string_ref.as_ptr().cast()) {
+            if self.is_in_moved_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
                     *string_ref = forwarding_ptr.cast::<FlatString>();
@@ -492,7 +600,7 @@ impl GarbageCollector {
         string_map.retain(|_, string_ref| {
             let string_descriptor = string_ref.descriptor();
 
-            if self.is_in_from_space(string_ref.as_ptr().cast()) {
+            if self.is_in_moved_space(string_ref.as_ptr().cast()) {
                 // String is known to be live if it has already moved (and left a forwarding pointer)
                 if let Some(forwarding_ptr) = decode_forwarding_pointer(string_descriptor) {
                     *string_ref = forwarding_ptr.cast::<FlatString>();

@@ -24,9 +24,8 @@ pub struct GarbageCollector {
     // Type of GC to run. Normal or grow.
     type_: GcType,
 
-    // Bound of the region we are copying from
-    from_space_start_ptr: *const u8,
-    from_space_end_ptr: *const u8,
+    // Bounds of the space we are copying from
+    from_space_bounds: Range<*const u8>,
 
     // Old bounds of the permanent space. For non-resizing GCs this is the same as the new bounds.
     old_permanent_space_bounds: Range<*const u8>,
@@ -64,21 +63,18 @@ pub enum GcType {
 
 impl GarbageCollector {
     fn new(cx: Context, type_: GcType, new_heap: Option<&Heap>) -> GarbageCollector {
-        let (from_space_start_ptr, from_space_end_ptr) = cx.heap.current_heap_bounds();
-
         let dest_heap = new_heap.unwrap_or(&cx.heap);
 
         // The to-space is either the next heap for a non-resizing GC, or the new starting
         // (aka current) heap for a resizing GC.
         let to_space_start_ptr = match new_heap {
-            None => cx.heap.next_heap_bounds().0,
-            Some(new_heap) => new_heap.current_heap_bounds().0,
+            None => cx.heap.next_heap_bounds().start,
+            Some(new_heap) => new_heap.current_heap_bounds().start,
         };
 
         GarbageCollector {
             type_,
-            from_space_start_ptr,
-            from_space_end_ptr,
+            from_space_bounds: cx.heap.current_heap_bounds(),
             old_permanent_space_bounds: cx.heap.permanent_heap_bounds(),
             new_permanent_space_bounds: dest_heap.permanent_heap_bounds(),
             fix_ptr: to_space_start_ptr,
@@ -97,52 +93,27 @@ impl GarbageCollector {
 
         let mut gc = Self::new(cx, type_, new_heap.as_ref());
 
-        // If resizing move the entire permanent space from the old to new heap
+        // If resizing first move the entire permanent space from the old to new heap
         if gc.is_resizing() {
             gc.move_permanent_heap();
         }
 
-        // Start moving the from-heap by first visiting roots in the context and moving their heap
-        // items to the to-heap.
-        cx.visit_roots_for_gc(&mut gc);
+        // Visit all roots and move them to the to-heap
+        gc.visit_all_roots(cx);
 
-        // Then visit all the roots in the permanent heap and copy their objects to the to-heap
-        gc.visit_permanent_heap_roots(gc.new_permanent_space_bounds.clone());
+        // Then use set of moved roots to find all remaining live items and move them to the to-heap
+        gc.move_all_live_items();
 
-        loop {
-            // Then start fixing all pointers in each new heap object until fix pointer catches up with
-            // alloc pointer, meaning all live objects have been copied and pointers have been fixed.
-            while gc.fix_ptr < gc.alloc_ptr {
-                let mut new_heap_item = HeapPtr::from_ptr(gc.fix_ptr.cast_mut()).cast::<HeapItem>();
-                new_heap_item.visit_pointers(&mut gc);
-
-                // Increment fix pointer to point to next new heap object
-                let alloc_size = Heap::alloc_size_for_request_size(new_heap_item.byte_size());
-                unsafe { gc.fix_ptr = gc.fix_ptr.add(alloc_size) }
-            }
-
-            // Visit ephemeron values that are known to be live due to live keys. Keep iterating
-            // until fixpoint where no new live keys are found.
-            if !gc.visit_live_weak_map_entries() && !gc.visit_live_finalization_registry_cells() {
-                break;
-            }
-        }
-
-        // Prune interned strings that are no longer referenced
-        gc.prune_weak_interned_strings(cx);
-
-        // Fix the weak objects, handling objects that have been garbage collected
-        gc.fix_weak_refs();
-        gc.fix_weak_sets();
-        gc.fix_weak_maps();
-        gc.fix_finalization_registries(cx);
+        // All live items have been identified and moved. We can now prune dead weak references and
+        // handle finalizers.
+        gc.prune_weak_reference_and_handle_finalizers(cx);
 
         // In GC stress test mode, overwrite the old heap with 0x01 bytes to try to catch reads from
         // pointers to the old heap.
         #[cfg(feature = "gc_stress_test")]
         {
             if cx.heap.gc_stress_test && matches!(gc.type_, GcType::Normal) {
-                let (start, _) = cx.heap.current_heap_bounds();
+                let start = cx.heap.current_heap_bounds().start;
                 unsafe {
                     std::ptr::write_bytes(start.cast_mut(), 0x01, cx.heap.bytes_allocated());
                 }
@@ -185,13 +156,25 @@ impl GarbageCollector {
         }
     }
 
-    /// Visit all the roots in the permanent heap and copy their objects to the to-heap.
+    /// Visit all roots, moving roots to the to-space and fixing pointers to the root to reflect the
+    /// new location.
+    ///
+    /// Roots may appear in the context or in the permanent space.
+    fn visit_all_roots(&mut self, mut cx: Context) {
+        cx.visit_roots_for_gc(self);
+        self.visit_permanent_heap_roots();
+    }
+
+    /// Visit all the root items in the permanent heap, moving the roots to the to-heap and fixing
+    /// pointers in the permanent heap to point to the new location of the root.
     ///
     /// The permanent heap may contain pointers into the semispaces if a permanent heap object was
     /// mutated.
-    fn visit_permanent_heap_roots(&mut self, permanent_heap_bounds: Range<*const u8>) {
-        let mut current_ptr = permanent_heap_bounds.start;
-        while current_ptr < permanent_heap_bounds.end {
+    fn visit_permanent_heap_roots(&mut self) {
+        let mut current_ptr = self.new_permanent_space_bounds.start;
+        let end_ptr = self.new_permanent_space_bounds.end;
+
+        while current_ptr < end_ptr {
             let mut permanent_heap_item =
                 HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
             permanent_heap_item.visit_pointers(self);
@@ -199,6 +182,33 @@ impl GarbageCollector {
             // Increment current pointer to point to next permanent heap object
             let alloc_size = Heap::alloc_size_for_request_size(permanent_heap_item.byte_size());
             unsafe { current_ptr = current_ptr.add(alloc_size) }
+        }
+    }
+
+    /// Move all remaining live items from the from-heap to the to-heap, fixing pointers to point to
+    /// the to-heap.
+    ///
+    /// Iterates until all live items have been discovered. Liveness includes ephemeron handling.
+    fn move_all_live_items(&mut self) {
+        loop {
+            // Then start fixing all pointers in each new heap object until fix pointer catches up with
+            // alloc pointer, meaning all live objects have been copied and pointers have been fixed.
+            while self.fix_ptr < self.alloc_ptr {
+                let mut new_heap_item =
+                    HeapPtr::from_ptr(self.fix_ptr.cast_mut()).cast::<HeapItem>();
+                new_heap_item.visit_pointers(self);
+
+                // Increment fix pointer to point to next new heap object
+                let alloc_size = Heap::alloc_size_for_request_size(new_heap_item.byte_size());
+                unsafe { self.fix_ptr = self.fix_ptr.add(alloc_size) }
+            }
+
+            // Visit ephemeron values that are known to be live due to live keys. Keep iterating
+            // until fixpoint where no new live keys are found.
+            if !self.visit_live_weak_map_entries() && !self.visit_live_finalization_registry_cells()
+            {
+                break;
+            }
         }
     }
 
@@ -312,12 +322,9 @@ impl GarbageCollector {
         (new_heap_item, alloc_size)
     }
 
-    /// Whether a pointer is in a space that was moved. This includes the from space, as well as the
-    /// permanent space if the GC is a growing GC.
     #[inline]
-    fn is_in_moved_space(&self, ptr: *const u8) -> bool {
-        (self.from_space_start_ptr <= ptr && ptr < self.from_space_end_ptr)
-            || (self.is_resizing() && self.is_in_old_permanent_space(ptr))
+    fn is_in_from_space(&self, ptr: *const u8) -> bool {
+        self.from_space_bounds.contains(&ptr)
     }
 
     #[inline]
@@ -328,6 +335,13 @@ impl GarbageCollector {
     #[inline]
     fn is_in_new_permanent_space(&self, ptr: *const u8) -> bool {
         self.new_permanent_space_bounds.contains(&ptr)
+    }
+
+    /// Whether a pointer is in a space that was moved. This includes the from space, as well as the
+    /// permanent space if the GC is a growing GC.
+    #[inline]
+    fn is_in_moved_space(&self, ptr: *const u8) -> bool {
+        self.is_in_from_space(ptr) || (self.is_resizing() && self.is_in_old_permanent_space(ptr))
     }
 
     // Add a weak ref to the linked list of weak refs that are live during this garbage collection.
@@ -356,6 +370,17 @@ impl GarbageCollector {
     ) {
         finalization_registry.set_next_finalization_registry(self.finalization_registry_list);
         self.finalization_registry_list = Some(finalization_registry);
+    }
+
+    fn prune_weak_reference_and_handle_finalizers(&mut self, cx: Context) {
+        // Prune interned strings that are no longer referenced
+        self.prune_weak_interned_strings(cx);
+
+        // Fix the weak objects, handling objects that have been garbage collected
+        self.fix_weak_refs();
+        self.fix_weak_sets();
+        self.fix_weak_maps();
+        self.fix_finalization_registries(cx);
     }
 
     // Visit live weak refs and check if their targets are still live. Should only be called after

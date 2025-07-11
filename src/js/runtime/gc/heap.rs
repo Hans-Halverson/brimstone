@@ -290,12 +290,12 @@ impl Heap {
         self.heap_start
     }
 
-    pub fn current_heap_bounds(&self) -> (*const u8, *const u8) {
-        (self.start, self.end)
+    pub fn current_heap_bounds(&self) -> Range<*const u8> {
+        self.start..self.end
     }
 
-    pub fn next_heap_bounds(&self) -> (*const u8, *const u8) {
-        (self.next_heap_start, self.next_heap_end)
+    pub fn next_heap_bounds(&self) -> Range<*const u8> {
+        self.next_heap_start..self.next_heap_end
     }
 
     pub fn permanent_heap_bounds(&self) -> Range<*const u8> {

@@ -151,7 +151,7 @@ pub fn create_dynamic_function(
 
     let analyzed_result = match analyze_function_for_function_constructor(&full_pcx, parse_result) {
         Ok(analyzed_result) => analyzed_result,
-        Err(errs) => return syntax_error(cx, &format!("could not parse function: {}", errs)),
+        Err(errs) => return syntax_error(cx, &format!("could not parse function: {errs}")),
     };
 
     // Create function object

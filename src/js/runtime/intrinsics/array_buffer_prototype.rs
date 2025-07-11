@@ -277,5 +277,5 @@ fn require_array_buffer(
         }
     }
 
-    type_error(cx, &format!("ArrayBuffer.prototype.{} expected ArrayBuffer", method_name))
+    type_error(cx, &format!("ArrayBuffer.prototype.{method_name} expected ArrayBuffer"))
 }

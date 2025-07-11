@@ -86,7 +86,7 @@ impl<'a> Printer<'a> {
 
         // Write loc as string in concise format
         self.indent();
-        self.string(&format!("loc: \"{}:{}-{}:{}\",\n", start_line, start_col, end_line, end_col));
+        self.string(&format!("loc: \"{start_line}:{start_col}-{end_line}:{end_col}\",\n"));
     }
 
     fn start_regexp_node(&mut self, name: &str) {
@@ -1338,7 +1338,7 @@ impl<'a> Printer<'a> {
             ClassRange::Range(start, end) => {
                 let start_string = to_string_or_unicode_escape_sequence(*start);
                 let end_string = to_string_or_unicode_escape_sequence(*end);
-                self.print_str(&format!("Range({}, {})", start_string, end_string))
+                self.print_str(&format!("Range({start_string}, {end_string})"))
             }
             ClassRange::Digit => self.print_str("\\d"),
             ClassRange::NotDigit => self.print_str("\\D"),
@@ -1347,10 +1347,10 @@ impl<'a> Printer<'a> {
             ClassRange::Whitespace => self.print_str("\\s"),
             ClassRange::NotWhitespace => self.print_str("\\S"),
             ClassRange::UnicodeProperty(property) => {
-                self.print_str(&format!("UnicodeProperty({:?})", property))
+                self.print_str(&format!("UnicodeProperty({property:?})"))
             }
             ClassRange::NotUnicodeProperty(property) => {
-                self.print_str(&format!("NotUnicodeProperty({:?})", property))
+                self.print_str(&format!("NotUnicodeProperty({property:?})"))
             }
             ClassRange::NestedClass(class) => self.print_regexp_character_class(class),
             ClassRange::StringDisjunction(disjunction) => {

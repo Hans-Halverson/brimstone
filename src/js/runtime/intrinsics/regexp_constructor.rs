@@ -236,7 +236,7 @@ impl RegExpConstructor {
             if escaped.is_empty()
                 && (is_ascii_alphabetic(code_point) || is_decimal_digit(code_point))
             {
-                escaped.push_str(&format!("\\x{:x}", code_point));
+                escaped.push_str(&format!("\\x{code_point:x}"));
                 continue;
             }
 
@@ -256,7 +256,7 @@ impl RegExpConstructor {
                 // Other punctuators are `\x` escaped
                 ',' | '-' | '=' | '<' | '>' | '#' | '&' | '!' | '%' | ':' | ';' | '@' | '~'
                 | '\'' | '`' | '\"' => {
-                    escaped.push_str(&format!("\\x{:2x}", code_point));
+                    escaped.push_str(&format!("\\x{code_point:2x}"));
                 }
                 // Newlines, whitespace, and surrogate code points are either `\x` or `\u` escaped
                 // as appropriate.
@@ -265,9 +265,9 @@ impl RegExpConstructor {
                     || is_surrogate_code_point(code_point) =>
                 {
                     if is_latin1(code_point) {
-                        escaped.push_str(&format!("\\x{:2x}", code_point));
+                        escaped.push_str(&format!("\\x{code_point:2x}"));
                     } else {
-                        escaped.push_str(&format!("\\u{:4x}", code_point));
+                        escaped.push_str(&format!("\\u{code_point:4x}"));
                     }
                 }
                 // Otherwise code point does not need to be escaped

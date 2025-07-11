@@ -186,7 +186,7 @@ impl fmt::Display for PropertyKey {
         } else {
             match self.as_symbol().description_ptr() {
                 None => write!(f, "Symbol()"),
-                Some(description) => write!(f, "Symbol({})", description),
+                Some(description) => write!(f, "Symbol({description})"),
             }
         }
     }

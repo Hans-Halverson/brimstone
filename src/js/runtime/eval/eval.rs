@@ -281,5 +281,5 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
-    syntax_error(cx, &format!("identifier '{}' has already been declared", name))
+    syntax_error(cx, &format!("identifier '{name}' has already been declared"))
 }

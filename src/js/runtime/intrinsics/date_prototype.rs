@@ -1246,7 +1246,7 @@ impl DatePrototype {
 
         let year = year_from_time(date_value) as i64;
         let year_string = if (0..=9999).contains(&year) {
-            format!("{:04}", year)
+            format!("{year:04}")
         } else {
             let year_sign = if year.is_positive() { '+' } else { '-' };
 
@@ -1539,7 +1539,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
     let minute = minute_from_time(offset);
 
     string.push(sign);
-    string.push_str(&format!("{:02}{:02}", hour, minute));
+    string.push_str(&format!("{hour:02}{minute:02}"));
 }
 
 /// ToDateString (https://tc39.es/ecma262/#sec-todatestring)

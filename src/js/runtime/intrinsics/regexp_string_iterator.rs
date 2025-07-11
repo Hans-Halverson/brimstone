@@ -132,7 +132,7 @@ impl RegExpStringIteratorPrototype {
         let match_string = to_string(cx, match_string)?;
 
         // Increment the lastIndex if the empty string was matched to avoid infinite loops
-        if match_string.len() == 0 {
+        if match_string.is_empty() {
             let last_index = get(cx, regexp_object, cx.names.last_index())?;
             let last_index = to_length(cx, last_index)?;
 

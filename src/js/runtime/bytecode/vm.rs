@@ -4174,7 +4174,7 @@ impl VM {
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
 
-        reference_error(self.cx(), &format!("can't access `{}` before initialization", name))
+        reference_error(self.cx(), &format!("can't access `{name}` before initialization"))
     }
 
     #[inline]

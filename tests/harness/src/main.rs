@@ -153,7 +153,7 @@ fn main() {
     match main_impl() {
         Ok(_) => (),
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             std::process::exit(1);
         }
     }

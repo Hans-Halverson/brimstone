@@ -205,7 +205,7 @@ impl Handle<Realm> {
     ) -> EvalResult<()> {
         for name in names {
             if self.get_lexical_name(*name).is_some() {
-                return syntax_error(cx, &format!("redeclaration of {}", name));
+                return syntax_error(cx, &format!("redeclaration of {name}"));
             }
         }
 

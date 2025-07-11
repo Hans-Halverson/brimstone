@@ -520,7 +520,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
                 let num_bytes = encode_utf8_codepoint(&mut buf, code_point);
 
                 for byte in &buf[..num_bytes] {
-                    encoded_string.push_str(&format!("%{:02X}", byte));
+                    encoded_string.push_str(&format!("%{byte:02X}"));
                 }
             }
         }

@@ -2102,7 +2102,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
             printer.write_indent();
             printer.inc_indent();
 
-            printer.write(&format!(".L{}:\n", label_index));
+            printer.write(&format!(".L{label_index}:\n"));
         }
 
         // First print the padded instruction offset
@@ -2112,7 +2112,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
         if !printer.ignore_raw_bytes() {
             // Then print the raw bytes of the instruction
             for byte in &bytecode[offset..next_offset] {
-                printer.write(&format!("{:02x} ", byte));
+                printer.write(&format!("{byte:02x} "));
             }
 
             // Pad the raw bytes to the max instruction length
@@ -2130,7 +2130,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
             let target_offset = (offset as isize + jump_offset) as usize;
             let target_label = jump_targets[&target_offset];
 
-            printer.write(&format!(" (.L{})", target_label));
+            printer.write(&format!(" (.L{target_label})"));
         }
 
         printer.write("\n");

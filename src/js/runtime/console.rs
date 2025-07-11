@@ -44,7 +44,7 @@ impl ConsoleObject {
             .collect::<Vec<String>>()
             .join(" ");
 
-        println!("{}", formatted);
+        println!("{formatted}");
 
         Ok(cx.undefined())
     }
@@ -57,7 +57,7 @@ pub fn to_console_string(cx: Context, value: Handle<Value>, opts: &FormatOptions
             ObjectKind::String => format!("{}", value.as_string()),
             ObjectKind::Symbol => match value.as_symbol().description_ptr() {
                 None => String::from("Symbol()"),
-                Some(description) => format!("Symbol({})", description),
+                Some(description) => format!("Symbol({description})"),
             },
             ObjectKind::BigInt => format!("{}n", value.as_bigint().bigint()),
             // Otherwise must be an object

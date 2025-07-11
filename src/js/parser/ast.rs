@@ -350,7 +350,7 @@ impl<'a> TaggedResolvedScope<'a> {
     }
 
     pub const fn unresolved_dynamic() -> TaggedResolvedScope<'a> {
-        TaggedResolvedScope { ptr: 1 as *mut u8, data: PhantomData }
+        TaggedResolvedScope { ptr: std::ptr::dangling_mut::<u8>(), data: PhantomData }
     }
 
     pub const fn resolved(scope: AstPtr<AstScopeNode>) -> TaggedResolvedScope {

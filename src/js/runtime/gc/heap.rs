@@ -1,14 +1,14 @@
-use std::{alloc::Layout, mem::size_of, ptr::NonNull};
+use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 
 use crate::{
-    common::serialized_heap::SerializedHeap,
+    common::{constants::MAX_HEAP_SIZE, serialized_heap::SerializedHeap},
     runtime::{gc::garbage_collector::GarbageCollector, Context},
 };
 
 use super::{
     handle::HandleContext,
     heap_serializer::{calculate_extra_offset, HeapSpaceDeserializer},
-    HeapPtr, HeapVisitor,
+    GcType, HeapPtr, HeapVisitor,
 };
 
 /// Heap Layout:
@@ -142,6 +142,57 @@ impl Heap {
         self.debug_assert_heap_well_formed();
     }
 
+    /// Create a new heap for a resizing GC, provided the old heap and the new heap size.
+    pub fn new_for_resize(prev_heap: &Heap, new_size: usize) -> Heap {
+        debug_assert!(new_size.is_power_of_two());
+
+        let mut new_heap = Self::new(new_size);
+
+        // Copy the old HeapInfo into the new heap
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                prev_heap.heap_start,
+                new_heap.heap_start.cast_mut(),
+                size_of::<HeapInfo>(),
+            )
+        };
+
+        // Set up bounds of the new permanent semispace
+        new_heap.permanent_start = unsafe {
+            let offset = prev_heap.permanent_start.offset_from(prev_heap.heap_start);
+            new_heap.heap_start.offset(offset)
+        };
+        new_heap.permanent_end = unsafe {
+            new_heap
+                .permanent_start
+                .add(prev_heap.permanent_bytes_allocated())
+        };
+
+        // Calculate size of each new semispace. Make sure that we can evenly divide the remaining
+        // heap into semispaces with the correct alignment and the exact same size.
+        let semispaces_start = align_pointer_up(new_heap.permanent_end, HEAP_ITEM_ALIGNMENT * 2);
+        let semispaces_start_offset = semispaces_start as usize - new_heap.heap_start as usize;
+        let semispace_size = (new_heap.heap_size() - semispaces_start_offset) / 2;
+
+        // Set up bounds of the new semispaces
+        new_heap.start = semispaces_start;
+        new_heap.current = new_heap.start;
+        new_heap.end = unsafe { semispaces_start.add(semispace_size) };
+
+        new_heap.next_heap_start = align_pointer_up(new_heap.end, HEAP_ITEM_ALIGNMENT);
+        new_heap.next_heap_end = unsafe { new_heap.next_heap_start.add(semispace_size) };
+
+        // Set additional GC flags
+        #[cfg(feature = "gc_stress_test")]
+        {
+            new_heap.gc_stress_test = prev_heap.gc_stress_test;
+        }
+
+        new_heap.debug_assert_heap_well_formed();
+
+        new_heap
+    }
+
     fn debug_assert_heap_well_formed(&self) {
         // The semispaces must not extend beyond the end of the heap
         debug_assert!(self.end <= self.heap_end);
@@ -156,6 +207,9 @@ impl Heap {
             self.end as usize - self.start as usize,
             self.next_heap_end as usize - self.next_heap_start as usize
         );
+
+        // The current pointer must be within the bounds of the current semispace
+        debug_assert!(self.current >= self.start && self.current < self.end);
     }
 
     #[inline]
@@ -178,7 +232,7 @@ impl Heap {
         // Run a GC on every allocation in stress test mode
         #[cfg(feature = "gc_stress_test")]
         if cx.heap.gc_stress_test {
-            Self::run_gc(cx);
+            Self::run_gc(cx, GcType::Normal);
         }
 
         // Ensure that this direct reference to heap is not used after a GC or allocation
@@ -191,7 +245,13 @@ impl Heap {
             let next_current = start.add(alloc_size);
             if (next_current as usize) > (heap.end as usize) {
                 // If there is not room run a gc cycle
-                Self::run_gc(cx);
+
+                // Resize the heap
+                if cx.heap.heap_size() < MAX_HEAP_SIZE {
+                    Self::run_gc(cx, GcType::Grow { alloc_size: Some(alloc_size) });
+                } else {
+                    Self::run_gc(cx, GcType::Normal);
+                }
 
                 // Make sure there is enough space for allocation after gc, otherwise we are out of
                 // heap memory.
@@ -208,8 +268,8 @@ impl Heap {
         }
     }
 
-    pub fn run_gc(cx: Context) {
-        GarbageCollector::run(cx)
+    pub fn run_gc(cx: Context, type_: GcType) {
+        GarbageCollector::run(cx, type_)
     }
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {
@@ -238,8 +298,8 @@ impl Heap {
         (self.next_heap_start, self.next_heap_end)
     }
 
-    pub fn permanent_heap_bounds(&self) -> (*const u8, *const u8) {
-        (self.permanent_start, self.permanent_end)
+    pub fn permanent_heap_bounds(&self) -> Range<*const u8> {
+        self.permanent_start..self.permanent_end
     }
 
     pub fn permanent_heap(&self) -> &[u8] {
@@ -293,6 +353,11 @@ impl Heap {
         self.next_heap_end = old_end;
 
         self.current = free_space_start_ptr;
+    }
+
+    pub fn finish_resized_heap(&mut self, free_space_start_ptr: *const u8) {
+        self.current = free_space_start_ptr;
+        self.debug_assert_heap_well_formed();
     }
 
     pub fn alloc_size_for_request_size(request_byte_size: usize) -> usize {

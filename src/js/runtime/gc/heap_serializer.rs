@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-use super::{Heap, HeapInfo, HeapItem, HeapPtr, HeapVisitor};
+use super::{GcType, Heap, HeapInfo, HeapItem, HeapPtr, HeapVisitor};
 
 pub struct HeapSerializer {
     cx: Context,
@@ -64,12 +64,12 @@ impl HeapSerializer {
         cx.interned_strings.generator_cache_mut().clear();
 
         // First run a GC to only serialize live data in heap
-        Heap::run_gc(cx);
+        Heap::run_gc(cx, GcType::Normal);
 
         // Then must ensure that the current semispace is adjacent to the permanent semispace,
         // running another GC if necessary to swap the semispaces.
         if !cx.heap.is_current_before_next() {
-            Heap::run_gc(cx);
+            Heap::run_gc(cx, GcType::Normal);
         }
 
         let mut serializer = Self::new(cx);
@@ -117,7 +117,7 @@ impl HeapSerializer {
     }
 
     pub fn as_serialized(&self) -> SerializedHeap {
-        let permanent_start = self.cx.heap.permanent_heap_bounds().0;
+        let permanent_start = self.cx.heap.permanent_heap_bounds().start;
         let current_start = self.cx.heap.current_used_heap_bounds().0;
 
         let permanent_offset = permanent_start as usize - self.base as usize;

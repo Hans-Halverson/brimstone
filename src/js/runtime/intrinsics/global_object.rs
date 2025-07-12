@@ -420,22 +420,50 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
             } else if (first_byte & 0xE0) == 0xC0 {
                 // Two byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x1F) << 6;
+
+                // Check for overlong encoding
+                if code_point == 0 {
+                    return uri_error(cx, "Invalid URI escape sequence");
+                }
+
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
 
                 decoded_string.push(code_point);
             } else if (first_byte & 0xF0) == 0xE0 {
                 // Three byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x0F) << 12;
+
+                // Check for overlong encoding
+                if code_point == 0 {
+                    return uri_error(cx, "Invalid URI escape sequence");
+                }
+
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                // Check for surrogate code points
+                if char::from_u32(code_point).is_none() {
+                    return uri_error(cx, "Invalid URI escape sequence");
+                }
 
                 decoded_string.push(code_point);
             } else if (first_byte & 0xF8) == 0xF0 {
                 // Four byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x07) << 18;
+
+                // Check for overlong encoding
+                if code_point == 0 {
+                    return uri_error(cx, "Invalid URI escape sequence");
+                }
+
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 12;
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                // Verify code point is in range
+                if char::from_u32(code_point).is_none() {
+                    return uri_error(cx, "Invalid URI escape sequence");
+                }
 
                 decoded_string.push(code_point);
             } else {

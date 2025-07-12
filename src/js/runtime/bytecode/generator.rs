@@ -7314,7 +7314,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let stmt_completion = self.gen_statement_list(&stmt.body)?;
 
         // End of block scope
-        if !stmt_completion.is_abrupt() {
+        if stmt_completion.is_abrupt() {
+            // All abrupt completions separately handle generating instructions to pop the scope if
+            // necessary. Return and throw completions do not generate unwinding instructions, while
+            // break and continue completions will unwind the scope chain in `gen_jump_target`.
+            if block_scope.vm_scope_id().is_some() {
+                self.unwind_scope_chain_one_level();
+            }
+        } else {
             self.gen_scope_end(block_scope);
         }
 
@@ -7537,9 +7544,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.pop_scope_instruction();
 
             if unwind {
-                self.scope = self.scope.parent.clone().unwrap();
+                self.unwind_scope_chain_one_level();
             }
         }
+    }
+
+    fn unwind_scope_chain_one_level(&mut self) {
+        self.scope = self.scope.parent.clone().unwrap();
     }
 
     fn gen_start_global_scope(&mut self, scope: &'a AstScopeNode<'a>) -> EmitResult<()> {

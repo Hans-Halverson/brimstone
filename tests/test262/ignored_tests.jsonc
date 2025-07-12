@@ -8,6 +8,37 @@
       //
       ////////////////////////////////////////
 
+      // Do not call well-known symbols on primitives for string methods (https://github.com/tc39/test262/pull/4404)
+      "built-ins/String/prototype/match/cstm-matcher-on-bigint-primitive.js",
+      "built-ins/String/prototype/match/cstm-matcher-on-boolean-primitive.js",
+      "built-ins/String/prototype/match/cstm-matcher-on-number-primitive.js",
+      "built-ins/String/prototype/match/cstm-matcher-on-string-primitive.js",
+      "built-ins/String/prototype/matchAll/cstm-matchall-on-bigint-primitive.js",
+      "built-ins/String/prototype/matchAll/cstm-matchall-on-number-primitive.js",
+      "built-ins/String/prototype/matchAll/cstm-matchall-on-string-primitive.js",
+      "built-ins/String/prototype/replace/cstm-replace-on-bigint-primitive.js",
+      "built-ins/String/prototype/replace/cstm-replace-on-boolean-primitive.js",
+      "built-ins/String/prototype/replace/cstm-replace-on-number-primitive.js",
+      "built-ins/String/prototype/replace/cstm-replace-on-string-primitive.js",
+      "built-ins/String/prototype/replaceAll/cstm-replaceall-on-bigint-primitive.js",
+      "built-ins/String/prototype/replaceAll/cstm-replaceall-on-boolean-primitive.js",
+      "built-ins/String/prototype/replaceAll/cstm-replaceall-on-number-primitive.js",
+      "built-ins/String/prototype/replaceAll/cstm-replaceall-on-string-primitive.js",
+      "built-ins/String/prototype/search/cstm-search-on-bigint-primitive.js",
+      "built-ins/String/prototype/search/cstm-search-on-boolean-primitive.js",
+      "built-ins/String/prototype/search/cstm-search-on-number-primitive.js",
+      "built-ins/String/prototype/search/cstm-search-on-string-primitive.js",
+      "built-ins/String/prototype/split/cstm-split-on-bigint-primitive.js",
+      "built-ins/String/prototype/split/cstm-split-on-boolean-primitive.js",
+      "built-ins/String/prototype/split/cstm-split-on-number-primitive.js",
+      "built-ins/String/prototype/split/cstm-split-on-string-primitive.js",
+
+      // The newTarget getter must not be evaluated if argument processing throws an error before AllocateTypedArray is reached
+      "built-ins/TypedArrayConstructors/ctors/typedarray-arg/throw-type-error-before-custom-proto-access.js",
+
+      // decodeURIComponent should throw URIError for various invalid UTF-8 sequences
+      "built-ins/decodeURIComponent/throw-URIError.js",
+
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 
@@ -239,6 +270,7 @@
       "legacy-regexp",
       "source-phase-imports",
       "uint8array-base64",
+      "upsert",
       "Array.fromAsync",
       "Atomics.pause",
       "Error.isError",

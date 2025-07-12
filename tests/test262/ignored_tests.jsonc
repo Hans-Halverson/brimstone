@@ -8,9 +8,6 @@
       //
       ////////////////////////////////////////
 
-      // The newTarget getter must not be evaluated if argument processing throws an error before AllocateTypedArray is reached
-      "built-ins/TypedArrayConstructors/ctors/typedarray-arg/throw-type-error-before-custom-proto-access.js",
-
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 

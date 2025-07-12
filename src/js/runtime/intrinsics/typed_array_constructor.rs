@@ -628,13 +628,13 @@ macro_rules! create_typed_array_constructor {
                     return Self::allocate_with_length(cx, new_target, 0);
                 }
 
-                let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype)?;
-
                 let argument = get_argument(cx, arguments, 0);
                 if !argument.is_object() {
                     let length = to_index(cx, argument)?;
                     return Self::allocate_with_length(cx, new_target, length);
                 }
+
+                let proto = get_prototype_from_constructor(cx, new_target, Intrinsic::$prototype)?;
 
                 let argument = argument.as_object();
                 if argument.is_typed_array() {

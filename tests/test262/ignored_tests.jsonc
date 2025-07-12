@@ -242,7 +242,6 @@
       "upsert",
       "Array.fromAsync",
       "Atomics.pause",
-      "Error.isError",
       "FinalizationRegistry.prototype.cleanupSome",
       "Intl.DurationFormat",
       "Intl.Locale-info",

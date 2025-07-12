@@ -283,6 +283,7 @@ builtin_names!(
     (is, "is"),
     (is_array, "isArray"),
     (is_concat_spreadable, "isConcatSpreadable"),
+    (is_error, "isError"),
     (is_extensible, "isExtensible"),
     (is_finite, "isFinite"),
     (is_frozen, "isFrozen"),

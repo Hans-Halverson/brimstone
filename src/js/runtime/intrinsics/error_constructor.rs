@@ -133,6 +133,8 @@ impl ErrorConstructor {
             realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
         );
 
+        func.intrinsic_func(cx, cx.names.is_error(), Self::is_error, 1, realm);
+
         func
     }
 
@@ -170,6 +172,21 @@ impl ErrorConstructor {
         install_error_cause(cx, object, options_arg)?;
 
         Ok(object.as_value())
+    }
+
+    /// Error.isError (https://tc39.es/ecma262/#sec-error.iserror)
+    pub fn is_error(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let arg = get_argument(cx, arguments, 0);
+
+        if !arg.is_object() {
+            return Ok(cx.bool(false));
+        }
+
+        Ok(cx.bool(arg.as_object().is_error()))
     }
 }
 

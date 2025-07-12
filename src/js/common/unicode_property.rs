@@ -1,6 +1,6 @@
 use icu_collections::codepointinvlist::CodePointInversionListBuilder;
 use icu_properties::{
-    props::{GeneralCategory, GeneralCategoryGroup, Script},
+    props::{GeneralCategoryGroup, Script},
     CodePointSetDataBorrowed,
 };
 
@@ -568,18 +568,11 @@ fn add_general_category_group_to_set(
     set_builder: &mut CodePointInversionListBuilder,
     general_category_group: GeneralCategoryGroup,
 ) {
-    // Find the general categories which are a part of this group by iterating through all general
-    // categories.
-    for general_category in GeneralCategory::ALL_VALUES {
-        if general_category_group.contains(*general_category) {
-            // Add the set of code points for this general category to the set builder.
-            let general_category_set = ICU
-                .general_categories
-                .classifier
-                .get_set_for_value(*general_category);
-            set_builder.add_set(&general_category_set.to_code_point_inversion_list());
-        }
-    }
+    let set = ICU
+        .general_categories
+        .classifier
+        .get_set_for_value_group(general_category_group);
+    set_builder.add_set(&set.to_code_point_inversion_list());
 }
 
 /// A script property with or without extensions

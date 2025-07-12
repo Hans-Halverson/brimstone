@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
-use icu_casemap::CaseMapper;
-use icu_collator::{Collator, CollatorOptions};
+use icu_casemap::{CaseMapper, CaseMapperBorrowed};
+use icu_collator::{options::CollatorOptions, Collator};
 use icu_locale::{locale, Locale};
 use icu_normalizer::{
     ComposingNormalizer, ComposingNormalizerBorrowed, DecomposingNormalizer,
@@ -25,7 +25,7 @@ pub struct ICU {
     pub properties: Properties,
     pub normalizers: Normalizers,
     pub collator: Collator,
-    pub case_mapper: CaseMapper,
+    pub case_mapper: CaseMapperBorrowed<'static>,
 }
 
 pub struct GeneralCategories {
@@ -241,6 +241,10 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     static NFKD: LazyLock<DecomposingNormalizer> =
         LazyLock::new(|| DecomposingNormalizer::try_new_nfkd_unstable(&BakedDataProvider).unwrap());
 
+    // Case mapper
+    static CASE_MAPPER: LazyLock<CaseMapper> =
+        LazyLock::new(|| CaseMapper::try_new_unstable(&BakedDataProvider).unwrap());
+
     ICU {
         general_categories: GeneralCategories { classifier: GENERAL_CATEGORIES_MAP.as_borrowed() },
         scripts: Scripts {
@@ -312,6 +316,6 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
             CollatorOptions::default(),
         )
         .unwrap(),
-        case_mapper: CaseMapper::try_new_unstable(&BakedDataProvider).unwrap(),
+        case_mapper: CASE_MAPPER.as_borrowed(),
     }
 });

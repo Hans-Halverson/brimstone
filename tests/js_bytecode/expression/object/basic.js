@@ -36,3 +36,15 @@ function propertyNamesNotResolved() {
   // TDZ check needed
   const { b, c } = { b, d: c };
 }
+
+function temporaryRegisterToAvoidClobbering() {
+  var local = 1;
+  // Intermediate object is written to a temporary to avoid clobbering
+  local = { prop: 2 };
+}
+
+function noTemporaryRegisterNeededForEmptyObject() {
+  var local = 1;
+  // Intermediate object is not needed if object is empty since no observable clobbering can occur
+  local = {};
+}

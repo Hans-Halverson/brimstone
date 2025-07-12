@@ -16,10 +16,14 @@
     39: StoreGlobal r0, c13
     42: NewClosure r0, c14
     45: StoreGlobal r0, c15
-    48: LoadImmediate r0, 0
-    51: StoreGlobal r0, c16
-    54: LoadUndefined r0
-    56: Ret r0
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: LoadImmediate r0, 0
+    63: StoreGlobal r0, c20
+    66: LoadUndefined r0
+    68: Ret r0
   Constant Table:
     0: [BytecodeFunction: emptyObject]
     1: [String: emptyObject]
@@ -37,7 +41,11 @@
     13: [String: proto]
     14: [BytecodeFunction: propertyNamesNotResolved]
     15: [String: propertyNamesNotResolved]
-    16: [String: global]
+    16: [BytecodeFunction: temporaryRegisterToAvoidClobbering]
+    17: [String: temporaryRegisterToAvoidClobbering]
+    18: [BytecodeFunction: noTemporaryRegisterNeededForEmptyObject]
+    19: [String: noTemporaryRegisterNeededForEmptyObject]
+    20: [String: global]
 }
 
 [BytecodeFunction: emptyObject] {
@@ -153,4 +161,25 @@
     1: [String: b]
     2: [String: d]
     3: [String: c]
+}
+
+[BytecodeFunction: temporaryRegisterToAvoidClobbering] {
+  Parameters: 0, Registers: 3
+     0: LoadImmediate r0, 1
+     3: NewObject r1
+     5: LoadImmediate r2, 2
+     8: DefineNamedProperty r1, c0, r2
+    12: Mov r0, r1
+    15: LoadUndefined r1
+    17: Ret r1
+  Constant Table:
+    0: [String: prop]
+}
+
+[BytecodeFunction: noTemporaryRegisterNeededForEmptyObject] {
+  Parameters: 0, Registers: 2
+    0: LoadImmediate r0, 1
+    3: NewObject r0
+    5: LoadUndefined r1
+    7: Ret r1
 }

@@ -3875,7 +3875,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         elements: &[ArrayElement<'a>],
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        let array = self.allocate_destination(dest)?;
+        // Evaluating an element may throw, so if there are elements we must make sure that the
+        // intermediate array value does not observably clobber the destination register.
+        let array_dest = if elements.is_empty() {
+            dest
+        } else {
+            self.gen_ensure_dest_is_temporary(dest)
+        };
+
+        let array = self.allocate_destination(array_dest)?;
         self.writer.new_array_instruction(array);
 
         // Fast path for empty arrays
@@ -3966,7 +3974,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.register_allocator.release(index);
 
-        Ok(array)
+        self.gen_mov_reg_to_dest(array, dest)
     }
 
     fn gen_object_literal(
@@ -3977,7 +3985,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let body_scope = expr.scope.as_ref();
         self.gen_scope_start(body_scope, None)?;
 
-        let object = self.allocate_destination(dest)?;
+        // Evaluating a property may throw, so if there are properties we must make sure that the
+        // intermediate object value does not observably clobber the destination register.
+        let object_dest = if expr.properties.is_empty() {
+            dest
+        } else {
+            self.gen_ensure_dest_is_temporary(dest)
+        };
+
+        let object = self.allocate_destination(object_dest)?;
+
         self.writer.new_object_instruction(object);
 
         // If the body scope exists then the home object must have been used in a method, so store
@@ -4167,7 +4184,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.gen_scope_end(body_scope);
 
-        Ok(object)
+        self.gen_mov_reg_to_dest(object, dest)
     }
 
     fn gen_store_captured_home_object(

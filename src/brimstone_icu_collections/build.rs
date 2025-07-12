@@ -1,4 +1,4 @@
-use icu_casemap::CaseMapper;
+use icu_casemap::{CaseMapper, CaseMapperBorrowed};
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 use std::collections::{HashMap, HashSet};
@@ -58,7 +58,7 @@ mod icu_data {
 }
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)
-fn canonicalize(case_mapper: &CaseMapper, c: char) -> char {
+fn canonicalize(case_mapper: &CaseMapperBorrowed<'_>, c: char) -> char {
     let c_upper = case_mapper.simple_uppercase(c);
 
     if (c_upper as u32) < 128 && (c as u32) >= 128 {
@@ -68,7 +68,10 @@ fn canonicalize(case_mapper: &CaseMapper, c: char) -> char {
     }
 }
 
-fn get_case_closure(case_mapper: &CaseMapper, c: char) -> CodePointInversionList {
+fn get_case_closure(
+    case_mapper: &CaseMapperBorrowed<'_>,
+    c: char,
+) -> CodePointInversionList<'static> {
     let mut closure_builder = CodePointInversionListBuilder::new();
 
     closure_builder.add_char(c);
@@ -80,6 +83,7 @@ fn get_case_closure(case_mapper: &CaseMapper, c: char) -> CodePointInversionList
 /// Generate a map of code points that need case closure overrides to their correct case closure.
 fn gen_overrides_map() -> HashMap<char, HashSet<char>> {
     let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap();
+    let case_mapper = case_mapper.as_borrowed();
 
     let mut needs_override = HashSet::new();
 
@@ -136,6 +140,7 @@ fn gen_overrides_map() -> HashMap<char, HashSet<char>> {
 /// Generate the set of all code points that map to themselves under case folding.
 fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
     let case_mapper = CaseMapper::try_new_unstable(&icu_data::BakedDataProvider).unwrap();
+    let case_mapper = case_mapper.as_borrowed();
 
     let mut builder = CodePointInversionListBuilder::new();
 

@@ -14,8 +14,12 @@
     33: StoreGlobal r0, c11
     36: NewClosure r0, c12
     39: StoreGlobal r0, c13
-    42: LoadUndefined r0
-    44: Ret r0
+    42: NewClosure r0, c14
+    45: StoreGlobal r0, c15
+    48: NewClosure r0, c16
+    51: StoreGlobal r0, c17
+    54: LoadUndefined r0
+    56: Ret r0
   Constant Table:
     0: [BytecodeFunction: testEmptyArray]
     1: [String: testEmptyArray]
@@ -31,6 +35,10 @@
     11: [String: onlySpread]
     12: [BytecodeFunction: multipleSpreads]
     13: [String: multipleSpreads]
+    14: [BytecodeFunction: temporaryRegisterToAvoidClobbering]
+    15: [String: temporaryRegisterToAvoidClobbering]
+    16: [BytecodeFunction: noTemporaryRegisterNeededForEmptyObject]
+    17: [String: noTemporaryRegisterNeededForEmptyObject]
 }
 
 [BytecodeFunction: testEmptyArray] {
@@ -152,4 +160,24 @@
     72: Jump -14 (.L4)
   .L5:
     74: Ret r0
+}
+
+[BytecodeFunction: temporaryRegisterToAvoidClobbering] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r0, 1
+     3: NewArray r1
+     5: LoadImmediate r2, 0
+     8: LoadImmediate r3, 2
+    11: SetArrayProperty r1, r2, r3
+    15: Mov r0, r1
+    18: LoadUndefined r1
+    20: Ret r1
+}
+
+[BytecodeFunction: noTemporaryRegisterNeededForEmptyObject] {
+  Parameters: 0, Registers: 2
+    0: LoadImmediate r0, 1
+    3: NewArray r0
+    5: LoadUndefined r1
+    7: Ret r1
 }

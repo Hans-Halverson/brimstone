@@ -11,9 +11,6 @@
       // The newTarget getter must not be evaluated if argument processing throws an error before AllocateTypedArray is reached
       "built-ins/TypedArrayConstructors/ctors/typedarray-arg/throw-type-error-before-custom-proto-access.js",
 
-      // decodeURIComponent should throw URIError for various invalid UTF-8 sequences
-      "built-ins/decodeURIComponent/throw-URIError.js",
-
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 

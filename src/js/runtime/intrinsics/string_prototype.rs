@@ -426,7 +426,7 @@ impl StringPrototype {
         let this_object = require_object_coercible(cx, this_value)?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
-        if !regexp_arg.is_nullish() {
+        if regexp_arg.is_object() {
             let matcher = get_method(cx, regexp_arg, cx.well_known_symbols.match_())?;
             if let Some(matcher) = matcher {
                 return call_object(cx, matcher, regexp_arg, &[this_object]);
@@ -454,7 +454,7 @@ impl StringPrototype {
         let this_object = require_object_coercible(cx, this_value)?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
-        if !regexp_arg.is_nullish() {
+        if regexp_arg.is_object() {
             if is_regexp(cx, regexp_arg)? {
                 let regexp_object = regexp_arg.as_object();
 
@@ -654,7 +654,7 @@ impl StringPrototype {
         let replace_arg = get_argument(cx, arguments, 1);
 
         // Use the @@replace method of the argument if one exists
-        if !search_arg.is_nullish() {
+        if search_arg.is_object() {
             let replacer = get_method(cx, search_arg, cx.well_known_symbols.replace())?;
             if let Some(replacer) = replacer {
                 return call_object(cx, replacer, search_arg, &[object, replace_arg]);
@@ -734,7 +734,7 @@ impl StringPrototype {
         let replace_arg = get_argument(cx, arguments, 1);
 
         // Use the @@replace method of the argument if one exists
-        if !search_arg.is_nullish() {
+        if search_arg.is_object() {
             // If search argument is a RegExp, check that it has the global flag
             if is_regexp(cx, search_arg)? {
                 let search_regexp = search_arg.as_object();
@@ -846,7 +846,7 @@ impl StringPrototype {
 
         // Use the @@search method of the argument if one exists
         let regexp_arg = get_argument(cx, arguments, 0);
-        if !regexp_arg.is_nullish() {
+        if regexp_arg.is_object() {
             let searcher = get_method(cx, regexp_arg, cx.well_known_symbols.search())?;
             if let Some(searcher) = searcher {
                 return call_object(cx, searcher, regexp_arg, &[object]);
@@ -924,7 +924,7 @@ impl StringPrototype {
         let limit_argument = get_argument(cx, arguments, 1);
 
         // Use the @@split method of the separator if one exists
-        if !separator_argument.is_nullish() {
+        if separator_argument.is_object() {
             let split_key = cx.well_known_symbols.split();
             let splitter = get_method(cx, separator_argument, split_key)?;
 

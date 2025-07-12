@@ -8425,6 +8425,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // No need to write a jump from catch to next block after body, since either the finally
         // or join block will be emitted directly after the catch.
         let catch_completion = self.gen_block_statement(&catch_clause.body)?;
+        self.gen_scope_end(catch_scope);
+
         let catch_handler_end = self.writer.current_offset();
 
         let catch_handler = ExceptionHandlerBuilder::new(catch_handler_start, catch_handler_end);

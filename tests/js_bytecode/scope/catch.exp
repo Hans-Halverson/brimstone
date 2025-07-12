@@ -54,7 +54,7 @@
   Parameters: 0, Registers: 4
      0: Mov r1, <scope>
      3: LoadImmediate r2, 1
-     6: Jump 36 (.L0)
+     6: Jump 37 (.L0)
      8: Mov <scope>, r1
     11: PushLexicalScope c0
     13: LoadEmpty r3
@@ -67,9 +67,10 @@
     34: LoadImmediate r2, 1
     37: StoreToScope r2, 0, 0
     41: PopScope 
+    42: PopScope 
   .L0:
-    42: LoadUndefined r1
-    44: Ret r1
+    43: LoadUndefined r1
+    45: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

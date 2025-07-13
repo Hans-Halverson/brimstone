@@ -1,3 +1,5 @@
+use brimstone_macros::match_u32;
+
 use crate::{
     common::{
         unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
@@ -17,7 +19,7 @@ use crate::{
         string_value::{FlatString, StringValue},
         to_string,
         type_utilities::{to_int32, to_number},
-        Context, EvalResult, Handle, Realm, Value,
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 
@@ -558,4 +560,116 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
     Ok(FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
         .to_handle()
         .as_value())
+}
+
+// Additional Properties of the Global Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-global-object)
+pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) {
+    let mut global_object = realm.global_object();
+
+    let escape_name = cx.alloc_string("escape").as_string();
+    let escape_key = PropertyKey::string_not_array_index(cx, escape_name).to_handle(cx);
+    global_object.intrinsic_func(cx, escape_key, escape, 1, realm);
+
+    let unescape_name = cx.alloc_string("unescape").as_string();
+    let unescape_key = PropertyKey::string_not_array_index(cx, unescape_name).to_handle(cx);
+    global_object.intrinsic_func(cx, unescape_key, unescape, 1, realm);
+}
+
+/// escape (https://tc39.es/ecma262/#sec-escape-string)
+pub fn escape(
+    mut cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
+    let string_arg = get_argument(cx, arguments, 0);
+    let string = to_string(cx, string_arg)?;
+
+    let mut escaped_string = Wtf8String::new();
+
+    for code_unit in string.iter_code_units() {
+        let code_unit = code_unit as u32;
+
+        match_u32!(match code_unit {
+            // Unescaped code units
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '@' | '*' | '+' | '-' | '.' | '/' => {
+                escaped_string.push(code_unit);
+            }
+            // Escaped as %XX
+            _ if code_unit < 256 => {
+                escaped_string.push_str(&format!("%{code_unit:02X}"));
+            }
+            // Escaped as %uXXXX
+            _ => {
+                escaped_string.push_str(&format!("%u{code_unit:04X}"));
+            }
+        });
+    }
+
+    Ok(cx.alloc_wtf8_string(&escaped_string).as_value())
+}
+
+/// unescape (https://tc39.es/ecma262/#sec-unescape-string)
+pub fn unescape(
+    mut cx: Context,
+    _: Handle<Value>,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
+    let string_arg = get_argument(cx, arguments, 0);
+    let string = to_string(cx, string_arg)?;
+    let length = string.len();
+
+    let mut unescaped_string = Wtf8String::new();
+
+    let mut i = 0;
+    while i < length {
+        let code_unit = string.code_unit_at(i);
+
+        // Unescaped code unit
+        if code_unit != '%' as u16 {
+            unescaped_string.push(code_unit as u32);
+            i += 1;
+            continue;
+        }
+
+        // Escaped as %uXXXX
+        if i + 5 < length && string.code_unit_at(i + 1) == 'u' as u16 {
+            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 2, 4) {
+                unescaped_string.push(parsed_code_unit);
+                i += 6;
+                continue;
+            }
+        }
+
+        // Escaped as %XX
+        if i + 3 <= length {
+            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 1, 2) {
+                unescaped_string.push(parsed_code_unit);
+                i += 3;
+                continue;
+            }
+        }
+
+        // Otherwise is an unescaped "%"
+        unescaped_string.push_char('%');
+        i += 1;
+    }
+
+    Ok(cx.alloc_wtf8_string(&unescaped_string).as_value())
+}
+
+fn parse_hex_code_units(
+    string: Handle<StringValue>,
+    start_index: u32,
+    num_code_units: u32,
+) -> Option<u32> {
+    let mut value = 0;
+
+    for i in 0..num_code_units {
+        let code_unit = string.code_unit_at(start_index + i);
+        let hex_value = get_hex_value(code_unit as u32)?;
+
+        value = (value << 4) + hex_value;
+    }
+
+    Some(value)
 }

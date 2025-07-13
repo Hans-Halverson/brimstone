@@ -117,6 +117,8 @@ pub enum ParseError {
     DuplicateRegExpModifier,
     EmptyRegExpModifiers,
     InvertedCharacterClassContainStrings,
+    InvertedUnicodePropertyOfStrings,
+    UnicodePropertyOfStringsDisallowedInMode,
     // RegExp parsing marker error to signal a named capture group was encountered
     NamedCaptureGroupEncountered,
 }
@@ -465,6 +467,12 @@ impl fmt::Display for ParseError {
             }
             ParseError::InvertedCharacterClassContainStrings => {
                 write!(f, "Inverted character class cannot contain strings")
+            }
+            ParseError::InvertedUnicodePropertyOfStrings => {
+                write!(f, "\\P character class cannot be used when class contains strings")
+            }
+            ParseError::UnicodePropertyOfStringsDisallowedInMode => {
+                write!(f, "Unicode character classes which contain strings are only allowed with `v` flag")
             }
             ParseError::NamedCaptureGroupEncountered => {
                 panic!("Marker error should have been caught")

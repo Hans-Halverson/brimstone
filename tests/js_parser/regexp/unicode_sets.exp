@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-45:30",
+  loc: "1:1-47:30",
   body: [
     {
       type: "ExpressionStatement",
@@ -490,7 +490,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "UnicodeProperty(Binary(ASCII))",
+                    "UnicodeProperty(BinaryProperty(ASCII))",
                   ],
                 },
               ],
@@ -520,7 +520,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "NotUnicodeProperty(Binary(ASCIIHexDigit))",
+                    "NotUnicodeProperty(BinaryProperty(ASCIIHexDigit))",
                   ],
                 },
               ],
@@ -531,10 +531,70 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "30:1-30:13",
+      loc: "28:1-28:20",
       kind: {
         type: "Literal",
-        loc: "30:1-30:12",
+        loc: "28:1-28:19",
+        raw: "/\p{Basic_Emoji}/v",
+        value: {
+          pattern: "\p{Basic_Emoji}",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "UnicodeProperty(BinaryPropertyOfStrings(BasicEmoji))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "29:1-29:22",
+      kind: {
+        type: "Literal",
+        loc: "29:1-29:21",
+        raw: "/[\p{Basic_Emoji}]/v",
+        value: {
+          pattern: "[\p{Basic_Emoji}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "UnicodeProperty(BinaryPropertyOfStrings(BasicEmoji))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "32:1-32:13",
+      kind: {
+        type: "Literal",
+        loc: "32:1-32:12",
         raw: "/[\w&&\d]/v",
         value: {
           pattern: "[\w&&\d]",
@@ -563,10 +623,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "31:1-31:28",
+      loc: "33:1-33:28",
       kind: {
         type: "Literal",
-        loc: "31:1-31:27",
+        loc: "33:1-33:27",
         raw: "/[\w&&\d&&\s&&\p{ASCII}]/v",
         value: {
           pattern: "[\w&&\d&&\s&&\p{ASCII}]",
@@ -586,7 +646,7 @@
                     "\w",
                     "\d",
                     "\s",
-                    "UnicodeProperty(Binary(ASCII))",
+                    "UnicodeProperty(BinaryProperty(ASCII))",
                   ],
                 },
               ],
@@ -597,10 +657,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "32:1-32:21",
+      loc: "34:1-34:21",
       kind: {
         type: "Literal",
-        loc: "32:1-32:20",
+        loc: "34:1-34:20",
         raw: "/[[a-z]&&\d&&[a]]/v",
         value: {
           pattern: "[[a-z]&&\d&&[a]]",
@@ -642,10 +702,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "33:1-33:14",
+      loc: "35:1-35:14",
       kind: {
         type: "Literal",
-        loc: "33:1-33:13",
+        loc: "35:1-35:13",
         raw: "/[^\w&&\d]/v",
         value: {
           pattern: "[^\w&&\d]",
@@ -674,10 +734,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "36:1-36:13",
+      loc: "38:1-38:13",
       kind: {
         type: "Literal",
-        loc: "36:1-36:12",
+        loc: "38:1-38:12",
         raw: "/[\w--\d]/v",
         value: {
           pattern: "[\w--\d]",
@@ -706,10 +766,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "37:1-37:28",
+      loc: "39:1-39:28",
       kind: {
         type: "Literal",
-        loc: "37:1-37:27",
+        loc: "39:1-39:27",
         raw: "/[\w--\d--\s--\p{ASCII}]/v",
         value: {
           pattern: "[\w--\d--\s--\p{ASCII}]",
@@ -729,7 +789,7 @@
                     "\w",
                     "\d",
                     "\s",
-                    "UnicodeProperty(Binary(ASCII))",
+                    "UnicodeProperty(BinaryProperty(ASCII))",
                   ],
                 },
               ],
@@ -740,10 +800,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "38:1-38:21",
+      loc: "40:1-40:21",
       kind: {
         type: "Literal",
-        loc: "38:1-38:20",
+        loc: "40:1-40:20",
         raw: "/[[a-z]--\d--[a]]/v",
         value: {
           pattern: "[[a-z]--\d--[a]]",
@@ -785,10 +845,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "39:1-39:14",
+      loc: "41:1-41:14",
       kind: {
         type: "Literal",
-        loc: "39:1-39:13",
+        loc: "41:1-41:13",
         raw: "/[^\w--\d]/v",
         value: {
           pattern: "[^\w--\d]",
@@ -817,10 +877,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "42:1-42:12",
+      loc: "44:1-44:12",
       kind: {
         type: "Literal",
-        loc: "42:1-42:11",
+        loc: "44:1-44:11",
         raw: "/[[a-z]]/v",
         value: {
           pattern: "[[a-z]]",
@@ -853,10 +913,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "43:1-43:14",
+      loc: "45:1-45:14",
       kind: {
         type: "Literal",
-        loc: "43:1-43:13",
+        loc: "45:1-45:13",
         raw: "/[[[a-z]]]/v",
         value: {
           pattern: "[[[a-z]]]",
@@ -895,10 +955,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "44:1-44:11",
+      loc: "46:1-46:11",
       kind: {
         type: "Literal",
-        loc: "44:1-44:10",
+        loc: "46:1-46:10",
         raw: "/[[[]]]/v",
         value: {
           pattern: "[[[]]]",
@@ -935,10 +995,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "45:1-45:30",
+      loc: "47:1-47:30",
       kind: {
         type: "Literal",
-        loc: "45:1-45:29",
+        loc: "47:1-47:29",
         raw: "/[[[\w&&\s]--[a-z]]abcd-e]/v",
         value: {
           pattern: "[[[\w&&\s]--[a-z]]abcd-e]",

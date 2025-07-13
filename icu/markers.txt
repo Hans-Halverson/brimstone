@@ -17,6 +17,7 @@ PropertyScriptWithExtensionsV1
 PropertyNameParseScriptV1
 PropertyBinaryAlphabeticV1
 PropertyBinaryAsciiHexDigitV1
+PropertyBinaryBasicEmojiV1
 PropertyBinaryBidiControlV1
 PropertyBinaryBidiMirroredV1
 PropertyBinaryCaseIgnorableV1

@@ -31,3 +31,4 @@
 // Unicode properties
 /[\p{ASCII}]/u;
 /[\P{ASCII_Hex_Digit}]/u;
+/[\p{Basic_Emoji}]/v;

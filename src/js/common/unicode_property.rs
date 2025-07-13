@@ -1,4 +1,7 @@
-use icu_collections::codepointinvlist::CodePointInversionListBuilder;
+use icu_collections::{
+    codepointinvlist::CodePointInversionListBuilder,
+    codepointinvliststringlist::CodePointInversionListAndStringList,
+};
 use icu_properties::{
     props::{GeneralCategoryGroup, Script},
     CodePointSetDataBorrowed,
@@ -8,7 +11,8 @@ use super::{icu::ICU, unicode::MAX_CODE_POINT};
 
 #[derive(Clone, Copy, Debug)]
 pub enum UnicodeProperty {
-    Binary(BinaryUnicodeProperty),
+    BinaryProperty(BinaryUnicodeProperty),
+    BinaryPropertyOfStrings(BinaryUnicodePropertyOfStrings),
     GeneralCategory(GeneralCategoryProperty),
     Script(ScriptProperty),
 }
@@ -16,7 +20,8 @@ pub enum UnicodeProperty {
 impl UnicodeProperty {
     pub fn add_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
         match self {
-            Self::Binary(property) => property.add_to_set(set_builder),
+            Self::BinaryProperty(property) => property.add_to_set(set_builder),
+            Self::BinaryPropertyOfStrings(property) => property.add_code_points_to_set(set_builder),
             Self::GeneralCategory(property) => property.add_to_set(set_builder),
             Self::Script(property) => property.add_to_set(set_builder),
         }
@@ -292,6 +297,102 @@ impl BinaryUnicodeProperty {
     }
 }
 
+/// All binary unicode properties of strings listed in the spec
+#[derive(Clone, Copy, Debug)]
+pub enum BinaryUnicodePropertyOfStrings {
+    BasicEmoji,
+    EmojiKeycapSequence,
+    RgiEmojiFlagSequence,
+    RgiEmojiModifierSequence,
+    RgiEmojiTagSequence,
+    RgiEmojiZwjSequence,
+    RgiEmoji,
+}
+
+impl BinaryUnicodePropertyOfStrings {
+    pub fn parse(str: &str) -> Option<BinaryUnicodePropertyOfStrings> {
+        match str {
+            "Basic_Emoji" => Some(BinaryUnicodePropertyOfStrings::BasicEmoji),
+            "Emoji_Keycap_Sequence" => Some(BinaryUnicodePropertyOfStrings::EmojiKeycapSequence),
+            "RGI_Emoji_Flag_Sequence" => Some(BinaryUnicodePropertyOfStrings::RgiEmojiFlagSequence),
+            "RGI_Emoji_Modifier_Sequence" => {
+                Some(BinaryUnicodePropertyOfStrings::RgiEmojiModifierSequence)
+            }
+            "RGI_Emoji_Tag_Sequence" => Some(BinaryUnicodePropertyOfStrings::RgiEmojiTagSequence),
+            "RGI_Emoji_ZWJ_Sequence" => Some(BinaryUnicodePropertyOfStrings::RgiEmojiZwjSequence),
+            "RGI_Emoji" => Some(BinaryUnicodePropertyOfStrings::RgiEmoji),
+            _ => None,
+        }
+    }
+
+    /// Add all individual code points (but not strings) to a code point set.
+    fn add_code_points_to_set(&self, set_builder: &mut CodePointInversionListBuilder) {
+        match self {
+            Self::BasicEmoji => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.basic_emoji,
+            ),
+            Self::EmojiKeycapSequence => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.emoji_keycap_sequence,
+            ),
+            Self::RgiEmojiFlagSequence => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.rgi_emoji_flag_sequence,
+            ),
+            Self::RgiEmojiModifierSequence => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.rgi_emoji_modifier_sequence,
+            ),
+            Self::RgiEmojiTagSequence => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.rgi_emoji_tag_sequence,
+            ),
+            Self::RgiEmojiZwjSequence => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.rgi_emoji_zwj_sequence,
+            ),
+            Self::RgiEmoji => add_binary_property_of_strings_to_set(
+                set_builder,
+                &ICU.properties_of_strings.rgi_emoji,
+            ),
+        }
+    }
+
+    /// Return an iterator over all strings (but not code points) that have this property.
+    pub fn iter_strings(&self) -> impl Iterator<Item = &str> {
+        match self {
+            Self::BasicEmoji => ICU.properties_of_strings.basic_emoji.strings().iter(),
+            Self::EmojiKeycapSequence => ICU
+                .properties_of_strings
+                .emoji_keycap_sequence
+                .strings()
+                .iter(),
+            Self::RgiEmojiFlagSequence => ICU
+                .properties_of_strings
+                .rgi_emoji_flag_sequence
+                .strings()
+                .iter(),
+            Self::RgiEmojiModifierSequence => ICU
+                .properties_of_strings
+                .rgi_emoji_modifier_sequence
+                .strings()
+                .iter(),
+            Self::RgiEmojiTagSequence => ICU
+                .properties_of_strings
+                .rgi_emoji_tag_sequence
+                .strings()
+                .iter(),
+            Self::RgiEmojiZwjSequence => ICU
+                .properties_of_strings
+                .rgi_emoji_zwj_sequence
+                .strings()
+                .iter(),
+            Self::RgiEmoji => ICU.properties_of_strings.rgi_emoji.strings().iter(),
+        }
+    }
+}
+
 /// All General_Category properties listed in the spec
 #[derive(Clone, Copy, Debug)]
 pub enum GeneralCategoryProperty {
@@ -561,6 +662,14 @@ fn add_binary_property_to_set(
             .static_to_owned()
             .to_code_point_inversion_list(),
     );
+}
+
+#[inline]
+fn add_binary_property_of_strings_to_set(
+    set_builder: &mut CodePointInversionListBuilder,
+    binary_property_set: &CodePointInversionListAndStringList,
+) {
+    set_builder.add_set(binary_property_set.code_points())
 }
 
 #[inline]

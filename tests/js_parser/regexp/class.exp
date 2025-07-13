@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-33:26",
+  loc: "1:1-34:22",
   body: [
     {
       type: "ExpressionStatement",
@@ -737,7 +737,7 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "UnicodeProperty(Binary(ASCII))",
+                    "UnicodeProperty(BinaryProperty(ASCII))",
                   ],
                 },
               ],
@@ -767,7 +767,37 @@
                   type: "CharacterClass",
                   is_inverted: false,
                   ranges: [
-                    "NotUnicodeProperty(Binary(ASCIIHexDigit))",
+                    "NotUnicodeProperty(BinaryProperty(ASCIIHexDigit))",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "34:1-34:22",
+      kind: {
+        type: "Literal",
+        loc: "34:1-34:21",
+        raw: "/[\p{Basic_Emoji}]/v",
+        value: {
+          pattern: "[\p{Basic_Emoji}]",
+          flags: "v",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "CharacterClass",
+                  is_inverted: false,
+                  ranges: [
+                    "UnicodeProperty(BinaryPropertyOfStrings(BasicEmoji))",
                   ],
                 },
               ],

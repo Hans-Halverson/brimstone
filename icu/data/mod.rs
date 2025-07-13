@@ -37,6 +37,7 @@ include!("normalizer_nfc_v1.rs.data");
 include!("property_binary_cased_v1.rs.data");
 include!("collation_tailoring_v1.rs.data");
 include!("property_binary_id_continue_v1.rs.data");
+include!("property_binary_basic_emoji_v1.rs.data");
 include!("property_binary_id_start_v1.rs.data");
 include!("property_binary_uppercase_v1.rs.data");
 include!("property_binary_changes_when_nfkc_casefolded_v1.rs.data");
@@ -144,6 +145,7 @@ macro_rules! impl_data_provider {
         impl_property_binary_cased_v1!($provider);
         impl_collation_tailoring_v1!($provider);
         impl_property_binary_id_continue_v1!($provider);
+        impl_property_binary_basic_emoji_v1!($provider);
         impl_property_binary_id_start_v1!($provider);
         impl_property_binary_uppercase_v1!($provider);
         impl_property_binary_changes_when_nfkc_casefolded_v1!($provider);

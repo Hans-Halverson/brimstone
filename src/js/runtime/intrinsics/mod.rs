@@ -20,7 +20,7 @@ pub mod data_view_constructor;
 mod data_view_prototype;
 mod date_constructor;
 pub mod date_object;
-mod date_prototype;
+pub mod date_prototype;
 pub mod error_constructor;
 pub mod error_prototype;
 mod finalization_registry_constructor;

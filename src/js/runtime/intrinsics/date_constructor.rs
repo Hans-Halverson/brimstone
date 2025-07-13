@@ -6,16 +6,16 @@ use crate::{
         function::get_argument,
         gc::Handle,
         intrinsics::{
-            date_object::{make_date, make_day, make_time, time_clip, utc, DateObject},
+            date_object::{
+                make_date, make_day, make_full_year, make_time, time_clip, utc, DateObject,
+            },
             date_prototype::{this_date_value, to_date_string},
         },
         object_value::ObjectValue,
         realm::Realm,
         string_parsing::parse_string_to_date,
         to_string,
-        type_utilities::{
-            to_integer_or_infinity_f64, to_number, to_primitive, ToPrimitivePreferredType,
-        },
+        type_utilities::{to_number, to_primitive, ToPrimitivePreferredType},
         Context, Value,
     },
 };
@@ -124,13 +124,7 @@ impl DateConstructor {
                 0.0
             };
 
-            // Two digit years are treated as 19XX
-            if !year.is_nan() {
-                let year_int = to_integer_or_infinity_f64(year);
-                if (0.0..=99.0).contains(&year_int) {
-                    year = 1900.0 + year_int;
-                }
-            }
+            year = make_full_year(year);
 
             let final_day = make_day(year, month, day);
             let final_time = make_time(hour, minute, second, millisecond);
@@ -218,13 +212,7 @@ impl DateConstructor {
             0.0
         };
 
-        // Two digit years are treated as 19XX
-        if !year.is_nan() {
-            let year_int = to_integer_or_infinity_f64(year);
-            if (0.0..=99.0).contains(&year_int) {
-                year = 1900.0 + year_int;
-            }
-        }
+        year = make_full_year(year);
 
         let final_day = make_day(year, month, day);
         let final_time = make_time(hour, minute, second, millisecond);

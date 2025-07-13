@@ -1,5 +1,7 @@
 use crate::runtime::{
-    intrinsics::{intrinsics::Intrinsic, string_prototype::StringPrototype},
+    intrinsics::{
+        date_prototype::DatePrototype, intrinsics::Intrinsic, string_prototype::StringPrototype,
+    },
     Context, Handle, Realm,
 };
 
@@ -8,4 +10,7 @@ use crate::runtime::{
 pub fn init_annex_b_methods(cx: Context, realm: Handle<Realm>) {
     let string_prototype = realm.get_intrinsic(Intrinsic::StringPrototype);
     StringPrototype::init_annex_b_methods(string_prototype, cx, realm);
+
+    let date_prototype = realm.get_intrinsic(Intrinsic::DatePrototype);
+    DatePrototype::init_annex_b_methods(date_prototype, cx, realm);
 }

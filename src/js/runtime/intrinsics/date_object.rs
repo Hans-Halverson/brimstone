@@ -220,6 +220,21 @@ pub fn make_time(hour: f64, minute: f64, second: f64, millisecond: f64) -> f64 {
     hour * MS_PER_HOUR + minute * MS_PER_MINUTE + second * MS_PER_SECOND + millisecond
 }
 
+/// MakeFullYear (https://tc39.es/ecma262/#sec-makefullyear)
+pub fn make_full_year(year: f64) -> f64 {
+    if year.is_nan() {
+        return f64::NAN;
+    }
+
+    // Two digit years are treated as 19XX
+    let year_int = to_integer_or_infinity_f64(year);
+    if (0.0..=99.0).contains(&year_int) {
+        1900.0 + year_int
+    } else {
+        year_int
+    }
+}
+
 // Floor division - round towards negative infintiy
 fn floor_div(a: i64, b: i64) -> i64 {
     if a >= 0 {

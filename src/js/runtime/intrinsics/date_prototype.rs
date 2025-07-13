@@ -1,16 +1,20 @@
-use crate::runtime::{
-    abstract_operations::invoke,
-    builtin_function::BuiltinFunction,
-    error::{range_error, type_error},
-    function::get_argument,
-    intrinsics::date_object::{day, make_date, make_time, time_clip},
-    object_value::ObjectValue,
-    property::Property,
-    string_value::StringValue,
-    type_utilities::{
-        ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
+use crate::{
+    must,
+    runtime::{
+        abstract_operations::invoke,
+        builtin_function::BuiltinFunction,
+        error::{range_error, type_error},
+        function::get_argument,
+        get,
+        intrinsics::date_object::{day, make_date, make_full_year, make_time, time_clip},
+        object_value::ObjectValue,
+        property::Property,
+        string_value::StringValue,
+        type_utilities::{
+            ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
+        },
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-    Context, EvalResult, Handle, Realm, Value,
 };
 
 use super::{
@@ -117,6 +121,29 @@ impl DatePrototype {
         );
 
         object
+    }
+
+    /// Additional Properties of the Date.prototype Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-date.prototype-object)
+    pub fn init_annex_b_methods(
+        mut date_prototype: Handle<ObjectValue>,
+        mut cx: Context,
+        realm: Handle<Realm>,
+    ) {
+        let get_year_name = cx.alloc_string("getYear").as_string();
+        let get_year_key = PropertyKey::string_not_array_index(cx, get_year_name).to_handle(cx);
+        date_prototype.intrinsic_func(cx, get_year_key, Self::get_year, 0, realm);
+
+        let set_year_name = cx.alloc_string("setYear").as_string();
+        let set_year_key = PropertyKey::string_not_array_index(cx, set_year_name).to_handle(cx);
+        date_prototype.intrinsic_func(cx, set_year_key, Self::set_year, 1, realm);
+
+        // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
+        let to_gmt_string_name = cx.alloc_string("toGMTString").as_string();
+        let to_gmt_string_key =
+            PropertyKey::string_not_array_index(cx, to_gmt_string_name).to_handle(cx);
+        let to_gmt_string_method = must!(get(cx, date_prototype, cx.names.to_utc_string()));
+
+        date_prototype.intrinsic_data_prop(cx, to_gmt_string_key, to_gmt_string_method);
     }
 
     /// Date.prototype.getDate (https://tc39.es/ecma262/#sec-date.prototype.getdate)
@@ -1468,6 +1495,59 @@ impl DatePrototype {
         }
 
         type_error(cx, "Invalid hint to Date.prototype[@@toPrimitive]")
+    }
+
+    /// Date.prototype.getYear (https://tc39.es/ecma262/#sec-date.prototype.getyear)
+    pub fn get_year(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error(cx, "Date.prototype.getYear method must be called on Date object");
+        };
+
+        if date_value.is_nan() {
+            return Ok(cx.nan());
+        }
+
+        let short_year = year_from_time(local_time(date_value)) - 1900.0;
+
+        Ok(cx.number(short_year))
+    }
+
+    /// Date.prototype.setYear (https://tc39.es/ecma262/#sec-date.prototype.setyear)
+    pub fn set_year(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let date_value = if let Some(date_value) = this_date_value(this_value) {
+            date_value
+        } else {
+            return type_error(cx, "Date.prototype.setYear method must be called on Date object");
+        };
+
+        let year_arg = get_argument(cx, arguments, 0);
+        let short_year = to_number(cx, year_arg)?;
+
+        let time = if date_value.is_nan() {
+            0.0
+        } else {
+            local_time(date_value)
+        };
+
+        let full_year = make_full_year(short_year.as_number());
+
+        let day = make_day(full_year, month_from_time(time), date_from_time(time));
+        let date = make_date(day, time_within_day(time));
+        let new_date = time_clip(utc(date));
+
+        set_date_value(this_value, new_date);
+
+        Ok(Value::from(new_date).to_handle(cx))
     }
 }
 

@@ -30,8 +30,7 @@
       "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
       "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
 
-      // Test includes annex-B features (tests contain RegExp identity escape for characters in
-      // the ID_Continue Unicode class).
+      // Test includes annex-B features (named backreference in a RegExp with no named capture groups)
       "built-ins/String/prototype/split/separator-regexp.js",
 
       // Incorrect tests due to changed base/property evaluation order

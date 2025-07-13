@@ -1,0 +1,5 @@
+SyntaxError: \P character class cannot be used when class contains strings
+  ┌ tests/js_error/regexp/unicode_sets/inverted_unicode_property_of_strings.js:1:6
+  |
+1 | /[\P{Basic_Emoji}]/v;
+  |      ^

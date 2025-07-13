@@ -1,0 +1,5 @@
+SyntaxError: Unicode character classes which contain strings are only allowed with `v` flag
+  ┌ tests/js_error/regexp/unicode_sets/non_v_mode_unicode_property_of_strings.js:1:5
+  |
+1 | /\p{Basic_Emoji}/u;
+  |     ^

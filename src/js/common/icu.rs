@@ -2,6 +2,7 @@ use std::sync::LazyLock;
 
 use icu_casemap::{CaseMapper, CaseMapperBorrowed};
 use icu_collator::{options::CollatorOptions, Collator};
+use icu_collections::codepointinvliststringlist::CodePointInversionListAndStringList;
 use icu_locale::{locale, Locale};
 use icu_normalizer::{
     ComposingNormalizer, ComposingNormalizerBorrowed, DecomposingNormalizer,
@@ -11,7 +12,12 @@ use icu_properties::{
     props::*,
     script::{ScriptWithExtensions, ScriptWithExtensionsBorrowed},
     CodePointMapData, CodePointMapDataBorrowed, CodePointSetData, CodePointSetDataBorrowed,
-    PropertyParser, PropertyParserBorrowed,
+    EmojiSetData, PropertyParser, PropertyParserBorrowed,
+};
+
+use crate::common::icu_data::{
+    EMOJI_KEYCAP_SEQUENCE, RGI_EMOJI, RGI_EMOJI_FLAG_SEQUENCE, RGI_EMOJI_MODIFIER_SEQUENCE,
+    RGI_EMOJI_TAG_SEQUENCE, RGI_EMOJI_ZWJ_SEQUENCE,
 };
 
 use super::icu_data::BakedDataProvider;
@@ -23,6 +29,7 @@ pub struct ICU {
     pub general_categories: GeneralCategories,
     pub scripts: Scripts,
     pub properties: Properties,
+    pub properties_of_strings: PropertiesOfStrings,
     pub normalizers: Normalizers,
     pub collator: Collator,
     pub case_mapper: CaseMapperBorrowed<'static>,
@@ -156,6 +163,23 @@ pub struct Normalizers {
     pub nfkd: DecomposingNormalizerBorrowed<'static>,
 }
 
+pub struct PropertiesOfStrings {
+    /// The Basic_Emoji property of strings
+    pub basic_emoji: CodePointInversionListAndStringList<'static>,
+    /// The Emoji_Keycap_Sequence property of strings
+    pub emoji_keycap_sequence: CodePointInversionListAndStringList<'static>,
+    /// The RGI_Emoji_Flag_Sequence property of strings
+    pub rgi_emoji_flag_sequence: CodePointInversionListAndStringList<'static>,
+    /// The RGI_Emoji_Modifier_Sequence property of strings
+    pub rgi_emoji_modifier_sequence: CodePointInversionListAndStringList<'static>,
+    /// The RGI_Emoji_Tag_Sequence property of strings
+    pub rgi_emoji_tag_sequence: CodePointInversionListAndStringList<'static>,
+    /// The RGI_Emoji_ZWJ_Sequence property of strings
+    pub rgi_emoji_zwj_sequence: CodePointInversionListAndStringList<'static>,
+    /// The RGI_Emoji property of strings
+    pub rgi_emoji: CodePointInversionListAndStringList<'static>,
+}
+
 pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     // General categories
     static GENERAL_CATEGORIES_MAP: LazyLock<CodePointMapData<GeneralCategory>> =
@@ -222,6 +246,10 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
     binary_property_static!(WHITE_SPACE_SET, WhiteSpace);
     binary_property_static!(XID_CONTINUE_SET, XidContinue);
     binary_property_static!(XID_START_SET, XidStart);
+
+    // Binary properties of strings
+    static BASIC_EMOJI: LazyLock<EmojiSetData> =
+        LazyLock::new(|| EmojiSetData::try_new_unstable::<BasicEmoji>(&BakedDataProvider).unwrap());
 
     // Scripts
     static SCRIPT_MAP: LazyLock<CodePointMapData<Script>> =
@@ -303,6 +331,15 @@ pub static ICU: LazyLock<ICU> = LazyLock::new(|| {
             white_space: WHITE_SPACE_SET.as_borrowed(),
             xid_continue: XID_CONTINUE_SET.as_borrowed(),
             xid_start: XID_START_SET.as_borrowed(),
+        },
+        properties_of_strings: PropertiesOfStrings {
+            basic_emoji: BASIC_EMOJI.to_code_point_inversion_list_string_list(),
+            emoji_keycap_sequence: EMOJI_KEYCAP_SEQUENCE,
+            rgi_emoji_flag_sequence: RGI_EMOJI_FLAG_SEQUENCE,
+            rgi_emoji_modifier_sequence: RGI_EMOJI_MODIFIER_SEQUENCE,
+            rgi_emoji_tag_sequence: RGI_EMOJI_TAG_SEQUENCE,
+            rgi_emoji_zwj_sequence: RGI_EMOJI_ZWJ_SEQUENCE,
+            rgi_emoji: RGI_EMOJI,
         },
         normalizers: Normalizers {
             nfc: NFC.as_borrowed(),

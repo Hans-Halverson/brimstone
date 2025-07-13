@@ -16,7 +16,8 @@ use crate::{
             is_low_surrogate_code_unit,
         },
         unicode_property::{
-            BinaryUnicodeProperty, GeneralCategoryProperty, ScriptProperty, UnicodeProperty,
+            BinaryUnicodeProperty, BinaryUnicodePropertyOfStrings, GeneralCategoryProperty,
+            ScriptProperty, UnicodeProperty,
         },
     },
     p,
@@ -522,7 +523,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         self.advance2();
                         self.expect('{')?;
 
+                        let property_pos = self.pos();
                         let property = self.parse_unicode_property()?;
+
+                        self.error_if_property_not_allowed(property, property_pos)?;
 
                         self.expect('}')?;
 
@@ -536,7 +540,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         self.advance2();
                         self.expect('{')?;
 
+                        let property_pos = self.pos();
                         let property = self.parse_unicode_property()?;
+
+                        self.error_if_property_cannot_be_inverted(property, property_pos)?;
 
                         self.expect('}')?;
 
@@ -1011,7 +1018,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     self.advance2();
                     self.expect('{')?;
 
+                    let property_pos = self.pos();
                     let property = self.parse_unicode_property()?;
+
+                    self.error_if_property_not_allowed(property, property_pos)?;
 
                     self.expect('}')?;
 
@@ -1021,7 +1031,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     self.advance2();
                     self.expect('{')?;
 
+                    let property_pos = self.pos();
                     let property = self.parse_unicode_property()?;
+
+                    self.error_if_property_cannot_be_inverted(property, property_pos)?;
 
                     self.expect('}')?;
 
@@ -1168,7 +1181,14 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // Otherwise defer to standard character class atom parsing
         let atom = self.parse_class_atom()?;
-        Ok((atom, false))
+
+        // The only class atom that may contain strings is a unicode property of strings
+        let may_contain_strings = matches!(
+            atom,
+            ClassRange::UnicodeProperty(UnicodeProperty::BinaryPropertyOfStrings(_))
+        );
+
+        Ok((atom, may_contain_strings))
     }
 
     /// Parses the following parts of ClassSetCharacter (https://tc39.es/ecma262/#prod-ClassSetCharacter)
@@ -1369,7 +1389,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // Otherwise must be a binary unicode property or general category property
         if let Some(binary_property) = BinaryUnicodeProperty::parse(&property_name) {
-            Ok(UnicodeProperty::Binary(binary_property))
+            Ok(UnicodeProperty::BinaryProperty(binary_property))
+        } else if let Some(binary_property) = BinaryUnicodePropertyOfStrings::parse(&property_name)
+        {
+            Ok(UnicodeProperty::BinaryPropertyOfStrings(binary_property))
         } else if let Some(general_category) = GeneralCategoryProperty::parse(&property_name) {
             Ok(UnicodeProperty::GeneralCategory(general_category))
         } else {
@@ -1659,5 +1682,33 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             None => Ok(()),
             Some((pos, error)) => self.error(pos, error),
         }
+    }
+
+    fn error_if_property_not_allowed(
+        &self,
+        property: UnicodeProperty,
+        pos: Pos,
+    ) -> ParseResult<()> {
+        // Unicode properties of strings only allowed in `v` mode
+        if matches!(property, UnicodeProperty::BinaryPropertyOfStrings(_))
+            && !self.flags.has_unicode_sets_flag()
+        {
+            return self.error(pos, ParseError::UnicodePropertyOfStringsDisallowedInMode);
+        }
+
+        Ok(())
+    }
+
+    fn error_if_property_cannot_be_inverted(
+        &self,
+        property: UnicodeProperty,
+        pos: Pos,
+    ) -> ParseResult<()> {
+        // Unicode properties of strings cannot be inverted
+        if matches!(property, UnicodeProperty::BinaryPropertyOfStrings(_)) {
+            return self.error(pos, ParseError::InvertedUnicodePropertyOfStrings);
+        }
+
+        Ok(())
     }
 }

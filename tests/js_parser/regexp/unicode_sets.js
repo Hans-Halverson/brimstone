@@ -25,6 +25,8 @@
 // Unicode properties
 /[\p{ASCII}]/v;
 /[\P{ASCII_Hex_Digit}]/v;
+/\p{Basic_Emoji}/v;
+/[\p{Basic_Emoji}]/v;
 
 // Intersection
 /[\w&&\d]/v;

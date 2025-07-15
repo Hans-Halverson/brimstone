@@ -6,7 +6,10 @@ use std::{
 use allocator_api2::alloc::Global;
 
 use crate::{
-    common::wtf_8::{Wtf8Cow, Wtf8Str},
+    common::{
+        options::Options,
+        wtf_8::{Wtf8Cow, Wtf8Str},
+    },
     parser::{
         parse_error::InvalidDuplicateParametersReason,
         scope_tree::{VMLocation, ARGUMENTS_NAME},
@@ -34,6 +37,8 @@ pub struct Analyzer<'a> {
     errors: Vec<LocalizedParseError>,
     /// Scope tree for the AST that is being analyzed
     scope_tree: P<'a, ScopeTree<'a>>,
+    /// Options set for the compiler
+    options: Rc<Options>,
     /// Number of nested strict mode contexts the visitor is currently in
     strict_mode_context_depth: u64,
     /// Set of all names exported by the current module
@@ -136,11 +141,16 @@ impl PrivateNameUsage {
 }
 
 impl<'a> Analyzer<'a> {
-    pub fn new(source: Rc<Source>, scope_tree: P<'a, ScopeTree<'a>>) -> Analyzer<'a> {
+    pub fn new(
+        source: Rc<Source>,
+        scope_tree: P<'a, ScopeTree<'a>>,
+        options: Rc<Options>,
+    ) -> Analyzer<'a> {
         Analyzer {
             source,
             errors: Vec::new(),
             scope_tree,
+            options,
             strict_mode_context_depth: 0,
             export_names: HashSet::new(),
             labels: HashMap::new(),
@@ -1539,8 +1549,8 @@ impl<'a> Analyzer<'a> {
 
         stmt.label.id = label_id;
 
-        // Annex B: Always error on labeled function declarations in strict mode
-        if self.is_in_strict_mode_context() {
+        // Annex B: Allow labeled function declarations in non-strict mode
+        if !self.options.annex_b || self.is_in_strict_mode_context() {
             if let Statement::FuncDecl(_) = &stmt.body {
                 self.emit_error(stmt.label.loc, ParseError::InvalidLabeledFunction(true));
             }
@@ -1676,9 +1686,9 @@ impl<'a> Analyzer<'a> {
 pub fn analyze(
     parse_result: ParseProgramResult,
 ) -> Result<AnalyzedProgramResult, LocalizedParseErrors> {
-    let ParseProgramResult { mut program, scope_tree, source } = parse_result;
+    let ParseProgramResult { mut program, scope_tree, source, options } = parse_result;
 
-    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree, options);
     analyzer.visit_program(&mut program);
 
     if analyzer.errors.is_empty() {
@@ -1700,10 +1710,10 @@ pub fn analyze_for_eval<'a>(
     in_static_initializer: bool,
     in_class_field_initializer: bool,
 ) -> Result<AnalyzedProgramResult<'a>, LocalizedParseErrors> {
-    let ParseProgramResult { mut program, scope_tree, .. } = parse_result;
+    let ParseProgramResult { mut program, scope_tree, options, .. } = parse_result;
 
     let source = pcx.source().clone();
-    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree, options);
 
     // Initialize private names from surrounding context if supplied
     if let Some(private_names) = private_names {
@@ -1749,10 +1759,10 @@ pub fn analyze_function_for_function_constructor<'a>(
     pcx: &'a ParseContext,
     parse_result: ParseFunctionResult<'a>,
 ) -> Result<AnalyzedFunctionResult<'a>, LocalizedParseErrors> {
-    let ParseFunctionResult { mut function, scope_tree, .. } = parse_result;
+    let ParseFunctionResult { mut function, scope_tree, options, .. } = parse_result;
 
     let source = pcx.source().clone();
-    let mut analyzer = Analyzer::new(source.clone(), scope_tree);
+    let mut analyzer = Analyzer::new(source.clone(), scope_tree, options);
     analyzer.visit_function_expression(&mut function);
 
     if analyzer.errors.is_empty() {

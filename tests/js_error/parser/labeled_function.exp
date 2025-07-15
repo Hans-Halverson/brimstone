@@ -1,0 +1,5 @@
+SyntaxError: Functions cannot be labeled
+  ┌ tests/js_error/parser/labeled_function.js:2:1
+  |
+2 | label: function test() {}
+  | ^

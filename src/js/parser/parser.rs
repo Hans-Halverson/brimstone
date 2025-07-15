@@ -431,7 +431,12 @@ impl<'a> Parser<'a> {
         let scope_tree = p!(self, self.scope_builder.finish_ast_scope_tree());
         let source = self.lexer.source.clone();
 
-        Ok(ParseProgramResult { program: p!(self, program), scope_tree, source })
+        Ok(ParseProgramResult {
+            program: p!(self, program),
+            scope_tree,
+            source,
+            options: self.options.clone(),
+        })
     }
 
     fn parse_directive_prologue(&mut self) -> ParseResult<bool> {
@@ -495,7 +500,12 @@ impl<'a> Parser<'a> {
         let scope_tree = p!(self, self.scope_builder.finish_ast_scope_tree());
         let source = self.lexer.source.clone();
 
-        Ok(ParseProgramResult { program: p!(self, program), scope_tree, source })
+        Ok(ParseProgramResult {
+            program: p!(self, program),
+            scope_tree,
+            source,
+            options: self.options.clone(),
+        })
     }
 
     fn parse_toplevel(&mut self) -> ParseResult<Toplevel<'a>> {
@@ -4947,11 +4957,13 @@ pub struct ParseProgramResult<'a> {
     pub program: P<'a, Program<'a>>,
     pub scope_tree: P<'a, ScopeTree<'a>>,
     pub source: Rc<Source>,
+    pub options: Rc<Options>,
 }
 
 pub struct ParseFunctionResult<'a> {
     pub function: P<'a, Function<'a>>,
     pub scope_tree: P<'a, ScopeTree<'a>>,
+    pub options: Rc<Options>,
 }
 
 pub fn parse_script(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<ParseProgramResult> {
@@ -5050,11 +5062,11 @@ pub fn parse_function_for_function_constructor(
     let source = pcx.source();
 
     let lexer = Lexer::new(source, alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
+    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options.clone(), alloc);
     parser.advance()?;
 
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;
     let scope_tree = p!(parser, parser.scope_builder.finish_ast_scope_tree());
 
-    Ok(ParseFunctionResult { function: func_node, scope_tree })
+    Ok(ParseFunctionResult { function: func_node, scope_tree, options })
 }

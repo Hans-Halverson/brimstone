@@ -8,9 +8,9 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
         get,
-        object_descriptor::ObjectKind,
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -56,7 +56,7 @@ impl ArrayBufferObject {
         let mut object = object_create_from_constructor::<ArrayBufferObject>(
             cx,
             constructor,
-            ObjectKind::ArrayBufferObject,
+            HeapItemKind::ArrayBufferObject,
             Intrinsic::ArrayBufferPrototype,
         )?;
 
@@ -85,7 +85,7 @@ impl ArrayBufferObject {
             } else {
                 // Otherwise allocate new zeroed data block and copy the data into it
                 let mut new_uninit =
-                    BsArray::<u8>::new_uninit(cx, ObjectKind::ByteArray, byte_length);
+                    BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, byte_length);
 
                 // Copy data from the old to new data block
                 let copied_size = byte_length.min(data.len());
@@ -99,7 +99,7 @@ impl ArrayBufferObject {
             }
         } else {
             // Initialize data block to all zeros
-            Some(BsArray::<u8>::new(cx, ObjectKind::ByteArray, byte_length, 0))
+            Some(BsArray::<u8>::new(cx, HeapItemKind::ByteArray, byte_length, 0))
         };
 
         Ok(object)
@@ -316,7 +316,7 @@ pub fn throw_if_detached(cx: Context, array_buffer: HeapPtr<ArrayBufferObject>) 
     }
 }
 
-impl HeapObject for HeapPtr<ArrayBufferObject> {
+impl HeapItem for HeapPtr<ArrayBufferObject> {
     fn byte_size(&self) -> usize {
         size_of::<ArrayBufferObject>()
     }

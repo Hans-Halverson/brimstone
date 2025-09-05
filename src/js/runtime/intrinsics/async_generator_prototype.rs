@@ -10,8 +10,8 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         generator_object::GeneratorCompletionType,
+        heap_item_descriptor::HeapItemKind,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         promise_object::PromiseCapability,
@@ -165,7 +165,7 @@ impl AsyncGeneratorPrototype {
     ) -> EvalResult<()> {
         let proto = object_create::<ObjectValue>(
             cx,
-            ObjectKind::OrdinaryObject,
+            HeapItemKind::OrdinaryObject,
             Intrinsic::AsyncGeneratorPrototype,
         )
         .to_handle();

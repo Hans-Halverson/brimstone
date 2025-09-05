@@ -6,9 +6,9 @@ use crate::{
         abstract_operations::{call_object, construct},
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         type_utilities::{is_callable, is_constructor_value},
@@ -22,7 +22,7 @@ use super::{
     abstract_operations::get_function_realm_no_error,
     function::get_argument,
     get,
-    object_descriptor::ObjectDescriptor,
+    heap_item_descriptor::HeapItemDescriptor,
     type_utilities::{same_object_value, same_value},
     EvalResult, Handle,
 };
@@ -56,7 +56,7 @@ enum PromiseState {
 /// A function to be called when a promise is settled.
 #[repr(C)]
 pub struct PromiseReaction {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The functions to be called when the promise is settled.
     handler: ReactionHandler,
     /// The next reaction in the chain of reactions.
@@ -88,7 +88,7 @@ pub enum PromiseReactionKind {
 impl PromiseObject {
     pub fn new_pending(cx: Context) -> HeapPtr<PromiseObject> {
         let mut object =
-            object_create::<PromiseObject>(cx, ObjectKind::Promise, Intrinsic::PromisePrototype);
+            object_create::<PromiseObject>(cx, HeapItemKind::Promise, Intrinsic::PromisePrototype);
 
         set_uninit!(
             object.state,
@@ -105,7 +105,7 @@ impl PromiseObject {
         let mut object = object_create_from_constructor::<PromiseObject>(
             cx,
             constructor,
-            ObjectKind::Promise,
+            HeapItemKind::Promise,
             Intrinsic::PromisePrototype,
         )?;
 
@@ -424,7 +424,7 @@ impl PromiseReaction {
     ) -> HeapPtr<PromiseReaction> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>();
 
-        set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
+        set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::AwaitResume { suspended_generator: *suspended_generator }
@@ -443,7 +443,7 @@ impl PromiseReaction {
     ) -> HeapPtr<PromiseReaction> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>();
 
-        set_uninit!(reaction.descriptor, cx.base_descriptors.get(ObjectKind::PromiseReaction));
+        set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::Then {
@@ -461,7 +461,7 @@ impl PromiseReaction {
 /// A promise along with its resolve and reject functions.
 #[repr(C)]
 pub struct PromiseCapability {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The promise object. Guaranteed to be Some after construction.
     promise: Option<HeapPtr<ObjectValue>>,
     /// The resolve function for the promise. Guaranteed to be a callable object after construction.
@@ -481,7 +481,10 @@ impl PromiseCapability {
         // Create an empty capability object whose fields will be set later
         let mut capability = cx.alloc_uninit::<PromiseCapability>();
 
-        set_uninit!(capability.descriptor, cx.base_descriptors.get(ObjectKind::PromiseCapability));
+        set_uninit!(
+            capability.descriptor,
+            cx.base_descriptors.get(HeapItemKind::PromiseCapability)
+        );
         set_uninit!(capability.promise, None);
         set_uninit!(capability.resolve, Value::undefined());
         set_uninit!(capability.reject, Value::undefined());
@@ -564,7 +567,7 @@ impl PromiseCapability {
     }
 }
 
-impl HeapObject for HeapPtr<PromiseObject> {
+impl HeapItem for HeapPtr<PromiseObject> {
     fn byte_size(&self) -> usize {
         size_of::<PromiseObject>()
     }
@@ -583,7 +586,7 @@ impl HeapObject for HeapPtr<PromiseObject> {
     }
 }
 
-impl HeapObject for HeapPtr<PromiseReaction> {
+impl HeapItem for HeapPtr<PromiseReaction> {
     fn byte_size(&self) -> usize {
         size_of::<PromiseReaction>()
     }
@@ -604,7 +607,7 @@ impl HeapObject for HeapPtr<PromiseReaction> {
     }
 }
 
-impl HeapObject for HeapPtr<PromiseCapability> {
+impl HeapItem for HeapPtr<PromiseCapability> {
     fn byte_size(&self) -> usize {
         size_of::<PromiseCapability>()
     }

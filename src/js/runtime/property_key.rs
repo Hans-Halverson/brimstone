@@ -2,9 +2,9 @@ use std::{fmt, hash};
 
 use super::{
     gc::{Handle, HandleContents, ToHandleContents},
+    heap_item_descriptor::HeapItemKind,
     interned_strings::InternedStrings,
     numeric_constants::MAX_U32_AS_F64,
-    object_descriptor::ObjectKind,
     string_parsing::parse_string_to_u32,
     string_value::StringValue,
     to_string,
@@ -164,7 +164,7 @@ impl hash::Hash for PropertyKey {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         if self.is_array_index() {
             self.as_array_index().hash(state);
-        } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
+        } else if self.value.as_pointer().descriptor().kind() == HeapItemKind::String {
             // Strings must always be flat before they can be placed into hash tables to
             // avoid allocating in the hash function.
             let string = self.as_string();
@@ -181,7 +181,7 @@ impl fmt::Display for PropertyKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_array_index() {
             write!(f, "{}", self.as_array_index())
-        } else if self.value.as_pointer().descriptor().kind() == ObjectKind::String {
+        } else if self.value.as_pointer().descriptor().kind() == HeapItemKind::String {
             self.as_string().fmt(f)
         } else {
             match self.as_symbol().description_ptr() {

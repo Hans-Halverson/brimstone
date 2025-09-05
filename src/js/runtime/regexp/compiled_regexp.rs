@@ -7,8 +7,8 @@ use crate::{
     runtime::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         string_value::{FlatString, StringValue},
         Context, Handle, HeapPtr,
     },
@@ -19,7 +19,7 @@ use super::instruction::InstructionIterator;
 
 #[repr(C)]
 pub struct CompiledRegExpObject {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // The pattern component of the original regexp as a string. Escaped so that it can be
     // parsed into exactly the same pattern again.
     escaped_pattern_source: HeapPtr<StringValue>,
@@ -69,7 +69,7 @@ impl CompiledRegExpObject {
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::CompiledRegExpObject));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::CompiledRegExpObject));
         set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);
@@ -176,7 +176,7 @@ impl DebugPrint for HeapPtr<CompiledRegExpObject> {
     }
 }
 
-impl HeapObject for HeapPtr<CompiledRegExpObject> {
+impl HeapItem for HeapPtr<CompiledRegExpObject> {
     fn byte_size(&self) -> usize {
         CompiledRegExpObject::calculate_size_in_bytes(
             self.instructions.len(),

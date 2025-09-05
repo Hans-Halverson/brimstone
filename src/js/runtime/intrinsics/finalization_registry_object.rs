@@ -5,8 +5,8 @@ use crate::{
     runtime::{
         collections::InlineArray,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         type_utilities::same_value_non_numeric_non_allocating,
@@ -41,7 +41,7 @@ impl FinalizationRegistryObject {
         let mut object = object_create_from_constructor::<FinalizationRegistryObject>(
             cx,
             constructor,
-            ObjectKind::FinalizationRegistryObject,
+            HeapItemKind::FinalizationRegistryObject,
             Intrinsic::FinalizationRegistryPrototype,
         )?;
 
@@ -81,7 +81,7 @@ pub struct FinalizationRegistryCell {
 
 #[repr(C)]
 pub struct FinalizationRegistryCells {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // Number of cells currently inserted, excluding deleted cells
     num_occupied: usize,
     // Number of deleted cells
@@ -102,7 +102,7 @@ impl FinalizationRegistryCells {
         set_uninit!(
             cells.descriptor,
             cx.base_descriptors
-                .get(ObjectKind::FinalizationRegistryCells)
+                .get(HeapItemKind::FinalizationRegistryCells)
         );
         set_uninit!(cells.num_occupied, 0);
         set_uninit!(cells.num_deleted, 0);
@@ -215,7 +215,7 @@ impl FinalizationRegistryCells {
     }
 }
 
-impl HeapObject for HeapPtr<FinalizationRegistryObject> {
+impl HeapItem for HeapPtr<FinalizationRegistryObject> {
     fn byte_size(&self) -> usize {
         size_of::<FinalizationRegistryObject>()
     }
@@ -229,7 +229,7 @@ impl HeapObject for HeapPtr<FinalizationRegistryObject> {
     }
 }
 
-impl HeapObject for HeapPtr<FinalizationRegistryCells> {
+impl HeapItem for HeapPtr<FinalizationRegistryCells> {
     fn byte_size(&self) -> usize {
         FinalizationRegistryCells::calculate_size_in_bytes(self.capacity())
     }

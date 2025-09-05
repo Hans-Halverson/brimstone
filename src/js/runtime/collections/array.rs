@@ -1,8 +1,8 @@
 use crate::{
     field_offset,
     runtime::{
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr, Value,
     },
     set_uninit,
@@ -13,14 +13,14 @@ use super::InlineArray;
 /// A fixed size array of values.
 #[repr(C)]
 pub struct BsArray<T> {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     array: InlineArray<T>,
 }
 
 const ARRAY_BYTE_OFFSITE: usize = field_offset!(BsArray<u8>, array);
 
 impl<T: Clone> BsArray<T> {
-    pub fn new(cx: Context, kind: ObjectKind, length: usize, initial: T) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, length: usize, initial: T) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
 
@@ -30,7 +30,7 @@ impl<T: Clone> BsArray<T> {
         array
     }
 
-    pub fn new_from_slice(cx: Context, kind: ObjectKind, slice: &[T]) -> HeapPtr<Self> {
+    pub fn new_from_slice(cx: Context, kind: HeapItemKind, slice: &[T]) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(slice.len());
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
 
@@ -42,7 +42,7 @@ impl<T: Clone> BsArray<T> {
 }
 
 impl<T> BsArray<T> {
-    pub fn new_uninit(cx: Context, kind: ObjectKind, length: usize) -> HeapPtr<Self> {
+    pub fn new_uninit(cx: Context, kind: HeapItemKind, length: usize) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
 
@@ -73,7 +73,7 @@ impl<T> BsArray<T> {
     }
 }
 
-impl<T> HeapObject for HeapPtr<BsArray<T>> {
+impl<T> HeapItem for HeapPtr<BsArray<T>> {
     fn byte_size(&self) -> usize {
         BsArray::<T>::calculate_size_in_bytes(self.len())
     }
@@ -84,7 +84,7 @@ impl<T> HeapObject for HeapPtr<BsArray<T>> {
     }
 }
 
-/// A generic array of values. Corresponds to ObjectKind::ValueArray.
+/// A generic array of values. Corresponds to HeapItemKind::ValueArray.
 pub type ValueArray = BsArray<Value>;
 
 pub fn value_array_byte_size(value_array: HeapPtr<ValueArray>) -> usize {
@@ -102,7 +102,7 @@ pub fn value_array_visit_pointers(
     }
 }
 
-/// A generic array of bytes. Corresponds to ObjectKind::ByteArray.
+/// A generic array of bytes. Corresponds to HeapItemKind::ByteArray.
 ///
 /// Can be used for any kind of opaque byte data.
 pub type ByteArray = BsArray<u8>;
@@ -118,7 +118,7 @@ pub fn byte_array_visit_pointers(
     byte_array.visit_pointers(visitor);
 }
 
-/// A generic array of opaque 32-bit values. Corresponds to ObjectKind::U32Array.
+/// A generic array of opaque 32-bit values. Corresponds to HeapItemKind::U32Array.
 ///
 /// Can be used for any kind of opaque 32-bit data.
 pub type U32Array = BsArray<u32>;

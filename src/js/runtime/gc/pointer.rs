@@ -3,10 +3,10 @@ use std::{
     ptr::NonNull,
 };
 
-use super::{HandleContents, IsHeapObject, ToHandleContents};
+use super::{HandleContents, IsHeapItem, ToHandleContents};
 
-/// For direct references to heap pointers, such as references to other heap objects stored within a
-/// heap object. May not be held on stack during a GC (which can occur during any heap allocation).
+/// For direct references to heap pointers, such as references to other heap items stored within a
+/// heap item. May not be held on stack during a GC (which can occur during any heap allocation).
 pub struct HeapPtr<T> {
     ptr: NonNull<T>,
 }
@@ -44,7 +44,7 @@ impl<T> HeapPtr<T> {
     }
 }
 
-impl<T: IsHeapObject> ToHandleContents for T {
+impl<T: IsHeapItem> ToHandleContents for T {
     type Impl = HeapPtr<T>;
 
     #[inline]
@@ -61,7 +61,7 @@ impl<T> Clone for HeapPtr<T> {
 
 impl<T> Copy for HeapPtr<T> {}
 
-impl<T: IsHeapObject> Deref for HeapPtr<T> {
+impl<T: IsHeapItem> Deref for HeapPtr<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -69,7 +69,7 @@ impl<T: IsHeapObject> Deref for HeapPtr<T> {
     }
 }
 
-impl<T: IsHeapObject> DerefMut for HeapPtr<T> {
+impl<T: IsHeapItem> DerefMut for HeapPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.ptr.as_mut() }
     }

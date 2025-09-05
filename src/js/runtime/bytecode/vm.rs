@@ -38,6 +38,7 @@ use crate::{
         gc::HeapVisitor,
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
@@ -46,7 +47,6 @@ use crate::{
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
-        object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
         promise_object::{coerce_to_ordinary_promise, is_promise, resolve, PromiseObject},
@@ -1863,7 +1863,7 @@ impl VM {
     fn check_value_is_callable(&mut self, value: Value) -> EvalResult<CallableObject> {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
-            if kind == ObjectKind::Closure {
+            if kind == HeapItemKind::Closure {
                 let closure = value.as_pointer().cast::<Closure>();
 
                 // Class constructors cannot be called directly
@@ -1880,7 +1880,7 @@ impl VM {
 
                 // All other closures all callable
                 return Ok(CallableObject::Closure(closure));
-            } else if kind == ObjectKind::Proxy {
+            } else if kind == HeapItemKind::Proxy {
                 // Check if proxy is callable, and if so return the attached closure
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
                 if proxy_object.is_callable() {
@@ -1898,13 +1898,13 @@ impl VM {
     fn check_value_is_constructor(&self, value: Value) -> CallableObject {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
-            if kind == ObjectKind::Closure {
+            if kind == HeapItemKind::Closure {
                 // Check if closure is a constructor
                 let closure = value.as_pointer().cast::<Closure>();
                 if closure.function_ptr().is_constructor() {
                     return CallableObject::Closure(closure);
                 }
-            } else if kind == ObjectKind::Proxy {
+            } else if kind == HeapItemKind::Proxy {
                 // Check if proxy is a constructor
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
                 if proxy_object.is_constructor() {
@@ -2195,7 +2195,7 @@ impl VM {
             let new_object: Value = object_create_from_constructor::<ObjectValue>(
                 self.cx(),
                 new_target,
-                ObjectKind::OrdinaryObject,
+                HeapItemKind::OrdinaryObject,
                 Intrinsic::ObjectPrototype,
             )?
             .into();
@@ -3505,7 +3505,7 @@ impl VM {
                 // We only set flags when the value evaluates to a closure
                 debug_assert!(
                     value.is_pointer()
-                        && value.as_pointer().descriptor().kind() == ObjectKind::Closure
+                        && value.as_pointer().descriptor().kind() == HeapItemKind::Closure
                 );
                 let mut closure = value.cast::<Closure>();
 
@@ -4062,7 +4062,7 @@ impl VM {
 
         debug_assert!(
             boxed_value.is_pointer()
-                && boxed_value.as_pointer().descriptor().kind() == ObjectKind::BoxedValue
+                && boxed_value.as_pointer().descriptor().kind() == HeapItemKind::BoxedValue
         );
 
         boxed_value.as_pointer().cast::<BoxedValue>()
@@ -4629,7 +4629,7 @@ impl VM {
 
     /// Visit a BytecodeFunction during GC stack walking, potentially moving the BytecodeFunction in
     /// the heap. Also rewrite a pointer into the function's instructions with this move, since this
-    /// is an internal pointer into a moved heap object.
+    /// is an internal pointer into a moved heap item.
     ///
     /// The pointer to rewrite may be either the current PC or the return adress
     fn rewrite_bytecode_function_and_address(

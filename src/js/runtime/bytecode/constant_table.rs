@@ -3,8 +3,8 @@ use crate::{
     runtime::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, Handle, HeapPtr, Value,
     },
     set_uninit,
@@ -12,7 +12,7 @@ use crate::{
 
 #[repr(C)]
 pub struct ConstantTable {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Array of constants
     constants: InlineArray<Value>,
     /// Compressed metadata about constants. One bit per constant, rounded up to the nearest byte.
@@ -29,7 +29,7 @@ impl ConstantTable {
         let size = Self::calculate_size_in_bytes(constants.len());
         let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::ConstantTable));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ConstantTable));
 
         // Copy constants into inline constants array
         object.constants.init_with_uninit(constants.len());
@@ -115,7 +115,7 @@ impl DebugPrint for HeapPtr<ConstantTable> {
     }
 }
 
-impl HeapObject for HeapPtr<ConstantTable> {
+impl HeapItem for HeapPtr<ConstantTable> {
     fn byte_size(&self) -> usize {
         ConstantTable::calculate_size_in_bytes(self.constants.len())
     }

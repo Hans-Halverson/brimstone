@@ -13,9 +13,9 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::iter_iterator_method_values,
-        object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
             get_prototype_from_constructor, object_create_with_proto, ordinary_define_own_property,

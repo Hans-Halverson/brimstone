@@ -16,13 +16,13 @@
 use crate::{
     common::serialized_heap::{SerializedHeap, SerializedSemispace},
     runtime::{
-        object_descriptor::ObjectDescriptor,
+        heap_item_descriptor::HeapItemDescriptor,
         rust_vtables::{get_vtable, lookup_vtable_enum, RustVtable},
         Context, Value,
     },
 };
 
-use super::{GcType, Heap, HeapInfo, HeapItem, HeapPtr, HeapVisitor};
+use super::{AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor};
 
 pub struct HeapSerializer {
     cx: Context,
@@ -106,12 +106,12 @@ impl HeapSerializer {
             // Start of an object - cast to HeapItem and rewrite its pointers to be offsets from the
             // start of the heap.
             let item_ptr = unsafe { space_start_ptr.add(item_offset) };
-            let mut heap_item = HeapPtr::from_ptr(item_ptr).cast::<HeapItem>();
+            let mut heap_item = HeapPtr::from_ptr(item_ptr).cast::<AnyHeapItem>();
             let kind = heap_item.descriptor().kind();
 
             heap_item.visit_pointers_for_kind(self, kind);
 
-            // Increment fix pointer to point to next new heap object
+            // Increment fix pointer to point to next new heap item
             item_offset += Heap::alloc_size_for_request_size(heap_item.byte_size_for_kind(kind));
         }
     }
@@ -139,7 +139,7 @@ impl HeapSerializer {
 }
 
 impl HeapVisitor for HeapSerializer {
-    fn visit_common(&mut self, ptr: &mut HeapPtr<HeapItem>) {
+    fn visit_common(&mut self, ptr: &mut HeapPtr<AnyHeapItem>) {
         // Find the pointer's offset from the start of the heap
         let offset = ptr.as_ptr() as usize - self.base as usize;
 
@@ -148,7 +148,7 @@ impl HeapVisitor for HeapSerializer {
             self.roots.push(offset);
         } else {
             // Rewrite the pointer if within the heap
-            *ptr = HeapPtr::from_ptr(offset as *mut HeapItem);
+            *ptr = HeapPtr::from_ptr(offset as *mut AnyHeapItem);
         }
     }
 
@@ -187,14 +187,14 @@ impl HeapSpaceDeserializer {
                 deserializer
                     .base
                     .add(descriptor_offset)
-                    .cast::<ObjectDescriptor>()
+                    .cast::<HeapItemDescriptor>()
             };
             let descriptor_kind = unsafe { (*descriptor_ptr).kind() };
 
-            let mut heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<HeapItem>();
+            let mut heap_item = HeapPtr::from_ptr(heap_item_ptr).cast::<AnyHeapItem>();
             heap_item.visit_pointers_for_kind(&mut deserializer, descriptor_kind);
 
-            // Increment fix pointer to point to next new heap object
+            // Increment fix pointer to point to next new heap item
             let byte_size = heap_item.byte_size_for_kind(descriptor_kind);
             item_offset += Heap::alloc_size_for_request_size(byte_size);
         }
@@ -202,10 +202,10 @@ impl HeapSpaceDeserializer {
 }
 
 impl HeapVisitor for HeapSpaceDeserializer {
-    fn visit_common(&mut self, ptr: &mut HeapPtr<HeapItem>) {
+    fn visit_common(&mut self, ptr: &mut HeapPtr<AnyHeapItem>) {
         // Decode by adding the heap base pointer to each stored offset
         let decoded_ptr = unsafe { self.base.add(ptr.as_ptr() as usize) };
-        *ptr = HeapPtr::from_ptr(decoded_ptr as *mut HeapItem);
+        *ptr = HeapPtr::from_ptr(decoded_ptr as *mut AnyHeapItem);
     }
 
     fn visit_rust_vtable_pointer(&mut self, ptr: &mut *const ()) {
@@ -244,10 +244,10 @@ impl<'a> HeapRootsDeserializer<'a> {
 }
 
 impl HeapVisitor for HeapRootsDeserializer<'_> {
-    fn visit_common(&mut self, ptr: &mut HeapPtr<HeapItem>) {
+    fn visit_common(&mut self, ptr: &mut HeapPtr<AnyHeapItem>) {
         // Find the next root offset in traversal order and decode it
         let root_offset = self.root_offsets[self.root_index];
-        let root_ptr = unsafe { self.base.add(root_offset).cast::<HeapItem>() };
+        let root_ptr = unsafe { self.base.add(root_offset).cast::<AnyHeapItem>() };
 
         *ptr = HeapPtr::from_ptr(root_ptr.cast_mut());
 
@@ -258,7 +258,7 @@ impl HeapVisitor for HeapRootsDeserializer<'_> {
         // All values should be rewritten regardless of whether they are pointers, since only
         // pointers were visited when serializing. This includes uninitialized values which may be
         // represented as the empty value.
-        unsafe { self.visit(std::mem::transmute::<&mut Value, &mut HeapPtr<HeapItem>>(value)) };
+        unsafe { self.visit(std::mem::transmute::<&mut Value, &mut HeapPtr<AnyHeapItem>>(value)) };
     }
 }
 /// Size of the `HeapInfo` struct can be different from the serialized heap, e.g. due to

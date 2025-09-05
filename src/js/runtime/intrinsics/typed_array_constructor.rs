@@ -223,7 +223,7 @@ macro_rules! create_typed_array_constructor {
                 array_length: Option<usize>,
             ) -> Handle<ObjectValue> {
                 let mut object =
-                    object_create_with_proto::<$typed_array>(cx, ObjectKind::$typed_array, proto);
+                    object_create_with_proto::<$typed_array>(cx, HeapItemKind::$typed_array, proto);
 
                 set_uninit!(object.viewed_array_buffer, *viewed_array_buffer);
                 set_uninit!(object.byte_length, byte_length);
@@ -937,7 +937,7 @@ macro_rules! create_typed_array_constructor {
             }
         }
 
-        impl HeapObject for HeapPtr<$typed_array> {
+        impl HeapItem for HeapPtr<$typed_array> {
             fn byte_size(&self) -> usize {
                 size_of::<$typed_array>()
             }

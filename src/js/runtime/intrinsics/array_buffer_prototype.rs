@@ -3,8 +3,8 @@ use crate::runtime::{
     collections::BsArray,
     error::{range_error, type_error},
     function::get_argument,
+    heap_item_descriptor::HeapItemKind,
     intrinsics::array_buffer_constructor::throw_if_detached,
-    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -124,7 +124,7 @@ impl ArrayBufferPrototype {
         }
 
         // Create new data block with copy of old data at start
-        let mut new_data = BsArray::<u8>::new_uninit(cx, ObjectKind::ByteArray, new_byte_length);
+        let mut new_data = BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, new_byte_length);
         let old_byte_length = array_buffer.byte_length();
 
         unsafe {

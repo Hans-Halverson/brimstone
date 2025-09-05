@@ -3,8 +3,8 @@ use crate::{
     runtime::{
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, Handle, HeapPtr,
     },
     set_uninit,
@@ -98,7 +98,7 @@ impl ExceptionHandlersBuilder {
 
 #[repr(C)]
 pub struct ExceptionHandlers {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Width of the encoded handler data. A narrow or wide width means all values are encoded as
     /// one or two bytes, respectively. An extra wide width means all values are encoded as a full
     /// eight bytes.
@@ -112,7 +112,7 @@ impl ExceptionHandlers {
         let size = Self::calculate_size_in_bytes(handlers.len());
         let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::ExceptionHandlers));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ExceptionHandlers));
         set_uninit!(object.width, width);
         object.handlers.init_from_slice(&handlers);
 
@@ -242,7 +242,7 @@ impl DebugPrint for HeapPtr<ExceptionHandlers> {
     }
 }
 
-impl HeapObject for HeapPtr<ExceptionHandlers> {
+impl HeapItem for HeapPtr<ExceptionHandlers> {
     fn byte_size(&self) -> usize {
         ExceptionHandlers::calculate_size_in_bytes(self.handlers.len())
     }

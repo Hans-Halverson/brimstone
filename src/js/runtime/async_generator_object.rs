@@ -3,11 +3,11 @@ use crate::{
     runtime::{
         abstract_operations::call_object,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemDescriptor,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectDescriptor,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
         promise_object::PromiseCapability,
@@ -90,7 +90,7 @@ impl AsyncGeneratorState {
 /// A linked list of requests to resume an async generator.
 #[repr(C)]
 pub struct AsyncGeneratorRequest {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Promise capabilities associated with this request.
     capability: HeapPtr<PromiseCapability>,
     /// The completion value - either the value that the yield evaluates to, the error thrown, or
@@ -116,7 +116,7 @@ impl AsyncGeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size);
 
-        let descriptor = cx.base_descriptors.get(ObjectKind::AsyncGenerator);
+        let descriptor = cx.base_descriptors.get(HeapItemKind::AsyncGenerator);
         object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
 
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
@@ -262,7 +262,10 @@ impl AsyncGeneratorRequest {
     ) -> HeapPtr<AsyncGeneratorRequest> {
         let mut request = cx.alloc_uninit::<AsyncGeneratorRequest>();
 
-        set_uninit!(request.descriptor, cx.base_descriptors.get(ObjectKind::AsyncGeneratorRequest));
+        set_uninit!(
+            request.descriptor,
+            cx.base_descriptors.get(HeapItemKind::AsyncGeneratorRequest)
+        );
         set_uninit!(request.capability, *capability);
         set_uninit!(request.completion_value, *completion_value);
         set_uninit!(request.completion_type, completion_type);
@@ -485,7 +488,7 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
     }
 }
 
-impl HeapObject for HeapPtr<AsyncGeneratorObject> {
+impl HeapItem for HeapPtr<AsyncGeneratorObject> {
     fn byte_size(&self) -> usize {
         AsyncGeneratorObject::calculate_size_in_bytes(self.stack_frame.len())
     }
@@ -501,7 +504,7 @@ impl HeapObject for HeapPtr<AsyncGeneratorObject> {
     }
 }
 
-impl HeapObject for HeapPtr<AsyncGeneratorRequest> {
+impl HeapItem for HeapPtr<AsyncGeneratorRequest> {
     fn byte_size(&self) -> usize {
         std::mem::size_of::<AsyncGeneratorRequest>()
     }

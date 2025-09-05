@@ -7,10 +7,10 @@ use crate::{extend_object, must, runtime::type_utilities::is_array, set_uninit};
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
     error::{range_error, type_error},
-    gc::{HeapObject, HeapVisitor},
+    gc::{HeapItem, HeapVisitor},
     get,
+    heap_item_descriptor::HeapItemKind,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_create_with_proto, ordinary_define_own_property, ordinary_delete,
@@ -37,7 +37,8 @@ impl ArrayObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
     pub fn new(cx: Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
-        let mut array = object_create_with_proto::<ArrayObject>(cx, ObjectKind::ArrayObject, proto);
+        let mut array =
+            object_create_with_proto::<ArrayObject>(cx, HeapItemKind::ArrayObject, proto);
 
         set_uninit!(array.is_length_writable, true);
 
@@ -255,7 +256,7 @@ pub fn create_array_from_list(cx: Context, elements: &[Handle<Value>]) -> Handle
     array
 }
 
-impl HeapObject for HeapPtr<ArrayObject> {
+impl HeapItem for HeapPtr<ArrayObject> {
     fn byte_size(&self) -> usize {
         size_of::<ArrayObject>()
     }

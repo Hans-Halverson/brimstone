@@ -5,9 +5,9 @@ use crate::{
     runtime::{
         error::type_error,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
@@ -31,7 +31,7 @@ impl StringIterator {
     pub fn new(cx: Context, string: Handle<FlatString>) -> Handle<StringIterator> {
         let mut object = object_create::<StringIterator>(
             cx,
-            ObjectKind::StringIterator,
+            HeapItemKind::StringIterator,
             Intrinsic::StringIteratorPrototype,
         );
 
@@ -84,7 +84,7 @@ impl StringIteratorPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<StringIterator> {
+impl HeapItem for HeapPtr<StringIterator> {
     fn byte_size(&self) -> usize {
         size_of::<StringIterator>()
     }

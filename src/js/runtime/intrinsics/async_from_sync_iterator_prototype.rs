@@ -6,13 +6,13 @@ use crate::{
         error::type_error_value,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::promise_prototype::perform_promise_then,
         iterator::{
             create_iter_result_object, iterator_close, iterator_complete, iterator_next,
             iterator_value, Iterator,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         promise_object::{coerce_to_ordinary_promise, PromiseCapability},
@@ -36,11 +36,14 @@ impl AsyncFromSyncIterator {
     pub fn new(cx: Context, iterator: Iterator) -> Handle<AsyncFromSyncIterator> {
         let mut object = object_create::<AsyncFromSyncIterator>(
             cx,
-            ObjectKind::AsyncFromSyncIterator,
+            HeapItemKind::AsyncFromSyncIterator,
             Intrinsic::AsyncFromSyncIteratorPrototype,
         );
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::AsyncFromSyncIterator));
+        set_uninit!(
+            object.descriptor,
+            cx.base_descriptors.get(HeapItemKind::AsyncFromSyncIterator)
+        );
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);
 
@@ -56,7 +59,7 @@ impl AsyncFromSyncIterator {
     }
 }
 
-impl HeapObject for HeapPtr<AsyncFromSyncIterator> {
+impl HeapItem for HeapPtr<AsyncFromSyncIterator> {
     fn byte_size(&self) -> usize {
         std::mem::size_of::<AsyncFromSyncIterator>()
     }

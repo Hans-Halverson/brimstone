@@ -1,8 +1,8 @@
 use crate::{
     field_offset,
     runtime::{
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr, Value,
     },
     set_uninit,
@@ -13,7 +13,7 @@ use super::InlineArray;
 /// A growable array of values.
 #[repr(C)]
 pub struct BsVec<T> {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The number of elements stored in the array.
     length: usize,
     /// The array along with its capacity, which is always a power of 2.
@@ -22,7 +22,7 @@ pub struct BsVec<T> {
 
 impl<T: Clone + Copy> BsVec<T> {
     /// Create a new BsVec with the given capacity.
-    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size);
 
@@ -69,7 +69,7 @@ impl<T: Clone + Copy> BsVec<T> {
     }
 }
 
-impl<T: Clone + Copy> HeapObject for HeapPtr<BsVec<T>> {
+impl<T: Clone + Copy> HeapItem for HeapPtr<BsVec<T>> {
     fn byte_size(&self) -> usize {
         BsVec::<T>::calculate_size_in_bytes(self.capacity())
     }
@@ -80,7 +80,7 @@ impl<T: Clone + Copy> HeapObject for HeapPtr<BsVec<T>> {
     }
 }
 
-/// A BsVec stored as the field of a heap object. Can create new BsVec objects and set the field to
+/// A BsVec stored as the field of a heap item. Can create new BsVec objects and set the field to
 /// a new BsVec.
 pub trait BsVecField<T: Clone + Copy> {
     fn new_vec(cx: Context, capacity: usize) -> HeapPtr<BsVec<T>>;
@@ -120,7 +120,7 @@ pub trait BsVecField<T: Clone + Copy> {
     }
 }
 
-/// A generic vec of values. Corresponds to ObjectKind::ValueVec.
+/// A generic vec of values. Corresponds to HeapItemKind::ValueVec.
 type ValueVec = BsVec<Value>;
 
 pub fn value_vec_byte_size(value_array: HeapPtr<ValueVec>) -> usize {

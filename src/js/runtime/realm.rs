@@ -7,15 +7,15 @@ use super::{
     bytecode::function::Closure,
     collections::{BsHashMap, BsHashMapField, InlineArray},
     error::{err_assign_constant, syntax_error},
-    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
     global_names::has_restricted_global_property,
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     interned_strings::InternedStrings,
     intrinsics::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
         rust_runtime::return_undefined,
     },
-    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::ObjectValue,
     scope::Scope,
     scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
@@ -26,7 +26,7 @@ use super::{
 /// Realms (https://tc39.es/ecma262/#sec-code-realms)
 #[repr(C)]
 pub struct Realm {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     global_object: HeapPtr<ObjectValue>,
     /// Array of all global scopes in this realm. Each script has its own global scope which
     /// contains that script's lexical bindings.
@@ -61,7 +61,7 @@ impl Realm {
             let size = Self::calculate_size_in_bytes();
             let mut realm = cx.alloc_uninit_with_size::<Realm>(size);
 
-            set_uninit!(realm.descriptor, cx.base_descriptors.get(ObjectKind::Realm));
+            set_uninit!(realm.descriptor, cx.base_descriptors.get(HeapItemKind::Realm));
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
@@ -260,7 +260,7 @@ impl Handle<Realm> {
     /// function constructors, etc.
     pub fn init_global_scope(&mut self, cx: Context) {
         self.global_scopes = GlobalScopes::new(cx, GlobalScopes::MIN_CAPACITY);
-        self.lexical_names = LexicalNamesMap::new_initial(cx, ObjectKind::LexicalNamesMap);
+        self.lexical_names = LexicalNamesMap::new_initial(cx, HeapItemKind::LexicalNamesMap);
 
         // All global scopes have the realm in their first slot
         let binding_names = &[InternedStrings::alloc_wtf8_str(cx, &REALM_SCOPE_SLOT_NAME)];
@@ -282,7 +282,7 @@ impl Handle<Realm> {
     }
 }
 
-impl HeapObject for HeapPtr<Realm> {
+impl HeapItem for HeapPtr<Realm> {
     fn byte_size(&self) -> usize {
         Realm::calculate_size_in_bytes()
     }
@@ -299,7 +299,7 @@ impl HeapObject for HeapPtr<Realm> {
 
 #[repr(C)]
 pub struct GlobalScopes {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Number of global scopes stored in this array.
     len: usize,
     /// Array of global scopes, total size is the capacity of the global scope array.
@@ -313,7 +313,7 @@ impl GlobalScopes {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut global_scopes = cx.alloc_uninit_with_size::<GlobalScopes>(size);
 
-        set_uninit!(global_scopes.descriptor, cx.base_descriptors.get(ObjectKind::GlobalScopes));
+        set_uninit!(global_scopes.descriptor, cx.base_descriptors.get(HeapItemKind::GlobalScopes));
         set_uninit!(global_scopes.len, 0);
 
         // Leave scopes array uninitialized
@@ -379,7 +379,7 @@ impl GlobalScopes {
     }
 }
 
-impl HeapObject for HeapPtr<GlobalScopes> {
+impl HeapItem for HeapPtr<GlobalScopes> {
     fn byte_size(&self) -> usize {
         GlobalScopes::calculate_size_in_bytes(self.scopes.len())
     }
@@ -422,7 +422,7 @@ pub struct LexicalNamesMapField(Handle<Realm>);
 
 impl BsHashMapField<HeapPtr<FlatString>, LexicalNameLocation> for LexicalNamesMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<LexicalNamesMap> {
-        LexicalNamesMap::new(cx, ObjectKind::LexicalNamesMap, capacity)
+        LexicalNamesMap::new(cx, HeapItemKind::LexicalNamesMap, capacity)
     }
 
     fn get(&self, _: Context) -> HeapPtr<LexicalNamesMap> {

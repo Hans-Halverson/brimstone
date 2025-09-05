@@ -1,14 +1,14 @@
-use crate::{field_offset, runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
 
 use super::{
     abstract_operations::has_property,
     boxed_value::BoxedValue,
     collections::InlineArray,
     error::{err_assign_constant, err_cannot_set_property, err_not_defined},
-    gc::{HeapItem, HeapObject, HeapVisitor},
+    gc::{AnyHeapItem, HeapItem, HeapVisitor},
     get,
+    heap_item_descriptor::HeapItemDescriptor,
     module::source_text_module::SourceTextModule,
-    object_descriptor::ObjectDescriptor,
     object_value::ObjectValue,
     ordinary_object::ordinary_object_create,
     scope_names::ScopeNames,
@@ -19,7 +19,7 @@ use super::{
 
 #[repr(C)]
 pub struct Scope {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The type of this scope
     kind: ScopeKind,
     /// Parent scope, forming a chain of scopes up to the global scope.
@@ -55,7 +55,7 @@ impl Scope {
         let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::Scope));
+        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::Scope));
         set_uninit!(scope.kind, kind);
         set_uninit!(scope.parent, parent.map(|p| *p));
         set_uninit!(scope.scope_names, *scope_names);
@@ -149,14 +149,15 @@ impl Scope {
         let value = self.get_slot(index);
 
         debug_assert!(
-            value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::BoxedValue
+            value.is_pointer()
+                && value.as_pointer().descriptor().kind() == HeapItemKind::BoxedValue
         );
 
         value.as_pointer().cast::<BoxedValue>()
     }
 
     /// Set the boxed value at the given slot index of a module scope.
-    pub fn set_heap_item_slot(&mut self, index: usize, heap_item: HeapPtr<HeapItem>) {
+    pub fn set_heap_item_slot(&mut self, index: usize, heap_item: HeapPtr<AnyHeapItem>) {
         self.set_slot(index, Value::heap_item(heap_item));
     }
 
@@ -177,7 +178,7 @@ impl Scope {
         debug_assert!(self.kind == ScopeKind::Module);
 
         let module = self.get_slot(0).as_pointer();
-        if module.descriptor().kind() == ObjectKind::SourceTextModule {
+        if module.descriptor().kind() == HeapItemKind::SourceTextModule {
             Some(module.cast::<SourceTextModule>())
         } else {
             None
@@ -443,7 +444,7 @@ impl Handle<Scope> {
     }
 }
 
-impl HeapObject for HeapPtr<Scope> {
+impl HeapItem for HeapPtr<Scope> {
     fn byte_size(&self) -> usize {
         Scope::calculate_size_in_bytes(self.slots.len())
     }

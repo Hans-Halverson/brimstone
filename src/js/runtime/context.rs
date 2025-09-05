@@ -31,6 +31,7 @@ use super::{
     collections::{BsHashMap, BsHashMapField},
     error::BsResult,
     gc::{Heap, HeapRootsDeserializer, HeapVisitor},
+    heap_item_descriptor::{BaseDescriptors, HeapItemKind},
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
     module::{
@@ -39,7 +40,6 @@ use super::{
         module::{DynModule, HeapDynModule},
         source_text_module::SourceTextModule,
     },
-    object_descriptor::{BaseDescriptors, ObjectKind},
     object_value::{NamedPropertiesMap, ObjectValue},
     realm::Realm,
     string_value::FlatString,
@@ -190,12 +190,12 @@ impl Context {
             cx.init_builtin_symbols();
 
             cx.global_symbol_registry =
-                GlobalSymbolRegistry::new_initial(cx, ObjectKind::GlobalSymbolRegistryMap);
-            cx.modules = ModuleCache::new_initial(cx, ObjectKind::ModuleCacheMap);
+                GlobalSymbolRegistry::new_initial(cx, HeapItemKind::GlobalSymbolRegistryMap);
+            cx.modules = ModuleCache::new_initial(cx, HeapItemKind::ModuleCacheMap);
 
             cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
             cx.default_named_properties =
-                NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, 0);
+                NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, 0);
 
             cx.initial_realm = *Realm::new(cx);
         });
@@ -637,7 +637,7 @@ pub struct ModuleCacheField;
 
 impl BsHashMapField<HeapModuleCacheKey, HeapDynModule> for ModuleCacheField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ModuleCache> {
-        ModuleCache::new(cx, ObjectKind::ModuleCacheMap, capacity)
+        ModuleCache::new(cx, HeapItemKind::ModuleCacheMap, capacity)
     }
 
     fn get(&self, cx: Context) -> HeapPtr<ModuleCache> {
@@ -668,7 +668,7 @@ pub struct GlobalSymbolRegistryField;
 
 impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
-        GlobalSymbolRegistry::new(cx, ObjectKind::GlobalSymbolRegistryMap, capacity)
+        GlobalSymbolRegistry::new(cx, HeapItemKind::GlobalSymbolRegistryMap, capacity)
     }
 
     fn get(&self, cx: Context) -> HeapPtr<GlobalSymbolRegistry> {

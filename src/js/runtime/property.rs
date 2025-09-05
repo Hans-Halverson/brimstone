@@ -21,7 +21,7 @@ pub struct Property {
     flags: PropertyFlags,
 }
 
-/// A property that is stored on the heap. Contains direct references to heap objects.
+/// A property that is stored on the heap. Contains direct references to heap items.
 #[derive(Clone)]
 pub struct HeapProperty {
     value: Value,

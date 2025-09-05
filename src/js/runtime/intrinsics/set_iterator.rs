@@ -7,9 +7,9 @@ use crate::{
         collections::{index_map::GcSafeEntriesIter, BsIndexMap},
         error::type_error,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
@@ -42,7 +42,7 @@ impl SetIterator {
     pub fn new(cx: Context, set: Handle<SetObject>, kind: SetIteratorKind) -> Handle<SetIterator> {
         let mut object = object_create::<SetIterator>(
             cx,
-            ObjectKind::SetIterator,
+            HeapItemKind::SetIterator,
             Intrinsic::SetIteratorPrototype,
         );
 
@@ -144,7 +144,7 @@ impl SetIteratorPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<SetIterator> {
+impl HeapItem for HeapPtr<SetIterator> {
     fn byte_size(&self) -> usize {
         size_of::<SetIterator>()
     }

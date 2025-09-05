@@ -4,7 +4,7 @@ use crate::runtime::{
     eval_result::EvalResult,
     function::get_argument,
     generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
-    object_descriptor::ObjectKind,
+    heap_item_descriptor::HeapItemKind,
     object_value::ObjectValue,
     ordinary_object::object_create,
     property::Property,
@@ -75,7 +75,7 @@ impl GeneratorPrototype {
     pub fn install_on_generator_function(cx: Context, closure: Handle<Closure>) -> EvalResult<()> {
         let proto = object_create::<ObjectValue>(
             cx,
-            ObjectKind::OrdinaryObject,
+            HeapItemKind::OrdinaryObject,
             Intrinsic::GeneratorPrototype,
         )
         .to_handle();

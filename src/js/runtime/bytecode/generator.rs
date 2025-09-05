@@ -40,6 +40,7 @@ use crate::{
         eval::expression::generate_template_object,
         gc::Escapable,
         global_names::GlobalNames,
+        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         module::{
             import_attributes::ImportAttributes,
@@ -48,7 +49,6 @@ use crate::{
                 NamedReExportEntry, SourceTextModule,
             },
         },
-        object_descriptor::ObjectKind,
         regexp::compiler::compile_regexp,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
@@ -1685,7 +1685,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<ConstantTableIndex> {
         let constant_index = self
             .constant_table_builder
-            .add_heap_object(Handle::dangling())?;
+            .add_heap_item(Handle::dangling())?;
         self.pending_functions_queue.push((
             function,
             FuncGenPatch::ParentFunction(constant_index),
@@ -2917,7 +2917,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let bigint_value = BigIntValue::new(self.cx, lit.value()).to_handle();
         let constant_index = self
             .constant_table_builder
-            .add_heap_object(bigint_value.cast())?;
+            .add_heap_item(bigint_value.cast())?;
         self.writer
             .load_constant_instruction(dest, ConstantIndex::new(constant_index));
 
@@ -2936,7 +2936,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let compiled_regexp = compile_regexp(self.cx, &lit.regexp, source);
         let compiled_regexp_index = self
             .constant_table_builder
-            .add_heap_object(compiled_regexp.cast())?;
+            .add_heap_item(compiled_regexp.cast())?;
 
         let dest = self.allocate_destination(dest)?;
         self.writer
@@ -3586,7 +3586,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let template_object = generate_template_object(self.cx, self.realm, &expr.quasi);
         let template_object_index = self
             .constant_table_builder
-            .add_heap_object(template_object.cast())?;
+            .add_heap_item(template_object.cast())?;
 
         // Pass the template argument as the first call argument
         let template_object_reg = self.register_allocator.allocate()?;
@@ -6993,7 +6993,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let class_names = ClassNames::new(self.cx, &methods, home_object, static_home_object);
         let class_names_index = self
             .constant_table_builder
-            .add_heap_object(class_names.cast())?;
+            .add_heap_item(class_names.cast())?;
 
         // Pass first register to NewClass instruction. If no registers are needed then pass an
         // arbitrary register as it will not be used (in this case the constructor register).
@@ -7513,7 +7513,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let scope_names_index = self
             .constant_table_builder
-            .add_heap_object(scope_names.cast())?;
+            .add_heap_item(scope_names.cast())?;
         let constant_index = ConstantIndex::new(scope_names_index);
 
         // Cache the scope names for future use
@@ -9780,7 +9780,7 @@ struct FunctionVecField<'a>(&'a mut Option<Handle<FunctionVec>>);
 
 impl BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'_> {
     fn new_vec(cx: Context, capacity: usize) -> HeapPtr<FunctionVec> {
-        BsVec::new(cx, ObjectKind::ValueVec, capacity)
+        BsVec::new(cx, HeapItemKind::ValueVec, capacity)
     }
 
     fn get(&self) -> HeapPtr<FunctionVec> {

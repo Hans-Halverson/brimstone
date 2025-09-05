@@ -12,8 +12,8 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
+        heap_item_descriptor::HeapItemKind,
         numeric_constants::MAX_SAFE_INTEGER_U64,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
         property::Property,
@@ -1771,9 +1771,12 @@ impl ArrayPrototype {
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
     fn create_unscopables(cx: Context) -> Handle<ObjectValue> {
-        let list =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
-                .to_handle();
+        let list = object_create_with_optional_proto::<ObjectValue>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            None,
+        )
+        .to_handle();
 
         let true_value = cx.bool(true);
 

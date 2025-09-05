@@ -5,8 +5,8 @@ use crate::{
     runtime::{
         collections::{BsHashMap, BsHashMapField},
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
@@ -36,12 +36,12 @@ impl WeakMapObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakMapObject>> {
         let weak_map_data =
-            WeakValueMap::new_initial(cx, ObjectKind::WeakMapObjectWeakValueMap).to_handle();
+            WeakValueMap::new_initial(cx, HeapItemKind::WeakMapObjectWeakValueMap).to_handle();
 
         let mut object = object_create_from_constructor::<WeakMapObject>(
             cx,
             constructor,
-            ObjectKind::WeakMapObject,
+            HeapItemKind::WeakMapObject,
             Intrinsic::WeakMapPrototype,
         )?;
 
@@ -82,7 +82,7 @@ pub struct WeakMapObjectMapField(Handle<WeakMapObject>);
 
 impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<WeakValueMap> {
-        WeakValueMap::new(cx, ObjectKind::WeakMapObjectWeakValueMap, capacity)
+        WeakValueMap::new(cx, HeapItemKind::WeakMapObjectWeakValueMap, capacity)
     }
 
     fn get(&self, _: Context) -> HeapPtr<WeakValueMap> {
@@ -94,7 +94,7 @@ impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
     }
 }
 
-impl HeapObject for HeapPtr<WeakMapObject> {
+impl HeapItem for HeapPtr<WeakMapObject> {
     fn byte_size(&self) -> usize {
         size_of::<WeakMapObject>()
     }

@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use crate::{field_offset, runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
 
 use super::{
     collections::InlineArray,
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     object_value::ObjectValue,
     string_value::StringValue,
     Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
@@ -23,7 +23,7 @@ use super::{
 /// and For-In Iterator Objects (https://tc39.es/ecma262/#sec-for-in-iterator-objects)
 #[repr(C)]
 pub struct ForInIterator {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The target object that is being iterated over.
     object: HeapPtr<ObjectValue>,
     /// The next index in the keys array to be visited.
@@ -41,7 +41,7 @@ impl ForInIterator {
         let size = Self::calculate_size_in_bytes(keys.len());
         let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size);
 
-        set_uninit!(iterator.descriptor, cx.base_descriptors.get(ObjectKind::ForInIterator));
+        set_uninit!(iterator.descriptor, cx.base_descriptors.get(HeapItemKind::ForInIterator));
         set_uninit!(iterator.object, *object);
         set_uninit!(iterator.index, 0);
 
@@ -129,7 +129,7 @@ impl Handle<ForInIterator> {
     }
 }
 
-impl HeapObject for HeapPtr<ForInIterator> {
+impl HeapItem for HeapPtr<ForInIterator> {
     fn byte_size(&self) -> usize {
         ForInIterator::calculate_size_in_bytes(self.keys.len())
     }

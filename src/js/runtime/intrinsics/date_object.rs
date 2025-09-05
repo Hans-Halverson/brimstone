@@ -4,7 +4,7 @@ use crate::{
     common::math::modulo,
     extend_object,
     runtime::{
-        gc::HeapObject, intrinsics::intrinsics::Intrinsic, object_descriptor::ObjectKind,
+        gc::HeapItem, heap_item_descriptor::HeapItemKind, intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue, ordinary_object::object_create_from_constructor,
         type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
     },
@@ -29,7 +29,7 @@ impl DateObject {
         let mut object = object_create_from_constructor::<DateObject>(
             cx,
             constructor,
-            ObjectKind::DateObject,
+            HeapItemKind::DateObject,
             Intrinsic::DatePrototype,
         )?;
 
@@ -360,7 +360,7 @@ pub fn time_clip(time: f64) -> f64 {
     to_integer_or_infinity_f64(time)
 }
 
-impl HeapObject for HeapPtr<DateObject> {
+impl HeapItem for HeapPtr<DateObject> {
     fn byte_size(&self) -> usize {
         size_of::<DateObject>()
     }

@@ -1,8 +1,8 @@
 use std::hash::Hash;
 
 use crate::runtime::{
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectKind,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemKind,
     Context, HeapPtr,
 };
 
@@ -13,11 +13,11 @@ use super::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField};
 pub struct BsHashSet<T>(BsHashMap<T, ()>);
 
 impl<T: Eq + Hash + Clone> BsHashSet<T> {
-    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
-    pub fn new_initial(cx: Context, kind: ObjectKind) -> HeapPtr<Self> {
+    pub fn new_initial(cx: Context, kind: HeapItemKind) -> HeapPtr<Self> {
         BsHashMap::<T, ()>::new_initial(cx, kind).cast()
     }
 
@@ -65,7 +65,7 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
     }
 }
 
-/// A BsHashSet stored as the field of a heap object. Can create new set and set the field to a
+/// A BsHashSet stored as the field of a heap item. Can create new set and set the field to a
 /// new set.
 pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
     fn new(cx: Context, capacity: usize) -> HeapPtr<BsHashSet<T>>;
@@ -100,7 +100,7 @@ impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashM
     }
 }
 
-impl<T: Eq + Hash + Clone> HeapObject for HeapPtr<BsHashSet<T>> {
+impl<T: Eq + Hash + Clone> HeapItem for HeapPtr<BsHashSet<T>> {
     fn byte_size(&self) -> usize {
         BsHashSet::<T>::calculate_size_in_bytes(self.capacity())
     }

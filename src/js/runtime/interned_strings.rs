@@ -9,7 +9,7 @@ use crate::{
 use super::{
     collections::{BsHashSet, BsHashSetField},
     gc::HeapVisitor,
-    object_descriptor::ObjectKind,
+    heap_item_descriptor::HeapItemKind,
     string_value::{FlatString, StringValue},
     Context, Handle, HeapPtr,
 };
@@ -30,7 +30,7 @@ impl InternedStrings {
     pub fn init(mut cx: Context) {
         set_uninit!(
             cx.interned_strings.strings,
-            InternedStringsSet::new_initial(cx, ObjectKind::InternedStringsSet)
+            InternedStringsSet::new_initial(cx, HeapItemKind::InternedStringsSet)
         );
         set_uninit!(cx.interned_strings.generator_cache, HashMap::new());
     }
@@ -127,7 +127,7 @@ pub struct InternedStringsSetField;
 
 impl BsHashSetField<HeapPtr<FlatString>> for InternedStringsSetField {
     fn new(cx: Context, capacity: usize) -> HeapPtr<InternedStringsSet> {
-        InternedStringsSet::new(cx, ObjectKind::InternedStringsSet, capacity)
+        InternedStringsSet::new(cx, HeapItemKind::InternedStringsSet, capacity)
     }
 
     fn get(&self, cx: Context) -> HeapPtr<InternedStringsSet> {

@@ -7,9 +7,9 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::array_buffer_constructor::throw_if_detached,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -41,7 +41,7 @@ impl DataViewObject {
         let mut object = object_create_from_constructor::<DataViewObject>(
             cx,
             constructor,
-            ObjectKind::DataViewObject,
+            HeapItemKind::DataViewObject,
             Intrinsic::DataViewPrototype,
         )?;
 
@@ -177,7 +177,7 @@ impl DataViewConstructor {
     }
 }
 
-impl HeapObject for HeapPtr<DataViewObject> {
+impl HeapItem for HeapPtr<DataViewObject> {
     fn byte_size(&self) -> usize {
         size_of::<DataViewObject>()
     }

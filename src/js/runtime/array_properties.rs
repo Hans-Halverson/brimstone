@@ -4,8 +4,8 @@ use crate::{field_offset, set_uninit};
 
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::{ObjectDescriptor, ObjectKind},
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     object_value::ObjectValue,
     property::{HeapProperty, Property},
     Context, Handle, HeapPtr, Value,
@@ -15,7 +15,7 @@ use super::{
 // sparse array represented by map.
 #[repr(C)]
 pub struct ArrayProperties {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
 }
 
 // Number of indices past the end of an array an access can occur before dense array is converted
@@ -25,7 +25,7 @@ const SPARSE_ARRAY_THRESHOLD: u32 = 100;
 impl HeapPtr<ArrayProperties> {
     #[inline]
     pub fn is_dense(&self) -> bool {
-        self.descriptor.kind() == ObjectKind::DenseArrayProperties
+        self.descriptor.kind() == HeapItemKind::DenseArrayProperties
     }
 
     #[inline]
@@ -40,7 +40,7 @@ impl HeapPtr<ArrayProperties> {
 
     #[inline]
     pub fn as_dense_opt(&self) -> Option<HeapPtr<DenseArrayProperties>> {
-        if self.descriptor.kind() == ObjectKind::DenseArrayProperties {
+        if self.descriptor.kind() == HeapItemKind::DenseArrayProperties {
             Some(self.as_dense())
         } else {
             None
@@ -319,7 +319,7 @@ impl ArrayProperties {
 
 #[repr(C)]
 pub struct DenseArrayProperties {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // Number of elements stored in this array so far
     len: u32,
     // Array of elements, total size is the capacity of the array
@@ -334,7 +334,7 @@ impl DenseArrayProperties {
         let size = Self::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::DenseArrayProperties));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
         object.array.init_with_uninit(capacity as usize);
 
@@ -465,7 +465,7 @@ impl SparseArrayProperties {
 
         object
             .sparse_map
-            .init(cx, ObjectKind::SparseArrayProperties, capacity);
+            .init(cx, HeapItemKind::SparseArrayProperties, capacity);
 
         // Set uninitialized array length
         object.set_array_length(array_length);
@@ -535,7 +535,7 @@ impl BsHashMapField<u32, HeapProperty> for SparseMapField {
     }
 }
 
-impl HeapObject for HeapPtr<ArrayProperties> {
+impl HeapItem for HeapPtr<ArrayProperties> {
     fn byte_size(&self) -> usize {
         if let Some(dense_array) = self.as_dense_opt() {
             dense_array.byte_size()
@@ -553,7 +553,7 @@ impl HeapObject for HeapPtr<ArrayProperties> {
     }
 }
 
-impl HeapObject for HeapPtr<DenseArrayProperties> {
+impl HeapItem for HeapPtr<DenseArrayProperties> {
     fn byte_size(&self) -> usize {
         DenseArrayProperties::calculate_size_in_bytes(self.capacity() as usize)
     }
@@ -568,7 +568,7 @@ impl HeapObject for HeapPtr<DenseArrayProperties> {
     }
 }
 
-impl HeapObject for HeapPtr<SparseArrayProperties> {
+impl HeapItem for HeapPtr<SparseArrayProperties> {
     fn byte_size(&self) -> usize {
         SparseArrayProperties::calculate_size_in_bytes(self.sparse_map.capacity())
     }

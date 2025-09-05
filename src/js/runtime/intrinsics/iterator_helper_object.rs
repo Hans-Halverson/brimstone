@@ -4,13 +4,13 @@ use crate::{
     extend_object,
     runtime::{
         abstract_operations::call_object,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
         generator_object::GeneratorState,
+        heap_item_descriptor::HeapItemKind,
         iterator::{
             create_iter_result_object, get_iterator_flattenable, iterator_close, iterator_step,
             iterator_step_value, Iterator,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_with_proto,
         type_utilities::to_boolean,
@@ -65,7 +65,7 @@ impl IteratorHelperObject {
         let prototype = cx.get_intrinsic(Intrinsic::IteratorHelperPrototype);
         let mut object = object_create_with_proto::<IteratorHelperObject>(
             cx,
-            ObjectKind::IteratorHelperObject,
+            HeapItemKind::IteratorHelperObject,
             prototype,
         );
 
@@ -462,7 +462,7 @@ impl Handle<IteratorHelperObject> {
     }
 }
 
-impl HeapObject for HeapPtr<IteratorHelperObject> {
+impl HeapItem for HeapPtr<IteratorHelperObject> {
     fn byte_size(&self) -> usize {
         size_of::<IteratorHelperObject>()
     }

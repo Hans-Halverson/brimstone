@@ -6,9 +6,9 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{Handle, HeapObject, HeapVisitor},
+        gc::{Handle, HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::{create_iter_result_object, get_iterator_flattenable},
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
         realm::Realm,
@@ -63,7 +63,7 @@ impl IteratorConstructor {
         let object = object_create_from_constructor::<ObjectValue>(
             cx,
             new_target.unwrap(),
-            ObjectKind::OrdinaryObject,
+            HeapItemKind::OrdinaryObject,
             Intrinsic::IteratorPrototype,
         )?;
 
@@ -104,7 +104,7 @@ impl WrappedValidIterator {
     ) -> Handle<ObjectValue> {
         let mut object = object_create_with_proto::<WrappedValidIterator>(
             cx,
-            ObjectKind::WrappedValidIterator,
+            HeapItemKind::WrappedValidIterator,
             cx.get_intrinsic(Intrinsic::WrapForValidIteratorPrototype),
         );
 
@@ -123,7 +123,7 @@ impl WrappedValidIterator {
     }
 }
 
-impl HeapObject for HeapPtr<WrappedValidIterator> {
+impl HeapItem for HeapPtr<WrappedValidIterator> {
     fn byte_size(&self) -> usize {
         size_of::<WrappedValidIterator>()
     }
@@ -143,7 +143,7 @@ impl WrapForValidIteratorPrototype {
         let iterator_prototype = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = object_create_with_proto::<ObjectValue>(
             cx,
-            ObjectKind::OrdinaryObject,
+            HeapItemKind::OrdinaryObject,
             iterator_prototype,
         )
         .to_handle();

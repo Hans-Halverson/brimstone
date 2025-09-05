@@ -5,8 +5,8 @@ use super::{
     accessor::Accessor,
     eval_result::EvalResult,
     gc::{Handle, HeapPtr},
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::{ObjectDescriptor, ObjectKind},
     object_value::{ObjectValue, VirtualObject},
     property::Property,
     property_descriptor::PropertyDescriptor,
@@ -166,7 +166,8 @@ pub fn ordinary_get_own_property(
         None => None,
         Some(property) => {
             let value = property.value();
-            if value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Accessor
+            if value.is_pointer()
+                && value.as_pointer().descriptor().kind() == HeapItemKind::Accessor
             {
                 let accessor_value = value.as_pointer().cast::<Accessor>();
                 Some(PropertyDescriptor::accessor(
@@ -566,7 +567,7 @@ pub fn ordinary_own_string_symbol_property_keys(
 pub fn ordinary_object_create(cx: Context) -> Handle<ObjectValue> {
     let object = cx.alloc_uninit::<ObjectValue>();
 
-    let descriptor = cx.base_descriptors.get(ObjectKind::OrdinaryObject);
+    let descriptor = cx.base_descriptors.get(HeapItemKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
     object_ordinary_init(cx, object, descriptor, Some(proto));
 
@@ -575,7 +576,7 @@ pub fn ordinary_object_create(cx: Context) -> Handle<ObjectValue> {
 
 pub fn object_create<T>(
     cx: Context,
-    descriptor_kind: ObjectKind,
+    descriptor_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
 ) -> HeapPtr<T>
 where
@@ -593,7 +594,7 @@ where
 pub fn object_create_with_size<T>(
     cx: Context,
     size: usize,
-    descriptor_kind: ObjectKind,
+    descriptor_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
 ) -> HeapPtr<T>
 where
@@ -610,7 +611,7 @@ where
 
 pub fn object_create_with_proto<T>(
     cx: Context,
-    descriptor_kind: ObjectKind,
+    descriptor_kind: HeapItemKind,
     proto: Handle<ObjectValue>,
 ) -> HeapPtr<T>
 where
@@ -626,7 +627,7 @@ where
 
 pub fn object_create_with_optional_proto<T>(
     cx: Context,
-    descriptor_kind: ObjectKind,
+    descriptor_kind: HeapItemKind,
     proto: Option<Handle<ObjectValue>>,
 ) -> HeapPtr<T>
 where
@@ -644,7 +645,7 @@ where
 pub fn object_ordinary_init(
     cx: Context,
     mut object: HeapPtr<ObjectValue>,
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     proto: Option<HeapPtr<ObjectValue>>,
 ) {
     object.set_descriptor(descriptor);
@@ -660,7 +661,7 @@ pub fn object_ordinary_init(
 pub fn object_create_from_constructor<T>(
     cx: Context,
     constructor: Handle<ObjectValue>,
-    descriptor_kind: ObjectKind,
+    descriptor_kind: HeapItemKind,
     intrinsic_default_proto: Intrinsic,
 ) -> EvalResult<HeapPtr<T>>
 where

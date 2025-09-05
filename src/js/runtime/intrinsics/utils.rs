@@ -12,7 +12,7 @@ macro_rules! cast_from_value_fn {
 
             // Check if object descriptor's kind matches the kind we are casting to
             let object_value = value.as_object();
-            if object_value.descriptor().kind() != ObjectKind::$type {
+            if object_value.descriptor().kind() != HeapItemKind::$type {
                 return type_error(cx, concat!("expected object of type ", $name));
             }
 

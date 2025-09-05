@@ -13,9 +13,9 @@ use super::{
     abstract_operations::{create_data_property_or_throw, define_property_or_throw},
     bytecode::function::Closure,
     collections::InlineArray,
-    gc::{Handle, HeapObject, HeapVisitor},
+    gc::{Handle, HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemKind,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{
         object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
@@ -39,7 +39,7 @@ impl UnmappedArgumentsObject {
     pub fn new(cx: Context) -> Handle<ObjectValue> {
         let object = object_create::<ObjectValue>(
             cx,
-            ObjectKind::UnmappedArgumentsObject,
+            HeapItemKind::UnmappedArgumentsObject,
             Intrinsic::ObjectPrototype,
         );
 
@@ -79,7 +79,7 @@ impl MappedArgumentsObject {
         let mut object = object_create_with_size::<MappedArgumentsObject>(
             cx,
             size,
-            ObjectKind::MappedArgumentsObject,
+            HeapItemKind::MappedArgumentsObject,
             Intrinsic::ObjectPrototype,
         );
 
@@ -310,7 +310,7 @@ pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]
     object.into()
 }
 
-impl HeapObject for HeapPtr<MappedArgumentsObject> {
+impl HeapItem for HeapPtr<MappedArgumentsObject> {
     fn byte_size(&self) -> usize {
         MappedArgumentsObject::calculate_size_in_bytes(self.mapped_parameters.len())
     }
@@ -321,7 +321,7 @@ impl HeapObject for HeapPtr<MappedArgumentsObject> {
     }
 }
 
-impl HeapObject for HeapPtr<UnmappedArgumentsObject> {
+impl HeapItem for HeapPtr<UnmappedArgumentsObject> {
     fn byte_size(&self) -> usize {
         size_of::<UnmappedArgumentsObject>()
     }

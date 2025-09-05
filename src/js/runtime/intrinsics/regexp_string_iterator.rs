@@ -6,11 +6,11 @@ use crate::{
         abstract_operations::set,
         error::type_error,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
         get,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::regexp_prototype::{advance_u64_string_index, regexp_exec},
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
@@ -46,7 +46,7 @@ impl RegExpStringIterator {
     ) -> Handle<RegExpStringIterator> {
         let mut object = object_create::<RegExpStringIterator>(
             cx,
-            ObjectKind::RegExpStringIterator,
+            HeapItemKind::RegExpStringIterator,
             Intrinsic::RegExpStringIteratorPrototype,
         );
 
@@ -146,7 +146,7 @@ impl RegExpStringIteratorPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<RegExpStringIterator> {
+impl HeapItem for HeapPtr<RegExpStringIterator> {
     fn byte_size(&self) -> usize {
         size_of::<RegExpStringIterator>()
     }

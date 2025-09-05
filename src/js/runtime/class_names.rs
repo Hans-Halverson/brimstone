@@ -2,8 +2,8 @@ use crate::{
     field_offset, must,
     runtime::{
         abstract_operations::define_property_or_throw, bytecode::function::Closure,
-        error::type_error, function::build_function_name, get, intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind, object_value::ObjectValue,
+        error::type_error, function::build_function_name, get, heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto, type_utilities::is_constructor_value,
         PropertyDescriptor, PropertyKey,
     },
@@ -13,8 +13,8 @@ use crate::{
 use super::{
     bytecode::function::BytecodeFunction,
     collections::InlineArray,
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     string_value::FlatString,
     Context, EvalResult, Handle, HeapPtr, Value,
 };
@@ -22,7 +22,7 @@ use super::{
 /// A collection of information about a class that is used in a NewClass instruction.
 #[repr(C)]
 pub struct ClassNames {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Number of arguments in the contiguous sequence of registers passed to the NewClass
     /// instruction.
     num_arguments: usize,
@@ -78,7 +78,7 @@ impl ClassNames {
         let size = Self::calculate_size_in_bytes(num_methods);
         let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size);
 
-        set_uninit!(class_names.descriptor, cx.base_descriptors.get(ObjectKind::ClassNames));
+        set_uninit!(class_names.descriptor, cx.base_descriptors.get(HeapItemKind::ClassNames));
         set_uninit!(class_names.home_object, home_object);
         set_uninit!(class_names.static_home_object, static_home_object);
 
@@ -122,7 +122,7 @@ impl ClassNames {
     }
 }
 
-impl HeapObject for HeapPtr<ClassNames> {
+impl HeapItem for HeapPtr<ClassNames> {
     fn byte_size(&self) -> usize {
         ClassNames::calculate_size_in_bytes(self.methods.len())
     }
@@ -195,7 +195,7 @@ pub fn new_class(
     // Create the prototype and constructor for the class
     let prototype = object_create_with_optional_proto::<ObjectValue>(
         cx,
-        ObjectKind::OrdinaryObject,
+        HeapItemKind::OrdinaryObject,
         proto_parent,
     )
     .to_handle();

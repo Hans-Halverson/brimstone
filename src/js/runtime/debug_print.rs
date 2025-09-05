@@ -3,8 +3,8 @@ use super::{
         constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
         function::BytecodeFunction,
     },
-    gc::HeapItem,
-    object_descriptor::ObjectKind,
+    gc::AnyHeapItem,
+    heap_item_descriptor::HeapItemKind,
     regexp::compiled_regexp::CompiledRegExpObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
@@ -103,25 +103,27 @@ impl DebugPrinter {
         self.write(&format!("[{name}: {context}]"));
     }
 
-    pub fn write_heap_item_default(&mut self, heap_item: HeapPtr<HeapItem>) {
+    pub fn write_heap_item_default(&mut self, heap_item: HeapPtr<AnyHeapItem>) {
         self.write_default(&format!("{:?}", heap_item.descriptor().kind()))
     }
 
-    pub fn write_heap_item_with_context(&mut self, heap_item: HeapPtr<HeapItem>, context: &str) {
+    pub fn write_heap_item_with_context(&mut self, heap_item: HeapPtr<AnyHeapItem>, context: &str) {
         self.write_default_with_context(&format!("{:?}", heap_item.descriptor().kind()), context)
     }
 }
 
-impl DebugPrint for HeapPtr<HeapItem> {
+impl DebugPrint for HeapPtr<AnyHeapItem> {
     fn debug_format(&self, printer: &mut DebugPrinter) {
         match self.descriptor().kind() {
-            ObjectKind::String => self.cast::<StringValue>().debug_format(printer),
-            ObjectKind::Symbol => self.cast::<SymbolValue>().debug_format(printer),
-            ObjectKind::BigInt => self.cast::<BigIntValue>().debug_format(printer),
-            ObjectKind::BytecodeFunction => self.cast::<BytecodeFunction>().debug_format(printer),
-            ObjectKind::ConstantTable => self.cast::<ConstantTable>().debug_format(printer),
-            ObjectKind::ExceptionHandlers => self.cast::<ExceptionHandlers>().debug_format(printer),
-            ObjectKind::CompiledRegExpObject => {
+            HeapItemKind::String => self.cast::<StringValue>().debug_format(printer),
+            HeapItemKind::Symbol => self.cast::<SymbolValue>().debug_format(printer),
+            HeapItemKind::BigInt => self.cast::<BigIntValue>().debug_format(printer),
+            HeapItemKind::BytecodeFunction => self.cast::<BytecodeFunction>().debug_format(printer),
+            HeapItemKind::ConstantTable => self.cast::<ConstantTable>().debug_format(printer),
+            HeapItemKind::ExceptionHandlers => {
+                self.cast::<ExceptionHandlers>().debug_format(printer)
+            }
+            HeapItemKind::CompiledRegExpObject => {
                 self.cast::<CompiledRegExpObject>().debug_format(printer)
             }
             _ => printer.write_heap_item_default(*self),

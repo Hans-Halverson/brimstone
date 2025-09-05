@@ -28,9 +28,9 @@ use crate::{
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        gc::{Handle, HeapObject, HeapVisitor},
+        gc::{Handle, HeapItem, HeapVisitor},
         get,
-        object_descriptor::ObjectKind,
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -60,7 +60,7 @@ impl RegExpObject {
         let mut object = object_create_from_constructor::<RegExpObject>(
             cx,
             constructor,
-            ObjectKind::RegExpObject,
+            HeapItemKind::RegExpObject,
             Intrinsic::RegExpPrototype,
         )?;
 
@@ -83,7 +83,7 @@ impl RegExpObject {
         let mut object = must!(object_create_from_constructor::<RegExpObject>(
             cx,
             regexp_constructor,
-            ObjectKind::RegExpObject,
+            HeapItemKind::RegExpObject,
             Intrinsic::RegExpPrototype
         ));
 
@@ -456,7 +456,7 @@ fn escape_pattern_string(
     cx.alloc_wtf8_string(&escaped_string).as_string()
 }
 
-impl HeapObject for HeapPtr<RegExpObject> {
+impl HeapItem for HeapPtr<RegExpObject> {
     fn byte_size(&self) -> usize {
         size_of::<RegExpObject>()
     }

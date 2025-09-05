@@ -4,9 +4,9 @@ use crate::{
     extend_object,
     runtime::{
         collections::{BsIndexSet, BsIndexSetField},
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
@@ -35,7 +35,7 @@ impl SetObject {
         let mut object = object_create_from_constructor::<SetObject>(
             cx,
             constructor,
-            ObjectKind::SetObject,
+            HeapItemKind::SetObject,
             Intrinsic::SetPrototype,
         )?;
 
@@ -47,7 +47,7 @@ impl SetObject {
     /// Create a new SetObject with the provided set data.
     pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> Handle<SetObject> {
         let mut object =
-            object_create::<SetObject>(cx, ObjectKind::SetObject, Intrinsic::SetPrototype);
+            object_create::<SetObject>(cx, HeapItemKind::SetObject, Intrinsic::SetPrototype);
 
         set_uninit!(object.set_data, *set_data);
 
@@ -84,7 +84,7 @@ pub struct SetObjectSetField(Handle<SetObject>);
 
 impl BsIndexSetField<ValueCollectionKey> for SetObjectSetField {
     fn new(cx: Context, capacity: usize) -> HeapPtr<ValueSet> {
-        ValueSet::new(cx, ObjectKind::SetObjectValueSet, capacity)
+        ValueSet::new(cx, HeapItemKind::SetObjectValueSet, capacity)
     }
 
     fn get(&self) -> HeapPtr<ValueSet> {
@@ -96,7 +96,7 @@ impl BsIndexSetField<ValueCollectionKey> for SetObjectSetField {
     }
 }
 
-impl HeapObject for HeapPtr<SetObject> {
+impl HeapItem for HeapPtr<SetObject> {
     fn byte_size(&self) -> usize {
         size_of::<SetObject>()
     }

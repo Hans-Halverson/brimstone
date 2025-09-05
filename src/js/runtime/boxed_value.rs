@@ -1,15 +1,15 @@
-use crate::{runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{runtime::heap_item_descriptor::HeapItemKind, set_uninit};
 
 use super::{
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     Context, Handle, HeapPtr, Value,
 };
 
 /// A value that is allocated on the heap.
 #[repr(C)]
 pub struct BoxedValue {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     value: Value,
 }
 
@@ -17,7 +17,7 @@ impl BoxedValue {
     pub fn new(cx: Context, value: Handle<Value>) -> HeapPtr<BoxedValue> {
         let mut scope = cx.alloc_uninit::<BoxedValue>();
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::BoxedValue));
+        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::BoxedValue));
         set_uninit!(scope.value, *value);
 
         scope
@@ -32,7 +32,7 @@ impl BoxedValue {
     }
 }
 
-impl HeapObject for HeapPtr<BoxedValue> {
+impl HeapItem for HeapPtr<BoxedValue> {
     fn byte_size(&self) -> usize {
         std::mem::size_of::<BoxedValue>()
     }

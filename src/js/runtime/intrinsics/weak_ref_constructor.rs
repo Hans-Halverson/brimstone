@@ -7,8 +7,8 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -39,7 +39,7 @@ impl WeakRefObject {
         let mut object = object_create_from_constructor::<WeakRefObject>(
             cx,
             constructor,
-            ObjectKind::WeakRefObject,
+            HeapItemKind::WeakRefObject,
             Intrinsic::WeakRefPrototype,
         )?;
 
@@ -125,7 +125,7 @@ pub fn can_be_held_weakly(cx: Context, value: Value) -> bool {
     }
 }
 
-impl HeapObject for HeapPtr<WeakRefObject> {
+impl HeapItem for HeapPtr<WeakRefObject> {
     fn byte_size(&self) -> usize {
         size_of::<WeakRefObject>()
     }

@@ -9,6 +9,7 @@ use crate::{
         error::type_error_value,
         function::get_argument,
         get,
+        heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
@@ -18,7 +19,6 @@ use crate::{
             module::{DynModule, ModuleEnum},
             synthetic_module::SyntheticModule,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
@@ -88,11 +88,11 @@ fn get_dyn_module(cx: Context, function: Handle<ObjectValue>) -> DynModule {
         .as_pointer();
 
     debug_assert!(
-        item.descriptor().kind() == ObjectKind::SourceTextModule
-            || item.descriptor().kind() == ObjectKind::SyntheticModule
+        item.descriptor().kind() == HeapItemKind::SourceTextModule
+            || item.descriptor().kind() == HeapItemKind::SyntheticModule
     );
 
-    if item.descriptor().kind() == ObjectKind::SourceTextModule {
+    if item.descriptor().kind() == HeapItemKind::SourceTextModule {
         item.cast::<SourceTextModule>().to_handle().as_dyn_module()
     } else {
         item.cast::<SyntheticModule>().to_handle().as_dyn_module()

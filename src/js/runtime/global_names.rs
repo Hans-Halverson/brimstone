@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    runtime::{error::type_error, object_descriptor::ObjectKind},
+    runtime::{error::type_error, heap_item_descriptor::HeapItemKind},
     set_uninit,
 };
 
@@ -10,8 +10,8 @@ use super::{
     abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
     builtin_function::BuiltinFunction,
     collections::InlineArray,
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     object_value::ObjectValue,
     scope_names::ScopeNames,
     string_value::FlatString,
@@ -20,7 +20,7 @@ use super::{
 
 #[repr(C)]
 pub struct GlobalNames {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Number of functions
     num_functions: usize,
     /// Scopes names for this global scope, containing all lexical names.
@@ -43,7 +43,7 @@ impl GlobalNames {
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size);
 
-        set_uninit!(global_names.descriptor, cx.base_descriptors.get(ObjectKind::GlobalNames));
+        set_uninit!(global_names.descriptor, cx.base_descriptors.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
         global_names.num_functions = funcs.len();
 
@@ -66,7 +66,7 @@ impl GlobalNames {
     }
 }
 
-impl HeapObject for HeapPtr<GlobalNames> {
+impl HeapItem for HeapPtr<GlobalNames> {
     fn byte_size(&self) -> usize {
         GlobalNames::calculate_size_in_bytes(self.names.len())
     }

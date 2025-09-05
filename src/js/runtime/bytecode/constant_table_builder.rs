@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash};
 
-use crate::runtime::{gc::HeapItem, string_value::FlatString, Context, Handle, Value};
+use crate::runtime::{gc::AnyHeapItem, string_value::FlatString, Context, Handle, Value};
 
 use super::{
     constant_table::ConstantTable,
@@ -13,8 +13,8 @@ use super::{
 enum ConstantTableEntry {
     /// Interned string such as an identifier or string literal.
     String(Handle<FlatString>),
-    /// Generic heap object - not deduplicated, so keep a unique incremented index as a unique id.
-    HeapObject { object: Handle<HeapItem>, key: ConstantTableIndex },
+    /// Generic heap items - not deduplicated, so keep a unique incremented index as a unique id.
+    HeapItem { item: Handle<AnyHeapItem>, key: ConstantTableIndex },
     /// Double encoded as a value.
     Double(Value),
     /// Jump offset in bytes, not encoded as a value.
@@ -27,7 +27,7 @@ impl ConstantTableEntry {
     fn to_value(self, cx: Context) -> ToValueResult {
         match self {
             ConstantTableEntry::String(string) => ToValueResult::Value(string.cast()),
-            ConstantTableEntry::HeapObject { object, .. } => ToValueResult::Value(object.cast()),
+            ConstantTableEntry::HeapItem { item, .. } => ToValueResult::Value(item.cast()),
             ConstantTableEntry::Double(double) => ToValueResult::Value(double.to_handle(cx)),
             // Bytecode offsets are stored directly, not encoded as a value
             ConstantTableEntry::BytecodeOffset(offset) => {
@@ -55,10 +55,10 @@ impl PartialEq for ConstantTableEntry {
             (ConstantTableEntry::String(lhs), ConstantTableEntry::String(rhs)) => {
                 lhs.ptr_eq(&**rhs)
             }
-            // Heap objects are not deduplicated, so compare the index
+            // Heap items are not deduplicated, so compare the index
             (
-                ConstantTableEntry::HeapObject { key: lhs, .. },
-                ConstantTableEntry::HeapObject { key: rhs, .. },
+                ConstantTableEntry::HeapItem { key: lhs, .. },
+                ConstantTableEntry::HeapItem { key: rhs, .. },
             ) => lhs == rhs,
             (ConstantTableEntry::Double(lhs), ConstantTableEntry::Double(rhs)) => {
                 lhs.as_raw_bits() == rhs.as_raw_bits()
@@ -77,8 +77,8 @@ impl hash::Hash for ConstantTableEntry {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         match self {
             ConstantTableEntry::String(string) => string.hash(state),
-            // Objects are not deduplicated, so use the unique key
-            ConstantTableEntry::HeapObject { key, .. } => key.hash(state),
+            // Heap items are not deduplicated, so use the unique key
+            ConstantTableEntry::HeapItem { key, .. } => key.hash(state),
             // Use raw bits as hash for doubles. Note that this differentiates between +0 and -0,
             // unlike values used as ValueCollectionKeys.
             ConstantTableEntry::Double(double) => double.as_raw_bits().hash(state),
@@ -108,9 +108,9 @@ pub struct ConstantTableBuilder {
     /// to the constant table at the end.
     duplicates: Vec<(ConstantTableEntry, ConstantTableIndex)>,
 
-    /// Number of heap objects that have been added to the constant table. This is used to generate
-    /// unique keys for heap objects.
-    num_heap_objects: u32,
+    /// Number of heap items that have been added to the constant table. This is used to generate
+    /// unique keys for heap items.
+    num_heap_items: u32,
 }
 
 impl ConstantTableBuilder {
@@ -143,7 +143,7 @@ impl ConstantTableBuilder {
 
             duplicates: vec![],
 
-            num_heap_objects: 0,
+            num_heap_items: 0,
         }
     }
 
@@ -301,10 +301,10 @@ impl ConstantTableBuilder {
         self.insert_if_missing(ConstantTableEntry::String(string))
     }
 
-    pub fn add_heap_object(&mut self, object: Handle<HeapItem>) -> EmitResult<ConstantTableIndex> {
-        let key = self.num_heap_objects;
-        self.num_heap_objects += 1;
-        self.insert_if_missing(ConstantTableEntry::HeapObject { object, key })
+    pub fn add_heap_item(&mut self, item: Handle<AnyHeapItem>) -> EmitResult<ConstantTableIndex> {
+        let key = self.num_heap_items;
+        self.num_heap_items += 1;
+        self.insert_if_missing(ConstantTableEntry::HeapItem { item, key })
     }
 
     pub fn add_double(&mut self, double: f64) -> EmitResult<ConstantTableIndex> {

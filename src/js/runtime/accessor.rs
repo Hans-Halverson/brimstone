@@ -1,8 +1,8 @@
-use crate::{runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{runtime::heap_item_descriptor::HeapItemKind, set_uninit};
 
 use super::{
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     object_value::ObjectValue,
     Context, Handle, HeapPtr, Value,
 };
@@ -10,7 +10,7 @@ use super::{
 /// The value of an accessor property. May contain a getter and/or a setter.
 #[repr(C)]
 pub struct Accessor {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     pub get: Option<HeapPtr<ObjectValue>>,
     pub set: Option<HeapPtr<ObjectValue>>,
 }
@@ -23,7 +23,7 @@ impl Accessor {
     ) -> Handle<Accessor> {
         let mut accessor = cx.alloc_uninit::<Accessor>();
 
-        set_uninit!(accessor.descriptor, cx.base_descriptors.get(ObjectKind::Accessor));
+        set_uninit!(accessor.descriptor, cx.base_descriptors.get(HeapItemKind::Accessor));
         set_uninit!(accessor.get, get.map(|v| *v));
         set_uninit!(accessor.set, set.map(|v| *v));
 
@@ -32,13 +32,13 @@ impl Accessor {
 
     pub fn from_value(value: Handle<Value>) -> Handle<Accessor> {
         debug_assert!(
-            value.is_pointer() && value.as_pointer().descriptor().kind() == ObjectKind::Accessor
+            value.is_pointer() && value.as_pointer().descriptor().kind() == HeapItemKind::Accessor
         );
         value.cast::<Accessor>()
     }
 }
 
-impl HeapObject for HeapPtr<Accessor> {
+impl HeapItem for HeapPtr<Accessor> {
     fn byte_size(&self) -> usize {
         size_of::<Accessor>()
     }

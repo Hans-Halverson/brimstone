@@ -18,8 +18,8 @@ use super::{
     eval::expression::eval_instanceof_expression,
     eval_result::EvalResult,
     gc::{Handle, HeapPtr},
+    heap_item_descriptor::HeapItemKind,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     property_descriptor::PropertyDescriptor,
     property_key::PropertyKey,
@@ -474,14 +474,14 @@ pub fn get_function_realm_no_error(
     let kind = func.descriptor().kind();
 
     // Bound functions are also represented as closures with the correct realm set
-    if kind == ObjectKind::Closure {
+    if kind == HeapItemKind::Closure {
         if let Some(bound_target_func) = BoundFunctionObject::get_target_if_bound_function(cx, func)
         {
             get_function_realm_no_error(cx, bound_target_func)
         } else {
             Some(func.cast::<Closure>().function_ptr().realm_ptr())
         }
-    } else if kind == ObjectKind::Proxy {
+    } else if kind == HeapItemKind::Proxy {
         let proxy_object = func.cast::<ProxyObject>();
         if proxy_object.is_revoked() {
             return None;

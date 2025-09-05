@@ -7,12 +7,12 @@ use crate::{
     runtime::{
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
-        gc::{HeapItem, HeapObject, HeapVisitor},
+        gc::{AnyHeapItem, HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         module::{
             execute::module_evaluate, import_attributes::ImportAttributes, module::next_module_id,
             module_namespace_object::ModuleNamespaceObject,
         },
-        object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
         promise_object::{PromiseCapability, PromiseObject},
@@ -40,7 +40,7 @@ use super::{
 /// Combination of SourceTextModule and its parent classes since it is the only type of module.
 #[repr(C)]
 pub struct SourceTextModule {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Unique identifier for this module. Can be used as a stable identifier.
     id: ModuleId,
     /// State of the module during load/link/evaluation.
@@ -103,7 +103,7 @@ type ModuleOptionArray = BsArray<Option<HeapDynModule>>;
 /// Key is the name of the export.
 /// - If export is a namespace export then value is the SourceTextModule whose namespace is exported
 /// - Otherwise value is a BoxedValue which holds the exported value
-pub type ExportMap = BsHashMap<PropertyKey, HeapPtr<HeapItem>>;
+pub type ExportMap = BsHashMap<PropertyKey, HeapPtr<AnyHeapItem>>;
 
 impl SourceTextModule {
     pub const MODULE_VTABLE: *const () = extract_module_vtable::<Self>();
@@ -123,7 +123,7 @@ impl SourceTextModule {
         // from arguments, loaded modules are initialized to None.
         let num_module_requests = requested_modules.len();
         let mut heap_requested_modules =
-            BsArray::new_uninit(cx, ObjectKind::ModuleRequestArray, num_module_requests)
+            BsArray::new_uninit(cx, HeapItemKind::ModuleRequestArray, num_module_requests)
                 .to_handle();
         for (dst, src) in heap_requested_modules
             .as_mut_slice()
@@ -134,7 +134,7 @@ impl SourceTextModule {
         }
 
         let loaded_modules =
-            BsArray::new(cx, ObjectKind::ModuleOptionArray, requested_modules.len(), None)
+            BsArray::new(cx, HeapItemKind::ModuleOptionArray, requested_modules.len(), None)
                 .to_handle();
 
         // Then create the uninitialized module object
@@ -143,7 +143,7 @@ impl SourceTextModule {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::SourceTextModule));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
         set_uninit!(object.state, ModuleState::New);
         set_uninit!(object.has_top_level_await, has_top_level_await);
@@ -418,7 +418,7 @@ impl Handle<SourceTextModule> {
         &self,
         cx: Context,
         export_name: Handle<PropertyKey>,
-        boxed_value_or_module: Handle<HeapItem>,
+        boxed_value_or_module: Handle<AnyHeapItem>,
     ) -> bool {
         self.exports_field()
             .maybe_grow_for_insertion(cx)
@@ -432,7 +432,7 @@ impl Handle<SourceTextModule> {
     ) {
         // Lazily initialize the async parent modules vec
         if self.async_parent_modules.is_none() {
-            let async_parent_modules = BsVec::new(cx, ObjectKind::ValueVec, 4);
+            let async_parent_modules = BsVec::new(cx, HeapItemKind::ValueVec, 4);
             self.async_parent_modules = Some(async_parent_modules);
         }
 
@@ -449,8 +449,11 @@ impl Handle<SourceTextModule> {
         }
 
         // No properties are added to the `import.meta` object - this is up to the implementation
-        let object =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None);
+        let object = object_create_with_optional_proto::<ObjectValue>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            None,
+        );
 
         self.import_meta = Some(object);
 
@@ -640,14 +643,14 @@ impl Module for Handle<SourceTextModule> {
 
         handle_scope!(cx, {
             // Lazily initialize the exports map
-            self.exports = Some(ExportMap::new(cx, ObjectKind::ExportMap, 4));
+            self.exports = Some(ExportMap::new(cx, HeapItemKind::ExportMap, 4));
 
             let mut exported_names = HashSet::new();
             self.get_exported_names(cx, &mut exported_names, &mut HashSet::new());
 
             // Share handle between iterations
             let mut key_handle: Handle<PropertyKey> = Handle::empty(cx);
-            let mut boxed_value_or_module_handle: Handle<HeapItem> = Handle::empty(cx);
+            let mut boxed_value_or_module_handle: Handle<AnyHeapItem> = Handle::empty(cx);
 
             for export_name in exported_names {
                 // First convert the export name to a PropertyKey
@@ -679,7 +682,7 @@ impl Module for Handle<SourceTextModule> {
     }
 }
 
-impl HeapObject for HeapPtr<SourceTextModule> {
+impl HeapItem for HeapPtr<SourceTextModule> {
     fn byte_size(&self) -> usize {
         SourceTextModule::calculate_size_in_bytes(self.entries.len())
     }
@@ -947,9 +950,9 @@ pub fn module_option_array_visit_pointers(
 #[derive(Clone)]
 pub struct ExportMapField(Handle<SourceTextModule>);
 
-impl BsHashMapField<PropertyKey, HeapPtr<HeapItem>> for ExportMapField {
+impl BsHashMapField<PropertyKey, HeapPtr<AnyHeapItem>> for ExportMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ExportMap> {
-        ExportMap::new(cx, ObjectKind::ExportMap, capacity)
+        ExportMap::new(cx, HeapItemKind::ExportMap, capacity)
     }
 
     fn get(&self, _: Context) -> HeapPtr<ExportMap> {
@@ -982,7 +985,7 @@ struct AsyncParentModulesField(Handle<SourceTextModule>);
 
 impl BsVecField<HeapPtr<SourceTextModule>> for AsyncParentModulesField {
     fn new_vec(cx: Context, capacity: usize) -> HeapPtr<AsyncParentModulesVec> {
-        BsVec::new(cx, ObjectKind::ValueVec, capacity)
+        BsVec::new(cx, HeapItemKind::ValueVec, capacity)
     }
 
     fn get(&self) -> HeapPtr<AsyncParentModulesVec> {

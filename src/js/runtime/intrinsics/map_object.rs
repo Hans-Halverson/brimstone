@@ -4,9 +4,9 @@ use crate::{
     extend_object,
     runtime::{
         collections::{BsIndexMap, BsIndexMapField},
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
@@ -31,12 +31,12 @@ impl MapObject {
     ) -> EvalResult<Handle<MapObject>> {
         // Allocate and place behind handle before allocating environment
         let map_data =
-            ValueMap::new(cx, ObjectKind::MapObjectValueMap, ValueMap::MIN_CAPACITY).to_handle();
+            ValueMap::new(cx, HeapItemKind::MapObjectValueMap, ValueMap::MIN_CAPACITY).to_handle();
 
         let mut object = object_create_from_constructor::<MapObject>(
             cx,
             constructor,
-            ObjectKind::MapObject,
+            HeapItemKind::MapObject,
             Intrinsic::MapPrototype,
         )?;
 
@@ -68,7 +68,7 @@ pub struct MapObjectMapField(Handle<MapObject>);
 
 impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ValueMap> {
-        ValueMap::new(cx, ObjectKind::MapObjectValueMap, capacity)
+        ValueMap::new(cx, HeapItemKind::MapObjectValueMap, capacity)
     }
 
     fn get(&self) -> HeapPtr<ValueMap> {
@@ -80,7 +80,7 @@ impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
     }
 }
 
-impl HeapObject for HeapPtr<MapObject> {
+impl HeapItem for HeapPtr<MapObject> {
     fn byte_size(&self) -> usize {
         size_of::<MapObject>()
     }

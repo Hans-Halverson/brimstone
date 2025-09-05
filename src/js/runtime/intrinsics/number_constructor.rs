@@ -8,11 +8,11 @@ use crate::{
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{Handle, HeapObject, HeapVisitor},
+        gc::{Handle, HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
@@ -37,8 +37,11 @@ extend_object! {
 
 impl NumberObject {
     pub fn new(cx: Context, number_data: f64) -> Handle<NumberObject> {
-        let mut object =
-            object_create::<NumberObject>(cx, ObjectKind::NumberObject, Intrinsic::NumberPrototype);
+        let mut object = object_create::<NumberObject>(
+            cx,
+            HeapItemKind::NumberObject,
+            Intrinsic::NumberPrototype,
+        );
 
         set_uninit!(object.number_data, number_data);
 
@@ -53,7 +56,7 @@ impl NumberObject {
         let mut object = object_create_from_constructor::<NumberObject>(
             cx,
             constructor,
-            ObjectKind::NumberObject,
+            HeapItemKind::NumberObject,
             Intrinsic::NumberPrototype,
         )?;
 
@@ -68,7 +71,7 @@ impl NumberObject {
         number_data: f64,
     ) -> Handle<NumberObject> {
         let mut object =
-            object_create_with_proto::<NumberObject>(cx, ObjectKind::NumberObject, proto);
+            object_create_with_proto::<NumberObject>(cx, HeapItemKind::NumberObject, proto);
 
         set_uninit!(object.number_data, number_data);
 
@@ -222,7 +225,7 @@ impl NumberConstructor {
     }
 }
 
-impl HeapObject for HeapPtr<NumberObject> {
+impl HeapItem for HeapPtr<NumberObject> {
     fn byte_size(&self) -> usize {
         size_of::<NumberObject>()
     }

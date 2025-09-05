@@ -8,8 +8,8 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr,
     },
     set_uninit,
@@ -20,7 +20,7 @@ use super::InlineArray;
 /// Generic flat HashMap implementation using quadratic probing.
 #[repr(C)]
 pub struct BsHashMap<K, V> {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // Number of kv pairs inserted in the map
     len: usize,
     // Inline array of entries which may be empty, occupied, or deleted. Total capacity must be
@@ -48,7 +48,7 @@ const ENTRIES_BYTE_OFFSET: usize = field_offset!(BsHashMap<String, String>, entr
 impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     pub const MIN_CAPACITY: usize = 4;
 
-    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V>>(size);
@@ -58,7 +58,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         hash_map
     }
 
-    pub fn init(&mut self, cx: Context, kind: ObjectKind, capacity: usize) {
+    pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
         set_uninit!(self.descriptor, cx.base_descriptors.get(kind));
         set_uninit!(self.len, 0);
 
@@ -66,7 +66,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         self.entries.init_with(capacity, Entry::Empty);
     }
 
-    pub fn new_initial(cx: Context, kind: ObjectKind) -> HeapPtr<Self> {
+    pub fn new_initial(cx: Context, kind: HeapItemKind) -> HeapPtr<Self> {
         Self::new(cx, kind, Self::MIN_CAPACITY)
     }
 
@@ -259,7 +259,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 }
 
-/// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
+/// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
 pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
@@ -394,7 +394,7 @@ impl<'a, K: Clone, V: Clone> Iterator for GcUnsafeKeysIterMut<'a, K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> HeapObject for HeapPtr<BsHashMap<K, V>> {
+impl<K: Eq + Hash + Clone, V: Clone> HeapItem for HeapPtr<BsHashMap<K, V>> {
     fn byte_size(&self) -> usize {
         BsHashMap::<K, V>::calculate_size_in_bytes(self.capacity())
     }

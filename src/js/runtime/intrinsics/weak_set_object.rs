@@ -5,8 +5,8 @@ use crate::{
     runtime::{
         collections::{BsHashSet, BsHashSetField},
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
@@ -36,12 +36,12 @@ impl WeakSetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakSetObject>> {
         let weak_set_data =
-            WeakValueSet::new_initial(cx, ObjectKind::WeakSetObjectWeakValueSet).to_handle();
+            WeakValueSet::new_initial(cx, HeapItemKind::WeakSetObjectWeakValueSet).to_handle();
 
         let mut object = object_create_from_constructor::<WeakSetObject>(
             cx,
             constructor,
-            ObjectKind::WeakSetObject,
+            HeapItemKind::WeakSetObject,
             Intrinsic::WeakSetPrototype,
         )?;
 
@@ -82,7 +82,7 @@ pub struct WeakSetObjectSetField(Handle<WeakSetObject>);
 
 impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
     fn new(cx: Context, capacity: usize) -> HeapPtr<WeakValueSet> {
-        WeakValueSet::new(cx, ObjectKind::WeakSetObjectWeakValueSet, capacity)
+        WeakValueSet::new(cx, HeapItemKind::WeakSetObjectWeakValueSet, capacity)
     }
 
     fn get(&self, _: Context) -> HeapPtr<WeakValueSet> {
@@ -94,7 +94,7 @@ impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
     }
 }
 
-impl HeapObject for HeapPtr<WeakSetObject> {
+impl HeapItem for HeapPtr<WeakSetObject> {
     fn byte_size(&self) -> usize {
         size_of::<WeakSetObject>()
     }

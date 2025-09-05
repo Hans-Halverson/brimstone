@@ -12,7 +12,7 @@ use crate::runtime::{
     Context, Value,
 };
 
-use super::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapObject};
+use super::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapItem};
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
 pub type HandleContents = usize;
@@ -24,7 +24,7 @@ pub trait ToHandleContents {
 }
 
 /// Handles hold a value or heap pointer behind a pointer. Handles are safe to store on the stack
-/// during a GC, since the handle's pointer does not change but the address of the heap object
+/// during a GC, since the handle's pointer does not change but the address of the heap item
 /// behind the pointer may be updated.
 pub struct Handle<T> {
     ptr: NonNull<HandleContents>,
@@ -477,7 +477,7 @@ impl Value {
     }
 }
 
-impl<T: IsHeapObject> HeapPtr<T> {
+impl<T: IsHeapItem> HeapPtr<T> {
     #[inline]
     pub fn to_handle(self) -> Handle<T> {
         let handle_context = HeapInfo::from_heap_ptr(self).handle_context();
@@ -485,7 +485,7 @@ impl<T: IsHeapObject> HeapPtr<T> {
     }
 }
 
-impl<T: IsHeapObject> From<Handle<T>> for Handle<Value> {
+impl<T: IsHeapItem> From<Handle<T>> for Handle<Value> {
     #[inline]
     fn from(value: Handle<T>) -> Self {
         value.cast()
@@ -538,7 +538,7 @@ impl Escapable for Handle<Value> {
     }
 }
 
-impl<T: IsHeapObject> Escapable for Handle<T> {
+impl<T: IsHeapItem> Escapable for Handle<T> {
     #[inline]
     fn escape(&self, _: Context) -> Self {
         (**self).to_handle()

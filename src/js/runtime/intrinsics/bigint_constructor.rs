@@ -10,8 +10,8 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
@@ -36,8 +36,11 @@ extend_object! {
 
 impl BigIntObject {
     pub fn new_from_value(cx: Context, bigint_data: Handle<BigIntValue>) -> Handle<BigIntObject> {
-        let mut object =
-            object_create::<BigIntObject>(cx, ObjectKind::BigIntObject, Intrinsic::BigIntPrototype);
+        let mut object = object_create::<BigIntObject>(
+            cx,
+            HeapItemKind::BigIntObject,
+            Intrinsic::BigIntPrototype,
+        );
 
         set_uninit!(object.bigint_data, *bigint_data);
 
@@ -173,7 +176,7 @@ impl BigIntConstructor {
     }
 }
 
-impl HeapObject for HeapPtr<BigIntObject> {
+impl HeapItem for HeapPtr<BigIntObject> {
     fn byte_size(&self) -> usize {
         size_of::<BigIntObject>()
     }

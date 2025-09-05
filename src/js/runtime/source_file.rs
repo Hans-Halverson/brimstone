@@ -1,21 +1,21 @@
 use crate::{
     field_offset,
     parser::{loc::calculate_line_offsets, source::Source},
-    runtime::object_descriptor::ObjectKind,
+    runtime::heap_item_descriptor::HeapItemKind,
     set_uninit,
 };
 
 use super::{
     collections::{BsArray, InlineArray},
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     string_value::FlatString,
     Context, Handle, HeapPtr,
 };
 
 #[repr(C)]
 pub struct SourceFile {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// The path to the source file
     path: HeapPtr<FlatString>,
     /// The display name of the source file, if it is different from the path
@@ -41,7 +41,7 @@ impl SourceFile {
         let size = Self::calculate_size_in_bytes(source.contents.len());
         let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size);
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(ObjectKind::SourceFile));
+        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
         set_uninit!(scope.path, *path);
         set_uninit!(scope.display_name, display_name.map(|n| *n));
@@ -88,7 +88,7 @@ impl Handle<SourceFile> {
         // Lazily generate line offsets when first requested
         let raw_line_offsets = calculate_line_offsets(self.contents_as_slice());
         let line_offsets_object =
-            LineOffsetArray::new_from_slice(cx, ObjectKind::U32Array, &raw_line_offsets);
+            LineOffsetArray::new_from_slice(cx, HeapItemKind::U32Array, &raw_line_offsets);
 
         self.line_offsets = Some(line_offsets_object);
 
@@ -111,7 +111,7 @@ impl Handle<SourceFile> {
     }
 }
 
-impl HeapObject for HeapPtr<SourceFile> {
+impl HeapItem for HeapPtr<SourceFile> {
     fn byte_size(&self) -> usize {
         SourceFile::calculate_size_in_bytes(self.contents.len())
     }

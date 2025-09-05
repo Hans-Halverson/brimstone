@@ -4,19 +4,19 @@ use crate::{
     common::constants::MAX_HEAP_SIZE,
     runtime::{
         gc::Heap,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         interned_strings::InternedStrings,
         intrinsics::{
             finalization_registry_object::FinalizationRegistryObject,
             weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
             weak_set_object::WeakSetObject,
         },
-        object_descriptor::{ObjectDescriptor, ObjectKind},
         string_value::FlatString,
         Context, Value,
     },
 };
 
-use super::{HeapItem, HeapObject, HeapPtr, HeapVisitor};
+use super::{AnyHeapItem, HeapItem, HeapPtr, HeapVisitor};
 
 /// A Cheney-style semispace garbage collector. Partitions heap into from-space and to-space, and
 /// copies from one partition to the other on each GC.
@@ -33,11 +33,11 @@ pub struct GarbageCollector {
     // New bounds of the permanent space. For non-resizing GCs this is the same as the old bounds.
     new_permanent_space_bounds: Range<*const u8>,
 
-    // Pointer to the next to-space object to fix
+    // Pointer to the next to-space item to fix
     fix_ptr: *const u8,
 
-    // Pointer to the end of the allocated objects in to-space. Is the address of the next allocated
-    // object.
+    // Pointer to the end of the allocated items in to-space. Is the address of the next allocated
+    // item.
     alloc_ptr: *const u8,
 
     // Chain of pointers to all WeakRefs that have been visited during this gc cycle
@@ -168,7 +168,7 @@ impl GarbageCollector {
     /// Visit all the root items in the permanent heap, moving the roots to the to-heap and fixing
     /// pointers in the permanent heap to point to the new location of the root.
     ///
-    /// The permanent heap may contain pointers into the semispaces if a permanent heap object was
+    /// The permanent heap may contain pointers into the semispaces if a permanent heap item was
     /// mutated.
     fn visit_permanent_heap_roots(&mut self) {
         let mut current_ptr = self.new_permanent_space_bounds.start;
@@ -176,10 +176,10 @@ impl GarbageCollector {
 
         while current_ptr < end_ptr {
             let mut permanent_heap_item =
-                HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
+                HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<AnyHeapItem>();
             permanent_heap_item.visit_pointers(self);
 
-            // Increment current pointer to point to next permanent heap object
+            // Increment current pointer to point to next permanent heap item
             let alloc_size = Heap::alloc_size_for_request_size(permanent_heap_item.byte_size());
             unsafe { current_ptr = current_ptr.add(alloc_size) }
         }
@@ -191,14 +191,15 @@ impl GarbageCollector {
     /// Iterates until all live items have been discovered. Liveness includes ephemeron handling.
     fn move_all_live_items(&mut self) {
         loop {
-            // Then start fixing all pointers in each new heap object until fix pointer catches up with
-            // alloc pointer, meaning all live objects have been copied and pointers have been fixed.
+            // Then start fixing all pointers in each new heap item until fix pointer catches up
+            // with alloc pointer, meaning all live obwitemsjects have been copied and pointers have
+            // been fixed.
             while self.fix_ptr < self.alloc_ptr {
                 let mut new_heap_item =
-                    HeapPtr::from_ptr(self.fix_ptr.cast_mut()).cast::<HeapItem>();
+                    HeapPtr::from_ptr(self.fix_ptr.cast_mut()).cast::<AnyHeapItem>();
                 new_heap_item.visit_pointers(self);
 
-                // Increment fix pointer to point to next new heap object
+                // Increment fix pointer to point to next new heap item
                 let alloc_size = Heap::alloc_size_for_request_size(new_heap_item.byte_size());
                 unsafe { self.fix_ptr = self.fix_ptr.add(alloc_size) }
             }
@@ -222,7 +223,7 @@ impl GarbageCollector {
 
         while current_ptr < old_permanent_bounds.end {
             // Move the old permanent heap item to the new permanent heap
-            let mut heap_item = HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<HeapItem>();
+            let mut heap_item = HeapPtr::from_ptr(current_ptr.cast_mut()).cast::<AnyHeapItem>();
             let (_, alloc_size) = Self::move_heap_item(&mut heap_item, &mut dest_ptr);
 
             // Increment pointer to point to next old permanent heap item
@@ -234,10 +235,10 @@ impl GarbageCollector {
     }
 
     #[inline]
-    fn copy_or_fix_pointer(&mut self, heap_item: &mut HeapPtr<HeapItem>) {
+    fn copy_or_fix_pointer(&mut self, heap_item: &mut HeapPtr<AnyHeapItem>) {
         let heap_item_ptr = heap_item.as_ptr() as *const _ as *const u8;
 
-        // We only need to visit pointers in a space that has had its objects moved. This is
+        // We only need to visit pointers in a space that has had its contents moved. This is
         // normally the to-space but may also include the permanent space if resizing.
         if !self.is_in_moved_space(heap_item_ptr) {
             // The only valid pointers are either null, uninitialized (aka NonNull::dangling()), or
@@ -255,7 +256,7 @@ impl GarbageCollector {
         let descriptor = heap_item.descriptor();
 
         // If descriptor is actually a forwarding pointer then simply rewrite pointer to old heap
-        // object to instead point to new heap object.
+        // item to instead point to new heap item.
         if let Some(forwarding_ptr) = decode_forwarding_pointer(descriptor) {
             *heap_item = forwarding_ptr;
             return;
@@ -265,22 +266,22 @@ impl GarbageCollector {
         // to-space since all allocations fit into the from-space.
         let (new_heap_item, _) = Self::move_heap_item(heap_item, &mut self.alloc_ptr);
 
-        // Rewrite pointer to old heap object to instead point to new heap object
+        // Rewrite pointer to old heap item to instead point to new heap item
         *heap_item = new_heap_item;
 
-        // Type specific actions for live objects. All weak objects must be collected in lists so
+        // Type specific actions for live heap items. All weak objects must be collected in lists so
         // they can be traversed later.
         match new_heap_item.descriptor().kind() {
-            ObjectKind::WeakRefObject => {
+            HeapItemKind::WeakRefObject => {
                 self.add_visited_weak_ref(new_heap_item.cast::<WeakRefObject>())
             }
-            ObjectKind::WeakSetObject => {
+            HeapItemKind::WeakSetObject => {
                 self.add_visited_weak_set(new_heap_item.cast::<WeakSetObject>())
             }
-            ObjectKind::WeakMapObject => {
+            HeapItemKind::WeakMapObject => {
                 self.add_visited_weak_map(new_heap_item.cast::<WeakMapObject>())
             }
-            ObjectKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
+            HeapItemKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
                 new_heap_item.cast::<FinalizationRegistryObject>(),
             ),
             _ => {}
@@ -294,15 +295,15 @@ impl GarbageCollector {
     /// Return the new heap item and the allocation size for the heap item.
     #[inline]
     fn move_heap_item(
-        heap_item: &mut HeapPtr<HeapItem>,
+        heap_item: &mut HeapPtr<AnyHeapItem>,
         dest_ptr: &mut *const u8,
-    ) -> (HeapPtr<HeapItem>, usize) {
-        // Calculate size of heap object. Caller must ensure that there is enough space at the
-        // destination to hold the moved object.
+    ) -> (HeapPtr<AnyHeapItem>, usize) {
+        // Calculate size of heap item. Caller must ensure that there is enough space at the
+        // destination to hold the moved item.
         let alloc_size = Heap::alloc_size_for_request_size(heap_item.byte_size());
 
-        // Copy object from old to new heap, and bump alloc_ptr to point past new allocation
-        let new_heap_item = HeapPtr::from_ptr(dest_ptr.cast_mut()).cast::<HeapItem>();
+        // Copy item from old to new heap, and bump alloc_ptr to point past new allocation
+        let new_heap_item = HeapPtr::from_ptr(dest_ptr.cast_mut()).cast::<AnyHeapItem>();
         unsafe {
             std::ptr::copy_nonoverlapping::<u8>(
                 heap_item.as_ptr().cast(),
@@ -384,7 +385,7 @@ impl GarbageCollector {
     }
 
     // Visit live weak refs and check if their targets are still live. Should only be called after
-    // liveness of all objects have been determined.
+    // liveness of all items has been determined.
     fn fix_weak_refs(&mut self) {
         // Walk all live weak refs in the list
         let mut next_weak_ref = self.weak_ref_list;
@@ -411,7 +412,7 @@ impl GarbageCollector {
     }
 
     // Visit live weak sets and check if their targets are still live. Should only be called after
-    // liveness of all objects have been determined.
+    // liveness of all items has been determined.
     fn fix_weak_sets(&mut self) {
         // Walk all live weak sets in the list
         let mut next_weak_set = self.weak_set_list;
@@ -441,7 +442,7 @@ impl GarbageCollector {
     }
 
     // Visit live weak maps and check if their keys are still live. Should only be called after
-    // liveness of all objects have been determined.
+    // liveness of all items has been determined.
     fn fix_weak_maps(&mut self) {
         // Walk all live weak maps in the list
         let mut next_weak_map = self.weak_map_list;
@@ -641,28 +642,30 @@ impl GarbageCollector {
 }
 
 impl HeapVisitor for GarbageCollector {
-    fn visit(&mut self, ptr: &mut HeapPtr<HeapItem>) {
+    fn visit(&mut self, ptr: &mut HeapPtr<AnyHeapItem>) {
         self.copy_or_fix_pointer(ptr);
     }
 }
 
-// The first item in each heap object is a pointer, is either:
-//   - A pointer to the object descriptor if this object has not yet been copied to the from space
-//   - A forwarding pointer to the address in the from space the object has been copied to
+// The first item in each heap item is a pointer, is either:
+//   - A pointer to the item's descriptor if this item has not yet been copied to the from space
+//   - A forwarding pointer to the address in the from space the item has been copied to
 //
 // Tag lowest bit of pointer to signal a forwarding pointer
 const FORWARDING_POINTER_TAG: usize = 0x1;
 
-fn decode_forwarding_pointer(descriptor: HeapPtr<ObjectDescriptor>) -> Option<HeapPtr<HeapItem>> {
+fn decode_forwarding_pointer(
+    descriptor: HeapPtr<HeapItemDescriptor>,
+) -> Option<HeapPtr<AnyHeapItem>> {
     let ptr_bits = descriptor.as_ptr() as usize;
     if ptr_bits & FORWARDING_POINTER_TAG == FORWARDING_POINTER_TAG {
-        return Some(HeapPtr::from_ptr((ptr_bits ^ FORWARDING_POINTER_TAG) as *mut HeapItem));
+        return Some(HeapPtr::from_ptr((ptr_bits ^ FORWARDING_POINTER_TAG) as *mut AnyHeapItem));
     }
 
     None
 }
 
-fn encode_forwarding_pointer(heap_ptr: HeapPtr<HeapItem>) -> HeapPtr<ObjectDescriptor> {
+fn encode_forwarding_pointer(heap_ptr: HeapPtr<AnyHeapItem>) -> HeapPtr<HeapItemDescriptor> {
     let ptr_bits = heap_ptr.as_ptr() as usize;
-    HeapPtr::from_ptr((ptr_bits | FORWARDING_POINTER_TAG) as *mut ObjectDescriptor)
+    HeapPtr::from_ptr((ptr_bits | FORWARDING_POINTER_TAG) as *mut HeapItemDescriptor)
 }

@@ -10,12 +10,12 @@ use super::{
     error::{range_error, syntax_error, type_error},
     eval_result::EvalResult,
     gc::{Handle, HeapPtr},
+    heap_item_descriptor::HeapItemKind,
     intrinsics::{
         bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
         number_constructor::NumberObject, symbol_constructor::SymbolObject,
     },
     numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
-    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     property_key::PropertyKey,
     proxy_object::ProxyObject,
@@ -113,8 +113,8 @@ pub fn to_boolean(value: Value) -> bool {
 
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
-            ObjectKind::String => !value.as_string().is_empty(),
-            ObjectKind::BigInt => value.as_bigint().bigint().ne(&BigInt::default()),
+            HeapItemKind::String => !value.as_string().is_empty(),
+            HeapItemKind::BigInt => value.as_bigint().bigint().ne(&BigInt::default()),
             // Objects and symbols
             _ => true,
         }
@@ -156,9 +156,11 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         } else {
             match value.as_pointer().descriptor().kind() {
                 // May allocate
-                ObjectKind::String => Ok(string_to_number(value_handle.as_string()).to_handle(cx)),
-                ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to number"),
-                ObjectKind::BigInt => type_error(cx, "BigInt cannot be converted to number"),
+                HeapItemKind::String => {
+                    Ok(string_to_number(value_handle.as_string()).to_handle(cx))
+                }
+                HeapItemKind::Symbol => type_error(cx, "symbol cannot be converted to number"),
+                HeapItemKind::BigInt => type_error(cx, "BigInt cannot be converted to number"),
                 _ => unreachable!(),
             }
         }
@@ -462,8 +464,8 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
 
     if primitive.is_pointer() {
         match primitive.as_pointer().descriptor().kind() {
-            ObjectKind::BigInt => return Ok(primitive_handle.as_bigint()),
-            ObjectKind::String => {
+            HeapItemKind::BigInt => return Ok(primitive_handle.as_bigint()),
+            HeapItemKind::String => {
                 // May allocate
                 return if let Some(bigint) = string_to_bigint(primitive_handle.as_string()) {
                     Ok(BigIntValue::new(cx, bigint))
@@ -527,11 +529,11 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
             to_string(cx, primitive_value)
         } else {
             match value.as_pointer().descriptor().kind() {
-                ObjectKind::BigInt => {
+                HeapItemKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
                     Ok(cx.alloc_string(&bigint_string).as_string())
                 }
-                ObjectKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
+                HeapItemKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
             }
         }
@@ -567,13 +569,13 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
             Ok(value_handle.as_object())
         } else {
             match value.as_pointer().descriptor().kind() {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     Ok(StringObject::new_from_value(cx, value_handle.as_string()).as_object())
                 }
-                ObjectKind::Symbol => {
+                HeapItemKind::Symbol => {
                     Ok(SymbolObject::new_from_value(cx, value_handle.as_symbol()).as_object())
                 }
-                ObjectKind::BigInt => {
+                HeapItemKind::BigInt => {
                     Ok(BigIntObject::new_from_value(cx, value_handle.as_bigint()).as_object())
                 }
                 _ => unreachable!(),
@@ -724,9 +726,9 @@ pub fn is_callable(value: Handle<Value>) -> bool {
 
 pub fn is_callable_object(value: Handle<ObjectValue>) -> bool {
     let kind = value.descriptor().kind();
-    if kind == ObjectKind::Closure {
+    if kind == HeapItemKind::Closure {
         true
-    } else if kind == ObjectKind::Proxy {
+    } else if kind == HeapItemKind::Proxy {
         value.cast::<ProxyObject>().is_callable()
     } else {
         false
@@ -744,9 +746,9 @@ pub fn is_constructor_value(value: Handle<Value>) -> bool {
 
 pub fn is_constructor_object_value(value: Handle<ObjectValue>) -> bool {
     let kind = value.descriptor().kind();
-    if kind == ObjectKind::Closure {
+    if kind == HeapItemKind::Closure {
         value.cast::<Closure>().function_ptr().is_constructor()
-    } else if kind == ObjectKind::Proxy {
+    } else if kind == HeapItemKind::Proxy {
         value.cast::<ProxyObject>().is_constructor()
     } else {
         false
@@ -871,11 +873,13 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
         let kind1 = v1.as_pointer().descriptor().kind();
         if kind1 == v2.as_pointer().descriptor().kind() {
             match kind1 {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     // May allocate
                     return v1_handle.as_string().eq(&v2_handle.as_string());
                 }
-                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()),
+                HeapItemKind::BigInt => {
+                    return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())
+                }
                 _ => {}
             }
         }
@@ -899,7 +903,7 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
         let kind1 = v1.as_pointer().descriptor().kind();
         if kind1 == v2.as_pointer().descriptor().kind() {
             match kind1 {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     // Must be flat strings to be non allocating
                     let v1_string = v1.as_string();
                     let v2_string = v2.as_string();
@@ -910,7 +914,9 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
                     // Cannot allocate
                     return v1_string.as_flat() == v2_string.as_flat();
                 }
-                ObjectKind::BigInt => return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()),
+                HeapItemKind::BigInt => {
+                    return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())
+                }
                 _ => {}
             }
         }
@@ -966,15 +972,15 @@ pub fn is_less_than(
         let x_kind = x.as_pointer().descriptor().kind();
         let y_kind = y.as_pointer().descriptor().kind();
 
-        if x_kind == ObjectKind::String {
-            if y_kind == ObjectKind::String {
+        if x_kind == HeapItemKind::String {
+            if y_kind == HeapItemKind::String {
                 // May allocate
                 return Ok(x_handle
                     .as_string()
                     .cmp(&y_handle.as_string())
                     .is_lt()
                     .into());
-            } else if y_kind == ObjectKind::BigInt {
+            } else if y_kind == HeapItemKind::BigInt {
                 // May allocate
                 let x_bigint = string_to_bigint(x_handle.as_string());
 
@@ -986,7 +992,7 @@ pub fn is_less_than(
             }
         }
 
-        if x_kind == ObjectKind::BigInt && y_kind == ObjectKind::String {
+        if x_kind == HeapItemKind::BigInt && y_kind == HeapItemKind::String {
             // May allocate
             let y_bigint = string_to_bigint(y_handle.as_string());
 
@@ -1108,12 +1114,12 @@ pub fn is_loosely_equal(
 
         return if v2.is_pointer() {
             match v2.as_pointer().descriptor().kind() {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     // May allocate
                     let number_v2 = string_to_number(v2_handle.as_string());
                     Ok(v1_handle.as_number() == number_v2.as_number())
                 }
-                ObjectKind::BigInt => {
+                HeapItemKind::BigInt => {
                     if v1.is_nan() || v1.is_infinity() {
                         return Ok(false);
                     }
@@ -1131,7 +1137,7 @@ pub fn is_loosely_equal(
 
                     Ok(v1_bigint == v2_bigint)
                 }
-                ObjectKind::Symbol => Ok(false),
+                HeapItemKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
                     let primitive_v2 = to_primitive(cx, v2_handle, ToPrimitivePreferredType::None)?;
@@ -1162,11 +1168,13 @@ pub fn is_loosely_equal(
             if kind1 == kind2 {
                 return match kind1 {
                     // Only strings and BigInts may have the same value but different bit patterns
-                    ObjectKind::String => {
+                    HeapItemKind::String => {
                         // May allocate
                         Ok(v1_handle.as_string().eq(&v2_handle.as_string()))
                     }
-                    ObjectKind::BigInt => Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())),
+                    HeapItemKind::BigInt => {
+                        Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()))
+                    }
                     _ => Ok(false),
                 };
             // Two objects with different bit patterns are always unequal
@@ -1201,12 +1209,12 @@ pub fn is_loosely_equal(
         return if tag1 == POINTER_TAG {
             let kind = v1.as_pointer().descriptor().kind();
             match kind {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     // May allocate
                     let v1_number = string_to_number(v1_handle.as_string());
                     Ok(v1_number.as_number() == v2_handle.as_number())
                 }
-                ObjectKind::BigInt => {
+                HeapItemKind::BigInt => {
                     if v2.is_nan() || v2.is_infinity() {
                         return Ok(false);
                     }
@@ -1224,7 +1232,7 @@ pub fn is_loosely_equal(
 
                     Ok(v1_bigint == v2_bigint)
                 }
-                ObjectKind::Symbol => Ok(false),
+                HeapItemKind::Symbol => Ok(false),
                 // Otherwise must be an object
                 _ => {
                     let v1_primitive = to_primitive(cx, v1_handle, ToPrimitivePreferredType::None)?;
@@ -1242,7 +1250,7 @@ pub fn is_loosely_equal(
 
         // Strings are implicitly converted to BigInts
         match (kind1, kind2) {
-            (ObjectKind::String, ObjectKind::BigInt) => {
+            (HeapItemKind::String, HeapItemKind::BigInt) => {
                 // May allocate
                 let v1_bigint = string_to_bigint(v1_handle.as_string());
                 return if let Some(v1_bigint) = v1_bigint {
@@ -1251,7 +1259,7 @@ pub fn is_loosely_equal(
                     Ok(false)
                 };
             }
-            (ObjectKind::BigInt, ObjectKind::String) => {
+            (HeapItemKind::BigInt, HeapItemKind::String) => {
                 // May allocate
                 let v2_bigint = string_to_bigint(v2_handle.as_string());
                 return if let Some(v2_bigint) = v2_bigint {

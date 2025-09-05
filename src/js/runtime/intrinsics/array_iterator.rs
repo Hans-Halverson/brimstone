@@ -7,9 +7,9 @@ use crate::{
         array_object::create_array_from_list,
         error::type_error,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
@@ -54,7 +54,7 @@ impl ArrayIterator {
     ) -> Handle<ArrayIterator> {
         let mut object = object_create::<ArrayIterator>(
             cx,
-            ObjectKind::ArrayIterator,
+            HeapItemKind::ArrayIterator,
             Intrinsic::ArrayIteratorPrototype,
         );
 
@@ -167,7 +167,7 @@ impl ArrayIteratorPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<ArrayIterator> {
+impl HeapItem for HeapPtr<ArrayIterator> {
     fn byte_size(&self) -> usize {
         size_of::<ArrayIterator>()
     }

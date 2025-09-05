@@ -8,10 +8,10 @@ use super::{
     },
     array_object::create_array_from_list,
     error::type_error,
-    gc::{Handle, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
     get,
+    heap_item_descriptor::HeapItemKind,
     intrinsics::intrinsics::Intrinsic,
-    object_descriptor::ObjectKind,
     object_value::{ObjectValue, VirtualObject},
     ordinary_object::{is_compatible_property_descriptor, object_create},
     property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
@@ -45,7 +45,7 @@ impl ProxyObject {
         is_constructor: bool,
     ) -> Handle<ProxyObject> {
         let mut object =
-            object_create::<ProxyObject>(cx, ObjectKind::Proxy, Intrinsic::ObjectPrototype);
+            object_create::<ProxyObject>(cx, HeapItemKind::Proxy, Intrinsic::ObjectPrototype);
 
         set_uninit!(object.proxy_handler, Some(*proxy_handler));
         set_uninit!(object.proxy_target, Some(*proxy_target));
@@ -753,7 +753,7 @@ pub fn proxy_create(
     Ok(proxy)
 }
 
-impl HeapObject for HeapPtr<ProxyObject> {
+impl HeapItem for HeapPtr<ProxyObject> {
     fn byte_size(&self) -> usize {
         size_of::<ProxyObject>()
     }

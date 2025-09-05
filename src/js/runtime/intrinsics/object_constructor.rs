@@ -11,7 +11,7 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
-        object_descriptor::ObjectKind,
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::{
             object_create_from_constructor, object_create_with_optional_proto,
@@ -109,7 +109,7 @@ impl ObjectConstructor {
                 let new_object = object_create_from_constructor::<ObjectValue>(
                     cx,
                     new_target,
-                    ObjectKind::OrdinaryObject,
+                    HeapItemKind::OrdinaryObject,
                     Intrinsic::ObjectPrototype,
                 )?;
                 return Ok(new_object.to_handle().as_value());
@@ -177,9 +177,12 @@ impl ObjectConstructor {
             return type_error(cx, "prototype must be an object or null");
         };
 
-        let object =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, proto)
-                .to_handle();
+        let object = object_create_with_optional_proto::<ObjectValue>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            proto,
+        )
+        .to_handle();
 
         let properties = get_argument(cx, arguments, 1);
         if properties.is_undefined() {
@@ -424,9 +427,12 @@ impl ObjectConstructor {
 
         let groups = group_by(cx, items, callback, GroupByKeyCoercion::Property)?;
 
-        let object =
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
-                .to_handle();
+        let object = object_create_with_optional_proto::<ObjectValue>(
+            cx,
+            HeapItemKind::OrdinaryObject,
+            None,
+        )
+        .to_handle();
 
         for group in groups {
             let property_key = group.key.cast::<PropertyKey>();

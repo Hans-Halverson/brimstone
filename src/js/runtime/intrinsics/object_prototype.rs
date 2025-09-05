@@ -7,8 +7,8 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property_descriptor::PropertyDescriptor,
@@ -38,7 +38,7 @@ impl ObjectPrototype {
     pub fn initialize(cx: Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
         let mut object = object.as_object();
 
-        let descriptor = cx.base_descriptors.get(ObjectKind::ObjectPrototype);
+        let descriptor = cx.base_descriptors.get(HeapItemKind::ObjectPrototype);
         object_ordinary_init(cx, *object, descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
@@ -350,7 +350,7 @@ impl ObjectPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<ObjectPrototype> {
+impl HeapItem for HeapPtr<ObjectPrototype> {
     fn byte_size(&self) -> usize {
         size_of::<ObjectPrototype>()
     }

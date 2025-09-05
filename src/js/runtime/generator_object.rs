@@ -2,10 +2,10 @@ use crate::{
     extend_object, field_offset,
     runtime::{
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
         Context, Handle, HeapPtr,
@@ -112,7 +112,7 @@ impl GeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size);
 
-        let descriptor = cx.base_descriptors.get(ObjectKind::Generator);
+        let descriptor = cx.base_descriptors.get(HeapItemKind::Generator);
         object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
 
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
@@ -290,7 +290,7 @@ pub fn generator_resume_abrupt(
     generate_resume_impl(cx, generator, completion_value, completion_type)
 }
 
-impl HeapObject for HeapPtr<GeneratorObject> {
+impl HeapItem for HeapPtr<GeneratorObject> {
     fn byte_size(&self) -> usize {
         GeneratorObject::calculate_size_in_bytes(self.stack_frame.len())
     }

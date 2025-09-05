@@ -8,8 +8,8 @@ use crate::{
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
@@ -32,8 +32,11 @@ extend_object! {
 
 impl SymbolObject {
     pub fn new_from_value(cx: Context, symbol_data: Handle<SymbolValue>) -> Handle<SymbolObject> {
-        let mut object =
-            object_create::<SymbolObject>(cx, ObjectKind::SymbolObject, Intrinsic::SymbolPrototype);
+        let mut object = object_create::<SymbolObject>(
+            cx,
+            HeapItemKind::SymbolObject,
+            Intrinsic::SymbolPrototype,
+        );
 
         set_uninit!(object.symbol_data, *symbol_data);
 
@@ -178,7 +181,7 @@ impl SymbolConstructor {
     }
 }
 
-impl HeapObject for HeapPtr<SymbolObject> {
+impl HeapItem for HeapPtr<SymbolObject> {
     fn byte_size(&self) -> usize {
         size_of::<SymbolObject>()
     }

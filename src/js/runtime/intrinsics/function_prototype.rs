@@ -11,7 +11,7 @@ use crate::{
         eval_result::EvalResult,
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
-        object_descriptor::ObjectKind,
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
         property_key::PropertyKey,
@@ -32,7 +32,7 @@ impl FunctionPrototype {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
         let mut object =
-            object_create_with_optional_proto::<Closure>(cx, ObjectKind::Closure, None);
+            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, None);
         object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
         object.to_handle().into()
@@ -45,7 +45,7 @@ impl FunctionPrototype {
         let mut object = function_prototype.as_object();
 
         // Initialize all fields of the prototype objec
-        let descriptor_ptr = cx.base_descriptors.get(ObjectKind::Closure);
+        let descriptor_ptr = cx.base_descriptors.get(HeapItemKind::Closure);
         object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined

@@ -14,11 +14,11 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             regexp_string_iterator::RegExpStringIterator,
             string_prototype::SubstitutionTemplateParser,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
         realm::Realm,
@@ -891,7 +891,7 @@ fn regexp_builtin_exec(
 
     // Add the groups object to the result, or undefined if there are no named capture groups
     let named_groups_object = if compiled_regexp.has_named_capture_groups {
-        object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+        object_create_with_optional_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, None)
             .to_handle()
             .into()
     } else {
@@ -912,7 +912,7 @@ fn regexp_builtin_exec(
 
         // Indices array contains named capture groups object if there are any named groups
         let named_groups_object = if compiled_regexp.has_named_capture_groups {
-            object_create_with_optional_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, None)
+            object_create_with_optional_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, None)
                 .to_handle()
                 .into()
         } else {

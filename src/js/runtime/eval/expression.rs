@@ -13,8 +13,8 @@ use crate::{
         array_object::array_create_in_realm,
         error::{range_error, type_error},
         eval_result::EvalResult,
+        heap_item_descriptor::HeapItemKind,
         numeric_operations::number_exponentiate,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
@@ -87,9 +87,9 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue>
     let type_string = if value.is_pointer() {
         let kind = value.as_pointer().descriptor().kind();
         match kind {
-            ObjectKind::String => "string",
-            ObjectKind::Symbol => "symbol",
-            ObjectKind::BigInt => "bigint",
+            HeapItemKind::String => "string",
+            HeapItemKind::Symbol => "symbol",
+            HeapItemKind::BigInt => "bigint",
             // All other pointer values must be an object
             _ => {
                 if value.as_object().is_callable() {

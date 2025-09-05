@@ -1,18 +1,18 @@
 use bitflags::bitflags;
 
-use crate::{field_offset, runtime::object_descriptor::ObjectKind, set_uninit};
+use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
 
 use super::{
     collections::InlineArray,
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectDescriptor,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemDescriptor,
     string_value::{FlatString, StringValue},
     Context, Handle, HeapPtr,
 };
 
 #[repr(C)]
 pub struct ScopeNames {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Flags for this scope overall.
     flags: ScopeFlags,
     /// Inline array of names for the slots.
@@ -62,7 +62,7 @@ impl ScopeNames {
         let size = Self::calculate_size_in_bytes(names.len());
         let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size);
 
-        set_uninit!(scope_names.descriptor, cx.base_descriptors.get(ObjectKind::ScopeNames));
+        set_uninit!(scope_names.descriptor, cx.base_descriptors.get(HeapItemKind::ScopeNames));
         set_uninit!(scope_names.flags, flags);
 
         // Copy names into inline names array
@@ -181,7 +181,7 @@ impl ScopeNames {
     }
 }
 
-impl HeapObject for HeapPtr<ScopeNames> {
+impl HeapItem for HeapPtr<ScopeNames> {
     fn byte_size(&self) -> usize {
         ScopeNames::calculate_size_in_bytes(self.len())
     }

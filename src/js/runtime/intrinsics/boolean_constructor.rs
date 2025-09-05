@@ -6,8 +6,8 @@ use crate::{
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{Handle, HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{Handle, HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
@@ -33,7 +33,7 @@ impl BooleanObject {
     pub fn new(cx: Context, boolean_data: bool) -> Handle<BooleanObject> {
         let mut object = object_create::<BooleanObject>(
             cx,
-            ObjectKind::BooleanObject,
+            HeapItemKind::BooleanObject,
             Intrinsic::BooleanPrototype,
         );
 
@@ -50,7 +50,7 @@ impl BooleanObject {
         let mut object = object_create_from_constructor::<BooleanObject>(
             cx,
             constructor,
-            ObjectKind::BooleanObject,
+            HeapItemKind::BooleanObject,
             Intrinsic::BooleanPrototype,
         )?;
 
@@ -65,7 +65,7 @@ impl BooleanObject {
         boolean_data: bool,
     ) -> Handle<BooleanObject> {
         let mut object =
-            object_create_with_proto::<BooleanObject>(cx, ObjectKind::BooleanObject, proto);
+            object_create_with_proto::<BooleanObject>(cx, HeapItemKind::BooleanObject, proto);
 
         set_uninit!(object.boolean_data, boolean_data);
 
@@ -121,7 +121,7 @@ impl BooleanConstructor {
     }
 }
 
-impl HeapObject for HeapPtr<BooleanObject> {
+impl HeapItem for HeapPtr<BooleanObject> {
     fn byte_size(&self) -> usize {
         size_of::<BooleanObject>()
     }

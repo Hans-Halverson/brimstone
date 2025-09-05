@@ -8,12 +8,12 @@ use crate::{
         collections::{array::ByteArray, InlineArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_function_name},
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::{
             intrinsics::Intrinsic,
             rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
         },
-        object_descriptor::{ObjectDescriptor, ObjectKind},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_with_proto},
         property::Property,
@@ -46,7 +46,7 @@ impl Closure {
         scope: Handle<Scope>,
     ) -> Handle<Closure> {
         let mut object =
-            object_create::<Closure>(cx, ObjectKind::Closure, Intrinsic::FunctionPrototype);
+            object_create::<Closure>(cx, HeapItemKind::Closure, Intrinsic::FunctionPrototype);
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -63,7 +63,7 @@ impl Closure {
         scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
     ) -> Handle<Closure> {
-        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
+        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -81,7 +81,7 @@ impl Closure {
         realm: Handle<Realm>,
     ) -> Handle<Closure> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
-        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, proto);
+        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, proto);
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -98,7 +98,7 @@ impl Closure {
         scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
     ) -> Handle<Closure> {
-        let mut object = object_create_with_proto::<Closure>(cx, ObjectKind::Closure, prototype);
+        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
@@ -163,7 +163,7 @@ impl Closure {
         if function.is_constructor() {
             let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
             let prototype =
-                object_create_with_proto::<ObjectValue>(cx, ObjectKind::OrdinaryObject, proto)
+                object_create_with_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, proto)
                     .to_handle();
 
             let desc = PropertyDescriptor::data(closure.into(), true, false, true);
@@ -188,7 +188,7 @@ impl Handle<Closure> {
     }
 }
 
-impl HeapObject for HeapPtr<Closure> {
+impl HeapItem for HeapPtr<Closure> {
     fn byte_size(&self) -> usize {
         size_of::<Closure>()
     }
@@ -205,7 +205,7 @@ impl HeapObject for HeapPtr<Closure> {
 /// a runtime scope to create a closure.
 #[repr(C)]
 pub struct BytecodeFunction {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Constants referenced by the function (or raw jump offsets)
     constant_table: Option<HeapPtr<ConstantTable>>,
     /// Exception handlers in this function.
@@ -273,7 +273,7 @@ impl BytecodeFunction {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| *c));
         set_uninit!(object.exception_handlers, exception_handlers.map(|h| *h));
         set_uninit!(object.realm, *realm);
@@ -317,7 +317,7 @@ impl BytecodeFunction {
             new_target_index = Some(0);
         }
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::BytecodeFunction));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, None);
         set_uninit!(object.exception_handlers, None);
         set_uninit!(object.realm, *realm);
@@ -503,7 +503,7 @@ pub fn dump_bytecode_function(cx: Context, func: HeapPtr<BytecodeFunction>) {
     cx.print_or_add_to_dump_buffer(&bytecode_string);
 }
 
-impl HeapObject for HeapPtr<BytecodeFunction> {
+impl HeapItem for HeapPtr<BytecodeFunction> {
     fn byte_size(&self) -> usize {
         BytecodeFunction::calculate_size_in_bytes(self.bytecode.len())
     }

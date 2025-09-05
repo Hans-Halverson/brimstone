@@ -17,8 +17,9 @@ use super::{
     collections::{BsIndexMap, BsIndexMapField},
     error::type_error,
     eval_result::EvalResult,
-    gc::{Handle, HeapInfo, HeapObject, HeapPtr, HeapVisitor},
+    gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
     generator_object::GeneratorObject,
+    heap_item_descriptor::HeapItemKind,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject, bigint_constructor::BigIntObject,
         boolean_constructor::BooleanObject, data_view_constructor::DataViewObject,
@@ -31,7 +32,6 @@ use super::{
         weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
         weak_set_object::WeakSetObject,
     },
-    object_descriptor::ObjectKind,
     promise_object::PromiseObject,
     property::{HeapProperty, Property},
     property_descriptor::PropertyDescriptor,
@@ -55,7 +55,7 @@ macro_rules! extend_object_without_conversions {
         #[repr(C)]
         $vis struct $name $(<$($generics),*>)? {
             // All objects start with object vtable
-            descriptor: $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor>,
+            descriptor: $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor>,
 
             // Inherited object fields
 
@@ -81,13 +81,13 @@ macro_rules! extend_object_without_conversions {
         impl $(<$($generics),*>)? $name $(<$($generics),*>)? {
             #[allow(dead_code)]
             #[inline]
-            pub fn descriptor(&self) -> $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor> {
+            pub fn descriptor(&self) -> $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor> {
                 self.descriptor
             }
 
             #[allow(dead_code)]
             #[inline]
-            pub fn set_descriptor(&mut self, descriptor: $crate::runtime::HeapPtr<$crate::runtime::object_descriptor::ObjectDescriptor>)  {
+            pub fn set_descriptor(&mut self, descriptor: $crate::runtime::HeapPtr<$crate::runtime::heap_item_descriptor::HeapItemDescriptor>)  {
                 self.descriptor = descriptor
             }
         }
@@ -158,7 +158,7 @@ macro_rules! extend_object {
         impl $(<$($generics),*>)? $crate::runtime::HeapPtr<$name $(<$($generics),*>)?> {
             #[inline]
             pub fn visit_object_pointers(&self, visitor: &mut impl $crate::runtime::gc::HeapVisitor) {
-                use $crate::runtime::gc::HeapObject;
+                use $crate::runtime::gc::HeapItem;
                 self.as_object().visit_pointers(visitor);
             }
         }
@@ -178,7 +178,7 @@ impl ObjectValue {
     ) -> Handle<ObjectValue> {
         let mut object = cx.alloc_uninit::<ObjectValue>();
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(ObjectKind::OrdinaryObject));
+        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| *p));
         set_uninit!(object.named_properties, cx.default_named_properties);
         set_uninit!(object.array_properties, cx.default_array_properties);
@@ -287,7 +287,7 @@ impl ObjectValue {
         set_uninit!(self.hash_code, None);
     }
 
-    /// Return the Context for this heap object. Only use when absolutely necessary - prefer to
+    /// Return the Context for this heap item. Only use when absolutely necessary - prefer to
     /// instead explicitly pass in the Context.
     #[inline]
     fn cx(&self) -> Context {
@@ -304,14 +304,14 @@ impl ObjectValue {
     #[inline]
     pub fn is_typed_array(&self) -> bool {
         let kind = self.descriptor().kind() as u8;
-        (kind >= ObjectKind::Int8Array as u8) && (kind <= ObjectKind::Float64Array as u8)
+        (kind >= HeapItemKind::Int8Array as u8) && (kind <= HeapItemKind::Float64Array as u8)
     }
 
     #[inline]
     pub fn is_arguments_object(&self) -> bool {
         matches!(
             self.descriptor().kind(),
-            ObjectKind::MappedArgumentsObject | ObjectKind::UnmappedArgumentsObject
+            HeapItemKind::MappedArgumentsObject | HeapItemKind::UnmappedArgumentsObject
         )
     }
 }
@@ -713,7 +713,7 @@ pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
 impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
-        NamedPropertiesMap::new(cx, ObjectKind::ObjectNamedPropertiesMap, capacity)
+        NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, capacity)
     }
 
     fn get(&self) -> HeapPtr<NamedPropertiesMap> {
@@ -733,7 +733,7 @@ struct ObjectTraitObject {
     vtable: *const (),
 }
 
-impl HeapObject for HeapPtr<ObjectValue> {
+impl HeapItem for HeapPtr<ObjectValue> {
     fn byte_size(&self) -> usize {
         size_of::<ObjectValue>()
     }
@@ -798,73 +798,78 @@ macro_rules! impl_subtype_casts {
     };
 }
 
-impl_subtype_casts!(ArrayObject, ObjectKind::ArrayObject, is_array, as_array);
-impl_subtype_casts!(ErrorObject, ObjectKind::ErrorObject, is_error, as_error);
-impl_subtype_casts!(BooleanObject, ObjectKind::BooleanObject, is_boolean_object, as_boolean_object);
-impl_subtype_casts!(NumberObject, ObjectKind::NumberObject, is_number_object, as_number_object);
-impl_subtype_casts!(StringObject, ObjectKind::StringObject, is_string_object, as_string_object);
-impl_subtype_casts!(SymbolObject, ObjectKind::SymbolObject, is_symbol_object, as_symbol_object);
-impl_subtype_casts!(BigIntObject, ObjectKind::BigIntObject, is_bigint_object, as_bigint_object);
-impl_subtype_casts!(DateObject, ObjectKind::DateObject, is_date_object, as_date_object);
-impl_subtype_casts!(RegExpObject, ObjectKind::RegExpObject, is_regexp_object, as_regexp_object);
-impl_subtype_casts!(Closure, ObjectKind::Closure, is_closure, as_closure);
-impl_subtype_casts!(MapObject, ObjectKind::MapObject, is_map_object, as_map_object);
-impl_subtype_casts!(SetObject, ObjectKind::SetObject, is_set_object, as_set_object);
+impl_subtype_casts!(ArrayObject, HeapItemKind::ArrayObject, is_array, as_array);
+impl_subtype_casts!(ErrorObject, HeapItemKind::ErrorObject, is_error, as_error);
+impl_subtype_casts!(
+    BooleanObject,
+    HeapItemKind::BooleanObject,
+    is_boolean_object,
+    as_boolean_object
+);
+impl_subtype_casts!(NumberObject, HeapItemKind::NumberObject, is_number_object, as_number_object);
+impl_subtype_casts!(StringObject, HeapItemKind::StringObject, is_string_object, as_string_object);
+impl_subtype_casts!(SymbolObject, HeapItemKind::SymbolObject, is_symbol_object, as_symbol_object);
+impl_subtype_casts!(BigIntObject, HeapItemKind::BigIntObject, is_bigint_object, as_bigint_object);
+impl_subtype_casts!(DateObject, HeapItemKind::DateObject, is_date_object, as_date_object);
+impl_subtype_casts!(RegExpObject, HeapItemKind::RegExpObject, is_regexp_object, as_regexp_object);
+impl_subtype_casts!(Closure, HeapItemKind::Closure, is_closure, as_closure);
+impl_subtype_casts!(MapObject, HeapItemKind::MapObject, is_map_object, as_map_object);
+impl_subtype_casts!(SetObject, HeapItemKind::SetObject, is_set_object, as_set_object);
 impl_subtype_casts!(
     ArrayBufferObject,
-    ObjectKind::ArrayBufferObject,
+    HeapItemKind::ArrayBufferObject,
     is_array_buffer,
     as_array_buffer
 );
-impl_subtype_casts!(DataViewObject, ObjectKind::DataViewObject, is_data_view, as_data_view);
-impl_subtype_casts!(ProxyObject, ObjectKind::Proxy, is_proxy, as_proxy);
-impl_subtype_casts!(GeneratorObject, ObjectKind::Generator, is_generator, as_generator);
+impl_subtype_casts!(DataViewObject, HeapItemKind::DataViewObject, is_data_view, as_data_view);
+impl_subtype_casts!(ProxyObject, HeapItemKind::Proxy, is_proxy, as_proxy);
+impl_subtype_casts!(GeneratorObject, HeapItemKind::Generator, is_generator, as_generator);
 impl_subtype_casts!(
     AsyncGeneratorObject,
-    ObjectKind::AsyncGenerator,
+    HeapItemKind::AsyncGenerator,
     is_async_generator,
     as_async_generator
 );
-impl_subtype_casts!(PromiseObject, ObjectKind::Promise, is_promise, as_promise);
+impl_subtype_casts!(PromiseObject, HeapItemKind::Promise, is_promise, as_promise);
 impl_subtype_casts!(
     ObjectPrototype,
-    ObjectKind::ObjectPrototype,
+    HeapItemKind::ObjectPrototype,
     is_object_prototype,
     as_object_prototype
 );
 impl_subtype_casts!(
     WeakRefObject,
-    ObjectKind::WeakRefObject,
+    HeapItemKind::WeakRefObject,
     is_weak_ref_object,
     as_weak_ref_object
 );
 impl_subtype_casts!(
     WeakSetObject,
-    ObjectKind::WeakSetObject,
+    HeapItemKind::WeakSetObject,
     is_weak_set_object,
     as_weak_set_object
 );
 impl_subtype_casts!(
     WeakMapObject,
-    ObjectKind::WeakMapObject,
+    HeapItemKind::WeakMapObject,
     is_weak_map_object,
     as_weak_map_object
 );
 impl_subtype_casts!(
     FinalizationRegistryObject,
-    ObjectKind::FinalizationRegistryObject,
+    HeapItemKind::FinalizationRegistryObject,
     is_finalization_registry_object,
     as_finalization_registry_object
 );
 impl_subtype_casts!(
     WrappedValidIterator,
-    ObjectKind::WrappedValidIterator,
+    HeapItemKind::WrappedValidIterator,
     is_wrapped_valid_iterator_object,
     as_wrapped_valid_iterator_object
 );
 impl_subtype_casts!(
     IteratorHelperObject,
-    ObjectKind::IteratorHelperObject,
+    HeapItemKind::IteratorHelperObject,
     is_iterator_helper_object,
     as_iterator_helper_object
 );

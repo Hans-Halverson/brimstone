@@ -7,9 +7,9 @@ use crate::{
         collections::index_map::GcSafeEntriesIter,
         error::type_error,
         eval_result::EvalResult,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         iterator::create_iter_result_object,
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create,
         property::Property,
@@ -46,7 +46,7 @@ impl MapIterator {
     pub fn new(cx: Context, map: Handle<MapObject>, kind: MapIteratorKind) -> Handle<MapIterator> {
         let mut object = object_create::<MapIterator>(
             cx,
-            ObjectKind::MapIterator,
+            HeapItemKind::MapIterator,
             Intrinsic::MapIteratorPrototype,
         );
 
@@ -154,7 +154,7 @@ impl MapIteratorPrototype {
     }
 }
 
-impl HeapObject for HeapPtr<MapIterator> {
+impl HeapItem for HeapPtr<MapIterator> {
     fn byte_size(&self) -> usize {
         size_of::<MapIterator>()
     }

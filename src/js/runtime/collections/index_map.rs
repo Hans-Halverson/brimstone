@@ -8,8 +8,8 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::{ObjectDescriptor, ObjectKind},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, Handle, HeapPtr,
     },
     set_uninit,
@@ -23,7 +23,7 @@ use super::InlineArray;
 /// https://wiki.mozilla.org/User:Jorend/Deterministic_hash_tables
 #[repr(C)]
 pub struct BsIndexMap<K, V> {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // Whether this is a tombstone object. Tombstone objects point to the new map that this map was
     // moved to during a resize. Tombstone objects are used to update iterators that point to the
     // tombstone.
@@ -66,7 +66,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
     // Public interface
 
-    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size);
@@ -421,7 +421,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
     }
 }
 
-/// A BsHashMap stored as the field of a heap object. Can create new maps and set the field to a
+/// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
 pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
     fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
@@ -632,7 +632,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Iterator for GcSafeEntriesIter<K, V> {
     }
 }
 
-impl<K: Eq + Hash + Clone, V: Clone> HeapObject for HeapPtr<BsIndexMap<K, V>> {
+impl<K: Eq + Hash + Clone, V: Clone> HeapItem for HeapPtr<BsIndexMap<K, V>> {
     fn byte_size(&self) -> usize {
         BsIndexMap::<K, V>::calculate_size_in_bytes(self.capacity())
     }

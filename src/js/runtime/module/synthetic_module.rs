@@ -5,11 +5,11 @@ use crate::{
     runtime::{
         abstract_operations::call_object,
         boxed_value::BoxedValue,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
         module::module::next_module_id,
-        object_descriptor::{ObjectDescriptor, ObjectKind},
         promise_object::{coerce_to_ordinary_promise, PromiseCapability, PromiseObject},
         rust_vtables::extract_module_vtable,
         scope::Scope,
@@ -28,7 +28,7 @@ use super::{
 
 #[repr(C)]
 pub struct SyntheticModule {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     /// Unique identifier for this module. Can be used as a stable identifier.
     id: ModuleId,
     /// The kind of synthetic module.
@@ -71,7 +71,7 @@ impl SyntheticModule {
         let mut module = cx.alloc_uninit::<SyntheticModule>();
 
         // Note that kind is not initialized here, as it is initialized by the caller
-        set_uninit!(module.descriptor, cx.base_descriptors.get(ObjectKind::SyntheticModule));
+        set_uninit!(module.descriptor, cx.base_descriptors.get(HeapItemKind::SyntheticModule));
         set_uninit!(module.id, next_module_id());
         set_uninit!(module.module_scope, *module_scope);
         set_uninit!(module.namespace_object, None);
@@ -219,7 +219,7 @@ impl Module for Handle<SyntheticModule> {
     }
 }
 
-impl HeapObject for HeapPtr<SyntheticModule> {
+impl HeapItem for HeapPtr<SyntheticModule> {
     fn byte_size(&self) -> usize {
         SyntheticModule::calculate_size_in_bytes()
     }

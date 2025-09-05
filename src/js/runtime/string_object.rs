@@ -7,8 +7,8 @@ use crate::{
     runtime::{
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
+        heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
-        object_descriptor::ObjectKind,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
             is_compatible_property_descriptor, object_create, object_create_from_constructor,
@@ -26,7 +26,7 @@ use crate::{
 };
 
 use super::{
-    gc::{HeapObject, HeapVisitor},
+    gc::{HeapItem, HeapVisitor},
     property::Property,
     rust_vtables::extract_virtual_object_vtable,
     string_value::FlatString,
@@ -47,8 +47,11 @@ impl StringObject {
         cx: Context,
         string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
-        let mut object =
-            object_create::<StringObject>(cx, ObjectKind::StringObject, Intrinsic::StringPrototype);
+        let mut object = object_create::<StringObject>(
+            cx,
+            HeapItemKind::StringObject,
+            Intrinsic::StringPrototype,
+        );
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -70,7 +73,7 @@ impl StringObject {
         let mut object = object_create_from_constructor::<StringObject>(
             cx,
             constructor,
-            ObjectKind::StringObject,
+            HeapItemKind::StringObject,
             Intrinsic::StringPrototype,
         )?;
 
@@ -92,7 +95,7 @@ impl StringObject {
         string_data_handle: Handle<StringValue>,
     ) -> Handle<StringObject> {
         let mut object =
-            object_create_with_proto::<StringObject>(cx, ObjectKind::StringObject, proto);
+            object_create_with_proto::<StringObject>(cx, HeapItemKind::StringObject, proto);
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -194,7 +197,7 @@ impl VirtualObject for Handle<StringObject> {
     }
 }
 
-impl HeapObject for HeapPtr<StringObject> {
+impl HeapItem for HeapPtr<StringObject> {
     fn byte_size(&self) -> usize {
         size_of::<StringObject>()
     }

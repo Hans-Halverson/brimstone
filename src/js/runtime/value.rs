@@ -8,8 +8,8 @@ use crate::{field_offset, set_uninit};
 use super::{
     context::Context,
     debug_print::{DebugPrint, DebugPrinter},
-    gc::{Handle, HandleContents, HeapItem, HeapObject, HeapPtr, HeapVisitor, ToHandleContents},
-    object_descriptor::{ObjectDescriptor, ObjectKind},
+    gc::{AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents},
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     object_value::ObjectValue,
     string_value::{FlatString, StringValue},
     type_utilities::same_value_zero_non_allocating,
@@ -243,7 +243,7 @@ impl Value {
             return false;
         }
 
-        self.as_pointer().descriptor().kind() == ObjectKind::String
+        self.as_pointer().descriptor().kind() == HeapItemKind::String
     }
 
     #[inline]
@@ -252,7 +252,7 @@ impl Value {
             return false;
         }
 
-        self.as_pointer().descriptor().kind() == ObjectKind::Symbol
+        self.as_pointer().descriptor().kind() == HeapItemKind::Symbol
     }
 
     #[inline]
@@ -261,7 +261,7 @@ impl Value {
             return false;
         }
 
-        self.as_pointer().descriptor().kind() == ObjectKind::BigInt
+        self.as_pointer().descriptor().kind() == HeapItemKind::BigInt
     }
 
     // Type casts
@@ -297,7 +297,7 @@ impl Value {
     }
 
     #[inline]
-    pub const fn as_pointer(&self) -> HeapPtr<HeapItem> {
+    pub const fn as_pointer(&self) -> HeapPtr<AnyHeapItem> {
         HeapPtr::from_ptr(self.restore_pointer_bits())
     }
 
@@ -376,7 +376,7 @@ impl Value {
     /// bigints are allowed to be treated as values in normal circumstances. Other heap items are
     /// converted to values for compatiblity in some scenarios (e.g. storing in a scope).
     #[inline]
-    pub fn heap_item(value: HeapPtr<HeapItem>) -> Value {
+    pub fn heap_item(value: HeapPtr<AnyHeapItem>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
     }
 
@@ -557,7 +557,7 @@ impl From<HeapPtr<BigIntValue>> for Value {
 
 #[repr(C)]
 pub struct SymbolValue {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     description: Option<HeapPtr<FlatString>>,
     /// Stable hash code for this symbol, since symbol can be moved by GC
     hash_code: u32,
@@ -574,7 +574,7 @@ impl SymbolValue {
         let description = description.map(|d| d.flatten());
         let mut symbol = cx.alloc_uninit::<SymbolValue>();
 
-        set_uninit!(symbol.descriptor, cx.base_descriptors.get(ObjectKind::Symbol));
+        set_uninit!(symbol.descriptor, cx.base_descriptors.get(HeapItemKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| *desc));
         set_uninit!(symbol.hash_code, cx.rand.gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
@@ -650,7 +650,7 @@ impl From<Handle<SymbolValue>> for Handle<ObjectValue> {
     }
 }
 
-impl HeapObject for HeapPtr<SymbolValue> {
+impl HeapItem for HeapPtr<SymbolValue> {
     fn byte_size(&self) -> usize {
         size_of::<SymbolValue>()
     }
@@ -663,7 +663,7 @@ impl HeapObject for HeapPtr<SymbolValue> {
 
 #[repr(C)]
 pub struct BigIntValue {
-    descriptor: HeapPtr<ObjectDescriptor>,
+    descriptor: HeapPtr<HeapItemDescriptor>,
     // Number of u32 digits in the BigInt
     len: usize,
     // Sign of the BigInt
@@ -689,7 +689,7 @@ impl BigIntValue {
         let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size);
 
         // Copy raw parts of BigInt into BigIntValue
-        set_uninit!(bigint.descriptor, cx.base_descriptors.get(ObjectKind::BigInt));
+        set_uninit!(bigint.descriptor, cx.base_descriptors.get(HeapItemKind::BigInt));
         set_uninit!(bigint.len, digits.len());
         set_uninit!(bigint.sign, sign);
 
@@ -722,7 +722,7 @@ impl From<Handle<BigIntValue>> for Handle<ObjectValue> {
     }
 }
 
-impl HeapObject for HeapPtr<BigIntValue> {
+impl HeapItem for HeapPtr<BigIntValue> {
     fn byte_size(&self) -> usize {
         BigIntValue::calculate_size_in_bytes(self.len)
     }
@@ -788,7 +788,7 @@ impl hash::Hash for ValueCollectionKey {
 
         if self.0.is_pointer() {
             return match self.0.as_pointer().descriptor().kind() {
-                ObjectKind::String => {
+                HeapItemKind::String => {
                     // Strings must always be flat before they can be placed into hash tables to
                     // avoid allocating in the hash function.
                     let string = self.0.as_string();
@@ -796,11 +796,11 @@ impl hash::Hash for ValueCollectionKey {
 
                     string.as_flat().hash(state)
                 }
-                ObjectKind::BigInt => self.0.as_bigint().bigint().hash(state),
+                HeapItemKind::BigInt => self.0.as_bigint().bigint().hash(state),
                 // Otherwise is an object or symbol. Hash code must represent object/symbol
                 // identity, but objects/symbols can be moved by the GC. So use the stable hash code
                 // stored in the object/symbol.
-                ObjectKind::Symbol => self.0.as_symbol().hash(state),
+                HeapItemKind::Symbol => self.0.as_symbol().hash(state),
                 _ => self.0.as_object().hash_code().hash(state),
             };
         }

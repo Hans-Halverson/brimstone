@@ -1,8 +1,8 @@
 use std::hash::Hash;
 
 use crate::runtime::{
-    gc::{HeapObject, HeapVisitor},
-    object_descriptor::ObjectKind,
+    gc::{HeapItem, HeapVisitor},
+    heap_item_descriptor::HeapItemKind,
     Context, Handle, HeapPtr,
 };
 
@@ -18,7 +18,7 @@ pub struct BsIndexSet<T>(BsIndexMap<T, ()>);
 impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     pub const MIN_CAPACITY: usize = BsIndexMap::<T, ()>::MIN_CAPACITY;
 
-    pub fn new(cx: Context, kind: ObjectKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
         BsIndexMap::<T, ()>::new(cx, kind, capacity).cast()
     }
 
@@ -79,7 +79,7 @@ impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
     }
 }
 
-/// A BsIndexSet stored as the field of a heap object. Can create new set and set the field to a
+/// A BsIndexSet stored as the field of a heap item. Can create new set and set the field to a
 /// new set.
 pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
     fn new(cx: Context, capacity: usize) -> HeapPtr<BsIndexSet<T>>;
@@ -114,7 +114,7 @@ impl<T: Eq + Hash + Clone, S: BsIndexSetField<T>> BsIndexMapField<T, ()> for Ind
     }
 }
 
-impl<T: Eq + Hash + Clone> HeapObject for HeapPtr<BsIndexSet<T>> {
+impl<T: Eq + Hash + Clone> HeapItem for HeapPtr<BsIndexSet<T>> {
     fn byte_size(&self) -> usize {
         BsIndexSet::<T>::calculate_size_in_bytes(self.capacity())
     }

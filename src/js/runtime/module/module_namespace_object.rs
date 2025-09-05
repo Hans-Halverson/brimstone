@@ -5,9 +5,9 @@ use crate::{
     runtime::{
         boxed_value::BoxedValue,
         error::reference_error,
-        gc::{HeapObject, HeapVisitor},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         module::module::Module,
-        object_descriptor::ObjectKind,
         object_value::VirtualObject,
         ordinary_object::{
             object_create_with_optional_proto, ordinary_define_own_property, ordinary_delete,
@@ -46,7 +46,7 @@ impl ModuleNamespaceObject {
         // - [[SetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-setprototypeof-v)
         let mut object = object_create_with_optional_proto::<ModuleNamespaceObject>(
             cx,
-            ObjectKind::ModuleNamespaceObject,
+            HeapItemKind::ModuleNamespaceObject,
             None,
         );
 
@@ -106,25 +106,25 @@ impl HeapPtr<ModuleNamespaceObject> {
             None => return Ok(None),
         };
 
-        if heap_item.descriptor().kind() == ObjectKind::BoxedValue {
+        if heap_item.descriptor().kind() == HeapItemKind::BoxedValue {
             let boxed_value = heap_item.cast::<BoxedValue>();
             Ok(Some(boxed_value.get()))
         } else {
             // Otherwise must be a module - either a SourceTextModule or SyntheticModule - which
             // represents a namespace export of that module.
             debug_assert!(
-                heap_item.descriptor().kind() == ObjectKind::SourceTextModule
-                    || heap_item.descriptor().kind() == ObjectKind::SyntheticModule
+                heap_item.descriptor().kind() == HeapItemKind::SourceTextModule
+                    || heap_item.descriptor().kind() == HeapItemKind::SyntheticModule
             );
 
-            let namespace_object = if heap_item.descriptor().kind() == ObjectKind::SourceTextModule
-            {
-                let mut module = heap_item.cast::<SourceTextModule>().to_handle();
-                module.get_namespace_object(cx)
-            } else {
-                let mut module = heap_item.cast::<SyntheticModule>().to_handle();
-                module.get_namespace_object(cx)
-            };
+            let namespace_object =
+                if heap_item.descriptor().kind() == HeapItemKind::SourceTextModule {
+                    let mut module = heap_item.cast::<SourceTextModule>().to_handle();
+                    module.get_namespace_object(cx)
+                } else {
+                    let mut module = heap_item.cast::<SyntheticModule>().to_handle();
+                    module.get_namespace_object(cx)
+                };
 
             Ok(Some(namespace_object.as_value()))
         }
@@ -312,7 +312,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
     }
 }
 
-impl HeapObject for HeapPtr<ModuleNamespaceObject> {
+impl HeapItem for HeapPtr<ModuleNamespaceObject> {
     fn byte_size(&self) -> usize {
         size_of::<ModuleNamespaceObject>()
     }

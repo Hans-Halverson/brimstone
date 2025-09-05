@@ -5,12 +5,12 @@ use crate::common::{
 
 use super::{
     eval_result::EvalResult,
+    heap_item_descriptor::HeapItemKind,
     intrinsics::{
         error_constructor::{CachedStackTraceInfo, ErrorObject},
         error_prototype::{error_message, error_name},
         intrinsics::Intrinsic,
     },
-    object_descriptor::ObjectKind,
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::number_to_string,
@@ -54,12 +54,12 @@ impl ConsoleObject {
 pub fn to_console_string(cx: Context, value: Handle<Value>, opts: &FormatOptions) -> String {
     if value.is_pointer() {
         match value.as_pointer().descriptor().kind() {
-            ObjectKind::String => format!("{}", value.as_string()),
-            ObjectKind::Symbol => match value.as_symbol().description_ptr() {
+            HeapItemKind::String => format!("{}", value.as_string()),
+            HeapItemKind::Symbol => match value.as_symbol().description_ptr() {
                 None => String::from("Symbol()"),
                 Some(description) => format!("Symbol({description})"),
             },
-            ObjectKind::BigInt => format!("{}n", value.as_bigint().bigint()),
+            HeapItemKind::BigInt => format!("{}n", value.as_bigint().bigint()),
             // Otherwise must be an object
             _ => {
                 let object = value.as_object();

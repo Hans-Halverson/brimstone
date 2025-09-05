@@ -9,6 +9,7 @@ use crate::{
         gc::HeapVisitor,
         get,
         global_names::create_global_declaration_instantiation_intrinsic,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorConstructor,
             aggregate_error_prototype::AggregateErrorPrototype,
@@ -89,7 +90,6 @@ use crate::{
             weak_set_constructor::WeakSetConstructor,
             weak_set_prototype::WeakSetPrototype,
         },
-        object_descriptor::ObjectKind,
         object_value::ObjectValue,
         ordinary_object::object_create_with_proto,
         property_descriptor::PropertyDescriptor,
@@ -283,7 +283,7 @@ impl Intrinsics {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
             let global_object = object_create_with_proto::<ObjectValue>(
                 cx,
-                ObjectKind::OrdinaryObject,
+                HeapItemKind::OrdinaryObject,
                 object_prototype,
             );
             realm.set_global_object(global_object);

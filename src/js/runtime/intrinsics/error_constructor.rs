@@ -7,8 +7,8 @@ use crate::{
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
-        gc::{HeapObject, HeapVisitor},
-        object_descriptor::ObjectKind,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
@@ -55,7 +55,7 @@ pub struct CachedStackTraceInfo {
 impl ErrorObject {
     pub fn new(cx: Context, prototype: Intrinsic, skip_current_frame: bool) -> Handle<ErrorObject> {
         let error =
-            object_create::<ErrorObject>(cx, ObjectKind::ErrorObject, prototype).to_handle();
+            object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype).to_handle();
 
         Self::initialize_stack_trace(cx, error, skip_current_frame);
 
@@ -71,7 +71,7 @@ impl ErrorObject {
         let error = object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
-            ObjectKind::ErrorObject,
+            HeapItemKind::ErrorObject,
             prototype,
         )?
         .to_handle();
@@ -212,7 +212,7 @@ pub fn install_error_cause(
     Ok(())
 }
 
-impl HeapObject for HeapPtr<ErrorObject> {
+impl HeapItem for HeapPtr<ErrorObject> {
     fn byte_size(&self) -> usize {
         size_of::<ErrorObject>()
     }

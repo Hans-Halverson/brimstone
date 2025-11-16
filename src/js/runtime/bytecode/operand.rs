@@ -257,6 +257,12 @@ impl<W: Width> fmt::Display for Register<W> {
     }
 }
 
+impl<W: Width> fmt::Debug for Register<W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
 impl<W: Width> UInt<W> {
     #[inline]
     pub fn new(value: W::UInt) -> Self {

@@ -1,0 +1,49 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: test]
+    1: [String: test]
+}
+
+[BytecodeFunction: test] {
+  Parameters: 1, Registers: 7
+     0: LoadConstant r0, c0
+     3: LoadEmpty r2
+     5: Mov r3, r0
+     8: ToPropertyKey r3, r3
+    11: NewClosure r4, c1
+    14: Mov r5, a0
+    17: ToPropertyKey r5, r5
+    20: NewClosure r6, c2
+    23: NewClass r1, c4, c3, r2, r3
+    29: LoadUndefined r2
+    31: Ret r2
+  Constant Table:
+    0: [String: foo]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: <anonymous>]
+    3: [BytecodeFunction: C]
+    4: [ClassNames]
+}
+
+[BytecodeFunction: C] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}

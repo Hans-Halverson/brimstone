@@ -7003,6 +7003,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             new_class_arguments[0]
         };
 
+        debug_assert!(Self::are_registers_contiguous(&new_class_arguments));
+
         // Create the class itself
         self.writer.new_class_instruction(
             constructor_reg,
@@ -7098,7 +7100,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Evaluate class element name
         let key = if method.is_computed {
-            Name::Computed(self.gen_outer_expression(&method.key)?, method.key.pos())
+            // Evaluated name must be placed in a new temporary register so that it forms a
+            // contiguous range with the other NewClass method arguments.
+            let key_reg =
+                self.gen_outer_expression_with_dest(&method.key, ExprDest::NewTemporary)?;
+            Name::Computed(key_reg, method.key.pos())
         } else {
             match &method.key.expr {
                 ast::Expression::Id(id) => Name::Named(id.name),

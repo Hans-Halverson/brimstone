@@ -357,6 +357,11 @@ fn parse_json_object(lexer: &mut StringLexer) -> Option<JSONValue> {
 
         // There may be whitespace after the comma and before the next property
         skip_json_whitespace(lexer);
+
+        // Trailing comma is not allowed
+        if lexer.current_equals('}') {
+            return None;
+        }
     }
 
     lexer.expect('}')?;
@@ -384,6 +389,11 @@ fn parse_json_array(lexer: &mut StringLexer) -> Option<JSONValue> {
 
         // There may be whitespace after the comma and before the next value
         skip_json_whitespace(lexer);
+
+        // Trailing comma is not allowed
+        if lexer.current_equals(']') {
+            return None;
+        }
     }
 
     lexer.expect(']')?;

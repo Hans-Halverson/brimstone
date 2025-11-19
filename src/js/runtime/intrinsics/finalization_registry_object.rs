@@ -208,7 +208,7 @@ impl FinalizationRegistryCells {
         self.num_deleted += 1;
     }
 
-    pub fn iter_mut_gc_unsafe(&mut self) -> slice::IterMut<Option<FinalizationRegistryCell>> {
+    pub fn iter_mut_gc_unsafe(&mut self) -> slice::IterMut<'_, Option<FinalizationRegistryCell>> {
         let num_cells_used = self.num_cells_used();
         let used_slice = &mut self.cells.as_mut_slice()[0..num_cells_used];
         used_slice.iter_mut()

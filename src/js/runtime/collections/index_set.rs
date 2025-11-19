@@ -58,7 +58,7 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
 
     /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<T, ()> {
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, T, ()> {
         self.0.keys_mut_gc_unsafe()
     }
 

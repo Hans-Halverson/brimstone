@@ -116,7 +116,7 @@ impl HeapSerializer {
         }
     }
 
-    pub fn as_serialized(&self) -> SerializedHeap {
+    pub fn as_serialized(&self) -> SerializedHeap<'_> {
         let permanent_start = self.cx.heap.permanent_heap_bounds().start;
         let current_start = self.cx.heap.current_used_heap_bounds().0;
 

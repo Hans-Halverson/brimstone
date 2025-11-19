@@ -4966,7 +4966,10 @@ pub struct ParseFunctionResult<'a> {
     pub options: Rc<Options>,
 }
 
-pub fn parse_script(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<ParseProgramResult> {
+pub fn parse_script(
+    pcx: &ParseContext,
+    options: Rc<Options>,
+) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -4978,7 +4981,10 @@ pub fn parse_script(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<Par
     parser.parse_script(initial_state)
 }
 
-pub fn parse_module(pcx: &ParseContext, options: Rc<Options>) -> ParseResult<ParseProgramResult> {
+pub fn parse_module(
+    pcx: &ParseContext,
+    options: Rc<Options>,
+) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -4993,7 +4999,7 @@ pub fn parse_script_for_eval(
     options: Rc<Options>,
     is_direct: bool,
     inherit_strict_mode: bool,
-) -> ParseResult<ParseProgramResult> {
+) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
@@ -5056,7 +5062,7 @@ pub fn parse_function_body_for_function_constructor(
 pub fn parse_function_for_function_constructor(
     pcx: &ParseContext,
     options: Rc<Options>,
-) -> ParseResult<ParseFunctionResult> {
+) -> ParseResult<ParseFunctionResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
     let source = pcx.source();

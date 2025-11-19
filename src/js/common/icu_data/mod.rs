@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(unused_unsafe)]
 
 use icu_collections::codepointinvliststringlist::CodePointInversionListAndStringList;
 use icu_provider_baked;

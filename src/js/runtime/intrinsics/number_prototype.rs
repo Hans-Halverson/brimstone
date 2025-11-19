@@ -145,8 +145,8 @@ impl NumberPrototype {
                 number = 0.0;
             }
 
-            let num_fraction_digits = num_fraction_digits as usize;
-            m = format!("{number:.num_fraction_digits$}");
+            let mut buf = ryu_js::Buffer::new();
+            m = buf.format_to_fixed(number, num_fraction_digits).to_string();
         };
 
         if is_negative {

@@ -52,6 +52,8 @@ fn main() {
 }
 
 mod icu_data {
+    #![allow(unused_unsafe)]
+
     pub struct BakedDataProvider;
     include!("../../icu/data/mod.rs");
     impl_data_provider!(BakedDataProvider);

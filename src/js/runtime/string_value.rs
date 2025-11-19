@@ -1280,7 +1280,7 @@ impl DebugPrint for HeapPtr<ConcatString> {
 }
 
 // Ensure that data will be aligned if placed after the rest of the fields
-static_assert!(FlatString::DATA_OFFSET % align_of::<u16>() == 0);
+static_assert!(FlatString::DATA_OFFSET.is_multiple_of(align_of::<u16>()));
 
 /// An iterator over the code units of a string. Is not GC-safe.
 #[derive(Clone)]

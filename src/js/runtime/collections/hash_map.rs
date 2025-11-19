@@ -135,25 +135,25 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 
     /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<K, V> {
+    pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<'_, K, V> {
         GcUnsafeEntriesIter(self.entries.as_slice().iter())
     }
 
     /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<K, V> {
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<'_, K, V> {
         GcUnsafeEntriesIterMut(self.entries.as_mut_slice().iter_mut())
     }
 
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<K, V> {
+    pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<'_, K, V> {
         GcUnsafeKeysIter(self.entries.as_slice().iter())
     }
 
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<K, V> {
+    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, K, V> {
         GcUnsafeKeysIterMut(self.entries.as_mut_slice().iter_mut())
     }
 

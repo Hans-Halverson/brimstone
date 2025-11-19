@@ -165,14 +165,14 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
     /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<K, V> {
+    pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<'_, K, V> {
         // Only iterate through a slice of the entries that have been used
         GcUnsafeEntriesIter(self.entries_as_slice()[..self.num_entries_used()].iter())
     }
 
     /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<K, V> {
+    pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<'_, K, V> {
         // Only iterate through a slice of the entries that have been used
         let num_entries_used = self.num_entries_used();
         GcUnsafeEntriesIterMut(self.entries_as_slice_mut()[..num_entries_used].iter_mut())
@@ -180,13 +180,13 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<K, V> {
+    pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<'_, K, V> {
         GcUnsafeKeysIter(self.entries_as_slice()[..self.num_entries_used()].iter())
     }
 
     /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
-    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<K, V> {
+    pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, K, V> {
         let num_entries_used = self.num_entries_used();
         GcUnsafeKeysIterMut(self.entries_as_slice_mut()[..num_entries_used].iter_mut())
     }

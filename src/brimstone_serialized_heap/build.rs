@@ -93,6 +93,6 @@ fn write_bytes_to_file(bytes: &[u8], out_path: &Path, file_name: &str) -> PathBu
 }
 
 const fn usize_slice_to_u8_slice(slice: &[usize]) -> &[u8] {
-    let num_bytes = std::mem::size_of::<usize>() * slice.len();
+    let num_bytes = std::mem::size_of_val(slice);
     unsafe { std::slice::from_raw_parts(slice.as_ptr().cast(), num_bytes) }
 }

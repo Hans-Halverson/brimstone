@@ -61,7 +61,7 @@ impl BytecodeSourceMap {
         Some(current_source_position)
     }
 
-    fn iter(source_map: &HeapPtr<ByteArray>) -> SourceMapIter {
+    fn iter(source_map: &HeapPtr<ByteArray>) -> SourceMapIter<'_> {
         SourceMapIter::new(source_map.as_slice())
     }
 }

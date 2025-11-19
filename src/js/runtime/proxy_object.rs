@@ -214,15 +214,15 @@ impl VirtualObject for Handle<ProxyObject> {
                     ),
                 );
             }
-        } else {
-            if !is_compatible_property_descriptor(cx, is_target_extensible, desc, target_desc) {
+        } else if let Some(target_desc) = target_desc {
+            if !is_compatible_property_descriptor(cx, is_target_extensible, desc, Some(target_desc))
+            {
                 return type_error(
                     cx,
                     &format!("proxy can't report an incompatible property descriptor for '{key}'"),
                 );
             }
 
-            let target_desc = target_desc.unwrap();
             if is_setting_non_configurable {
                 if let Some(true) = target_desc.is_configurable {
                     return type_error(cx, &format!("proxy can't define an existing configurable property '{key}' as non-configurable"));

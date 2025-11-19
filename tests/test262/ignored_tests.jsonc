@@ -7,6 +7,15 @@
       // Bugs (We intend to fix these)
       //
       ////////////////////////////////////////
+      // Bug in iterator close order for some Set methods
+      "built-ins/Set/prototype/isDisjointFrom/set-like-iter-return.js",
+      "built-ins/Set/prototype/isSupersetOf/set-like-iter-return.js",
+
+      // Bug when copying within resizable array that resizes during evaluation
+      "built-ins/TypedArray/prototype/copyWithin/coerced-target-start-end-shrink.js",
+
+      // Different rejection order for promises when evaluating modules with top-level await
+      "language/module-code/top-level-await/rejection-order.js",
 
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
@@ -162,6 +171,11 @@
   // Tests for unimplemented features. Counts against test262 progress.
   "unimplemented": {
     "features": [
+      // Stage 4 proposals which need to be implemented
+      "iterator-sequencing",
+      "uint8array-base64",
+      "Math.sumPrecise",
+
       // Other unimplemented features
       "SharedArrayBuffer",
       "Atomics"
@@ -192,11 +206,11 @@
       "explicit-resource-management",
       "import-assertions",
       "import-defer",
-      "iterator-sequencing",
+      "immutable-arraybuffer",
       "json-parse-with-source",
       "legacy-regexp",
+      "nonextensible-applies-to-private",
       "source-phase-imports",
-      "uint8array-base64",
       "upsert",
       "Array.fromAsync",
       "Atomics.pause",
@@ -204,7 +218,6 @@
       "Intl.DurationFormat",
       "Intl.Locale-info",
       "Intl.NumberFormat-v3",
-      "Math.sumPrecise",
       "Temporal",
       "ShadowRealm"
     ]

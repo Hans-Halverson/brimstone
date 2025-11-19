@@ -20,7 +20,9 @@ brimstone_serialized_heap.workspace = true
 criterion.workspace = true
 
 [features]
-default = ["jemalloc"]
+default = ["annex_b", "jemalloc"]
+# Enable Annex B extensions by default
+annex_b = ["brimstone_core/annex_b"]
 # Run the garbage collector in stress test mode
 gc_stress_test = ["brimstone_core/gc_stress_test"]
 # Collect handle use statistics

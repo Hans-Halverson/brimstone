@@ -27,8 +27,8 @@ pub struct Args {
     #[arg(short, long, default_value_t = false)]
     pub module: bool,
 
-    /// Enable Annex B extensions
-    #[arg(long, default_value_t = false)]
+    /// Whether to enable Annex B extensions
+    #[arg(long, default_value_t = cfg!(feature = "annex_b"))]
     pub annex_b: bool,
 
     /// Expose global gc methods
@@ -111,7 +111,7 @@ impl OptionsBuilder {
     /// Create new options with default values.
     pub fn new() -> Self {
         Self(Options {
-            annex_b: false,
+            annex_b: cfg!(feature = "annex_b"),
             print_ast: false,
             print_bytecode: false,
             print_regexp_bytecode: false,

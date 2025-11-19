@@ -44,6 +44,8 @@ zerovec.workspace = true
 
 [features]
 default = ["jemalloc"]
+# Enable Annex B extensions by default
+annex_b = []
 # Run the garbage collector in stress test mode
 gc_stress_test = []
 # Collect handle use statistics

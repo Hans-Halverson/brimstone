@@ -6,6 +6,7 @@ members = [
   "src/js",
   "src/brimstone_serialized_heap",
   "tests",
+  "tests/fuzz",
   "tests/harness",
 ]
 resolver = "2"
@@ -32,6 +33,7 @@ criterion = "0.5.1"
 half = "2.4.1"
 hashbrown = "0.15.2"
 indexmap-allocator-api = "2.7.1"
+libc = "0.2.177"
 num-bigint = "0.4.3"
 num-traits = "0.2.16"
 quote = "1.0.32"

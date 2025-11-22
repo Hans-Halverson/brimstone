@@ -53,7 +53,7 @@ pub struct GarbageCollector {
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum GcType {
     /// Normal GC, swap semispaces in the heap.
     Normal,

@@ -46,9 +46,10 @@ impl WeakMapPrototype {
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let value = get_argument(cx, arguments, 0);
 
-        let removed_value = weak_map_object
-            .weak_map_data()
-            .remove(&ValueCollectionKey::from(value));
+        // May allocate
+        let map_key = ValueCollectionKey::from(value);
+
+        let removed_value = weak_map_object.weak_map_data().remove(&map_key);
 
         Ok(cx.bool(removed_value))
     }
@@ -68,8 +69,11 @@ impl WeakMapPrototype {
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let key = get_argument(cx, arguments, 0);
 
+        // May allocate
+        let map_key = ValueCollectionKey::from(key);
+
         let weak_map_data = weak_map_object.weak_map_data();
-        let value_opt = weak_map_data.get(&ValueCollectionKey::from(key));
+        let value_opt = weak_map_data.get(&map_key);
 
         match value_opt {
             None => Ok(cx.undefined()),
@@ -92,9 +96,10 @@ impl WeakMapPrototype {
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let key = get_argument(cx, arguments, 0);
 
-        let has_key = weak_map_object
-            .weak_map_data()
-            .contains_key(&ValueCollectionKey::from(key));
+        // May allocate
+        let map_key = ValueCollectionKey::from(key);
+
+        let has_key = weak_map_object.weak_map_data().contains_key(&map_key);
 
         Ok(cx.bool(has_key))
     }

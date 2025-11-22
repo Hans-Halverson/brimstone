@@ -67,9 +67,10 @@ impl WeakSetPrototype {
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
         let value = get_argument(cx, arguments, 0);
 
-        let removed_value = weak_set_object
-            .weak_set_data()
-            .remove(&ValueCollectionKey::from(value));
+        // May allocate
+        let set_key = ValueCollectionKey::from(value);
+
+        let removed_value = weak_set_object.weak_set_data().remove(&set_key);
 
         Ok(cx.bool(removed_value))
     }
@@ -89,9 +90,10 @@ impl WeakSetPrototype {
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
         let value = get_argument(cx, arguments, 0);
 
-        let has_value = weak_set_object
-            .weak_set_data()
-            .contains(&ValueCollectionKey::from(value));
+        // May allocate
+        let set_key = ValueCollectionKey::from(value);
+
+        let has_value = weak_set_object.weak_set_data().contains(&set_key);
 
         Ok(cx.bool(has_value))
     }

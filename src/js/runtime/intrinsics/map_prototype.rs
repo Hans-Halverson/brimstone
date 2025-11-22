@@ -88,7 +88,11 @@ impl MapPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = map.map_data().remove(&ValueCollectionKey::from(key));
+
+        // May allocate
+        let map_key = ValueCollectionKey::from(key);
+
+        let existed = map.map_data().remove(&map_key);
 
         Ok(cx.bool(existed))
     }
@@ -159,7 +163,10 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        match map.map_data().get(&ValueCollectionKey::from(key)) {
+        // May allocate
+        let map_key = ValueCollectionKey::from(key);
+
+        match map.map_data().get(&map_key) {
             Some(value) => Ok(value.to_handle(cx)),
             None => Ok(cx.undefined()),
         }
@@ -179,7 +186,10 @@ impl MapPrototype {
 
         let key = get_argument(cx, arguments, 0);
 
-        Ok(cx.bool(map.map_data().contains_key(&ValueCollectionKey::from(key))))
+        // May allocate
+        let map_key = ValueCollectionKey::from(key);
+
+        Ok(cx.bool(map.map_data().contains_key(&map_key)))
     }
 
     /// Map.prototype.keys (https://tc39.es/ecma262/#sec-map.prototype.keys)

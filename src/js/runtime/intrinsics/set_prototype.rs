@@ -130,7 +130,11 @@ impl SetPrototype {
         };
 
         let key = get_argument(cx, arguments, 0);
-        let existed = set.set_data_ptr().remove(&ValueCollectionKey::from(key));
+
+        // May allocate
+        let set_key = ValueCollectionKey::from(key);
+
+        let existed = set.set_data_ptr().remove(&set_key);
 
         Ok(cx.bool(existed))
     }
@@ -173,9 +177,9 @@ impl SetPrototype {
                 )?;
 
                 if in_other.is_true() {
-                    new_set
-                        .set_data_ptr()
-                        .remove(&ValueCollectionKey::from(item_handle));
+                    // May allocate
+                    let set_key = ValueCollectionKey::from(item_handle);
+                    new_set.set_data_ptr().remove(&set_key);
                 }
             }
         } else {
@@ -185,6 +189,7 @@ impl SetPrototype {
                 other_set_record.set_object.into(),
                 other_set_record.keys_method,
                 &mut |cx, key| {
+                    // May allocate
                     let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
                     new_set.set_data_ptr().remove(&key);
 
@@ -260,10 +265,10 @@ impl SetPrototype {
 
         let value = get_argument(cx, arguments, 0);
 
-        Ok(cx.bool(
-            set.set_data_ptr()
-                .contains(&ValueCollectionKey::from(value)),
-        ))
+        // May allocate
+        let set_value = ValueCollectionKey::from(value);
+
+        Ok(cx.bool(set.set_data_ptr().contains(&set_value)))
     }
 
     /// Set.prototype.intersection (https://tc39.es/ecma262/#sec-set.prototype.intersection)
@@ -317,10 +322,10 @@ impl SetPrototype {
                 &mut |cx, key| {
                     let key = canonicalize_keyed_collection_key(cx, key);
 
-                    if this_set
-                        .set_data_ptr()
-                        .contains(&ValueCollectionKey::from(key))
-                    {
+                    // May allocate
+                    let set_key = ValueCollectionKey::from(key);
+
+                    if this_set.set_data_ptr().contains(&set_key) {
                         new_set.insert(cx, key);
                     }
 
@@ -381,11 +386,11 @@ impl SetPrototype {
             while let Some(iter_result) = iterator_step(cx, &iterator)? {
                 let item = iterator_value(cx, iter_result)?;
 
+                // May allocate
+                let set_key = ValueCollectionKey::from(item);
+
                 // Return as soon as we find an element of the other set that is in this set
-                if this_set
-                    .set_data_ptr()
-                    .contains(&ValueCollectionKey::from(item))
-                {
+                if this_set.set_data_ptr().contains(&set_key) {
                     return Ok(cx.bool(false));
                 }
             }
@@ -469,11 +474,11 @@ impl SetPrototype {
         while let Some(iter_result) = iterator_step(cx, &iterator)? {
             let item = iterator_value(cx, iter_result)?;
 
+            // May allocate
+            let set_key = ValueCollectionKey::from(item);
+
             // Return as soon as we find an element of the other set that is not in this set
-            if !this_set
-                .set_data_ptr()
-                .contains(&ValueCollectionKey::from(item))
-            {
+            if !this_set.set_data_ptr().contains(&set_key) {
                 return Ok(cx.bool(false));
             }
         }
@@ -523,6 +528,8 @@ impl SetPrototype {
             other_set_record.keys_method,
             &mut |cx, key| {
                 let key = canonicalize_keyed_collection_key(cx, key);
+
+                // May allocate
                 let collection_key = ValueCollectionKey::from(key);
 
                 if this_set.set_data_ptr().contains(&collection_key) {

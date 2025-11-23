@@ -297,7 +297,7 @@ impl BytecodeFunction {
     }
 
     pub fn new_rust_runtime_function(
-        cx: Context,
+        mut cx: Context,
         builtin_func: RustRuntimeFunction,
         realm: Handle<Realm>,
         is_constructor: bool,

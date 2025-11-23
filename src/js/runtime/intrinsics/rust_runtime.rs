@@ -1,4 +1,4 @@
-use std::sync::LazyLock;
+use std::cell::RefCell;
 
 use crate::{
     runtime::{
@@ -88,14 +88,17 @@ use super::{
 /// instruction.
 pub struct RustRuntimeFunctionRegistry {
     /// Lookup table from runtime function id to the function pointer itself
-    id_to_function: [RustRuntimeFunction; NUM_RUST_RUNTIME_FUNCTIONS],
+    id_to_function: Vec<RustRuntimeFunction>,
+
+    /// Whether the sorted functions need to be rebuilt when next accessed
+    should_rebuild_sorted_functions: bool,
 }
 
 /// Each Rust runtime function is assigned a unique id.
 pub type RustRuntimeFunctionId = u16;
 
 // Check that the number of runtime functions fits in the RustRuntimeFunctionId type.
-static_assert!(NUM_RUST_RUNTIME_FUNCTIONS <= (1 << (RustRuntimeFunctionId::BITS as usize)));
+static_assert!(NUM_BUILTIN_RUST_RUNTIME_FUNCTIONS <= (1 << (RustRuntimeFunctionId::BITS as usize)));
 
 pub type RustRuntimeFunction = fn(
     cx: Context,
@@ -109,33 +112,61 @@ impl RustRuntimeFunctionRegistry {
         self.id_to_function[id as usize]
     }
 
-    pub fn get_id(&self, function: RustRuntimeFunction) -> Option<RustRuntimeFunctionId> {
-        RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER.with(|functions_sorted_by_pointer| {
-            let index = functions_sorted_by_pointer
+    pub fn get_id(&mut self, function: RustRuntimeFunction) -> Option<RustRuntimeFunctionId> {
+        // Lazily rebuild sorted functions when needed
+        if self.should_rebuild_sorted_functions {
+            RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER.with_borrow_mut(|sorted_functions| {
+                *sorted_functions = self.build_sorted_functions();
+            });
+        }
+
+        RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER.with_borrow_mut(|sorted_functions| {
+            let index = sorted_functions
                 .binary_search_by_key(&function, |&(ptr, _)| ptr)
                 .ok()?;
 
-            Some(functions_sorted_by_pointer[index].1)
+            Some(sorted_functions[index].1)
         })
+    }
+
+    fn build_sorted_functions(&self) -> Vec<(RustRuntimeFunction, RustRuntimeFunctionId)> {
+        let mut runtime_functions_with_id = Vec::with_capacity(self.id_to_function.len());
+
+        for (i, &runtime_function) in self.id_to_function.iter().enumerate() {
+            runtime_functions_with_id.push((runtime_function, i as RustRuntimeFunctionId));
+        }
+
+        runtime_functions_with_id.sort_by_key(|&(ptr, _)| ptr);
+
+        runtime_functions_with_id
+    }
+
+    /// Register a new Rust runtime function and return its assigned id.
+    pub fn register(&mut self, function: RustRuntimeFunction) -> RustRuntimeFunctionId {
+        let id = self.id_to_function.len() as RustRuntimeFunctionId;
+        self.id_to_function.push(function);
+
+        // Invalidate sorted functions so they are rebuilt on next access
+        self.should_rebuild_sorted_functions = true;
+
+        id
     }
 }
 
 macro_rules! rust_runtime_functions {
     ($($rust_function:expr,)*) => {
-        const RUST_RUNTIME_FUNCTIONS: [RustRuntimeFunction; NUM_RUST_RUNTIME_FUNCTIONS] = [
-            $($rust_function,)*
-        ];
-
-        const NUM_RUST_RUNTIME_FUNCTIONS: usize = [
+        const NUM_BUILTIN_RUST_RUNTIME_FUNCTIONS: usize = [
             $($rust_function,)*
         ].len();
 
         impl RustRuntimeFunctionRegistry {
             pub fn new() -> Self {
                 Self {
-                    id_to_function: [
+                    id_to_function: vec![
                         $($rust_function,)*
                     ],
+                    // Lazily build sorted functions the first time they are needed
+                    should_rebuild_sorted_functions: true,
                 }
             }
         }
@@ -686,17 +717,6 @@ pub fn return_undefined(
 
 thread_local! {
     /// Array of (function, index) pairs sorted by function pointer. This is used to look up the
-    /// index in RUST_RUNTIME_FUNCTIONS for a particular function pointer in O(log n) time.
-    static RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER: LazyLock<Vec<(RustRuntimeFunction, RustRuntimeFunctionId)>> =
-        LazyLock::new(|| {
-            let mut runtime_functions = Vec::with_capacity(NUM_RUST_RUNTIME_FUNCTIONS);
-
-            for (i, &runtime_function) in RUST_RUNTIME_FUNCTIONS.iter().enumerate() {
-                runtime_functions.push((runtime_function, i as RustRuntimeFunctionId));
-            }
-
-            runtime_functions.sort_by_key(|&(ptr, _)| ptr);
-
-            runtime_functions
-        });
+    /// index of a runtime function the register in O(log n) time.
+    static RUST_RUNTIME_FUNCTIONS_SORTED_BY_POINTER: RefCell<Vec<(RustRuntimeFunction, RustRuntimeFunctionId)>> = RefCell::new(vec![]);
 }

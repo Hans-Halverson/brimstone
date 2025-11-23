@@ -1,0 +1,17 @@
+[package]
+name = "brimstone_fuzz"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "brimstone_fuzz"
+# Hack to not build this binary unless specifically requested
+required-features = ["build_fuzz"]
+
+[dependencies]
+brimstone_core.workspace = true
+brimstone_serialized_heap.workspace = true
+
+[features]
+build_fuzz = []

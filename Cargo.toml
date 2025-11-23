@@ -6,6 +6,7 @@ members = [
   "src/js",
   "src/brimstone_serialized_heap",
   "tests",
+  "tests/fuzz",
   "tests/harness",
 ]
 resolver = "2"

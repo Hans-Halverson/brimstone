@@ -41,6 +41,8 @@ cargo brimstone-test
 
 Unit and snapshot tests can be run with `cargo test`.
 
+Fuzz testing can be run with `./tests/fuzz/run.sh`.
+
 For more information on testing see the [testing README](./tests/README.md).
 
 ## Missing features

@@ -75,3 +75,13 @@ The file `ignored_tests.jsonc` for each test suite contains sets of tests which 
 ## Manifest
 
 Integration test suites are defined in the root `test_manifest.jsonc` file. This allows configuring the name, paths, and other options for each test suite. The test runner will automatically discover the `brimestone` repo's test manifest if run within the `brimstone` workspace. The path to the test manifest can be specified with the `--test-manifest-path` option.
+
+# Fuzz Tests
+
+Brimstone supports fuzz testing with [googleprojectzero/fuzzilli](https://github.com/googleprojectzero/fuzzilli). Brimstone support for fuzzilli is added in [this fork](https://github.com/Hans-Halverson/fuzzilli-brimstone). A custom harness for Brimstone is included in the `fuzz` directory to integrate with fuzzilli.
+
+The fuzzer can be built and run with:
+
+```
+./tests/fuzz/run.sh
+```

@@ -7720,6 +7720,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Start the switch body which forms a new scope
         let switch_body_scope = stmt.scope.as_ref();
+        let switch_body_end_block = self.new_block();
         self.gen_scope_start(switch_body_scope, None)?;
 
         // Create and jump to the case block ids which will be generated later
@@ -7749,8 +7750,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(discriminant);
 
         if default_case_index == stmt.cases.len() {
-            // If there is no default case then jump to the join block
-            self.write_jump_instruction(join_block)?;
+            // If there is no default case then jump to the end of the switch
+            self.write_jump_instruction(switch_body_end_block)?;
         } else {
             // Otherwise jump to the default block
             self.write_jump_instruction(case_block_ids[default_case_index])?;
@@ -7764,11 +7765,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Intentionally fall through to the next case body
         }
 
-        self.start_block(join_block);
+        // End of the switch body scope
+        self.start_block(switch_body_end_block);
+        self.gen_scope_end(switch_body_scope);
         self.pop_jump_statement_target();
 
-        // End of the switch body scope
-        self.gen_scope_end(switch_body_scope);
+        self.start_block(join_block);
 
         // Switch statements always complete normally since there may be a break
         Ok(StmtCompletion::Normal)

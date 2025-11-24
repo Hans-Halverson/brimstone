@@ -46,3 +46,14 @@ function captures() {
     }
   }
 }
+
+function capturesWithBreak() {
+  switch (1) {
+    case 1:
+      let x = 1;
+      function captures() { x }
+      break;
+  }
+
+  2;
+}

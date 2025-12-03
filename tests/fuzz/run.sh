@@ -22,5 +22,6 @@ swift run \
   --logLevel=verbose \
   --diagnostics \
   --storagePath="$RESULTS_DIR" \
-  --overwrite \
+  --jobs=4 \
+  "$@" \
   "$ROOT_DIR/target/debug/brimstone_fuzz"

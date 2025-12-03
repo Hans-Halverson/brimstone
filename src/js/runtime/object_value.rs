@@ -459,7 +459,7 @@ impl Handle<ObjectValue> {
     ) {
         handle_scope_guard!(cx);
 
-        let getter = BuiltinFunction::create(cx, func, 0, name, realm, None, Some("get"));
+        let getter = BuiltinFunction::create(cx, func, 0, name, realm, Some("get"));
         let accessor_value = Accessor::new(cx, Some(getter), None);
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
@@ -474,8 +474,8 @@ impl Handle<ObjectValue> {
     ) {
         handle_scope_guard!(cx);
 
-        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, None, Some("get"));
-        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, None, Some("set"));
+        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, Some("get"));
+        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, Some("set"));
         let accessor_value = Accessor::new(cx, Some(getter), Some(setter));
         self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
     }
@@ -490,7 +490,7 @@ impl Handle<ObjectValue> {
     ) {
         handle_scope_guard!(cx);
 
-        let func = BuiltinFunction::create(cx, func, length, name, realm, None, None).into();
+        let func = BuiltinFunction::create(cx, func, length, name, realm, None).into();
         self.intrinsic_data_prop(cx, name, func);
     }
 

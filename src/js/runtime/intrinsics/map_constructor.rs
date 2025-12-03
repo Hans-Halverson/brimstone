@@ -31,7 +31,7 @@ impl MapConstructor {
             0,
             cx.names.map(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

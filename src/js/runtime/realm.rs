@@ -275,7 +275,7 @@ impl Handle<Realm> {
             return_undefined,
             /* name */ None,
             *self,
-            /* prototype */ None,
+            /* prototype */ Some(self.get_intrinsic(Intrinsic::FunctionPrototype)),
             /* is_constructor */ false,
         );
         self.empty_function = *empty_function;

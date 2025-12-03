@@ -33,7 +33,7 @@ impl DateConstructor {
             7,
             cx.names.date(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

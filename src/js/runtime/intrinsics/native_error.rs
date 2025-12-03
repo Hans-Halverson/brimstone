@@ -53,14 +53,13 @@ macro_rules! create_native_error {
         impl $constructor {
             /// Properties of the NativeError Constructors (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-constructors)
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
-                let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
                     Self::construct,
                     1,
                     cx.names.$rust_name(),
                     realm,
-                    Some(error_constructor),
+                    Intrinsic::ErrorConstructor,
                 );
 
                 func.intrinsic_frozen_property(

@@ -79,7 +79,6 @@ impl FunctionPrototype {
             cx.well_known_symbols.has_instance(),
             realm,
             None,
-            None,
         )
         .into();
         object.intrinsic_frozen_property(

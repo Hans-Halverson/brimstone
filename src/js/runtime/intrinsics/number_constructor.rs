@@ -98,7 +98,7 @@ impl NumberConstructor {
             1,
             cx.names.number(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

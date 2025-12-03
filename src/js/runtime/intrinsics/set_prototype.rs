@@ -37,8 +37,7 @@ impl SetPrototype {
 
         // Create values function as it is referenced by multiple properties
         let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None, None)
-                .into();
+            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None).into();
 
         // Constructor property is added once SetConstructor has been created
         object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm);

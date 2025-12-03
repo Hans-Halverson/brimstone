@@ -18,7 +18,7 @@ impl SetConstructor {
             0,
             cx.names.set(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

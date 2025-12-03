@@ -22,8 +22,7 @@ impl SymbolPrototype {
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_func =
-            BuiltinFunction::create(cx, Self::value_of, 1, to_primitive_key, realm, None, None)
-                .into();
+            BuiltinFunction::create(cx, Self::value_of, 1, to_primitive_key, realm, None).into();
         object.set_property(
             cx,
             to_primitive_key,

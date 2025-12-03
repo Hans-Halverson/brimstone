@@ -76,7 +76,7 @@ impl WeakRefConstructor {
             1,
             cx.names.weak_ref(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

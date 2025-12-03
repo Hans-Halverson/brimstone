@@ -24,7 +24,7 @@ impl WeakSetConstructor {
             0,
             cx.names.weak_set(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

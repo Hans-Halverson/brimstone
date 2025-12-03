@@ -7,6 +7,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         gc::Handle,
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         proxy_object::{proxy_create, ProxyObject},
@@ -26,7 +27,7 @@ impl ProxyConstructor {
             2,
             cx.names.proxy(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm);
@@ -62,7 +63,7 @@ impl ProxyConstructor {
 
         let realm = cx.current_realm();
         let mut revoker =
-            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None, None);
+            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None);
 
         // Attach the proxy to the revoker so it can be accessed when the revoker is called
         revoker.private_element_set(

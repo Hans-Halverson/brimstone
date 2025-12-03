@@ -40,7 +40,7 @@ impl TypedArrayConstructor {
             0,
             cx.names.typed_array(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(
@@ -583,14 +583,13 @@ macro_rules! create_typed_array_constructor {
         impl $constructor {
             /// Properties of the TypedArray Constructors (https://tc39.es/ecma262/#sec-properties-of-the-typedarray-constructors)
             pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
-                let prototype = realm.get_intrinsic(Intrinsic::TypedArrayConstructor);
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
                     Self::construct,
                     3,
                     cx.names.$rust_name(),
                     realm,
-                    Some(prototype),
+                    Intrinsic::TypedArrayConstructor,
                 );
 
                 func.intrinsic_frozen_property(

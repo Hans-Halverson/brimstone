@@ -377,7 +377,6 @@ pub fn async_generator_await_return(
         cx.names.empty_string(),
         cx.current_realm(),
         None,
-        None,
     );
     set_async_generator(cx, on_resolve, async_generator);
 
@@ -388,7 +387,6 @@ pub fn async_generator_await_return(
         1,
         cx.names.empty_string(),
         cx.current_realm(),
-        None,
         None,
     );
     set_async_generator(cx, on_resolve, async_generator);

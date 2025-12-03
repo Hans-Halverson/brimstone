@@ -1,0 +1,5 @@
+SyntaxError: Setter functions must have exactly one parameter
+  ┌ tests/js_error/parser/setter_disallow_multiple_params.js:1:4
+  |
+1 | ({ set f(a, b){} })
+  |    ^

@@ -309,8 +309,16 @@ pub fn regexp_create(
     regexp_source: RegExpSource,
     constructor: Handle<ObjectValue>,
 ) -> EvalResult<Handle<Value>> {
-    let mut regexp_object = RegExpObject::new_from_constructor(cx, constructor)?;
+    let regexp_object = RegExpObject::new_from_constructor(cx, constructor)?;
+    regexp_init(cx, regexp_object, regexp_source)
+}
 
+/// RegExpInitialize (https://tc39.es/ecma262/#sec-regexpinitialize)
+pub fn regexp_init(
+    cx: Context,
+    mut regexp_object: Handle<RegExpObject>,
+    regexp_source: RegExpSource,
+) -> EvalResult<Handle<Value>> {
     match regexp_source {
         RegExpSource::RegExpObject(old_regexp_object) => {
             regexp_object.compiled_regexp = old_regexp_object.compiled_regexp;

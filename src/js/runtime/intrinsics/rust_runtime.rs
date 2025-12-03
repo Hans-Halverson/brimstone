@@ -532,6 +532,7 @@ rust_runtime_functions!(
     ReflectObject::set_prototype_of,
     RegExpConstructor::construct,
     RegExpConstructor::escape,
+    RegExpPrototype::compile,
     RegExpPrototype::dot_all,
     RegExpPrototype::exec,
     RegExpPrototype::flags,

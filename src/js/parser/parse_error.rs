@@ -379,7 +379,7 @@ impl fmt::Display for ParseError {
                 write!(f, "Getter functions must have no parameters")
             }
             ParseError::SetterWrongNumberOfParams => {
-                write!(f, "Setter functions must exactly one parameter")
+                write!(f, "Setter functions must have exactly one parameter")
             }
             ParseError::AwaitInStaticInitializer => {
                 write!(f, "Await expression not allowed in static initializer")

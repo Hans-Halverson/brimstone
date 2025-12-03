@@ -3690,7 +3690,8 @@ impl<'a> Parser<'a> {
                 }
             }
             PropertyKind::Set => {
-                if params.len() != 1 {
+                // Must be a single (non-rest) parameter
+                if params.len() != 1 || !matches!(params[0], FunctionParam::Pattern { .. }) {
                     return self.error(loc, ParseError::SetterWrongNumberOfParams);
                 }
             }

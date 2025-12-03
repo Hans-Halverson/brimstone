@@ -17,7 +17,7 @@ impl FinalizationRegistryConstructor {
             1,
             cx.names.finalization_registry(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

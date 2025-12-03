@@ -268,7 +268,6 @@ fn async_from_sync_iterator_continuation(
         cx.names.empty_string(),
         cx.current_realm(),
         None,
-        None,
     );
 
     let on_reject = if is_done || !close_on_rejection {
@@ -281,7 +280,6 @@ fn async_from_sync_iterator_continuation(
             1,
             cx.names.empty_string(),
             cx.current_realm(),
-            None,
             None,
         );
         set_sync_iterator(cx, on_reject, sync_iterator);

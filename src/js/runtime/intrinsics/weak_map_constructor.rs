@@ -26,7 +26,7 @@ impl WeakMapConstructor {
             0,
             cx.names.weak_map(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

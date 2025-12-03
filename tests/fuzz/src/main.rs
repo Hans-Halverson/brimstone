@@ -103,8 +103,7 @@ fn install_fuzzilli_function(mut cx: Context) {
 
         let fuzzilli_string = cx.alloc_string("fuzzilli");
         let fuzzilli_key = PropertyKey::string(cx, fuzzilli_string.as_string()).to_handle(cx);
-        let fuzzilli_function =
-            BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None, None);
+        let fuzzilli_function = BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None);
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
         must!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc))

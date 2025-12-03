@@ -38,7 +38,7 @@ impl ObjectConstructor {
             1,
             cx.names.object(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

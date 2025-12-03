@@ -92,7 +92,7 @@ impl BooleanConstructor {
             1,
             cx.names.boolean(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

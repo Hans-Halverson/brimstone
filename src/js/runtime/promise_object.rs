@@ -499,7 +499,6 @@ impl PromiseCapability {
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-            None,
         );
 
         executor.private_element_set(

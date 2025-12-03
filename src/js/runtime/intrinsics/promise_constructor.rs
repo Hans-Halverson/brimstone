@@ -55,7 +55,7 @@ impl PromiseConstructor {
             1,
             cx.names.promise(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(
@@ -273,7 +273,6 @@ impl PromiseConstructor {
                 cx.names.empty_string(),
                 cx.current_realm(),
                 None,
-                None,
             );
 
             // Attach various private properties to the resolve function
@@ -384,7 +383,6 @@ impl PromiseConstructor {
                 cx.names.empty_string(),
                 cx.current_realm(),
                 None,
-                None,
             );
 
             // Attach various private properties to the resolve function
@@ -401,7 +399,6 @@ impl PromiseConstructor {
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
-                None,
                 None,
             );
 
@@ -584,7 +581,6 @@ impl PromiseConstructor {
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
-                None,
                 None,
             );
 
@@ -799,15 +795,8 @@ fn create_settle_function(
     promise: Handle<PromiseObject>,
     func: RustRuntimeFunction,
 ) -> Handle<ObjectValue> {
-    let mut function = BuiltinFunction::create(
-        cx,
-        func,
-        1,
-        cx.names.empty_string(),
-        cx.current_realm(),
-        None,
-        None,
-    );
+    let mut function =
+        BuiltinFunction::create(cx, func, 1, cx.names.empty_string(), cx.current_realm(), None);
 
     function.private_element_set(cx, cx.well_known_symbols.promise().cast(), promise.into());
 

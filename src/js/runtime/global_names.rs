@@ -92,7 +92,6 @@ pub fn create_global_declaration_instantiation_intrinsic(
         cx.names.empty_string(),
         realm,
         None,
-        None,
     )
     .into()
 }

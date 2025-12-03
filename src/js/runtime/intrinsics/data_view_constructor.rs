@@ -82,7 +82,7 @@ impl DataViewConstructor {
             1,
             cx.names.data_view(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

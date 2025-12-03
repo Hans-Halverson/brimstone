@@ -528,7 +528,7 @@ fn create_throw_type_error_intrinsic(cx: Context, realm: Handle<Realm>) -> Handl
                 throw_type_error,
                 /* name */ None,
                 realm,
-                /* prototype */ None,
+                /* prototype */ Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),
                 /* is_constructor */ false,
             )
             .into();

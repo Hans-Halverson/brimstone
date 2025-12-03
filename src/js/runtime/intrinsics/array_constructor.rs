@@ -33,7 +33,7 @@ impl ArrayConstructor {
             1,
             cx.names.array(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

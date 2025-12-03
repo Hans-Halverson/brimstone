@@ -79,7 +79,6 @@ impl PromisePrototype {
                 cx.names.empty_string(),
                 cx.current_realm(),
                 None,
-                None,
             );
 
             let finally_catch = BuiltinFunction::create(
@@ -88,7 +87,6 @@ impl PromisePrototype {
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
-                None,
                 None,
             );
 
@@ -162,7 +160,6 @@ impl PromisePrototype {
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-            None,
         );
 
         let value = get_argument(cx, arguments, 0);
@@ -200,7 +197,6 @@ impl PromisePrototype {
             0,
             cx.names.empty_string(),
             cx.current_realm(),
-            None,
             None,
         );
 

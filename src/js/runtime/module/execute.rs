@@ -170,12 +170,13 @@ pub fn load_requested_modules_reject(
 }
 
 fn callback(cx: Context, func: RustRuntimeFunction) -> Handle<ObjectValue> {
+    let realm = cx.current_realm();
     BuiltinFunction::create_builtin_function_without_properties(
         cx,
         func,
         /* name */ None,
-        cx.current_realm(),
-        /* prototype */ None,
+        realm,
+        /* prototype */ Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),
         /* is_constructor */ false,
     )
     .into()

@@ -160,7 +160,7 @@ impl ArrayBufferConstructor {
             1,
             cx.names.array_buffer(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

@@ -16,7 +16,7 @@ impl FunctionConstructor {
             1,
             cx.names.function(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

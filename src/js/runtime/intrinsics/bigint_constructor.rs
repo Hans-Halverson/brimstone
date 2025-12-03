@@ -63,7 +63,7 @@ impl BigIntConstructor {
             1,
             cx.names.bigint(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

@@ -43,14 +43,13 @@ pub struct AggregateErrorConstructor;
 impl AggregateErrorConstructor {
     /// Properties of the AggregateError Constructor (https://tc39.es/ecma262/#sec-properties-of-the-aggregate-error-constructors)
     pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
-        let error_constructor = realm.get_intrinsic(Intrinsic::ErrorConstructor);
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
             2,
             cx.names.aggregate_error(),
             realm,
-            Some(error_constructor),
+            Intrinsic::ErrorConstructor,
         );
 
         func.intrinsic_frozen_property(

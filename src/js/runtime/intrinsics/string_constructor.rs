@@ -29,7 +29,7 @@ impl StringConstructor {
             1,
             cx.names.string(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

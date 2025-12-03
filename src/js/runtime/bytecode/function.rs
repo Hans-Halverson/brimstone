@@ -15,7 +15,9 @@ use crate::{
             rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
         },
         object_value::ObjectValue,
-        ordinary_object::{object_create, object_create_with_proto},
+        ordinary_object::{
+            object_create, object_create_with_optional_proto, object_create_with_proto,
+        },
         property::Property,
         scope::Scope,
         source_file::SourceFile,
@@ -96,9 +98,10 @@ impl Closure {
         cx: Context,
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
-        prototype: Handle<ObjectValue>,
+        prototype: Option<Handle<ObjectValue>>,
     ) -> Handle<Closure> {
-        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
+        let mut object =
+            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);

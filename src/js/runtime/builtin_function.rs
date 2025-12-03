@@ -21,7 +21,6 @@ impl BuiltinFunction {
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
-        prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
     ) -> Handle<ObjectValue> {
         Self::create_builtin_function(
@@ -30,7 +29,8 @@ impl BuiltinFunction {
             length,
             name,
             realm,
-            prototype,
+            // Default to Function.prototype
+            Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),
             prefix,
             /* is_constructor */ false,
         )
@@ -71,6 +71,10 @@ impl BuiltinFunction {
         set_function_name(cx, func, name, prefix);
     }
 
+    /// Create a function with the given internal slots but without installing the `length` and
+    /// `name` properties.
+    ///
+    /// Prototype is the raw value for the [[Prototype]] internal slot - n.
     pub fn create_builtin_function_without_properties(
         cx: Context,
         builtin_func: RustRuntimeFunction,
@@ -88,9 +92,6 @@ impl BuiltinFunction {
             name,
         );
 
-        let prototype =
-            prototype.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::FunctionPrototype));
-
         Closure::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
     }
 
@@ -101,7 +102,7 @@ impl BuiltinFunction {
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
-        prototype: Option<Handle<ObjectValue>>,
+        prototype: Intrinsic,
     ) -> Handle<ObjectValue> {
         Self::create_builtin_function(
             cx,
@@ -109,7 +110,7 @@ impl BuiltinFunction {
             length,
             name,
             realm,
-            prototype,
+            Some(realm.get_intrinsic(prototype)),
             None,
             /* is_constructor */ true,
         )

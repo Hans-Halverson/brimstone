@@ -137,7 +137,7 @@ impl RegExpConstructor {
             2,
             cx.names.regexp(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

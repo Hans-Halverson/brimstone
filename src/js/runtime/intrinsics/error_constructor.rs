@@ -124,7 +124,7 @@ impl ErrorConstructor {
             1,
             cx.names.error(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

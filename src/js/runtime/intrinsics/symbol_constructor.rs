@@ -59,7 +59,7 @@ impl SymbolConstructor {
             0,
             cx.names.symbol(),
             realm,
-            None,
+            Intrinsic::FunctionPrototype,
         );
 
         func.intrinsic_frozen_property(

@@ -1,14 +1,17 @@
-use crate::runtime::{
-    abstract_operations::{call_object, invoke, species_constructor},
-    builtin_function::BuiltinFunction,
-    error::type_error,
-    function::get_argument,
-    object_value::ObjectValue,
-    promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
-    property::Property,
-    realm::Realm,
-    type_utilities::is_callable,
-    Context, EvalResult, Handle, Value,
+use crate::{
+    eval_err,
+    runtime::{
+        abstract_operations::{call_object, invoke, species_constructor},
+        builtin_function::BuiltinFunction,
+        error::type_error,
+        function::get_argument,
+        object_value::ObjectValue,
+        promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
+        property::Property,
+        realm::Realm,
+        type_utilities::is_callable,
+        Context, EvalResult, Handle, Value,
+    },
 };
 
 use super::intrinsics::Intrinsic;
@@ -214,7 +217,7 @@ impl PromisePrototype {
         let current_function = cx.current_function();
         let value = Self::get_value(cx, current_function);
 
-        Err(value)
+        eval_err!(value)
     }
 
     /// Promise.prototype.then (https://tc39.es/ecma262/#sec-promise.prototype.then)

@@ -1,6 +1,8 @@
 use crate::{
     common::error::FormatOptions,
+    eval_err,
     parser::{LocalizedParseError, LocalizedParseErrors},
+    runtime::eval_result::EvalError,
 };
 
 use super::{
@@ -21,7 +23,7 @@ pub enum BsError {
     /// An error during bytecode generation.
     Emit(EmitError),
     /// Any value can be thrown as an error during evaluation.
-    Eval(Handle<Value>),
+    Eval(EvalError),
 }
 
 impl From<LocalizedParseError> for BsError {
@@ -42,8 +44,8 @@ impl From<EmitError> for BsError {
     }
 }
 
-impl From<Handle<Value>> for BsError {
-    fn from(error: Handle<Value>) -> Self {
+impl From<EvalError> for BsError {
+    fn from(error: EvalError) -> Self {
         BsError::Eval(error)
     }
 }
@@ -54,7 +56,7 @@ impl BsError {
             BsError::Parse(error) => error.format(opts),
             BsError::Analyze(errors) => errors.format(opts),
             BsError::Emit(error) => error.format(opts),
-            BsError::Eval(value) => to_console_string(cx, *value, opts),
+            BsError::Eval(value) => to_console_string(cx, value.value(), opts),
         }
     }
 }
@@ -83,23 +85,23 @@ fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
 }
 
 pub fn syntax_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    Err(syntax_error_value(cx, message))
+    eval_err!(syntax_error_value(cx, message))
 }
 
 pub fn type_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    Err(type_error_value(cx, message))
+    eval_err!(type_error_value(cx, message))
 }
 
 pub fn reference_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    Err(reference_error_value(cx, message))
+    eval_err!(reference_error_value(cx, message))
 }
 
 pub fn range_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    Err(range_error_value(cx, message))
+    eval_err!(range_error_value(cx, message))
 }
 
 pub fn uri_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    Err(uri_error_value(cx, message))
+    eval_err!(uri_error_value(cx, message))
 }
 
 pub fn err_not_defined<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {

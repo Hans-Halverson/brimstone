@@ -37,7 +37,7 @@ macro_rules! if_abrupt_reject_promise {
         match completion {
             Ok(value) => value,
             Err(error) => {
-                call_object($cx, capability.reject(), $cx.undefined(), &[error])?;
+                call_object($cx, capability.reject(), $cx.undefined(), &[error.value()])?;
                 return Ok(capability.promise().into());
             }
         }
@@ -720,7 +720,7 @@ impl PromiseConstructor {
 
         match completion {
             Ok(value) => call_object(cx, capability.resolve(), cx.undefined(), &[value])?,
-            Err(error) => call_object(cx, capability.reject(), cx.undefined(), &[error])?,
+            Err(error) => call_object(cx, capability.reject(), cx.undefined(), &[error.value()])?,
         };
 
         Ok(capability.promise().as_value())
@@ -776,7 +776,7 @@ pub fn execute_then(
 
     // Reject if the executor function throws
     if let Err(error) = completion {
-        call_object(cx, reject_function, cx.undefined(), &[error])?;
+        call_object(cx, reject_function, cx.undefined(), &[error.value()])?;
     }
 
     Ok(promise.as_value())

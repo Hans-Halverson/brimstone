@@ -1,5 +1,5 @@
 use crate::{
-    extend_object, field_offset,
+    eval_err, extend_object, field_offset,
     runtime::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -281,7 +281,7 @@ pub fn generator_resume_abrupt(
         if completion_type == GeneratorCompletionType::Return {
             return Ok(create_iter_result_object(cx, completion_value, true));
         } else {
-            return Err(completion_value);
+            return eval_err!(completion_value);
         }
     }
 

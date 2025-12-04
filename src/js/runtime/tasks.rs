@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::{
-    handle_scope,
+    eval_err, handle_scope,
     runtime::{
         abstract_operations::{call, call_object},
         intrinsics::promise_constructor::execute_then,
@@ -248,7 +248,7 @@ impl PromiseThenReactionTask {
             // If no handler was provided treat the handler result as a default normal or throw
             match self.kind {
                 PromiseReactionKind::Fulfill => Ok(result),
-                PromiseReactionKind::Reject => Err(result),
+                PromiseReactionKind::Reject => eval_err!(result),
             }
         };
 
@@ -261,7 +261,7 @@ impl PromiseThenReactionTask {
                 }
                 Err(handler_result) => {
                     let reject = capability.reject();
-                    call_object(cx, reject, cx.undefined(), &[handler_result])
+                    call_object(cx, reject, cx.undefined(), &[handler_result.value()])
                 }
             }
         } else {

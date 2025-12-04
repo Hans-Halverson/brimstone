@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-    if_abrupt_reject_promise, must,
+    eval_err, if_abrupt_reject_promise, must,
     runtime::{
         abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
         builtin_function::BuiltinFunction,
@@ -135,7 +135,7 @@ pub fn load_requested_modules_static_resolve(
     let capability = get_capability(cx, current_function);
 
     if let Err(error) = module.link(cx) {
-        must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+        must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
         return Ok(cx.undefined());
     }
 
@@ -238,12 +238,12 @@ impl GraphEvaluator {
                 for module in &mut self.stack {
                     debug_assert!(module.state() == ModuleState::Evaluating);
                     module.set_state(ModuleState::Evaluated);
-                    module.set_evaluation_error(*error);
+                    module.set_evaluation_error(*error.value());
                 }
 
                 debug_assert!(module.state() == ModuleState::Evaluated);
 
-                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
             }
         }
 
@@ -265,7 +265,7 @@ impl GraphEvaluator {
 
                 // Propagate rejected value as error
                 return if let Some(rejected_value) = promise.rejected_value() {
-                    Err(rejected_value.to_handle(cx))
+                    eval_err!(rejected_value.to_handle(cx))
                 } else {
                     Ok(index)
                 };
@@ -275,7 +275,7 @@ impl GraphEvaluator {
 
         if matches!(module.state(), ModuleState::Evaluated | ModuleState::EvaluatingAsync) {
             if let Some(error) = module.evaluation_error(cx) {
-                return Err(error);
+                return eval_err!(error);
             } else {
                 return Ok(index);
             }
@@ -322,7 +322,7 @@ impl GraphEvaluator {
                     ));
 
                     if let Some(error) = required_module.evaluation_error(cx) {
-                        return Err(error);
+                        return eval_err!(error);
                     }
                 }
 
@@ -443,7 +443,7 @@ pub fn async_module_execution_fulfilled(
         let execute_result = cx.vm().execute_module(ancestor, &[]);
 
         if let Err(error) = execute_result {
-            async_module_execution_rejected(cx, ancestor, error);
+            async_module_execution_rejected(cx, ancestor, error.value());
             continue;
         }
 
@@ -644,7 +644,7 @@ fn continue_dynamic_import(
     let module = match load_completion {
         Ok(module) => module,
         Err(error) => {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
             return;
         }
     };
@@ -672,7 +672,7 @@ pub fn load_requested_modules_dynamic_resolve(
     let capability = get_capability(cx, current_function);
 
     if let Err(error) = module.link(cx) {
-        must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+        must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
         return Ok(cx.undefined());
     }
 

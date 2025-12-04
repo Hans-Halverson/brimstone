@@ -14,7 +14,7 @@ use crate::{
         serialized_heap::SerializedHeap,
         wtf_8::{Wtf8Str, Wtf8String},
     },
-    handle_scope,
+    eval_err, handle_scope,
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
@@ -325,7 +325,7 @@ impl Context {
         debug_assert!(!promise.is_pending());
 
         if let Some(value) = promise.rejected_value() {
-            return Err(value.to_handle(*self));
+            return eval_err!(value.to_handle(*self));
         }
 
         self.vm().pop_initial_realm_stack_frame();

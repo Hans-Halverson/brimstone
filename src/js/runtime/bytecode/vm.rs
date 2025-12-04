@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    handle_scope, handle_scope_guard, must,
+    eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
@@ -33,6 +33,7 @@ use crate::{
                 eval_shift_right_logical, eval_subtract, eval_typeof,
             },
         },
+        eval_result::EvalError,
         for_in_iterator::ForInIterator,
         function::build_function_name,
         gc::HeapVisitor,
@@ -390,11 +391,7 @@ impl VM {
 
         // Start executing the dispatch loop from where the generator was suspended, returning out
         // of dispatch loop when the marked return address is encountered.
-        let completion = self.dispatch_loop();
-
-        if let Err(error_value) = completion {
-            return Err(error_value.to_handle(self.cx()));
-        }
+        self.dispatch_loop()?;
 
         Ok(return_value.to_handle(self.cx()))
     }
@@ -417,12 +414,12 @@ impl VM {
     /// - By the time that a throw is possible, PC must be updated to point to the next instruction
     /// - References to the instruction cannot be held over any allocations, since the instruction
     ///   points into the managed heap and may be moved by a GC.
-    fn dispatch_loop(&mut self) -> Result<(), Value> {
+    fn dispatch_loop(&mut self) -> EvalResult<()> {
         handle_scope!(self.cx(), self.dispatch_loop_inner())
     }
 
     #[inline]
-    fn dispatch_loop_inner(&mut self) -> Result<(), Value> {
+    fn dispatch_loop_inner(&mut self) -> EvalResult<()> {
         'dispatch: loop {
             macro_rules! create_dispatch_macros {
                 ($width:ident, $opcode_pc:expr) => {
@@ -690,7 +687,7 @@ impl VM {
                             self.set_fp(caller_stack_frame.fp());
                             self.set_sp(caller_stack_frame.sp());
 
-                            return Err(error_value);
+                            return eval_err!(error_value);
                         }
 
                         if self.visit_frame_for_exception_unwinding(
@@ -707,7 +704,7 @@ impl VM {
                     // Exception has unwound the entire stack, finish VM execution returning the
                     // thrown error.
                     self.reset_stack();
-                    return Err(error_value);
+                    return eval_err!(error_value);
                 }};
             }
 
@@ -715,16 +712,16 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(ThrowInstruction);
                     self.set_pc_after(instr);
-                    let error_value = self.read_register(instr.error());
+                    let error_value = self.read_register(instr.error()).to_handle(self.cx());
                     throw!(error_value)
                 }};
             }
 
             macro_rules! maybe_throw {
-                ($expr:expr) => {
-                    match $expr {
+                ($eval_result:expr) => {
+                    match $eval_result {
                         Ok(result) => result,
-                        Err(error) => throw!(*error),
+                        Err(error) => throw!(error.value()),
                     }
                 };
             }
@@ -1499,7 +1496,7 @@ impl VM {
                     proxy.to_handle().call(self.cx(), receiver, arguments)
                 });
             }
-            CallableObject::Error(error) => return Err(error),
+            CallableObject::Error(error) => return eval_err!(error),
         };
 
         // Get the receiver to use. May allocate.
@@ -1536,9 +1533,7 @@ impl VM {
 
             // Start executing the dispatch loop from the start of the function, returning out of
             // dispatch loop when the marked return address is encountered.
-            if let Err(error_value) = self.dispatch_loop() {
-                return Err(error_value.to_handle(self.cx()));
-            }
+            self.dispatch_loop()?;
 
             Ok(return_value.to_handle(self.cx()))
         }
@@ -1564,7 +1559,7 @@ impl VM {
                         .to_handle()
                         .construct(self.cx(), arguments, new_target);
                 }
-                CallableObject::Error(error) => return Err(error),
+                CallableObject::Error(error) => return eval_err!(error),
             };
 
             let closure_ptr = *closure_handle;
@@ -1623,9 +1618,7 @@ impl VM {
 
                 // Start executing the dispatch loop from the start of the function, returning out
                 // of dispatch loop when the marked return address is encountered. May allocate.
-                if let Err(error_value) = self.dispatch_loop() {
-                    return Err(error_value.to_handle(self.cx()));
-                }
+                self.dispatch_loop()?;
 
                 let return_value = return_value.to_handle(self.cx());
 
@@ -1666,7 +1659,7 @@ impl VM {
                     Ok(())
                 });
             }
-            CallableObject::Error(error) => return Err(error),
+            CallableObject::Error(error) => return eval_err!(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
@@ -1690,7 +1683,7 @@ impl VM {
                 // Set the return value from the Rust runtime call
                 unsafe { *return_value_address = *return_value };
 
-                Ok::<(), Handle<Value>>(())
+                Ok::<(), EvalError>(())
             })?;
         } else {
             // Otherwise this is a call to a JS function in the VM.
@@ -1763,7 +1756,7 @@ impl VM {
                     Ok(())
                 });
             }
-            CallableObject::Error(error) => return Err(error),
+            CallableObject::Error(error) => return eval_err!(error),
         };
 
         let function_ptr = closure_ptr.function_ptr();
@@ -1838,9 +1831,7 @@ impl VM {
 
                 // Start executing the dispatch loop from the start of the function, returning out of
                 // dispatch loop when the marked return address is encountered.
-                if let Err(error_value) = self.dispatch_loop() {
-                    return Err(error_value.to_handle(self.cx()));
-                }
+                self.dispatch_loop()?;
 
                 // Use the function's return value if it is an object
                 if return_value.is_object() {
@@ -4542,7 +4533,7 @@ impl VM {
         &mut self,
         stack_frame: StackFrame,
         instr_addr: *const u8,
-        error_value: Value,
+        error_value: Handle<Value>,
     ) -> bool {
         let func = stack_frame.closure().function_ptr();
         if func.exception_handlers_ptr().is_none() {
@@ -4582,7 +4573,7 @@ impl VM {
 
             // Write the error into the appropriate register in the new stack frame
             if let Some(error_register) = handler.error_register() {
-                self.write_register(error_register, error_value);
+                self.write_register(error_register, *error_value);
             }
 
             return true;

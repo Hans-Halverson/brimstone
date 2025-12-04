@@ -221,7 +221,7 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
     let then_value = match then_completion {
         Ok(value) => value,
         Err(error) => {
-            promise.reject(cx, *error);
+            promise.reject(cx, *error.value());
             return;
         }
     };

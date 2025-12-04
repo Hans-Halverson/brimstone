@@ -5,7 +5,7 @@ use std::{
 
 use rand::Rng;
 
-use crate::{handle_scope_guard, set_uninit};
+use crate::{handle_scope_guard, runtime::alloc_error::AllocResult, set_uninit};
 
 use super::{
     accessor::Accessor,
@@ -175,8 +175,8 @@ impl ObjectValue {
         cx: Context,
         prototype: Option<Handle<ObjectValue>>,
         is_extensible: bool,
-    ) -> Handle<ObjectValue> {
-        let mut object = cx.alloc_uninit::<ObjectValue>();
+    ) -> AllocResult<Handle<ObjectValue>> {
+        let mut object = cx.alloc_uninit::<ObjectValue>()?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| *p));
@@ -185,7 +185,7 @@ impl ObjectValue {
         set_uninit!(object.is_extensible_field, is_extensible);
         object.set_uninit_hash_code();
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     // Array properties methods
@@ -359,18 +359,25 @@ impl Handle<ObjectValue> {
     }
 
     // Property accessors and mutators
-    pub fn set_property(&mut self, cx: Context, key: Handle<PropertyKey>, property: Property) {
+    pub fn set_property(
+        &mut self,
+        cx: Context,
+        key: Handle<PropertyKey>,
+        property: Property,
+    ) -> AllocResult<()> {
         if key.is_array_index() {
             let array_index = key.as_array_index();
-            ArrayProperties::set_property(cx, *self, array_index, property);
+            ArrayProperties::set_property(cx, *self, array_index, property)?;
 
-            return;
+            return Ok(());
         }
 
         // Safe since insert does allocate on managed heap
         self.named_properties_field()
-            .maybe_grow_for_insertion(cx)
+            .maybe_grow_for_insertion(cx)?
             .insert_without_growing(*key, property.to_heap());
+
+        Ok(())
     }
 
     pub fn remove_property(&mut self, key: Handle<PropertyKey>) {
@@ -390,13 +397,15 @@ impl Handle<ObjectValue> {
         cx: Context,
         private_name: Handle<SymbolValue>,
         value: Handle<Value>,
-    ) {
+    ) -> AllocResult<()> {
         let property_key = PropertyKey::symbol(private_name);
         let property = Property::private_field(value);
         // Safe since insert does not allocate on managed heap
         self.named_properties_field()
-            .maybe_grow_for_insertion(cx)
+            .maybe_grow_for_insertion(cx)?
             .insert_without_growing(*property_key, property.to_heap());
+
+        Ok(())
     }
 
     /// PrivateFieldAdd (https://tc39.es/ecma262/#sec-privatefieldadd)
@@ -413,14 +422,18 @@ impl Handle<ObjectValue> {
             // Safe since insert does not allocate on managed heap
             let property_key = PropertyKey::symbol(private_name);
             self.named_properties_field()
-                .maybe_grow_for_insertion(cx)
+                .maybe_grow_for_insertion(cx)?
                 .insert_without_growing(*property_key, private_property.to_heap());
 
             Ok(())
         }
     }
 
-    pub fn set_array_properties_length(&mut self, cx: Context, new_length: u32) -> bool {
+    pub fn set_array_properties_length(
+        &mut self,
+        cx: Context,
+        new_length: u32,
+    ) -> AllocResult<bool> {
         ArrayProperties::set_len(cx, *self, new_length)
     }
 
@@ -430,23 +443,23 @@ impl Handle<ObjectValue> {
         cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
-    ) {
+    ) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
-    pub fn instrinsic_length_prop(&mut self, cx: Context, length: i32) {
+    pub fn instrinsic_length_prop(&mut self, cx: Context, length: i32) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
         let length_value = cx.smi(length);
         self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
     }
 
-    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &str) {
+    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &str) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        let name_value = cx.alloc_string(name).into();
+        let name_value = cx.alloc_string(name)?.into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 
@@ -456,12 +469,12 @@ impl Handle<ObjectValue> {
         name: Handle<PropertyKey>,
         func: RustRuntimeFunction,
         realm: Handle<Realm>,
-    ) {
+    ) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        let getter = BuiltinFunction::create(cx, func, 0, name, realm, Some("get"));
-        let accessor_value = Accessor::new(cx, Some(getter), None);
-        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
+        let getter = BuiltinFunction::create(cx, func, 0, name, realm, Some("get"))?;
+        let accessor_value = Accessor::new(cx, Some(getter), None)?;
+        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true))
     }
 
     pub fn intrinsic_getter_and_setter(
@@ -471,13 +484,13 @@ impl Handle<ObjectValue> {
         getter: RustRuntimeFunction,
         setter: RustRuntimeFunction,
         realm: Handle<Realm>,
-    ) {
+    ) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, Some("get"));
-        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, Some("set"));
-        let accessor_value = Accessor::new(cx, Some(getter), Some(setter));
-        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true));
+        let getter = BuiltinFunction::create(cx, getter, 0, name, realm, Some("get"))?;
+        let setter = BuiltinFunction::create(cx, setter, 1, name, realm, Some("set"))?;
+        let accessor_value = Accessor::new(cx, Some(getter), Some(setter))?;
+        self.set_property(cx, name, Property::accessor(accessor_value.into(), false, true))
     }
 
     pub fn intrinsic_func(
@@ -487,11 +500,11 @@ impl Handle<ObjectValue> {
         func: RustRuntimeFunction,
         length: u32,
         realm: Handle<Realm>,
-    ) {
+    ) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        let func = BuiltinFunction::create(cx, func, length, name, realm, None).into();
-        self.intrinsic_data_prop(cx, name, func);
+        let func = BuiltinFunction::create(cx, func, length, name, realm, None)?.into();
+        self.intrinsic_data_prop(cx, name, func)
     }
 
     pub fn intrinsic_frozen_property(
@@ -499,10 +512,10 @@ impl Handle<ObjectValue> {
         cx: Context,
         key: Handle<PropertyKey>,
         value: Handle<Value>,
-    ) {
+    ) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        self.set_property(cx, key, Property::data(value, false, false, false));
+        self.set_property(cx, key, Property::data(value, false, false, false))
     }
 }
 
@@ -712,7 +725,7 @@ pub type NamedPropertiesMap = BsIndexMap<PropertyKey, HeapProperty>;
 pub struct NamedPropertiesMapField(Handle<ObjectValue>);
 
 impl BsIndexMapField<PropertyKey, HeapProperty> for NamedPropertiesMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<NamedPropertiesMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<NamedPropertiesMap>> {
         NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, capacity)
     }
 

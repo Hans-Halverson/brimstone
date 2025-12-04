@@ -4,6 +4,7 @@ use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
         abstract_operations::length_of_array_like,
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         error::type_error,
         eval_result::EvalResult,
@@ -51,12 +52,12 @@ impl ArrayIterator {
         cx: Context,
         array: Handle<ObjectValue>,
         kind: ArrayIteratorKind,
-    ) -> Handle<ArrayIterator> {
+    ) -> AllocResult<Handle<ArrayIterator>> {
         let mut object = object_create::<ArrayIterator>(
             cx,
             HeapItemKind::ArrayIterator,
             Intrinsic::ArrayIteratorPrototype,
-        );
+        )?;
 
         // Only difference between array and typed array iterators is length getter, so calculate
         // on iterator start to avoid computing on every iteration.
@@ -72,7 +73,7 @@ impl ArrayIterator {
         set_uninit!(object.current_index, 0);
         set_uninit!(object.get_length, get_length);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     fn array(&self) -> Handle<ObjectValue> {
@@ -101,22 +102,22 @@ impl ArrayIterator {
 pub struct ArrayIteratorPrototype;
 
 impl ArrayIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = ObjectValue::new(cx, Some(proto), true);
+        let mut object = ObjectValue::new(cx, Some(proto), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
 
         // %ArrayIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("Array Iterator").into();
+        let to_string_tag_value = cx.alloc_string("Array Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %ArrayIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%arrayiteratorprototype%.next)
@@ -131,7 +132,7 @@ impl ArrayIteratorPrototype {
 
         // Early return if iterator is already done, before potential failure during `get_length`
         if array_iterator.is_done {
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         // Dispatches based on whether this is array or typed array
@@ -140,7 +141,7 @@ impl ArrayIteratorPrototype {
         let current_index = array_iterator.current_index as u64;
         if array_iterator.is_done || current_index >= length {
             array_iterator.is_done = true;
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         array_iterator.current_index += 1;
@@ -148,20 +149,20 @@ impl ArrayIteratorPrototype {
         match array_iterator.kind {
             ArrayIteratorKind::Key => {
                 let key = Value::from(current_index).to_handle(cx);
-                Ok(create_iter_result_object(cx, key, false))
+                Ok(create_iter_result_object(cx, key, false)?)
             }
             ArrayIteratorKind::Value => {
-                let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
+                let property_key = PropertyKey::from_u64_handle(cx, current_index)?;
                 let value = array.get(cx, property_key, array.into())?;
-                Ok(create_iter_result_object(cx, value, false))
+                Ok(create_iter_result_object(cx, value, false)?)
             }
             ArrayIteratorKind::KeyAndValue => {
                 let key = Value::from(current_index).to_handle(cx);
-                let property_key = PropertyKey::from_u64(cx, current_index).to_handle(cx);
+                let property_key = PropertyKey::from_u64_handle(cx, current_index)?;
                 let value = array.get(cx, property_key, array.into())?;
 
-                let result_pair = create_array_from_list(cx, &[key, value]);
-                Ok(create_iter_result_object(cx, result_pair.into(), false))
+                let result_pair = create_array_from_list(cx, &[key, value])?;
+                Ok(create_iter_result_object(cx, result_pair.into(), false)?)
             }
         }
     }

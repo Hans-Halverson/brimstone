@@ -6,6 +6,7 @@ use num_traits::FromPrimitive;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -35,16 +36,19 @@ extend_object! {
 }
 
 impl BigIntObject {
-    pub fn new_from_value(cx: Context, bigint_data: Handle<BigIntValue>) -> Handle<BigIntObject> {
+    pub fn new_from_value(
+        cx: Context,
+        bigint_data: Handle<BigIntValue>,
+    ) -> AllocResult<Handle<BigIntObject>> {
         let mut object = object_create::<BigIntObject>(
             cx,
             HeapItemKind::BigIntObject,
             Intrinsic::BigIntPrototype,
-        );
+        )?;
 
         set_uninit!(object.bigint_data, *bigint_data);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn bigint_data(&self) -> Handle<BigIntValue> {
@@ -56,7 +60,7 @@ pub struct BigIntConstructor;
 
 impl BigIntConstructor {
     //// The BigInt Constructor (https://tc39.es/ecma262/#sec-bigint-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -64,18 +68,18 @@ impl BigIntConstructor {
             cx.names.bigint(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.as_int_n(), Self::as_int_n, 2, realm);
-        func.intrinsic_func(cx, cx.names.as_uint_n(), Self::as_uint_n, 2, realm);
+        func.intrinsic_func(cx, cx.names.as_int_n(), Self::as_int_n, 2, realm)?;
+        func.intrinsic_func(cx, cx.names.as_uint_n(), Self::as_uint_n, 2, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// BigInt (https://tc39.es/ecma262/#sec-bigint-constructor-number-value)
@@ -97,11 +101,11 @@ impl BigIntConstructor {
             }
 
             if primitive.is_smi() {
-                Ok(BigIntValue::new(cx, primitive.as_smi().into()).into())
+                Ok(BigIntValue::new(cx, primitive.as_smi().into())?.into())
             } else {
                 // Safe to unwrap since we know the primitive is finite
                 let bigint = BigInt::from_f64(primitive.as_double()).unwrap();
-                Ok(BigIntValue::new(cx, bigint).into())
+                Ok(BigIntValue::new(cx, bigint)?.into())
             }
         } else {
             Ok(to_bigint(cx, primitive)?.into())
@@ -139,7 +143,7 @@ impl BigIntConstructor {
         }
 
         let new_bigint = BigInt::from_signed_bytes_le(&bytes);
-        Ok(BigIntValue::new(cx, new_bigint).into())
+        Ok(BigIntValue::new(cx, new_bigint)?.into())
     }
 
     /// BigInt.asUintN (https://tc39.es/ecma262/#sec-bigint.asuintn)
@@ -172,7 +176,7 @@ impl BigIntConstructor {
         }
 
         let new_bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
-        Ok(BigIntValue::new(cx, new_bigint).into())
+        Ok(BigIntValue::new(cx, new_bigint)?.into())
     }
 }
 

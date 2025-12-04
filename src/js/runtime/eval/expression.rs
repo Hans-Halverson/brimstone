@@ -10,6 +10,7 @@ use crate::{
             call_object, define_property_or_throw, get_method, has_property, ordinary_has_instance,
             set_integrity_level, IntegrityLevel,
         },
+        alloc_error::AllocResult,
         array_object::array_create_in_realm,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -33,7 +34,7 @@ pub fn generate_template_object(
     mut cx: Context,
     realm: Handle<Realm>,
     lit: &ast::TemplateLiteral,
-) -> Handle<ObjectValue> {
+) -> AllocResult<Handle<ObjectValue>> {
     let num_strings = lit.quasis.len();
     let template_object =
         must!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
@@ -43,17 +44,17 @@ pub fn generate_template_object(
     let mut index_key = PropertyKey::uninit().to_handle(cx);
 
     for (i, quasi) in lit.quasis.iter().enumerate() {
-        index_key.replace(PropertyKey::array_index(cx, i as u32));
+        index_key.replace(PropertyKey::array_index(cx, i as u32)?);
 
         let cooked_value = match &quasi.cooked {
             None => cx.undefined(),
-            Some(cooked) => cx.alloc_wtf8_str(cooked).as_value(),
+            Some(cooked) => cx.alloc_wtf8_str(cooked)?.as_value(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
-        let raw_value = cx.alloc_wtf8_str(quasi.raw);
-        let raw_desc = PropertyDescriptor::data(raw_value.into(), false, true, false);
+        let raw_value = cx.alloc_wtf8_str(quasi.raw)?;
+        let raw_desc = PropertyDescriptor::data(raw_value.as_value(), false, true, false);
         must!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }
 
@@ -64,7 +65,7 @@ pub fn generate_template_object(
 
     must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
-    template_object
+    Ok(template_object)
 }
 
 pub fn eval_delete_property(
@@ -83,7 +84,7 @@ pub fn eval_delete_property(
     Ok(delete_status)
 }
 
-pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue> {
+pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<StringValue>> {
     let type_string = if value.is_pointer() {
         let kind = value.as_pointer().descriptor().kind();
         match kind {
@@ -109,7 +110,7 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> Handle<StringValue>
         }
     };
 
-    cx.alloc_string(type_string).as_string()
+    Ok(cx.alloc_string(type_string)?.as_string())
 }
 
 pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
@@ -117,7 +118,7 @@ pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value
 
     if value.is_bigint() {
         let neg_bignum = -value.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, neg_bignum).into())
+        Ok(BigIntValue::new(cx, neg_bignum)?.into())
     } else {
         Ok(cx.number(-value.as_number()))
     }
@@ -128,7 +129,7 @@ pub fn eval_bitwise_not(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
 
     if value.is_bigint() {
         let not_bignum = !value.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, not_bignum).into())
+        Ok(BigIntValue::new(cx, not_bignum)?.into())
     } else {
         let value = must!(to_int32(cx, value));
         Ok(cx.smi(!value))
@@ -146,7 +147,7 @@ pub fn eval_add(
         let left_string = to_string(cx, left_prim)?;
         let right_string = to_string(cx, right_prim)?;
 
-        return Ok(StringValue::concat(cx, left_string, right_string).as_value());
+        return Ok(StringValue::concat(cx, left_string, right_string)?.as_value());
     }
 
     let left_num = to_numeric(cx, left_prim)?;
@@ -159,7 +160,7 @@ pub fn eval_add(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         Ok(cx.number(left_num.as_number() + right_num.as_number()))
     }
@@ -180,7 +181,7 @@ pub fn eval_subtract(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         Ok(cx.number(left_num.as_number() - right_num.as_number()))
     }
@@ -201,7 +202,7 @@ pub fn eval_multiply(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         Ok(cx.number(left_num.as_number() * right_num.as_number()))
     }
@@ -227,7 +228,7 @@ pub fn eval_divide(
         }
 
         let result = left_num.as_bigint().bigint() / bigint_right;
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         Ok(cx.number(left_num.as_number() / right_num.as_number()))
     }
@@ -254,11 +255,11 @@ pub fn eval_remainder(
 
         let bigint_left = left_num.as_bigint().bigint();
         if bigint_left.eq(&BigInt::default()) {
-            return Ok(BigIntValue::new(cx, BigInt::default()).into());
+            return Ok(BigIntValue::new(cx, BigInt::default())?.into());
         }
 
         let result = bigint_left % bigint_right;
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         Ok(cx.number(left_num.as_number() % right_num.as_number()))
     }
@@ -284,12 +285,12 @@ pub fn eval_exponentiation(
         if exponent_bignum.lt(&BigInt::default()) {
             return range_error(cx, "BigInt negative exponent");
         } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
-            return Ok(BigIntValue::new(cx, 1.into()).into());
+            return Ok(BigIntValue::new(cx, 1.into())?.into());
         }
 
         if let Ok(exponent_u32) = exponent_bignum.try_into() {
             let result = base_bignum.pow(exponent_u32);
-            Ok(BigIntValue::new(cx, result).into())
+            Ok(BigIntValue::new(cx, result)?.into())
         } else {
             // This guarantees a bigint that is too large
             range_error(cx, "BigInt is too large")
@@ -372,7 +373,7 @@ pub fn eval_bitwise_and(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -396,7 +397,7 @@ pub fn eval_bitwise_or(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -420,7 +421,7 @@ pub fn eval_bitwise_xor(
 
     if left_is_bigint {
         let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_smi = must!(to_int32(cx, right_value));
@@ -449,7 +450,7 @@ pub fn eval_shift_left(
             &right_num.as_bigint().bigint(),
         )?;
 
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));
@@ -481,7 +482,7 @@ pub fn eval_shift_right_arithmetic(
             &-right_num.as_bigint().bigint(),
         )?;
 
-        Ok(BigIntValue::new(cx, result).into())
+        Ok(BigIntValue::new(cx, result)?.into())
     } else {
         let left_smi = must!(to_int32(cx, left_value));
         let right_u32 = must!(to_uint32(cx, right_value));

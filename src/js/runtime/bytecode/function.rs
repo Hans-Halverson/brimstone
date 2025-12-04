@@ -5,6 +5,7 @@ use crate::{
     parser::loc::Pos,
     runtime::{
         abstract_operations::define_property_or_throw,
+        alloc_error::AllocResult,
         collections::{array::ByteArray, InlineArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_function_name},
@@ -46,17 +47,17 @@ impl Closure {
         cx: Context,
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
-    ) -> Handle<Closure> {
+    ) -> AllocResult<Handle<Closure>> {
         let mut object =
-            object_create::<Closure>(cx, HeapItemKind::Closure, Intrinsic::FunctionPrototype);
+            object_create::<Closure>(cx, HeapItemKind::Closure, Intrinsic::FunctionPrototype)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, cx.current_realm());
+        Self::init_common_properties(cx, closure, function, cx.current_realm())?;
 
-        closure
+        Ok(closure)
     }
 
     pub fn new_with_proto(
@@ -64,16 +65,16 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         prototype: Handle<ObjectValue>,
-    ) -> Handle<Closure> {
-        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
+    ) -> AllocResult<Handle<Closure>> {
+        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, prototype)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, cx.current_realm());
+        Self::init_common_properties(cx, closure, function, cx.current_realm())?;
 
-        closure
+        Ok(closure)
     }
 
     pub fn new_in_realm(
@@ -81,17 +82,17 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         realm: Handle<Realm>,
-    ) -> Handle<Closure> {
+    ) -> AllocResult<Handle<Closure>> {
         let proto = realm.get_intrinsic(Intrinsic::FunctionPrototype);
-        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, proto);
+        let mut object = object_create_with_proto::<Closure>(cx, HeapItemKind::Closure, proto)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
         let closure = object.to_handle();
-        Self::init_common_properties(cx, closure, function, realm);
+        Self::init_common_properties(cx, closure, function, realm)?;
 
-        closure
+        Ok(closure)
     }
 
     pub fn new_builtin(
@@ -99,15 +100,15 @@ impl Closure {
         function: Handle<BytecodeFunction>,
         scope: Handle<Scope>,
         prototype: Option<Handle<ObjectValue>>,
-    ) -> Handle<Closure> {
+    ) -> AllocResult<Handle<Closure>> {
         let mut object =
-            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, prototype);
+            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, prototype)?;
 
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
         // Does not need to the `name` and `length` properties as these will be set by caller
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn init_extra_fields(
@@ -151,22 +152,22 @@ impl Closure {
         closure: Handle<Closure>,
         function: Handle<BytecodeFunction>,
         realm: Handle<Realm>,
-    ) {
-        set_function_length(cx, closure.into(), function.function_length());
+    ) -> AllocResult<()> {
+        set_function_length(cx, closure.into(), function.function_length())?;
 
         // Default to the empty string if a name was not provided
         let name = if let Some(name) = function.name {
-            PropertyKey::string(cx, name.to_handle()).to_handle(cx)
+            PropertyKey::string_handle(cx, name.to_handle())?
         } else {
             cx.names.empty_string()
         };
-        set_function_name(cx, closure.into(), name, None);
+        set_function_name(cx, closure.into(), name, None)?;
 
         // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {
             let proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
             let prototype =
-                object_create_with_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, proto)
+                object_create_with_proto::<ObjectValue>(cx, HeapItemKind::OrdinaryObject, proto)?
                     .to_handle();
 
             let desc = PropertyDescriptor::data(closure.into(), true, false, true);
@@ -175,6 +176,8 @@ impl Closure {
             let desc = PropertyDescriptor::data(prototype.into(), true, false, false);
             must!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
         }
+
+        Ok(())
     }
 }
 
@@ -185,9 +188,13 @@ impl Handle<Closure> {
     /// Performs a raw set of the property, overwriting the previous value even though it was not
     /// writable. This will preserve the order of the properties, as the function name was initially
     /// added but defaulted to the empty string.
-    pub fn set_lazy_function_name(&mut self, cx: Context, name: Handle<StringValue>) {
+    pub fn set_lazy_function_name(
+        &mut self,
+        cx: Context,
+        name: Handle<StringValue>,
+    ) -> AllocResult<()> {
         let property = Property::data(name.into(), false, false, true);
-        self.as_object().set_property(cx, cx.names.name(), property);
+        self.as_object().set_property(cx, cx.names.name(), property)
     }
 }
 
@@ -272,9 +279,9 @@ impl BytecodeFunction {
         name: Option<Handle<StringValue>>,
         source_file: Handle<SourceFile>,
         source_map: Handle<ByteArray>,
-    ) -> Handle<BytecodeFunction> {
+    ) -> AllocResult<Handle<BytecodeFunction>> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
-        let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
+        let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::BytecodeFunction));
         set_uninit!(object.constant_table, constant_table.map(|c| *c));
@@ -296,7 +303,7 @@ impl BytecodeFunction {
         set_uninit!(object.rust_runtime_function_id, None);
         object.bytecode.init_from_slice(&bytecode);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn new_rust_runtime_function(
@@ -305,11 +312,11 @@ impl BytecodeFunction {
         realm: Handle<Realm>,
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
-    ) -> Handle<BytecodeFunction> {
+    ) -> AllocResult<Handle<BytecodeFunction>> {
         let function_id = cx.rust_runtime_functions.get_id(builtin_func).unwrap();
 
         let size = Self::calculate_size_in_bytes(0);
-        let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size);
+        let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
         let mut num_registers = 0;
         let mut new_target_index = None;
@@ -340,7 +347,7 @@ impl BytecodeFunction {
         set_uninit!(object.rust_runtime_function_id, Some(function_id));
         object.bytecode.init_from_slice(&[]);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     const BYTECODE_BYTE_OFFSET: usize = field_offset!(BytecodeFunction, bytecode);
@@ -449,7 +456,7 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
     /// Debug print this function only.
     fn debug_format(&self, printer: &mut DebugPrinter) {
         let name = if let Some(name) = self.name {
-            name.to_string()
+            name.to_handle().format().unwrap()
         } else {
             "<anonymous>".to_owned()
         };

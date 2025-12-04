@@ -20,7 +20,7 @@ brimstone_serialized_heap.workspace = true
 criterion.workspace = true
 
 [features]
-default = ["annex_b", "jemalloc"]
+default = ["alloc_error", "annex_b", "jemalloc"]
 # Enable Annex B extensions by default
 annex_b = ["brimstone_core/annex_b"]
 # Run the garbage collector in stress test mode
@@ -31,6 +31,8 @@ handle_stats = ["brimstone_core/handle_stats"]
 jemalloc = ["brimstone_core/jemalloc"]
 # Do not use the jemalloc allocator, overrides the `jemalloc` feature
 no_jemalloc = ["brimstone_core/no_jemalloc"]
+# Return allocation errors instead of panicking
+alloc_error = ["brimstone_core/alloc_error"]
 
 [lints]
 workspace = true

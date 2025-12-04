@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::invoke,
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         function::get_argument,
@@ -30,97 +31,109 @@ pub struct DatePrototype;
 
 impl DatePrototype {
     /// Properties of the Date Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-date-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once DateConstructor has been created
-        object.intrinsic_func(cx, cx.names.get_date(), Self::get_date, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_day(), Self::get_day, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_full_year(), Self::get_full_year, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_hours(), Self::get_hours, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_milliseconds(), Self::get_milliseconds, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_minutes(), Self::get_minutes, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_month(), Self::get_month, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_seconds(), Self::get_seconds, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_time(), Self::get_time, 0, realm);
+        object.intrinsic_func(cx, cx.names.get_date(), Self::get_date, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_day(), Self::get_day, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_full_year(), Self::get_full_year, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_hours(), Self::get_hours, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_milliseconds(), Self::get_milliseconds, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_minutes(), Self::get_minutes, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_month(), Self::get_month, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_seconds(), Self::get_seconds, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_time(), Self::get_time, 0, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.get_timezone_offset(),
             Self::get_timezone_offset,
             0,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.get_utc_date(), Self::get_utc_date, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_utc_day(), Self::get_utc_day, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_utc_full_year(), Self::get_utc_full_year, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_utc_hours(), Self::get_utc_hours, 0, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.get_utc_date(), Self::get_utc_date, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_utc_day(), Self::get_utc_day, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_utc_full_year(),
+            Self::get_utc_full_year,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.get_utc_hours(), Self::get_utc_hours, 0, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.get_utc_milliseconds(),
             Self::get_utc_milliseconds,
             0,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.get_utc_minutes(), Self::get_utc_minutes, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_utc_month(), Self::get_utc_month, 0, realm);
-        object.intrinsic_func(cx, cx.names.get_utc_seconds(), Self::get_utc_seconds, 0, realm);
-        object.intrinsic_func(cx, cx.names.set_date(), Self::set_date, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_full_year(), Self::set_full_year, 3, realm);
-        object.intrinsic_func(cx, cx.names.set_hours(), Self::set_hours, 4, realm);
-        object.intrinsic_func(cx, cx.names.set_milliseconds(), Self::set_milliseconds, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_minutes(), Self::set_minutes, 3, realm);
-        object.intrinsic_func(cx, cx.names.set_month(), Self::set_month, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_seconds(), Self::set_seconds, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_time(), Self::set_time, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_utc_date(), Self::set_utc_date, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_utc_full_year(), Self::set_utc_full_year, 3, realm);
-        object.intrinsic_func(cx, cx.names.set_utc_hours(), Self::set_utc_hours, 4, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.get_utc_minutes(), Self::get_utc_minutes, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_utc_month(), Self::get_utc_month, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.get_utc_seconds(), Self::get_utc_seconds, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.set_date(), Self::set_date, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.set_full_year(), Self::set_full_year, 3, realm)?;
+        object.intrinsic_func(cx, cx.names.set_hours(), Self::set_hours, 4, realm)?;
+        object.intrinsic_func(cx, cx.names.set_milliseconds(), Self::set_milliseconds, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.set_minutes(), Self::set_minutes, 3, realm)?;
+        object.intrinsic_func(cx, cx.names.set_month(), Self::set_month, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_seconds(), Self::set_seconds, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_time(), Self::set_time, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.set_utc_date(), Self::set_utc_date, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_full_year(),
+            Self::set_utc_full_year,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.set_utc_hours(), Self::set_utc_hours, 4, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.set_utc_milliseconds(),
             Self::set_utc_milliseconds,
             1,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.set_utc_minutes(), Self::set_utc_minutes, 3, realm);
-        object.intrinsic_func(cx, cx.names.set_utc_month(), Self::set_utc_month, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_utc_seconds(), Self::set_utc_seconds, 2, realm);
-        object.intrinsic_func(cx, cx.names.to_date_string(), Self::to_date_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_iso_string(), Self::to_iso_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_json(), Self::to_json, 1, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.set_utc_minutes(), Self::set_utc_minutes, 3, realm)?;
+        object.intrinsic_func(cx, cx.names.set_utc_month(), Self::set_utc_month, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_utc_seconds(), Self::set_utc_seconds, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.to_date_string(), Self::to_date_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_iso_string(), Self::to_iso_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_json(), Self::to_json, 1, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_date_string(),
             Self::to_locale_date_string,
             0,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_time_string(),
             Self::to_locale_time_string,
             0,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.to_time_string(), Self::to_time_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_utc_string(), Self::to_utc_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.to_time_string(), Self::to_time_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_utc_string(), Self::to_utc_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_func =
-            BuiltinFunction::create(cx, Self::to_primitive, 1, to_primitive_key, realm, None)
+            BuiltinFunction::create(cx, Self::to_primitive, 1, to_primitive_key, realm, None)?
                 .into();
         object.set_property(
             cx,
             to_primitive_key,
             Property::data(to_primitive_func, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// Additional Properties of the Date.prototype Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-date.prototype-object)
@@ -128,22 +141,23 @@ impl DatePrototype {
         mut date_prototype: Handle<ObjectValue>,
         mut cx: Context,
         realm: Handle<Realm>,
-    ) {
-        let get_year_name = cx.alloc_string("getYear").as_string();
-        let get_year_key = PropertyKey::string_not_array_index(cx, get_year_name).to_handle(cx);
-        date_prototype.intrinsic_func(cx, get_year_key, Self::get_year, 0, realm);
+    ) -> AllocResult<()> {
+        let get_year_name = cx.alloc_string("getYear")?.as_string();
+        let get_year_key = PropertyKey::string_not_array_index_handle(cx, get_year_name)?;
+        date_prototype.intrinsic_func(cx, get_year_key, Self::get_year, 0, realm)?;
 
-        let set_year_name = cx.alloc_string("setYear").as_string();
-        let set_year_key = PropertyKey::string_not_array_index(cx, set_year_name).to_handle(cx);
-        date_prototype.intrinsic_func(cx, set_year_key, Self::set_year, 1, realm);
+        let set_year_name = cx.alloc_string("setYear")?.as_string();
+        let set_year_key = PropertyKey::string_not_array_index_handle(cx, set_year_name)?;
+        date_prototype.intrinsic_func(cx, set_year_key, Self::set_year, 1, realm)?;
 
         // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
-        let to_gmt_string_name = cx.alloc_string("toGMTString").as_string();
-        let to_gmt_string_key =
-            PropertyKey::string_not_array_index(cx, to_gmt_string_name).to_handle(cx);
+        let to_gmt_string_name = cx.alloc_string("toGMTString")?.as_string();
+        let to_gmt_string_key = PropertyKey::string_not_array_index_handle(cx, to_gmt_string_name)?;
         let to_gmt_string_method = must!(get(cx, date_prototype, cx.names.to_utc_string()));
 
-        date_prototype.intrinsic_data_prop(cx, to_gmt_string_key, to_gmt_string_method);
+        date_prototype.intrinsic_data_prop(cx, to_gmt_string_key, to_gmt_string_method)?;
+
+        Ok(())
     }
 
     /// Date.prototype.getDate (https://tc39.es/ecma262/#sec-date.prototype.getdate)
@@ -1241,7 +1255,7 @@ impl DatePrototype {
 
     fn to_date_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date")?.as_value());
         }
 
         let date_value = local_time(date_value);
@@ -1249,7 +1263,7 @@ impl DatePrototype {
         let mut string = String::new();
         date_string(&mut string, date_value);
 
-        Ok(cx.alloc_string(&string).as_value())
+        Ok(cx.alloc_string(&string)?.as_value())
     }
 
     /// Date.prototype.toISOString (https://tc39.es/ecma262/#sec-date.prototype.toisostring)
@@ -1291,7 +1305,7 @@ impl DatePrototype {
             millisecond_from_time(date_value) as i64
         );
 
-        Ok(cx.alloc_string(&string).as_value())
+        Ok(cx.alloc_string(&string)?.as_value())
     }
 
     /// Date.prototype.toJSON (https://tc39.es/ecma262/#sec-date.prototype.tojson)
@@ -1344,7 +1358,7 @@ impl DatePrototype {
             );
         };
 
-        Ok(to_date_string(cx, date_value).as_value())
+        Ok(to_date_string(cx, date_value)?.as_value())
     }
 
     /// Date.prototype.toLocaleTimeString (https://tc39.es/ecma262/#sec-date.prototype.tolocaletimestring)
@@ -1377,7 +1391,7 @@ impl DatePrototype {
             return type_error(cx, "Date.prototype.toString method must be called on Date object");
         };
 
-        Ok(to_date_string(cx, date_value).as_value())
+        Ok(to_date_string(cx, date_value)?.as_value())
     }
 
     /// Date.prototype.toTimeString (https://tc39.es/ecma262/#sec-date.prototype.totimestring)
@@ -1400,7 +1414,7 @@ impl DatePrototype {
 
     fn to_time_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date")?.as_value());
         }
 
         let local_date_value = local_time(date_value);
@@ -1410,7 +1424,7 @@ impl DatePrototype {
         time_string(&mut string, local_date_value);
         time_zone_string(&mut string, date_value);
 
-        Ok(cx.alloc_string(&string).as_value())
+        Ok(cx.alloc_string(&string)?.as_value())
     }
 
     /// Date.prototype.toUTCString (https://tc39.es/ecma262/#sec-date.prototype.toutcstring)
@@ -1429,7 +1443,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date").as_value());
+            return Ok(cx.alloc_string("Invalid Date")?.as_value());
         }
 
         let year = year_from_time(date_value);
@@ -1446,7 +1460,7 @@ impl DatePrototype {
 
         time_string(&mut string, date_value);
 
-        Ok(cx.alloc_string(&string).as_value())
+        Ok(cx.alloc_string(&string)?.as_value())
     }
 
     /// Date.prototype.valueOf (https://tc39.es/ecma262/#sec-date.prototype.valueof)
@@ -1476,7 +1490,7 @@ impl DatePrototype {
 
         let hint = get_argument(cx, arguments, 0);
         if hint.is_string() {
-            let hint = hint.as_string().flatten();
+            let hint = hint.as_string().flatten()?;
             if *hint == cx.names.default.as_string().as_flat()
                 || *hint == cx.names.string_.as_string().as_flat()
             {
@@ -1623,9 +1637,9 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
 }
 
 /// ToDateString (https://tc39.es/ecma262/#sec-todatestring)
-pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
+pub fn to_date_string(mut cx: Context, time_value: f64) -> AllocResult<Handle<StringValue>> {
     if time_value.is_nan() {
-        return cx.alloc_string("Invalid Date").as_string();
+        return Ok(cx.alloc_string("Invalid Date")?.as_string());
     }
 
     let local_time_value = local_time(time_value);
@@ -1637,7 +1651,7 @@ pub fn to_date_string(mut cx: Context, time_value: f64) -> Handle<StringValue> {
     time_string(&mut string, local_time_value);
     time_zone_string(&mut string, time_value);
 
-    cx.alloc_string(&string).as_string()
+    Ok(cx.alloc_string(&string)?.as_string())
 }
 
 #[inline]

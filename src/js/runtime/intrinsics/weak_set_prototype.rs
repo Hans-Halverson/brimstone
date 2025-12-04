@@ -1,5 +1,5 @@
 use crate::runtime::{
-    error::type_error, eval_result::EvalResult, function::get_argument,
+    alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
@@ -10,14 +10,14 @@ pub struct WeakSetPrototype;
 
 impl WeakSetPrototype {
     /// Properties of the WeakSet Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weakset-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once WeakSetConstructor has been created
-        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm);
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
+        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -25,9 +25,9 @@ impl WeakSetPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.weak_set().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// WeakSet.prototype.add (https://tc39.es/ecma262/#sec-weakset.prototype.add)
@@ -47,7 +47,7 @@ impl WeakSetPrototype {
             return type_error(cx, "WeakSet only holds objects and symbols");
         }
 
-        weak_set_object.insert(cx, value);
+        weak_set_object.insert(cx, value)?;
 
         Ok(this_value)
     }
@@ -68,7 +68,7 @@ impl WeakSetPrototype {
         let value = get_argument(cx, arguments, 0);
 
         // May allocate
-        let set_key = ValueCollectionKey::from(value);
+        let set_key = ValueCollectionKey::from(value)?;
 
         let removed_value = weak_set_object.weak_set_data().remove(&set_key);
 
@@ -91,7 +91,7 @@ impl WeakSetPrototype {
         let value = get_argument(cx, arguments, 0);
 
         // May allocate
-        let set_key = ValueCollectionKey::from(value);
+        let set_key = ValueCollectionKey::from(value)?;
 
         let has_value = weak_set_object.weak_set_data().contains(&set_key);
 

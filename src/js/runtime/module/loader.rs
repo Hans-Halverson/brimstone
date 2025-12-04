@@ -1,10 +1,11 @@
 use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
-    must,
+    completion_value, must,
     parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
     runtime::{
         abstract_operations::call_object,
+        alloc_error::AllocResult,
         bytecode::generator::BytecodeProgramGenerator,
         context::ModuleCacheKey,
         error::{syntax_error, syntax_parse_error},
@@ -33,7 +34,7 @@ struct GraphLoader {
 
 impl GraphLoader {
     /// InnerModuleLoading (https://tc39.es/ecma262/#sec-InnerModuleLoading)
-    fn inner_module_loading(&mut self, cx: Context, module: DynModule) {
+    fn inner_module_loading(&mut self, cx: Context, module: DynModule) -> AllocResult<()> {
         if let Some(mut module) = module.as_source_text_module() {
             if module.state() == ModuleState::New && self.visited.insert(module.id()) {
                 module.set_state(ModuleState::Unlinked);
@@ -46,7 +47,7 @@ impl GraphLoader {
                 for i in 0..module_requests.len() {
                     match loaded_modules.as_slice()[i] {
                         Some(loaded_module) => {
-                            self.inner_module_loading(cx, DynModule::from_heap(&loaded_module))
+                            self.inner_module_loading(cx, DynModule::from_heap(&loaded_module))?
                         }
                         None => {
                             let module_request =
@@ -67,12 +68,12 @@ impl GraphLoader {
                                 module,
                                 module_request,
                                 load_result,
-                            );
+                            )?;
                         }
                     }
 
                     if !self.is_loading {
-                        return;
+                        return Ok(());
                     }
                 }
             }
@@ -90,6 +91,8 @@ impl GraphLoader {
                 &[cx.undefined()]
             ));
         }
+
+        Ok(())
     }
 
     /// FinishLoadingImportedModule (https://tc39.es/ecma262/#sec-FinishLoadingImportedModule)
@@ -99,7 +102,7 @@ impl GraphLoader {
         mut referrer: Handle<SourceTextModule>,
         module_request: ModuleRequest,
         module_result: EvalResult<DynModule>,
-    ) {
+    ) -> AllocResult<()> {
         if let Ok(module) = module_result {
             let module_index = referrer
                 .lookup_module_request_index(&module_request.to_heap())
@@ -109,29 +112,30 @@ impl GraphLoader {
             }
         }
 
-        self.continue_module_loading(cx, module_result);
+        self.continue_module_loading(cx, module_result)
     }
 
     /// ContinueModuleLoading (https://tc39.es/ecma262/#sec-ContinueModuleLoading)
-    fn continue_module_loading(&mut self, cx: Context, module_result: EvalResult<DynModule>) {
+    fn continue_module_loading(
+        &mut self,
+        cx: Context,
+        module_result: EvalResult<DynModule>,
+    ) -> AllocResult<()> {
         if !self.is_loading {
-            return;
+            return Ok(());
         }
 
-        match module_result {
+        match completion_value!(module_result) {
             Ok(module) => {
-                self.inner_module_loading(cx, module);
+                self.inner_module_loading(cx, module)?;
             }
             Err(error) => {
                 self.is_loading = false;
-                must!(call_object(
-                    cx,
-                    self.promise_capability.reject(),
-                    cx.undefined(),
-                    &[error.value()]
-                ));
+                must!(call_object(cx, self.promise_capability.reject(), cx.undefined(), &[error]));
             }
         }
+
+        Ok(())
     }
 }
 
@@ -139,7 +143,7 @@ impl GraphLoader {
 pub fn load_requested_modules(
     cx: Context,
     module: Handle<SourceTextModule>,
-) -> Handle<PromiseObject> {
+) -> AllocResult<Handle<PromiseObject>> {
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
     let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
     let realm = module.program_function_ptr().realm();
@@ -152,10 +156,10 @@ pub fn load_requested_modules(
         realm,
     };
 
-    graph_loader.inner_module_loading(cx, module.as_dyn_module());
+    graph_loader.inner_module_loading(cx, module.as_dyn_module())?;
 
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
-    capability.promise().cast::<PromiseObject>()
+    Ok(capability.promise().cast::<PromiseObject>())
 }
 
 /// HostLoadImportedModule (https://tc39.es/ecma262/#sec-HostLoadImportedModule)
@@ -197,12 +201,12 @@ pub fn host_load_imported_module(
     if let Some(attributes) = &module_request.attributes {
         if attributes.has_attribute_with_value("type", "json") {
             let json_value = parse_json_file_at_path(cx, new_module_path.as_path())?;
-            let json_module = SyntheticModule::new_default_export(cx, realm, json_value);
+            let json_module = SyntheticModule::new_default_export(cx, realm, json_value)?;
 
             // Cache the JSON module
             let module_cache_key =
                 ModuleCacheKey::new(new_module_path_string, module_request.attributes);
-            cx.insert_module(module_cache_key, json_module.as_dyn_module());
+            cx.insert_module(module_cache_key, json_module.as_dyn_module())?;
 
             return Ok(json_module.as_dyn_module());
         }
@@ -245,7 +249,7 @@ pub fn host_load_imported_module(
 
     // Cache the module
     let module_cache_key = ModuleCacheKey::new(new_module_path_string, module_request.attributes);
-    cx.insert_module(module_cache_key, module.as_dyn_module());
+    cx.insert_module(module_cache_key, module.as_dyn_module())?;
 
     Ok(module.as_dyn_module())
 }
@@ -253,7 +257,7 @@ pub fn host_load_imported_module(
 fn parse_json_file_at_path(mut cx: Context, path: &Path) -> EvalResult<Handle<Value>> {
     // Read the contents of the file into the heap
     let file_contents = match Source::new_from_file(path.to_str().unwrap()) {
-        Ok(source) => cx.alloc_wtf8_string(&source.contents),
+        Ok(source) => cx.alloc_wtf8_string(&source.contents)?,
         Err(error) => return syntax_parse_error(cx, &error),
     };
 

@@ -24,6 +24,7 @@ use crate::{
     },
     runtime::{
         abstract_operations::{define_property_or_throw, set},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{syntax_parse_error, type_error},
         eval_result::EvalResult,
@@ -70,7 +71,7 @@ impl RegExpObject {
 
         let object = object.to_handle();
 
-        Self::define_last_index_property(cx, object);
+        Self::define_last_index_property(cx, object)?;
 
         Ok(object)
     }
@@ -78,7 +79,7 @@ impl RegExpObject {
     pub fn new_from_compiled_regexp(
         cx: Context,
         compiled_regexp: Handle<CompiledRegExpObject>,
-    ) -> Handle<RegExpObject> {
+    ) -> EvalResult<Handle<RegExpObject>> {
         let regexp_constructor = cx.get_intrinsic(Intrinsic::RegExpConstructor);
         let mut object = must!(object_create_from_constructor::<RegExpObject>(
             cx,
@@ -91,16 +92,19 @@ impl RegExpObject {
 
         let object = object.to_handle();
 
-        Self::define_last_index_property(cx, object);
+        Self::define_last_index_property(cx, object)?;
 
         // Initialize last index property
         let zero_value = cx.zero();
         must!(set(cx, object.into(), cx.names.last_index(), zero_value, true));
 
-        object
+        Ok(object)
     }
 
-    fn define_last_index_property(cx: Context, regexp_object: Handle<RegExpObject>) {
+    fn define_last_index_property(
+        cx: Context,
+        regexp_object: Handle<RegExpObject>,
+    ) -> AllocResult<()> {
         let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
         must!(define_property_or_throw(
             cx,
@@ -108,6 +112,8 @@ impl RegExpObject {
             cx.names.last_index(),
             last_index_desc
         ));
+
+        Ok(())
     }
 
     #[inline]
@@ -130,7 +136,7 @@ pub struct RegExpConstructor;
 
 impl RegExpConstructor {
     /// Properties of the RegExp Constructor (https://tc39.es/ecma262/#sec-properties-of-the-regexp-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -138,21 +144,21 @@ impl RegExpConstructor {
             cx.names.regexp(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.escape(), Self::escape, 1, realm);
+        func.intrinsic_func(cx, cx.names.escape(), Self::escape, 1, realm)?;
 
         // get RegExp [ @@species ] (https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// RegExp (https://tc39.es/ecma262/#sec-regexp-pattern-flags)
@@ -174,7 +180,7 @@ impl RegExpConstructor {
                     let pattern_constructor =
                         get(cx, pattern_arg.as_object(), cx.names.constructor())?;
 
-                    if same_value(new_target.into(), pattern_constructor) {
+                    if same_value(new_target.into(), pattern_constructor)? {
                         return Ok(pattern_arg);
                     }
                 }
@@ -228,7 +234,7 @@ impl RegExpConstructor {
 
         let mut escaped = Wtf8String::new();
 
-        for code_point in string.iter_code_points() {
+        for code_point in string.iter_code_points()? {
             // NOTE: Escaping a leading digit ensures that output corresponds with pattern text
             // which may be used after a \0 character escape or a DecimalEscape such as \1 and still
             // match S rather than be interpreted as an extension of the preceding escape sequence.
@@ -275,7 +281,7 @@ impl RegExpConstructor {
             })
         }
 
-        Ok(cx.alloc_wtf8_string(&escaped).as_value())
+        Ok(cx.alloc_wtf8_string(&escaped)?.as_value())
     }
 }
 
@@ -340,9 +346,9 @@ pub fn regexp_init(
 
             let alloc = Bump::new();
             let regexp = parse_pattern(cx, pattern_string, flags, &alloc)?;
-            let source = escape_pattern_string(cx, pattern_string);
+            let source = escape_pattern_string(cx, pattern_string)?;
 
-            let compiled_regexp = compile_regexp(cx, &regexp, source);
+            let compiled_regexp = compile_regexp(cx, &regexp, source)?;
 
             regexp_object.compiled_regexp = *compiled_regexp;
         }
@@ -371,7 +377,7 @@ fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<Reg
         }
     }
 
-    let flat_string = flags_string.flatten();
+    let flat_string = flags_string.flatten()?;
     match flat_string.width() {
         StringWidth::OneByte => {
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
@@ -405,7 +411,7 @@ fn parse_pattern(
         }
     }
 
-    let flat_string = pattern_string.flatten();
+    let flat_string = pattern_string.flatten()?;
     match flat_string.width() {
         StringWidth::OneByte => {
             let create_lexer_stream =
@@ -429,23 +435,23 @@ fn parse_pattern(
 fn escape_pattern_string(
     mut cx: Context,
     pattern_string: Handle<StringValue>,
-) -> Handle<StringValue> {
+) -> AllocResult<Handle<StringValue>> {
     // Special case the empty pattern string - equivalent to an empty non-capturing group
     if pattern_string.is_empty() {
-        return cx.alloc_string("(?:)").as_string();
+        return Ok(cx.alloc_string("(?:)")?.as_string());
     }
 
     // Only need to escape line terminators and forward slash
     let neeeds_escape = pattern_string
-        .iter_code_units()
+        .iter_code_units()?
         .any(|code_unit| code_unit == '/' as u16 || is_newline(code_unit as u32));
     if !neeeds_escape {
-        return pattern_string;
+        return Ok(pattern_string);
     }
 
     let mut escaped_string = Wtf8String::new();
 
-    for code_unit in pattern_string.iter_code_units() {
+    for code_unit in pattern_string.iter_code_units()? {
         if code_unit == '/' as u16 {
             escaped_string.push_str("\\/");
         } else if code_unit == '\n' as u16 {
@@ -461,7 +467,7 @@ fn escape_pattern_string(
         }
     }
 
-    cx.alloc_wtf8_string(&escaped_string).as_string()
+    Ok(cx.alloc_wtf8_string(&escaped_string)?.as_string())
 }
 
 impl HeapItem for HeapPtr<RegExpObject> {

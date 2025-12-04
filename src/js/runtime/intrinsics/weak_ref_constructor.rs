@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
@@ -69,7 +70,7 @@ pub struct WeakRefConstructor;
 
 impl WeakRefConstructor {
     /// Properties of the WeakRef Constructor (https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -77,15 +78,15 @@ impl WeakRefConstructor {
             cx.names.weak_ref(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::WeakRefPrototype).into(),
-        );
+        )?;
 
-        func
+        Ok(func)
     }
 
     /// WeakRef (https://tc39.es/ecma262/#sec-weak-ref-target)

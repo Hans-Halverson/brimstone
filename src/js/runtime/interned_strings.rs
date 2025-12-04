@@ -3,6 +3,7 @@ use hashbrown::HashMap;
 
 use crate::{
     common::wtf_8::{Wtf8Str, Wtf8String},
+    runtime::alloc_error::AllocResult,
     set_uninit,
 };
 
@@ -27,12 +28,14 @@ pub struct InternedStrings {
 type InternedStringsSet = BsHashSet<HeapPtr<FlatString>>;
 
 impl InternedStrings {
-    pub fn init(mut cx: Context) {
-        set_uninit!(
-            cx.interned_strings.strings,
-            InternedStringsSet::new_initial(cx, HeapItemKind::InternedStringsSet)
-        );
+    pub fn init(mut cx: Context) -> AllocResult<()> {
+        let interned_strings =
+            InternedStringsSet::new_initial(cx, HeapItemKind::InternedStringsSet)?;
+
+        set_uninit!(cx.interned_strings.strings, interned_strings);
         set_uninit!(cx.interned_strings.generator_cache, HashMap::new());
+
+        Ok(())
     }
 
     pub fn uninit() -> InternedStrings {
@@ -51,14 +54,17 @@ impl InternedStrings {
         &mut self.generator_cache
     }
 
-    pub fn get(mut cx: Context, mut string: HeapPtr<FlatString>) -> HeapPtr<FlatString> {
+    pub fn get(
+        mut cx: Context,
+        mut string: HeapPtr<FlatString>,
+    ) -> AllocResult<HeapPtr<FlatString>> {
         // Fast path if string is already interned
         if string.is_interned() {
-            return string;
+            return Ok(string);
         }
 
         match cx.interned_strings.strings.get(&string) {
-            Some(interned_string) => *interned_string,
+            Some(interned_string) => Ok(*interned_string),
             None => {
                 string.intern();
 
@@ -67,47 +73,50 @@ impl InternedStrings {
 
                 cx.interned_strings
                     .strings_field()
-                    .maybe_grow_for_insertion(cx)
+                    .maybe_grow_for_insertion(cx)?
                     .insert_without_growing(*string);
 
-                *string
+                Ok(*string)
             }
         }
     }
 
-    pub fn alloc_wtf8_str(mut cx: Context, str: &Wtf8Str) -> Handle<FlatString> {
-        let string_value = cx.alloc_wtf8_str_ptr(str);
-        InternedStrings::get(cx, string_value).to_handle()
+    pub fn alloc_wtf8_str(mut cx: Context, str: &Wtf8Str) -> AllocResult<Handle<FlatString>> {
+        let string_value = cx.alloc_wtf8_str_ptr(str)?;
+        Ok(InternedStrings::get(cx, string_value)?.to_handle())
     }
 
-    pub fn get_generator_cache_str(mut cx: Context, str: &str) -> Handle<StringValue> {
+    pub fn get_generator_cache_str(mut cx: Context, str: &str) -> AllocResult<Handle<StringValue>> {
         match cx.interned_strings.generator_cache.get(str.as_bytes()) {
-            Some(interned_string) => interned_string.as_string().to_handle(),
+            Some(interned_string) => Ok(interned_string.as_string().to_handle()),
             None => {
-                let string_value = cx.alloc_string_ptr(str);
-                let interned_string = InternedStrings::get(cx, string_value).to_handle();
+                let string_value = cx.alloc_string_ptr(str)?;
+                let interned_string = InternedStrings::get(cx, string_value)?.to_handle();
 
                 cx.interned_strings
                     .generator_cache
                     .insert(Wtf8String::from_str(str), *interned_string);
 
-                interned_string.as_string()
+                Ok(interned_string.as_string())
             }
         }
     }
 
-    pub fn get_generator_cache_wtf8_str(mut cx: Context, str: &Wtf8Str) -> Handle<StringValue> {
+    pub fn get_generator_cache_wtf8_str(
+        mut cx: Context,
+        str: &Wtf8Str,
+    ) -> AllocResult<Handle<StringValue>> {
         match cx.interned_strings.generator_cache.get(str) {
-            Some(interned_string) => interned_string.as_string().to_handle(),
+            Some(interned_string) => Ok(interned_string.as_string().to_handle()),
             None => {
-                let string_value = cx.alloc_wtf8_str_ptr(str);
-                let interned_string = InternedStrings::get(cx, string_value).to_handle();
+                let string_value = cx.alloc_wtf8_str_ptr(str)?;
+                let interned_string = InternedStrings::get(cx, string_value)?.to_handle();
 
                 cx.interned_strings
                     .generator_cache
                     .insert(str.to_owned_in(Global), *interned_string);
 
-                interned_string.as_string()
+                Ok(interned_string.as_string())
             }
         }
     }
@@ -126,7 +135,7 @@ impl InternedStrings {
 pub struct InternedStringsSetField;
 
 impl BsHashSetField<HeapPtr<FlatString>> for InternedStringsSetField {
-    fn new(cx: Context, capacity: usize) -> HeapPtr<InternedStringsSet> {
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<InternedStringsSet>> {
         InternedStringsSet::new(cx, HeapItemKind::InternedStringsSet, capacity)
     }
 

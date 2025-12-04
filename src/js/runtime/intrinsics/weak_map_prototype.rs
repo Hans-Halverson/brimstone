@@ -1,5 +1,5 @@
 use crate::runtime::{
-    error::type_error, eval_result::EvalResult, function::get_argument,
+    alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
@@ -10,15 +10,15 @@ pub struct WeakMapPrototype;
 
 impl WeakMapPrototype {
     /// Properties of the WeakMap Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weakmap-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once WeakMapConstructor has been created
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm);
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm);
+        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm)?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -26,9 +26,9 @@ impl WeakMapPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.weak_map().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// WeakMap.prototype.delete (https://tc39.es/ecma262/#sec-weakmap.prototype.delete)
@@ -47,7 +47,7 @@ impl WeakMapPrototype {
         let value = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(value);
+        let map_key = ValueCollectionKey::from(value)?;
 
         let removed_value = weak_map_object.weak_map_data().remove(&map_key);
 
@@ -70,7 +70,7 @@ impl WeakMapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(key);
+        let map_key = ValueCollectionKey::from(key)?;
 
         let weak_map_data = weak_map_object.weak_map_data();
         let value_opt = weak_map_data.get(&map_key);
@@ -97,7 +97,7 @@ impl WeakMapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(key);
+        let map_key = ValueCollectionKey::from(key)?;
 
         let has_key = weak_map_object.weak_map_data().contains_key(&map_key);
 
@@ -123,7 +123,7 @@ impl WeakMapPrototype {
             return type_error(cx, "WeakMap keys must be objects or symbols");
         }
 
-        weak_map_object.insert(cx, key, value);
+        weak_map_object.insert(cx, key, value)?;
 
         Ok(this_value)
     }

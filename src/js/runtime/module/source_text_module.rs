@@ -5,6 +5,7 @@ use indexmap_allocator_api::IndexSet;
 use crate::{
     field_offset, handle_scope,
     runtime::{
+        alloc_error::AllocResult,
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
@@ -118,12 +119,12 @@ impl SourceTextModule {
         named_re_exports: &[NamedReExportEntry],
         direct_re_exports: &[DirectReExportEntry],
         has_top_level_await: bool,
-    ) -> Handle<SourceTextModule> {
+    ) -> AllocResult<Handle<SourceTextModule>> {
         // First create arrays for requested and loaded modules. Requested modules are initialized
         // from arguments, loaded modules are initialized to None.
         let num_module_requests = requested_modules.len();
         let mut heap_requested_modules =
-            BsArray::new_uninit(cx, HeapItemKind::ModuleRequestArray, num_module_requests)
+            BsArray::new_uninit(cx, HeapItemKind::ModuleRequestArray, num_module_requests)?
                 .to_handle();
         for (dst, src) in heap_requested_modules
             .as_mut_slice()
@@ -134,14 +135,14 @@ impl SourceTextModule {
         }
 
         let loaded_modules =
-            BsArray::new(cx, HeapItemKind::ModuleOptionArray, requested_modules.len(), None)
+            BsArray::new(cx, HeapItemKind::ModuleOptionArray, requested_modules.len(), None)?
                 .to_handle();
 
         // Then create the uninitialized module object
         let num_entries =
             imports.len() + local_exports.len() + named_re_exports.len() + direct_re_exports.len();
         let size = Self::calculate_size_in_bytes(num_entries);
-        let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size);
+        let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
@@ -185,7 +186,7 @@ impl SourceTextModule {
             i += 1;
         }
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     const ENTRIES_OFFSET: usize = field_offset!(SourceTextModule, entries);
@@ -419,33 +420,36 @@ impl Handle<SourceTextModule> {
         cx: Context,
         export_name: Handle<PropertyKey>,
         boxed_value_or_module: Handle<AnyHeapItem>,
-    ) -> bool {
-        self.exports_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(*export_name, *boxed_value_or_module)
+    ) -> AllocResult<bool> {
+        Ok(self
+            .exports_field()
+            .maybe_grow_for_insertion(cx)?
+            .insert_without_growing(*export_name, *boxed_value_or_module))
     }
 
     pub fn push_async_parent_module(
         &mut self,
         cx: Context,
         parent_module: Handle<SourceTextModule>,
-    ) {
+    ) -> AllocResult<()> {
         // Lazily initialize the async parent modules vec
         if self.async_parent_modules.is_none() {
-            let async_parent_modules = BsVec::new(cx, HeapItemKind::ValueVec, 4);
+            let async_parent_modules = BsVec::new(cx, HeapItemKind::ValueVec, 4)?;
             self.async_parent_modules = Some(async_parent_modules);
         }
 
         self.async_parent_modules_field()
-            .maybe_grow_for_push(cx)
+            .maybe_grow_for_push(cx)?
             .push_without_growing(*parent_module);
+
+        Ok(())
     }
 
     /// Returns the `import.meta` object for this module. Lazily creates and caches the object when
     /// first accessed.
-    pub fn get_import_meta_object(&mut self, cx: Context) -> HeapPtr<ObjectValue> {
+    pub fn get_import_meta_object(&mut self, cx: Context) -> AllocResult<HeapPtr<ObjectValue>> {
         if let Some(import_meta) = self.import_meta {
-            return import_meta;
+            return Ok(import_meta);
         }
 
         // No properties are added to the `import.meta` object - this is up to the implementation
@@ -453,11 +457,11 @@ impl Handle<SourceTextModule> {
             cx,
             HeapItemKind::OrdinaryObject,
             None,
-        );
+        )?;
 
         self.import_meta = Some(object);
 
-        object
+        Ok(object)
     }
 }
 
@@ -470,7 +474,7 @@ impl Module for Handle<SourceTextModule> {
         Some(*self)
     }
 
-    fn load_requested_modules(&self, cx: Context) -> Handle<PromiseObject> {
+    fn load_requested_modules(&self, cx: Context) -> AllocResult<Handle<PromiseObject>> {
         load_requested_modules(cx, *self)
     }
 
@@ -519,12 +523,12 @@ impl Module for Handle<SourceTextModule> {
         cx: Context,
         export_name: HeapPtr<FlatString>,
         resolve_set: &mut Vec<(HeapPtr<FlatString>, HeapPtr<SourceTextModule>)>,
-    ) -> ResolveExportResult {
+    ) -> AllocResult<ResolveExportResult> {
         let is_circular_import = resolve_set
             .iter()
             .any(|(name, module)| self.ptr_eq(module) && name == &export_name);
         if is_circular_import {
-            return ResolveExportResult::Circular;
+            return Ok(ResolveExportResult::Circular);
         }
 
         resolve_set.push((export_name, **self));
@@ -535,10 +539,10 @@ impl Module for Handle<SourceTextModule> {
                 if entry.export_name == export_name {
                     let boxed_value = self.module_scope.get_module_slot(entry.slot_index);
 
-                    return ResolveExportResult::Resolved {
+                    return Ok(ResolveExportResult::Resolved {
                         name: ResolveExportName::Local { name: entry.local_name, boxed_value },
                         module: self.to_handle().as_dyn_module(),
-                    };
+                    });
                 }
             }
         }
@@ -554,10 +558,10 @@ impl Module for Handle<SourceTextModule> {
                         return imported_module.resolve_export(cx, import_name, resolve_set);
                     } else {
                         // Otherwise this is the named re-export of a namespace object
-                        return ResolveExportResult::Resolved {
+                        return Ok(ResolveExportResult::Resolved {
                             name: ResolveExportName::Namespace,
                             module: imported_module,
-                        };
+                        });
                     }
                 }
             }
@@ -565,7 +569,7 @@ impl Module for Handle<SourceTextModule> {
 
         // A default export was not explicitly defined by this module
         if export_name == cx.names.default.as_string().as_flat() {
-            return ResolveExportResult::None;
+            return Ok(ResolveExportResult::None);
         }
 
         // Star resolution is lazily initialized the first time the export name is resolved
@@ -574,10 +578,10 @@ impl Module for Handle<SourceTextModule> {
         for entry in self.entries.as_slice() {
             if let ModuleEntry::DirectReExport(entry) = entry {
                 let imported_module = self.get_imported_module(&entry.module_request);
-                let resolution = imported_module.resolve_export(cx, export_name, resolve_set);
+                let resolution = imported_module.resolve_export(cx, export_name, resolve_set)?;
 
                 match resolution {
-                    ResolveExportResult::Ambiguous => return ResolveExportResult::Ambiguous,
+                    ResolveExportResult::Ambiguous => return Ok(ResolveExportResult::Ambiguous),
                     ResolveExportResult::Resolved {
                         module: resolution_module,
                         name: resolution_name,
@@ -593,7 +597,7 @@ impl Module for Handle<SourceTextModule> {
                         {
                             // Check that the same module is resolved to
                             if !resolution_module.ptr_eq(&star_resolution_module) {
-                                return ResolveExportResult::Ambiguous;
+                                return Ok(ResolveExportResult::Ambiguous);
                             }
 
                             // Check that the same name is resolved to within that module
@@ -609,7 +613,7 @@ impl Module for Handle<SourceTextModule> {
                             };
 
                             if !same_name {
-                                return ResolveExportResult::Ambiguous;
+                                return Ok(ResolveExportResult::Ambiguous);
                             }
                         } else {
                             // Star resolution is lazily initialized on the first resolution
@@ -621,14 +625,14 @@ impl Module for Handle<SourceTextModule> {
             }
         }
 
-        star_resolution
+        Ok(star_resolution)
     }
 
     fn link(&self, cx: Context) -> EvalResult<()> {
         link(cx, *self)
     }
 
-    fn evaluate(&self, cx: Context) -> Handle<PromiseObject> {
+    fn evaluate(&self, cx: Context) -> AllocResult<Handle<PromiseObject>> {
         module_evaluate(cx, *self)
     }
 
@@ -636,14 +640,14 @@ impl Module for Handle<SourceTextModule> {
     ///
     /// Returns the namespace object used when this module is namespace imported. Lazily creates the
     /// cached namespace object and exports map.
-    fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject> {
+    fn get_namespace_object(&mut self, cx: Context) -> AllocResult<HeapPtr<ModuleNamespaceObject>> {
         if let Some(namespace_object) = self.namespace_object {
-            return namespace_object;
+            return Ok(namespace_object);
         }
 
         handle_scope!(cx, {
             // Lazily initialize the exports map
-            self.exports = Some(ExportMap::new(cx, HeapItemKind::ExportMap, 4));
+            self.exports = Some(ExportMap::new(cx, HeapItemKind::ExportMap, 4)?);
 
             let mut exported_names = HashSet::new();
             self.get_exported_names(cx, &mut exported_names, &mut HashSet::new());
@@ -654,31 +658,33 @@ impl Module for Handle<SourceTextModule> {
 
             for export_name in exported_names {
                 // First convert the export name to a PropertyKey
-                key_handle.replace(PropertyKey::string(cx, export_name.as_string()));
+                key_handle.replace(PropertyKey::string(cx, export_name.as_string())?);
 
-                let result = self.resolve_export(cx, *export_name, &mut vec![]);
+                let result = self.resolve_export(cx, *export_name, &mut vec![])?;
 
                 // Ignore unresolved exports, this will lead to a linker error later
                 if let ResolveExportResult::Resolved { name, module } = result {
                     match name {
                         ResolveExportName::Local { boxed_value, .. } => {
                             boxed_value_or_module_handle.replace(boxed_value.as_heap_item());
-                            self.insert_export(cx, key_handle, boxed_value_or_module_handle);
+                            self.insert_export(cx, key_handle, boxed_value_or_module_handle)?;
                         }
                         ResolveExportName::Namespace => {
                             boxed_value_or_module_handle.replace(*module.as_heap_item());
-                            self.insert_export(cx, key_handle, boxed_value_or_module_handle);
+                            self.insert_export(cx, key_handle, boxed_value_or_module_handle)?;
                         }
                     }
                 }
             }
-        });
+
+            Ok(())
+        })?;
 
         // Create and cache the namespace object for this module
-        let namespace_object = ModuleNamespaceObject::new(cx, self.as_dyn_module());
+        let namespace_object = ModuleNamespaceObject::new(cx, self.as_dyn_module())?;
         self.namespace_object = Some(namespace_object);
 
-        namespace_object
+        Ok(namespace_object)
     }
 }
 
@@ -951,7 +957,7 @@ pub fn module_option_array_visit_pointers(
 pub struct ExportMapField(Handle<SourceTextModule>);
 
 impl BsHashMapField<PropertyKey, HeapPtr<AnyHeapItem>> for ExportMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ExportMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ExportMap>> {
         ExportMap::new(cx, HeapItemKind::ExportMap, capacity)
     }
 
@@ -984,7 +990,7 @@ type AsyncParentModulesVec = BsVec<HeapPtr<SourceTextModule>>;
 struct AsyncParentModulesField(Handle<SourceTextModule>);
 
 impl BsVecField<HeapPtr<SourceTextModule>> for AsyncParentModulesField {
-    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<AsyncParentModulesVec> {
+    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<AsyncParentModulesVec>> {
         BsVec::new(cx, HeapItemKind::ValueVec, capacity)
     }
 

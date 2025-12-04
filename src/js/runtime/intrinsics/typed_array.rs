@@ -9,6 +9,7 @@ use crate::{
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
     runtime::{
         abstract_operations::{get, get_method, length_of_array_like, set},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -80,7 +81,7 @@ pub trait TypedArray {
         cx: Context,
         array_buffer: HeapPtr<ArrayBufferObject>,
         byte_index: usize,
-    ) -> Handle<Value>;
+    ) -> AllocResult<Handle<Value>>;
 
     /// Write the value at a particular byte index. Only valid to use on a value that will not
     /// invoke user code when converted to an array element (such as values read directly from
@@ -160,8 +161,8 @@ pub fn to_int8_element(cx: Context, value: Handle<Value>) -> EvalResult<i8> {
 }
 
 #[inline]
-pub fn from_int8_element(cx: Context, element: i8) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_int8_element(cx: Context, element: i8) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -181,8 +182,8 @@ pub fn to_uint8_element(cx: Context, value: Handle<Value>) -> EvalResult<u8> {
 }
 
 #[inline]
-pub fn from_uint8_element(cx: Context, element: u8) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_uint8_element(cx: Context, element: u8) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -202,8 +203,8 @@ pub fn to_uint8_clamped_element(cx: Context, value: Handle<Value>) -> EvalResult
 }
 
 #[inline]
-pub fn from_uint8_clamped_element(cx: Context, element: u8) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_uint8_clamped_element(cx: Context, element: u8) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -223,8 +224,8 @@ pub fn to_int16_element(cx: Context, value: Handle<Value>) -> EvalResult<i16> {
 }
 
 #[inline]
-pub fn from_int16_element(cx: Context, element: i16) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_int16_element(cx: Context, element: i16) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -244,8 +245,8 @@ pub fn to_uint16_element(cx: Context, value: Handle<Value>) -> EvalResult<u16> {
 }
 
 #[inline]
-pub fn from_uint16_element(cx: Context, element: u16) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_uint16_element(cx: Context, element: u16) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -265,8 +266,8 @@ pub fn to_int32_element(cx: Context, value: Handle<Value>) -> EvalResult<i32> {
 }
 
 #[inline]
-pub fn from_int32_element(cx: Context, element: i32) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_int32_element(cx: Context, element: i32) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -286,8 +287,8 @@ pub fn to_uint32_element(cx: Context, value: Handle<Value>) -> EvalResult<u32> {
 }
 
 #[inline]
-pub fn from_uint32_element(cx: Context, element: u32) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_uint32_element(cx: Context, element: u32) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -316,9 +317,9 @@ pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64
 }
 
 #[inline]
-pub fn from_big_int64_element(cx: Context, element: i64) -> Handle<Value> {
+pub fn from_big_int64_element(cx: Context, element: i64) -> AllocResult<Handle<Value>> {
     let bigint = BigInt::from(element);
-    BigIntValue::new(cx, bigint).into()
+    Ok(BigIntValue::new(cx, bigint)?.into())
 }
 
 create_typed_array!(
@@ -347,9 +348,9 @@ pub fn to_big_uint64_element(cx: Context, value: Handle<Value>) -> EvalResult<u6
 }
 
 #[inline]
-pub fn from_big_uint64_element(cx: Context, element: u64) -> Handle<Value> {
+pub fn from_big_uint64_element(cx: Context, element: u64) -> AllocResult<Handle<Value>> {
     let bigint = BigInt::from(element);
-    BigIntValue::new(cx, bigint).into()
+    Ok(BigIntValue::new(cx, bigint)?.into())
 }
 
 create_typed_array!(
@@ -370,8 +371,8 @@ pub fn to_float16_element(cx: Context, value: Handle<Value>) -> EvalResult<f16> 
 }
 
 #[inline]
-pub fn from_float16_element(cx: Context, element: f16) -> Handle<Value> {
-    Value::from(element.to_f64()).to_handle(cx)
+pub fn from_float16_element(cx: Context, element: f16) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element.to_f64()).to_handle(cx))
 }
 
 create_typed_array!(
@@ -392,8 +393,8 @@ pub fn to_float32_element(cx: Context, value: Handle<Value>) -> EvalResult<f32> 
 }
 
 #[inline]
-pub fn from_float32_element(cx: Context, element: f32) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_float32_element(cx: Context, element: f32) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(
@@ -414,8 +415,8 @@ pub fn to_float64_element(cx: Context, value: Handle<Value>) -> EvalResult<f64> 
 }
 
 #[inline]
-pub fn from_float64_element(cx: Context, element: f64) -> Handle<Value> {
-    Value::from(element).to_handle(cx)
+pub fn from_float64_element(cx: Context, element: f64) -> AllocResult<Handle<Value>> {
+    Ok(Value::from(element).to_handle(cx))
 }
 
 create_typed_array!(

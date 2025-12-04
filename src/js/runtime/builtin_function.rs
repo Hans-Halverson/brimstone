@@ -1,4 +1,4 @@
-use crate::runtime::bytecode::function::Closure;
+use crate::runtime::{alloc_error::AllocResult, bytecode::function::Closure};
 
 use super::{
     bytecode::function::BytecodeFunction,
@@ -22,8 +22,8 @@ impl BuiltinFunction {
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
         prefix: Option<&str>,
-    ) -> Handle<ObjectValue> {
-        Self::create_builtin_function(
+    ) -> AllocResult<Handle<ObjectValue>> {
+        Ok(Self::create_builtin_function(
             cx,
             builtin_func,
             length,
@@ -33,8 +33,8 @@ impl BuiltinFunction {
             Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),
             prefix,
             /* is_constructor */ false,
-        )
-        .into()
+        )?
+        .as_object())
     }
 
     fn create_builtin_function(
@@ -46,7 +46,7 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
         prefix: Option<&str>,
         is_constructor: bool,
-    ) -> Handle<Closure> {
+    ) -> AllocResult<Handle<Closure>> {
         let func = Self::create_builtin_function_without_properties(
             cx,
             builtin_func,
@@ -54,10 +54,10 @@ impl BuiltinFunction {
             realm,
             prototype,
             is_constructor,
-        );
-        Self::install_common_properties(cx, func.into(), length, name, prefix);
+        )?;
+        Self::install_common_properties(cx, func.into(), length, name, prefix)?;
 
-        func
+        Ok(func)
     }
 
     fn install_common_properties(
@@ -66,9 +66,11 @@ impl BuiltinFunction {
         length: u32,
         name: Handle<PropertyKey>,
         prefix: Option<&str>,
-    ) {
-        set_function_length(cx, func, length);
-        set_function_name(cx, func, name, prefix);
+    ) -> AllocResult<()> {
+        set_function_length(cx, func, length)?;
+        set_function_name(cx, func, name, prefix)?;
+
+        Ok(())
     }
 
     /// Create a function with the given internal slots but without installing the `length` and
@@ -82,15 +84,17 @@ impl BuiltinFunction {
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
-    ) -> Handle<Closure> {
-        let name = name.map(|name| build_function_name(cx, name, None));
+    ) -> AllocResult<Handle<Closure>> {
+        let name = name
+            .map(|name| build_function_name(cx, name, None))
+            .transpose()?;
         let bytecode_function = BytecodeFunction::new_rust_runtime_function(
             cx,
             builtin_func,
             realm,
             is_constructor,
             name,
-        );
+        )?;
 
         Closure::new_builtin(cx, bytecode_function, realm.default_global_scope(), prototype)
     }
@@ -103,8 +107,8 @@ impl BuiltinFunction {
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
         prototype: Intrinsic,
-    ) -> Handle<ObjectValue> {
-        Self::create_builtin_function(
+    ) -> AllocResult<Handle<ObjectValue>> {
+        Ok(Self::create_builtin_function(
             cx,
             builtin_func,
             length,
@@ -113,7 +117,7 @@ impl BuiltinFunction {
             Some(realm.get_intrinsic(prototype)),
             None,
             /* is_constructor */ true,
-        )
-        .into()
+        )?
+        .as_object())
     }
 }

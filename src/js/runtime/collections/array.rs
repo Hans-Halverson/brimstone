@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr, Value,
@@ -20,36 +21,49 @@ pub struct BsArray<T> {
 const ARRAY_BYTE_OFFSITE: usize = field_offset!(BsArray<u8>, array);
 
 impl<T: Clone> BsArray<T> {
-    pub fn new(cx: Context, kind: HeapItemKind, length: usize, initial: T) -> HeapPtr<Self> {
+    pub fn new(
+        cx: Context,
+        kind: HeapItemKind,
+        length: usize,
+        initial: T,
+    ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
         array.array.init_with(length, initial);
 
-        array
+        Ok(array)
     }
 
-    pub fn new_from_slice(cx: Context, kind: HeapItemKind, slice: &[T]) -> HeapPtr<Self> {
+    pub fn new_from_slice(
+        cx: Context,
+        kind: HeapItemKind,
+        slice: &[T],
+    ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(slice.len());
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
         array.array.init_from_slice(slice);
 
-        array
+        Ok(array)
     }
 }
 
 impl<T> BsArray<T> {
-    pub fn new_uninit(cx: Context, kind: HeapItemKind, length: usize) -> HeapPtr<Self> {
+    pub fn new_uninit(
+        cx: Context,
+        kind: HeapItemKind,
+        length: usize,
+    ) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(length);
-        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size);
+        let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
         set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
         array.array.init_with_uninit(length);
 
-        array
+        Ok(array)
     }
 
     #[inline]

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, hash};
 
-use crate::runtime::{gc::AnyHeapItem, string_value::FlatString, Context, Handle, Value};
+use crate::runtime::{
+    alloc_error::AllocResult, gc::AnyHeapItem, string_value::FlatString, Context, Handle, Value,
+};
 
 use super::{
     constant_table::ConstantTable,
@@ -317,7 +319,7 @@ impl ConstantTableBuilder {
         self.insert_if_missing(offset)
     }
 
-    pub fn finish(&self, cx: Context) -> Option<Handle<ConstantTable>> {
+    pub fn finish(&self, cx: Context) -> AllocResult<Option<Handle<ConstantTable>>> {
         // All reservations must be released once finished generating bytecode
         debug_assert!(
             self.narrow_reserved == 0 && self.wide_reserved == 0 && self.extra_wide_reserved == 0
@@ -332,7 +334,7 @@ impl ConstantTableBuilder {
             self.narrow_allocated
         } else {
             // No constants were added, no constant table is needed
-            return None;
+            return Ok(None);
         };
 
         // Start uninitialized and fill in constants that we have allocated
@@ -372,7 +374,7 @@ impl ConstantTableBuilder {
             }
         }
 
-        Some(ConstantTable::new(cx, constants, metadata))
+        Ok(Some(ConstantTable::new(cx, constants, metadata)?))
     }
 
     fn set_metadata(metadata: &mut [u8], index: usize, is_value: bool) {

@@ -1,6 +1,7 @@
 use std::hash::Hash;
 
 use crate::runtime::{
+    alloc_error::AllocResult,
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
     Context, HeapPtr,
@@ -13,12 +14,12 @@ use super::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField};
 pub struct BsHashSet<T>(BsHashMap<T, ()>);
 
 impl<T: Eq + Hash + Clone> BsHashSet<T> {
-    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
-        BsHashMap::<T, ()>::new(cx, kind, capacity).cast()
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsHashMap::<T, ()>::new(cx, kind, capacity)?.cast())
     }
 
-    pub fn new_initial(cx: Context, kind: HeapItemKind) -> HeapPtr<Self> {
-        BsHashMap::<T, ()>::new_initial(cx, kind).cast()
+    pub fn new_initial(cx: Context, kind: HeapItemKind) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsHashMap::<T, ()>::new_initial(cx, kind)?.cast())
     }
 
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
@@ -68,7 +69,7 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
 /// A BsHashSet stored as the field of a heap item. Can create new set and set the field to a
 /// new set.
 pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
-    fn new(cx: Context, capacity: usize) -> HeapPtr<BsHashSet<T>>;
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsHashSet<T>>>;
 
     fn get(&self, cx: Context) -> HeapPtr<BsHashSet<T>>;
 
@@ -77,9 +78,9 @@ pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
     /// Prepare set for insertion of a single element. This will grow the set and update container
     /// to point to new set if there is no room to insert another entry in the set.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsHashSet<T>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsHashSet<T>>> {
         let mut map_field = HashMapField(self.clone());
-        map_field.maybe_grow_for_insertion(cx).cast()
+        Ok(map_field.maybe_grow_for_insertion(cx)?.cast())
     }
 }
 
@@ -87,8 +88,8 @@ pub trait BsHashSetField<T: Eq + Hash + Clone>: Clone {
 struct HashMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsHashSetField<T>> BsHashMapField<T, ()> for HashMapField<S> {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<T, ()>> {
-        S::new(cx, capacity).cast()
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsHashMap<T, ()>>> {
+        Ok(S::new(cx, capacity)?.cast())
     }
 
     fn get(&self, cx: Context) -> HeapPtr<BsHashMap<T, ()>> {

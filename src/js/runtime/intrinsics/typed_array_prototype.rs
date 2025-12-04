@@ -9,6 +9,7 @@ use crate::{
             call_object, construct, has_property, invoke, length_of_array_like, set,
             species_constructor,
         },
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         function::get_argument,
@@ -39,48 +40,48 @@ pub struct TypedArrayPrototype;
 
 impl TypedArrayPrototype {
     /// Properties of the %TypedArray% Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-%typedarrayprototype%-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once TypedArrayConstructor has been created
 
         // Create values function as it is referenced by multiple properties
         let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None).into();
+            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
 
-        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
-        object.intrinsic_getter(cx, cx.names.buffer(), Self::buffer, realm);
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::byte_length, realm);
-        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::byte_offset, realm);
-        object.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm);
-        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
-        object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
-        object.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm);
-        object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
-        object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
-        object.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
-        object.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm);
-        object.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm);
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
-        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
-        object.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm);
-        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
-        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        object.intrinsic_getter(cx, cx.names.length(), Self::length, realm);
-        object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
-        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
-        object.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
-        object.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 1, realm);
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
-        object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
-        object.intrinsic_func(cx, cx.names.subarray(), Self::subarray, 2, realm);
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
+        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
+        object.intrinsic_getter(cx, cx.names.buffer(), Self::buffer, realm)?;
+        object.intrinsic_getter(cx, cx.names.byte_length(), Self::byte_length, realm)?;
+        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::byte_offset, realm)?;
+        object.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
+        object.intrinsic_getter(cx, cx.names.length(), Self::length, realm)?;
+        object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.set_(), Self::set, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.subarray(), Self::subarray, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm)?;
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
             cx,
@@ -88,19 +89,23 @@ impl TypedArrayPrototype {
             realm
                 .get_intrinsic(Intrinsic::ArrayPrototypeToString)
                 .into(),
-        );
-        object.intrinsic_data_prop(cx, cx.names.values(), values_function);
-        object.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
+        )?;
+        object.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
+        object.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm)?;
 
         // %TypedArray%.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-%typedarray%.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
+        object.set_property(
+            cx,
+            iterator_key,
+            Property::data(values_function, true, false, true),
+        )?;
 
         // get %TypedArray%.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm);
+        object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// %TypedArray%.prototype.at (https://tc39.es/ecma262/#sec-%typedarray%.prototype.at)
@@ -123,13 +128,13 @@ impl TypedArrayPrototype {
                 return Ok(cx.undefined());
             }
 
-            PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
+            PropertyKey::from_u64_handle(cx, relative_index as u64)?
         } else {
             if -relative_index > length as f64 {
                 return Ok(cx.undefined());
             }
 
-            PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
+            PropertyKey::from_u64_handle(cx, (length as i64 + relative_index as i64) as u64)?
         };
 
         get(cx, object, key)
@@ -316,7 +321,7 @@ impl TypedArrayPrototype {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue).as_value())
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue)?.as_value())
     }
 
     /// %TypedArray%.prototype.every (https://tc39.es/ecma262/#sec-%typedarray%.prototype.every)
@@ -344,7 +349,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -417,7 +422,7 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..end_index {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             must!(set(cx, object, key, value, true));
         }
 
@@ -452,7 +457,7 @@ impl TypedArrayPrototype {
 
         // First collect all values that pass the predicate
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, object, index_key)?;
 
             index_value.replace(Value::from(i));
@@ -474,7 +479,7 @@ impl TypedArrayPrototype {
         let mut index_key = PropertyKey::uninit().to_handle(cx);
 
         for (i, value) in kept_values.into_iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             must!(set(cx, array, index_key, value, true));
         }
 
@@ -620,7 +625,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -668,10 +673,10 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             let element = must!(get(cx, object, key));
 
-            if same_value_zero(search_element, element) {
+            if same_value_zero(search_element, element)? {
                 return Ok(cx.bool(true));
             }
         }
@@ -715,10 +720,10 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element, element)? {
                     return Ok(Value::from(i).to_handle(cx));
                 }
             }
@@ -753,15 +758,15 @@ impl TypedArrayPrototype {
 
         for i in 0..length {
             if i > 0 {
-                joined = StringValue::concat(cx, joined, separator);
+                joined = StringValue::concat(cx, joined, separator)?;
             }
 
-            key.replace(PropertyKey::from_u64(cx, i as u64));
+            key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let element = must!(get(cx, object, key));
 
             if !element.is_undefined() {
                 let next = to_string(cx, element)?;
-                joined = StringValue::concat(cx, joined, next);
+                joined = StringValue::concat(cx, joined, next)?;
             }
         }
 
@@ -777,7 +782,7 @@ impl TypedArrayPrototype {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key).as_value())
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key)?.as_value())
     }
 
     /// %TypedArray%.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-%typedarray%.prototype.lastindexof)
@@ -824,10 +829,10 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in (0..=start_index).rev() {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             if must!(has_property(cx, object, key)) {
                 let element = must!(get(cx, object, key));
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element, element)? {
                     return Ok(Value::from(i).to_handle(cx));
                 }
             }
@@ -882,7 +887,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -921,7 +926,7 @@ impl TypedArrayPrototype {
             return type_error(cx, "reduce does not have initial value");
         } else {
             initial_index = 1;
-            let first_index_key = PropertyKey::array_index(cx, 0).to_handle(cx);
+            let first_index_key = PropertyKey::array_index_handle(cx, 0)?;
             must!(get(cx, object, first_index_key))
         };
 
@@ -930,7 +935,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in initial_index..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -967,7 +972,7 @@ impl TypedArrayPrototype {
         } else if length == 0 {
             return type_error(cx, "reduceRight does not have initial value");
         } else {
-            let last_index_key = PropertyKey::from_u64(cx, initial_index as u64).to_handle(cx);
+            let last_index_key = PropertyKey::from_u64_handle(cx, initial_index as u64)?;
             initial_index -= 1;
             must!(get(cx, object, last_index_key))
         };
@@ -977,7 +982,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in (0..=initial_index).rev() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -1011,8 +1016,8 @@ impl TypedArrayPrototype {
         let mut upper_key = PropertyKey::uninit().to_handle(cx);
 
         while lower != middle {
-            lower_key.replace(PropertyKey::from_u64(cx, lower));
-            upper_key.replace(PropertyKey::from_u64(cx, upper));
+            lower_key.replace(PropertyKey::from_u64(cx, lower)?);
+            upper_key.replace(PropertyKey::from_u64(cx, upper)?);
 
             let lower_value = must!(get(cx, object, lower_key));
             let upper_value = must!(get(cx, object, upper_key));
@@ -1118,7 +1123,7 @@ impl TypedArrayPrototype {
                 while to_byte_index < limit {
                     // Convert between types. May allocate but does not invoke user code.
                     let element_value =
-                        source.read_element_value(cx, *source_buffer, from_byte_index);
+                        source.read_element_value(cx, *source_buffer, from_byte_index)?;
 
                     target.write_element_value(cx, to_byte_index, element_value)?;
 
@@ -1165,7 +1170,7 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..source_length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, source, key)?;
 
             let target_index = offset + i;
@@ -1242,8 +1247,8 @@ impl TypedArrayPrototype {
 
             let mut current_index = start_index;
             for i in 0..count {
-                from_key.replace(PropertyKey::from_u64(cx, current_index));
-                to_key.replace(PropertyKey::from_u64(cx, i));
+                from_key.replace(PropertyKey::from_u64(cx, current_index)?);
+                to_key.replace(PropertyKey::from_u64(cx, i)?);
 
                 let value = get(cx, object, from_key)?;
                 set(cx, array, to_key, value, true)?;
@@ -1302,7 +1307,7 @@ impl TypedArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             let value = must!(get(cx, object, index_key));
 
             index_value.replace(Value::from(i));
@@ -1346,7 +1351,7 @@ impl TypedArrayPrototype {
 
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             set(cx, object, index_key, *value, true)?;
         }
 
@@ -1440,17 +1445,17 @@ impl TypedArrayPrototype {
 
         for i in 0..length {
             if i > 0 {
-                result = StringValue::concat(cx, result, separator);
+                result = StringValue::concat(cx, result, separator)?;
             }
 
-            let key = PropertyKey::from_u64(cx, i as u64).to_handle(cx);
+            let key = PropertyKey::from_u64(cx, i as u64)?.to_handle(cx);
             let next_element = must!(get(cx, object, key));
 
             if !next_element.is_nullish() {
                 let string_result = invoke(cx, next_element, cx.names.to_locale_string(), &[])?;
                 let string_result = to_string(cx, string_result)?;
 
-                result = StringValue::concat(cx, result, string_result);
+                result = StringValue::concat(cx, result, string_result)?;
             }
         }
 
@@ -1476,8 +1481,8 @@ impl TypedArrayPrototype {
         let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..length {
-            from_key.replace(PropertyKey::from_u64(cx, length - i - 1));
-            to_key.replace(PropertyKey::from_u64(cx, i));
+            from_key.replace(PropertyKey::from_u64(cx, length - i - 1)?);
+            to_key.replace(PropertyKey::from_u64(cx, i)?);
 
             let value = must!(get(cx, object, from_key));
             must!(set(cx, array, to_key, value, true));
@@ -1517,7 +1522,7 @@ impl TypedArrayPrototype {
 
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             set(cx, sorted_array, index_key, *value, true)?;
         }
 
@@ -1533,7 +1538,7 @@ impl TypedArrayPrototype {
         let typed_array_record = validate_typed_array(cx, this_value)?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
-        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value).as_value())
+        Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value)?.as_value())
     }
 
     /// %TypedArray%.prototype.with (https://tc39.es/ecma262/#sec-%typedarray%.prototype.with)
@@ -1593,7 +1598,7 @@ impl TypedArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..(length as u64) {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
 
             // Replace the i'th value with the new value
             let value = if i == actual_index {
@@ -1634,12 +1639,12 @@ macro_rules! create_typed_array_prototype {
 
         impl $prototype {
             /// Properties of the TypedArray Prototype Objects (https://tc39.es/ecma262/#sec-properties-of-typedarray-prototype-objects)
-            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut object = ObjectValue::new(
                     cx,
                     Some(realm.get_intrinsic(Intrinsic::TypedArrayPrototype)),
                     true,
-                );
+                )?;
 
                 // Constructor property is added once TypedArrayConstructor has been created
                 let element_size_value = cx.smi(std::mem::size_of::<$element_type>() as i32);
@@ -1647,9 +1652,9 @@ macro_rules! create_typed_array_prototype {
                     cx,
                     cx.names.bytes_per_element(),
                     element_size_value,
-                );
+                )?;
 
-                object.into()
+                Ok(object.into())
             }
         }
     };

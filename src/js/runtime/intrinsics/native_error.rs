@@ -1,5 +1,6 @@
 use crate::runtime::{
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
+    alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
     function::get_argument,
@@ -19,21 +20,24 @@ macro_rules! create_native_error {
 
         impl $native_error {
             #[allow(dead_code)]
-            pub fn new_with_message(mut cx: Context, message: String) -> Handle<ErrorObject> {
+            pub fn new_with_message(
+                mut cx: Context,
+                message: String,
+            ) -> AllocResult<Handle<ErrorObject>> {
                 // Be sure to allocate before creating object
-                let message_value = cx.alloc_string(&message).into();
+                let message_value = cx.alloc_string(&message)?.into();
 
                 let object = ErrorObject::new(
                     cx,
                     Intrinsic::$prototype,
                     /* skip_current_frame */ false,
-                );
+                )?;
 
                 object
                     .as_object()
-                    .intrinsic_data_prop(cx, cx.names.message(), message_value);
+                    .intrinsic_data_prop(cx, cx.names.message(), message_value)?;
 
-                object
+                Ok(object)
             }
 
             #[allow(dead_code)]
@@ -43,7 +47,7 @@ macro_rules! create_native_error {
                 message: &str,
             ) -> EvalResult<Handle<ObjectValue>> {
                 let type_error_constructor = realm.get_intrinsic(Intrinsic::$constructor);
-                let message_value = cx.alloc_string(message).into();
+                let message_value = cx.alloc_string(message)?.into();
                 construct(cx, type_error_constructor, &[message_value], None)
             }
         }
@@ -52,7 +56,7 @@ macro_rules! create_native_error {
 
         impl $constructor {
             /// Properties of the NativeError Constructors (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-constructors)
-            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
                     Self::construct,
@@ -60,15 +64,15 @@ macro_rules! create_native_error {
                     cx.names.$rust_name(),
                     realm,
                     Intrinsic::ErrorConstructor,
-                );
+                )?;
 
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.prototype(),
                     realm.get_intrinsic(Intrinsic::$prototype).into(),
-                );
+                )?;
 
-                func
+                Ok(func)
             }
 
             /// NativeError (https://tc39.es/ecma262/#sec-nativeerror)
@@ -98,7 +102,7 @@ macro_rules! create_native_error {
                         object.into(),
                         cx.names.message(),
                         message_string.into(),
-                    );
+                    )?;
                 }
 
                 let options_arg = get_argument(cx, arguments, 1);
@@ -112,23 +116,23 @@ macro_rules! create_native_error {
 
         impl $prototype {
             /// Properties of the NativeError Prototype Objects (https://tc39.es/ecma262/#sec-properties-of-the-nativeerror-prototype-objects)
-            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let proto = realm.get_intrinsic(Intrinsic::ErrorPrototype);
-                let mut object = ObjectValue::new(cx, Some(proto), true);
+                let mut object = ObjectValue::new(cx, Some(proto), true)?;
 
                 // Constructor property is added once NativeErrorConstructor has been created
                 object.intrinsic_data_prop(
                     cx,
                     cx.names.name(),
                     cx.names.$rust_name().as_string().into(),
-                );
+                )?;
                 object.intrinsic_data_prop(
                     cx,
                     cx.names.message(),
                     cx.names.empty_string().as_string().into(),
-                );
+                )?;
 
-                object
+                Ok(object)
             }
         }
     };

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::{
     handle_scope, must,
     parser::{analyze::analyze, parse_script, source::Source, ParseContext},
-    runtime::{bytecode::generator::BytecodeProgramGenerator, get},
+    runtime::{alloc_error::AllocResult, bytecode::generator::BytecodeProgramGenerator, get},
 };
 
 use super::{
@@ -22,48 +22,49 @@ use super::{
 pub struct Test262Object;
 
 impl Test262Object {
-    fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        let create_realm_string = cx.alloc_string("createRealm").as_string();
-        let create_realm_key = PropertyKey::string(cx, create_realm_string).to_handle(cx);
-        object.intrinsic_func(cx, create_realm_key, Self::create_realm, 0, realm);
+        let create_realm_string = cx.alloc_string("createRealm")?.as_string();
+        let create_realm_key = PropertyKey::string_handle(cx, create_realm_string)?;
+        object.intrinsic_func(cx, create_realm_key, Self::create_realm, 0, realm)?;
 
-        let eval_script_string = cx.alloc_string("evalScript").as_string();
-        let eval_script_key = PropertyKey::string(cx, eval_script_string).to_handle(cx);
-        object.intrinsic_func(cx, eval_script_key, Self::eval_script, 1, realm);
+        let eval_script_string = cx.alloc_string("evalScript")?.as_string();
+        let eval_script_key = PropertyKey::string_handle(cx, eval_script_string)?;
+        object.intrinsic_func(cx, eval_script_key, Self::eval_script, 1, realm)?;
 
-        let global_string = cx.alloc_string("global").as_string();
-        let global_key = PropertyKey::string(cx, global_string).to_handle(cx);
-        object.intrinsic_data_prop(cx, global_key, realm.global_object().into());
+        let global_string = cx.alloc_string("global")?.as_string();
+        let global_key = PropertyKey::string_handle(cx, global_string)?;
+        object.intrinsic_data_prop(cx, global_key, realm.global_object().into())?;
 
-        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer").as_string();
-        let detach_array_buffer_key =
-            PropertyKey::string(cx, detach_array_buffer_string).to_handle(cx);
-        object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm);
+        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer")?.as_string();
+        let detach_array_buffer_key = PropertyKey::string_handle(cx, detach_array_buffer_string)?;
+        object.intrinsic_func(cx, detach_array_buffer_key, Self::detach_array_buffer, 1, realm)?;
 
-        object.intrinsic_func(cx, cx.names.gc(), GcObject::run, 0, realm);
+        object.intrinsic_func(cx, cx.names.gc(), GcObject::run, 0, realm)?;
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
-    pub fn install(mut cx: Context, realm: Handle<Realm>) {
+    pub fn install(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
         handle_scope!(cx, {
             // Create the test262 object
-            let test_262_object = Test262Object::new(cx, realm);
+            let test_262_object = Test262Object::new(cx, realm)?;
 
             // Install the the "$262" property on the global object
-            realm
-                .global_object()
-                .intrinsic_data_prop(cx, test_262_key(cx), test_262_object.into());
+            realm.global_object().intrinsic_data_prop(
+                cx,
+                test_262_key(cx)?,
+                test_262_object.into(),
+            )?;
 
             // Also install a global print function needed in tests
-            let print_string = cx.alloc_string("print").as_string();
-            let print_key = PropertyKey::string(cx, print_string).to_handle(cx);
+            let print_string = cx.alloc_string("print")?.as_string();
+            let print_key = PropertyKey::string_handle(cx, print_string)?;
             realm
                 .global_object()
-                .intrinsic_func(cx, print_key, Self::print, 1, realm);
+                .intrinsic_func(cx, print_key, Self::print, 1, realm)?;
 
             // Install the global print log property
             must!(Self::set_print_log(
@@ -71,19 +72,21 @@ impl Test262Object {
                 realm.global_object(),
                 cx.names.empty_string().as_string()
             ));
-        });
+
+            Ok(())
+        })
     }
 
-    fn print_log_key(mut cx: Context) -> Handle<PropertyKey> {
-        let print_log_string = cx.alloc_string("$$printLog").as_string();
-        PropertyKey::string(cx, print_log_string).to_handle(cx)
+    fn print_log_key(mut cx: Context) -> AllocResult<Handle<PropertyKey>> {
+        let print_log_string = cx.alloc_string("$$printLog")?.as_string();
+        PropertyKey::string_handle(cx, print_log_string)
     }
 
     pub fn get_print_log(
         cx: Context,
         global_object: Handle<ObjectValue>,
     ) -> EvalResult<Handle<StringValue>> {
-        let print_log = get(cx, global_object, Self::print_log_key(cx))?;
+        let print_log = get(cx, global_object, Self::print_log_key(cx)?)?;
         if !print_log.is_string() {
             return type_error(cx, "printLog must be a string");
         }
@@ -96,7 +99,7 @@ impl Test262Object {
         global_object: Handle<ObjectValue>,
         print_log: Handle<StringValue>,
     ) -> EvalResult<()> {
-        set(cx, global_object, Self::print_log_key(cx), print_log.into(), true)
+        set(cx, global_object, Self::print_log_key(cx)?, print_log.into(), true)
     }
 
     /// Adds strings to a running print log stored on the global object.
@@ -113,7 +116,7 @@ impl Test262Object {
         let global_object = cx.current_realm_ptr().global_object();
 
         let old_print_log = Self::get_print_log(cx, global_object)?;
-        let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string());
+        let new_print_log = StringValue::concat(cx, old_print_log, argument.as_string())?;
         Self::set_print_log(cx, global_object, new_print_log)?;
 
         Ok(cx.undefined())
@@ -125,10 +128,10 @@ impl Test262Object {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm that also has the test262 object installed
-        let realm = Realm::new(cx);
-        Test262Object::install(cx, realm);
+        let realm = Realm::new(cx)?;
+        Test262Object::install(cx, realm)?;
 
-        get(cx, realm.global_object(), test_262_key(cx))
+        get(cx, realm.global_object(), test_262_key(cx)?)
     }
 
     pub fn eval_script(
@@ -144,11 +147,11 @@ impl Test262Object {
         // Use the file path of the active source file
         let file_path = cx.vm().current_source_file().path().to_string();
 
-        let source = match Source::new_for_eval(file_path, script_text.as_string().to_wtf8_string())
-        {
-            Ok(source) => Rc::new(source),
-            Err(error) => return syntax_parse_error(cx, &error),
-        };
+        let source =
+            match Source::new_for_eval(file_path, script_text.as_string().to_wtf8_string()?) {
+                Ok(source) => Rc::new(source),
+                Err(error) => return syntax_parse_error(cx, &error),
+            };
 
         let pcx = ParseContext::new(source);
         let parse_result = parse_script(&pcx, cx.options.clone());
@@ -202,7 +205,7 @@ impl Test262Object {
     }
 }
 
-fn test_262_key(mut cx: Context) -> Handle<PropertyKey> {
-    let test_262_string = cx.alloc_string("$262").as_string();
-    PropertyKey::string(cx, test_262_string).to_handle(cx)
+fn test_262_key(mut cx: Context) -> AllocResult<Handle<PropertyKey>> {
+    let test_262_string = cx.alloc_string("$262")?.as_string();
+    PropertyKey::string_handle(cx, test_262_string)
 }

@@ -2,6 +2,7 @@ use crate::{
     eval_err, must,
     runtime::{
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         error::{range_error_value, type_error, type_error_value},
         function::get_argument,
@@ -21,9 +22,9 @@ use super::{
 pub struct IteratorPrototype;
 
 impl IteratorPrototype {
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-iterator.prototype.constructor)
         object.intrinsic_getter_and_setter(
@@ -32,23 +33,23 @@ impl IteratorPrototype {
             Self::get_constructor,
             Self::set_constructor,
             realm,
-        );
+        )?;
 
-        object.intrinsic_func(cx, cx.names.drop(), Self::drop, 1, realm);
-        object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
-        object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
-        object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
-        object.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
-        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
-        object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
-        object.intrinsic_func(cx, cx.names.take(), Self::take, 1, realm);
-        object.intrinsic_func(cx, cx.names.to_array(), Self::to_array, 0, realm);
+        object.intrinsic_func(cx, cx.names.drop(), Self::drop, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.take(), Self::take, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.to_array(), Self::to_array, 0, realm)?;
 
         // Iterator.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.intrinsic_func(cx, iterator_key, return_this, 0, realm);
+        object.intrinsic_func(cx, iterator_key, return_this, 0, realm)?;
 
         // Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-iterator.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -58,9 +59,9 @@ impl IteratorPrototype {
             Self::iterator_prototype_get_to_string_tag,
             Self::set_to_string_tag,
             realm,
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// get Iterator.prototype.constructor (https://tc39.es/ecma262/#sec-get-iterator.prototype.constructor)
@@ -114,19 +115,19 @@ impl IteratorPrototype {
 
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
-            let error = range_error_value(cx, "Iterator.prototype.drop limit is NaN");
+            let error = range_error_value(cx, "Iterator.prototype.drop limit is NaN")?;
             return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
-            let error = range_error_value(cx, "Iterator.prototype.drop limit is negative");
+            let error = range_error_value(cx, "Iterator.prototype.drop limit is negative")?;
             return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper drop object
         let iterated = get_iterator_direct(cx, iterator_object)?;
-        Ok(IteratorHelperObject::new_drop(cx, &iterated, integer_limit).as_value())
+        Ok(IteratorHelperObject::new_drop(cx, &iterated, integer_limit)?.as_value())
     }
 
     /// Iterator.prototype.every (https://tc39.es/ecma262/#sec-iterator.prototype.every)
@@ -143,7 +144,7 @@ impl IteratorPrototype {
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.every predicate is not a function");
+                type_error_value(cx, "Iterator.prototype.every predicate is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -188,14 +189,14 @@ impl IteratorPrototype {
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.filter predicate is not a function");
+                type_error_value(cx, "Iterator.prototype.filter predicate is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_value.as_object())?;
-        Ok(IteratorHelperObject::new_filter(cx, &iterated, predicate).as_value())
+        Ok(IteratorHelperObject::new_filter(cx, &iterated, predicate)?.as_value())
     }
 
     /// Iterator.prototype.find (https://tc39.es/ecma262/#sec-iterator.prototype.find)
@@ -211,7 +212,8 @@ impl IteratorPrototype {
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
-            let error = type_error_value(cx, "Iterator.prototype.find predicate is not a function");
+            let error =
+                type_error_value(cx, "Iterator.prototype.find predicate is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -255,14 +257,15 @@ impl IteratorPrototype {
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
-            let error = type_error_value(cx, "Iterator.prototype.flatMap mapper is not a function");
+            let error =
+                type_error_value(cx, "Iterator.prototype.flatMap mapper is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_value.as_object())?;
-        Ok(IteratorHelperObject::new_flat_map(cx, &iterated, mapper).as_value())
+        Ok(IteratorHelperObject::new_flat_map(cx, &iterated, mapper)?.as_value())
     }
 
     /// Iterator.prototype.forEach (https://tc39.es/ecma262/#sec-iterator.prototype.foreach)
@@ -279,7 +282,7 @@ impl IteratorPrototype {
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.forEach callback is not a function");
+                type_error_value(cx, "Iterator.prototype.forEach callback is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
@@ -320,14 +323,14 @@ impl IteratorPrototype {
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
-            let error = type_error_value(cx, "Iterator.prototype.map mapper is not a function");
+            let error = type_error_value(cx, "Iterator.prototype.map mapper is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
         let iterated = get_iterator_direct(cx, this_value.as_object())?;
-        Ok(IteratorHelperObject::new_map(cx, &iterated, mapper).as_value())
+        Ok(IteratorHelperObject::new_map(cx, &iterated, mapper)?.as_value())
     }
 
     /// Iterator.prototype.reduce (https://tc39.es/ecma262/#sec-iterator.prototype.reduce)
@@ -344,7 +347,7 @@ impl IteratorPrototype {
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.reduce callback is not a function");
+                type_error_value(cx, "Iterator.prototype.reduce callback is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
@@ -407,7 +410,8 @@ impl IteratorPrototype {
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
-            let error = type_error_value(cx, "Iterator.prototype.some predicate is not a function");
+            let error =
+                type_error_value(cx, "Iterator.prototype.some predicate is not a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -461,19 +465,19 @@ impl IteratorPrototype {
 
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
-            let error = range_error_value(cx, "Iterator.prototype.take limit is NaN");
+            let error = range_error_value(cx, "Iterator.prototype.take limit is NaN")?;
             return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
-            let error = range_error_value(cx, "Iterator.prototype.take limit is negative");
+            let error = range_error_value(cx, "Iterator.prototype.take limit is negative")?;
             return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper take object
         let iterated = get_iterator_direct(cx, iterator_object)?;
-        Ok(IteratorHelperObject::new_take(cx, &iterated, integer_limit).as_value())
+        Ok(IteratorHelperObject::new_take(cx, &iterated, integer_limit)?.as_value())
     }
 
     /// Iterator.prototype.toArray (https://tc39.es/ecma262/#sec-iterator.prototype.toarray)
@@ -492,7 +496,7 @@ impl IteratorPrototype {
         // Collect all all items from the iterator until the iterator is done
         loop {
             match iterator_step_value(cx, &mut iterated)? {
-                None => return Ok(create_array_from_list(cx, &items).as_value()),
+                None => return Ok(create_array_from_list(cx, &items)?.as_value()),
                 Some(value) => items.push(value),
             }
         }

@@ -2,6 +2,7 @@ use crate::{
     eval_err, extend_object, if_abrupt_reject_promise, must,
     runtime::{
         abstract_operations::{call_object, get_method},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error_value,
         eval_result::EvalResult,
@@ -33,12 +34,12 @@ extend_object! {
 }
 
 impl AsyncFromSyncIterator {
-    pub fn new(cx: Context, iterator: Iterator) -> Handle<AsyncFromSyncIterator> {
+    pub fn new(cx: Context, iterator: Iterator) -> AllocResult<Handle<AsyncFromSyncIterator>> {
         let mut object = object_create::<AsyncFromSyncIterator>(
             cx,
             HeapItemKind::AsyncFromSyncIterator,
             Intrinsic::AsyncFromSyncIteratorPrototype,
-        );
+        )?;
 
         set_uninit!(
             object.descriptor,
@@ -47,7 +48,7 @@ impl AsyncFromSyncIterator {
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     fn iterator(&self) -> Handle<ObjectValue> {
@@ -75,18 +76,18 @@ pub struct AsyncFromSyncIteratorPrototype;
 
 impl AsyncFromSyncIteratorPrototype {
     /// The %AsyncFromSyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object = ObjectValue::new(
             cx,
             Some(realm.get_intrinsic(Intrinsic::AsyncIteratorPrototype)),
             true,
-        );
+        )?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm);
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 0, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// %AsyncFromSyncIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%asyncfromsynciteratorprototype%.next)
@@ -139,7 +140,7 @@ impl AsyncFromSyncIteratorPrototype {
         // If there is no return method the promise can immediately be resolved
         if return_method.is_none() {
             let value = get_argument(cx, arguments, 0);
-            let iter_result = create_iter_result_object(cx, value, true);
+            let iter_result = create_iter_result_object(cx, value, true)?;
             must!(call_object(cx, capability.resolve(), cx.undefined(), &[iter_result]));
 
             return Ok(capability.promise().as_value());
@@ -157,7 +158,7 @@ impl AsyncFromSyncIteratorPrototype {
         // Return result must be an object
         let return_result = if_abrupt_reject_promise!(cx, return_result_completion, capability);
         if !return_result.is_object() {
-            let error = type_error_value(cx, "return method must return an object");
+            let error = type_error_value(cx, "return method must return an object")?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -194,7 +195,7 @@ impl AsyncFromSyncIteratorPrototype {
             if_abrupt_reject_promise!(cx, close_result, capability);
 
             // Reject the promise with a new TypeError
-            let error = type_error_value(cx, "throw method is not present");
+            let error = type_error_value(cx, "throw method is not present")?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -212,7 +213,7 @@ impl AsyncFromSyncIteratorPrototype {
         // Throw result must be an object
         let throw_result = if_abrupt_reject_promise!(cx, throw_result_completion, capability);
         if !throw_result.is_object() {
-            let error = type_error_value(cx, "throw method must return an object");
+            let error = type_error_value(cx, "throw method must return an object")?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -268,7 +269,7 @@ fn async_from_sync_iterator_continuation(
         cx.names.empty_string(),
         cx.current_realm(),
         None,
-    );
+    )?;
 
     let on_reject = if is_done || !close_on_rejection {
         cx.undefined()
@@ -281,13 +282,13 @@ fn async_from_sync_iterator_continuation(
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-        );
-        set_sync_iterator(cx, on_reject, sync_iterator);
+        )?;
+        set_sync_iterator(cx, on_reject, sync_iterator)?;
 
         on_reject.as_value()
     };
 
-    perform_promise_then(cx, value_promise, on_fulfilled.into(), on_reject, Some(capability));
+    perform_promise_then(cx, value_promise, on_fulfilled.into(), on_reject, Some(capability))?;
 
     Ok(capability.promise().as_value())
 }
@@ -298,7 +299,7 @@ pub fn create_continuing_iter_result_object(
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
-    Ok(create_iter_result_object(cx, value, /* is_done */ false))
+    Ok(create_iter_result_object(cx, value, /* is_done */ false)?)
 }
 
 pub fn create_done_iter_result_object(
@@ -307,7 +308,7 @@ pub fn create_done_iter_result_object(
     arguments: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
     let value = get_argument(cx, arguments, 0);
-    Ok(create_iter_result_object(cx, value, /* is_done */ true))
+    Ok(create_iter_result_object(cx, value, /* is_done */ true)?)
 }
 
 pub fn async_from_sync_iterator_continuation_on_reject(
@@ -332,6 +333,10 @@ fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<Objec
         .as_object()
 }
 
-fn set_sync_iterator(cx: Context, mut function: Handle<ObjectValue>, value: Handle<ObjectValue>) {
-    function.private_element_set(cx, cx.well_known_symbols.index().as_symbol(), value.into());
+fn set_sync_iterator(
+    cx: Context,
+    mut function: Handle<ObjectValue>,
+    value: Handle<ObjectValue>,
+) -> AllocResult<()> {
+    function.private_element_set(cx, cx.well_known_symbols.index().as_symbol(), value.into())
 }

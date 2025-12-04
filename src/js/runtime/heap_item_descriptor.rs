@@ -4,7 +4,7 @@ use bitflags::bitflags;
 
 use crate::{
     runtime::{
-        arguments_object::MappedArgumentsObject,
+        alloc_error::AllocResult, arguments_object::MappedArgumentsObject,
         module::module_namespace_object::ModuleNamespaceObject, ordinary_object::OrdinaryObject,
         rust_vtables::extract_virtual_object_vtable, Value,
     },
@@ -183,18 +183,18 @@ impl HeapItemDescriptor {
         descriptor: Handle<HeapItemDescriptor>,
         kind: HeapItemKind,
         flags: DescFlags,
-    ) -> HeapPtr<HeapItemDescriptor>
+    ) -> AllocResult<HeapPtr<HeapItemDescriptor>>
     where
         Handle<T>: VirtualObject,
     {
-        let mut desc = cx.alloc_uninit::<HeapItemDescriptor>();
+        let mut desc = cx.alloc_uninit::<HeapItemDescriptor>()?;
 
         set_uninit!(desc.descriptor, *descriptor);
         set_uninit!(desc.vtable, extract_virtual_object_vtable::<T>());
         set_uninit!(desc.kind, kind);
         set_uninit!(desc.flags, flags);
 
-        desc
+        Ok(desc)
     }
 
     #[inline]
@@ -231,7 +231,7 @@ impl BaseDescriptors {
         BaseDescriptors { descriptors }
     }
 
-    pub fn new(cx: Context) -> BaseDescriptors {
+    pub fn new(cx: Context) -> AllocResult<BaseDescriptors> {
         let mut base_descriptors = Self::uninit();
         let descriptors = &mut base_descriptors.descriptors;
 
@@ -246,7 +246,7 @@ impl BaseDescriptors {
             fake_descriptor_handle,
             HeapItemKind::Descriptor,
             DescFlags::empty(),
-        )
+        )?
         .to_handle();
         descriptor.descriptor = *descriptor;
         descriptors[HeapItemKind::Descriptor as usize] = *descriptor;
@@ -254,7 +254,7 @@ impl BaseDescriptors {
         macro_rules! register_descriptor {
             ($object_kind:expr, $object_ty:ty, $flags:expr) => {
                 let desc =
-                    HeapItemDescriptor::new::<$object_ty>(cx, descriptor, $object_kind, $flags);
+                    HeapItemDescriptor::new::<$object_ty>(cx, descriptor, $object_kind, $flags)?;
                 descriptors[$object_kind as usize] = desc;
             };
         }
@@ -393,7 +393,7 @@ impl BaseDescriptors {
 
         other_heap_item_descriptor!(HeapItemKind::ValueVec);
 
-        base_descriptors
+        Ok(base_descriptors)
     }
 
     pub fn get(&self, kind: HeapItemKind) -> HeapPtr<HeapItemDescriptor> {

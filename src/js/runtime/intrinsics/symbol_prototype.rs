@@ -1,7 +1,7 @@
 use crate::runtime::{
-    builtin_function::BuiltinFunction, error::type_error, eval_result::EvalResult,
-    object_value::ObjectValue, property::Property, realm::Realm, string_value::StringValue,
-    value::SymbolValue, Context, Handle, Value,
+    alloc_error::AllocResult, builtin_function::BuiltinFunction, error::type_error,
+    eval_result::EvalResult, object_value::ObjectValue, property::Property, realm::Realm,
+    string_value::StringValue, value::SymbolValue, Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -10,24 +10,24 @@ pub struct SymbolPrototype;
 
 impl SymbolPrototype {
     /// Properties of the Symbol Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-symbol-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once SymbolConstructor has been created
-        object.intrinsic_getter(cx, cx.names.description(), Self::get_description, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_getter(cx, cx.names.description(), Self::get_description, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
         let to_primitive_func =
-            BuiltinFunction::create(cx, Self::value_of, 1, to_primitive_key, realm, None).into();
+            BuiltinFunction::create(cx, Self::value_of, 1, to_primitive_key, realm, None)?.into();
         object.set_property(
             cx,
             to_primitive_key,
             Property::data(to_primitive_func, false, false, true),
-        );
+        )?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -35,9 +35,9 @@ impl SymbolPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.symbol().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// get Symbol.prototype.description (https://tc39.es/ecma262/#sec-symbol.prototype.description)
@@ -60,7 +60,7 @@ impl SymbolPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = this_symbol_value(cx, this_value)?;
-        Ok(symbol_descriptive_string(cx, symbol_value.as_symbol()).as_value())
+        Ok(symbol_descriptive_string(cx, symbol_value.as_symbol())?.as_value())
     }
 
     /// Symbol.prototype.valueOf (https://tc39.es/ecma262/#sec-symbol.prototype.valueof)
@@ -92,12 +92,12 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
 pub fn symbol_descriptive_string(
     mut cx: Context,
     symbol: Handle<SymbolValue>,
-) -> Handle<StringValue> {
+) -> AllocResult<Handle<StringValue>> {
     match symbol.description() {
-        None => cx.alloc_string("Symbol()").as_string(),
+        None => Ok(cx.alloc_string("Symbol()")?.as_string()),
         Some(description) => {
-            let symbol_prefix = cx.alloc_string("Symbol(").as_string();
-            let symbol_suffix = cx.alloc_string(")").as_string();
+            let symbol_prefix = cx.alloc_string("Symbol(")?.as_string();
+            let symbol_suffix = cx.alloc_string(")")?.as_string();
 
             StringValue::concat_all(cx, &[symbol_prefix, description.as_string(), symbol_suffix])
         }

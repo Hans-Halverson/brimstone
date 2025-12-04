@@ -2,6 +2,7 @@ use crate::{
     common::unicode::CodePoint,
     runtime::{
         abstract_operations::length_of_array_like,
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::range_error,
         eval_result::EvalResult,
@@ -22,7 +23,7 @@ pub struct StringConstructor;
 
 impl StringConstructor {
     /// Properties of the String Constructor (https://tc39.es/ecma262/#sec-properties-of-the-string-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -30,19 +31,19 @@ impl StringConstructor {
             cx.names.string(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::StringPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm);
-        func.intrinsic_func(cx, cx.names.from_code_point(), Self::from_code_point, 1, realm);
-        func.intrinsic_func(cx, cx.names.raw(), Self::raw, 1, realm);
+        func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.from_code_point(), Self::from_code_point, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.raw(), Self::raw, 1, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// String (https://tc39.es/ecma262/#sec-string-constructor-string-value)
@@ -58,7 +59,7 @@ impl StringConstructor {
         } else {
             let value = get_argument(cx, arguments, 0);
             if new_target.is_none() && value.is_symbol() {
-                return Ok(symbol_descriptive_string(cx, value.as_symbol()).as_value());
+                return Ok(symbol_descriptive_string(cx, value.as_symbol())?.as_value());
             }
 
             to_string(cx, value)?
@@ -83,7 +84,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_unit = to_uint16(cx, arguments[0])?;
-            return Ok(FlatString::from_code_unit(cx, code_unit).as_value());
+            return Ok(FlatString::from_code_unit(cx, code_unit)?.as_value());
         }
 
         let mut code_points = vec![];
@@ -92,7 +93,7 @@ impl StringConstructor {
             code_points.push(code_unit as u32);
         }
 
-        Ok(FlatString::from_code_points(cx, &code_points).as_value())
+        Ok(FlatString::from_code_points(cx, &code_points)?.as_value())
     }
 
     /// String.fromCodePoint (https://tc39.es/ecma262/#sec-string.fromcodepoint)
@@ -127,7 +128,7 @@ impl StringConstructor {
         // Common case, return a single code unit string
         if arguments.len() == 1 {
             let code_point = get_code_point!(arguments[0]);
-            return Ok(FlatString::from_code_point(cx, code_point).as_value());
+            return Ok(FlatString::from_code_point(cx, code_point)?.as_value());
         }
 
         let mut code_points = vec![];
@@ -135,7 +136,7 @@ impl StringConstructor {
             code_points.push(get_code_point!(*arg));
         }
 
-        Ok(FlatString::from_code_points(cx, &code_points).as_value())
+        Ok(FlatString::from_code_points(cx, &code_points)?.as_value())
     }
 
     /// String.raw (https://tc39.es/ecma262/#sec-string.raw)
@@ -164,12 +165,12 @@ impl StringConstructor {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         loop {
-            key.replace(PropertyKey::from_u64(cx, next_index));
+            key.replace(PropertyKey::from_u64(cx, next_index)?);
 
             let next_literal_value = get(cx, literals, key)?;
             let next_literal_string = to_string(cx, next_literal_value)?;
 
-            result = StringValue::concat(cx, result, next_literal_string);
+            result = StringValue::concat(cx, result, next_literal_string)?;
 
             if next_index + 1 == literal_count {
                 return Ok(result.as_value());
@@ -179,7 +180,7 @@ impl StringConstructor {
                 let substitution_arg = get_argument(cx, arguments, next_index as usize + 1);
                 let next_substitution = to_string(cx, substitution_arg)?;
 
-                result = StringValue::concat(cx, result, next_substitution);
+                result = StringValue::concat(cx, result, next_substitution)?;
             }
 
             next_index += 1;

@@ -2,45 +2,42 @@ use crate::runtime::{gc::Escapable, Context};
 
 use super::{value::Value, Handle};
 
+#[cfg(feature = "alloc_error")]
+use super::alloc_error::AllocError;
+
 /// Any JS value can be thrown as an evaluation error.
 ///
 /// Wrap in a zero-cost newtype for type shenanigans.
 #[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct EvalError(Handle<Value>);
-
-impl EvalError {
-    #[inline]
-    pub fn new(value: Handle<Value>) -> Self {
-        EvalError(value)
-    }
+pub enum EvalError {
+    /// A thrown error JS value.
+    Value(Handle<Value>),
+    /// An allocation error.
+    #[cfg(feature = "alloc_error")]
+    Alloc(AllocError),
 }
 
 impl EvalError {
     #[inline]
-    pub fn value(self) -> Handle<Value> {
-        self.0
+    pub fn new_value(value: Handle<Value>) -> Self {
+        EvalError::Value(value)
     }
-}
 
-impl AsRef<Handle<Value>> for EvalError {
+    #[cfg(feature = "alloc_error")]
     #[inline]
-    fn as_ref(&self) -> &Handle<Value> {
-        &self.0
-    }
-}
-
-impl AsMut<Handle<Value>> for EvalError {
-    #[inline]
-    fn as_mut(&mut self) -> &mut Handle<Value> {
-        &mut self.0
+    pub fn new_alloc(err: AllocError) -> Self {
+        EvalError::Alloc(err)
     }
 }
 
 impl Escapable for EvalError {
     #[inline]
     fn escape(&self, cx: Context) -> Self {
-        EvalError::new(self.0.escape(cx))
+        match self {
+            Self::Value(value) => Self::Value(value.escape(cx)),
+            #[cfg(feature = "alloc_error")]
+            Self::Alloc(err) => Self::Alloc(err.escape(cx)),
+        }
     }
 }
 
@@ -54,7 +51,12 @@ macro_rules! must {
         let result = $a;
         match result {
             $crate::runtime::eval_result::EvalResult::Ok(value) => value,
-            _ => panic!("Unexpected abnormal completion"),
+            // Propagate OOMs upwards instead of failing the assertion
+            #[cfg(feature = "alloc_error")]
+            Err($crate::runtime::eval_result::EvalError::Alloc(alloc_err)) => {
+                return Err(alloc_err.into());
+            }
+            Err(_) => panic!("Unexpected abnormal completion"),
         }
     }};
 }
@@ -63,6 +65,18 @@ macro_rules! must {
 #[macro_export]
 macro_rules! eval_err {
     ($value:expr) => {
-        Err($crate::runtime::eval_result::EvalError::new($value))
+        Err($crate::runtime::eval_result::EvalError::new_value($value))
+    };
+}
+
+#[macro_export]
+macro_rules! completion_value {
+    ($result:expr) => {
+        match $result {
+            Ok(value) => Ok(value),
+            Err($crate::runtime::eval_result::EvalError::Value(value)) => Err(value),
+            #[cfg(feature = "alloc_error")]
+            Err($crate::runtime::eval_result::EvalError::Alloc(err)) => return Err(err.into()),
+        }
     };
 }

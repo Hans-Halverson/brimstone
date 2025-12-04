@@ -79,7 +79,10 @@ fn print_error(path: &str) -> GenericResult<String> {
         .annex_b(path.contains("annex_b"))
         .build();
 
-    let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+    let cx = ContextBuilder::new()
+        .set_options(Rc::new(options))
+        .build()
+        .unwrap();
 
     cx.execute_then_drop(|mut cx| {
         let result = if path.contains("module") {
@@ -139,7 +142,10 @@ fn run_and_return_bytecode(
         .build();
     let options = Rc::new(options);
 
-    let cx = ContextBuilder::new().set_options(options.clone()).build();
+    let cx = ContextBuilder::new()
+        .set_options(options.clone())
+        .build()
+        .unwrap();
 
     f(cx)?;
 
@@ -157,7 +163,10 @@ fn print_regexp_bytecode(path: &str) -> GenericResult<String> {
         .build();
 
     let options = Rc::new(options);
-    let cx = ContextBuilder::new().set_options(options.clone()).build();
+    let cx = ContextBuilder::new()
+        .set_options(options.clone())
+        .build()
+        .unwrap();
 
     // Generate bytecode, extracting dumped regexp bytecode
     generate_bytecode(cx, path)?;

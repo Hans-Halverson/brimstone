@@ -1,6 +1,10 @@
 use bitflags::bitflags;
 
-use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
+use crate::{
+    field_offset,
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    set_uninit,
+};
 
 use super::{
     collections::InlineArray,
@@ -58,9 +62,9 @@ impl ScopeNames {
         flags: ScopeFlags,
         names: &[Handle<FlatString>],
         name_flags: &[ScopeNameFlags],
-    ) -> Handle<ScopeNames> {
+    ) -> AllocResult<Handle<ScopeNames>> {
         let size = Self::calculate_size_in_bytes(names.len());
-        let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size);
+        let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size)?;
 
         set_uninit!(scope_names.descriptor, cx.base_descriptors.get(HeapItemKind::ScopeNames));
         set_uninit!(scope_names.flags, flags);
@@ -81,7 +85,7 @@ impl ScopeNames {
             )
         };
 
-        scope_names.to_handle()
+        Ok(scope_names.to_handle())
     }
 
     const NAMES_OFFSET: usize = field_offset!(ScopeNames, names);

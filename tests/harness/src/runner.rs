@@ -28,8 +28,9 @@ use brimstone_core::{
     eval_err,
     parser::{self, source::Source, ParseContext},
     runtime::{
-        bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
-        to_console_string, to_string, Context, ContextBuilder, EvalResult, Handle, Value,
+        bytecode::generator::BytecodeProgramGenerator, eval_result::EvalError, get,
+        test_262_object::Test262Object, to_console_string, to_string, Context, ContextBuilder,
+        EvalResult, Handle, Value,
     },
 };
 
@@ -234,11 +235,14 @@ fn run_single_test(
         .build();
 
     // Each test is executed in its own realm
-    let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+    let cx = ContextBuilder::new()
+        .set_options(Rc::new(options))
+        .build()
+        .unwrap();
     let options = cx.options.clone();
 
     // Each realm has access to the test262 object
-    Test262Object::install(cx, cx.initial_realm());
+    Test262Object::install(cx, cx.initial_realm()).unwrap();
 
     // Wrap in catch_unwind so that we can clean up the context in the event of a panic
     let panic_result = panic::catch_unwind(AssertUnwindSafe(|| {
@@ -425,7 +429,7 @@ fn execute_script_as_bytecode<'a>(
     let bytecode_script = match generate_result {
         Ok(bytecode_script) => bytecode_script,
         Err(err) => {
-            let err_string = cx.alloc_string(&err.to_string());
+            let err_string = cx.alloc_string(&err.to_string())?;
             return eval_err!(err_string.into());
         }
     };
@@ -443,7 +447,7 @@ fn execute_module_as_bytecode<'a>(
     let module = match generate_result {
         Ok(module) => module,
         Err(err) => {
-            let err_string = cx.alloc_string(&err.to_string());
+            let err_string = cx.alloc_string(&err.to_string())?;
             return eval_err!(err_string.into());
         }
     };
@@ -469,7 +473,7 @@ fn check_expected_completion(
                     let global_object = cx.initial_realm().global_object();
                     let print_log = Test262Object::get_print_log(cx, global_object);
                     let print_log = match print_log {
-                        Ok(log) => log.to_string(),
+                        Ok(log) => log.format().unwrap(),
                         Err(_) => {
                             return TestResult::failure(
                                 test,
@@ -506,15 +510,19 @@ fn check_expected_completion(
                 duration,
             ),
         },
+        #[cfg(feature = "alloc_error")]
+        Err(EvalError::Alloc(alloc_error)) => TestResult::failure(
+            test,
+            format!("Test failed due to allocation error: {alloc_error}"),
+            duration,
+        ),
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
-        Err(thrown_error) => match &test.expected_result {
+        Err(EvalError::Value(thrown_value)) => match &test.expected_result {
             ExpectedResult::Negative {
                 phase: phase @ (TestPhase::Resolution | TestPhase::Runtime),
                 type_,
             } if is_error_in_expected_phase(cx, test, *phase) => {
-                let thrown_value = thrown_error.value();
-
                 // Check that the thrown error matches the expected error type
                 let is_expected_error = if thrown_value.is_object() {
                     let thrown_object = thrown_value.as_object();
@@ -522,7 +530,7 @@ fn check_expected_completion(
                         // Check if thrown error type has the same name as the expected error
                         match get(cx, thrown_object, cx.names.name()) {
                             Ok(name_value) if name_value.is_string() => {
-                                &name_value.as_string().to_string() == type_
+                                &name_value.as_string().format().unwrap() == type_
                             }
                             _ => false,
                         }
@@ -531,7 +539,7 @@ fn check_expected_completion(
                         // so check the if the message starts with "Test262Error".
                         match to_string(cx, thrown_value) {
                             Ok(message_value) => {
-                                message_value.to_string().starts_with("Test262Error")
+                                message_value.format().unwrap().starts_with("Test262Error")
                             }
                             _ => false,
                         }
@@ -557,7 +565,6 @@ fn check_expected_completion(
                 }
             }
             other => {
-                let thrown_value = thrown_error.value();
                 let thrown_string = to_console_string_test262(cx, thrown_value);
                 TestResult::failure(
                     test,
@@ -589,14 +596,15 @@ fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
     // Extract message for Test262Error, otherwise print to console normally
     if value.is_object() {
         if let Ok(message_value) = to_string(cx, value) {
-            let message = message_value.to_string();
+            let message = message_value.format().unwrap();
             if message.starts_with("Test262Error") {
                 return message;
             }
         }
     }
 
-    to_console_string(cx, value, &FormatOptions::default())
+    // Default to empty string on OOM instead of crashing
+    to_console_string(cx, value, &FormatOptions::default()).unwrap_or_default()
 }
 
 struct TestResult {

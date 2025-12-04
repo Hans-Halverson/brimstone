@@ -48,7 +48,7 @@ pub fn perform_eval(
     let file_path = cx.vm().current_source_file().path().to_string();
 
     // Parse source code
-    let source = match Source::new_for_eval(file_path, code.to_wtf8_string()) {
+    let source = match Source::new_for_eval(file_path, code.to_wtf8_string()?) {
         Ok(source) => Rc::new(source),
         Err(error) => return syntax_parse_error(cx, &error),
     };
@@ -97,7 +97,7 @@ pub fn perform_eval(
 
     // Eval function's parent scope is the global scope in an indirect eval
     let eval_scope = direct_scope.unwrap_or_else(|| cx.current_realm().default_global_scope());
-    let closure = Closure::new(cx, bytecode_function, eval_scope);
+    let closure = Closure::new(cx, bytecode_function, eval_scope)?;
 
     // Determine the receiver for the eval function call
     let receiver: Handle<Value> = if is_direct {
@@ -207,7 +207,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     let mut eval_var_names = vec![];
     let mut eval_func_names = vec![];
     for (name, binding) in program.scope.as_ref().iter_var_decls() {
-        let name = InternedStrings::alloc_wtf8_str(cx, name);
+        let name = InternedStrings::alloc_wtf8_str(cx, name)?;
         match binding.kind() {
             BindingKind::Var => eval_var_names.push(name),
             BindingKind::Function { .. } => eval_func_names.push(name),
@@ -216,11 +216,12 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     }
 
     // Check if any var scoped names in eval body conflict with lexical bindings in parent scopes.
+    let mut eval_var_names = vec![];
     let eval_scope = program.scope.as_ref();
-    let eval_var_names = eval_scope
-        .iter_var_decls()
-        .map(|(name, _)| InternedStrings::alloc_wtf8_str(cx, name))
-        .collect::<Vec<_>>();
+    for (name, _) in eval_scope.iter_var_decls() {
+        let name = InternedStrings::alloc_wtf8_str(cx, name)?;
+        eval_var_names.push(name);
+    }
 
     check_eval_var_name_conflicts(cx, &eval_var_names, &eval_func_names)?;
 
@@ -231,7 +232,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     }
 
     let is_global_scope = var_scope.kind() == ScopeKind::Global;
-    let mut scope_object = var_scope.ensure_scope_object(cx);
+    let mut scope_object = var_scope.ensure_scope_object(cx)?;
 
     // If in global scope, check if we can declare the var or function binding
     if is_global_scope {
@@ -260,7 +261,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
         } else {
             // All functions initialized to undefined, overwriting existing if already declared
             let desc = Property::data(cx.undefined(), true, true, true);
-            scope_object.set_property(cx, name.cast(), desc);
+            scope_object.set_property(cx, name.cast(), desc)?;
         }
     }
 
@@ -272,7 +273,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
             // Vars only initialized to undefined if the do not have been declared yet
             if !scope_object.has_property(cx, name.cast())? {
                 let desc = Property::data(cx.undefined(), true, true, true);
-                scope_object.set_property(cx, name.cast(), desc);
+                scope_object.set_property(cx, name.cast(), desc)?;
             }
         }
     }

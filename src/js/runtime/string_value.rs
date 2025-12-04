@@ -23,7 +23,9 @@ use crate::{
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
-    field_offset, set_uninit, static_assert,
+    field_offset,
+    runtime::alloc_error::AllocResult,
+    set_uninit, static_assert,
 };
 
 use super::{
@@ -65,7 +67,7 @@ impl StringValue {
         cx: Context,
         left: Handle<StringValue>,
         right: Handle<StringValue>,
-    ) -> Handle<StringValue> {
+    ) -> AllocResult<Handle<StringValue>> {
         let new_len = left.len() + right.len();
         let width = if left.width() == StringWidth::TwoByte || right.width() == StringWidth::TwoByte
         {
@@ -77,16 +79,19 @@ impl StringValue {
         ConcatString::new(cx, left, right, new_len, width)
     }
 
-    pub fn concat_all(cx: Context, strings: &[Handle<StringValue>]) -> Handle<StringValue> {
+    pub fn concat_all(
+        cx: Context,
+        strings: &[Handle<StringValue>],
+    ) -> AllocResult<Handle<StringValue>> {
         if strings.is_empty() {
-            cx.names.empty_string().as_string()
+            Ok(cx.names.empty_string().as_string())
         } else {
             let mut concat_string = strings[0];
             for string in &strings[1..] {
-                concat_string = StringValue::concat(cx, concat_string, *string);
+                concat_string = StringValue::concat(cx, concat_string, *string)?;
             }
 
-            concat_string
+            Ok(concat_string)
         }
     }
 
@@ -169,9 +174,9 @@ impl Handle<StringValue> {
     /// combined with an adjacent code unit to form a full unicode code point.
     ///
     /// Does not bounds check, so only call if index is known to be in range.
-    pub fn code_unit_at(&self, index: u32) -> CodeUnit {
-        let flat_string = self.flatten();
-        flat_string.code_unit_at(index)
+    pub fn code_unit_at(&self, index: u32) -> AllocResult<CodeUnit> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.code_unit_at(index))
     }
 
     /// Return the unicode code point that starts with the code unit at the given index. If pointing
@@ -179,16 +184,16 @@ impl Handle<StringValue> {
     /// of that surrogate code unit.
     ///
     /// Does not bounds check, so only call if index is known to be in range.
-    pub fn code_point_at(&self, index: u32) -> CodePoint {
-        let flat_string = self.flatten();
-        flat_string.code_point_at(index)
+    pub fn code_point_at(&self, index: u32) -> AllocResult<CodePoint> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.code_point_at(index))
     }
 
     /// Return a substring of this string between the given indices. Indices refer to a half-open
     /// range of code units in the string. This function does not bounds check, so caller must make
     /// sure that 0 <= start <= end < string length.
-    pub fn substring(&self, cx: Context, start: u32, end: u32) -> Handle<FlatString> {
-        let flat_string = self.flatten();
+    pub fn substring(&self, cx: Context, start: u32, end: u32) -> AllocResult<Handle<FlatString>> {
+        let flat_string = self.flatten()?;
         flat_string.substring(cx, start, end)
     }
 
@@ -196,20 +201,20 @@ impl Handle<StringValue> {
     /// a given index (inclusive). This function does not bounds check the after index, so caller
     /// must be make sure to only pass an after index that is less than or equal to the length of
     /// the string.
-    pub fn find(&self, search_string: Handle<StringValue>, after: u32) -> Option<u32> {
+    pub fn find(&self, search_string: Handle<StringValue>, after: u32) -> AllocResult<Option<u32>> {
         // First flatten so that we do not allocate while iterating
-        search_string.flatten();
+        search_string.flatten()?;
 
-        let mut string_code_units = self.iter_slice_code_units(after, self.len());
-        let mut search_string_code_units = search_string.iter_code_units();
+        let mut string_code_units = self.iter_slice_code_units(after, self.len())?;
+        let mut search_string_code_units = search_string.iter_code_units()?;
 
         // Find the first character in search string, immediately returning if search string is empty
         let first_search_code_unit = match search_string_code_units.next() {
             None => {
                 if after <= self.len() {
-                    return Some(after);
+                    return Ok(Some(after));
                 } else {
-                    return None;
+                    return Ok(None);
                 }
             }
             Some(code_unit) => code_unit,
@@ -227,7 +232,7 @@ impl Handle<StringValue> {
                 loop {
                     match (string_code_units.next(), search_string_code_units.next()) {
                         // If we reach the end of the search string we must have a match
-                        (_, None) => return Some(current_index),
+                        (_, None) => return Ok(Some(current_index)),
                         (Some(code_unit_1), Some(code_unit_2)) if code_unit_1 == code_unit_2 => {
                             continue;
                         }
@@ -239,30 +244,34 @@ impl Handle<StringValue> {
             current_index += 1;
         }
 
-        None
+        Ok(None)
     }
 
     /// Return the index of the last ocurrence of the search string in this string, starting before
     /// a given index (inclusive), which may be equal to the length of the string.
-    pub fn rfind(&self, search_string: Handle<StringValue>, before: u32) -> Option<u32> {
+    pub fn rfind(
+        &self,
+        search_string: Handle<StringValue>,
+        before: u32,
+    ) -> AllocResult<Option<u32>> {
         // Find the end index (exclusive) of the string range to check
         let search_string_len = search_string.len();
         let end_index = u32::min(before + search_string_len, self.len());
 
         // Search string does not fit before the given index
         if search_string_len > end_index {
-            return None;
+            return Ok(None);
         }
 
         // First flatten so that we do not allocate while iterating
-        search_string.flatten();
+        search_string.flatten()?;
 
-        let mut string_code_units = self.iter_slice_code_units(0, end_index);
-        let mut search_string_code_units = search_string.iter_code_units();
+        let mut string_code_units = self.iter_slice_code_units(0, end_index)?;
+        let mut search_string_code_units = search_string.iter_code_units()?;
 
         // Find the last character in search string, immediately returning if search string is empty
         let last_search_code_unit = match search_string_code_units.next_back() {
-            None => return Some(before),
+            None => return Ok(Some(before)),
             Some(code_unit) => code_unit,
         };
 
@@ -278,7 +287,7 @@ impl Handle<StringValue> {
                 loop {
                     match (string_code_units.next_back(), search_string_code_units.next_back()) {
                         // If we reach the start of the search string we must have a match
-                        (_, None) => return Some(current_index),
+                        (_, None) => return Ok(Some(current_index)),
                         (Some(code_unit_1), Some(code_unit_2)) if code_unit_1 == code_unit_2 => {
                             continue;
                         }
@@ -294,23 +303,23 @@ impl Handle<StringValue> {
             current_index -= 1;
         }
 
-        None
+        Ok(None)
     }
 
     /// If this string is a concat string, flatten it into a single buffer. This modifies the string
     /// value in-place and switches it from a concat string to a sequential string type.
-    pub fn flatten(&self) -> Handle<FlatString> {
+    pub fn flatten(&self) -> AllocResult<Handle<FlatString>> {
         let mut concat_string = if let Some(concat_string) = self.as_concat_opt() {
             // Is a forwarding concat string when right is None
             if concat_string.right.is_none() {
-                return concat_string.left.as_flat().to_handle();
+                return Ok(concat_string.left.as_flat().to_handle());
             } else {
                 // Other concat strings need to be flattened
                 concat_string
             }
         } else {
             // Otherwise is already flat
-            return self.as_flat();
+            return Ok(self.as_flat());
         };
 
         let length = concat_string.len;
@@ -350,12 +359,12 @@ impl Handle<StringValue> {
             unsafe { buf.set_len(string_index_to_usize(length)) };
 
             let cx = self.cx();
-            let flat_string = FlatString::new_one_byte(cx, &buf);
+            let flat_string = FlatString::new_one_byte(cx, &buf)?;
 
             concat_string.left = flat_string.as_string();
             concat_string.right = None;
 
-            flat_string.to_handle()
+            Ok(flat_string.to_handle())
         } else {
             let mut buf: Vec<u16> = Vec::with_capacity(string_index_to_usize(length));
             let uninit_buf = buf.spare_capacity_mut();
@@ -391,17 +400,22 @@ impl Handle<StringValue> {
             unsafe { buf.set_len(string_index_to_usize(length)) };
 
             let cx = self.cx();
-            let flat_string = FlatString::new_two_byte(cx, &buf);
+            let flat_string = FlatString::new_two_byte(cx, &buf)?;
 
             concat_string.left = flat_string.as_string();
             concat_string.right = None;
 
-            flat_string.to_handle()
+            Ok(flat_string.to_handle())
         }
     }
 
-    pub fn trim(&self, cx: Context, trim_start: bool, trim_end: bool) -> Handle<StringValue> {
-        let mut code_points_iter = self.iter_code_points();
+    pub fn trim(
+        &self,
+        cx: Context,
+        trim_start: bool,
+        trim_end: bool,
+    ) -> AllocResult<Handle<StringValue>> {
+        let mut code_points_iter = self.iter_code_points()?;
 
         let mut start_ptr = code_points_iter.ptr();
 
@@ -428,7 +442,7 @@ impl Handle<StringValue> {
         }
 
         if start_ptr == end_ptr {
-            return cx.names.empty_string().as_string();
+            return Ok(cx.names.empty_string().as_string());
         }
 
         match code_points_iter.width() {
@@ -439,7 +453,7 @@ impl Handle<StringValue> {
                     std::slice::from_raw_parts(start_ptr, length as usize).to_owned()
                 };
 
-                FlatString::new_one_byte(cx, &buf).as_string().to_handle()
+                Ok(FlatString::new_one_byte(cx, &buf)?.as_string().to_handle())
             }
             StringWidth::TwoByte => {
                 // Must copy into a temporary buffer as GC may occur
@@ -448,39 +462,43 @@ impl Handle<StringValue> {
                     std::slice::from_raw_parts(start_ptr as *const u16, length as usize).to_owned()
                 };
 
-                FlatString::new_two_byte(cx, &buf).as_string().to_handle()
+                Ok(FlatString::new_two_byte(cx, &buf)?.as_string().to_handle())
             }
         }
     }
 
-    pub fn repeat(&self, cx: Context, n: u32) -> Handle<FlatString> {
-        let flat_string = self.flatten();
+    pub fn repeat(&self, cx: Context, n: u32) -> AllocResult<Handle<FlatString>> {
+        let flat_string = self.flatten()?;
 
         match flat_string.width() {
             StringWidth::OneByte => {
                 let repeated_buf = flat_string.as_one_byte_slice().repeat(n as usize);
-                FlatString::new_one_byte(cx, &repeated_buf).to_handle()
+                Ok(FlatString::new_one_byte(cx, &repeated_buf)?.to_handle())
             }
             StringWidth::TwoByte => {
                 let repeated_buf = flat_string.as_two_byte_slice().repeat(n as usize);
-                FlatString::new_two_byte(cx, &repeated_buf).to_handle()
+                Ok(FlatString::new_two_byte(cx, &repeated_buf)?.to_handle())
             }
         }
     }
 
-    pub fn substring_equals(&self, search: Handle<StringValue>, start_index: u32) -> bool {
+    pub fn substring_equals(
+        &self,
+        search: Handle<StringValue>,
+        start_index: u32,
+    ) -> AllocResult<bool> {
         // First flatten so that we do not allocate while iterating
-        search.flatten();
+        search.flatten()?;
 
         let mut slice_code_units =
-            self.iter_slice_code_units(start_index, start_index + search.len());
-        let mut search_code_units = search.iter_code_units();
+            self.iter_slice_code_units(start_index, start_index + search.len())?;
+        let mut search_code_units = search.iter_code_units()?;
 
-        slice_code_units.consume_equals(&mut search_code_units)
+        Ok(slice_code_units.consume_equals(&mut search_code_units))
     }
 
-    pub fn to_lower_case(self, cx: Context) -> Handle<FlatString> {
-        let flat_string = self.flatten();
+    pub fn to_lower_case(self, cx: Context) -> AllocResult<Handle<FlatString>> {
+        let flat_string = self.flatten()?;
 
         match flat_string.width() {
             StringWidth::OneByte => {
@@ -504,20 +522,20 @@ impl Handle<StringValue> {
                     }
                 }
 
-                FlatString::new_one_byte(cx, &lowercased).to_handle()
+                Ok(FlatString::new_one_byte(cx, &lowercased)?.to_handle())
             }
             StringWidth::TwoByte => {
                 // Two byte slow path - must convert to valid str ranges for to_lowercase function
                 let iter = UnsafeCodePointIterator::from_two_byte(*flat_string);
                 let lowercased = map_valid_substrings(iter, |str| str.to_lowercase());
 
-                FlatString::from_wtf8(cx, lowercased.as_bytes()).to_handle()
+                Ok(FlatString::from_wtf8(cx, lowercased.as_bytes())?.to_handle())
             }
         }
     }
 
-    pub fn to_upper_case(self, cx: Context) -> Handle<FlatString> {
-        let flat_string = self.flatten();
+    pub fn to_upper_case(self, cx: Context) -> AllocResult<Handle<FlatString>> {
+        let flat_string = self.flatten()?;
 
         let code_point_iter = match flat_string.width() {
             StringWidth::OneByte => {
@@ -534,7 +552,7 @@ impl Handle<StringValue> {
                         }
                     }
 
-                    return FlatString::new_one_byte(cx, &uppercased).to_handle();
+                    return Ok(FlatString::new_one_byte(cx, &uppercased)?.to_handle());
                 }
 
                 UnsafeCodePointIterator::from_one_byte(*flat_string)
@@ -545,107 +563,97 @@ impl Handle<StringValue> {
         // Slow path - must convert to valid str ranges for to_uppercase function
         let uppercased = map_valid_substrings(code_point_iter, |str| str.to_uppercase());
 
-        FlatString::from_wtf8(cx, uppercased.as_bytes()).to_handle()
+        Ok(FlatString::from_wtf8(cx, uppercased.as_bytes())?.to_handle())
     }
 
-    pub fn to_wtf8_string(self) -> Wtf8String {
-        let flat_string = self.flatten();
-        flat_string.to_wtf8_string()
+    pub fn to_wtf8_string(self) -> AllocResult<Wtf8String> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.to_wtf8_string())
     }
 
-    pub fn is_well_formed(&self) -> bool {
-        let flat_string = self.flatten();
-        flat_string.is_well_formed()
+    pub fn is_well_formed(&self) -> AllocResult<bool> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.is_well_formed())
     }
 
-    pub fn to_well_formed(self, cx: Context) -> HeapPtr<FlatString> {
-        let flat_string = self.flatten();
+    pub fn to_well_formed(self, cx: Context) -> AllocResult<HeapPtr<FlatString>> {
+        let flat_string = self.flatten()?;
         flat_string.to_well_formed(cx)
     }
 
     /// Return an iterator over the code units of this string between the provided start and end
     /// indices (start index is inclusive, end index is exclusive).
-    pub fn iter_slice_code_units(&self, start: u32, end: u32) -> UnsafeCodeUnitIterator {
-        let flat_string = self.flatten();
+    pub fn iter_slice_code_units(
+        &self,
+        start: u32,
+        end: u32,
+    ) -> AllocResult<UnsafeCodeUnitIterator> {
+        let flat_string = self.flatten()?;
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                UnsafeCodeUnitIterator::from_one_byte_slice(*flat_string, start, end)
+                Ok(UnsafeCodeUnitIterator::from_one_byte_slice(*flat_string, start, end))
             }
             StringWidth::TwoByte => {
-                UnsafeCodeUnitIterator::from_two_byte_slice(*flat_string, start, end)
+                Ok(UnsafeCodeUnitIterator::from_two_byte_slice(*flat_string, start, end))
             }
         }
     }
 
     /// Return an iterator over the code points of this string between the provided start and end
     /// indices (start index is inclusive, end index is exclusive).
-    pub fn iter_slice_code_points(&self, start: u32, end: u32) -> UnsafeCodePointIterator {
-        let flat_string = self.flatten();
+    pub fn iter_slice_code_points(
+        &self,
+        start: u32,
+        end: u32,
+    ) -> AllocResult<UnsafeCodePointIterator> {
+        let flat_string = self.flatten()?;
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                UnsafeCodePointIterator::from_one_byte_slice(*flat_string, start, end)
+                Ok(UnsafeCodePointIterator::from_one_byte_slice(*flat_string, start, end))
             }
             StringWidth::TwoByte => {
-                UnsafeCodePointIterator::from_two_byte_slice(*flat_string, start, end)
+                Ok(UnsafeCodePointIterator::from_two_byte_slice(*flat_string, start, end))
             }
         }
     }
 
-    pub fn iter_code_units(&self) -> UnsafeCodeUnitIterator {
-        let flat_string = self.flatten();
-        flat_string.iter_code_units()
+    pub fn iter_code_units(&self) -> AllocResult<UnsafeCodeUnitIterator> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.iter_code_units())
     }
 
-    pub fn iter_code_points(&self) -> UnsafeCodePointIterator {
-        let flat_string = self.flatten();
-        flat_string.iter_code_points()
+    pub fn iter_code_points(&self) -> AllocResult<UnsafeCodePointIterator> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.iter_code_points())
     }
-}
 
-impl PartialEq for Handle<StringValue> {
-    fn eq(&self, other: &Self) -> bool {
+    pub fn equals(&self, other: &Self) -> AllocResult<bool> {
         // Fast path if lengths differ
         if self.len() != other.len() {
-            return false;
+            return Ok(false);
         }
 
         // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten();
-        let flat_string_2 = other.flatten();
+        let flat_string_1 = self.flatten()?;
+        let flat_string_2 = other.flatten()?;
 
-        flat_string_1 == flat_string_2
+        Ok(flat_string_1 == flat_string_2)
     }
-}
 
-impl Eq for Handle<StringValue> {}
-
-impl PartialOrd for Handle<StringValue> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Handle<StringValue> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    pub fn compare(&self, other: &Self) -> AllocResult<Ordering> {
         // First flatten so that we do not allocate while iterating
-        let flat_string_1 = self.flatten();
-        let flat_string_2 = other.flatten();
+        let flat_string_1 = self.flatten()?;
+        let flat_string_2 = other.flatten()?;
 
-        flat_string_1.cmp(&flat_string_2)
+        Ok(flat_string_1.cmp(&flat_string_2))
     }
 }
 
 impl From<Handle<StringValue>> for Handle<ObjectValue> {
     fn from(value: Handle<StringValue>) -> Self {
         value.cast()
-    }
-}
-
-impl fmt::Display for HeapPtr<StringValue> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.to_handle().fmt(f)
     }
 }
 
@@ -667,9 +675,10 @@ fn format_code_point_iter(
     Ok(())
 }
 
-impl fmt::Display for Handle<StringValue> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        format_code_point_iter(f, self.iter_code_points())
+impl Handle<StringValue> {
+    pub fn format(&self) -> AllocResult<String> {
+        let flat_string = self.flatten()?;
+        Ok(flat_string.to_string())
     }
 }
 
@@ -711,11 +720,11 @@ struct FlatStringNoInteriorMutability {
 impl FlatString {
     const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
 
-    fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+    fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> AllocResult<HeapPtr<FlatString>> {
         let len = Self::check_string_length(one_byte_slice.len());
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
-        let mut string = cx.alloc_uninit_with_size::<FlatString>(size);
+        let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(HeapItemKind::String));
         set_uninit!(string.len, len);
@@ -731,14 +740,14 @@ impl FlatString {
             );
         }
 
-        string
+        Ok(string)
     }
 
-    fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> HeapPtr<FlatString> {
+    fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> AllocResult<HeapPtr<FlatString>> {
         let len = Self::check_string_length(two_byte_slice.len());
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
-        let mut string = cx.alloc_uninit_with_size::<FlatString>(size);
+        let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(HeapItemKind::String));
         set_uninit!(string.len, len);
@@ -754,10 +763,10 @@ impl FlatString {
             );
         }
 
-        string
+        Ok(string)
     }
 
-    pub fn from_wtf8(cx: Context, bytes: &[u8]) -> HeapPtr<FlatString> {
+    pub fn from_wtf8(cx: Context, bytes: &[u8]) -> AllocResult<HeapPtr<FlatString>> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -827,20 +836,26 @@ impl FlatString {
     }
 
     /// Create a new one byte string from a slice of Latin1 bytes
-    pub fn from_one_byte_slice(cx: Context, one_byte_slice: &[u8]) -> HeapPtr<FlatString> {
+    pub fn from_one_byte_slice(
+        cx: Context,
+        one_byte_slice: &[u8],
+    ) -> AllocResult<HeapPtr<FlatString>> {
         FlatString::new_one_byte(cx, one_byte_slice)
     }
 
-    pub fn from_code_unit(cx: Context, code_unit: CodeUnit) -> Handle<FlatString> {
+    pub fn from_code_unit(cx: Context, code_unit: CodeUnit) -> AllocResult<Handle<FlatString>> {
         Self::from_code_points(cx, &[code_unit as CodePoint])
     }
 
-    pub fn from_code_point(cx: Context, code_point: CodePoint) -> Handle<FlatString> {
+    pub fn from_code_point(cx: Context, code_point: CodePoint) -> AllocResult<Handle<FlatString>> {
         Self::from_code_points(cx, &[code_point])
     }
 
     #[inline]
-    pub fn from_code_points(cx: Context, code_points: &[CodePoint]) -> Handle<FlatString> {
+    pub fn from_code_points(
+        cx: Context,
+        code_points: &[CodePoint],
+    ) -> AllocResult<Handle<FlatString>> {
         let is_one_byte = code_points.iter().all(|code_point| is_latin1(*code_point));
 
         if is_one_byte {
@@ -848,7 +863,7 @@ impl FlatString {
                 .iter()
                 .map(|code_point| *code_point as u8)
                 .collect::<Vec<_>>();
-            FlatString::new_one_byte(cx, &one_byte_buf).to_handle()
+            Ok(FlatString::new_one_byte(cx, &one_byte_buf)?.to_handle())
         } else {
             let mut two_byte_buf = vec![];
             for code_point in code_points {
@@ -861,7 +876,7 @@ impl FlatString {
                 }
             }
 
-            FlatString::new_two_byte(cx, &two_byte_buf).to_handle()
+            Ok(FlatString::new_two_byte(cx, &two_byte_buf)?.to_handle())
         }
     }
 
@@ -988,7 +1003,7 @@ impl FlatString {
     }
 
     #[inline]
-    pub fn substring(&self, cx: Context, start: u32, end: u32) -> Handle<FlatString> {
+    pub fn substring(&self, cx: Context, start: u32, end: u32) -> AllocResult<Handle<FlatString>> {
         let start = string_index_to_usize(start);
         let end = string_index_to_usize(end);
 
@@ -996,12 +1011,12 @@ impl FlatString {
             StringWidth::OneByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_one_byte_slice()[start..end].to_owned();
-                FlatString::new_one_byte(cx, substring_buf).to_handle()
+                Ok(FlatString::new_one_byte(cx, substring_buf)?.to_handle())
             }
             StringWidth::TwoByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_two_byte_slice()[start..end].to_owned();
-                FlatString::new_two_byte(cx, substring_buf).to_handle()
+                Ok(FlatString::new_two_byte(cx, substring_buf)?.to_handle())
             }
         }
     }
@@ -1062,14 +1077,14 @@ impl HeapPtr<FlatString> {
         }
     }
 
-    pub fn to_well_formed(self, cx: Context) -> HeapPtr<FlatString> {
+    pub fn to_well_formed(self, cx: Context) -> AllocResult<HeapPtr<FlatString>> {
         match self.width() {
             // One byte strings are always well-formed so never allocate new string
-            StringWidth::OneByte => self,
+            StringWidth::OneByte => Ok(self),
             // Two byte strings are well-formed if they do not contain any unpaired surrogates
             StringWidth::TwoByte => {
                 if self.is_well_formed() {
-                    return self;
+                    return Ok(self);
                 }
 
                 // Copy all code points to new string, replacing unpaired surrogates with the
@@ -1248,8 +1263,8 @@ impl ConcatString {
         right: Handle<StringValue>,
         len: u32,
         width: StringWidth,
-    ) -> Handle<StringValue> {
-        let mut string = cx.alloc_uninit::<ConcatString>();
+    ) -> AllocResult<Handle<StringValue>> {
+        let mut string = cx.alloc_uninit::<ConcatString>()?;
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(HeapItemKind::String));
         set_uninit!(string.len, len);
@@ -1258,7 +1273,7 @@ impl ConcatString {
         set_uninit!(string.left, *left);
         set_uninit!(string.right, Some(*right));
 
-        string.as_string().to_handle()
+        Ok(string.as_string().to_handle())
     }
 
     fn width(&self) -> StringWidth {

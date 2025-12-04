@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
@@ -33,7 +34,7 @@ use super::{
 pub struct TypedArrayConstructor;
 
 impl TypedArrayConstructor {
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -41,22 +42,22 @@ impl TypedArrayConstructor {
             cx.names.typed_array(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
-        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
+        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm)?;
 
         // get %TypedArray% [ @@species ] (https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// %TypedArray% (https://tc39.es/ecma262/#sec-%typedarray%)
@@ -117,7 +118,7 @@ impl TypedArrayConstructor {
             let mut index_value = Value::uninit().to_handle(cx);
 
             for (i, value) in values.into_iter().enumerate() {
-                index_key.replace(PropertyKey::from_u64(cx, i as u64));
+                index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
 
                 let value = if let Some(map_function) = map_function {
                     index_value.replace(Value::from(i));
@@ -145,7 +146,7 @@ impl TypedArrayConstructor {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
 
             let value = get(cx, array_like, index_key)?;
 
@@ -184,7 +185,7 @@ impl TypedArrayConstructor {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for (i, value) in arguments.iter().enumerate() {
-            key.replace(PropertyKey::from_u64(cx, i as u64));
+            key.replace(PropertyKey::from_u64(cx, i as u64)?);
             set(cx, object, key, *value, true)?;
         }
 
@@ -221,16 +222,19 @@ macro_rules! create_typed_array_constructor {
                 byte_length: Option<usize>,
                 byte_offset: usize,
                 array_length: Option<usize>,
-            ) -> Handle<ObjectValue> {
-                let mut object =
-                    object_create_with_proto::<$typed_array>(cx, HeapItemKind::$typed_array, proto);
+            ) -> AllocResult<Handle<ObjectValue>> {
+                let mut object = object_create_with_proto::<$typed_array>(
+                    cx,
+                    HeapItemKind::$typed_array,
+                    proto,
+                )?;
 
                 set_uninit!(object.viewed_array_buffer, *viewed_array_buffer);
                 set_uninit!(object.byte_length, byte_length);
                 set_uninit!(object.array_length, array_length);
                 set_uninit!(object.byte_offset, byte_offset);
 
-                object.to_handle().into()
+                Ok(object.to_handle().into())
             }
 
             #[inline]
@@ -256,7 +260,7 @@ macro_rules! create_typed_array_constructor {
                 cx: Context,
                 key: Handle<PropertyKey>,
             ) -> EvalResult<Option<PropertyDescriptor>> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         Ok(ordinary_get_own_property(cx, self.as_object(), key))
                     }
@@ -265,7 +269,7 @@ macro_rules! create_typed_array_constructor {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index * element_size!() + self.byte_offset;
 
-                        let value = self.read_element_value(cx, array_buffer_ptr, byte_index);
+                        let value = self.read_element_value(cx, array_buffer_ptr, byte_index)?;
 
                         let desc = PropertyDescriptor::data(value, true, true, true);
 
@@ -276,7 +280,7 @@ macro_rules! create_typed_array_constructor {
 
             /// [[HasProperty]] (https://tc39.es/ecma262/#sec-typedarray-hasproperty)
             fn has_property(&self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         ordinary_has_property(cx, self.as_object(), key)
                     }
@@ -292,7 +296,7 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 desc: PropertyDescriptor,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         ordinary_define_own_property(cx, self.as_object(), key, desc)
                     }
@@ -335,7 +339,7 @@ macro_rules! create_typed_array_constructor {
                             index
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                            match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                                 CanonicalIndexType::Valid(index) => index,
                                 _ => return Ok(true),
                             }
@@ -357,7 +361,7 @@ macro_rules! create_typed_array_constructor {
                 key: Handle<PropertyKey>,
                 receiver: Handle<Value>,
             ) -> EvalResult<Handle<Value>> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         ordinary_get(cx, self.as_object(), key, receiver)
                     }
@@ -366,7 +370,7 @@ macro_rules! create_typed_array_constructor {
                         let array_buffer_ptr = self.viewed_array_buffer_ptr();
                         let byte_index = index * element_size!() + self.byte_offset;
 
-                        Ok(self.read_element_value(cx, array_buffer_ptr, byte_index))
+                        Ok(self.read_element_value(cx, array_buffer_ptr, byte_index)?)
                     }
                 }
             }
@@ -379,7 +383,7 @@ macro_rules! create_typed_array_constructor {
                 value: Handle<Value>,
                 receiver: Handle<Value>,
             ) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => {
                         ordinary_set(cx, self.as_object(), key, value, receiver)
                     }
@@ -419,7 +423,7 @@ macro_rules! create_typed_array_constructor {
                             }
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                            match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                                 CanonicalIndexType::Valid(index) => index,
                                 _ => return Ok(true),
                             }
@@ -436,7 +440,7 @@ macro_rules! create_typed_array_constructor {
 
             /// [[Delete]] (https://tc39.es/ecma262/#sec-typedarray-delete)
             fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-                match canonical_numeric_index_string(cx, key, self.as_typed_array()) {
+                match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
                     CanonicalIndexType::NotAnIndex => ordinary_delete(cx, self.as_object(), key),
                     CanonicalIndexType::Invalid => Ok(true),
                     CanonicalIndexType::Valid(_) => Ok(false),
@@ -453,7 +457,7 @@ macro_rules! create_typed_array_constructor {
                 if !is_typed_array_out_of_bounds(&typed_array_record) {
                     let length = typed_array_length(&typed_array_record);
                     for i in 0..length {
-                        let index_string = cx.alloc_string(&i.to_string());
+                        let index_string = cx.alloc_string(&i.to_string())?;
                         keys.push(index_string.into());
                     }
                 }
@@ -511,7 +515,7 @@ macro_rules! create_typed_array_constructor {
                 cx: Context,
                 mut array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
-            ) -> Handle<Value> {
+            ) -> AllocResult<Handle<Value>> {
                 let element = unsafe {
                     let byte_ptr = array_buffer.data().as_ptr().add(byte_index);
                     byte_ptr.cast::<$element_type>().read()
@@ -582,7 +586,7 @@ macro_rules! create_typed_array_constructor {
 
         impl $constructor {
             /// Properties of the TypedArray Constructors (https://tc39.es/ecma262/#sec-properties-of-the-typedarray-constructors)
-            pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+            pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
                     Self::construct,
@@ -590,22 +594,22 @@ macro_rules! create_typed_array_constructor {
                     cx.names.$rust_name(),
                     realm,
                     Intrinsic::TypedArrayConstructor,
-                );
+                )?;
 
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.prototype(),
                     realm.get_intrinsic(Intrinsic::$prototype).into(),
-                );
+                )?;
 
                 let element_size_value = cx.smi(element_size!() as i32);
                 func.intrinsic_frozen_property(
                     cx,
                     cx.names.bytes_per_element(),
                     element_size_value,
-                );
+                )?;
 
-                func
+                Ok(func)
             }
 
             /// TypedArray (https://tc39.es/ecma262/#sec-typedarray)
@@ -619,7 +623,10 @@ macro_rules! create_typed_array_constructor {
                 } else {
                     return type_error(
                         cx,
-                        &format!("{} constructor must be called with new", cx.names.$rust_name()),
+                        &format!(
+                            "{} constructor must be called with new",
+                            cx.names.$rust_name().format()?
+                        ),
                     );
                 };
 
@@ -701,7 +708,7 @@ macro_rules! create_typed_array_constructor {
                     Some(byte_length),
                     0,
                     Some(length),
-                );
+                )?;
 
                 Ok(typed_array)
             }
@@ -738,7 +745,7 @@ macro_rules! create_typed_array_constructor {
                         Some(byte_length),
                         0,
                         Some(source_array_length),
-                    );
+                    )?;
 
                     Ok(typed_array.as_value())
                 } else {
@@ -769,7 +776,7 @@ macro_rules! create_typed_array_constructor {
                             cx,
                             *source_data,
                             source_byte_index,
-                        );
+                        )?;
 
                         // Convert element to target type. May allocate but may does not invoke
                         // user code.
@@ -788,7 +795,7 @@ macro_rules! create_typed_array_constructor {
                         Some(byte_length),
                         0,
                         Some(source_array_length),
-                    );
+                    )?;
 
                     Ok(typed_array.as_value())
                 }
@@ -876,7 +883,7 @@ macro_rules! create_typed_array_constructor {
                     result_new_byte_length,
                     offset,
                     result_new_array_length,
-                );
+                )?;
 
                 Ok(typed_array.as_value())
             }
@@ -904,7 +911,7 @@ macro_rules! create_typed_array_constructor {
 
                 // Add each value from iterator into typed array
                 for (i, value) in values.into_iter().enumerate() {
-                    key.replace(PropertyKey::from_u64(cx, i as u64));
+                    key.replace(PropertyKey::from_u64(cx, i as u64)?);
                     set(cx, typed_array_object, key, value, true)?;
                 }
 
@@ -927,7 +934,7 @@ macro_rules! create_typed_array_constructor {
 
                 // Add each value from array into typed array
                 for i in 0..length {
-                    key.replace(PropertyKey::from_u64(cx, i));
+                    key.replace(PropertyKey::from_u64(cx, i)?);
                     let value = get(cx, array_like, key)?;
                     set(cx, typed_array_object, key, value, true)?;
                 }
@@ -966,14 +973,14 @@ pub fn canonical_numeric_index_string(
     cx: Context,
     key: Handle<PropertyKey>,
     typed_array: DynTypedArray,
-) -> CanonicalIndexType {
-    if key.is_array_index() {
+) -> AllocResult<CanonicalIndexType> {
+    let result = if key.is_array_index() {
         // Fast path for array indices
         let array_index = key.as_array_index() as usize;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return CanonicalIndexType::Invalid;
+            return Ok(CanonicalIndexType::Invalid);
         }
         let array_length = typed_array_length(&typed_array_record);
 
@@ -989,25 +996,25 @@ pub fn canonical_numeric_index_string(
 
         // If string representations are equal, must be canonical numeric index
         let number_string = must!(to_string(cx, number_value));
-        if key_string.eq(&number_string) {
+        if key_string.equals(&number_string)? {
             if !is_integral_number(*number_value) {
-                return CanonicalIndexType::Invalid;
+                return Ok(CanonicalIndexType::Invalid);
             }
 
             let number = number_value.as_number();
             if number.is_sign_negative() {
-                return CanonicalIndexType::Invalid;
+                return Ok(CanonicalIndexType::Invalid);
             }
 
             let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
             if is_typed_array_out_of_bounds(&typed_array_record) {
-                return CanonicalIndexType::Invalid;
+                return Ok(CanonicalIndexType::Invalid);
             }
             let array_length = typed_array_length(&typed_array_record);
 
             let number = number as usize;
             if number >= array_length {
-                return CanonicalIndexType::Invalid;
+                return Ok(CanonicalIndexType::Invalid);
             }
 
             CanonicalIndexType::Valid(number)
@@ -1022,5 +1029,7 @@ pub fn canonical_numeric_index_string(
         }
     } else {
         CanonicalIndexType::NotAnIndex
-    }
+    };
+
+    Ok(result)
 }

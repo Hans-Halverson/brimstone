@@ -1,4 +1,7 @@
-use crate::{runtime::heap_item_descriptor::HeapItemKind, set_uninit};
+use crate::{
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    set_uninit,
+};
 
 use super::{
     gc::{HeapItem, HeapVisitor},
@@ -20,14 +23,14 @@ impl Accessor {
         cx: Context,
         get: Option<Handle<ObjectValue>>,
         set: Option<Handle<ObjectValue>>,
-    ) -> Handle<Accessor> {
-        let mut accessor = cx.alloc_uninit::<Accessor>();
+    ) -> AllocResult<Handle<Accessor>> {
+        let mut accessor = cx.alloc_uninit::<Accessor>()?;
 
         set_uninit!(accessor.descriptor, cx.base_descriptors.get(HeapItemKind::Accessor));
         set_uninit!(accessor.get, get.map(|v| *v));
         set_uninit!(accessor.set, set.map(|v| *v));
 
-        accessor.to_handle()
+        Ok(accessor.to_handle())
     }
 
     pub fn from_value(value: Handle<Value>) -> Handle<Accessor> {

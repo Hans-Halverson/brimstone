@@ -10,21 +10,22 @@ use brimstone_core::{
     },
     parser::source::Source,
     runtime::{
-        gc_object::GcObject, test_262_object::Test262Object, BsResult, Context, ContextBuilder,
+        alloc_error::AllocResult, gc_object::GcObject, test_262_object::Test262Object, BsResult,
+        Context, ContextBuilder,
     },
 };
 
-fn create_context(args: &Args) -> Context {
+fn create_context(args: &Args) -> AllocResult<Context> {
     let options = Rc::new(Options::new_from_args(args));
 
-    let cx = ContextBuilder::new().set_options(options).build();
+    let cx = ContextBuilder::new().set_options(options).build()?;
 
     if args.expose_gc {
-        GcObject::install(cx, cx.initial_realm());
+        GcObject::install(cx, cx.initial_realm())?;
     }
 
     if args.expose_test_262 {
-        Test262Object::install(cx, cx.initial_realm());
+        Test262Object::install(cx, cx.initial_realm())?;
     }
 
     #[cfg(feature = "gc_stress_test")]
@@ -33,7 +34,7 @@ fn create_context(args: &Args) -> Context {
         cx.enable_gc_stress_test();
     }
 
-    cx
+    Ok(cx)
 }
 
 fn evaluate(mut cx: Context, args: &Args) -> BsResult<()> {
@@ -50,13 +51,25 @@ fn evaluate(mut cx: Context, args: &Args) -> BsResult<()> {
     Ok(())
 }
 
+fn unwrap_error_or_exit<T>(cx: Context, result: BsResult<T>) -> T {
+    match result {
+        Ok(value) => value,
+        Err(err) => {
+            let supports_color = stderr_should_use_colors(&cx.options);
+            let format_options = FormatOptions::new(supports_color);
+
+            print_error_message_and_exit(&err.format(cx, &format_options));
+        }
+    }
+}
+
 /// Wrapper to pretty print errors
 fn main() {
     // Global initialization
     brimstone_serialized_heap::init();
 
     let args = Args::parse();
-    let cx = create_context(&args);
+    let cx = create_context(&args).expect("Failed to create initial Context");
 
     cx.execute_then_drop(|cx| {
         let result = evaluate(cx, &args);
@@ -64,14 +77,6 @@ fn main() {
         #[cfg(feature = "handle_stats")]
         println!("{:?}", cx.heap.info().handle_context().handle_stats());
 
-        match result {
-            Ok(_) => (),
-            Err(err) => {
-                let supports_color = stderr_should_use_colors(&cx.options);
-                let format_options = FormatOptions::new(supports_color);
-
-                print_error_message_and_exit(&err.format(cx, &format_options));
-            }
-        }
+        unwrap_error_or_exit(cx, result);
     })
 }

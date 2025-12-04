@@ -54,6 +54,10 @@ handle_stats = []
 jemalloc = []
 # Do not use the jemalloc allocator, overrides the `jemalloc` feature
 no_jemalloc = []
+# Return allocation errors instead of panicking
+alloc_error = []
+# Enable features only available on nightly (e.g. never_type)
+nightly = []
 
 [lints]
 workspace = true

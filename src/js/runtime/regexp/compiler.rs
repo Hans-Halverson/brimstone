@@ -25,6 +25,7 @@ use crate::{
         },
     },
     runtime::{
+        alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrintMode},
         string_value::StringValue,
         Context, Handle,
@@ -284,7 +285,11 @@ impl CompiledRegExpBuilder {
         next_register
     }
 
-    fn compile(&mut self, cx: Context, regexp: &RegExp) -> Handle<CompiledRegExpObject> {
+    fn compile(
+        &mut self,
+        cx: Context,
+        regexp: &RegExp,
+    ) -> AllocResult<Handle<CompiledRegExpObject>> {
         // Prime with new block
         self.new_block();
 
@@ -1543,16 +1548,16 @@ pub fn compile_regexp(
     cx: Context,
     regexp: &RegExp,
     source: Handle<StringValue>,
-) -> Handle<CompiledRegExpObject> {
+) -> AllocResult<Handle<CompiledRegExpObject>> {
     let mut builder = CompiledRegExpBuilder::new(regexp, source);
-    let compiled_regexp = builder.compile(cx, regexp);
+    let compiled_regexp = builder.compile(cx, regexp)?;
 
     if cx.options.print_regexp_bytecode {
         let bytecode_string = compiled_regexp.debug_print(DebugPrintMode::Verbose);
         cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
 
-    compiled_regexp
+    Ok(compiled_regexp)
 }
 
 enum AnyStr<'a> {

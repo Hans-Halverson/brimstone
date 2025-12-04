@@ -1,4 +1,6 @@
-use crate::runtime::{object_value::ObjectValue, realm::Realm, Context, Handle};
+use crate::runtime::{
+    alloc_error::AllocResult, object_value::ObjectValue, realm::Realm, Context, Handle,
+};
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 
@@ -6,14 +8,14 @@ use super::{intrinsics::Intrinsic, rust_runtime::return_this};
 pub struct AsyncIteratorPrototype;
 
 impl AsyncIteratorPrototype {
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // %AsyncIteratorPrototype% [ @@asyncIterator ] (https://tc39.es/ecma262/#sec-%asynciteratorprototype%-%symbol.asynciterator%)
         let async_iterator_key = cx.well_known_symbols.async_iterator();
-        object.intrinsic_func(cx, async_iterator_key, return_this, 0, realm);
+        object.intrinsic_func(cx, async_iterator_key, return_this, 0, realm)?;
 
-        object
+        Ok(object)
     }
 }

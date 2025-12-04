@@ -1,6 +1,7 @@
 use crate::{
     common::time::get_current_unix_time,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
@@ -26,7 +27,7 @@ pub struct DateConstructor;
 
 impl DateConstructor {
     /// The Date Constructor (https://tc39.es/ecma262/#sec-date-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -34,19 +35,19 @@ impl DateConstructor {
             cx.names.date(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::DatePrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm);
-        func.intrinsic_func(cx, cx.names.parse(), Self::parse, 1, realm);
-        func.intrinsic_func(cx, cx.names.utc(), Self::utc, 7, realm);
+        func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm)?;
+        func.intrinsic_func(cx, cx.names.parse(), Self::parse, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.utc(), Self::utc, 7, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Date (https://tc39.es/ecma262/#sec-date)
@@ -58,7 +59,7 @@ impl DateConstructor {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
-            return Ok(to_date_string(cx, get_current_unix_time()).as_value());
+            return Ok(to_date_string(cx, get_current_unix_time())?.as_value());
         };
 
         let number_of_args = arguments.len();
@@ -75,7 +76,7 @@ impl DateConstructor {
 
                     if primitive_value.is_string() {
                         let primitive_string = primitive_value.as_string();
-                        parse_string_to_date(primitive_string).unwrap_or(f64::NAN)
+                        parse_string_to_date(primitive_string)?.unwrap_or(f64::NAN)
                     } else {
                         to_number(cx, primitive_value)?.as_number()
                     }
@@ -152,7 +153,7 @@ impl DateConstructor {
         let string_arg = get_argument(cx, arguments, 0);
         let string = to_string(cx, string_arg)?;
 
-        if let Some(date_value) = parse_string_to_date(string) {
+        if let Some(date_value) = parse_string_to_date(string)? {
             Ok(Value::from(date_value).to_handle(cx))
         } else {
             Ok(cx.nan())

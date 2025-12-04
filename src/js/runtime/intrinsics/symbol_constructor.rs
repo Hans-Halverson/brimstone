@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsHashMapField,
         error::type_error,
@@ -31,16 +32,19 @@ extend_object! {
 }
 
 impl SymbolObject {
-    pub fn new_from_value(cx: Context, symbol_data: Handle<SymbolValue>) -> Handle<SymbolObject> {
+    pub fn new_from_value(
+        cx: Context,
+        symbol_data: Handle<SymbolValue>,
+    ) -> AllocResult<Handle<SymbolObject>> {
         let mut object = object_create::<SymbolObject>(
             cx,
             HeapItemKind::SymbolObject,
             Intrinsic::SymbolPrototype,
-        );
+        )?;
 
         set_uninit!(object.symbol_data, *symbol_data);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn symbol_data(&self) -> Handle<SymbolValue> {
@@ -52,7 +56,7 @@ pub struct SymbolConstructor;
 
 impl SymbolConstructor {
     /// Properties of the Symbol Constructor (https://tc39.es/ecma262/#sec-properties-of-the-symbol-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -60,62 +64,62 @@ impl SymbolConstructor {
             cx.names.symbol(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::SymbolPrototype).into(),
-        );
+        )?;
 
         // Well known symbols
         let async_iterator = cx.well_known_symbols.async_iterator().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.async_iterator(), async_iterator.into());
+        func.intrinsic_frozen_property(cx, cx.names.async_iterator(), async_iterator.into())?;
 
         let has_instance = cx.well_known_symbols.has_instance().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.has_instance(), has_instance.into());
+        func.intrinsic_frozen_property(cx, cx.names.has_instance(), has_instance.into())?;
 
         let is_concat_spreadable = cx.well_known_symbols.is_concat_spreadable().as_symbol();
         func.intrinsic_frozen_property(
             cx,
             cx.names.is_concat_spreadable(),
             is_concat_spreadable.into(),
-        );
+        )?;
 
         let iterator = cx.well_known_symbols.iterator().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.iterator_(), iterator.into());
+        func.intrinsic_frozen_property(cx, cx.names.iterator_(), iterator.into())?;
 
         let match_ = cx.well_known_symbols.match_().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.match_(), match_.into());
+        func.intrinsic_frozen_property(cx, cx.names.match_(), match_.into())?;
 
         let match_all = cx.well_known_symbols.match_all().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.match_all(), match_all.into());
+        func.intrinsic_frozen_property(cx, cx.names.match_all(), match_all.into())?;
 
         let replace = cx.well_known_symbols.replace().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.replace(), replace.into());
+        func.intrinsic_frozen_property(cx, cx.names.replace(), replace.into())?;
 
         let search = cx.well_known_symbols.search().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.search(), search.into());
+        func.intrinsic_frozen_property(cx, cx.names.search(), search.into())?;
 
         let species = cx.well_known_symbols.species().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.species(), species.into());
+        func.intrinsic_frozen_property(cx, cx.names.species(), species.into())?;
 
         let split = cx.well_known_symbols.split().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.split(), split.into());
+        func.intrinsic_frozen_property(cx, cx.names.split(), split.into())?;
 
         let to_primitive = cx.well_known_symbols.to_primitive().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.to_primitive(), to_primitive.into());
+        func.intrinsic_frozen_property(cx, cx.names.to_primitive(), to_primitive.into())?;
 
         let to_string_tag = cx.well_known_symbols.to_string_tag().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.to_string_tag(), to_string_tag.into());
+        func.intrinsic_frozen_property(cx, cx.names.to_string_tag(), to_string_tag.into())?;
 
         let unscopables = cx.well_known_symbols.unscopables().as_symbol();
-        func.intrinsic_frozen_property(cx, cx.names.unscopables(), unscopables.into());
+        func.intrinsic_frozen_property(cx, cx.names.unscopables(), unscopables.into())?;
 
-        func.intrinsic_func(cx, cx.names.for_(), Self::for_, 1, realm);
-        func.intrinsic_func(cx, cx.names.key_for(), Self::key_for, 1, realm);
+        func.intrinsic_func(cx, cx.names.for_(), Self::for_, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.key_for(), Self::key_for, 1, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Symbol (https://tc39.es/ecma262/#sec-symbol-description)
@@ -135,7 +139,7 @@ impl SymbolConstructor {
             Some(to_string(cx, description_arg)?)
         };
 
-        Ok(SymbolValue::new(cx, description_value, /* is_private */ false).into())
+        Ok(SymbolValue::new(cx, description_value, /* is_private */ false)?.into())
     }
 
     /// Symbol.for (https://tc39.es/ecma262/#sec-symbol.for)
@@ -145,15 +149,15 @@ impl SymbolConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let argument = get_argument(cx, arguments, 0);
-        let string_key = to_string(cx, argument)?.flatten();
+        let string_key = to_string(cx, argument)?.flatten()?;
         if let Some(symbol_value) = cx.global_symbol_registry().get(&string_key) {
             return Ok(symbol_value.to_handle().into());
         }
 
         let new_symbol =
-            SymbolValue::new(cx, Some(string_key.as_string()), /* is_private */ false);
+            SymbolValue::new(cx, Some(string_key.as_string()), /* is_private */ false)?;
         cx.global_symbol_registry_field()
-            .maybe_grow_for_insertion(cx)
+            .maybe_grow_for_insertion(cx)?
             .insert_without_growing(*string_key, *new_symbol);
 
         Ok(new_symbol.into())

@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::{index_map::GcSafeEntriesIter, BsIndexMap},
         error::type_error,
@@ -39,19 +40,23 @@ pub enum SetIteratorKind {
 }
 
 impl SetIterator {
-    pub fn new(cx: Context, set: Handle<SetObject>, kind: SetIteratorKind) -> Handle<SetIterator> {
+    pub fn new(
+        cx: Context,
+        set: Handle<SetObject>,
+        kind: SetIteratorKind,
+    ) -> AllocResult<Handle<SetIterator>> {
         let mut object = object_create::<SetIterator>(
             cx,
             HeapItemKind::SetIterator,
             Intrinsic::SetIteratorPrototype,
-        );
+        )?;
 
         set_uninit!(object.set, set.set_data_ptr().cast());
         set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
         set_uninit!(object.is_done, false);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     cast_from_value_fn!(SetIterator, "Set Iterator");
@@ -74,22 +79,22 @@ impl SetIterator {
 pub struct SetIteratorPrototype;
 
 impl SetIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
 
         // %SetIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%setiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("Set Iterator").into();
+        let to_string_tag_value = cx.alloc_string("Set Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %SetIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%setiteratorprototype%.next)
@@ -104,7 +109,7 @@ impl SetIteratorPrototype {
 
         // Check if iterator is already done
         if set_iterator.is_done {
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
@@ -124,7 +129,7 @@ impl SetIteratorPrototype {
         match iter_result {
             None => {
                 set_iterator.is_done = true;
-                Ok(create_iter_result_object(cx, cx.undefined(), true))
+                Ok(create_iter_result_object(cx, cx.undefined(), true)?)
             }
             Some((value, _)) => {
                 let value_value: Value = value.into();
@@ -132,11 +137,12 @@ impl SetIteratorPrototype {
 
                 match set_iterator.kind {
                     SetIteratorKind::Value => {
-                        Ok(create_iter_result_object(cx, value_handle, false))
+                        Ok(create_iter_result_object(cx, value_handle, false)?)
                     }
                     SetIteratorKind::KeyAndValue => {
-                        let result_pair = create_array_from_list(cx, &[value_handle, value_handle]);
-                        Ok(create_iter_result_object(cx, result_pair.into(), false))
+                        let result_pair =
+                            create_array_from_list(cx, &[value_handle, value_handle])?;
+                        Ok(create_iter_result_object(cx, result_pair.into(), false)?)
                     }
                 }
             }

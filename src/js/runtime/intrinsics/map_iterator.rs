@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         collections::index_map::GcSafeEntriesIter,
         error::type_error,
@@ -43,19 +44,23 @@ pub enum MapIteratorKind {
 }
 
 impl MapIterator {
-    pub fn new(cx: Context, map: Handle<MapObject>, kind: MapIteratorKind) -> Handle<MapIterator> {
+    pub fn new(
+        cx: Context,
+        map: Handle<MapObject>,
+        kind: MapIteratorKind,
+    ) -> AllocResult<Handle<MapIterator>> {
         let mut object = object_create::<MapIterator>(
             cx,
             HeapItemKind::MapIterator,
             Intrinsic::MapIteratorPrototype,
-        );
+        )?;
 
         set_uninit!(object.map, map.map_data());
         set_uninit!(object.next_entry_index, 0);
         set_uninit!(object.kind, kind);
         set_uninit!(object.is_done, false);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     cast_from_value_fn!(MapIterator, "Map Iterator");
@@ -78,22 +83,22 @@ impl MapIterator {
 pub struct MapIteratorPrototype;
 
 impl MapIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
 
         // %MapIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%mapiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("Map Iterator").into();
+        let to_string_tag_value = cx.alloc_string("Map Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %MapIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%mapiteratorprototype%.next)
@@ -107,7 +112,7 @@ impl MapIteratorPrototype {
 
         // Check if iterator is already done
         if map_iterator.is_done {
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         // Follow tombstone objects, fixing up iterator as needed. This may be a chain of tombstone
@@ -127,27 +132,27 @@ impl MapIteratorPrototype {
         match iter_result {
             None => {
                 map_iterator.is_done = true;
-                Ok(create_iter_result_object(cx, cx.undefined(), true))
+                Ok(create_iter_result_object(cx, cx.undefined(), true)?)
             }
             Some((key, value)) => match map_iterator.kind {
                 MapIteratorKind::Key => {
                     let key_value: Value = key.into();
                     let key_handle = key_value.to_handle(cx);
 
-                    Ok(create_iter_result_object(cx, key_handle, false))
+                    Ok(create_iter_result_object(cx, key_handle, false)?)
                 }
                 MapIteratorKind::Value => {
                     let value_handle = value.to_handle(cx);
 
-                    Ok(create_iter_result_object(cx, value_handle, false))
+                    Ok(create_iter_result_object(cx, value_handle, false)?)
                 }
                 MapIteratorKind::KeyAndValue => {
                     let key_value: Value = key.into();
                     let key_handle = key_value.to_handle(cx);
                     let value_handle = value.to_handle(cx);
-                    let result_pair = create_array_from_list(cx, &[key_handle, value_handle]);
+                    let result_pair = create_array_from_list(cx, &[key_handle, value_handle])?;
 
-                    Ok(create_iter_result_object(cx, result_pair.into(), false))
+                    Ok(create_iter_result_object(cx, result_pair.into(), false)?)
                 }
             },
         }

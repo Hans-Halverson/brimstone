@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
@@ -30,16 +31,16 @@ extend_object! {
 }
 
 impl BooleanObject {
-    pub fn new(cx: Context, boolean_data: bool) -> Handle<BooleanObject> {
+    pub fn new(cx: Context, boolean_data: bool) -> AllocResult<Handle<BooleanObject>> {
         let mut object = object_create::<BooleanObject>(
             cx,
             HeapItemKind::BooleanObject,
             Intrinsic::BooleanPrototype,
-        );
+        )?;
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn new_from_constructor(
@@ -63,13 +64,13 @@ impl BooleanObject {
         cx: Context,
         proto: Handle<ObjectValue>,
         boolean_data: bool,
-    ) -> Handle<BooleanObject> {
+    ) -> AllocResult<Handle<BooleanObject>> {
         let mut object =
-            object_create_with_proto::<BooleanObject>(cx, HeapItemKind::BooleanObject, proto);
+            object_create_with_proto::<BooleanObject>(cx, HeapItemKind::BooleanObject, proto)?;
 
         set_uninit!(object.boolean_data, boolean_data);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     pub fn boolean_data(&self) -> bool {
@@ -85,7 +86,7 @@ pub struct BooleanConstructor;
 
 impl BooleanConstructor {
     /// Properties of the Boolean Constructor (https://tc39.es/ecma262/#sec-properties-of-the-boolean-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -93,15 +94,15 @@ impl BooleanConstructor {
             cx.names.boolean(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::BooleanPrototype).into(),
-        );
+        )?;
 
-        func
+        Ok(func)
     }
 
     /// Boolean (https://tc39.es/ecma262/#sec-boolean-constructor-boolean-value)

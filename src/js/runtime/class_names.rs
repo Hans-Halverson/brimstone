@@ -1,11 +1,11 @@
 use crate::{
     field_offset, must,
     runtime::{
-        abstract_operations::define_property_or_throw, bytecode::function::Closure,
-        error::type_error, function::build_function_name, get, heap_item_descriptor::HeapItemKind,
-        intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto, type_utilities::is_constructor_value,
-        PropertyDescriptor, PropertyKey,
+        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
+        bytecode::function::Closure, error::type_error, function::build_function_name, get,
+        heap_item_descriptor::HeapItemKind, intrinsics::intrinsics::Intrinsic,
+        object_value::ObjectValue, ordinary_object::object_create_with_optional_proto,
+        type_utilities::is_constructor_value, PropertyDescriptor, PropertyKey,
     },
     set_uninit,
 };
@@ -73,10 +73,10 @@ impl ClassNames {
         methods: &[Method],
         home_object: Option<HomeObjectLocation>,
         static_home_object: Option<HomeObjectLocation>,
-    ) -> Handle<ClassNames> {
+    ) -> AllocResult<Handle<ClassNames>> {
         let num_methods = methods.len();
         let size = Self::calculate_size_in_bytes(num_methods);
-        let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size);
+        let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size)?;
 
         set_uninit!(class_names.descriptor, cx.base_descriptors.get(HeapItemKind::ClassNames));
         set_uninit!(class_names.home_object, home_object);
@@ -100,7 +100,7 @@ impl ClassNames {
 
         set_uninit!(class_names.num_arguments, num_arguments);
 
-        class_names.to_handle()
+        Ok(class_names.to_handle())
     }
 
     const METHODS_OFFSET: usize = field_offset!(ClassNames, methods);
@@ -197,11 +197,11 @@ pub fn new_class(
         cx,
         HeapItemKind::OrdinaryObject,
         proto_parent,
-    )
+    )?
     .to_handle();
 
     let scope = cx.vm().scope().to_handle();
-    let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent);
+    let constructor = Closure::new_with_proto(cx, constructor_function, scope, constructor_parent)?;
 
     // Define a `constructor` property on the prototype
     let desc = PropertyDescriptor::data(constructor.into(), true, false, true);
@@ -239,7 +239,7 @@ pub fn new_class(
         let mut closure: Handle<Closure>;
 
         if let Some(method_name) = method.name {
-            name = PropertyKey::string(cx, method_name.as_string()).to_handle(cx);
+            name = PropertyKey::string_handle(cx, method_name.as_string())?;
             closure = method_arguments[arg_index].cast::<Closure>();
             arg_index += 1;
         } else {
@@ -258,8 +258,8 @@ pub fn new_class(
                 None
             };
 
-            let closure_name = build_function_name(cx, name, prefix);
-            closure.set_lazy_function_name(cx, closure_name);
+            let closure_name = build_function_name(cx, name, prefix)?;
+            closure.set_lazy_function_name(cx, closure_name)?;
         }
 
         // Static methods are defined on the constructor, while non-static methods are defined

@@ -1,5 +1,5 @@
 use crate::runtime::{
-    error::type_error, eval_result::EvalResult, function::get_argument,
+    alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, type_utilities::same_value, Context, Handle, Value,
 };
@@ -15,13 +15,13 @@ pub struct FinalizationRegistryPrototype;
 
 impl FinalizationRegistryPrototype {
     /// Properties of the FinalizationRegistry Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-finalization-registry-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once FinalizationRegistryConstructor has been created
-        object.intrinsic_func(cx, cx.names.register(), Self::register, 2, realm);
-        object.intrinsic_func(cx, cx.names.unregister(), Self::unregister, 1, realm);
+        object.intrinsic_func(cx, cx.names.register(), Self::register, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.unregister(), Self::unregister, 1, realm)?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -29,9 +29,9 @@ impl FinalizationRegistryPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.finalization_registry().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// FinalizationRegistry.prototype.register (https://tc39.es/ecma262/#sec-finalization-registry.prototype.register)
@@ -55,7 +55,7 @@ impl FinalizationRegistryPrototype {
             return type_error(cx, "FinalizationRegistry targets must be objects or symbols");
         }
 
-        if same_value(target, held_value) {
+        if same_value(target, held_value)? {
             return type_error(
                 cx,
                 "The target and held value arguments to register cannot be the same value",
@@ -73,7 +73,7 @@ impl FinalizationRegistryPrototype {
             );
         };
 
-        FinalizationRegistryCells::maybe_grow_for_insertion(cx, registry_object)
+        FinalizationRegistryCells::maybe_grow_for_insertion(cx, registry_object)?
             .insert_without_growing(FinalizationRegistryCell {
                 target: *target,
                 held_value: *held_value,

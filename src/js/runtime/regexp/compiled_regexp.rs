@@ -5,6 +5,7 @@ use crate::{
     field_offset,
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
+        alloc_error::AllocResult,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
@@ -49,25 +50,24 @@ impl CompiledRegExpObject {
         escaped_pattern_source: Handle<StringValue>,
         num_progress_points: u32,
         num_loop_registers: u32,
-    ) -> Handle<CompiledRegExpObject> {
+    ) -> AllocResult<Handle<CompiledRegExpObject>> {
         let num_capture_groups = regexp.capture_groups.len() as u32;
         let mut has_named_capture_groups = false;
 
-        let capture_group_handles = regexp
-            .capture_groups
-            .iter()
-            .map(|capture_group| {
-                if let Some(name_string) = capture_group {
-                    has_named_capture_groups = true;
-                    Some(cx.alloc_wtf8_str_ptr(name_string).to_handle())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut capture_group_handles = vec![];
+        for capture_group in regexp.capture_groups.iter() {
+            let handle = if let Some(name_string) = capture_group {
+                has_named_capture_groups = true;
+                Some(cx.alloc_wtf8_str_ptr(name_string)?.to_handle())
+            } else {
+                None
+            };
+
+            capture_group_handles.push(handle);
+        }
 
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
-        let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size);
+        let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::CompiledRegExpObject));
         set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
@@ -92,7 +92,7 @@ impl CompiledRegExpObject {
             .capture_groups_as_slice_mut()
             .copy_from_slice(capture_group_ptrs.as_slice());
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     #[inline]
@@ -151,7 +151,7 @@ impl CompiledRegExpObject {
 
 impl DebugPrint for HeapPtr<CompiledRegExpObject> {
     fn debug_format(&self, printer: &mut DebugPrinter) {
-        let source = format!("/{}/", self.escaped_pattern_source());
+        let source = format!("/{}/", self.escaped_pattern_source().format().unwrap_or_default());
         printer.write_heap_item_with_context(self.cast(), &source);
 
         if printer.is_short_mode() {

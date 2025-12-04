@@ -1,5 +1,6 @@
 use crate::runtime::{
     abstract_operations::define_property_or_throw,
+    alloc_error::AllocResult,
     bytecode::function::Closure,
     eval_result::EvalResult,
     function::get_argument,
@@ -19,15 +20,15 @@ pub struct GeneratorPrototype;
 
 impl GeneratorPrototype {
     /// The %GeneratorPrototype% Object (https://tc39.es/ecma262/#sec-properties-of-generator-prototype)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
         // Constructor property is added once GeneratorFunctionPrototype is created
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm);
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm);
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm)?;
 
         // %GeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-generator.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -35,9 +36,9 @@ impl GeneratorPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.generator().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %GeneratorPrototype%.next (https://tc39.es/ecma262/#sec-generator.prototype.next)
@@ -77,7 +78,7 @@ impl GeneratorPrototype {
             cx,
             HeapItemKind::OrdinaryObject,
             Intrinsic::GeneratorPrototype,
-        )
+        )?
         .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);

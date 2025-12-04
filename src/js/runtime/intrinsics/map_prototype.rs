@@ -1,5 +1,6 @@
 use crate::runtime::{
     abstract_operations::call_object,
+    alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
@@ -22,29 +23,33 @@ pub struct MapPrototype;
 
 impl MapPrototype {
     /// Properties of the Map Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-map-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Create values function as it is referenced by multiple properties
         let entries_function =
-            BuiltinFunction::create(cx, Self::entries, 0, cx.names.entries(), realm, None).into();
+            BuiltinFunction::create(cx, Self::entries, 0, cx.names.entries(), realm, None)?.into();
 
         // Constructor property is added once MapConstructor has been created
-        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm);
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_data_prop(cx, cx.names.entries(), entries_function);
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm);
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
-        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm);
-        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm);
-        object.intrinsic_func(cx, cx.names.values(), Self::values, 0, realm);
+        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
+        object.intrinsic_data_prop(cx, cx.names.entries(), entries_function)?;
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm)?;
+        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm)?;
+        object.intrinsic_func(cx, cx.names.values(), Self::values, 0, realm)?;
 
         // Map.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.set_property(cx, iterator_key, Property::data(entries_function, true, false, true));
+        object.set_property(
+            cx,
+            iterator_key,
+            Property::data(entries_function, true, false, true),
+        )?;
 
         // Map.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -52,9 +57,9 @@ impl MapPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.map().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// Map.prototype.clear (https://tc39.es/ecma262/#sec-map.prototype.clear)
@@ -89,7 +94,7 @@ impl MapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(key);
+        let map_key = ValueCollectionKey::from(key)?;
 
         let existed = map.map_data().remove(&map_key);
 
@@ -108,7 +113,7 @@ impl MapPrototype {
             return type_error(cx, "entries method must be called on map");
         };
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue).as_value())
+        Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue)?.as_value())
     }
 
     /// Map.prototype.forEach (https://tc39.es/ecma262/#sec-map.prototype.foreach)
@@ -163,7 +168,7 @@ impl MapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(key);
+        let map_key = ValueCollectionKey::from(key)?;
 
         match map.map_data().get(&map_key) {
             Some(value) => Ok(value.to_handle(cx)),
@@ -186,7 +191,7 @@ impl MapPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let map_key = ValueCollectionKey::from(key);
+        let map_key = ValueCollectionKey::from(key)?;
 
         Ok(cx.bool(map.map_data().contains_key(&map_key)))
     }
@@ -203,7 +208,7 @@ impl MapPrototype {
             return type_error(cx, "keys method must be called on map");
         };
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::Key).as_value())
+        Ok(MapIterator::new(cx, map, MapIteratorKind::Key)?.as_value())
     }
 
     /// Map.prototype.set (https://tc39.es/ecma262/#sec-map.prototype.set)
@@ -226,7 +231,7 @@ impl MapPrototype {
             key = cx.zero();
         }
 
-        map.insert(cx, key, value);
+        map.insert(cx, key, value)?;
 
         Ok(this_value)
     }
@@ -258,7 +263,7 @@ impl MapPrototype {
             return type_error(cx, "values method must be called on map");
         };
 
-        Ok(MapIterator::new(cx, map, MapIteratorKind::Value).as_value())
+        Ok(MapIterator::new(cx, map, MapIteratorKind::Value)?.as_value())
     }
 }
 

@@ -3,6 +3,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         boxed_value::BoxedValue,
         error::reference_error,
         gc::{HeapItem, HeapVisitor},
@@ -40,7 +41,7 @@ extend_object! {
 impl ModuleNamespaceObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
-    pub fn new(cx: Context, module: DynModule) -> HeapPtr<ModuleNamespaceObject> {
+    pub fn new(cx: Context, module: DynModule) -> AllocResult<HeapPtr<ModuleNamespaceObject>> {
         // Module namespace object does not have a prototype. This satisfies:
         // - [[GetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-getprototypeof)
         // - [[SetPrototypeOf]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-setprototypeof-v)
@@ -48,7 +49,7 @@ impl ModuleNamespaceObject {
             cx,
             HeapItemKind::ModuleNamespaceObject,
             None,
-        );
+        )?;
 
         // Mark as non-extensible. This satisifes:
         // - [[IsExtensible]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-isextensible)
@@ -65,9 +66,9 @@ impl ModuleNamespaceObject {
             cx,
             to_string_tag_key,
             Property::data(cx.names.module().as_string().into(), false, false, false),
-        );
+        )?;
 
-        *object
+        Ok(*object)
     }
 }
 
@@ -83,7 +84,7 @@ impl HeapPtr<ModuleNamespaceObject> {
             ModuleEnum::SourceText(module) => {
                 Self::lookup_export_source_text_module(cx, module, key)?
             }
-            ModuleEnum::Synthetic(module) => Self::lookup_export_synthetic_module(cx, module, key),
+            ModuleEnum::Synthetic(module) => Self::lookup_export_synthetic_module(cx, module, key)?,
         };
 
         if let Some(value) = value {
@@ -120,10 +121,10 @@ impl HeapPtr<ModuleNamespaceObject> {
             let namespace_object =
                 if heap_item.descriptor().kind() == HeapItemKind::SourceTextModule {
                     let mut module = heap_item.cast::<SourceTextModule>().to_handle();
-                    module.get_namespace_object(cx)
+                    module.get_namespace_object(cx)?
                 } else {
                     let mut module = heap_item.cast::<SyntheticModule>().to_handle();
-                    module.get_namespace_object(cx)
+                    module.get_namespace_object(cx)?
                 };
 
             Ok(Some(namespace_object.as_value()))
@@ -134,32 +135,32 @@ impl HeapPtr<ModuleNamespaceObject> {
         cx: Context,
         module: Handle<SyntheticModule>,
         key: PropertyKey,
-    ) -> Option<Value> {
+    ) -> AllocResult<Option<Value>> {
         // Coerce to string, which is guaranteed to be flat
-        let name = key.to_handle(cx).to_value(cx).as_string().as_flat();
+        let name = key.to_handle(cx).to_value(cx)?.as_string().as_flat();
         let scope_names = module.module_scope_ptr().scope_names_ptr();
 
         if let Some(scope_index) = scope_names.lookup_name(*name) {
             let value = module.module_scope_ptr().get_module_slot(scope_index).get();
-            Some(value)
+            Ok(Some(value))
         } else {
-            None
+            Ok(None)
         }
     }
 }
 
 impl Handle<ModuleNamespaceObject> {
     #[inline]
-    fn has_property_non_symbol(&self, cx: Context, key: Handle<PropertyKey>) -> bool {
+    fn has_property_non_symbol(&self, cx: Context, key: Handle<PropertyKey>) -> AllocResult<bool> {
         match DynModule::from_heap(&self.module).as_enum() {
             // Check the exports map
-            ModuleEnum::SourceText(module) => module.exports_ptr().contains_key(&key),
+            ModuleEnum::SourceText(module) => Ok(module.exports_ptr().contains_key(&key)),
             // Check the module scope names
             ModuleEnum::Synthetic(module) => {
                 // Coerce to string, which is guaranteed to be flat
-                let name = key.to_value(cx).as_string().as_flat();
+                let name = key.to_value(cx)?.as_string().as_flat();
                 let scope_names = module.module_scope_ptr().scope_names_ptr();
-                scope_names.lookup_name(*name).is_some()
+                Ok(scope_names.lookup_name(*name).is_some())
             }
         }
     }
@@ -214,7 +215,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
 
         // If a value was provided it must match the current value
         if let Some(desc_value) = desc.value {
-            return Ok(same_value(desc_value, current_desc.value.unwrap()));
+            return Ok(same_value(desc_value, current_desc.value.unwrap())?);
         }
 
         Ok(true)
@@ -226,7 +227,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_has_property(cx, (*self).into(), key);
         }
 
-        Ok(self.has_property_non_symbol(cx, key))
+        Ok(self.has_property_non_symbol(cx, key)?)
     }
 
     /// [[Get]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-get-p-receiver)
@@ -263,7 +264,7 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
             return ordinary_delete(cx, (*self).into(), key);
         }
 
-        Ok(!self.has_property_non_symbol(cx, key))
+        Ok(!self.has_property_non_symbol(cx, key)?)
     }
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects-ownpropertykeys)
@@ -278,13 +279,13 @@ impl VirtualObject for Handle<ModuleNamespaceObject> {
                     .collect::<Vec<_>>();
 
                 // Convert all keys to strings
-                raw_keys
-                    .into_iter()
-                    .map(|key| {
-                        // Safe since key is guaranteed to not be a symbol
-                        key.to_value(cx).as_string().as_flat()
-                    })
-                    .collect::<Vec<_>>()
+                let mut string_keys = vec![];
+                for key in raw_keys.into_iter() {
+                    // Safe since key is guaranteed to not be a symbol
+                    string_keys.push(key.to_value(cx)?.as_string().as_flat());
+                }
+
+                string_keys
             }
             // Synthetic modules have only the string keys in their module scope
             ModuleEnum::Synthetic(module) => module

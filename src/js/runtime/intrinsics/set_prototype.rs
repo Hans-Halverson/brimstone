@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
         error::type_error,
@@ -31,41 +32,45 @@ pub struct SetPrototype;
 
 impl SetPrototype {
     /// Properties of the Set Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-set-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Create values function as it is referenced by multiple properties
         let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None).into();
+            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
 
         // Constructor property is added once SetConstructor has been created
-        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm);
-        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm);
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm);
-        object.intrinsic_func(cx, cx.names.difference(), Self::difference, 1, realm);
-        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm);
-        object.intrinsic_func(cx, cx.names.intersection(), Self::intersection, 1, realm);
-        object.intrinsic_func(cx, cx.names.is_disjoint_from(), Self::is_disjoint_from, 1, realm);
-        object.intrinsic_func(cx, cx.names.is_subset_of(), Self::is_subset_of, 1, realm);
-        object.intrinsic_func(cx, cx.names.is_superset_of(), Self::is_superset_of, 1, realm);
-        object.intrinsic_data_prop(cx, cx.names.keys(), values_function);
-        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm);
+        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.difference(), Self::difference, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.intersection(), Self::intersection, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.is_disjoint_from(), Self::is_disjoint_from, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.is_subset_of(), Self::is_subset_of, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.is_superset_of(), Self::is_superset_of, 1, realm)?;
+        object.intrinsic_data_prop(cx, cx.names.keys(), values_function)?;
+        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.symmetric_difference(),
             Self::symmetric_difference,
             1,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.union(), Self::union, 1, realm);
-        object.intrinsic_data_prop(cx, cx.names.values(), values_function);
+        )?;
+        object.intrinsic_func(cx, cx.names.union(), Self::union, 1, realm)?;
+        object.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
 
         // Set.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-set.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
+        object.set_property(
+            cx,
+            iterator_key,
+            Property::data(values_function, true, false, true),
+        )?;
 
         // Set.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-set.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -73,9 +78,9 @@ impl SetPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.set().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// Set.prototype.add (https://tc39.es/ecma262/#sec-set.prototype.add)
@@ -94,7 +99,7 @@ impl SetPrototype {
         let value = get_argument(cx, arguments, 0);
         let value = canonicalize_keyed_collection_key(cx, value);
 
-        set.insert(cx, value);
+        set.insert(cx, value)?;
 
         Ok(this_value)
     }
@@ -131,7 +136,7 @@ impl SetPrototype {
         let key = get_argument(cx, arguments, 0);
 
         // May allocate
-        let set_key = ValueCollectionKey::from(key);
+        let set_key = ValueCollectionKey::from(key)?;
 
         let existed = set.set_data_ptr().remove(&set_key);
 
@@ -154,8 +159,8 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data);
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
@@ -177,7 +182,7 @@ impl SetPrototype {
 
                 if in_other.is_true() {
                     // May allocate
-                    let set_key = ValueCollectionKey::from(item_handle);
+                    let set_key = ValueCollectionKey::from(item_handle)?;
                     new_set.set_data_ptr().remove(&set_key);
                 }
             }
@@ -189,7 +194,14 @@ impl SetPrototype {
                 other_set_record.keys_method,
                 &mut |cx, key| {
                     // May allocate
-                    let key = ValueCollectionKey::from(canonicalize_keyed_collection_key(cx, key));
+                    let key = match ValueCollectionKey::from(canonicalize_keyed_collection_key(
+                        cx, key,
+                    )) {
+                        Ok(key) => key,
+                        // Propagate allocation errors upwards
+                        Err(err) => return Some(Err(err.into())),
+                    };
+
                     new_set.set_data_ptr().remove(&key);
 
                     None
@@ -212,7 +224,7 @@ impl SetPrototype {
             return type_error(cx, "entries method must be called on set");
         };
 
-        Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue).as_value())
+        Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
     }
 
     /// Set.prototype.forEach (https://tc39.es/ecma262/#sec-set.prototype.foreach)
@@ -265,7 +277,7 @@ impl SetPrototype {
         let value = get_argument(cx, arguments, 0);
 
         // May allocate
-        let set_value = ValueCollectionKey::from(value);
+        let set_value = ValueCollectionKey::from(value)?;
 
         Ok(cx.bool(set.set_data_ptr().contains(&set_value)))
     }
@@ -286,8 +298,8 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other)?;
 
         // Create an empty set
-        let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data);
+        let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY)?.to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
@@ -308,7 +320,7 @@ impl SetPrototype {
                 )?;
 
                 if in_other.is_true() {
-                    new_set.insert(cx, item_handle);
+                    new_set.insert(cx, item_handle)?;
                 }
             }
         } else {
@@ -322,10 +334,16 @@ impl SetPrototype {
                     let key = canonicalize_keyed_collection_key(cx, key);
 
                     // May allocate
-                    let set_key = ValueCollectionKey::from(key);
+                    let set_key = match ValueCollectionKey::from(key) {
+                        Ok(key) => key,
+                        // Propagate allocation errors upwards
+                        Err(err) => return Some(Err(err.into())),
+                    };
 
                     if this_set.set_data_ptr().contains(&set_key) {
-                        new_set.insert(cx, key);
+                        if let Err(err) = new_set.insert(cx, key) {
+                            return Some(Err(err.into()));
+                        }
                     }
 
                     None
@@ -386,7 +404,7 @@ impl SetPrototype {
                 let item = iterator_value(cx, iter_result)?;
 
                 // May allocate
-                let set_key = ValueCollectionKey::from(item);
+                let set_key = ValueCollectionKey::from(item)?;
 
                 // Return as soon as we find an element of the other set that is in this set
                 if this_set.set_data_ptr().contains(&set_key) {
@@ -474,7 +492,7 @@ impl SetPrototype {
             let item = iterator_value(cx, iter_result)?;
 
             // May allocate
-            let set_key = ValueCollectionKey::from(item);
+            let set_key = ValueCollectionKey::from(item)?;
 
             // Return as soon as we find an element of the other set that is not in this set
             if !this_set.set_data_ptr().contains(&set_key) {
@@ -516,8 +534,8 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data);
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         // Iterate through keys of other set and add or remove them from the new set to ensure that
         // the new set contains only the keys that are in one set but not both.
@@ -529,14 +547,20 @@ impl SetPrototype {
                 let key = canonicalize_keyed_collection_key(cx, key);
 
                 // May allocate
-                let collection_key = ValueCollectionKey::from(key);
+                let collection_key = match ValueCollectionKey::from(key) {
+                    Ok(key) => key,
+                    // Propagate allocation errors upwards
+                    Err(err) => return Some(Err(err.into())),
+                };
 
                 if this_set.set_data_ptr().contains(&collection_key) {
                     // Both sets contain the key so remove it from the new set
                     new_set.set_data_ptr().remove(&collection_key);
                 } else {
                     // Key is in the other set but not in this set so add it to the new set
-                    new_set.insert(cx, key);
+                    if let Err(err) = new_set.insert(cx, key) {
+                        return Some(Err(err.into()));
+                    }
                 }
 
                 None
@@ -562,8 +586,8 @@ impl SetPrototype {
         let other_set_record = get_set_record(cx, other)?;
 
         // Create a copy of this set
-        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data()).to_handle();
-        let new_set = SetObject::new_from_set(cx, new_set_data);
+        let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
+        let new_set = SetObject::new_from_set(cx, new_set_data)?;
 
         // Iterate through keys of other set and add them to the new set
         iter_iterator_method_values(
@@ -572,7 +596,10 @@ impl SetPrototype {
             other_set_record.keys_method,
             &mut |cx, key| {
                 let key = canonicalize_keyed_collection_key(cx, key);
-                new_set.insert(cx, key);
+
+                if let Err(err) = new_set.insert(cx, key) {
+                    return Some(Err(err.into()));
+                }
 
                 None
             },
@@ -593,7 +620,7 @@ impl SetPrototype {
             return type_error(cx, "values method must be called on set");
         };
 
-        Ok(SetIterator::new(cx, set, SetIteratorKind::Value).as_value())
+        Ok(SetIterator::new(cx, set, SetIteratorKind::Value)?.as_value())
     }
 }
 

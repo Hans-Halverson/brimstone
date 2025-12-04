@@ -7,6 +7,7 @@ use crate::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
         },
+        alloc_error::AllocResult,
         array_object::{array_create, array_species_create, ArrayObject},
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -39,64 +40,64 @@ pub struct ArrayPrototype;
 
 impl ArrayPrototype {
     /// Properties of the Array Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-array-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut array = ArrayObject::new(cx, object_proto).as_object();
+        let mut array = ArrayObject::new(cx, object_proto)?.as_object();
 
         // Create values function as it is referenced by multiple properties
         let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None).into();
+            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
 
         // Constructor property is added once ArrayConstructor has been created
-        array.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
-        array.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
-        array.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm);
-        array.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm);
-        array.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm);
-        array.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm);
-        array.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm);
-        array.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm);
-        array.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm);
-        array.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm);
-        array.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm);
-        array.intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm);
-        array.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm);
-        array.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm);
-        array.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
-        array.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
-        array.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm);
-        array.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm);
-        array.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        array.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm);
-        array.intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm);
-        array.intrinsic_func(cx, cx.names.push(), Self::push, 1, realm);
-        array.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm);
-        array.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm);
-        array.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm);
-        array.intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm);
-        array.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        array.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm);
-        array.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm);
-        array.intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm);
-        array.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        array.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm);
-        array.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm);
-        array.intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm);
-        array.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        array.intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm);
-        array.intrinsic_data_prop(cx, cx.names.values(), values_function);
-        array.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm);
+        array.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm)?;
+        array.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.push(), Self::push, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
+        array.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm)?;
+        array.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm)?;
+        array.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        array.intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm)?;
+        array.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
+        array.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm)?;
 
         // Array.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        array.set_property(cx, iterator_key, Property::data(values_function, true, false, true));
+        array.set_property(cx, iterator_key, Property::data(values_function, true, false, true))?;
 
         // Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
         let unscopables_key = cx.well_known_symbols.unscopables();
-        let unscopables = Property::data(Self::create_unscopables(cx).into(), false, false, true);
-        array.set_property(cx, unscopables_key, unscopables);
+        let unscopables = Property::data(Self::create_unscopables(cx)?.into(), false, false, true);
+        array.set_property(cx, unscopables_key, unscopables)?;
 
-        array
+        Ok(array)
     }
 
     /// Array.prototype.at (https://tc39.es/ecma262/#sec-array.prototype.at)
@@ -116,13 +117,13 @@ impl ArrayPrototype {
                 return Ok(cx.undefined());
             }
 
-            PropertyKey::from_u64(cx, relative_index as u64).to_handle(cx)
+            PropertyKey::from_u64_handle(cx, relative_index as u64)?
         } else {
             if -relative_index > length as f64 {
                 return Ok(cx.undefined());
             }
 
-            PropertyKey::from_u64(cx, (length as i64 + relative_index as i64) as u64).to_handle(cx)
+            PropertyKey::from_u64_handle(cx, (length as i64 + relative_index as i64) as u64)?
         };
 
         get(cx, object, key)
@@ -186,14 +187,14 @@ impl ArrayPrototype {
             let mut element_index_key = PropertyKey::uninit().to_handle(cx);
 
             for i in 0..length {
-                element_index_key.replace(PropertyKey::from_u64(cx, i));
+                element_index_key.replace(PropertyKey::from_u64(cx, i)?);
 
                 if has_property(cx, element, element_index_key)? {
                     let sub_element = get(cx, element, element_index_key)?;
 
                     // Share property key, since element_index_key is no longer used
                     let mut array_index_key = element_index_key;
-                    array_index_key.replace(PropertyKey::from_u64(cx, *n));
+                    array_index_key.replace(PropertyKey::from_u64(cx, *n)?);
 
                     create_data_property_or_throw(cx, array, array_index_key, sub_element)?
                 }
@@ -205,7 +206,7 @@ impl ArrayPrototype {
                 return type_error(cx, "array is too large");
             }
 
-            let index_key = PropertyKey::from_u64(cx, *n).to_handle(cx).to_handle(cx);
+            let index_key = PropertyKey::from_u64_handle(cx, *n)?;
             create_data_property_or_throw(cx, array, index_key, element)?;
 
             *n += 1;
@@ -284,8 +285,8 @@ impl ArrayPrototype {
             let mut to_index = (to_index + count - 1) as i64;
 
             while count > 0 {
-                from_key.replace(PropertyKey::from_u64(cx, from_index as u64));
-                to_key.replace(PropertyKey::from_u64(cx, to_index as u64));
+                from_key.replace(PropertyKey::from_u64(cx, from_index as u64)?);
+                to_key.replace(PropertyKey::from_u64(cx, to_index as u64)?);
 
                 if has_property(cx, object, from_key)? {
                     let from_value = get(cx, object, from_key)?;
@@ -300,8 +301,8 @@ impl ArrayPrototype {
             }
         } else {
             while count > 0 {
-                from_key.replace(PropertyKey::from_u64(cx, from_index));
-                to_key.replace(PropertyKey::from_u64(cx, to_index));
+                from_key.replace(PropertyKey::from_u64(cx, from_index)?);
+                to_key.replace(PropertyKey::from_u64(cx, to_index)?);
 
                 if has_property(cx, object, from_key)? {
                     let from_value = get(cx, object, from_key)?;
@@ -326,7 +327,7 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue).as_value())
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::KeyAndValue)?.as_value())
     }
 
     /// Array.prototype.every (https://tc39.es/ecma262/#sec-array.prototype.every)
@@ -351,7 +352,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -412,7 +413,7 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..end_index {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             set(cx, object, key, value, true)?;
         }
 
@@ -445,7 +446,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -458,7 +459,7 @@ impl ArrayPrototype {
                     // Reuse index_key handle as it is never referenced again
                     let mut result_index_key = index_key;
 
-                    result_index_key.replace(PropertyKey::from_u64(cx, result_index));
+                    result_index_key.replace(PropertyKey::from_u64(cx, result_index)?);
                     create_data_property_or_throw(cx, array, result_index_key, value)?;
 
                     result_index += 1;
@@ -613,7 +614,7 @@ impl ArrayPrototype {
         let mut target_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..source_length {
-            source_key.replace(PropertyKey::from_u64(cx, i));
+            source_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, source, source_key)? {
                 let mut element = get(cx, source, source_key)?;
 
@@ -654,7 +655,7 @@ impl ArrayPrototype {
                         return type_error(cx, "array is too large");
                     }
 
-                    target_key.replace(PropertyKey::from_u64(cx, target_index));
+                    target_key.replace(PropertyKey::from_u64(cx, target_index)?);
                     create_data_property_or_throw(cx, target, target_key, element)?;
 
                     target_index += 1;
@@ -719,7 +720,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -766,10 +767,10 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             let element = get(cx, object, key)?;
 
-            if same_value_zero(search_element, element) {
+            if same_value_zero(search_element, element)? {
                 return Ok(cx.bool(true));
             }
         }
@@ -810,10 +811,10 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, key)? {
                 let element = get(cx, object, key)?;
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element, element)? {
                     return Ok(Value::from(i).to_handle(cx));
                 }
             }
@@ -845,15 +846,15 @@ impl ArrayPrototype {
 
         for i in 0..length {
             if i > 0 {
-                joined = StringValue::concat(cx, joined, separator);
+                joined = StringValue::concat(cx, joined, separator)?;
             }
 
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             let element = get(cx, object, key)?;
 
             if !element.is_nullish() {
                 let next = to_string(cx, element)?;
-                joined = StringValue::concat(cx, joined, next);
+                joined = StringValue::concat(cx, joined, next)?;
             }
         }
 
@@ -867,7 +868,7 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key).as_value())
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Key)?.as_value())
     }
 
     /// Array.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-array.prototype.lastindexof)
@@ -911,10 +912,10 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in (0..=start_index).rev() {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, key)? {
                 let element = get(cx, object, key)?;
-                if is_strictly_equal(search_element, element) {
+                if is_strictly_equal(search_element, element)? {
                     return Ok(Value::from(i).to_handle(cx));
                 }
             }
@@ -947,7 +948,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -978,7 +979,7 @@ impl ArrayPrototype {
         }
 
         let new_length = length - 1;
-        let index_key = PropertyKey::from_u64(cx, new_length).to_handle(cx);
+        let index_key = PropertyKey::from_u64_handle(cx, new_length)?;
 
         let element = get(cx, object, index_key)?;
         delete_property_or_throw(cx, object, index_key)?;
@@ -1007,7 +1008,7 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for (i, argument) in arguments.iter().enumerate() {
-            key.replace(PropertyKey::from_u64(cx, length + i as u64));
+            key.replace(PropertyKey::from_u64(cx, length + i as u64)?);
             set(cx, object, key, *argument, true)?;
         }
 
@@ -1048,7 +1049,7 @@ impl ArrayPrototype {
                     return type_error(cx, "reduce of empty array with no initial value");
                 }
 
-                index_key.replace(PropertyKey::from_u64(cx, initial_index));
+                index_key.replace(PropertyKey::from_u64(cx, initial_index)?);
                 initial_index += 1;
 
                 if has_property(cx, object, index_key)? {
@@ -1062,7 +1063,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in initial_index..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -1106,7 +1107,7 @@ impl ArrayPrototype {
                     return type_error(cx, "reduce of empty array with no initial value");
                 }
 
-                index_key.replace(PropertyKey::from_u64(cx, initial_index as u64));
+                index_key.replace(PropertyKey::from_u64(cx, initial_index as u64)?);
                 initial_index -= 1;
 
                 if has_property(cx, object, index_key)? {
@@ -1120,7 +1121,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in (0..=initial_index).rev() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -1153,8 +1154,8 @@ impl ArrayPrototype {
         let mut upper_key = PropertyKey::uninit().to_handle(cx);
 
         while lower != middle {
-            lower_key.replace(PropertyKey::from_u64(cx, lower));
-            upper_key.replace(PropertyKey::from_u64(cx, upper));
+            lower_key.replace(PropertyKey::from_u64(cx, lower)?);
+            upper_key.replace(PropertyKey::from_u64(cx, upper)?);
 
             let lower_value = if has_property(cx, object, lower_key)? {
                 Some(get(cx, object, lower_key)?)
@@ -1206,7 +1207,7 @@ impl ArrayPrototype {
             return Ok(cx.undefined());
         }
 
-        let first_key = PropertyKey::array_index(cx, 0).to_handle(cx);
+        let first_key = PropertyKey::array_index_handle(cx, 0)?;
         let first = get(cx, object, first_key)?;
 
         // Shared between iterations
@@ -1214,8 +1215,8 @@ impl ArrayPrototype {
         let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 1..length {
-            from_key.replace(PropertyKey::from_u64(cx, i));
-            to_key.replace(PropertyKey::from_u64(cx, i - 1));
+            from_key.replace(PropertyKey::from_u64(cx, i)?);
+            to_key.replace(PropertyKey::from_u64(cx, i - 1)?);
 
             if has_property(cx, object, from_key)? {
                 let from_value = get(cx, object, from_key)?;
@@ -1225,7 +1226,7 @@ impl ArrayPrototype {
             }
         }
 
-        let last_key = PropertyKey::from_u64(cx, length - 1).to_handle(cx);
+        let last_key = PropertyKey::from_u64_handle(cx, length - 1)?;
         delete_property_or_throw(cx, object, last_key)?;
 
         let new_length_value = Value::from(length - 1).to_handle(cx);
@@ -1281,13 +1282,13 @@ impl ArrayPrototype {
         let mut from_key = PropertyKey::uninit().to_handle(cx);
 
         for i in start_index..end_index {
-            from_key.replace(PropertyKey::from_u64(cx, i));
+            from_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, from_key)? {
                 let value = get(cx, object, from_key)?;
 
                 // Reuse from_key handle since it is no longer referenced
                 let mut to_key = from_key;
-                to_key.replace(PropertyKey::from_u64(cx, to_index));
+                to_key.replace(PropertyKey::from_u64(cx, to_index)?);
 
                 create_data_property_or_throw(cx, array, to_key, value)?;
             }
@@ -1323,7 +1324,7 @@ impl ArrayPrototype {
         let mut index_value = Value::uninit().to_handle(cx);
 
         for i in 0..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             if has_property(cx, object, index_key)? {
                 let value = get(cx, object, index_key)?;
 
@@ -1366,13 +1367,13 @@ impl ArrayPrototype {
 
         // Copy sorted values into start of array
         for (i, value) in sorted_values.iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             set(cx, object, index_key, *value, true)?;
         }
 
         // If there were holes then delete that number of holes from the end of the array
         for i in (sorted_values.len() as u64)..length {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             delete_property_or_throw(cx, object, index_key)?;
         }
 
@@ -1425,10 +1426,10 @@ impl ArrayPrototype {
         let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..actual_delete_count {
-            from_key.replace(PropertyKey::from_u64(cx, start_index + i));
+            from_key.replace(PropertyKey::from_u64(cx, start_index + i)?);
             if has_property(cx, object, from_key)? {
                 let from_value = get(cx, object, from_key)?;
-                to_key.replace(PropertyKey::from_u64(cx, i));
+                to_key.replace(PropertyKey::from_u64(cx, i)?);
                 create_data_property_or_throw(cx, array, to_key, from_value)?;
             }
         }
@@ -1439,8 +1440,8 @@ impl ArrayPrototype {
         // Move existing items in array to make space for inserted items
         if insert_count < actual_delete_count {
             for i in start_index..(length - actual_delete_count) {
-                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count));
-                to_key.replace(PropertyKey::from_u64(cx, i + insert_count));
+                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count)?);
+                to_key.replace(PropertyKey::from_u64(cx, i + insert_count)?);
 
                 if has_property(cx, object, from_key)? {
                     let from_value = get(cx, object, from_key)?;
@@ -1451,13 +1452,13 @@ impl ArrayPrototype {
             }
 
             for i in (new_length..length).rev() {
-                from_key.replace(PropertyKey::from_u64(cx, i));
+                from_key.replace(PropertyKey::from_u64(cx, i)?);
                 delete_property_or_throw(cx, object, from_key)?;
             }
         } else if insert_count > actual_delete_count {
             for i in (start_index..(length - actual_delete_count)).rev() {
-                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count));
-                to_key.replace(PropertyKey::from_u64(cx, i + insert_count));
+                from_key.replace(PropertyKey::from_u64(cx, i + actual_delete_count)?);
+                to_key.replace(PropertyKey::from_u64(cx, i + insert_count)?);
 
                 if has_property(cx, object, from_key)? {
                     let from_value = get(cx, object, from_key)?;
@@ -1470,7 +1471,7 @@ impl ArrayPrototype {
 
         // Insert items into array
         for (i, item) in arguments.iter().skip(2).enumerate() {
-            to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64));
+            to_key.replace(PropertyKey::from_u64(cx, start_index + i as u64)?);
             set(cx, object, to_key, *item, true)?;
         }
 
@@ -1497,17 +1498,17 @@ impl ArrayPrototype {
 
         for i in 0..length {
             if i > 0 {
-                result = StringValue::concat(cx, result, separator);
+                result = StringValue::concat(cx, result, separator)?;
             }
 
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
             let next_element = get(cx, object, key)?;
 
             if !next_element.is_nullish() {
                 let string_result = invoke(cx, next_element, cx.names.to_locale_string(), &[])?;
                 let string_result = to_string(cx, string_result)?;
 
-                result = StringValue::concat(cx, result, string_result);
+                result = StringValue::concat(cx, result, string_result)?;
             }
         }
 
@@ -1530,8 +1531,8 @@ impl ArrayPrototype {
         let mut to_key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..length {
-            from_key.replace(PropertyKey::from_u64(cx, length - i - 1));
-            to_key.replace(PropertyKey::from_u64(cx, i));
+            from_key.replace(PropertyKey::from_u64(cx, length - i - 1)?);
+            to_key.replace(PropertyKey::from_u64(cx, i)?);
 
             let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
@@ -1568,7 +1569,7 @@ impl ArrayPrototype {
 
         // Copy sorted values into array
         for (i, value) in sorted_values.iter().enumerate() {
-            index_key.replace(PropertyKey::from_u64(cx, i as u64));
+            index_key.replace(PropertyKey::from_u64(cx, i as u64)?);
             create_data_property_or_throw(cx, sorted_array.into(), index_key, *value)?;
         }
 
@@ -1624,21 +1625,21 @@ impl ArrayPrototype {
 
         // Elements before the start index are unchanged and can be copied
         for i in 0..actual_start_index {
-            from_key.replace(PropertyKey::from_u64(cx, i));
+            from_key.replace(PropertyKey::from_u64(cx, i)?);
             let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), from_key, value));
         }
 
         // Insert every element of provided items
         for (i, item) in arguments.iter().skip(2).enumerate() {
-            to_key.replace(PropertyKey::from_u64(cx, actual_start_index + i as u64));
+            to_key.replace(PropertyKey::from_u64(cx, actual_start_index + i as u64)?);
             create_data_property_or_throw(cx, array.into(), to_key, *item)?;
         }
 
         // All remaining elements after the skip count are copied
         for i in (actual_start_index + insert_count)..new_length {
-            to_key.replace(PropertyKey::from_u64(cx, i));
-            from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count));
+            to_key.replace(PropertyKey::from_u64(cx, i)?);
+            from_key.replace(PropertyKey::from_u64(cx, i - insert_count + actual_skip_count)?);
 
             let value = get(cx, object, from_key)?;
             must!(create_data_property_or_throw(cx, array.into(), to_key, value));
@@ -1685,8 +1686,8 @@ impl ArrayPrototype {
             let mut to_key = PropertyKey::uninit().to_handle(cx);
 
             for i in (0..length).rev() {
-                from_key.replace(PropertyKey::from_u64(cx, i));
-                to_key.replace(PropertyKey::from_u64(cx, i + num_arguments));
+                from_key.replace(PropertyKey::from_u64(cx, i)?);
+                to_key.replace(PropertyKey::from_u64(cx, i + num_arguments)?);
 
                 if has_property(cx, object, from_key)? {
                     let from_value = get(cx, object, from_key)?;
@@ -1697,7 +1698,7 @@ impl ArrayPrototype {
             }
 
             for (i, argument) in arguments.iter().enumerate() {
-                to_key.replace(PropertyKey::from_u64(cx, i as u64));
+                to_key.replace(PropertyKey::from_u64(cx, i as u64)?);
                 set(cx, object, to_key, *argument, true)?;
             }
         }
@@ -1715,7 +1716,7 @@ impl ArrayPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let object = to_object(cx, this_value)?;
-        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value).as_value())
+        Ok(ArrayIterator::new(cx, object, ArrayIteratorKind::Value)?.as_value())
     }
 
     /// Array.prototype.with (https://tc39.es/ecma262/#sec-array.prototype.with)
@@ -1753,7 +1754,7 @@ impl ArrayPrototype {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for i in 0..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
 
             // Replace the i'th value with the new value
             let value = if i == actual_index {
@@ -1769,12 +1770,12 @@ impl ArrayPrototype {
     }
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
-    fn create_unscopables(cx: Context) -> Handle<ObjectValue> {
+    fn create_unscopables(cx: Context) -> AllocResult<Handle<ObjectValue>> {
         let list = object_create_with_optional_proto::<ObjectValue>(
             cx,
             HeapItemKind::OrdinaryObject,
             None,
-        )
+        )?
         .to_handle();
 
         let true_value = cx.bool(true);
@@ -1796,7 +1797,7 @@ impl ArrayPrototype {
         must!(create_data_property_or_throw(cx, list, cx.names.to_spliced(), true_value));
         must!(create_data_property_or_throw(cx, list, cx.names.values(), true_value));
 
-        list
+        Ok(list)
     }
 }
 
@@ -1814,7 +1815,7 @@ pub fn find_via_predicate(
     let mut index_value = Value::uninit().to_handle(cx);
 
     for i in indices_iter {
-        index_key.replace(PropertyKey::from_u64(cx, i));
+        index_key.replace(PropertyKey::from_u64(cx, i)?);
         let value = get(cx, object, index_key)?;
 
         index_value.replace(Value::from(i));
@@ -1851,7 +1852,7 @@ pub fn sort_indexed_properties<const IGNORE_HOLES: bool, const IS_TYPED_ARRAY: b
     let mut values = vec![];
 
     for i in 0..length {
-        index_key.replace(PropertyKey::from_u64(cx, i));
+        index_key.replace(PropertyKey::from_u64(cx, i)?);
         if !IGNORE_HOLES || has_property(cx, object, index_key)? {
             let value = get(cx, object, index_key)?;
             values.push(value);

@@ -8,7 +8,10 @@ use crate::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
         LexerStream, SavedLexerStreamState,
     },
-    runtime::{regexp::instruction::OpCode, string_value::StringValue, Handle, HeapPtr},
+    runtime::{
+        alloc_error::AllocResult, regexp::instruction::OpCode, string_value::StringValue, Handle,
+        HeapPtr,
+    },
 };
 
 use super::{
@@ -726,13 +729,13 @@ pub fn run_matcher(
     regexp: Handle<CompiledRegExpObject>,
     target_string: Handle<StringValue>,
     start_index: u32,
-) -> Option<Match> {
+) -> AllocResult<Option<Match>> {
     // May allocate, after this point no more allocations can occur
-    let flat_string = target_string.flatten();
+    let flat_string = target_string.flatten()?;
 
     let regexp = *regexp;
 
-    match flat_string.width() {
+    let result = match flat_string.width() {
         StringWidth::OneByte => {
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
             match_lexer_stream(lexer_stream, regexp, start_index)
@@ -748,7 +751,9 @@ pub fn run_matcher(
                 match_lexer_stream(lexer_stream, regexp, start_index)
             }
         }
-    }
+    };
+
+    Ok(result)
 }
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)

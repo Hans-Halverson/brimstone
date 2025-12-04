@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         collections::{BsHashMap, BsHashMapField},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -36,7 +37,7 @@ impl WeakMapObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakMapObject>> {
         let weak_map_data =
-            WeakValueMap::new_initial(cx, HeapItemKind::WeakMapObjectWeakValueMap).to_handle();
+            WeakValueMap::new_initial(cx, HeapItemKind::WeakMapObjectWeakValueMap)?.to_handle();
 
         let mut object = object_create_from_constructor::<WeakMapObject>(
             cx,
@@ -68,12 +69,18 @@ impl Handle<WeakMapObject> {
         WeakMapObjectMapField(*self)
     }
 
-    pub fn insert(&self, cx: Context, key: Handle<Value>, value: Handle<Value>) -> bool {
-        let key_handle = ValueCollectionKeyHandle::new(key);
+    pub fn insert(
+        &self,
+        cx: Context,
+        key: Handle<Value>,
+        value: Handle<Value>,
+    ) -> AllocResult<bool> {
+        let key_handle = ValueCollectionKeyHandle::new(key)?;
 
-        self.weak_map_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(key_handle.get(), *value)
+        Ok(self
+            .weak_map_data_field()
+            .maybe_grow_for_insertion(cx)?
+            .insert_without_growing(key_handle.get(), *value))
     }
 }
 
@@ -81,7 +88,7 @@ impl Handle<WeakMapObject> {
 pub struct WeakMapObjectMapField(Handle<WeakMapObject>);
 
 impl BsHashMapField<ValueCollectionKey, Value> for WeakMapObjectMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<WeakValueMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueMap>> {
         WeakValueMap::new(cx, HeapItemKind::WeakMapObjectWeakValueMap, capacity)
     }
 

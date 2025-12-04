@@ -5,6 +5,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapPtr},
         heap_item_descriptor::HeapItemKind,
@@ -46,12 +47,12 @@ impl StringObject {
     pub fn new_from_value(
         cx: Context,
         string_data_handle: Handle<StringValue>,
-    ) -> Handle<StringObject> {
+    ) -> AllocResult<Handle<StringObject>> {
         let mut object = object_create::<StringObject>(
             cx,
             HeapItemKind::StringObject,
             Intrinsic::StringPrototype,
-        );
+        )?;
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -60,9 +61,9 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        Self::set_length_property(object, cx, string_length);
+        Self::set_length_property(object, cx, string_length)?;
 
-        object
+        Ok(object)
     }
 
     pub fn new_from_constructor(
@@ -84,7 +85,7 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        Self::set_length_property(object, cx, string_length);
+        Self::set_length_property(object, cx, string_length)?;
 
         Ok(object)
     }
@@ -93,9 +94,9 @@ impl StringObject {
         cx: Context,
         proto: Handle<ObjectValue>,
         string_data_handle: Handle<StringValue>,
-    ) -> Handle<StringObject> {
+    ) -> AllocResult<Handle<StringObject>> {
         let mut object =
-            object_create_with_proto::<StringObject>(cx, HeapItemKind::StringObject, proto);
+            object_create_with_proto::<StringObject>(cx, HeapItemKind::StringObject, proto)?;
 
         let string_data = *string_data_handle;
         let string_length = string_data.len();
@@ -104,19 +105,23 @@ impl StringObject {
 
         let object = object.to_handle();
 
-        Self::set_length_property(object, cx, string_length);
+        Self::set_length_property(object, cx, string_length)?;
 
-        object
+        Ok(object)
     }
 
-    fn set_length_property(string: Handle<StringObject>, cx: Context, length: u32) {
+    fn set_length_property(
+        string: Handle<StringObject>,
+        cx: Context,
+        length: u32,
+    ) -> AllocResult<()> {
         // String objects have an immutable length property
         let length_value = Value::from(length).to_handle(cx);
         string.as_object().set_property(
             cx,
             cx.names.length(),
             Property::data(length_value, false, false, false),
-        );
+        )
     }
 
     pub fn string_data(&self) -> Handle<StringValue> {
@@ -130,18 +135,20 @@ impl StringObject {
         &self,
         cx: Context,
         key: Handle<PropertyKey>,
-    ) -> Option<PropertyDescriptor> {
+    ) -> AllocResult<Option<PropertyDescriptor>> {
         if key.is_symbol() {
-            return None;
+            return Ok(None);
         }
 
         let string = self.string_data();
-        let index = canonical_numeric_string_index_string(cx, key, string.len())??;
-        let code_unit = string.code_unit_at(index);
+        let Some(index) = canonical_numeric_string_index_string(cx, key, string.len())? else {
+            return Ok(None);
+        };
 
-        let char_string = FlatString::from_code_unit(cx, code_unit).as_string();
+        let code_unit = string.code_unit_at(index)?;
+        let char_string = FlatString::from_code_unit(cx, code_unit)?.as_string();
 
-        Some(PropertyDescriptor::data(char_string.into(), false, true, false))
+        Ok(Some(PropertyDescriptor::data(char_string.into(), false, true, false)))
     }
 }
 
@@ -155,7 +162,7 @@ impl VirtualObject for Handle<StringObject> {
     ) -> EvalResult<Option<PropertyDescriptor>> {
         let desc = ordinary_get_own_property(cx, self.as_object(), key);
         if desc.is_none() {
-            Ok(self.string_get_own_property(cx, key))
+            Ok(self.string_get_own_property(cx, key)?)
         } else {
             Ok(desc)
         }
@@ -168,10 +175,10 @@ impl VirtualObject for Handle<StringObject> {
         key: Handle<PropertyKey>,
         desc: PropertyDescriptor,
     ) -> EvalResult<bool> {
-        let string_desc = self.string_get_own_property(cx, key);
+        let string_desc = self.string_get_own_property(cx, key)?;
         if string_desc.is_some() {
             let is_extensible = self.as_object().is_extensible_field();
-            Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_desc))
+            Ok(is_compatible_property_descriptor(cx, is_extensible, desc, string_desc)?)
         } else {
             ordinary_define_own_property(cx, self.as_object(), key, desc)
         }
@@ -183,13 +190,13 @@ impl VirtualObject for Handle<StringObject> {
 
         let length = self.string_data.len();
         for i in 0..length {
-            let index_string = cx.alloc_string(&i.to_string());
+            let index_string = cx.alloc_string(&i.to_string())?;
             keys.push(index_string.into());
         }
 
         ordinary_filtered_own_indexed_property_keys(cx, self.as_object(), &mut keys, |index| {
             index >= (length as usize)
-        });
+        })?;
 
         ordinary_own_string_symbol_property_keys(self.as_object(), &mut keys);
 

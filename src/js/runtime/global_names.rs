@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    runtime::{error::type_error, heap_item_descriptor::HeapItemKind},
+    runtime::{alloc_error::AllocResult, error::type_error, heap_item_descriptor::HeapItemKind},
     set_uninit,
 };
 
@@ -36,12 +36,12 @@ impl GlobalNames {
         vars: HashSet<Handle<FlatString>>,
         funcs: HashSet<Handle<FlatString>>,
         scope_names: Handle<ScopeNames>,
-    ) -> Handle<GlobalNames> {
+    ) -> AllocResult<Handle<GlobalNames>> {
         let num_funcs = funcs.len();
         let num_names = vars.len() + num_funcs;
 
         let size = Self::calculate_size_in_bytes(num_names);
-        let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size);
+        let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
         set_uninit!(global_names.descriptor, cx.base_descriptors.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
@@ -53,7 +53,7 @@ impl GlobalNames {
             global_names.names.set_unchecked(i, **name);
         }
 
-        global_names.to_handle()
+        Ok(global_names.to_handle())
     }
 
     fn calculate_size_in_bytes(num_names: usize) -> usize {
@@ -84,16 +84,16 @@ impl HeapItem for HeapPtr<GlobalNames> {
 pub fn create_global_declaration_instantiation_intrinsic(
     cx: Context,
     realm: Handle<Realm>,
-) -> Handle<Value> {
-    BuiltinFunction::create(
+) -> AllocResult<Handle<Value>> {
+    Ok(BuiltinFunction::create(
         cx,
         global_declaration_instantiation_runtime,
         1,
         cx.names.empty_string(),
         realm,
         None,
-    )
-    .into()
+    )?
+    .as_value())
 }
 
 /// GlobalDeclarationInstantiation in the rust runtime, called from the script init function.

@@ -1,5 +1,6 @@
 pub mod abstract_operations;
 mod accessor;
+pub mod alloc_error;
 mod annex_b;
 mod arguments_object;
 mod array_object;

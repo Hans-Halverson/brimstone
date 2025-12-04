@@ -1,5 +1,6 @@
 use crate::runtime::{
     abstract_operations::{construct, species_constructor},
+    alloc_error::AllocResult,
     collections::BsArray,
     error::{range_error, type_error},
     function::get_argument,
@@ -21,25 +22,30 @@ pub struct ArrayBufferPrototype;
 
 impl ArrayBufferPrototype {
     /// Properties of the ArrayBuffer Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once ArrayBufferConstructor has been created
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
-        object.intrinsic_getter(cx, cx.names.detached(), Self::get_detached, realm);
-        object.intrinsic_getter(cx, cx.names.max_byte_length(), Self::get_max_byte_length, realm);
-        object.intrinsic_func(cx, cx.names.resize(), Self::resize, 1, realm);
-        object.intrinsic_getter(cx, cx.names.resizable(), Self::get_resizable, realm);
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        object.intrinsic_func(cx, cx.names.transfer(), Self::transfer, 0, realm);
+        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm)?;
+        object.intrinsic_getter(cx, cx.names.detached(), Self::get_detached, realm)?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.max_byte_length(),
+            Self::get_max_byte_length,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.resize(), Self::resize, 1, realm)?;
+        object.intrinsic_getter(cx, cx.names.resizable(), Self::get_resizable, realm)?;
+        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.transfer(), Self::transfer, 0, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.transfer_to_fixed_length(),
             Self::transfer_to_fixed_length,
             0,
             realm,
-        );
+        )?;
 
         // ArrayBuffer.prototype [ %Symbol.toStringTag% ] (https://tc39.es/ecma262/#sec-arraybuffer.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -47,9 +53,9 @@ impl ArrayBufferPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.array_buffer().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// get ArrayBuffer.prototype.byteLength (https://tc39.es/ecma262/#sec-get-arraybuffer.prototype.bytelength)
@@ -124,7 +130,7 @@ impl ArrayBufferPrototype {
         }
 
         // Create new data block with copy of old data at start
-        let mut new_data = BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, new_byte_length);
+        let mut new_data = BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, new_byte_length)?;
         let old_byte_length = array_buffer.byte_length();
 
         unsafe {

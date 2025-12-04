@@ -1,5 +1,6 @@
 use crate::runtime::{
     abstract_operations::{call_object, get},
+    alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
     eval_result::EvalResult,
@@ -17,7 +18,7 @@ pub struct WeakSetConstructor;
 
 impl WeakSetConstructor {
     /// Properties of the WeakSet Constructor (https://tc39.es/ecma262/#sec-properties-of-the-weakset-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -25,15 +26,15 @@ impl WeakSetConstructor {
             cx.names.weak_set(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::WeakSetPrototype).into(),
-        );
+        )?;
 
-        func
+        Ok(func)
     }
 
     /// WeakSet (https://tc39.es/ecma262/#sec-weakset-iterable)

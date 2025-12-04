@@ -1,3 +1,5 @@
+use crate::runtime::alloc_error::AllocResult;
+
 use super::{
     abstract_operations::{call_object, construct, length_of_array_like},
     array_object::{create_array_from_list, ArrayObject},
@@ -44,15 +46,15 @@ impl BoundFunctionObject {
             cx.current_realm(),
             prototype,
             is_constructor,
-        )
+        )?
         .into();
 
         // Attach private fields, adding bound arguments to array object
-        Self::set_target_function(cx, bound_func, target_function);
-        Self::set_bound_this(cx, bound_func, bound_this);
+        Self::set_target_function(cx, bound_func, target_function)?;
+        Self::set_bound_this(cx, bound_func, bound_this)?;
 
-        let bound_args_array = create_array_from_list(cx, &bound_arguments);
-        Self::set_bound_arguments(cx, bound_func, bound_args_array);
+        let bound_args_array = create_array_from_list(cx, &bound_arguments)?;
+        Self::set_bound_arguments(cx, bound_func, bound_args_array)?;
 
         Ok(bound_func)
     }
@@ -72,12 +74,12 @@ impl BoundFunctionObject {
         cx: Context,
         mut bound_function: Handle<ObjectValue>,
         target: Handle<ObjectValue>,
-    ) {
+    ) -> AllocResult<()> {
         bound_function.private_element_set(
             cx,
             cx.well_known_symbols.bound_target().cast(),
             target.into(),
-        );
+        )
     }
 
     /// If this object is a bound function, return the target function. Otherwise, return None.
@@ -105,12 +107,12 @@ impl BoundFunctionObject {
         cx: Context,
         mut bound_function: Handle<ObjectValue>,
         bound_this: Handle<Value>,
-    ) {
+    ) -> AllocResult<()> {
         bound_function.private_element_set(
             cx,
             cx.well_known_symbols.bound_this().cast(),
             bound_this,
-        );
+        )
     }
 
     fn get_bound_arguments(
@@ -128,12 +130,12 @@ impl BoundFunctionObject {
         cx: Context,
         mut bound_function: Handle<ObjectValue>,
         arguments: Handle<ArrayObject>,
-    ) {
+    ) -> AllocResult<()> {
         bound_function.private_element_set(
             cx,
             cx.well_known_symbols.bound_arguments().cast(),
             arguments.into(),
-        );
+        )
     }
 
     /// Call the bound function from the rust runtime. This is called when the bound function has
@@ -162,7 +164,7 @@ impl BoundFunctionObject {
         // OPTIMIZATION: Much room for optimization of bound arguments instead of using array and
         // standard array accessors.
         for i in 0..num_bound_arguments {
-            index_key.replace(PropertyKey::from_u64(cx, i));
+            index_key.replace(PropertyKey::from_u64(cx, i)?);
             let arg = get(cx, bound_arguments.into(), index_key)?;
             all_arguments.push(arg)
         }

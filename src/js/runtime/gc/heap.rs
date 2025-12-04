@@ -2,7 +2,7 @@ use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 
 use crate::{
     common::{constants::MAX_HEAP_SIZE, serialized_heap::SerializedHeap},
-    runtime::{gc::garbage_collector::GarbageCollector, Context},
+    runtime::{alloc_error::AllocResult, gc::garbage_collector::GarbageCollector, Context},
 };
 
 use super::{
@@ -10,6 +10,9 @@ use super::{
     heap_serializer::{calculate_extra_offset, HeapSpaceDeserializer},
     GcType, HeapPtr, HeapVisitor,
 };
+
+#[cfg(feature = "alloc_error")]
+use crate::runtime::alloc_error::AllocError;
 
 /// Heap Layout:
 ///
@@ -217,7 +220,7 @@ impl Heap {
         unsafe { &mut *(self.heap_start as *const _ as *mut HeapInfo) }
     }
 
-    pub fn alloc_uninit<T>(cx: Context) -> HeapPtr<T> {
+    pub fn alloc_uninit<T>(cx: Context) -> AllocResult<HeapPtr<T>> {
         Self::alloc_uninit_with_size::<T>(cx, size_of::<T>())
     }
 
@@ -226,7 +229,7 @@ impl Heap {
     ///
     /// Allocation will have at least the given size and is guaranteed to have 8-byte alignment.
     #[inline]
-    pub fn alloc_uninit_with_size<T>(mut cx: Context, size: usize) -> HeapPtr<T> {
+    pub fn alloc_uninit_with_size<T>(mut cx: Context, size: usize) -> AllocResult<HeapPtr<T>> {
         let alloc_size = Self::alloc_size_for_request_size(size);
 
         // Run a GC on every allocation in stress test mode
@@ -255,7 +258,17 @@ impl Heap {
 
                 // Make sure there is enough space for allocation after gc, otherwise we are out of
                 // heap memory.
-                cx.heap.panic_if_out_of_memory(alloc_size);
+                if !cx.heap.has_room_for_alloc(alloc_size) {
+                    #[cfg(feature = "alloc_error")]
+                    {
+                        return Err(AllocError::oom());
+                    }
+
+                    #[cfg(not(feature = "alloc_error"))]
+                    {
+                        panic!("Ran out of heap memory");
+                    }
+                }
 
                 return Self::alloc_uninit_with_size(cx, alloc_size);
             }
@@ -264,7 +277,7 @@ impl Heap {
             heap.current = next_current;
             let start = start.cast_mut().cast();
 
-            HeapPtr::from_ptr(start)
+            Ok(HeapPtr::from_ptr(start))
         }
     }
 
@@ -274,12 +287,6 @@ impl Heap {
 
     fn has_room_for_alloc(&self, alloc_size: usize) -> bool {
         unsafe { self.current.add(alloc_size) <= self.end }
-    }
-
-    fn panic_if_out_of_memory(&self, alloc_size: usize) {
-        if !self.has_room_for_alloc(alloc_size) {
-            panic!("Ran of out heap memory");
-        }
     }
 
     pub fn heap_size(&self) -> usize {

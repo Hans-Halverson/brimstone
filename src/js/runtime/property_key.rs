@@ -1,4 +1,6 @@
-use std::{fmt, hash};
+use std::hash;
+
+use crate::runtime::{alloc_error::AllocResult, string_parsing::StringLexer};
 
 use super::{
     gc::{Handle, HandleContents, ToHandleContents},
@@ -31,23 +33,45 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn string(cx: Context, value: Handle<StringValue>) -> PropertyKey {
+    pub fn string(cx: Context, value: Handle<StringValue>) -> AllocResult<PropertyKey> {
+        let lexer = StringLexer::new(value)?;
         // String value may represent an array index
-        match parse_string_to_u32(value) {
+        match parse_string_to_u32(lexer) {
             None => PropertyKey::string_not_array_index(cx, value),
             Some(u32::MAX) => PropertyKey::string_not_array_index(cx, value),
             Some(array_index) => PropertyKey::array_index(cx, array_index),
         }
     }
 
+    #[inline]
+    pub fn string_handle(
+        cx: Context,
+        value: Handle<StringValue>,
+    ) -> AllocResult<Handle<PropertyKey>> {
+        let property_key = PropertyKey::string(cx, value)?;
+        Ok(property_key.to_handle(cx))
+    }
+
     /// Create a string property key that is known to not be an array index. Be sure to not pass
     /// string property keys that may be an array index to this function.
     #[inline]
-    pub fn string_not_array_index(cx: Context, value: Handle<StringValue>) -> PropertyKey {
+    pub fn string_not_array_index(
+        cx: Context,
+        value: Handle<StringValue>,
+    ) -> AllocResult<PropertyKey> {
         // Enforce that all string property keys are interned
-        let flat_string = value.flatten();
-        let interned_string = InternedStrings::get(cx, *flat_string).as_string();
-        PropertyKey { value: interned_string.into() }
+        let flat_string = value.flatten()?;
+        let interned_string = InternedStrings::get(cx, *flat_string)?.as_string();
+        Ok(PropertyKey { value: interned_string.into() })
+    }
+
+    #[inline]
+    pub fn string_not_array_index_handle(
+        cx: Context,
+        value: Handle<StringValue>,
+    ) -> AllocResult<Handle<PropertyKey>> {
+        let property_key = PropertyKey::string_not_array_index(cx, value)?;
+        Ok(property_key.to_handle(cx))
     }
 
     #[inline]
@@ -56,27 +80,39 @@ impl PropertyKey {
     }
 
     #[inline]
-    pub fn array_index(mut cx: Context, value: u32) -> PropertyKey {
+    pub fn array_index(mut cx: Context, value: u32) -> AllocResult<PropertyKey> {
         if value == u32::MAX {
-            let string_value = cx.alloc_string(&value.to_string()).as_string();
+            let string_value = cx.alloc_string(&value.to_string())?.as_string();
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
         // Intentionally store u32 value in i32 smi payload
-        PropertyKey { value: Value::smi(value as i32) }
+        Ok(PropertyKey { value: Value::smi(value as i32) })
+    }
+
+    #[inline]
+    pub fn array_index_handle(cx: Context, value: u32) -> AllocResult<Handle<PropertyKey>> {
+        let property_key = PropertyKey::array_index(cx, value)?;
+        Ok(property_key.to_handle(cx))
     }
 
     pub const fn from_u8(value: u8) -> PropertyKey {
         PropertyKey { value: Value::smi(value as i32) }
     }
 
-    pub fn from_u64(mut cx: Context, value: u64) -> PropertyKey {
+    pub fn from_u64(mut cx: Context, value: u64) -> AllocResult<PropertyKey> {
         if value >= u32::MAX as u64 {
-            let string_value = cx.alloc_string(&value.to_string()).as_string();
+            let string_value = cx.alloc_string(&value.to_string())?.as_string();
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
-        PropertyKey { value: Value::smi(value as u32 as i32) }
+        Ok(PropertyKey { value: Value::smi(value as u32 as i32) })
+    }
+
+    #[inline]
+    pub fn from_u64_handle(cx: Context, value: u64) -> AllocResult<Handle<PropertyKey>> {
+        let property_key = PropertyKey::from_u64(cx, value)?;
+        Ok(property_key.to_handle(cx))
     }
 
     pub fn from_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<PropertyKey> {
@@ -84,7 +120,7 @@ impl PropertyKey {
         if is_integral_number(value) {
             let number = value.as_double();
             if (0.0..MAX_U32_AS_F64).contains(&number) {
-                return Ok(PropertyKey::array_index(cx, number as u32));
+                return Ok(PropertyKey::array_index(cx, number as u32)?);
             }
         }
 
@@ -92,7 +128,7 @@ impl PropertyKey {
             Ok(*PropertyKey::symbol(value_handle.as_symbol()))
         } else {
             let string_value = to_string(cx, value_handle)?;
-            Ok(PropertyKey::string(cx, string_value))
+            Ok(PropertyKey::string(cx, string_value)?)
         }
     }
 
@@ -142,12 +178,12 @@ impl Handle<PropertyKey> {
     /// Convert this property key to a string or symbol value as defined in the spec. All array
     /// index keys will be converted to strings.
     #[inline]
-    pub fn to_value(self, mut cx: Context) -> Handle<Value> {
+    pub fn to_value(self, mut cx: Context) -> AllocResult<Handle<Value>> {
         if self.value.is_smi() {
             let array_index_string = self.as_array_index().to_string();
-            cx.alloc_string(&array_index_string).into()
+            Ok(cx.alloc_string(&array_index_string)?.into())
         } else {
-            self.cast()
+            Ok(self.cast())
         }
     }
 }
@@ -177,16 +213,16 @@ impl hash::Hash for PropertyKey {
     }
 }
 
-impl fmt::Display for PropertyKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl PropertyKey {
+    pub fn format(&self) -> AllocResult<String> {
         if self.is_array_index() {
-            write!(f, "{}", self.as_array_index())
+            Ok(format!("{}", self.as_array_index()))
         } else if self.value.as_pointer().descriptor().kind() == HeapItemKind::String {
-            self.as_string().fmt(f)
+            Ok(self.as_string().to_handle().format()?)
         } else {
             match self.as_symbol().description_ptr() {
-                None => write!(f, "Symbol()"),
-                Some(description) => write!(f, "Symbol({description})"),
+                None => Ok("Symbol()".to_owned()),
+                Some(description) => Ok(format!("Symbol({})", description)),
             }
         }
     }
@@ -203,12 +239,6 @@ impl Eq for Handle<PropertyKey> {}
 impl hash::Hash for Handle<PropertyKey> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (**self).hash(state)
-    }
-}
-
-impl fmt::Display for Handle<PropertyKey> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
     }
 }
 

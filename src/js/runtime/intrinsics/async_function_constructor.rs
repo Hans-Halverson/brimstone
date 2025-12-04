@@ -1,6 +1,7 @@
 use crate::runtime::{
-    builtin_function::BuiltinFunction, eval::create_dynamic_function::create_dynamic_function,
-    eval_result::EvalResult, object_value::ObjectValue, realm::Realm, Context, Handle, Value,
+    alloc_error::AllocResult, builtin_function::BuiltinFunction,
+    eval::create_dynamic_function::create_dynamic_function, eval_result::EvalResult,
+    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -9,7 +10,7 @@ pub struct AsyncFunctionConstructor;
 
 impl AsyncFunctionConstructor {
     /// Properties of the AsyncFunction Constructor (https://tc39.es/ecma262/#sec-async-function-constructor-properties)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -17,7 +18,7 @@ impl AsyncFunctionConstructor {
             cx.names.async_function(),
             realm,
             Intrinsic::FunctionConstructor,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
@@ -25,9 +26,9 @@ impl AsyncFunctionConstructor {
             realm
                 .get_intrinsic(Intrinsic::AsyncFunctionPrototype)
                 .into(),
-        );
+        )?;
 
-        func
+        Ok(func)
     }
 
     /// AsyncFunction (https://tc39.es/ecma262/#sec-async-function-constructor-arguments)

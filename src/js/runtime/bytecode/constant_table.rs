@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
@@ -25,9 +26,9 @@ impl ConstantTable {
         cx: Context,
         constants: Vec<Handle<Value>>,
         metadata: Vec<u8>,
-    ) -> Handle<ConstantTable> {
+    ) -> AllocResult<Handle<ConstantTable>> {
         let size = Self::calculate_size_in_bytes(constants.len());
-        let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size);
+        let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ConstantTable));
 
@@ -41,7 +42,7 @@ impl ConstantTable {
         let metadata_ptr = object.get_metadata_ptr() as *mut u8;
         unsafe { std::ptr::copy_nonoverlapping(metadata.as_ptr(), metadata_ptr, metadata.len()) };
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     const CONSTANTS_BYTE_OFFSET: usize = field_offset!(ConstantTable, constants);

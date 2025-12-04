@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    eval_err, must,
     runtime::{
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         array_object::create_array_from_list,
@@ -115,13 +115,13 @@ impl IteratorPrototype {
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
             let error = range_error_value(cx, "Iterator.prototype.drop limit is NaN");
-            return iterator_close(cx, iterator_object, Err(error));
+            return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
             let error = range_error_value(cx, "Iterator.prototype.drop limit is negative");
-            return iterator_close(cx, iterator_object, Err(error));
+            return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper drop object
@@ -144,7 +144,7 @@ impl IteratorPrototype {
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.every predicate is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
@@ -189,7 +189,7 @@ impl IteratorPrototype {
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.filter predicate is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
@@ -212,7 +212,7 @@ impl IteratorPrototype {
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error = type_error_value(cx, "Iterator.prototype.find predicate is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
@@ -256,7 +256,7 @@ impl IteratorPrototype {
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
             let error = type_error_value(cx, "Iterator.prototype.flatMap mapper is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
@@ -280,7 +280,7 @@ impl IteratorPrototype {
         if !is_callable(callback_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.forEach callback is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
 
@@ -321,7 +321,7 @@ impl IteratorPrototype {
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
             let error = type_error_value(cx, "Iterator.prototype.map mapper is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
@@ -345,7 +345,7 @@ impl IteratorPrototype {
         if !is_callable(callback_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.reduce callback is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
 
@@ -408,7 +408,7 @@ impl IteratorPrototype {
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error = type_error_value(cx, "Iterator.prototype.some predicate is not a function");
-            return iterator_close(cx, this_value.as_object(), Err(error));
+            return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
@@ -462,13 +462,13 @@ impl IteratorPrototype {
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
             let error = range_error_value(cx, "Iterator.prototype.take limit is NaN");
-            return iterator_close(cx, iterator_object, Err(error));
+            return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
             let error = range_error_value(cx, "Iterator.prototype.take limit is negative");
-            return iterator_close(cx, iterator_object, Err(error));
+            return iterator_close(cx, iterator_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper take object

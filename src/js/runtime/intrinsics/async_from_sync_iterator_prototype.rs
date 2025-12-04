@@ -1,5 +1,5 @@
 use crate::{
-    extend_object, if_abrupt_reject_promise, must,
+    eval_err, extend_object, if_abrupt_reject_promise, must,
     runtime::{
         abstract_operations::{call_object, get_method},
         builtin_function::BuiltinFunction,
@@ -321,7 +321,7 @@ pub fn async_from_sync_iterator_continuation_on_reject(
 
     let error = get_argument(cx, arguments, 0);
 
-    iterator_close(cx, sync_iterator, Err(error))
+    iterator_close(cx, sync_iterator, eval_err!(error))
 }
 
 fn get_sync_iterator(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {

@@ -1,11 +1,10 @@
 use crate::{
-    extend_object, field_offset, must,
+    eval_err, extend_object, field_offset, must,
     runtime::{
         abstract_operations::call_object,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemDescriptor,
-        heap_item_descriptor::HeapItemKind,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::intrinsics::Intrinsic,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
@@ -300,8 +299,8 @@ pub fn async_generator_complete_step(
             let result_object = create_iter_result_object(cx, value, is_done);
             must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object]));
         }
-        Err(value) => {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[value]));
+        Err(error) => {
+            must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
         }
     }
 }
@@ -424,7 +423,7 @@ pub fn await_return_reject(
 
     async_generator.state = AsyncGeneratorState::Completed;
 
-    async_generator_complete_step(cx, async_generator, Err(value), /* is_done */ true);
+    async_generator_complete_step(cx, async_generator, eval_err!(value), /* is_done */ true);
     async_generator_drain_queue(cx, async_generator);
 
     Ok(cx.undefined())
@@ -474,7 +473,7 @@ pub fn async_generator_drain_queue(cx: Context, async_generator: Handle<AsyncGen
                 );
             }
             GeneratorCompletionType::Throw => {
-                let completion = Err(request.completion_value().to_handle(cx));
+                let completion = eval_err!(request.completion_value().to_handle(cx));
                 async_generator_complete_step(
                     cx,
                     async_generator,

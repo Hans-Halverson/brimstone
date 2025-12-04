@@ -124,7 +124,12 @@ impl GraphLoader {
             }
             Err(error) => {
                 self.is_loading = false;
-                must!(call_object(cx, self.promise_capability.reject(), cx.undefined(), &[error]));
+                must!(call_object(
+                    cx,
+                    self.promise_capability.reject(),
+                    cx.undefined(),
+                    &[error.value()]
+                ));
             }
         }
     }

@@ -197,7 +197,7 @@ impl Module for Handle<SyntheticModule> {
                 must!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
             }
             Err(error) => {
-                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
             }
         }
 

@@ -25,6 +25,7 @@ use brimstone_core::{
         options::{Options, OptionsBuilder},
         wtf_8::Wtf8String,
     },
+    eval_err,
     parser::{self, source::Source, ParseContext},
     runtime::{
         bytecode::generator::BytecodeProgramGenerator, get, test_262_object::Test262Object,
@@ -425,7 +426,7 @@ fn execute_script_as_bytecode<'a>(
         Ok(bytecode_script) => bytecode_script,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
-            return Err(err_string.into());
+            return eval_err!(err_string.into());
         }
     };
 
@@ -443,7 +444,7 @@ fn execute_module_as_bytecode<'a>(
         Ok(module) => module,
         Err(err) => {
             let err_string = cx.alloc_string(&err.to_string());
-            return Err(err_string.into());
+            return eval_err!(err_string.into());
         }
     };
 
@@ -507,11 +508,13 @@ fn check_expected_completion(
         },
         // Throw completions are a success if the expected result is negative, expected during
         // during runtime, and with the same expected error.
-        Err(thrown_value) => match &test.expected_result {
+        Err(thrown_error) => match &test.expected_result {
             ExpectedResult::Negative {
                 phase: phase @ (TestPhase::Resolution | TestPhase::Runtime),
                 type_,
             } if is_error_in_expected_phase(cx, test, *phase) => {
+                let thrown_value = thrown_error.value();
+
                 // Check that the thrown error matches the expected error type
                 let is_expected_error = if thrown_value.is_object() {
                     let thrown_object = thrown_value.as_object();
@@ -554,6 +557,7 @@ fn check_expected_completion(
                 }
             }
             other => {
+                let thrown_value = thrown_error.value();
                 let thrown_string = to_console_string_test262(cx, thrown_value);
                 TestResult::failure(
                     test,

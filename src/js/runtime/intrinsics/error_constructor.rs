@@ -4,6 +4,7 @@ use crate::{
     extend_object,
     runtime::{
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
@@ -53,13 +54,17 @@ pub struct CachedStackTraceInfo {
 }
 
 impl ErrorObject {
-    pub fn new(cx: Context, prototype: Intrinsic, skip_current_frame: bool) -> Handle<ErrorObject> {
+    pub fn new(
+        cx: Context,
+        prototype: Intrinsic,
+        skip_current_frame: bool,
+    ) -> AllocResult<Handle<ErrorObject>> {
         let error =
-            object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype).to_handle();
+            object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype)?.to_handle();
 
-        Self::initialize_stack_trace(cx, error, skip_current_frame);
+        Self::initialize_stack_trace(cx, error, skip_current_frame)?;
 
-        error
+        Ok(error)
     }
 
     pub fn new_from_constructor(
@@ -76,7 +81,7 @@ impl ErrorObject {
         )?
         .to_handle();
 
-        Self::initialize_stack_trace(cx, error, skip_current_frame);
+        Self::initialize_stack_trace(cx, error, skip_current_frame)?;
 
         Ok(error)
     }
@@ -85,26 +90,28 @@ impl ErrorObject {
         cx: Context,
         mut error: Handle<ErrorObject>,
         skip_current_frame: bool,
-    ) {
+    ) -> AllocResult<()> {
         // Initialize remaining state before collecting stack frame info, as we must ensure all
         // fields are initialized before a GC could potentially occur.
         set_uninit!(error.stack_trace_state, StackTraceState::Uninitialized);
 
         // Collect and cache the minimal stack frame info for the current stack trace
-        let stack_frame_info = create_current_stack_frame_info(cx, skip_current_frame);
+        let stack_frame_info = create_current_stack_frame_info(cx, skip_current_frame)?;
         error.stack_trace_state = StackTraceState::StackFrameInfo(stack_frame_info);
+
+        Ok(())
     }
 }
 
 impl Handle<ErrorObject> {
     /// Return the stack trace for this error. Stack trace is lazily generated on first access.
-    pub fn get_stack_trace(&mut self, cx: Context) -> CachedStackTraceInfo {
+    pub fn get_stack_trace(&mut self, cx: Context) -> AllocResult<CachedStackTraceInfo> {
         match self.stack_trace_state {
-            StackTraceState::Generated(cached_stack_trace) => cached_stack_trace,
+            StackTraceState::Generated(cached_stack_trace) => Ok(cached_stack_trace),
             StackTraceState::StackFrameInfo(stack_frame_info) => {
-                let stack_trace = create_stack_trace(cx, stack_frame_info.to_handle());
+                let stack_trace = create_stack_trace(cx, stack_frame_info.to_handle())?;
                 self.stack_trace_state = StackTraceState::Generated(stack_trace);
-                stack_trace
+                Ok(stack_trace)
             }
             StackTraceState::Uninitialized => {
                 panic!("Expected stack trace state to be initialized")
@@ -117,7 +124,7 @@ pub struct ErrorConstructor;
 
 impl ErrorConstructor {
     /// Properties of the Error Constructor (https://tc39.es/ecma262/#sec-properties-of-the-error-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -125,17 +132,17 @@ impl ErrorConstructor {
             cx.names.error(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.is_error(), Self::is_error, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_error(), Self::is_error, 1, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Error (https://tc39.es/ecma262/#sec-error-message)
@@ -165,7 +172,7 @@ impl ErrorConstructor {
                 object.into(),
                 cx.names.message(),
                 message_string.into(),
-            );
+            )?;
         }
 
         let options_arg = get_argument(cx, arguments, 1);
@@ -205,7 +212,7 @@ pub fn install_error_cause(
                 object.into(),
                 cx.names.cause(),
                 cause,
-            );
+            )?;
         }
     }
 

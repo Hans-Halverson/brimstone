@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use crate::{field_offset, set_uninit};
+use crate::{field_offset, runtime::alloc_error::AllocResult, set_uninit};
 
 use super::{
     collections::{BsHashMap, BsHashMapField, InlineArray},
@@ -89,7 +89,11 @@ impl HeapPtr<ArrayProperties> {
 impl ArrayProperties {
     /// Expand an object's dense properties to have at least enough room for the new length.
     #[inline]
-    fn grow_dense_properties(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) {
+    fn grow_dense_properties(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+        new_length: u32,
+    ) -> AllocResult<()> {
         let mut dense_properties = object.array_properties().as_dense();
         let old_length = dense_properties.len();
 
@@ -99,7 +103,7 @@ impl ArrayProperties {
             // Fill added range with emptys
             dense_properties.set_len(new_length);
             dense_properties.set_empty_range(old_length, new_length);
-            return;
+            return Ok(());
         }
 
         // Capacity must be at least doubled
@@ -110,7 +114,7 @@ impl ArrayProperties {
 
         // Create new dense array properties, ensure that no allocation happens after this point
         // otherwise we could try to GC a partially initialized array.
-        let mut new_dense_properties = DenseArrayProperties::new(cx, new_capacity);
+        let mut new_dense_properties = DenseArrayProperties::new(cx, new_capacity)?;
         new_dense_properties.set_len(new_length);
 
         unsafe {
@@ -126,16 +130,22 @@ impl ArrayProperties {
         }
 
         object.set_array_properties(new_dense_properties.cast());
+
+        Ok(())
     }
 
     #[inline]
-    fn shrink_dense_properties(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) {
+    fn shrink_dense_properties(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+        new_length: u32,
+    ) -> AllocResult<()> {
         let mut dense_properties = object.array_properties().as_dense();
 
         // Only shrink backing array if it would be less than one half filled
         if new_length >= (dense_properties.capacity() / 2) {
             dense_properties.set_len(new_length);
-            return;
+            return Ok(());
         }
 
         // Save old dense properties before allocation
@@ -143,7 +153,7 @@ impl ArrayProperties {
 
         // Create new dense array properties, ensure that no allocation happens after this point
         // otherwise we could try to GC a partially initialized array.
-        let mut new_dense_properties = DenseArrayProperties::new(cx, new_length);
+        let mut new_dense_properties = DenseArrayProperties::new(cx, new_length)?;
         new_dense_properties.set_len(new_length);
 
         unsafe {
@@ -156,9 +166,14 @@ impl ArrayProperties {
         }
 
         object.set_array_properties(new_dense_properties.cast());
+
+        Ok(())
     }
 
-    fn transition_to_sparse_properties(cx: Context, mut object: Handle<ObjectValue>) {
+    fn transition_to_sparse_properties(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+    ) -> AllocResult<()> {
         let dense_properties = object.array_properties().as_dense().to_handle();
 
         // Initial sparse map size is the number of non-empty properties
@@ -168,7 +183,7 @@ impl ArrayProperties {
             .count();
         let new_capacity = SparseMap::min_capacity_needed(num_non_empty_properties);
         let mut sparse_properties =
-            SparseArrayProperties::new(cx, new_capacity, dense_properties.len());
+            SparseArrayProperties::new(cx, new_capacity, dense_properties.len())?;
 
         // Share handle across iterations
         let mut value_handle = Handle::<Value>::empty(cx);
@@ -186,6 +201,8 @@ impl ArrayProperties {
         }
 
         object.set_array_properties(sparse_properties.cast());
+
+        Ok(())
     }
 
     // Resize array properties to match a new array length, potentially expanding and adding empty
@@ -196,27 +213,31 @@ impl ArrayProperties {
     // array, stop deleting other properties, and return false.
     //
     // Returns return true on success.
-    pub fn set_len(cx: Context, mut object: Handle<ObjectValue>, new_length: u32) -> bool {
+    pub fn set_len(
+        cx: Context,
+        mut object: Handle<ObjectValue>,
+        new_length: u32,
+    ) -> AllocResult<bool> {
         let array_properties = object.array_properties();
         if let Some(dense_properties) = array_properties.as_dense_opt() {
             let array_length = dense_properties.len();
             if new_length > array_length {
                 if new_length >= array_length + SPARSE_ARRAY_THRESHOLD {
                     // First try falling back to sparse properties if this is an expanded dense array
-                    Self::transition_to_sparse_properties(cx, object);
+                    Self::transition_to_sparse_properties(cx, object)?;
                     Self::set_len(cx, object, new_length)
                 } else {
                     // Otherwise stay dense but resize array with new empty elements
-                    Self::grow_dense_properties(cx, object, new_length);
-                    true
+                    Self::grow_dense_properties(cx, object, new_length)?;
+                    Ok(true)
                 }
             } else if new_length < array_length {
                 // All properties are configurable so can always shrink directly to new length
-                Self::shrink_dense_properties(cx, object, new_length);
-                true
+                Self::shrink_dense_properties(cx, object, new_length)?;
+                Ok(true)
             } else {
                 // Length is unchanged
-                true
+                Ok(true)
             }
         } else {
             let mut sparse_properties = array_properties.as_sparse();
@@ -224,7 +245,7 @@ impl ArrayProperties {
             // Sparse expand case is easy, we simply set the new length
             if new_length >= sparse_properties.array_length() {
                 sparse_properties.set_array_length(new_length);
-                return true;
+                return Ok(true);
             }
 
             // Save behind handle before allocating
@@ -259,7 +280,7 @@ impl ArrayProperties {
                 .count();
             let new_capacity = SparseMap::min_capacity_needed(num_properties_left);
             let mut new_sparse_properties =
-                SparseArrayProperties::new(cx, new_capacity, new_length);
+                SparseArrayProperties::new(cx, new_capacity, new_length)?;
 
             // Create a new map with non-truncated values. Can use stored property directly since
             // loop does not allocate on managed heap as map has capacity for all properties.
@@ -273,7 +294,7 @@ impl ArrayProperties {
 
             object.set_array_properties(new_sparse_properties.cast());
 
-            last_non_configurable_index.is_none()
+            Ok(last_non_configurable_index.is_none())
         }
     }
 
@@ -282,23 +303,23 @@ impl ArrayProperties {
         object: Handle<ObjectValue>,
         array_index: u32,
         property: Property,
-    ) {
+    ) -> AllocResult<()> {
         let array_properties = object.array_properties();
         if let Some(mut dense_properties) = array_properties.as_dense_opt() {
             if !property.is_allowed_as_dense_array_property() {
                 // Property must have the correct attributes to be added as dense property.
                 // Otherwise transition to sparse properties and add new property.
-                Self::transition_to_sparse_properties(cx, object);
-                Self::set_property(cx, object, array_index, property)
+                Self::transition_to_sparse_properties(cx, object)?;
+                Self::set_property(cx, object, array_index, property)?;
             } else if array_index >= dense_properties.len() {
                 // Transition if property is added past the end of the array by a threshold
                 if array_index >= dense_properties.len() + SPARSE_ARRAY_THRESHOLD {
-                    Self::transition_to_sparse_properties(cx, object);
+                    Self::transition_to_sparse_properties(cx, object)?;
                 } else {
-                    Self::grow_dense_properties(cx, object, array_index + 1);
+                    Self::grow_dense_properties(cx, object, array_index + 1)?;
                 }
 
-                Self::set_property(cx, object, array_index, property);
+                Self::set_property(cx, object, array_index, property)?;
             } else {
                 dense_properties.set(array_index, *property.value());
             }
@@ -311,9 +332,11 @@ impl ArrayProperties {
 
             let mut sparse_map_field = SparseMapField(object);
             sparse_map_field
-                .maybe_grow_for_insertion(cx)
+                .maybe_grow_for_insertion(cx)?
                 .insert_without_growing(array_index, property.to_heap());
         }
+
+        Ok(())
     }
 }
 
@@ -329,16 +352,16 @@ pub struct DenseArrayProperties {
 const DENSE_ARRAY_DATA_OFFSET: usize = field_offset!(DenseArrayProperties, array);
 
 impl DenseArrayProperties {
-    pub fn new(cx: Context, capacity: u32) -> HeapPtr<DenseArrayProperties> {
+    pub fn new(cx: Context, capacity: u32) -> AllocResult<HeapPtr<DenseArrayProperties>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity as usize);
-        let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size);
+        let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
         object.array.init_with_uninit(capacity as usize);
 
-        object
+        Ok(object)
     }
 
     fn calculate_size_in_bytes(capacity: usize) -> usize {
@@ -459,9 +482,13 @@ pub struct SparseArrayProperties {
 type SparseMap = BsHashMap<u32, HeapProperty>;
 
 impl SparseArrayProperties {
-    fn new(cx: Context, capacity: usize, array_length: u32) -> HeapPtr<SparseArrayProperties> {
+    fn new(
+        cx: Context,
+        capacity: usize,
+        array_length: u32,
+    ) -> AllocResult<HeapPtr<SparseArrayProperties>> {
         let byte_size = Self::calculate_size_in_bytes(capacity);
-        let mut object = cx.alloc_uninit_with_size::<SparseArrayProperties>(byte_size);
+        let mut object = cx.alloc_uninit_with_size::<SparseArrayProperties>(byte_size)?;
 
         object
             .sparse_map
@@ -470,7 +497,7 @@ impl SparseArrayProperties {
         // Set uninitialized array length
         object.set_array_length(array_length);
 
-        object
+        Ok(object)
     }
 
     #[inline]
@@ -519,9 +546,9 @@ impl HeapPtr<SparseArrayProperties> {
 struct SparseMapField(Handle<ObjectValue>);
 
 impl BsHashMapField<u32, HeapProperty> for SparseMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<SparseMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<SparseMap>> {
         let array_length = self.0.array_properties_length();
-        SparseArrayProperties::new(cx, capacity, array_length).cast()
+        Ok(SparseArrayProperties::new(cx, capacity, array_length)?.cast())
     }
 
     #[inline]

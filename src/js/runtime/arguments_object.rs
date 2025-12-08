@@ -5,7 +5,10 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object, field_offset, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
-    runtime::{interned_strings::InternedStrings, ordinary_object::object_create_with_size},
+    runtime::{
+        alloc_error::AllocResult, interned_strings::InternedStrings,
+        ordinary_object::object_create_with_size,
+    },
     set_uninit,
 };
 
@@ -36,14 +39,13 @@ extend_object! {
 }
 
 impl UnmappedArgumentsObject {
-    pub fn new(cx: Context) -> Handle<ObjectValue> {
-        let object = object_create::<ObjectValue>(
+    pub fn new(cx: Context) -> AllocResult<Handle<ObjectValue>> {
+        Ok(object_create::<ObjectValue>(
             cx,
             HeapItemKind::UnmappedArgumentsObject,
             Intrinsic::ObjectPrototype,
-        );
-
-        object.to_handle()
+        )?
+        .to_handle())
     }
 }
 
@@ -72,8 +74,8 @@ impl MappedArgumentsObject {
         arguments: &[Handle<Value>],
         scope: Handle<Scope>,
         num_parameters: usize,
-    ) -> Handle<MappedArgumentsObject> {
-        let shadowed_name = InternedStrings::alloc_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME);
+    ) -> EvalResult<Handle<MappedArgumentsObject>> {
+        let shadowed_name = InternedStrings::alloc_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
 
         let size = Self::calculate_size_in_bytes(num_parameters);
         let mut object = object_create_with_size::<MappedArgumentsObject>(
@@ -81,7 +83,7 @@ impl MappedArgumentsObject {
             size,
             HeapItemKind::MappedArgumentsObject,
             Intrinsic::ObjectPrototype,
-        );
+        )?;
 
         set_uninit!(object.scope, *scope);
 
@@ -97,9 +99,9 @@ impl MappedArgumentsObject {
 
         let object = object.to_handle();
 
-        Self::init_properties(cx, object, callee, arguments);
+        Self::init_properties(cx, object, callee, arguments)?;
 
-        object
+        Ok(object)
     }
 
     fn init_properties(
@@ -107,13 +109,13 @@ impl MappedArgumentsObject {
         object: Handle<MappedArgumentsObject>,
         callee: Handle<Closure>,
         arguments: &[Handle<Value>],
-    ) {
+    ) -> EvalResult<()> {
         // Property key is shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
 
         // Set indexed argument properties
         for (i, argument) in arguments.iter().enumerate() {
-            index_key.replace(PropertyKey::array_index(cx, i as u32));
+            index_key.replace(PropertyKey::array_index(cx, i as u32)?);
             must!(create_data_property_or_throw(cx, object.into(), index_key, *argument));
         }
 
@@ -131,6 +133,8 @@ impl MappedArgumentsObject {
         // Set callee property to the enclosing function
         let callee_desc = PropertyDescriptor::data(callee.into(), true, false, true);
         must!(define_property_or_throw(cx, object.into(), cx.names.callee(), callee_desc));
+
+        Ok(())
     }
 
     const MAPPED_PARAMETERS_OFFSET: usize = field_offset!(MappedArgumentsObject, mapped_parameters);
@@ -278,8 +282,11 @@ impl VirtualObject for Handle<MappedArgumentsObject> {
 }
 
 /// CreateUnmappedArgumentsObject (https://tc39.es/ecma262/#sec-createunmappedargumentsobject)
-pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]) -> Handle<Value> {
-    let object = UnmappedArgumentsObject::new(cx);
+pub fn create_unmapped_arguments_object(
+    cx: Context,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
+    let object = UnmappedArgumentsObject::new(cx)?;
 
     // Set length property
     let length_value = cx.smi(arguments.len() as i32);
@@ -291,7 +298,7 @@ pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]
 
     // Set indexed argument properties
     for (i, argument) in arguments.iter().enumerate() {
-        index_key.replace(PropertyKey::array_index(cx, i as u32));
+        index_key.replace(PropertyKey::array_index(cx, i as u32)?);
         must!(create_data_property_or_throw(cx, object, index_key, *argument));
     }
 
@@ -307,7 +314,7 @@ pub fn create_unmapped_arguments_object(cx: Context, arguments: &[Handle<Value>]
         PropertyDescriptor::accessor(Some(throw_type_error), Some(throw_type_error), false, false);
     must!(define_property_or_throw(cx, object, cx.names.callee(), callee_desc));
 
-    object.into()
+    Ok(object.into())
 }
 
 impl HeapItem for HeapPtr<MappedArgumentsObject> {

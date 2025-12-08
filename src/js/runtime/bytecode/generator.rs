@@ -29,6 +29,7 @@ use crate::{
         source::Source,
     },
     runtime::{
+        alloc_error::{AllocError, AllocResult},
         boxed_value::BoxedValue,
         bytecode::{
             function::{dump_bytecode_function, BytecodeFunction},
@@ -114,17 +115,17 @@ impl<'a> BytecodeProgramGenerator<'a> {
         scope_tree: &'a ScopeTree<'a>,
         realm: Handle<Realm>,
         source: Rc<Source>,
-    ) -> Self {
-        let source_file = SourceFile::new(cx, &source);
+    ) -> AllocResult<Self> {
+        let source_file = SourceFile::new(cx, &source)?;
 
         // If we are dumping bytecode then we must collect all functions
         let all_functions = if cx.options.print_bytecode {
-            Some(FunctionVecField::new_vec(cx, 4).to_handle())
+            Some(FunctionVecField::new_vec(cx, 4)?.to_handle())
         } else {
             None
         };
 
-        Self {
+        Ok(Self {
             cx,
             scope_tree,
             realm,
@@ -132,17 +133,22 @@ impl<'a> BytecodeProgramGenerator<'a> {
             module: None,
             pending_functions_queue: VecDeque::new(),
             all_functions,
-        }
+        })
     }
 
     /// Perform postprocessing for generated functions, such as adding to the list of all functions
     /// if necessary. Must be called on all functions after they are generated.
-    fn process_generated_function(&mut self, function: Handle<BytecodeFunction>) {
+    fn process_generated_function(
+        &mut self,
+        function: Handle<BytecodeFunction>,
+    ) -> AllocResult<()> {
         if self.all_functions.is_some() {
             FunctionVecField(&mut self.all_functions)
-                .maybe_grow_for_push(self.cx)
+                .maybe_grow_for_push(self.cx)?
                 .push_without_growing(*function);
         }
+
+        Ok(())
     }
 
     /// Dump all bytecode functions if necessary. Must be called at the end of each bytecode program
@@ -171,7 +177,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         handle_scope!(cx, {
             let source = parse_result.source.clone();
-            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source)?;
             let script = generator.generate_script_program(&parse_result.program)?;
 
             generator.dump_bytecode_functions();
@@ -209,14 +215,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
             let global_names = generator.gen_global_names(program.scope.as_ref())?;
 
             generator.gen_program_body(program)?;
-            emit_result = generator.finish();
+            emit_result = generator.finish()?;
 
-            Ok(global_names)
+            Ok(global_names) as EmitResult<_>
         })?;
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
-        self.process_generated_function(emit_result.bytecode_function);
+        self.process_generated_function(emit_result.bytecode_function)?;
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -237,7 +243,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
         handle_scope!(cx, {
             let source = parse_result.source.clone();
-            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source)?;
             let module = generator.generate_module_program(&parse_result.program)?;
 
             generator.dump_bytecode_functions();
@@ -251,7 +257,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         program: &'a ast::Program<'a>,
     ) -> EmitResult<Handle<SourceTextModule>> {
         let program_function = self.gen_module_function(program)?;
-        let source_text_module = self.gen_source_text_module(program, program_function);
+        let source_text_module = self.gen_source_text_module(program, program_function)?;
 
         self.module = Some(source_text_module);
 
@@ -279,14 +285,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
             )?;
 
             generator.gen_program_body(program)?;
-            emit_result = generator.finish();
+            emit_result = generator.finish()?;
 
-            Ok(())
+            Ok(()) as EmitResult<()>
         })?;
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
-        self.process_generated_function(emit_result.bytecode_function);
+        self.process_generated_function(emit_result.bytecode_function)?;
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -300,7 +306,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         &mut self,
         program: &ast::Program,
         program_function: Handle<BytecodeFunction>,
-    ) -> Handle<SourceTextModule> {
+    ) -> AllocResult<Handle<SourceTextModule>> {
         let mut module_requests = IndexSet::new();
 
         let mut imports = vec![];
@@ -317,10 +323,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for toplevel in program.toplevels.iter() {
             match toplevel {
                 ast::Toplevel::Import(import) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(import.source.value);
+                    let module_specifier = self.cx.alloc_wtf8_str(import.source.value)?;
 
                     let module_request =
-                        self.gen_module_request(module_specifier, import.attributes.as_deref());
+                        self.gen_module_request(module_specifier, import.attributes.as_deref())?;
                     module_requests.insert(module_request);
 
                     // Each specifier will generate an import entry
@@ -333,12 +339,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                     .imported
                                     .as_ref()
                                     .map(|imported| self.alloc_export_name_string(imported))
-                                    .unwrap_or_else(|| self.cx.alloc_wtf8_str(import.local.name));
+                                    .transpose()?
+                                    .map(Ok)
+                                    .unwrap_or_else(|| self.cx.alloc_wtf8_str(import.local.name))?;
                                 (&import.local, Some(imported))
                             }
                         };
 
-                        let local_name = self.cx.alloc_wtf8_str(local_id.name);
+                        let local_name = self.cx.alloc_wtf8_str(local_id.name)?;
                         let slot_index = Self::id_module_slot_index(local_id);
                         let is_exported = local_id.get_binding().is_exported();
 
@@ -362,9 +370,9 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     source_attributes,
                     ..
                 }) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(source.value);
+                    let module_specifier = self.cx.alloc_wtf8_str(source.value)?;
                     let module_request =
-                        self.gen_module_request(module_specifier, source_attributes.as_deref());
+                        self.gen_module_request(module_specifier, source_attributes.as_deref())?;
 
                     module_requests.insert(module_request);
                 }
@@ -382,7 +390,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     let local_name = BytecodeFunctionGenerator::gen_default_export_name(
                         self.cx,
                         &export.declaration,
-                    );
+                    )?;
 
                     let slot_index = if let Some(id) = export.id() {
                         Self::id_module_slot_index(id)
@@ -407,34 +415,43 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     let module_specifier = export
                         .source
                         .as_ref()
-                        .map(|source| self.cx.alloc_wtf8_str(source.value));
+                        .map(|source| self.cx.alloc_wtf8_str(source.value))
+                        .transpose()?;
+
+                    // Collect all exported ids from the declaration
+                    let mut exported_id_data = vec![];
+                    export.iter_declaration_ids(&mut |id| {
+                        let slot_index = Self::id_module_slot_index(id);
+                        exported_id_data.push((id.name, slot_index));
+                    });
 
                     // Exporting a full named declaration adds export entries for each exported id
-                    export.iter_declaration_ids(&mut |id| {
-                        let local_name = self.cx.alloc_wtf8_str(id.name);
-                        let slot_index = Self::id_module_slot_index(id);
+                    for (exported_id_name, slot_index) in exported_id_data.into_iter() {
+                        let local_name = self.cx.alloc_wtf8_str(exported_id_name)?;
 
                         local_exports.push(LocalExportEntry {
                             export_name: local_name,
                             local_name,
                             slot_index,
                         });
-                    });
+                    }
 
                     // Each specifier will generate an export entry of some form
                     for specifier in export.specifiers.iter() {
-                        let local_name = self.alloc_export_name_string(&specifier.local);
+                        let local_name = self.alloc_export_name_string(&specifier.local)?;
                         let export_name = specifier
                             .exported
                             .as_ref()
-                            .map_or(local_name, |exported| self.alloc_export_name_string(exported));
+                            .map_or(Ok(local_name), |exported| {
+                                self.alloc_export_name_string(exported)
+                            })?;
 
                         // If there is a from source specifier this is a named re-export
                         if let Some(module_specifier) = module_specifier {
                             let module_request = self.gen_module_request(
                                 module_specifier,
                                 export.source_attributes.as_deref(),
-                            );
+                            )?;
 
                             named_re_exports.push(NamedReExportEntry {
                                 module_request,
@@ -477,14 +494,16 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     }
                 }
                 ast::Toplevel::ExportAll(export) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(export.source.value);
-                    let module_request = self
-                        .gen_module_request(module_specifier, export.source_attributes.as_deref());
+                    let module_specifier = self.cx.alloc_wtf8_str(export.source.value)?;
+                    let module_request = self.gen_module_request(
+                        module_specifier,
+                        export.source_attributes.as_deref(),
+                    )?;
 
                     if let Some(exported_name) = export.exported.as_ref() {
                         // If there is an exported name this is a namespace re-export, which counts
                         // as a named re-export.
-                        let export_name = self.alloc_export_name_string(exported_name);
+                        let export_name = self.alloc_export_name_string(exported_name)?;
 
                         named_re_exports.push(NamedReExportEntry {
                             module_request,
@@ -501,7 +520,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
 
         // Flatten set of specifiers into list, preserving insertion order
-        let mut module_scope = self.gen_module_scope(program);
+        let mut module_scope = self.gen_module_scope(program)?;
 
         let module = SourceTextModule::new(
             self.cx,
@@ -513,32 +532,34 @@ impl<'a> BytecodeProgramGenerator<'a> {
             &named_re_exports,
             &direct_re_exports,
             program.has_top_level_await,
-        );
+        )?;
 
         // Place the module in the first slot of its module scope
         module_scope.set_heap_item_slot(0, module.as_heap_item());
 
-        module
+        Ok(module)
     }
 
     fn gen_module_request(
         &mut self,
         specifier: Handle<FlatString>,
         attributes: Option<&ast::ImportAttributes>,
-    ) -> ModuleRequest {
-        let attributes = self.gen_import_attributes(attributes);
-        ModuleRequest { specifier, attributes }
+    ) -> AllocResult<ModuleRequest> {
+        let attributes = self.gen_import_attributes(attributes)?;
+        Ok(ModuleRequest { specifier, attributes })
     }
 
     fn gen_import_attributes(
         &mut self,
         attributes: Option<&ast::ImportAttributes>,
-    ) -> Option<Handle<ImportAttributes>> {
-        attributes?;
+    ) -> AllocResult<Option<Handle<ImportAttributes>>> {
+        if attributes.is_none() {
+            return Ok(None);
+        }
 
         let attributes = &attributes.unwrap().attributes;
         if attributes.is_empty() {
-            return None;
+            return Ok(None);
         }
 
         let mut attribute_pairs = vec![];
@@ -547,15 +568,15 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for attribute in attributes.iter() {
             let key = match &attribute.key {
                 ast::Expression::Id(id) => {
-                    InternedStrings::get_generator_cache_wtf8_str(self.cx, id.name).as_flat()
+                    InternedStrings::get_generator_cache_wtf8_str(self.cx, id.name)?.as_flat()
                 }
                 ast::Expression::String(string) => {
-                    InternedStrings::get_generator_cache_wtf8_str(self.cx, string.value).as_flat()
+                    InternedStrings::get_generator_cache_wtf8_str(self.cx, string.value)?.as_flat()
                 }
                 _ => unreachable!("expected string or identifier"),
             };
             let value =
-                InternedStrings::get_generator_cache_wtf8_str(self.cx, attribute.value.value)
+                InternedStrings::get_generator_cache_wtf8_str(self.cx, attribute.value.value)?
                     .as_flat();
 
             attribute_pairs.push((key, value));
@@ -564,19 +585,19 @@ impl<'a> BytecodeProgramGenerator<'a> {
         // Keys are sorted in lexicographic order
         attribute_pairs.sort_by(|(key1, _), (key2, _)| key1.cmp(key2));
 
-        Some(ImportAttributes::new(self.cx, &attribute_pairs))
+        Ok(Some(ImportAttributes::new(self.cx, &attribute_pairs)?))
     }
 
     /// Create the root module scope for module evaluation. Initialize
-    fn gen_module_scope(&mut self, program: &ast::Program) -> Handle<Scope> {
+    fn gen_module_scope(&mut self, program: &ast::Program) -> AllocResult<Handle<Scope>> {
         let ast_node = program.scope.as_ref();
         let vm_node = self.scope_tree.get_vm_node(ast_node.vm_scope_id().unwrap());
 
         // Create the scope itself
-        let names = BytecodeFunctionGenerator::gen_scope_name_strings(self.cx, vm_node);
+        let names = BytecodeFunctionGenerator::gen_scope_name_strings(self.cx, vm_node)?;
         let name_flags = BytecodeFunctionGenerator::gen_scope_name_flags(ast_node, self.scope_tree);
-        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags);
-        let mut module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object());
+        let scope_names = ScopeNames::new(self.cx, ScopeFlags::empty(), &names, &name_flags)?;
+        let mut module_scope = Scope::new_module(self.cx, scope_names, self.realm.global_object())?;
 
         // Initialize the exports with boxed values. Imports will be initialized during linking,
         // and all other bindings will be initialized normally during execution.
@@ -591,7 +612,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                 if let VMLocation::ModuleScope { index, .. } = binding.vm_location().unwrap() {
                     // All exported value are boxed, which will eventually be linked to import
-                    let boxed_value = BoxedValue::new(self.cx, init_value);
+                    let boxed_value = BoxedValue::new(self.cx, init_value)?;
                     module_scope.set_heap_item_slot(index, boxed_value.as_heap_item());
                 } else {
                     unreachable!("expected module scope location")
@@ -599,10 +620,13 @@ impl<'a> BytecodeProgramGenerator<'a> {
             }
         }
 
-        module_scope
+        Ok(module_scope)
     }
 
-    fn alloc_export_name_string(&mut self, module_name: &ast::ExportName) -> Handle<FlatString> {
+    fn alloc_export_name_string(
+        &mut self,
+        module_name: &ast::ExportName,
+    ) -> AllocResult<Handle<FlatString>> {
         match module_name {
             ast::ExportName::Id(id) => self.cx.alloc_wtf8_str(id.name),
             ast::ExportName::String(lit) => self.cx.alloc_wtf8_str(lit.value),
@@ -630,7 +654,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
             let mut generator =
-                Self::new(cx, &parse_result.scope_tree, realm, parse_result.source.clone());
+                Self::new(cx, &parse_result.scope_tree, realm, parse_result.source.clone())?;
             let function = generator.generate_eval(&parse_result.program);
 
             generator.dump_bytecode_functions();
@@ -703,14 +727,14 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 .register_allocator
                 .release(statement_completion_dest);
 
-            emit_result = generator.finish();
+            emit_result = generator.finish()?;
 
-            Ok(())
+            Ok(()) as EmitResult<()>
         })?;
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
-        self.process_generated_function(emit_result.bytecode_function);
+        self.process_generated_function(emit_result.bytecode_function)?;
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -727,7 +751,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
     ) -> EmitResult<Handle<BytecodeFunction>> {
         handle_scope!(cx, {
             let source = parse_result.source.clone();
-            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source);
+            let mut generator = Self::new(cx, &parse_result.scope_tree, realm, source)?;
             let function = generator.generate_function_constructor(&parse_result.function);
 
             generator.dump_bytecode_functions();
@@ -762,7 +786,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         )?;
 
         let emit_result = generator.generate(function)?;
-        self.process_generated_function(emit_result.bytecode_function);
+        self.process_generated_function(emit_result.bytecode_function)?;
 
         // Generate all pending functions that were discovered while emitting the original function
         self.enqueue_pending_functions(
@@ -907,12 +931,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 emit_result = generator.generate(func)?;
             }
 
-            Ok(())
+            Ok(()) as EmitResult<()>
         })?;
 
         // Escape emit result into current handle scope immediately, before allocation occurs
         self.escape_emit_function_result(&mut emit_result);
-        self.process_generated_function(emit_result.bytecode_function);
+        self.process_generated_function(emit_result.bytecode_function)?;
 
         self.enqueue_pending_functions(
             emit_result.bytecode_function,
@@ -939,7 +963,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     emit_result.bytecode_function,
                     module_scope,
                     realm,
-                )
+                )?
                 .as_object();
 
                 // And place inside boxed value in the module scope
@@ -1657,22 +1681,22 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.mov_instruction(dest, src);
     }
 
-    fn get_cached_str(&mut self, str: &str) -> Handle<StringValue> {
+    fn get_cached_str(&mut self, str: &str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_str(self.cx, str)
     }
 
-    fn get_cached_wtf8_str(&mut self, str: &Wtf8Str) -> Handle<StringValue> {
+    fn get_cached_wtf8_str(&mut self, str: &Wtf8Str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_wtf8_str(self.cx, str)
     }
 
     fn add_string_constant(&mut self, str: &str) -> EmitResult<GenConstantIndex> {
-        let string = self.get_cached_str(str).as_flat();
+        let string = self.get_cached_str(str)?.as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
     }
 
     fn add_wtf8_string_constant(&mut self, str: &Wtf8Str) -> EmitResult<GenConstantIndex> {
-        let string = self.get_cached_wtf8_str(str).as_flat();
+        let string = self.get_cached_wtf8_str(str)?.as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
     }
@@ -1949,18 +1973,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(promise_reg);
         }
 
-        Ok(self.finish())
+        Ok(self.finish()?)
     }
 
     /// Finish generating the bytecode for a function. Returns the bytecode function and the
     /// queue of AST node functions from the body that need to be generated.
-    fn finish(self) -> EmitFunctionResult<'a> {
+    fn finish(self) -> AllocResult<EmitFunctionResult<'a>> {
         debug_assert!(self.block_offsets.len() == self.num_blocks);
         debug_assert!(self.unresolved_forward_jumps.is_empty());
         debug_assert!(self.register_allocator.is_empty());
 
-        let constant_table = self.constant_table_builder.finish(self.cx);
-        let exception_handlers = self.exception_handler_builder.finish(self.cx);
+        let constant_table = self.constant_table_builder.finish(self.cx)?;
+        let exception_handlers = self.exception_handler_builder.finish(self.cx)?;
 
         let is_async = self.is_async();
 
@@ -1968,10 +1992,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let name = self
             .name
             .as_ref()
-            .map(|name| InternedStrings::get_generator_cache_wtf8_str(self.cx, name.as_str()));
+            .map(|name| InternedStrings::get_generator_cache_wtf8_str(self.cx, name.as_str()))
+            .transpose()?;
         let (bytecode, source_positions) = self.writer.finish();
 
-        let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions);
+        let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions)?;
 
         let bytecode_function = BytecodeFunction::new(
             self.cx,
@@ -1992,12 +2017,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             self.source_file,
             source_positions_object,
-        );
+        )?;
 
-        EmitFunctionResult {
+        Ok(EmitFunctionResult {
             bytecode_function,
             pending_functions: self.pending_functions_queue,
-        }
+        })
     }
 
     /// Generate the bytecode for a default constructor.
@@ -2017,7 +2042,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // constructor scope is needed since it is only needed if `this` is captured.
         self.gen_return(/* return_arg */ None, /* default_constructor_scope */ None)?;
 
-        Ok(self.finish())
+        Ok(self.finish()?)
     }
 
     /// Generate the bytecode for a function that initializes the instances fields of a class.
@@ -2044,7 +2069,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.gen_class_initializer_end(init_func_scope)?;
 
-        Ok(self.finish())
+        Ok(self.finish()?)
     }
 
     /// Generate the bytecode for a function that initializes the static elements of a class,
@@ -2084,7 +2109,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         self.gen_class_initializer_end(init_func_scope)?;
 
-        Ok(self.finish())
+        Ok(self.finish()?)
     }
 
     fn gen_class_initializer_start(
@@ -2914,7 +2939,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         // BigInts are stored in the constant table, but not deduped
-        let bigint_value = BigIntValue::new(self.cx, lit.value()).to_handle();
+        let bigint_value = BigIntValue::new(self.cx, lit.value())?.to_handle();
         let constant_index = self
             .constant_table_builder
             .add_heap_item(bigint_value.cast())?;
@@ -2930,10 +2955,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         // Can use source directly as "escaped" pattern source string
-        let source = self.get_cached_wtf8_str(lit.pattern);
+        let source = self.get_cached_wtf8_str(lit.pattern)?;
 
         // Compile regexp and store compiled regexp in constant table
-        let compiled_regexp = compile_regexp(self.cx, &lit.regexp, source);
+        let compiled_regexp = compile_regexp(self.cx, &lit.regexp, source)?;
         let compiled_regexp_index = self
             .constant_table_builder
             .add_heap_item(compiled_regexp.cast())?;
@@ -3583,7 +3608,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let mut arg_regs = Vec::with_capacity(expr.quasi.expressions.len() + 1);
 
         // Template objects are generated eagerly and stored in constant table
-        let template_object = generate_template_object(self.cx, self.realm, &expr.quasi);
+        let template_object = generate_template_object(self.cx, self.realm, &expr.quasi)?;
         let template_object_index = self
             .constant_table_builder
             .add_heap_item(template_object.cast())?;
@@ -6990,7 +7015,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.get_home_object_location(body_scope, &STATIC_HOME_OBJECT_BINDING_NAME)?;
 
         // ClassNames object is stored in the constant table
-        let class_names = ClassNames::new(self.cx, &methods, home_object, static_home_object);
+        let class_names = ClassNames::new(self.cx, &methods, home_object, static_home_object)?;
         let class_names_index = self
             .constant_table_builder
             .add_heap_item(class_names.cast())?;
@@ -7162,7 +7187,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         );
 
         let method_name = if let Name::Named(name) = key {
-            Some(self.get_cached_wtf8_str(name).as_flat())
+            Some(self.get_cached_wtf8_str(name)?.as_flat())
         } else {
             None
         };
@@ -7512,10 +7537,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         let vm_node = self.scope_tree.get_vm_node(vm_scope_id);
-        let names = Self::gen_scope_name_strings(self.cx, vm_node);
+        let names = Self::gen_scope_name_strings(self.cx, vm_node)?;
 
         let name_flags = Self::gen_scope_name_flags(scope, self.scope_tree);
-        let scope_names = ScopeNames::new(self.cx, flags, &names, &name_flags);
+        let scope_names = ScopeNames::new(self.cx, flags, &names, &name_flags)?;
 
         let scope_names_index = self
             .constant_table_builder
@@ -7528,12 +7553,18 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(constant_index)
     }
 
-    fn gen_scope_name_strings(cx: Context, vm_node: &VMScopeNode) -> Vec<Handle<FlatString>> {
-        vm_node
-            .bindings()
-            .iter()
-            .map(|name| InternedStrings::get_generator_cache_wtf8_str(cx, name).as_flat())
-            .collect::<Vec<_>>()
+    fn gen_scope_name_strings(
+        cx: Context,
+        vm_node: &VMScopeNode,
+    ) -> AllocResult<Vec<Handle<FlatString>>> {
+        let mut name_strs = vec![];
+
+        for name in vm_node.bindings().iter() {
+            let name_str = InternedStrings::get_generator_cache_wtf8_str(cx, name)?.as_flat();
+            name_strs.push(name_str);
+        }
+
+        Ok(name_strs)
     }
 
     fn push_scope_stack_node(&mut self, vm_scope_id: ScopeNodeId) {
@@ -9220,13 +9251,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(StmtCompletion::Abrupt)
     }
 
-    fn gen_global_names(&mut self, global_scope: &AstScopeNode) -> EmitResult<Handle<GlobalNames>> {
+    fn gen_global_names(
+        &mut self,
+        global_scope: &AstScopeNode,
+    ) -> AllocResult<Handle<GlobalNames>> {
         // Collect all global variables and functions in scope
         let mut global_vars = HashSet::new();
         let mut global_funcs = HashSet::new();
 
         for (name, binding) in global_scope.iter_var_decls() {
-            let name = self.get_cached_wtf8_str(name).as_flat();
+            let name = self.get_cached_wtf8_str(name)?.as_flat();
             if let BindingKind::Function { .. } = binding.kind() {
                 global_funcs.insert(name);
             } else {
@@ -9241,13 +9275,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Create a ScopeNames object containing all lexical names in scope.
         let binding_flags = Self::gen_scope_name_flags(global_scope, self.scope_tree);
 
-        let names = Self::gen_scope_name_strings(self.cx, vm_node);
+        let names = Self::gen_scope_name_strings(self.cx, vm_node)?;
         let scope_names =
-            ScopeNames::new(self.cx, ScopeFlags::IS_VAR_SCOPE, &names, &binding_flags);
+            ScopeNames::new(self.cx, ScopeFlags::IS_VAR_SCOPE, &names, &binding_flags)?;
 
         // Add all var and lex names to the GlobalNames object, which will be used later when
         // instantiating the global scope.
-        Ok(GlobalNames::new(self.cx, global_vars, global_funcs, scope_names))
+        GlobalNames::new(self.cx, global_vars, global_funcs, scope_names)
     }
 
     /// Generate the name of a declaration that is part of a default export declaration, defaulting
@@ -9255,7 +9289,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_default_export_name(
         mut cx: Context,
         decl: &ast::ExportDefaultKind,
-    ) -> Handle<FlatString> {
+    ) -> AllocResult<Handle<FlatString>> {
         let id = match decl {
             ast::ExportDefaultKind::Function(func) => &func.id,
             ast::ExportDefaultKind::Class(class) => &class.id,
@@ -9265,12 +9299,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         if let Some(id) = id {
             cx.alloc_wtf8_str(id.name)
         } else {
-            cx.names.default_name().as_string().as_flat()
+            Ok(cx.names.default_name().as_string().as_flat())
         }
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum EmitError {
     ConstantTableTooLarge,
     TooManyFunctionParameters,
@@ -9279,6 +9313,7 @@ pub enum EmitError {
     TooManyScopes,
     IndexTooLarge,
     IntegerTooLarge,
+    Alloc(AllocError),
 }
 
 impl EmitError {
@@ -9301,7 +9336,14 @@ impl fmt::Display for EmitError {
             EmitError::TooManyScopes => write!(f, "Too many scopes"),
             EmitError::IndexTooLarge => write!(f, "Index too large"),
             EmitError::IntegerTooLarge => write!(f, "Integer too large"),
+            EmitError::Alloc(err) => err.fmt(f),
         }
+    }
+}
+
+impl fmt::Debug for EmitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, f)
     }
 }
 
@@ -9787,7 +9829,7 @@ type FunctionVec = BsVec<HeapPtr<BytecodeFunction>>;
 struct FunctionVecField<'a>(&'a mut Option<Handle<FunctionVec>>);
 
 impl BsVecField<HeapPtr<BytecodeFunction>> for FunctionVecField<'_> {
-    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<FunctionVec> {
+    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<FunctionVec>> {
         BsVec::new(cx, HeapItemKind::ValueVec, capacity)
     }
 

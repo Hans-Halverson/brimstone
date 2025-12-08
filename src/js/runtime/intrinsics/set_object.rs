@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         collections::{BsIndexSet, BsIndexSetField},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -30,7 +31,7 @@ impl SetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<SetObject>> {
         // Allocate and place behind handle before allocating object
-        let set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY).to_handle();
+        let set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY)?.to_handle();
 
         let mut object = object_create_from_constructor::<SetObject>(
             cx,
@@ -45,13 +46,13 @@ impl SetObject {
     }
 
     /// Create a new SetObject with the provided set data.
-    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> Handle<SetObject> {
+    pub fn new_from_set(cx: Context, set_data: Handle<ValueSet>) -> AllocResult<Handle<SetObject>> {
         let mut object =
-            object_create::<SetObject>(cx, HeapItemKind::SetObject, Intrinsic::SetPrototype);
+            object_create::<SetObject>(cx, HeapItemKind::SetObject, Intrinsic::SetPrototype)?;
 
         set_uninit!(object.set_data, *set_data);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     #[inline]
@@ -70,12 +71,13 @@ impl Handle<SetObject> {
         SetObjectSetField(*self)
     }
 
-    pub fn insert(&self, cx: Context, item: Handle<Value>) -> bool {
-        let item_handle = ValueCollectionKeyHandle::new(item);
+    pub fn insert(&self, cx: Context, item: Handle<Value>) -> AllocResult<bool> {
+        let item_handle = ValueCollectionKeyHandle::new(item)?;
 
-        self.set_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(item_handle.get())
+        Ok(self
+            .set_data_field()
+            .maybe_grow_for_insertion(cx)?
+            .insert_without_growing(item_handle.get()))
     }
 }
 
@@ -83,7 +85,7 @@ impl Handle<SetObject> {
 pub struct SetObjectSetField(Handle<SetObject>);
 
 impl BsIndexSetField<ValueCollectionKey> for SetObjectSetField {
-    fn new(cx: Context, capacity: usize) -> HeapPtr<ValueSet> {
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueSet>> {
         ValueSet::new(cx, HeapItemKind::SetObjectValueSet, capacity)
     }
 

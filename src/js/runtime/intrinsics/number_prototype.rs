@@ -1,4 +1,5 @@
 use crate::runtime::{
+    alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
@@ -17,19 +18,19 @@ pub struct NumberPrototype;
 
 impl NumberPrototype {
     /// Properties of the Number Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-number-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-        let mut object = NumberObject::new_with_proto(cx, object_proto, 0.0).as_object();
+        let mut object = NumberObject::new_with_proto(cx, object_proto, 0.0)?.as_object();
 
         // Constructor property is added once NumberConstructor has been created
-        object.intrinsic_func(cx, cx.names.to_exponential(), Self::to_exponential, 1, realm);
-        object.intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm);
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_precision(), Self::to_precision, 1, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_exponential(), Self::to_exponential, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.to_fixed(), Self::to_fixed, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_precision(), Self::to_precision, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// Number.prototype.toExponential (https://tc39.es/ecma262/#sec-number.prototype.toexponential)
@@ -64,7 +65,7 @@ impl NumberPrototype {
                 formatted.insert(exponent_index + 1, '+');
             }
 
-            return Ok(cx.alloc_string(&formatted).as_value());
+            return Ok(cx.alloc_string(&formatted)?.as_value());
         }
 
         // Otherwise format string ourselves so that we control rounding to precision. We cannot
@@ -108,7 +109,7 @@ impl NumberPrototype {
 
         result.push_str(&exponent.to_string());
 
-        Ok(cx.alloc_string(&result).as_value())
+        Ok(cx.alloc_string(&result)?.as_value())
     }
 
     /// Number.prototype.toFixed (https://tc39.es/ecma262/#sec-number.prototype.tofixed)
@@ -129,7 +130,7 @@ impl NumberPrototype {
         let num_fraction_digits = num_fraction_digits as u8;
 
         if !number.is_finite() {
-            return Ok(cx.alloc_string(&number_to_string(number)).as_value());
+            return Ok(cx.alloc_string(&number_to_string(number))?.as_value());
         }
 
         let is_negative = number < 0.0;
@@ -153,7 +154,7 @@ impl NumberPrototype {
             m = format!("-{m}");
         }
 
-        Ok(cx.alloc_string(&m).as_value())
+        Ok(cx.alloc_string(&m)?.as_value())
     }
 
     /// Number.prototype.toLocaleString (https://tc39.es/ecma262/#sec-number.prototype.tolocalestring)
@@ -229,7 +230,7 @@ impl NumberPrototype {
                 result.push(sign);
                 result.push_str(&exponent.to_string());
 
-                return Ok(cx.alloc_string(&result).as_value());
+                return Ok(cx.alloc_string(&result)?.as_value());
             }
         }
 
@@ -246,7 +247,7 @@ impl NumberPrototype {
             result.push_str(&mantissa);
         }
 
-        Ok(cx.alloc_string(&result).as_value())
+        Ok(cx.alloc_string(&result)?.as_value())
     }
 
     /// Number.prototype.toString (https://tc39.es/ecma262/#sec-number.prototype.tostring)
@@ -300,7 +301,7 @@ impl NumberPrototype {
                 number_value.as_double().to_string()
             };
 
-            return Ok(cx.alloc_string(&str).as_value());
+            return Ok(cx.alloc_string(&str)?.as_value());
         }
 
         // Float to string conversion based on SerenityOS's LibJS
@@ -349,7 +350,7 @@ impl NumberPrototype {
             }
         }
 
-        Ok(FlatString::from_one_byte_slice(cx, &result_bytes)
+        Ok(FlatString::from_one_byte_slice(cx, &result_bytes)?
             .to_handle()
             .as_value())
     }

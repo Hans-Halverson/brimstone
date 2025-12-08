@@ -7,7 +7,7 @@ use crate::parser::{
 
 use super::terminal::{BOLD, DEFAULT_COLOR, DIM, RED, RESET};
 
-pub fn print_error_message_and_exit(message: &str) {
+pub fn print_error_message_and_exit(message: &str) -> ! {
     eprintln!("{message}");
     std::process::exit(1);
 }

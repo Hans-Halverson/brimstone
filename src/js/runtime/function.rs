@@ -1,4 +1,7 @@
-use crate::must;
+use crate::{
+    must,
+    runtime::{alloc_error::AllocResult, EvalResult},
+};
 
 use super::{
     abstract_operations::define_property_or_throw, object_value::ObjectValue,
@@ -12,50 +15,54 @@ pub fn set_function_name(
     func: Handle<ObjectValue>,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
-) {
-    let name_string = build_function_name(cx, name, prefix);
+) -> AllocResult<()> {
+    let name_string = build_function_name(cx, name, prefix)?;
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.name(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.name(), desc));
+
+    Ok(())
 }
 
 pub fn build_function_name(
     mut cx: Context,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
-) -> Handle<StringValue> {
+) -> AllocResult<Handle<StringValue>> {
     // Convert name to string value, property formatting symbol name
     let name_string = if name.is_symbol() {
         let symbol = name.as_symbol();
         if let Some(description) = symbol.description() {
             if symbol.is_private() {
-                StringValue::concat(cx, cx.alloc_string("#").as_string(), description.as_string())
+                StringValue::concat(cx, cx.alloc_string("#")?.as_string(), description.as_string())?
             } else {
-                let left_paren = cx.alloc_string("[").as_string();
-                let right_paren = cx.alloc_string("]").as_string();
+                let left_paren = cx.alloc_string("[")?.as_string();
+                let right_paren = cx.alloc_string("]")?.as_string();
 
-                StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])
+                StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])?
             }
         } else {
             cx.names.empty_string().as_string()
         }
     } else {
-        name.to_value(cx).as_string()
+        name.to_value(cx)?.as_string()
     };
 
     // Add prefix to name
     if let Some(prefix) = prefix {
-        let prefix_string = cx.alloc_string(&format!("{prefix} ")).as_string();
+        let prefix_string = cx.alloc_string(&format!("{prefix} "))?.as_string();
         StringValue::concat(cx, prefix_string, name_string)
     } else {
-        name_string
+        Ok(name_string)
     }
 }
 
 /// SetFunctionLength (https://tc39.es/ecma262/#sec-setfunctionlength)
-pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) {
+pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) -> AllocResult<()> {
     let length_value = Value::from(length).to_handle(cx);
     let desc = PropertyDescriptor::data(length_value, false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.length(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.length(), desc));
+
+    Ok(())
 }
 
 // Identical to SetFunctionLength, but a None value represents a length of positive infinity
@@ -63,7 +70,7 @@ pub fn set_function_length_maybe_infinity(
     cx: Context,
     func: Handle<ObjectValue>,
     length: Option<usize>,
-) {
+) -> EvalResult<()> {
     let length = if let Some(length) = length {
         Value::from(length).to_handle(cx)
     } else {
@@ -71,7 +78,9 @@ pub fn set_function_length_maybe_infinity(
     };
 
     let desc = PropertyDescriptor::data(length, false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.length(), desc))
+    must!(define_property_or_throw(cx, func, cx.names.length(), desc));
+
+    Ok(())
 }
 
 pub fn get_argument(cx: Context, arguments: &[Handle<Value>], i: usize) -> Handle<Value> {

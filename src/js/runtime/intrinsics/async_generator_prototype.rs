@@ -2,6 +2,7 @@ use crate::{
     if_abrupt_reject_promise, must,
     runtime::{
         abstract_operations::{call_object, define_property_or_throw},
+        alloc_error::AllocResult,
         async_generator_object::{
             async_generator_await_return, async_generator_resume, async_generator_validate,
             AsyncGeneratorState,
@@ -28,18 +29,18 @@ pub struct AsyncGeneratorPrototype;
 
 impl AsyncGeneratorPrototype {
     /// The %AsyncGeneratorPrototype% Object (https://tc39.es/ecma262/#sec-properties-of-asyncgenerator-prototype)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object = ObjectValue::new(
             cx,
             Some(realm.get_intrinsic(Intrinsic::AsyncIteratorPrototype)),
             true,
-        );
+        )?;
 
         // Constructor property is added once AsyncGeneratorFunctionPrototype is created
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm);
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm);
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm)?;
 
         // %AsyncGeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -47,9 +48,9 @@ impl AsyncGeneratorPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.async_generator().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %AsyncGeneratorPrototype%.next (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-next)
@@ -70,18 +71,18 @@ impl AsyncGeneratorPrototype {
 
         // Immediately return if generator was already complete
         if state == AsyncGeneratorState::Completed {
-            let iter_result = create_iter_result_object(cx, cx.undefined(), true);
+            let iter_result = create_iter_result_object(cx, cx.undefined(), true)?;
             must!(call_object(cx, capability.resolve(), cx.undefined(), &[iter_result]));
             return Ok(capability.promise().as_value());
         }
 
-        async_generator.enqueue_request(cx, capability, value, GeneratorCompletionType::Normal);
+        async_generator.enqueue_request(cx, capability, value, GeneratorCompletionType::Normal)?;
 
         // Resume with a normal completion if generator is suspended at a yield
         if state == AsyncGeneratorState::SuspendedStart
             || state == AsyncGeneratorState::SuspendedYield
         {
-            async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Normal);
+            async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Normal)?;
         } else {
             debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
@@ -103,14 +104,14 @@ impl AsyncGeneratorPrototype {
         let validate_completion = async_generator_validate(cx, this_value);
         let mut async_generator = if_abrupt_reject_promise!(cx, validate_completion, capability);
 
-        async_generator.enqueue_request(cx, capability, value, GeneratorCompletionType::Return);
+        async_generator.enqueue_request(cx, capability, value, GeneratorCompletionType::Return)?;
 
         let state = async_generator.state();
         if state == AsyncGeneratorState::SuspendedStart || state == AsyncGeneratorState::Completed {
-            async_generator_await_return(cx, async_generator);
+            async_generator_await_return(cx, async_generator)?;
         } else if state == AsyncGeneratorState::SuspendedYield {
             // Resume with a return completion if generator is suspended at a yield
-            async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Return);
+            async_generator_resume(cx, async_generator, value, GeneratorCompletionType::Return)?;
         } else {
             debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
@@ -145,11 +146,11 @@ impl AsyncGeneratorPrototype {
             return Ok(capability.promise().as_value());
         }
 
-        async_generator.enqueue_request(cx, capability, error, GeneratorCompletionType::Throw);
+        async_generator.enqueue_request(cx, capability, error, GeneratorCompletionType::Throw)?;
 
         // Resume with a throw completion if generator is suspended at a yield
         if state == AsyncGeneratorState::SuspendedYield {
-            async_generator_resume(cx, async_generator, error, GeneratorCompletionType::Throw);
+            async_generator_resume(cx, async_generator, error, GeneratorCompletionType::Throw)?;
         } else {
             debug_assert!(state.is_executing() || state == AsyncGeneratorState::AwaitingReturn);
         }
@@ -167,7 +168,7 @@ impl AsyncGeneratorPrototype {
             cx,
             HeapItemKind::OrdinaryObject,
             Intrinsic::AsyncGeneratorPrototype,
-        )
+        )?
         .to_handle();
 
         let proto_desc = PropertyDescriptor::data(proto.to_handle().into(), true, false, false);

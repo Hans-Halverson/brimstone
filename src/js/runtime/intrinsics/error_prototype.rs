@@ -1,9 +1,10 @@
 use crate::{
     common::error::FormatOptions,
     runtime::{
-        abstract_operations::get, error::type_error, eval_result::EvalResult,
-        object_value::ObjectValue, realm::Realm, string_value::StringValue, to_console_string,
-        type_utilities::to_string, Context, Handle, Value,
+        abstract_operations::get, alloc_error::AllocResult, error::type_error,
+        eval_result::EvalResult, object_value::ObjectValue, realm::Realm,
+        string_value::StringValue, to_console_string, type_utilities::to_string, Context, Handle,
+        Value,
     },
 };
 
@@ -13,21 +14,21 @@ pub struct ErrorPrototype;
 
 impl ErrorPrototype {
     /// Properties of the Error Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-error-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once ErrorConstructor has been created
-        object.intrinsic_data_prop(cx, cx.names.name(), cx.names.error().as_string().into());
+        object.intrinsic_data_prop(cx, cx.names.name(), cx.names.error().as_string().into())?;
         object.intrinsic_data_prop(
             cx,
             cx.names.message(),
             cx.names.empty_string().as_string().into(),
-        );
-        object.intrinsic_getter(cx, cx.names.stack(), Self::get_stack, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        )?;
+        object.intrinsic_getter(cx, cx.names.stack(), Self::get_stack, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// Error.prototype.toString (https://tc39.es/ecma262/#sec-error.prototype.tostring)
@@ -61,8 +62,8 @@ impl ErrorPrototype {
         } else if message_string.is_empty() {
             Ok(name_string.as_value())
         } else {
-            let separator = cx.alloc_string(": ").as_string();
-            Ok(StringValue::concat_all(cx, &[name_string, separator, message_string]).as_value())
+            let separator = cx.alloc_string(": ")?.as_string();
+            Ok(StringValue::concat_all(cx, &[name_string, separator, message_string])?.as_value())
         }
     }
 
@@ -79,24 +80,25 @@ impl ErrorPrototype {
         let mut error = this_value.cast::<ErrorObject>();
 
         // Stack trace starts with error message on one line
-        let mut stack_trace = format_error_one_line(cx, error);
+        let mut stack_trace = format_error_one_line(cx, error)?;
         stack_trace.push('\n');
 
         // Followed by the stack trace
-        stack_trace.push_str(&error.get_stack_trace(cx).frames.to_string());
+        stack_trace.push_str(&error.get_stack_trace(cx)?.frames.to_string());
 
-        Ok(cx.alloc_string(&stack_trace).as_value())
+        Ok(cx.alloc_string(&stack_trace)?.as_value())
     }
 }
 
 /// Format an error object into a one line string containing name and message
-fn format_error_one_line(cx: Context, error: Handle<ErrorObject>) -> String {
+fn format_error_one_line(cx: Context, error: Handle<ErrorObject>) -> AllocResult<String> {
     let name = error_name(cx, error);
+    let name_str = name.format().unwrap_or_default();
 
-    match error_message(cx, error) {
-        Some(message) => format!("{name}: {message}"),
-        None => format!("{name}"),
-    }
+    Ok(match error_message(cx, error)? {
+        Some(message) => format!("{name_str}: {message}"),
+        None => name_str,
+    })
 }
 
 pub fn error_name(cx: Context, error: Handle<ErrorObject>) -> Handle<StringValue> {
@@ -106,9 +108,11 @@ pub fn error_name(cx: Context, error: Handle<ErrorObject>) -> Handle<StringValue
     }
 }
 
-pub fn error_message(cx: Context, error: Handle<ErrorObject>) -> Option<String> {
+pub fn error_message(cx: Context, error: Handle<ErrorObject>) -> AllocResult<Option<String>> {
     match get(cx, error.as_object(), cx.names.message()) {
-        Ok(message_value) => Some(to_console_string(cx, message_value, &FormatOptions::default())),
-        Err(_) => None,
+        Ok(message_value) => {
+            Ok(Some(to_console_string(cx, message_value, &FormatOptions::default())?))
+        }
+        Err(_) => Ok(None),
     }
 }

@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::create_data_property_or_throw,
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
@@ -20,7 +21,7 @@ pub struct ProxyConstructor;
 
 impl ProxyConstructor {
     /// Properties of the Proxy Constructor (https://tc39.es/ecma262/#sec-properties-of-the-proxy-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -28,11 +29,11 @@ impl ProxyConstructor {
             cx.names.proxy(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm);
+        func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Proxy (https://tc39.es/ecma262/#sec-proxy-target-handler)
@@ -63,16 +64,16 @@ impl ProxyConstructor {
 
         let realm = cx.current_realm();
         let mut revoker =
-            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None);
+            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None)?;
 
         // Attach the proxy to the revoker so it can be accessed when the revoker is called
         revoker.private_element_set(
             cx,
             cx.well_known_symbols.revocable_proxy().cast(),
             proxy.into(),
-        );
+        )?;
 
-        let result = ordinary_object_create(cx);
+        let result = ordinary_object_create(cx)?;
 
         must!(create_data_property_or_throw(cx, result, cx.names.proxy_(), proxy.into()));
         must!(create_data_property_or_throw(cx, result, cx.names.revoke(), revoker.into()));

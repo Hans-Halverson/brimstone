@@ -1,4 +1,7 @@
-use crate::{runtime::heap_item_descriptor::HeapItemKind, set_uninit};
+use crate::{
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    set_uninit,
+};
 
 use super::{
     gc::{HeapItem, HeapVisitor},
@@ -14,13 +17,13 @@ pub struct BoxedValue {
 }
 
 impl BoxedValue {
-    pub fn new(cx: Context, value: Handle<Value>) -> HeapPtr<BoxedValue> {
-        let mut scope = cx.alloc_uninit::<BoxedValue>();
+    pub fn new(cx: Context, value: Handle<Value>) -> AllocResult<HeapPtr<BoxedValue>> {
+        let mut scope = cx.alloc_uninit::<BoxedValue>()?;
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::BoxedValue));
         set_uninit!(scope.value, *value);
 
-        scope
+        Ok(scope)
     }
 
     pub fn get(&self) -> Value {

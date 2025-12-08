@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         collections::{BsIndexMap, BsIndexMapField},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -31,7 +32,7 @@ impl MapObject {
     ) -> EvalResult<Handle<MapObject>> {
         // Allocate and place behind handle before allocating environment
         let map_data =
-            ValueMap::new(cx, HeapItemKind::MapObjectValueMap, ValueMap::MIN_CAPACITY).to_handle();
+            ValueMap::new(cx, HeapItemKind::MapObjectValueMap, ValueMap::MIN_CAPACITY)?.to_handle();
 
         let mut object = object_create_from_constructor::<MapObject>(
             cx,
@@ -55,19 +56,25 @@ impl Handle<MapObject> {
         MapObjectMapField(*self)
     }
 
-    pub fn insert(&self, cx: Context, key: Handle<Value>, value: Handle<Value>) -> bool {
-        let key_handle = ValueCollectionKeyHandle::new(key);
+    pub fn insert(
+        &self,
+        cx: Context,
+        key: Handle<Value>,
+        value: Handle<Value>,
+    ) -> AllocResult<bool> {
+        let key_handle = ValueCollectionKeyHandle::new(key)?;
 
-        self.map_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(key_handle.get(), *value)
+        Ok(self
+            .map_data_field()
+            .maybe_grow_for_insertion(cx)?
+            .insert_without_growing(key_handle.get(), *value))
     }
 }
 
 pub struct MapObjectMapField(Handle<MapObject>);
 
 impl BsIndexMapField<ValueCollectionKey, Value> for MapObjectMapField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ValueMap> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ValueMap>> {
         ValueMap::new(cx, HeapItemKind::MapObjectValueMap, capacity)
     }
 

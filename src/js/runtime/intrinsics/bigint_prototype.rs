@@ -1,4 +1,5 @@
 use crate::runtime::{
+    alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
@@ -16,13 +17,13 @@ pub struct BigIntPrototype;
 
 impl BigIntPrototype {
     /// Properties of the BigInt Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-bigint-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once BigIntConstructor has been created
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
 
         // BigInt.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-bigint.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -30,9 +31,9 @@ impl BigIntPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.bigint().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// BigInt.prototype.toString (https://tc39.es/ecma262/#sec-bigint.prototype.tostring)
@@ -56,7 +57,7 @@ impl BigIntPrototype {
         };
 
         Ok(cx
-            .alloc_string(&bigint_value.bigint().to_str_radix(radix))
+            .alloc_string(&bigint_value.bigint().to_str_radix(radix))?
             .as_value())
     }
 

@@ -1,4 +1,7 @@
-use crate::{must, runtime::abstract_operations::create_data_property_or_throw};
+use crate::{
+    must,
+    runtime::{abstract_operations::create_data_property_or_throw, alloc_error::AllocResult},
+};
 
 use super::{
     abstract_operations::{get, has_property},
@@ -194,8 +197,11 @@ impl PropertyDescriptor {
 }
 
 /// FromPropertyDescriptor (https://tc39.es/ecma262/#sec-frompropertydescriptor)
-pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle<ObjectValue> {
-    let object = ordinary_object_create(cx);
+pub fn from_property_descriptor(
+    cx: Context,
+    desc: PropertyDescriptor,
+) -> AllocResult<Handle<ObjectValue>> {
+    let object = ordinary_object_create(cx)?;
 
     if let Some(value) = desc.value {
         must!(create_data_property_or_throw(cx, object, cx.names.value(), value,));
@@ -251,7 +257,7 @@ pub fn from_property_descriptor(cx: Context, desc: PropertyDescriptor) -> Handle
         ));
     }
 
-    object
+    Ok(object)
 }
 
 /// ToPropertyDescriptor (https://tc39.es/ecma262/#sec-topropertydescriptor)

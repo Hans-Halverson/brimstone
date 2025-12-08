@@ -1,7 +1,7 @@
 use crate::{
     field_offset,
     parser::{loc::calculate_line_offsets, source::Source},
-    runtime::heap_item_descriptor::HeapItemKind,
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
     set_uninit,
 };
 
@@ -30,16 +30,16 @@ type LineOffsetArray = BsArray<u32>;
 
 impl SourceFile {
     #[inline]
-    pub fn new(mut cx: Context, source: &Source) -> Handle<SourceFile> {
-        let path = cx.alloc_string(source.file_path());
+    pub fn new(mut cx: Context, source: &Source) -> AllocResult<Handle<SourceFile>> {
+        let path = cx.alloc_string(source.file_path())?;
         let display_name = if source.has_display_name() {
-            Some(cx.alloc_string(source.display_name()))
+            Some(cx.alloc_string(source.display_name())?)
         } else {
             None
         };
 
         let size = Self::calculate_size_in_bytes(source.contents.len());
-        let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size);
+        let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size)?;
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
@@ -48,7 +48,7 @@ impl SourceFile {
 
         scope.contents.init_from_slice(source.contents.as_bytes());
 
-        scope.to_handle()
+        Ok(scope.to_handle())
     }
 
     const CONTENTS_OFFSET: usize = field_offset!(SourceFile, contents);
@@ -80,23 +80,23 @@ impl SourceFile {
 }
 
 impl Handle<SourceFile> {
-    pub fn line_offsets_ptr(&mut self, cx: Context) -> HeapPtr<LineOffsetArray> {
+    pub fn line_offsets_ptr(&mut self, cx: Context) -> AllocResult<HeapPtr<LineOffsetArray>> {
         if let Some(line_offsets) = self.line_offsets {
-            return line_offsets;
+            return Ok(line_offsets);
         }
 
         // Lazily generate line offsets when first requested
         let raw_line_offsets = calculate_line_offsets(self.contents_as_slice());
         let line_offsets_object =
-            LineOffsetArray::new_from_slice(cx, HeapItemKind::U32Array, &raw_line_offsets);
+            LineOffsetArray::new_from_slice(cx, HeapItemKind::U32Array, &raw_line_offsets)?;
 
         self.line_offsets = Some(line_offsets_object);
 
-        line_offsets_object
+        Ok(line_offsets_object)
     }
 
-    pub fn get_line(&mut self, cx: Context, line: usize) -> String {
-        let offsets = self.line_offsets_ptr(cx);
+    pub fn get_line(&mut self, cx: Context, line: usize) -> AllocResult<String> {
+        let offsets = self.line_offsets_ptr(cx)?;
         let start = offsets.as_slice()[line] as usize;
 
         let end = if line + 1 < offsets.len() {
@@ -107,7 +107,7 @@ impl Handle<SourceFile> {
         };
 
         let line_contents = &self.contents.as_slice()[start..end];
-        String::from_utf8_lossy(line_contents).to_string()
+        Ok(String::from_utf8_lossy(line_contents).to_string())
     }
 }
 

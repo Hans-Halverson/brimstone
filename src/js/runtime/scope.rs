@@ -1,4 +1,8 @@
-use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
+use crate::{
+    field_offset,
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    set_uninit,
+};
 
 use super::{
     abstract_operations::has_property,
@@ -50,10 +54,10 @@ impl Scope {
         parent: Option<Handle<Scope>>,
         scope_names: Handle<ScopeNames>,
         object: Option<Handle<ObjectValue>>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         let num_slots = scope_names.len();
         let size = Self::calculate_size_in_bytes(num_slots);
-        let mut scope = cx.alloc_uninit_with_size::<Scope>(size);
+        let mut scope = cx.alloc_uninit_with_size::<Scope>(size)?;
 
         set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::Scope));
         set_uninit!(scope.kind, kind);
@@ -63,14 +67,14 @@ impl Scope {
 
         scope.slots.init_with(num_slots, Value::undefined());
 
-        scope.to_handle()
+        Ok(scope.to_handle())
     }
 
     pub fn new_global(
         cx: Context,
         scope_names: Handle<ScopeNames>,
         global_object: Handle<ObjectValue>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         Self::new(cx, ScopeKind::Global, None, scope_names, Some(global_object))
     }
 
@@ -78,7 +82,7 @@ impl Scope {
         cx: Context,
         scope_names: Handle<ScopeNames>,
         global_object: Handle<ObjectValue>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         Self::new(cx, ScopeKind::Module, None, scope_names, Some(global_object))
     }
 
@@ -86,7 +90,7 @@ impl Scope {
         cx: Context,
         parent: Handle<Scope>,
         scope_names: Handle<ScopeNames>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         Self::new(cx, ScopeKind::Lexical, Some(parent), scope_names, None)
     }
 
@@ -94,7 +98,7 @@ impl Scope {
         cx: Context,
         parent: Handle<Scope>,
         scope_names: Handle<ScopeNames>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         Self::new(cx, ScopeKind::Function, Some(parent), scope_names, None)
     }
 
@@ -103,7 +107,7 @@ impl Scope {
         parent: Handle<Scope>,
         scope_names: Handle<ScopeNames>,
         object: Handle<ObjectValue>,
-    ) -> Handle<Scope> {
+    ) -> AllocResult<Handle<Scope>> {
         Self::new(cx, ScopeKind::With, Some(parent), scope_names, Some(object))
     }
 
@@ -188,9 +192,9 @@ impl Scope {
 
 impl Handle<Scope> {
     /// Create a new scope that is an exact duplicate of this scope.
-    pub fn duplicate(&self, cx: Context) -> HeapPtr<Scope> {
+    pub fn duplicate(&self, cx: Context) -> AllocResult<HeapPtr<Scope>> {
         let size = Scope::calculate_size_in_bytes(self.slots.len());
-        let new_scope = cx.alloc_uninit_with_size::<Scope>(size);
+        let new_scope = cx.alloc_uninit_with_size::<Scope>(size)?;
 
         // Can copy the memory directly
         unsafe {
@@ -201,7 +205,7 @@ impl Handle<Scope> {
             )
         }
 
-        new_scope
+        Ok(new_scope)
     }
 
     /// Dynamically look up a name in this scope, walking the scope chain until found. The name must
@@ -332,7 +336,7 @@ impl Handle<Scope> {
 
                     let success = object_handle.set(cx, key, value, object_handle.into())?;
                     if !success && is_strict {
-                        return err_cannot_set_property(cx, name);
+                        return err_cannot_set_property(cx, name.format()?);
                     }
 
                     // Name was found, even if the set failed
@@ -433,14 +437,14 @@ impl Handle<Scope> {
     }
 
     /// Return the object for this scope, creating it if necessary.
-    pub fn ensure_scope_object(&mut self, cx: Context) -> Handle<ObjectValue> {
+    pub fn ensure_scope_object(&mut self, cx: Context) -> AllocResult<Handle<ObjectValue>> {
         if let Some(object) = self.object {
-            return object.to_handle();
+            return Ok(object.to_handle());
         }
 
-        let object = ordinary_object_create(cx);
+        let object = ordinary_object_create(cx)?;
         self.object = Some(*object);
-        object
+        Ok(object)
     }
 }
 

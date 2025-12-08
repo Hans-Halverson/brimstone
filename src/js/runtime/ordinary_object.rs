@@ -1,4 +1,4 @@
-use crate::{extend_object_without_conversions, must};
+use crate::{extend_object_without_conversions, must, runtime::alloc_error::AllocResult};
 
 use super::{
     abstract_operations::{call_object, create_data_property, get, get_function_realm},
@@ -152,7 +152,7 @@ impl VirtualObject for Handle<OrdinaryObject> {
 
     /// [[OwnPropertyKeys]] (https://tc39.es/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots-ownpropertykeys)
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
-        Ok(ordinary_own_property_keys(cx, self.as_object()))
+        Ok(ordinary_own_property_keys(cx, self.as_object())?)
     }
 }
 
@@ -205,7 +205,7 @@ pub fn ordinary_define_own_property(
         is_extensible,
         desc,
         current_desc,
-    ))
+    )?)
 }
 
 /// IsCompatiblePropertyDescriptor (https://tc39.es/ecma262/#sec-iscompatiblepropertydescriptor)
@@ -214,7 +214,7 @@ pub fn is_compatible_property_descriptor(
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
-) -> bool {
+) -> AllocResult<bool> {
     validate_and_apply_property_descriptor(
         cx,
         None,
@@ -233,14 +233,14 @@ pub fn validate_and_apply_property_descriptor(
     is_extensible: bool,
     desc: PropertyDescriptor,
     current_desc: Option<PropertyDescriptor>,
-) -> bool {
+) -> AllocResult<bool> {
     if current_desc.is_none() {
         if !is_extensible {
-            return false;
+            return Ok(false);
         }
 
         if object.is_none() {
-            return true;
+            return Ok(true);
         }
         let mut object = object.unwrap();
 
@@ -249,7 +249,7 @@ pub fn validate_and_apply_property_descriptor(
         let is_configurable = desc.is_configurable.unwrap_or(false);
 
         let property = if desc.is_accessor_descriptor() {
-            let accessor_value = Accessor::new(cx, desc.get, desc.set);
+            let accessor_value = Accessor::new(cx, desc.get, desc.set)?;
 
             Property::accessor(accessor_value.into(), is_enumerable, is_configurable)
         } else {
@@ -259,23 +259,25 @@ pub fn validate_and_apply_property_descriptor(
             Property::data(value, is_writable, is_enumerable, is_configurable)
         };
 
-        object.set_property(cx, key, property);
+        object.set_property(cx, key, property)?;
 
-        return true;
+        return Ok(true);
     }
 
     let current_desc = current_desc.unwrap();
     if desc.has_no_fields() {
-        return true;
+        return Ok(true);
     }
 
     if !current_desc.is_configurable() {
         if let Some(true) = desc.is_configurable {
-            return false;
+            return Ok(false);
         }
 
         match desc.is_enumerable {
-            Some(is_enumerable) if is_enumerable != current_desc.is_enumerable() => return false,
+            Some(is_enumerable) if is_enumerable != current_desc.is_enumerable() => {
+                return Ok(false)
+            }
             _ => {}
         }
     }
@@ -284,11 +286,11 @@ pub fn validate_and_apply_property_descriptor(
         // No validation necessary
     } else if current_desc.is_data_descriptor() != desc.is_data_descriptor() {
         if !current_desc.is_configurable() {
-            return false;
+            return Ok(false);
         }
 
         match &mut object {
-            None => return true,
+            None => return Ok(true),
             Some(object) => {
                 // Converting between data and accessor. Preserve shared fields and set others to
                 // their defaults.
@@ -297,26 +299,28 @@ pub fn validate_and_apply_property_descriptor(
                     property.set_value(cx.undefined());
                     property.set_is_writable(false);
                 } else {
-                    let accessor_value = Accessor::new(cx, None, None);
+                    let accessor_value = Accessor::new(cx, None, None)?;
                     property.set_value(accessor_value.into());
                 }
 
                 // Set modified property on object
-                object.set_property(cx, key, property)
+                object.set_property(cx, key, property)?
             }
         }
     } else if current_desc.is_data_descriptor() && desc.is_data_descriptor() {
         if !current_desc.is_configurable() && !current_desc.is_writable() {
             if let Some(true) = desc.is_writable {
-                return false;
+                return Ok(false);
             }
 
             match desc.value {
-                Some(value) if !same_value(value, current_desc.value.unwrap()) => return false,
+                Some(value) if !same_value(value, current_desc.value.unwrap())? => {
+                    return Ok(false)
+                }
                 _ => {}
             }
 
-            return true;
+            return Ok(true);
         }
     } else {
         if !current_desc.is_configurable() {
@@ -326,9 +330,9 @@ pub fn validate_and_apply_property_descriptor(
                     (Some(get), Some(current_get))
                         if !same_object_value_handles(get, current_get) =>
                     {
-                        return false
+                        return Ok(false)
                     }
-                    (Some(_), None) | (None, Some(_)) => return false,
+                    (Some(_), None) | (None, Some(_)) => return Ok(false),
                     _ => {}
                 }
             }
@@ -339,14 +343,14 @@ pub fn validate_and_apply_property_descriptor(
                     (Some(set), Some(current_set))
                         if !same_object_value_handles(set, current_set) =>
                     {
-                        return false
+                        return Ok(false)
                     }
-                    (Some(_), None) | (None, Some(_)) => return false,
+                    (Some(_), None) | (None, Some(_)) => return Ok(false),
                     _ => {}
                 }
             }
 
-            return true;
+            return Ok(true);
         }
     }
 
@@ -384,10 +388,10 @@ pub fn validate_and_apply_property_descriptor(
         }
 
         // Set modified property on object
-        object.set_property(cx, key, property);
+        object.set_property(cx, key, property)?;
     }
 
-    true
+    Ok(true)
 }
 
 /// OrdinaryHasProperty (https://tc39.es/ecma262/#sec-ordinaryhasproperty)
@@ -505,13 +509,16 @@ pub fn ordinary_delete(
 }
 
 /// OrdinaryOwnPropertyKeys (https://tc39.es/ecma262/#sec-ordinaryownpropertykeys)
-pub fn ordinary_own_property_keys(cx: Context, object: Handle<ObjectValue>) -> Vec<Handle<Value>> {
+pub fn ordinary_own_property_keys(
+    cx: Context,
+    object: Handle<ObjectValue>,
+) -> AllocResult<Vec<Handle<Value>>> {
     let mut keys: Vec<Handle<Value>> = vec![];
 
-    ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true);
+    ordinary_filtered_own_indexed_property_keys(cx, object, &mut keys, |_| true)?;
     ordinary_own_string_symbol_property_keys(object, &mut keys);
 
-    keys
+    Ok(keys)
 }
 
 #[inline]
@@ -520,14 +527,14 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
     object: Handle<ObjectValue>,
     keys: &mut Vec<Handle<Value>>,
     filter: F,
-) {
+) -> AllocResult<()> {
     // Return array index properties in numerical order
     let array_properties = object.array_properties();
     if let Some(dense_properties) = array_properties.as_dense_opt() {
         let dense_properties = dense_properties.to_handle();
         for (index, value) in dense_properties.iter().enumerate() {
             if filter(index) && !value.is_empty() {
-                let index_string = cx.alloc_string(&index.to_string());
+                let index_string = cx.alloc_string(&index.to_string())?;
                 keys.push(index_string.into());
             }
         }
@@ -536,11 +543,13 @@ pub fn ordinary_filtered_own_indexed_property_keys<F: Fn(usize) -> bool>(
 
         for index in sparse_properties.ordered_keys() {
             if filter(index as usize) {
-                let index_string = cx.alloc_string(&index.to_string());
+                let index_string = cx.alloc_string(&index.to_string())?;
                 keys.push(index_string.into());
             }
         }
     }
+
+    Ok(())
 }
 
 #[inline]
@@ -564,31 +573,31 @@ pub fn ordinary_own_string_symbol_property_keys(
     });
 }
 
-pub fn ordinary_object_create(cx: Context) -> Handle<ObjectValue> {
-    let object = cx.alloc_uninit::<ObjectValue>();
+pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
+    let object = cx.alloc_uninit::<ObjectValue>()?;
 
     let descriptor = cx.base_descriptors.get(HeapItemKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
     object_ordinary_init(cx, object, descriptor, Some(proto));
 
-    object.to_handle()
+    Ok(object.to_handle())
 }
 
 pub fn object_create<T>(
     cx: Context,
     descriptor_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
-) -> HeapPtr<T>
+) -> AllocResult<HeapPtr<T>>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>()?;
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto));
 
-    object
+    Ok(object)
 }
 
 pub fn object_create_with_size<T>(
@@ -596,50 +605,50 @@ pub fn object_create_with_size<T>(
     size: usize,
     descriptor_kind: HeapItemKind,
     intrinsic_proto: Intrinsic,
-) -> HeapPtr<T>
+) -> AllocResult<HeapPtr<T>>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit_with_size::<T>(size);
+    let object = cx.alloc_uninit_with_size::<T>(size)?;
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto));
 
-    object
+    Ok(object)
 }
 
 pub fn object_create_with_proto<T>(
     cx: Context,
     descriptor_kind: HeapItemKind,
     proto: Handle<ObjectValue>,
-) -> HeapPtr<T>
+) -> AllocResult<HeapPtr<T>>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>()?;
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
 
-    object
+    Ok(object)
 }
 
 pub fn object_create_with_optional_proto<T>(
     cx: Context,
     descriptor_kind: HeapItemKind,
     proto: Option<Handle<ObjectValue>>,
-) -> HeapPtr<T>
+) -> AllocResult<HeapPtr<T>>
 where
     HeapPtr<T>: Into<HeapPtr<ObjectValue>>,
 {
-    let object = cx.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>()?;
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     let proto = proto.map(|p| *p);
     object_ordinary_init(cx, object.into(), descriptor, proto);
 
-    object
+    Ok(object)
 }
 
 pub fn object_ordinary_init(
@@ -670,7 +679,7 @@ where
     // May allocate, so call before allocating object
     let proto = get_prototype_from_constructor(cx, constructor, intrinsic_default_proto)?;
 
-    let object = cx.alloc_uninit::<T>();
+    let object = cx.alloc_uninit::<T>()?;
 
     let descriptor = cx.base_descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(*proto));

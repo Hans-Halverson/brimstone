@@ -4,6 +4,7 @@ use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
         abstract_operations::set,
+        alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -43,12 +44,12 @@ impl RegExpStringIterator {
         target_string: Handle<StringValue>,
         is_global: bool,
         is_unicode: bool,
-    ) -> Handle<RegExpStringIterator> {
+    ) -> AllocResult<Handle<RegExpStringIterator>> {
         let mut object = object_create::<RegExpStringIterator>(
             cx,
             HeapItemKind::RegExpStringIterator,
             Intrinsic::RegExpStringIteratorPrototype,
-        );
+        )?;
 
         set_uninit!(object.regexp_object, *regexp_object);
         set_uninit!(object.target_string, *target_string);
@@ -56,7 +57,7 @@ impl RegExpStringIterator {
         set_uninit!(object.is_unicode, is_unicode);
         set_uninit!(object.is_done, false);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     #[inline]
@@ -76,22 +77,22 @@ impl RegExpStringIterator {
 pub struct RegExpStringIteratorPrototype;
 
 impl RegExpStringIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = ObjectValue::new(cx, Some(proto), true);
+        let mut object = ObjectValue::new(cx, Some(proto), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
 
         // %RegExpStringIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("RegExp String Iterator").into();
+        let to_string_tag_value = cx.alloc_string("RegExp String Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %RegExpStringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%regexpstringiteratorprototype%.next)
@@ -107,7 +108,7 @@ impl RegExpStringIteratorPrototype {
 
         // Check if we have already marked the iterator as done
         if regexp_iterator.is_done {
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         // Run the regular expression
@@ -116,18 +117,18 @@ impl RegExpStringIteratorPrototype {
         // No match so return a completed iterator
         if match_result.is_null() {
             regexp_iterator.is_done = true;
-            return Ok(create_iter_result_object(cx, cx.undefined(), true));
+            return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
         }
 
         if !regexp_iterator.is_global {
             regexp_iterator.is_done = true;
-            return Ok(create_iter_result_object(cx, match_result, false));
+            return Ok(create_iter_result_object(cx, match_result, false)?);
         }
 
         debug_assert!(match_result.is_object());
 
         // Find matched string length
-        let zero_key = PropertyKey::array_index(cx, 0).to_handle(cx);
+        let zero_key = PropertyKey::array_index_handle(cx, 0)?;
         let match_string = get(cx, match_result.as_object(), zero_key)?;
         let match_string = to_string(cx, match_string)?;
 
@@ -137,12 +138,12 @@ impl RegExpStringIteratorPrototype {
             let last_index = to_length(cx, last_index)?;
 
             let next_index =
-                advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode);
+                advance_u64_string_index(target_string, last_index, regexp_iterator.is_unicode)?;
             let next_index_value = Value::from(next_index).to_handle(cx);
             set(cx, regexp_object, cx.names.last_index(), next_index_value, true)?;
         }
 
-        Ok(create_iter_result_object(cx, match_result, false))
+        Ok(create_iter_result_object(cx, match_result, false)?)
     }
 }
 

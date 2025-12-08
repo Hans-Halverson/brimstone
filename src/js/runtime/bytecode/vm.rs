@@ -13,6 +13,7 @@ use crate::{
             set,
         },
         accessor::Accessor,
+        alloc_error::AllocResult,
         arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
@@ -261,11 +262,11 @@ impl VM {
 
         // Then create global scope and add lexical names to realm, since GDI would have errored
         // if there were any conflicts.
-        let global_scope = realm.new_global_scope(self.cx(), global_names.scope_names());
+        let global_scope = realm.new_global_scope(self.cx(), global_names.scope_names())?;
 
         // Create program closure and execute in VM
         let program_closure =
-            Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm);
+            Closure::new_in_realm(self.cx(), bytecode_script.script_function, global_scope, realm)?;
 
         // Evaluate with the global object as the receiver
         let receiver = program_closure.global_object().into();
@@ -284,7 +285,7 @@ impl VM {
         let realm = program_function.realm();
 
         let module_closure =
-            Closure::new_in_realm(self.cx(), program_function, module_scope, realm);
+            Closure::new_in_realm(self.cx(), program_function, module_scope, realm)?;
 
         self.execute(module_closure, self.cx.undefined(), arguments)
     }
@@ -459,7 +460,7 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(RetInstruction);
                     let return_value = self.read_register(instr.return_value());
-                    return_!(return_value)
+                    return_!(return_value);
                 }};
             }
 
@@ -526,7 +527,7 @@ impl VM {
                             async_generator,
                             Ok(yield_value),
                             /* is_done */ false,
-                        );
+                        )?;
 
                         if let Some(request) = async_generator.peek_request_ptr() {
                             // If there is a pending request then immediately continue with the
@@ -549,7 +550,7 @@ impl VM {
                             );
 
                             // Return an empty value to signal that the async generator has suspended
-                            return_!(Value::empty())
+                            return_!(Value::empty());
                         }
                     }
                 }};
@@ -586,13 +587,13 @@ impl VM {
                             fp_index,
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
-                        )
+                        )?
                         .to_handle();
 
-                        argument_promise.add_await_reaction(self.cx(), generator.into());
+                        argument_promise.add_await_reaction(self.cx(), generator.into())?;
 
                         // Return the promise to the caller
-                        return_!(*return_promise_or_generator)
+                        return_!(*return_promise_or_generator);
                     } else {
                         // Reuse the existing async generator object
                         let mut async_generator =
@@ -604,10 +605,10 @@ impl VM {
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
                         );
-                        argument_promise.add_await_reaction(self.cx(), async_generator.into());
+                        argument_promise.add_await_reaction(self.cx(), async_generator.into())?;
 
                         // Return empty value to signal that the async generator has suspended
-                        return_!(Value::empty())
+                        return_!(Value::empty());
                     }
                 }};
             }
@@ -633,13 +634,13 @@ impl VM {
                     // Create the generator in the started state, copying the current stack frame
                     // and PC to resume.
                     let generator_value = if current_closure.function_ptr().is_async() {
-                        let mut async_generator = maybe_throw!(AsyncGeneratorObject::new(
+                        let mut async_generator = maybe_throw!(Ok(AsyncGeneratorObject::new(
                             self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
                             self.stack_frame().as_slice(),
-                        ));
+                        )?));
 
                         // Store the generator into the provided register in the stored stack frame
                         let generator_value = async_generator.as_value();
@@ -647,13 +648,13 @@ impl VM {
 
                         generator_value
                     } else {
-                        let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
+                        let mut generator = maybe_throw!(Ok(GeneratorObject::new_for_generator(
                             self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
                             self.stack_frame().as_slice(),
-                        ));
+                        )?));
 
                         // Store the generator into the provided register in the stored stack frame
                         let generator_value = generator.as_value();
@@ -663,7 +664,7 @@ impl VM {
                     };
 
                     // Return the generator object to the caller
-                    return_!(generator_value)
+                    return_!(generator_value);
                 }};
             }
 
@@ -713,7 +714,7 @@ impl VM {
                     let instr = $get_instr!(ThrowInstruction);
                     self.set_pc_after(instr);
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
-                    throw!(error_value)
+                    throw!(error_value);
                 }};
             }
 
@@ -721,7 +722,10 @@ impl VM {
                 ($eval_result:expr) => {
                     match $eval_result {
                         Ok(result) => result,
-                        Err(error) => throw!(error.value()),
+                        Err(EvalError::Value(error)) => throw!(error),
+                        // Always propagate allocation errors upwards
+                        #[cfg(feature = "alloc_error")]
+                        Err(EvalError::Alloc(err)) => return Err(err.into()),
                     }
                 };
             }
@@ -834,10 +838,10 @@ impl VM {
                             dispatch_or_throw!(LooseNotEqualInstruction, execute_loose_not_equal)
                         }
                         OpCode::StrictEqual => {
-                            dispatch!(StrictEqualInstruction, execute_strict_equal)
+                            dispatch_or_throw!(StrictEqualInstruction, execute_strict_equal)
                         }
                         OpCode::StrictNotEqual => {
-                            dispatch!(StrictNotEqualInstruction, execute_strict_not_equal)
+                            dispatch_or_throw!(StrictNotEqualInstruction, execute_strict_not_equal)
                         }
                         OpCode::LessThan => {
                             dispatch_or_throw!(LessThanInstruction, execute_less_than)
@@ -856,11 +860,11 @@ impl VM {
                             execute_greater_than_or_equal
                         ),
                         OpCode::Neg => dispatch_or_throw!(NegInstruction, execute_neg),
-                        OpCode::Inc => dispatch!(IncInstruction, execute_inc),
-                        OpCode::Dec => dispatch!(DecInstruction, execute_dec),
+                        OpCode::Inc => dispatch_or_throw!(IncInstruction, execute_inc),
+                        OpCode::Dec => dispatch_or_throw!(DecInstruction, execute_dec),
                         OpCode::LogNot => dispatch!(LogNotInstruction, execute_log_not),
                         OpCode::BitNot => dispatch_or_throw!(BitNotInstruction, execute_bit_not),
-                        OpCode::TypeOf => dispatch!(TypeOfInstruction, execute_typeof),
+                        OpCode::TypeOf => dispatch_or_throw!(TypeOfInstruction, execute_typeof),
                         OpCode::In => dispatch_or_throw!(InInstruction, execute_in),
                         OpCode::InstanceOf => {
                             dispatch_or_throw!(InstanceOfInstruction, execute_instance_of)
@@ -938,26 +942,41 @@ impl VM {
                             let instr = get_instr!(JumpNotNullishConstantInstruction);
                             self.execute_jump_nullish_constant(instr)
                         }
-                        OpCode::NewClosure => dispatch!(NewClosureInstruction, execute_new_closure),
+                        OpCode::NewClosure => {
+                            dispatch_or_throw!(NewClosureInstruction, execute_new_closure)
+                        }
                         OpCode::NewAsyncClosure => {
-                            dispatch!(NewAsyncClosureInstruction, execute_new_async_closure)
+                            dispatch_or_throw!(
+                                NewAsyncClosureInstruction,
+                                execute_new_async_closure
+                            )
                         }
                         OpCode::NewGenerator => {
-                            dispatch!(NewGeneratorInstruction, execute_new_generator)
+                            dispatch_or_throw!(NewGeneratorInstruction, execute_new_generator)
                         }
                         OpCode::NewAsyncGenerator => {
-                            dispatch!(NewAsyncGeneratorInstruction, execute_new_async_generator)
+                            dispatch_or_throw!(
+                                NewAsyncGeneratorInstruction,
+                                execute_new_async_generator
+                            )
                         }
-                        OpCode::NewObject => dispatch!(NewObjectInstruction, execute_new_object),
-                        OpCode::NewArray => dispatch!(NewArrayInstruction, execute_new_array),
+                        OpCode::NewObject => {
+                            dispatch_or_throw!(NewObjectInstruction, execute_new_object)
+                        }
+                        OpCode::NewArray => {
+                            dispatch_or_throw!(NewArrayInstruction, execute_new_array)
+                        }
                         OpCode::NewRegExp => {
-                            dispatch!(NewRegExpInstruction, execute_new_regexp)
+                            dispatch_or_throw!(NewRegExpInstruction, execute_new_regexp)
                         }
                         OpCode::NewMappedArguments => {
-                            dispatch!(NewMappedArgumentsInstruction, execute_new_mapped_arguments)
+                            dispatch_or_throw!(
+                                NewMappedArgumentsInstruction,
+                                execute_new_mapped_arguments
+                            )
                         }
                         OpCode::NewUnmappedArguments => {
-                            dispatch!(
+                            dispatch_or_throw!(
                                 NewUnmappedArgumentsInstruction,
                                 execute_new_unmapped_arguments
                             )
@@ -966,10 +985,13 @@ impl VM {
                             dispatch_or_throw!(NewClassInstruction, execute_new_class)
                         }
                         OpCode::NewAccessor => {
-                            dispatch!(NewAccessorInstruction, execute_new_accessor)
+                            dispatch_or_throw!(NewAccessorInstruction, execute_new_accessor)
                         }
                         OpCode::NewPrivateSymbol => {
-                            dispatch!(NewPrivateSymbolInstruction, execute_new_private_symbol)
+                            dispatch_or_throw!(
+                                NewPrivateSymbolInstruction,
+                                execute_new_private_symbol
+                            )
                         }
                         OpCode::GetProperty => {
                             dispatch_or_throw!(GetPropertyInstruction, execute_get_property)
@@ -1041,10 +1063,13 @@ impl VM {
                             )
                         }
                         OpCode::SetArrayProperty => {
-                            dispatch!(SetArrayPropertyInstruction, execute_set_array_property)
+                            dispatch_or_throw!(
+                                SetArrayPropertyInstruction,
+                                execute_set_array_property
+                            )
                         }
                         OpCode::SetPrototypeOf => {
-                            dispatch!(SetPrototypeOfInstruction, execute_set_prototype_of)
+                            dispatch_or_throw!(SetPrototypeOfInstruction, execute_set_prototype_of)
                         }
                         OpCode::CopyDataProperties => {
                             dispatch_or_throw!(
@@ -1052,21 +1077,28 @@ impl VM {
                                 execute_copy_data_properties
                             )
                         }
-
                         OpCode::GetMethod => {
                             dispatch_or_throw!(GetMethodInstruction, execute_get_method)
                         }
                         OpCode::PushLexicalScope => {
-                            dispatch!(PushLexicalScopeInstruction, execute_push_lexical_scope)
+                            dispatch_or_throw!(
+                                PushLexicalScopeInstruction,
+                                execute_push_lexical_scope
+                            )
                         }
                         OpCode::PushFunctionScope => {
-                            dispatch!(PushFunctionScopeInstruction, execute_push_function_scope)
+                            dispatch_or_throw!(
+                                PushFunctionScopeInstruction,
+                                execute_push_function_scope
+                            )
                         }
                         OpCode::PushWithScope => {
                             dispatch_or_throw!(PushWithScopeInstruction, execute_push_with_scope)
                         }
                         OpCode::PopScope => dispatch!(PopScopeInstruction, execute_pop_scope),
-                        OpCode::DupScope => dispatch!(DupScopeInstruction, execute_dup_scope),
+                        OpCode::DupScope => {
+                            dispatch_or_throw!(DupScopeInstruction, execute_dup_scope)
+                        }
                         OpCode::LoadFromScope => {
                             dispatch!(LoadFromScopeInstruction, execute_load_from_scope)
                         }
@@ -1081,10 +1113,13 @@ impl VM {
                         }
                         OpCode::Throw => execute_throw!(get_instr),
                         OpCode::RestParameter => {
-                            dispatch!(RestParameterInstruction, execute_rest_parameter)
+                            dispatch_or_throw!(RestParameterInstruction, execute_rest_parameter)
                         }
                         OpCode::GetSuperConstructor => {
-                            dispatch!(GetSuperConstructorInstruction, execute_get_super_constructor)
+                            dispatch_or_throw!(
+                                GetSuperConstructorInstruction,
+                                execute_get_super_constructor
+                            )
                         }
                         OpCode::CheckTdz => {
                             dispatch_or_throw!(CheckTdzInstruction, execute_check_tdz)
@@ -1167,17 +1202,17 @@ impl VM {
                         OpCode::GeneratorStart => execute_generator_start!(get_instr),
                         OpCode::Yield => execute_yield!(get_instr),
                         OpCode::NewPromise => {
-                            dispatch!(NewPromiseInstruction, execute_new_promise)
+                            dispatch_or_throw!(NewPromiseInstruction, execute_new_promise)
                         }
                         OpCode::Await => execute_await!(get_instr),
                         OpCode::ResolvePromise => {
-                            dispatch!(ResolvePromiseInstruction, execute_resolve_promise)
+                            dispatch_or_throw!(ResolvePromiseInstruction, execute_resolve_promise)
                         }
                         OpCode::RejectPromise => {
                             dispatch!(RejectPromiseInstruction, execute_reject_promise)
                         }
                         OpCode::ImportMeta => {
-                            dispatch!(ImportMetaInstruction, execute_import_meta)
+                            dispatch_or_throw!(ImportMetaInstruction, execute_import_meta)
                         }
                         OpCode::DynamicImport => {
                             dispatch_or_throw!(DynamicImportInstruction, execute_dynamic_import)
@@ -1551,7 +1586,7 @@ impl VM {
     ) -> EvalResult<Handle<ObjectValue>> {
         handle_scope!(self.cx(), {
             // Check whether the value is a constructor, potentially deferring to proxy.
-            let closure_handle = match self.check_value_is_constructor(*function) {
+            let closure_handle = match self.check_value_is_constructor(*function)? {
                 CallableObject::Closure(closure) => closure.to_handle(),
                 // Proxy constructors call directly into the rust runtime
                 CallableObject::Proxy(proxy) => {
@@ -1740,7 +1775,7 @@ impl VM {
         let new_target = self.read_register(instr.new_target()).as_object();
 
         // Check whether the value is a constructor, potentially deferring to proxy.
-        let closure_ptr = match self.check_value_is_constructor(function_value) {
+        let closure_ptr = match self.check_value_is_constructor(function_value)? {
             CallableObject::Closure(closure) => closure,
             // Proxy constructors call into the rust runtime
             CallableObject::Proxy(proxy) => {
@@ -1762,7 +1797,7 @@ impl VM {
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
-        let return_value: HeapPtr<ObjectValue> = handle_scope!(self.cx(), {
+        let return_value = handle_scope!(self.cx(), {
             if let Some(function_id) = function_ptr.rust_runtime_function_id() {
                 // Calling builtin functions does not pass a receiver - pass empty as the
                 // uninitialized value.
@@ -1782,7 +1817,7 @@ impl VM {
                 )?;
 
                 // Return value must be an object
-                Ok(*return_value.as_object())
+                Ok(*(return_value.as_object())) as EvalResult<HeapPtr<ObjectValue>>
             } else {
                 // Otherwise this is a call to a JS function in the VM.
                 let closure_handle = closure_ptr.to_handle();
@@ -1880,31 +1915,34 @@ impl VM {
             }
         }
 
-        Ok(CallableObject::Error(type_error_value(self.cx(), "value is not a function")))
+        Ok(CallableObject::Error(type_error_value(self.cx(), "value is not a function")?))
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the
     /// categorization of the callable object
     #[inline]
-    fn check_value_is_constructor(&self, value: Value) -> CallableObject {
+    fn check_value_is_constructor(&self, value: Value) -> AllocResult<CallableObject> {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
             if kind == HeapItemKind::Closure {
                 // Check if closure is a constructor
                 let closure = value.as_pointer().cast::<Closure>();
                 if closure.function_ptr().is_constructor() {
-                    return CallableObject::Closure(closure);
+                    return Ok(CallableObject::Closure(closure));
                 }
             } else if kind == HeapItemKind::Proxy {
                 // Check if proxy is a constructor
                 let proxy_object = value.as_pointer().cast::<ProxyObject>();
                 if proxy_object.is_constructor() {
-                    return CallableObject::Proxy(proxy_object);
+                    return Ok(CallableObject::Proxy(proxy_object));
                 }
             }
         }
 
-        CallableObject::Error(type_error_value(self.cx(), "value is not a constructor"))
+        Ok(CallableObject::Error(type_error_value(
+            self.cx(),
+            "value is not a constructor",
+        )?))
     }
 
     /// Create a new stack frame constructed for the following arguments.
@@ -2463,7 +2501,7 @@ impl VM {
             let name = name.as_string().to_handle();
 
             // May allocate, reuse name handle
-            let name_key = PropertyKey::string(cx, name);
+            let name_key = PropertyKey::string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
             let global_object = self.closure().global_object();
@@ -2503,7 +2541,7 @@ impl VM {
             let name = name.as_string().to_handle();
 
             // May allocate, reuse name handle
-            let name_key = PropertyKey::string(cx, name);
+            let name_key = PropertyKey::string(cx, name)?;
             let name_key = name.replace_into(name_key);
 
             let mut global_object = self.closure().global_object();
@@ -2531,7 +2569,7 @@ impl VM {
             // If property set failed and in strict mode then error, otherwise silently ignore
             // failure in sloppy mode.
             if !success && self.closure().function_ptr().is_strict() {
-                return err_cannot_set_property(cx, name);
+                return err_cannot_set_property(cx, name.format()?);
             }
 
             Ok(())
@@ -2866,7 +2904,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_strict_equal<W: Width>(&mut self, instr: &StrictEqualInstruction<W>) {
+    fn execute_strict_equal<W: Width>(
+        &mut self,
+        instr: &StrictEqualInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let left_value = self.read_register_to_handle(instr.left());
@@ -2874,13 +2915,18 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = is_strictly_equal(left_value, right_value);
+        let result = is_strictly_equal(left_value, right_value)?;
 
         self.write_register(dest, Value::bool(result));
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_strict_not_equal<W: Width>(&mut self, instr: &StrictNotEqualInstruction<W>) {
+    fn execute_strict_not_equal<W: Width>(
+        &mut self,
+        instr: &StrictNotEqualInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let left_value = self.read_register_to_handle(instr.left());
@@ -2888,9 +2934,11 @@ impl VM {
         let dest = instr.dest();
 
         // May allocate
-        let result = is_strictly_equal(left_value, right_value);
+        let result = is_strictly_equal(left_value, right_value)?;
 
         self.write_register(dest, Value::bool(!result));
+
+        Ok(())
     }
 
     #[inline]
@@ -2982,7 +3030,7 @@ impl VM {
     }
 
     #[inline]
-    fn execute_inc<W: Width>(&mut self, instr: &IncInstruction<W>) {
+    fn execute_inc<W: Width>(&mut self, instr: &IncInstruction<W>) -> EvalResult<()> {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
@@ -3001,14 +3049,16 @@ impl VM {
             Value::number(value.as_number() + 1.0)
         } else {
             let inc_value = value.as_bigint().bigint() + 1;
-            BigIntValue::new_ptr(self.cx(), inc_value).into()
+            BigIntValue::new_ptr(self.cx(), inc_value)?.into()
         };
 
         self.write_register(dest, new_value);
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_dec<W: Width>(&mut self, instr: &DecInstruction<W>) {
+    fn execute_dec<W: Width>(&mut self, instr: &DecInstruction<W>) -> EvalResult<()> {
         let dest = instr.dest();
         let value = self.read_register(dest);
 
@@ -3027,10 +3077,12 @@ impl VM {
             Value::number(value.as_number() - 1.0)
         } else {
             let inc_value = value.as_bigint().bigint() - 1;
-            BigIntValue::new_ptr(self.cx(), inc_value).into()
+            BigIntValue::new_ptr(self.cx(), inc_value)?.into()
         };
 
         self.write_register(dest, new_value);
+
+        Ok(())
     }
 
     #[inline]
@@ -3056,16 +3108,18 @@ impl VM {
     }
 
     #[inline]
-    fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) {
+    fn execute_typeof<W: Width>(&mut self, instr: &TypeOfInstruction<W>) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let value = self.read_register_to_handle(instr.value());
         let dest = instr.dest();
 
         // May allocate
-        let result = eval_typeof(self.cx(), value);
+        let result = eval_typeof(self.cx(), value)?;
 
         self.write_register(dest, *result.as_value());
+
+        Ok(())
     }
 
     #[inline]
@@ -3182,7 +3236,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_new_closure<W: Width>(&mut self, instr: &NewClosureInstruction<W>) {
+    fn execute_new_closure<W: Width>(
+        &mut self,
+        instr: &NewClosureInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let func = self.get_constant(instr.function_index());
@@ -3192,13 +3249,18 @@ impl VM {
         let scope = self.scope().to_handle();
 
         // Allocates
-        let closure = Closure::new(self.cx(), func, scope);
+        let closure = Closure::new(self.cx(), func, scope)?;
 
         self.write_register(dest, *closure.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_async_closure<W: Width>(&mut self, instr: &NewAsyncClosureInstruction<W>) {
+    fn execute_new_async_closure<W: Width>(
+        &mut self,
+        instr: &NewAsyncClosureInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let func = self.get_constant(instr.function_index());
@@ -3209,13 +3271,18 @@ impl VM {
 
         // Allocates
         let proto = self.cx().get_intrinsic(Intrinsic::AsyncFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, proto);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, proto)?;
 
         self.write_register(dest, *closure.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_generator<W: Width>(&mut self, instr: &NewGeneratorInstruction<W>) {
+    fn execute_new_generator<W: Width>(
+        &mut self,
+        instr: &NewGeneratorInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let func = self.get_constant(instr.function_index());
@@ -3228,15 +3295,20 @@ impl VM {
         let func_proto = self
             .cx()
             .get_intrinsic(Intrinsic::GeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto)?;
 
         must!(GeneratorPrototype::install_on_generator_function(self.cx(), closure));
 
         self.write_register(dest, *closure.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_async_generator<W: Width>(&mut self, instr: &NewAsyncGeneratorInstruction<W>) {
+    fn execute_new_async_generator<W: Width>(
+        &mut self,
+        instr: &NewAsyncGeneratorInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let func = self.get_constant(instr.function_index());
@@ -3249,27 +3321,31 @@ impl VM {
         let func_proto = self
             .cx
             .get_intrinsic(Intrinsic::AsyncGeneratorFunctionPrototype);
-        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto);
+        let closure = Closure::new_with_proto(self.cx(), func, scope, func_proto)?;
 
         must!(AsyncGeneratorPrototype::install_on_async_generator_function(self.cx(), closure));
 
         self.write_register(dest, *closure.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_object<W: Width>(&mut self, instr: &NewObjectInstruction<W>) {
+    fn execute_new_object<W: Width>(&mut self, instr: &NewObjectInstruction<W>) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
 
         // Allocates
-        let object = ordinary_object_create(self.cx());
+        let object = ordinary_object_create(self.cx())?;
 
         self.write_register(dest, *object.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_array<W: Width>(&mut self, instr: &NewArrayInstruction<W>) {
+    fn execute_new_array<W: Width>(&mut self, instr: &NewArrayInstruction<W>) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -3278,10 +3354,12 @@ impl VM {
         let array = must!(array_create(self.cx(), 0, None));
 
         self.write_register(dest, *array.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) {
+    fn execute_new_regexp<W: Width>(&mut self, instr: &NewRegExpInstruction<W>) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let compiled_regexp = self.get_constant(instr.regexp_index());
@@ -3292,13 +3370,18 @@ impl VM {
         let dest = instr.dest();
 
         // Allocates
-        let regexp = RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp);
+        let regexp = RegExpObject::new_from_compiled_regexp(self.cx(), compiled_regexp)?;
 
         self.write_register(dest, *regexp.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_mapped_arguments<W: Width>(&mut self, instr: &NewMappedArgumentsInstruction<W>) {
+    fn execute_new_mapped_arguments<W: Width>(
+        &mut self,
+        instr: &NewMappedArgumentsInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -3316,16 +3399,18 @@ impl VM {
 
         // Allocates
         let arguments_object =
-            MappedArgumentsObject::new(self.cx(), closure, &arguments, scope, num_parameters);
+            MappedArgumentsObject::new(self.cx(), closure, &arguments, scope, num_parameters)?;
 
         self.write_register(dest, *arguments_object.as_value());
+
+        Ok(())
     }
 
     #[inline]
     fn execute_new_unmapped_arguments<W: Width>(
         &mut self,
         instr: &NewUnmappedArgumentsInstruction<W>,
-    ) {
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -3339,9 +3424,11 @@ impl VM {
             .collect::<Vec<_>>();
 
         // Allocates
-        let arguments_object = create_unmapped_arguments_object(self.cx(), &arguments);
+        let arguments_object = create_unmapped_arguments_object(self.cx(), &arguments)?;
 
         self.write_register(dest, *arguments_object);
+
+        Ok(())
     }
 
     #[inline]
@@ -3388,7 +3475,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_new_accessor<W: Width>(&mut self, instr: &NewAccessorInstruction<W>) {
+    fn execute_new_accessor<W: Width>(
+        &mut self,
+        instr: &NewAccessorInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -3396,13 +3486,18 @@ impl VM {
         let setter = self.read_register_to_handle(instr.setter()).as_object();
 
         // Allocates
-        let accessor = Accessor::new(self.cx(), Some(getter), Some(setter));
+        let accessor = Accessor::new(self.cx(), Some(getter), Some(setter))?;
 
         self.write_register(dest, Value::heap_item(accessor.as_heap_item()));
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_new_private_symbol<W: Width>(&mut self, instr: &NewPrivateSymbolInstruction<W>) {
+    fn execute_new_private_symbol<W: Width>(
+        &mut self,
+        instr: &NewPrivateSymbolInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -3412,9 +3507,11 @@ impl VM {
             .to_handle();
 
         // Allocates
-        let private_symbol = SymbolValue::new(self.cx(), Some(name), /* is_private */ true);
+        let private_symbol = SymbolValue::new(self.cx(), Some(name), /* is_private */ true)?;
 
         self.write_register(dest, (*private_symbol).into());
+
+        Ok(())
     }
 
     #[inline]
@@ -3465,7 +3562,7 @@ impl VM {
             if is_strict {
                 let success = coerced_object.set(self.cx(), property_key, value, object)?;
                 if !success {
-                    return err_cannot_set_property(self.cx(), property_key);
+                    return err_cannot_set_property(self.cx(), property_key.format()?);
                 }
             } else {
                 coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
@@ -3511,8 +3608,8 @@ impl VM {
                         None
                     };
 
-                    let name = build_function_name(self.cx(), property_key, prefix);
-                    closure.set_lazy_function_name(self.cx(), name);
+                    let name = build_function_name(self.cx(), property_key, prefix)?;
+                    closure.set_lazy_function_name(self.cx(), name)?;
                 }
 
                 // Create special property descriptors for accessors
@@ -3544,7 +3641,7 @@ impl VM {
             let is_strict = self.closure().function_ptr().is_strict();
 
             // May allocate, replace handle
-            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = PropertyKey::string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             let coerced_object = to_object(self.cx(), object)?;
@@ -3582,13 +3679,13 @@ impl VM {
             // May allocate
             let mut coerced_object = to_object(self.cx(), object)?;
 
-            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = PropertyKey::string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             if is_strict {
                 let success = coerced_object.set(self.cx(), property_key, value, object)?;
                 if !success {
-                    return err_cannot_set_property(self.cx(), property_key);
+                    return err_cannot_set_property(self.cx(), property_key.format()?);
                 }
             } else {
                 coerced_object.set(self.cx(), property_key, value, coerced_object.into())?;
@@ -3614,7 +3711,7 @@ impl VM {
             // May allocate
             let object = to_object(self.cx(), object)?;
 
-            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = PropertyKey::string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             create_data_property_or_throw(self.cx(), object, property_key, value)
@@ -3666,7 +3763,7 @@ impl VM {
             let dest = instr.dest();
 
             // May allocate, replace handle
-            let property_key = PropertyKey::string(self.cx(), key);
+            let property_key = PropertyKey::string(self.cx(), key)?;
             let property_key = key.replace_into(property_key);
 
             let home_prototype = match home_object.get_prototype_of(self.cx())? {
@@ -3706,7 +3803,7 @@ impl VM {
             if is_strict {
                 let success = home_prototype.set(self.cx(), property_key, value, receiver)?;
                 if !success {
-                    return err_cannot_set_property(self.cx(), property_key);
+                    return err_cannot_set_property(self.cx(), property_key.format()?);
                 }
             } else {
                 home_prototype.set(self.cx(), property_key, value, receiver)?;
@@ -3819,10 +3916,10 @@ impl VM {
                 if flags.contains(DefinePrivatePropertyFlags::SETTER) {
                     Property::private_accessor(Accessor::from_value(value))
                 } else {
-                    Property::private_getter(self.cx(), value.as_object())
+                    Property::private_getter(self.cx(), value.as_object())?
                 }
             } else {
-                Property::private_setter(self.cx(), value.as_object())
+                Property::private_setter(self.cx(), value.as_object())?
             };
 
             object.private_property_add(self.cx(), key, property)
@@ -3830,7 +3927,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_set_array_property<W: Width>(&mut self, instr: &SetArrayPropertyInstruction<W>) {
+    fn execute_set_array_property<W: Width>(
+        &mut self,
+        instr: &SetArrayPropertyInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let array = self
@@ -3842,11 +3942,16 @@ impl VM {
         // May allocate
         let index = index.replace_into(must!(PropertyKey::from_value(self.cx(), index)));
         let desc = Property::data(value, true, true, true);
-        array.as_object().set_property(self.cx(), index, desc);
+        array.as_object().set_property(self.cx(), index, desc)?;
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_set_prototype_of<W: Width>(&mut self, instr: &SetPrototypeOfInstruction<W>) {
+    fn execute_set_prototype_of<W: Width>(
+        &mut self,
+        instr: &SetPrototypeOfInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let mut object = self.read_register_to_handle(instr.object()).as_object();
@@ -3858,6 +3963,8 @@ impl VM {
         } else if prototype.is_null() {
             must!(object.set_prototype_of(self.cx(), None));
         }
+
+        Ok(())
     }
 
     #[inline]
@@ -3888,7 +3995,7 @@ impl VM {
             let object = self.read_register_to_handle(instr.object());
             let key = self.get_constant(instr.name()).as_string().to_handle();
 
-            let key = PropertyKey::string(self.cx(), key).to_handle(self.cx());
+            let key = PropertyKey::string_handle(self.cx(), key)?;
 
             let function = get_v(self.cx(), object, key)?;
 
@@ -3905,7 +4012,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_push_lexical_scope<W: Width>(&mut self, instr: &PushLexicalScopeInstruction<W>) {
+    fn execute_push_lexical_scope<W: Width>(
+        &mut self,
+        instr: &PushLexicalScopeInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let scope = self.scope().to_handle();
@@ -3915,14 +4025,19 @@ impl VM {
             .cast::<ScopeNames>();
 
         // Allocates
-        let lexical_scope = Scope::new_lexical(self.cx(), scope, scope_names);
+        let lexical_scope = Scope::new_lexical(self.cx(), scope, scope_names)?;
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = *lexical_scope;
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_push_function_scope<W: Width>(&mut self, instr: &PushFunctionScopeInstruction<W>) {
+    fn execute_push_function_scope<W: Width>(
+        &mut self,
+        instr: &PushFunctionScopeInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let scope = self.scope().to_handle();
@@ -3932,10 +4047,12 @@ impl VM {
             .cast::<ScopeNames>();
 
         // Allocates
-        let function_scope = Scope::new_function(self.cx(), scope, scope_names);
+        let function_scope = Scope::new_function(self.cx(), scope, scope_names)?;
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = *function_scope;
+
+        Ok(())
     }
 
     #[inline]
@@ -3954,7 +4071,7 @@ impl VM {
 
             // Allocates
             let object = to_object(self.cx(), object)?;
-            let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object);
+            let lexical_scope = Scope::new_with(self.cx(), scope, scope_names, object)?;
 
             // Write the new scope to the stack
             *self.stack_frame().scope_mut() = *lexical_scope;
@@ -3972,16 +4089,18 @@ impl VM {
     }
 
     #[inline]
-    fn execute_dup_scope<W: Width>(&mut self, _: &DupScopeInstruction<W>) {
+    fn execute_dup_scope<W: Width>(&mut self, _: &DupScopeInstruction<W>) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let scope = self.scope().to_handle();
 
         // Allocates
-        let dup_scope = scope.duplicate(self.cx());
+        let dup_scope = scope.duplicate(self.cx())?;
 
         // Write the new scope to the stack
         *self.stack_frame().scope_mut() = dup_scope;
+
+        Ok(())
     }
 
     #[inline]
@@ -4096,7 +4215,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_rest_parameter<W: Width>(&mut self, instr: &RestParameterInstruction<W>) {
+    fn execute_rest_parameter<W: Width>(
+        &mut self,
+        instr: &RestParameterInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -4118,24 +4240,26 @@ impl VM {
                 .iter()
                 .enumerate()
             {
-                array_key.replace(PropertyKey::array_index(self.cx(), i as u32));
+                array_key.replace(PropertyKey::array_index(self.cx(), i as u32)?);
                 value_handle.replace(*argument);
 
                 let array_property = Property::data(value_handle, true, true, true);
                 rest_array
                     .as_object()
-                    .set_property(self.cx(), array_key, array_property);
+                    .set_property(self.cx(), array_key, array_property)?;
             }
         }
 
         self.write_register(dest, *rest_array.as_value());
+
+        Ok(())
     }
 
     #[inline]
     fn execute_get_super_constructor<W: Width>(
         &mut self,
         instr: &GetSuperConstructorInstruction<W>,
-    ) {
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let derived_constructor = self
@@ -4152,6 +4276,8 @@ impl VM {
             .unwrap_or(Value::null());
 
         self.write_register(dest, super_constructor);
+
+        Ok(())
     }
 
     #[inline]
@@ -4164,8 +4290,9 @@ impl VM {
         }
 
         let name = self.get_constant(instr.name_constant_index()).as_string();
+        let name_str = name.to_handle().format()?;
 
-        reference_error(self.cx(), &format!("can't access `{name}` before initialization"))
+        reference_error(self.cx(), &format!("can't access `{name_str}` before initialization"))
     }
 
     #[inline]
@@ -4444,17 +4571,25 @@ impl VM {
     }
 
     #[inline]
-    fn execute_new_promise<W: Width>(&mut self, instr: &NewPromiseInstruction<W>) {
+    fn execute_new_promise<W: Width>(
+        &mut self,
+        instr: &NewPromiseInstruction<W>,
+    ) -> EvalResult<()> {
         let dest = instr.dest();
 
         // Allocates
-        let promise = PromiseObject::new_pending(self.cx()).as_object();
+        let promise = PromiseObject::new_pending(self.cx())?.as_object();
 
-        self.write_register(dest, promise.as_value())
+        self.write_register(dest, promise.as_value());
+
+        Ok(())
     }
 
     #[inline]
-    fn execute_resolve_promise<W: Width>(&mut self, instr: &ResolvePromiseInstruction<W>) {
+    fn execute_resolve_promise<W: Width>(
+        &mut self,
+        instr: &ResolvePromiseInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let promise = self.read_register_to_handle(instr.promise());
@@ -4463,7 +4598,9 @@ impl VM {
         debug_assert!(is_promise(*promise));
         let promise = promise.as_object().cast::<PromiseObject>();
 
-        resolve(self.cx(), promise, value);
+        resolve(self.cx(), promise, value)?;
+
+        Ok(())
     }
 
     #[inline]
@@ -4480,7 +4617,10 @@ impl VM {
     }
 
     #[inline]
-    fn execute_import_meta<W: Width>(&mut self, instr: &ImportMetaInstruction<W>) {
+    fn execute_import_meta<W: Width>(
+        &mut self,
+        instr: &ImportMetaInstruction<W>,
+    ) -> EvalResult<()> {
         handle_scope_guard!(self.cx());
 
         let dest = instr.dest();
@@ -4490,13 +4630,15 @@ impl VM {
 
         // May allocate
         let value = if let Some(module) = module_scope.module_scope_module() {
-            let object = module.to_handle().get_import_meta_object(self.cx());
+            let object = module.to_handle().get_import_meta_object(self.cx())?;
             object.as_value()
         } else {
             Value::undefined()
         };
 
         self.write_register(dest, value);
+
+        Ok(())
     }
 
     #[inline]

@@ -2,6 +2,7 @@ use crate::{
     eval_err,
     runtime::{
         abstract_operations::{call_object, invoke, species_constructor},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         function::get_argument,
@@ -20,15 +21,15 @@ pub struct PromisePrototype;
 
 impl PromisePrototype {
     /// Properties of the Promise Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-promise-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once PromiseConstructor has been created
 
-        object.intrinsic_func(cx, cx.names.catch(), Self::catch, 1, realm);
-        object.intrinsic_func(cx, cx.names.finally(), Self::finally, 1, realm);
-        object.intrinsic_func(cx, cx.names.then(), Self::then, 2, realm);
+        object.intrinsic_func(cx, cx.names.catch(), Self::catch, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.finally(), Self::finally, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.then(), Self::then, 2, realm)?;
 
         // Promise.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -36,9 +37,9 @@ impl PromisePrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.promise().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// Promise.prototype.catch (https://tc39.es/ecma262/#sec-promise.prototype.catch)
@@ -82,7 +83,7 @@ impl PromisePrototype {
                 cx.names.empty_string(),
                 cx.current_realm(),
                 None,
-            );
+            )?;
 
             let finally_catch = BuiltinFunction::create(
                 cx,
@@ -91,14 +92,14 @@ impl PromisePrototype {
                 cx.names.empty_string(),
                 cx.current_realm(),
                 None,
-            );
+            )?;
 
             // And attach private properties
-            Self::set_constructor(cx, finally_then, constructor);
-            Self::set_on_finally(cx, finally_then, on_finally);
+            Self::set_constructor(cx, finally_then, constructor)?;
+            Self::set_on_finally(cx, finally_then, on_finally)?;
 
-            Self::set_constructor(cx, finally_catch, constructor);
-            Self::set_on_finally(cx, finally_catch, on_finally);
+            Self::set_constructor(cx, finally_catch, constructor)?;
+            Self::set_on_finally(cx, finally_catch, on_finally)?;
 
             then_finally = finally_then.into();
             catch_finally = finally_catch.into();
@@ -115,8 +116,12 @@ impl PromisePrototype {
             .as_object()
     }
 
-    fn set_constructor(cx: Context, mut function: Handle<ObjectValue>, value: Handle<ObjectValue>) {
-        function.private_element_set(cx, cx.well_known_symbols.constructor().cast(), value.into());
+    fn set_constructor(
+        cx: Context,
+        mut function: Handle<ObjectValue>,
+        value: Handle<ObjectValue>,
+    ) -> AllocResult<()> {
+        function.private_element_set(cx, cx.well_known_symbols.constructor().cast(), value.into())
     }
 
     fn get_on_finally(cx: Context, function: Handle<ObjectValue>) -> Handle<ObjectValue> {
@@ -127,8 +132,12 @@ impl PromisePrototype {
             .as_object()
     }
 
-    fn set_on_finally(cx: Context, mut function: Handle<ObjectValue>, value: Handle<ObjectValue>) {
-        function.private_element_set(cx, cx.well_known_symbols.on_finally().cast(), value.into());
+    fn set_on_finally(
+        cx: Context,
+        mut function: Handle<ObjectValue>,
+        value: Handle<ObjectValue>,
+    ) -> AllocResult<()> {
+        function.private_element_set(cx, cx.well_known_symbols.on_finally().cast(), value.into())
     }
 
     fn get_value(cx: Context, function: Handle<ObjectValue>) -> Handle<Value> {
@@ -138,8 +147,12 @@ impl PromisePrototype {
             .value()
     }
 
-    fn set_value(cx: Context, mut function: Handle<ObjectValue>, value: Handle<Value>) {
-        function.private_element_set(cx, cx.well_known_symbols.values().cast(), value);
+    fn set_value(
+        cx: Context,
+        mut function: Handle<ObjectValue>,
+        value: Handle<Value>,
+    ) -> AllocResult<()> {
+        function.private_element_set(cx, cx.well_known_symbols.values().cast(), value)
     }
 
     pub fn finally_then(
@@ -163,10 +176,10 @@ impl PromisePrototype {
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-        );
+        )?;
 
         let value = get_argument(cx, arguments, 0);
-        Self::set_value(cx, continue_function, value);
+        Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
     }
@@ -201,10 +214,10 @@ impl PromisePrototype {
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-        );
+        )?;
 
         let value = get_argument(cx, arguments, 0);
-        Self::set_value(cx, continue_function, value);
+        Self::set_value(cx, continue_function, value)?;
 
         invoke(cx, promise.into(), cx.names.then(), &[continue_function.into()])
     }
@@ -237,7 +250,7 @@ impl PromisePrototype {
         let on_fulfilled = get_argument(cx, arguments, 0);
         let on_rejected = get_argument(cx, arguments, 1);
 
-        Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability)))
+        Ok(perform_promise_then(cx, promise, on_fulfilled, on_rejected, Some(capability))?)
     }
 }
 
@@ -248,7 +261,7 @@ pub fn perform_promise_then(
     fulfill_handler: Handle<Value>,
     reject_handler: Handle<Value>,
     capability: Option<Handle<PromiseCapability>>,
-) -> Handle<Value> {
+) -> AllocResult<Handle<Value>> {
     let fulfill_handler = if is_callable(fulfill_handler) {
         Some(fulfill_handler.as_object())
     } else {
@@ -261,11 +274,11 @@ pub fn perform_promise_then(
         None
     };
 
-    promise.add_then_reaction(cx, fulfill_handler, reject_handler, capability);
+    promise.add_then_reaction(cx, fulfill_handler, reject_handler, capability)?;
 
     if let Some(capability) = capability {
-        capability.promise().into()
+        Ok(capability.promise().into())
     } else {
-        cx.undefined()
+        Ok(cx.undefined())
     }
 }

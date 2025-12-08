@@ -4,6 +4,7 @@ use crate::{
     extend_object,
     runtime::{
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
+        alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
@@ -28,32 +29,36 @@ extend_object! {
 
 impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: Context) -> Handle<ObjectPrototype> {
+    pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectPrototype>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
-        ObjectValue::new(cx, None, false).cast()
+        Ok(ObjectValue::new(cx, None, false)?.cast())
     }
 
     /// Properties of the Object Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-object-prototype-object)
-    pub fn initialize(cx: Context, object: Handle<ObjectPrototype>, realm: Handle<Realm>) {
+    pub fn initialize(
+        cx: Context,
+        object: Handle<ObjectPrototype>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<()> {
         let mut object = object.as_object();
 
         let descriptor = cx.base_descriptors.get(HeapItemKind::ObjectPrototype);
         object_ordinary_init(cx, *object, descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
-        object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm);
-        object.intrinsic_func(cx, cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm);
+        object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm)?;
         object.intrinsic_func(
             cx,
             cx.names.property_is_enumerable(),
             Self::property_is_enumerable,
             1,
             realm,
-        );
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        )?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
 
         object.intrinsic_getter_and_setter(
             cx,
@@ -61,12 +66,14 @@ impl ObjectPrototype {
             Self::get_proto,
             Self::set_proto,
             realm,
-        );
+        )?;
 
-        object.intrinsic_func(cx, cx.names.__define_getter__(), Self::define_getter, 2, realm);
-        object.intrinsic_func(cx, cx.names.__define_setter__(), Self::define_setter, 2, realm);
-        object.intrinsic_func(cx, cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm);
-        object.intrinsic_func(cx, cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm);
+        object.intrinsic_func(cx, cx.names.__define_getter__(), Self::define_getter, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.__define_setter__(), Self::define_setter, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm)?;
+
+        Ok(())
     }
 
     /// Object.prototype.hasOwnProperty (https://tc39.es/ecma262/#sec-object.prototype.hasownproperty)
@@ -144,9 +151,9 @@ impl ObjectPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
-            return Ok(cx.alloc_string("[object Undefined]").as_value());
+            return Ok(cx.alloc_string("[object Undefined]")?.as_value());
         } else if this_value.is_null() {
-            return Ok(cx.alloc_string("[object Null]").as_value());
+            return Ok(cx.alloc_string("[object Null]")?.as_value());
         }
 
         let object = to_object(cx, this_value)?;
@@ -157,11 +164,11 @@ impl ObjectPrototype {
         let tag = get(cx, object, to_string_tag_key)?;
 
         let tag_string = if tag.is_string() {
-            let string_prefix = cx.alloc_string("[object ").as_string();
-            let string_suffix = cx.alloc_string("]").as_string();
+            let string_prefix = cx.alloc_string("[object ")?.as_string();
+            let string_suffix = cx.alloc_string("]")?.as_string();
 
             let full_string =
-                StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix]);
+                StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])?;
 
             return Ok(full_string.as_value());
         } else if is_array {
@@ -187,7 +194,7 @@ impl ObjectPrototype {
         };
 
         Ok(cx
-            .alloc_string(&format!("[object {tag_string}]"))
+            .alloc_string(&format!("[object {tag_string}]"))?
             .as_value())
     }
 

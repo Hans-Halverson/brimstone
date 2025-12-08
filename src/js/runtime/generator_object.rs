@@ -1,6 +1,7 @@
 use crate::{
     eval_err, extend_object, field_offset,
     runtime::{
+        alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -108,9 +109,9 @@ impl GeneratorObject {
         fp_index: usize,
         completion_indices: Option<(u32, u32)>,
         stack_frame: &[StackSlotValue],
-    ) -> HeapPtr<GeneratorObject> {
+    ) -> AllocResult<HeapPtr<GeneratorObject>> {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
-        let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size);
+        let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size)?;
 
         let descriptor = cx.base_descriptors.get(HeapItemKind::Generator);
         object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
@@ -121,7 +122,7 @@ impl GeneratorObject {
         set_uninit!(generator.completion_indices, completion_indices);
         generator.stack_frame.init_from_slice(stack_frame);
 
-        generator
+        Ok(generator)
     }
 
     pub fn new_for_generator(
@@ -134,7 +135,7 @@ impl GeneratorObject {
         let proto =
             get_prototype_from_constructor(cx, closure.into(), Intrinsic::GeneratorPrototype)?;
 
-        Ok(Self::new(cx, Some(proto), pc_to_resume_offset, fp_index, None, stack_frame))
+        Ok(Self::new(cx, Some(proto), pc_to_resume_offset, fp_index, None, stack_frame)?)
     }
 
     pub fn new_for_async_function(
@@ -143,7 +144,7 @@ impl GeneratorObject {
         fp_index: usize,
         completion_indices: (u32, u32),
         stack_frame: &[StackSlotValue],
-    ) -> HeapPtr<GeneratorObject> {
+    ) -> AllocResult<HeapPtr<GeneratorObject>> {
         Self::new(cx, None, pc_to_resume_offset, fp_index, Some(completion_indices), stack_frame)
     }
 
@@ -226,7 +227,7 @@ pub fn generator_resume(
 
     // Check if generator has already completed
     if generator.state == GeneratorState::Completed {
-        return Ok(create_iter_result_object(cx, cx.undefined(), true));
+        return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
     }
 
     debug_assert!(generator.state.is_suspended());
@@ -259,7 +260,7 @@ fn generate_resume_impl(
     let next_value = next_completion?;
     let is_done = generator.state == GeneratorState::Completed;
 
-    Ok(create_iter_result_object(cx, next_value, is_done))
+    Ok(create_iter_result_object(cx, next_value, is_done)?)
 }
 
 /// GeneratorResumeAbrupt (https://tc39.es/ecma262/#sec-generatorresumeabrupt)
@@ -279,7 +280,7 @@ pub fn generator_resume_abrupt(
     // Check if generator has already completed
     if generator.state == GeneratorState::Completed {
         if completion_type == GeneratorCompletionType::Return {
-            return Ok(create_iter_result_object(cx, completion_value, true));
+            return Ok(create_iter_result_object(cx, completion_value, true)?);
         } else {
             return eval_err!(completion_value);
         }

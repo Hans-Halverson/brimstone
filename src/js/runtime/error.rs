@@ -2,7 +2,10 @@ use crate::{
     common::error::FormatOptions,
     eval_err,
     parser::{LocalizedParseError, LocalizedParseErrors},
-    runtime::eval_result::EvalError,
+    runtime::{
+        alloc_error::{format_oom_error_message, AllocError, AllocResult},
+        eval_result::EvalError,
+    },
 };
 
 use super::{
@@ -24,6 +27,8 @@ pub enum BsError {
     Emit(EmitError),
     /// Any value can be thrown as an error during evaluation.
     Eval(EvalError),
+    /// Allocation error (e.g. out of memory).
+    Alloc(AllocError),
 }
 
 impl From<LocalizedParseError> for BsError {
@@ -46,7 +51,17 @@ impl From<EmitError> for BsError {
 
 impl From<EvalError> for BsError {
     fn from(error: EvalError) -> Self {
-        BsError::Eval(error)
+        match error {
+            EvalError::Value(_) => BsError::Eval(error),
+            #[cfg(feature = "alloc_error")]
+            EvalError::Alloc(err) => BsError::Alloc(err),
+        }
+    }
+}
+
+impl From<AllocError> for BsError {
+    fn from(error: AllocError) -> Self {
+        BsError::Alloc(error)
     }
 }
 
@@ -56,7 +71,11 @@ impl BsError {
             BsError::Parse(error) => error.format(opts),
             BsError::Analyze(errors) => errors.format(opts),
             BsError::Emit(error) => error.format(opts),
-            BsError::Eval(value) => to_console_string(cx, value.value(), opts),
+            BsError::Eval(EvalError::Value(error)) => to_console_string(cx, *error, opts)
+                .unwrap_or_else(|_| format_oom_error_message(opts)),
+            BsError::Alloc(error) => error.format(opts),
+            #[cfg(feature = "alloc_error")]
+            BsError::Eval(EvalError::Alloc(error)) => error.format(opts),
         }
     }
 }
@@ -64,48 +83,48 @@ impl BsError {
 /// Generic result type from the JS engine.
 pub type BsResult<T> = Result<T, BsError>;
 
-pub fn syntax_error_value(cx: Context, message: &str) -> Handle<Value> {
-    SyntaxError::new_with_message(cx, message.to_owned()).into()
+pub fn syntax_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+    Ok(SyntaxError::new_with_message(cx, message.to_owned())?.into())
 }
 
-pub fn type_error_value(cx: Context, message: &str) -> Handle<Value> {
-    TypeError::new_with_message(cx, message.to_owned()).into()
+pub fn type_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+    Ok(TypeError::new_with_message(cx, message.to_owned())?.into())
 }
 
-fn reference_error_value(cx: Context, message: &str) -> Handle<Value> {
-    ReferenceError::new_with_message(cx, message.to_owned()).into()
+fn reference_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+    Ok(ReferenceError::new_with_message(cx, message.to_owned())?.into())
 }
 
-pub fn range_error_value(cx: Context, message: &str) -> Handle<Value> {
-    RangeError::new_with_message(cx, message.to_owned()).into()
+pub fn range_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+    Ok(RangeError::new_with_message(cx, message.to_owned())?.into())
 }
 
-fn uri_error_value(cx: Context, message: &str) -> Handle<Value> {
-    URIError::new_with_message(cx, message.to_owned()).into()
+fn uri_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+    Ok(URIError::new_with_message(cx, message.to_owned())?.into())
 }
 
 pub fn syntax_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    eval_err!(syntax_error_value(cx, message))
+    eval_err!(syntax_error_value(cx, message)?)
 }
 
 pub fn type_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    eval_err!(type_error_value(cx, message))
+    eval_err!(type_error_value(cx, message)?)
 }
 
 pub fn reference_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    eval_err!(reference_error_value(cx, message))
+    eval_err!(reference_error_value(cx, message)?)
 }
 
 pub fn range_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    eval_err!(range_error_value(cx, message))
+    eval_err!(range_error_value(cx, message)?)
 }
 
 pub fn uri_error<T>(cx: Context, message: &str) -> EvalResult<T> {
-    eval_err!(uri_error_value(cx, message))
+    eval_err!(uri_error_value(cx, message)?)
 }
 
 pub fn err_not_defined<T>(cx: Context, name: Handle<StringValue>) -> EvalResult<T> {
-    reference_error(cx, &format!("{name} is not defined"))
+    reference_error(cx, &format!("{} is not defined", name.format()?))
 }
 
 pub fn err_assign_constant<T>(cx: Context, name: HeapPtr<FlatString>) -> EvalResult<T> {

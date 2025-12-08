@@ -8,6 +8,7 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr,
@@ -48,14 +49,14 @@ const ENTRIES_BYTE_OFFSET: usize = field_offset!(BsHashMap<String, String>, entr
 impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     pub const MIN_CAPACITY: usize = 4;
 
-    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V>>(size);
+        let mut hash_map = cx.alloc_uninit_with_size::<BsHashMap<K, V>>(size)?;
 
         hash_map.init(cx, kind, capacity);
 
-        hash_map
+        Ok(hash_map)
     }
 
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
@@ -66,7 +67,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         self.entries.init_with(capacity, Entry::Empty);
     }
 
-    pub fn new_initial(cx: Context, kind: HeapItemKind) -> HeapPtr<Self> {
+    pub fn new_initial(cx: Context, kind: HeapItemKind) -> AllocResult<HeapPtr<Self>> {
         Self::new(cx, kind, Self::MIN_CAPACITY)
     }
 
@@ -262,7 +263,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
 /// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
 pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsHashMap<K, V>>;
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsHashMap<K, V>>>;
 
     fn get(&self, cx: Context) -> HeapPtr<BsHashMap<K, V>>;
 
@@ -271,14 +272,14 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
     /// Prepare map for insertion of a single entry. This will grow the map and update container to
     /// point to new map if there is no room to insert another entry in the map.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsHashMap<K, V>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsHashMap<K, V>>> {
         let old_map = self.get(cx);
 
         // Keep at least half of the entries empty, otherwise grow
         let new_length = old_map.len() + 1;
         let capacity = old_map.capacity();
         if new_length <= capacity / 2 {
-            return old_map;
+            return Ok(old_map);
         }
 
         // Save old map behind handle before allocating
@@ -286,7 +287,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
 
         // Double size leaving map 1/4 full after growing
         let new_capacity = capacity * 2;
-        let mut new_map = self.new_map(cx, new_capacity);
+        let mut new_map = self.new_map(cx, new_capacity)?;
 
         // Update parent reference from old child to new child map
         self.set(cx, new_map);
@@ -296,7 +297,7 @@ pub trait BsHashMapField<K: Eq + Hash + Clone, V: Clone> {
             new_map.insert_without_growing(key, value);
         }
 
-        new_map
+        Ok(new_map)
     }
 }
 

@@ -8,6 +8,7 @@ use crate::{
     handle_scope, handle_scope_guard,
     runtime::{
         abstract_operations::define_property_or_throw,
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::instruction::EvalFlags,
         console::ConsoleObject,
@@ -51,7 +52,8 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
                 handle_scope_guard!(cx);
 
                 let func_object =
-                    BuiltinFunction::create(cx, $func_name, $length, $str_name, realm, None).into();
+                    BuiltinFunction::create(cx, $func_name, $length, $str_name, realm, None)?
+                        .into();
                 value_prop!($str_name, func_object, true, false, true);
             }};
         }
@@ -139,23 +141,23 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         intrinsic_prop!(cx.names.reflect(), Reflect);
 
         // Non-standard, environment specific properties of global object
-        let console_object = ConsoleObject::new(cx, realm).into();
+        let console_object = ConsoleObject::new(cx, realm)?.into();
         value_prop!(cx.names.console(), console_object, true, false, true);
 
         Ok(())
     })
 }
 
-pub fn create_eval(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, eval, 1, cx.names.eval(), realm, None).into()
+pub fn create_eval(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
+    Ok(BuiltinFunction::create(cx, eval, 1, cx.names.eval(), realm, None)?.into())
 }
 
-pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), realm, None).into()
+pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
+    Ok(BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), realm, None)?.into())
 }
 
-pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> Handle<Value> {
-    BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), realm, None).into()
+pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
+    Ok(BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), realm, None)?.into())
 }
 
 /// eval (https://tc39.es/ecma262/#sec-eval-x)
@@ -200,17 +202,17 @@ pub fn parse_float(
     let input_string_arg = get_argument(cx, arguments, 0);
     let input_string = to_string(cx, input_string_arg)?;
 
-    match parse_float_with_string_lexer(input_string) {
+    match parse_float_with_string_lexer(input_string)? {
         Some(float) => Ok(cx.number(float)),
         None => Ok(cx.nan()),
     }
 }
 
-fn parse_float_with_string_lexer(string: Handle<StringValue>) -> Option<f64> {
-    let mut lexer = StringLexer::new(string);
+fn parse_float_with_string_lexer(string: Handle<StringValue>) -> AllocResult<Option<f64>> {
+    let mut lexer = StringLexer::new(string)?;
 
     skip_string_whitespace(&mut lexer);
-    parse_signed_decimal_literal(&mut lexer)
+    Ok(parse_signed_decimal_literal(&mut lexer))
 }
 
 /// parseInt (https://tc39.es/ecma262/#sec-parseint-string-radix)
@@ -225,16 +227,15 @@ pub fn parse_int(
     let radix_arg = get_argument(cx, arguments, 1);
     let radix = to_int32(cx, radix_arg)?;
 
-    match parse_int_impl(input_string, radix) {
+    let lexer = StringLexer::new(input_string)?;
+    match parse_int_impl(lexer, radix) {
         Some(number) => Ok(cx.number(number)),
         None => Ok(cx.nan()),
     }
 }
 
 #[inline]
-fn parse_int_impl(string: Handle<StringValue>, radix: i32) -> Option<f64> {
-    let mut lexer = StringLexer::new(string);
-
+fn parse_int_impl(mut lexer: StringLexer, radix: i32) -> Option<f64> {
     // Trim whitespace from start of string
     skip_string_whitespace(&mut lexer);
 
@@ -357,7 +358,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 ) -> EvalResult<Handle<Value>> {
     let mut decoded_string = Wtf8String::new();
 
-    let flat_string = string.flatten();
+    let flat_string = string.flatten()?;
     let string_length = flat_string.len();
 
     let mut i = 0;
@@ -476,7 +477,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
         }
     }
 
-    Ok(FlatString::from_wtf8(cx, decoded_string.as_bytes())
+    Ok(FlatString::from_wtf8(cx, decoded_string.as_bytes())?
         .to_handle()
         .as_value())
 }
@@ -512,7 +513,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
 ) -> EvalResult<Handle<Value>> {
     let mut encoded_string = Wtf8String::new();
 
-    for code_point in string.iter_code_points() {
+    for code_point in string.iter_code_points()? {
         // Very that the char is not an unpaired surrogate
         let char = match char::from_u32(code_point) {
             Some(char) => char,
@@ -556,22 +557,24 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
     }
 
     // Safe since only ASCII characters were used
-    Ok(FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())
+    Ok(FlatString::from_one_byte_slice(cx, encoded_string.as_bytes())?
         .to_handle()
         .as_value())
 }
 
 // Additional Properties of the Global Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-global-object)
-pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) {
+pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
     let mut global_object = realm.global_object();
 
-    let escape_name = cx.alloc_string("escape").as_string();
-    let escape_key = PropertyKey::string_not_array_index(cx, escape_name).to_handle(cx);
-    global_object.intrinsic_func(cx, escape_key, escape, 1, realm);
+    let escape_name = cx.alloc_string("escape")?.as_string();
+    let escape_key = PropertyKey::string_not_array_index_handle(cx, escape_name)?;
+    global_object.intrinsic_func(cx, escape_key, escape, 1, realm)?;
 
-    let unescape_name = cx.alloc_string("unescape").as_string();
-    let unescape_key = PropertyKey::string_not_array_index(cx, unescape_name).to_handle(cx);
-    global_object.intrinsic_func(cx, unescape_key, unescape, 1, realm);
+    let unescape_name = cx.alloc_string("unescape")?.as_string();
+    let unescape_key = PropertyKey::string_not_array_index_handle(cx, unescape_name)?;
+    global_object.intrinsic_func(cx, unescape_key, unescape, 1, realm)?;
+
+    Ok(())
 }
 
 /// escape (https://tc39.es/ecma262/#sec-escape-string)
@@ -585,7 +588,7 @@ pub fn escape(
 
     let mut escaped_string = Wtf8String::new();
 
-    for code_unit in string.iter_code_units() {
+    for code_unit in string.iter_code_units()? {
         let code_unit = code_unit as u32;
 
         match_u32!(match code_unit {
@@ -604,7 +607,7 @@ pub fn escape(
         });
     }
 
-    Ok(cx.alloc_wtf8_string(&escaped_string).as_value())
+    Ok(cx.alloc_wtf8_string(&escaped_string)?.as_value())
 }
 
 /// unescape (https://tc39.es/ecma262/#sec-unescape-string)
@@ -621,7 +624,7 @@ pub fn unescape(
 
     let mut i = 0;
     while i < length {
-        let code_unit = string.code_unit_at(i);
+        let code_unit = string.code_unit_at(i)?;
 
         // Unescaped code unit
         if code_unit != '%' as u16 {
@@ -631,8 +634,8 @@ pub fn unescape(
         }
 
         // Escaped as %uXXXX
-        if i + 5 < length && string.code_unit_at(i + 1) == 'u' as u16 {
-            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 2, 4) {
+        if i + 5 < length && string.code_unit_at(i + 1)? == 'u' as u16 {
+            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 2, 4)? {
                 unescaped_string.push(parsed_code_unit);
                 i += 6;
                 continue;
@@ -641,7 +644,7 @@ pub fn unescape(
 
         // Escaped as %XX
         if i + 3 <= length {
-            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 1, 2) {
+            if let Some(parsed_code_unit) = parse_hex_code_units(string, i + 1, 2)? {
                 unescaped_string.push(parsed_code_unit);
                 i += 3;
                 continue;
@@ -653,22 +656,24 @@ pub fn unescape(
         i += 1;
     }
 
-    Ok(cx.alloc_wtf8_string(&unescaped_string).as_value())
+    Ok(cx.alloc_wtf8_string(&unescaped_string)?.as_value())
 }
 
 fn parse_hex_code_units(
     string: Handle<StringValue>,
     start_index: u32,
     num_code_units: u32,
-) -> Option<u32> {
+) -> AllocResult<Option<u32>> {
     let mut value = 0;
 
     for i in 0..num_code_units {
-        let code_unit = string.code_unit_at(start_index + i);
-        let hex_value = get_hex_value(code_unit as u32)?;
+        let code_unit = string.code_unit_at(start_index + i)?;
+        let Some(hex_value) = get_hex_value(code_unit as u32) else {
+            return Ok(None);
+        };
 
         value = (value << 4) + hex_value;
     }
 
-    Some(value)
+    Ok(Some(value))
 }

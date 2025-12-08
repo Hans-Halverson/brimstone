@@ -1,6 +1,10 @@
 use std::collections::HashSet;
 
-use crate::{field_offset, runtime::heap_item_descriptor::HeapItemKind, set_uninit};
+use crate::{
+    field_offset,
+    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    set_uninit,
+};
 
 use super::{
     collections::InlineArray,
@@ -37,9 +41,9 @@ impl ForInIterator {
         cx: Context,
         object: Handle<ObjectValue>,
         keys: &[Handle<StringValue>],
-    ) -> HeapPtr<ForInIterator> {
+    ) -> AllocResult<HeapPtr<ForInIterator>> {
         let size = Self::calculate_size_in_bytes(keys.len());
-        let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size);
+        let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size)?;
 
         set_uninit!(iterator.descriptor, cx.base_descriptors.get(HeapItemKind::ForInIterator));
         set_uninit!(iterator.object, *object);
@@ -50,7 +54,7 @@ impl ForInIterator {
             set_uninit!(iterator.keys.as_mut_slice()[i], **key);
         }
 
-        iterator
+        Ok(iterator)
     }
 
     /// Create a new for-in iterator for the given object. This function calculates all the keys
@@ -75,7 +79,7 @@ impl ForInIterator {
                 let key = key.as_string();
 
                 // Skip keys that have already been seen, regardless of whether they are enumerable
-                let property_key = PropertyKey::string(cx, key).to_handle(cx);
+                let property_key = PropertyKey::string_handle(cx, key)?;
                 if !visited_keys.insert(property_key) {
                     continue;
                 }
@@ -95,7 +99,7 @@ impl ForInIterator {
             }
         }
 
-        Ok(Self::new(cx, object, &keys))
+        Ok(Self::new(cx, object, &keys)?)
     }
 
     const KEYS_OFFSET: usize = field_offset!(ForInIterator, keys);
@@ -117,7 +121,7 @@ impl Handle<ForInIterator> {
             }
 
             let key = self.keys.get_unchecked(self.index).to_handle();
-            let property_key = PropertyKey::string(cx, key).to_handle(cx);
+            let property_key = PropertyKey::string_handle(cx, key)?;
 
             self.index += 1;
 

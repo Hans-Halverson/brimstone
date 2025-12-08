@@ -1,6 +1,7 @@
 use half::f16;
 
 use crate::runtime::{
+    alloc_error::AllocResult,
     error::{range_error, type_error},
     function::get_argument,
     object_value::ObjectValue,
@@ -27,36 +28,36 @@ pub struct DataViewPrototype;
 
 impl DataViewPrototype {
     /// Properties of the DataView Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-dataview-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once DataViewConstructor has been created
-        object.intrinsic_getter(cx, cx.names.buffer(), Self::get_buffer, realm);
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm);
-        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::get_byte_offset, realm);
-        object.intrinsic_func(cx, cx.names.get_big_int64(), Self::get_big_int64, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_float16(), Self::get_float16, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_float32(), Self::get_float32, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_float64(), Self::get_float64, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_int8(), Self::get_int8, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_int16(), Self::get_int16, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_int32(), Self::get_int32, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_uint8(), Self::get_uint8, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_uint16(), Self::get_uint16, 1, realm);
-        object.intrinsic_func(cx, cx.names.get_uint32(), Self::get_uint32, 1, realm);
-        object.intrinsic_func(cx, cx.names.set_big_int64(), Self::set_big_int64, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_float16(), Self::set_float16, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_float32(), Self::set_float32, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_float64(), Self::set_float64, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_int8(), Self::set_int8, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_int16(), Self::set_int16, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_int32(), Self::set_int32, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_uint8(), Self::set_uint8, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_uint16(), Self::set_uint16, 2, realm);
-        object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm);
+        object.intrinsic_getter(cx, cx.names.buffer(), Self::get_buffer, realm)?;
+        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm)?;
+        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::get_byte_offset, realm)?;
+        object.intrinsic_func(cx, cx.names.get_big_int64(), Self::get_big_int64, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_float16(), Self::get_float16, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_float32(), Self::get_float32, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_float64(), Self::get_float64, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_int8(), Self::get_int8, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_int16(), Self::get_int16, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_int32(), Self::get_int32, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_uint8(), Self::get_uint8, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_uint16(), Self::get_uint16, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.get_uint32(), Self::get_uint32, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.set_big_int64(), Self::set_big_int64, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_float16(), Self::set_float16, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_float32(), Self::set_float32, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_float64(), Self::set_float64, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_int8(), Self::set_int8, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_int16(), Self::set_int16, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_int32(), Self::set_int32, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_uint8(), Self::set_uint8, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_uint16(), Self::set_uint16, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm)?;
 
         // DataView.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-dataview.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -64,9 +65,9 @@ impl DataViewPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.data_view().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// get DataView.prototype.buffer (https://tc39.es/ecma262/#sec-get-dataview.prototype.buffer)
@@ -404,7 +405,7 @@ fn get_view_value<T>(
     cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
-    from_element_fn: fn(Context, T) -> Handle<Value>,
+    from_element_fn: fn(Context, T) -> AllocResult<Handle<Value>>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
     let data_view = require_is_data_view(cx, this_value)?;
@@ -447,7 +448,7 @@ fn get_view_value<T>(
         }
     };
 
-    Ok(from_element_fn(cx, element))
+    Ok(from_element_fn(cx, element)?)
 }
 
 /// SetViewValue (https://tc39.es/ecma262/#sec-setviewvalue)

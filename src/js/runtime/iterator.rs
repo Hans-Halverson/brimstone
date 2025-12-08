@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::{call_object, get_method},
+        alloc_error::AllocResult,
         error::type_error,
         get,
         intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
@@ -51,7 +52,7 @@ pub fn get_iterator(
                 let sync_iterator_record =
                     get_iterator(cx, object, IteratorHint::Sync, sync_method)?;
 
-                return Ok(create_async_from_sync_iterator(cx, sync_iterator_record));
+                return Ok(create_async_from_sync_iterator(cx, sync_iterator_record)?);
             }
         } else {
             let iterator_key = cx.well_known_symbols.iterator();
@@ -225,15 +226,15 @@ pub fn create_iter_result_object(
     cx: Context,
     value: Handle<Value>,
     is_done: bool,
-) -> Handle<Value> {
-    let object = ordinary_object_create(cx);
+) -> AllocResult<Handle<Value>> {
+    let object = ordinary_object_create(cx)?;
 
     must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
 
     let is_done_value = cx.bool(is_done);
     must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
 
-    object.as_value()
+    Ok(object.as_value())
 }
 
 // Iterate over an object, executing a callback function against every value returned by the
@@ -292,9 +293,9 @@ pub fn iter_iterator_method_values<
 }
 
 /// CreateAsyncFromSyncIterator (https://tc39.es/ecma262/#sec-createasyncfromsynciterator)
-fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> Iterator {
-    let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator).into();
+fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> AllocResult<Iterator> {
+    let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator)?.into();
     let next_method = must!(get(cx, async_iterator, cx.names.next()));
 
-    Iterator { iterator: async_iterator, next_method, is_done: false }
+    Ok(Iterator { iterator: async_iterator, next_method, is_done: false })
 }

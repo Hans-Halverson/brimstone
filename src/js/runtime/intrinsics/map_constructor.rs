@@ -2,6 +2,7 @@ use crate::{
     must,
     runtime::{
         abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         error::type_error,
@@ -24,7 +25,7 @@ pub struct MapConstructor;
 
 impl MapConstructor {
     /// The Map Constructor (https://tc39.es/ecma262/#sec-map-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -32,21 +33,21 @@ impl MapConstructor {
             cx.names.map(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::MapPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm);
+        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm)?;
 
         // get Map [ %Symbol.species% ] (https://tc39.es/ecma262/#sec-get-map-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Map (https://tc39.es/ecma262/#sec-map-iterable)
@@ -94,9 +95,9 @@ impl MapConstructor {
         let map = must!(construct(cx, map_constructor, &[], None));
 
         for group in groups {
-            let items: Handle<Value> = create_array_from_list(cx, &group.items).into();
+            let items: Handle<Value> = create_array_from_list(cx, &group.items)?.into();
 
-            map.cast::<MapObject>().insert(cx, group.key, items);
+            map.cast::<MapObject>().insert(cx, group.key, items)?;
         }
 
         Ok(map.as_value())
@@ -110,8 +111,8 @@ pub fn add_entries_from_iterable(
     iterable: Handle<Value>,
     mut adder: impl FnMut(Context, Handle<Value>, Handle<Value>) -> EvalResult<()>,
 ) -> EvalResult<Handle<Value>> {
-    let key_index = PropertyKey::array_index(cx, 0).to_handle(cx);
-    let value_index = PropertyKey::array_index(cx, 1).to_handle(cx);
+    let key_index = PropertyKey::array_index_handle(cx, 0)?;
+    let value_index = PropertyKey::array_index_handle(cx, 1)?;
 
     iter_iterator_values(cx, iterable, &mut |cx, entry| {
         if !entry.is_object() {

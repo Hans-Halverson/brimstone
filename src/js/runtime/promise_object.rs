@@ -1,9 +1,10 @@
 use std::mem::size_of;
 
 use crate::{
-    extend_object,
+    completion_value, extend_object,
     runtime::{
         abstract_operations::{call_object, construct},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
         gc::{HeapItem, HeapVisitor},
@@ -86,16 +87,16 @@ pub enum PromiseReactionKind {
 }
 
 impl PromiseObject {
-    pub fn new_pending(cx: Context) -> HeapPtr<PromiseObject> {
+    pub fn new_pending(cx: Context) -> AllocResult<HeapPtr<PromiseObject>> {
         let mut object =
-            object_create::<PromiseObject>(cx, HeapItemKind::Promise, Intrinsic::PromisePrototype);
+            object_create::<PromiseObject>(cx, HeapItemKind::Promise, Intrinsic::PromisePrototype)?;
 
         set_uninit!(
             object.state,
             PromiseState::Pending { reactions: None, already_resolved: false }
         );
 
-        object
+        Ok(object)
     }
 
     pub fn new_from_constructor(
@@ -188,48 +189,52 @@ impl PromiseObject {
 }
 
 /// Promise Resolve Functions (https://tc39.es/ecma262/#sec-promise-resolve-functions)
-pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: Handle<Value>) {
+pub fn resolve(
+    mut cx: Context,
+    mut promise: Handle<PromiseObject>,
+    resolution: Handle<Value>,
+) -> AllocResult<()> {
     // Resolving an already settled promise has no effect. Immediately mark promise as
     // "already resolved" to prevent further settlement, since fulfill or reject may not be called
     // right away.
     match &mut promise.state {
         PromiseState::Pending { already_resolved, .. } => {
             if *already_resolved {
-                return;
+                return Ok(());
             }
 
             *already_resolved = true;
         }
-        _ => return,
+        _ => return Ok(()),
     }
 
     // Check if a promise is trying to resolve itself
-    if same_value(resolution, promise.into()) {
-        let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself");
+    if same_value(resolution, promise.into())? {
+        let self_resolution_error = type_error_value(cx, "cannot resolve promise with itself")?;
         promise.reject(cx, *self_resolution_error);
-        return;
+        return Ok(());
     }
 
     // Resolving to a non-object immediately fulfills the promise
     if !resolution.is_object() {
         promise.resolve(cx, *resolution);
-        return;
+        return Ok(());
     }
 
     // Otherwise look for a "then" property on the resolution object
     let then_completion = get(cx, resolution.as_object(), cx.names.then());
-    let then_value = match then_completion {
+    let then_value = match completion_value!(then_completion) {
         Ok(value) => value,
         Err(error) => {
-            promise.reject(cx, *error.value());
-            return;
+            promise.reject(cx, *error);
+            return Ok(());
         }
     };
 
     // If "then" is not callable, immediately fulfill the promise
     if !is_callable(then_value) {
         promise.resolve(cx, *resolution);
-        return;
+        return Ok(());
     }
 
     // Get the realm of the "then" function, defaulting to the current realm if getting the
@@ -246,6 +251,8 @@ pub fn resolve(mut cx: Context, mut promise: Handle<PromiseObject>, resolution: 
         *promise,
         realm,
     );
+
+    Ok(())
 }
 
 impl Handle<PromiseObject> {
@@ -260,7 +267,7 @@ impl Handle<PromiseObject> {
         &mut self,
         mut cx: Context,
         suspended_generator: Handle<ObjectValue>,
-    ) {
+    ) -> AllocResult<()> {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
             PromiseState::Pending { reactions, .. } => {
@@ -269,7 +276,7 @@ impl Handle<PromiseObject> {
                     cx,
                     suspended_generator,
                     prev_reactions,
-                ));
+                )?);
 
                 self.set_reactions(new_reactions);
             }
@@ -288,6 +295,8 @@ impl Handle<PromiseObject> {
                 );
             }
         }
+
+        Ok(())
     }
 
     pub fn add_then_reaction(
@@ -296,7 +305,7 @@ impl Handle<PromiseObject> {
         fulfill_handler: Option<Handle<ObjectValue>>,
         reject_handler: Option<Handle<ObjectValue>>,
         capability: Option<Handle<PromiseCapability>>,
-    ) {
+    ) -> AllocResult<()> {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
             PromiseState::Pending { reactions, .. } => {
@@ -307,7 +316,7 @@ impl Handle<PromiseObject> {
                     reject_handler,
                     capability,
                     prev_reactions,
-                ));
+                )?);
 
                 self.set_reactions(new_reactions);
             }
@@ -330,6 +339,8 @@ impl Handle<PromiseObject> {
                 );
             }
         }
+
+        Ok(())
     }
 }
 
@@ -365,8 +376,8 @@ pub fn coerce_to_ordinary_promise(
         }
     }
 
-    let promise = PromiseObject::new_pending(cx).to_handle();
-    resolve(cx, promise, value);
+    let promise = PromiseObject::new_pending(cx)?.to_handle();
+    resolve(cx, promise, value)?;
 
     Ok(promise)
 }
@@ -383,7 +394,7 @@ pub fn promise_resolve(
     if is_promise(*result) {
         let result = result.as_object();
         let value_constructor = get(cx, result, cx.names.constructor())?;
-        if same_value(value_constructor, constructor) {
+        if same_value(value_constructor, constructor)? {
             return Ok(result);
         }
     }
@@ -421,8 +432,8 @@ impl PromiseReaction {
         cx: Context,
         suspended_generator: Handle<ObjectValue>,
         next: Option<Handle<PromiseReaction>>,
-    ) -> HeapPtr<PromiseReaction> {
-        let mut reaction = cx.alloc_uninit::<PromiseReaction>();
+    ) -> AllocResult<HeapPtr<PromiseReaction>> {
+        let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
         set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
@@ -431,7 +442,7 @@ impl PromiseReaction {
         );
         set_uninit!(reaction.next, next.map(|r| *r));
 
-        reaction
+        Ok(reaction)
     }
 
     fn new_then(
@@ -440,8 +451,8 @@ impl PromiseReaction {
         reject_handler: Option<Handle<ObjectValue>>,
         capability: Option<Handle<PromiseCapability>>,
         next: Option<Handle<PromiseReaction>>,
-    ) -> HeapPtr<PromiseReaction> {
-        let mut reaction = cx.alloc_uninit::<PromiseReaction>();
+    ) -> AllocResult<HeapPtr<PromiseReaction>> {
+        let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
         set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
@@ -454,7 +465,7 @@ impl PromiseReaction {
         );
         set_uninit!(reaction.next, next.map(|r| *r));
 
-        reaction
+        Ok(reaction)
     }
 }
 
@@ -479,7 +490,7 @@ impl PromiseCapability {
         let constructor = constructor.as_object();
 
         // Create an empty capability object whose fields will be set later
-        let mut capability = cx.alloc_uninit::<PromiseCapability>();
+        let mut capability = cx.alloc_uninit::<PromiseCapability>()?;
 
         set_uninit!(
             capability.descriptor,
@@ -499,13 +510,13 @@ impl PromiseCapability {
             cx.names.empty_string(),
             cx.current_realm(),
             None,
-        );
+        )?;
 
         executor.private_element_set(
             cx,
             cx.well_known_symbols.capability().cast(),
             capability.into(),
-        );
+        )?;
 
         // Construct the promise using the provided constructor. This will fill the resolve and
         // reject fields of the capability.

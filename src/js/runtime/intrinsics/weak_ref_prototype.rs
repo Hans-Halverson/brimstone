@@ -1,6 +1,6 @@
 use crate::runtime::{
-    error::type_error, eval_result::EvalResult, object_value::ObjectValue, property::Property,
-    realm::Realm, Context, Handle, Value,
+    alloc_error::AllocResult, error::type_error, eval_result::EvalResult,
+    object_value::ObjectValue, property::Property, realm::Realm, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject};
@@ -9,12 +9,12 @@ pub struct WeakRefPrototype;
 
 impl WeakRefPrototype {
     /// Properties of the WeakRef Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-weak-ref-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once WeakRefConstructor has been created
-        object.intrinsic_func(cx, cx.names.deref(), Self::deref, 0, realm);
+        object.intrinsic_func(cx, cx.names.deref(), Self::deref, 0, realm)?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -22,9 +22,9 @@ impl WeakRefPrototype {
             cx,
             to_string_tag_key,
             Property::data(cx.names.weak_ref().as_string().into(), false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// WeakRef.prototype.deref (https://tc39.es/ecma262/#sec-weak-ref.prototype.deref)

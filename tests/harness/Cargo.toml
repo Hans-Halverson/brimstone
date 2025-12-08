@@ -16,5 +16,8 @@ threadpool.workspace = true
 yaml-rust.workspace = true
 
 [features]
+default = ["alloc_error"]
+alloc_error = ["brimstone_core/alloc_error"]
 gc_stress_test = ["brimstone_core/gc_stress_test"]
 handle_stats = ["brimstone_core/handle_stats"]
+nightly = ["brimstone_core/nightly"]

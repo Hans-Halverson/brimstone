@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -26,10 +27,10 @@ impl ImportAttributes {
     pub fn new(
         cx: Context,
         attribute_pairs: &[(Handle<FlatString>, Handle<FlatString>)],
-    ) -> Handle<ImportAttributes> {
+    ) -> AllocResult<Handle<ImportAttributes>> {
         let num_entries = attribute_pairs.len() * 2;
         let size = Self::calculate_size_in_bytes(num_entries);
-        let mut object = cx.alloc_uninit_with_size::<ImportAttributes>(size);
+        let mut object = cx.alloc_uninit_with_size::<ImportAttributes>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ImportAttributes));
 
@@ -39,7 +40,7 @@ impl ImportAttributes {
             object.attribute_pairs.as_mut_slice()[i * 2 + 1] = **value;
         }
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     #[inline]

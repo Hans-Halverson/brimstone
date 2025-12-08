@@ -2,7 +2,11 @@ use std::cmp::Ordering;
 
 use num_bigint::{BigInt, ToBigInt};
 
-use crate::{common::math::modulo, must};
+use crate::{
+    common::math::modulo,
+    must,
+    runtime::{alloc_error::AllocResult, string_parsing::StringLexer},
+};
 
 use super::{
     abstract_operations::{call_object, get, get_method},
@@ -53,7 +57,7 @@ pub fn to_primitive(
                 ToPrimitivePreferredType::Number => "number",
                 ToPrimitivePreferredType::String => "string",
             };
-            let hint_value: Handle<Value> = cx.alloc_string(hint_str).into();
+            let hint_value: Handle<Value> = cx.alloc_string(hint_str)?.into();
 
             let result = call_object(cx, exotic_prim, value, &[hint_value])?;
             if result.is_object() {
@@ -157,7 +161,7 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
             match value.as_pointer().descriptor().kind() {
                 // May allocate
                 HeapItemKind::String => {
-                    Ok(string_to_number(value_handle.as_string()).to_handle(cx))
+                    Ok(string_to_number(value_handle.as_string())?.to_handle(cx))
                 }
                 HeapItemKind::Symbol => type_error(cx, "symbol cannot be converted to number"),
                 HeapItemKind::BigInt => type_error(cx, "BigInt cannot be converted to number"),
@@ -181,11 +185,12 @@ pub fn to_number(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
 }
 
 /// StringToNumber (https://tc39.es/ecma262/#sec-stringtonumber)
-fn string_to_number(value: Handle<StringValue>) -> Value {
-    match parse_string_to_number(value) {
+fn string_to_number(value: Handle<StringValue>) -> AllocResult<Value> {
+    let lexer = StringLexer::new(value)?;
+    Ok(match parse_string_to_number(lexer) {
         None => Value::nan(),
         Some(num) => Value::number(num),
-    }
+    })
 }
 
 /// ToIntegerOrInfinity (https://tc39.es/ecma262/#sec-tointegerorinfinity)
@@ -467,8 +472,8 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
             HeapItemKind::BigInt => return Ok(primitive_handle.as_bigint()),
             HeapItemKind::String => {
                 // May allocate
-                return if let Some(bigint) = string_to_bigint(primitive_handle.as_string()) {
-                    Ok(BigIntValue::new(cx, bigint))
+                return if let Some(bigint) = string_to_bigint(primitive_handle.as_string())? {
+                    Ok(BigIntValue::new(cx, bigint)?)
                 } else {
                     syntax_error(cx, "string does not represent a BigInt")
                 };
@@ -477,9 +482,9 @@ pub fn to_bigint(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntV
         }
     } else if primitive.is_bool() {
         return if primitive.as_bool() {
-            Ok(BigIntValue::new(cx, 1.into()))
+            Ok(BigIntValue::new(cx, 1.into())?)
         } else {
-            Ok(BigIntValue::new(cx, 0.into()))
+            Ok(BigIntValue::new(cx, 0.into())?)
         };
     }
 
@@ -531,7 +536,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
             match value.as_pointer().descriptor().kind() {
                 HeapItemKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
-                    Ok(cx.alloc_string(&bigint_string).as_string())
+                    Ok(cx.alloc_string(&bigint_string)?.as_string())
                 }
                 HeapItemKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
@@ -539,20 +544,20 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Ok(cx.alloc_string("null").as_string()),
-            UNDEFINED_TAG => Ok(cx.alloc_string("undefined").as_string()),
+            NULL_TAG => Ok(cx.alloc_string("null")?.as_string()),
+            UNDEFINED_TAG => Ok(cx.alloc_string("undefined")?.as_string()),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
-                Ok(cx.alloc_string(str).as_string())
+                Ok(cx.alloc_string(str)?.as_string())
             }
             SMI_TAG => {
                 let smi_string = value.as_smi().to_string();
-                Ok(cx.alloc_string(&smi_string).as_string())
+                Ok(cx.alloc_string(&smi_string)?.as_string())
             }
             // Otherwise must be double
             _ => {
                 let double_string = number_to_string(value.as_double());
-                Ok(cx.alloc_string(&double_string).as_string())
+                Ok(cx.alloc_string(&double_string)?.as_string())
             }
         }
     }
@@ -570,13 +575,13 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         } else {
             match value.as_pointer().descriptor().kind() {
                 HeapItemKind::String => {
-                    Ok(StringObject::new_from_value(cx, value_handle.as_string()).as_object())
+                    Ok(StringObject::new_from_value(cx, value_handle.as_string())?.as_object())
                 }
                 HeapItemKind::Symbol => {
-                    Ok(SymbolObject::new_from_value(cx, value_handle.as_symbol()).as_object())
+                    Ok(SymbolObject::new_from_value(cx, value_handle.as_symbol())?.as_object())
                 }
                 HeapItemKind::BigInt => {
-                    Ok(BigIntObject::new_from_value(cx, value_handle.as_bigint()).as_object())
+                    Ok(BigIntObject::new_from_value(cx, value_handle.as_bigint())?.as_object())
                 }
                 _ => unreachable!(),
             }
@@ -585,9 +590,9 @@ pub fn to_object(cx: Context, value_handle: Handle<Value>) -> EvalResult<Handle<
         match value.get_tag() {
             NULL_TAG => type_error(cx, "null has no properties"),
             UNDEFINED_TAG => type_error(cx, "undefined has no properties"),
-            BOOL_TAG => Ok(BooleanObject::new(cx, value.as_bool()).as_object()),
+            BOOL_TAG => Ok(BooleanObject::new(cx, value.as_bool())?.as_object()),
             // Otherwise is a number, either double or smi
-            _ => Ok(NumberObject::new(cx, value.as_number()).as_object()),
+            _ => Ok(NumberObject::new(cx, value.as_number())?.as_object()),
         }
     }
 }
@@ -612,14 +617,14 @@ pub fn canonical_numeric_string_index_string(
     cx: Context,
     key: Handle<PropertyKey>,
     string_length: u32,
-) -> Option<Option<u32>> {
+) -> AllocResult<Option<u32>> {
     if key.is_array_index() {
         // Fast path for array indices
         let array_index = key.as_array_index();
         if array_index < string_length {
-            Some(Some(array_index))
+            Ok(Some(array_index))
         } else {
-            Some(None)
+            Ok(None)
         }
     } else if key.is_string() {
         // Otherwise must convert to number then back to string
@@ -628,33 +633,33 @@ pub fn canonical_numeric_string_index_string(
 
         // If string representations are equal, must be canonical numeric index
         let number_string = must!(to_string(cx, number_value));
-        if key_string.eq(&number_string) {
+        if key_string.equals(&number_string)? {
             if !is_integral_number(*number_value) {
-                return Some(None);
+                return Ok(None);
             }
 
             let number = number_value.as_number();
             if number.is_sign_negative() {
-                return Some(None);
+                return Ok(None);
             }
 
             let number = number as usize;
             if number >= string_length as usize {
-                return Some(None);
+                return Ok(None);
             }
 
-            Some(Some(number as u32))
+            Ok(Some(number as u32))
         } else if (*key_string)
             .as_flat()
             .eq(&cx.names.negative_zero.as_string().as_flat())
         {
             // The string "-0" is a canonical numeric index but is never valid as an index
-            Some(None)
+            Ok(None)
         } else {
-            None
+            Ok(None)
         }
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -787,7 +792,7 @@ pub fn is_regexp(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
 }
 
 /// SameValue (https://tc39.es/ecma262/#sec-samevalue)
-pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocResult<bool> {
     let v1 = v1_handle;
     let v2 = v2_handle;
 
@@ -796,18 +801,18 @@ pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
     if v1.is_number() {
         if v2.is_number() {
             if v1.is_nan() && v2.is_nan() {
-                return true;
+                return Ok(true);
             }
 
             if v1.is_positive_zero() && v2.is_negative_zero()
                 || v1.is_negative_zero() && v2.is_positive_zero()
             {
-                return false;
+                return Ok(false);
             }
 
-            return v1.as_number() == v2.as_number();
+            return Ok(v1.as_number() == v2.as_number());
         } else {
-            return false;
+            return Ok(false);
         }
     }
 
@@ -815,7 +820,7 @@ pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
 }
 
 /// SameValueZero (https://tc39.es/ecma262/#sec-samevaluezero)
-pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocResult<bool> {
     let v1 = *v1_handle;
     let v2 = *v2_handle;
 
@@ -823,12 +828,12 @@ pub fn same_value_zero(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bo
     if v1.is_number() {
         if v2.is_number() {
             if v1.is_nan() && v2.is_nan() {
-                return true;
+                return Ok(true);
             }
 
-            return v1.as_number() == v2.as_number();
+            return Ok(v1.as_number() == v2.as_number());
         } else {
-            return false;
+            return Ok(false);
         }
     }
 
@@ -858,13 +863,13 @@ pub fn same_value_zero_non_allocating(v1: Value, v2: Value) -> bool {
 ///
 /// Also includes BigInt handling
 #[inline]
-fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocResult<bool> {
     let v1 = *v1_handle;
     let v2 = *v2_handle;
 
     // Fast path, if values have same bits they are always equal
     if v1.as_raw_bits() == v2.as_raw_bits() {
-        return true;
+        return Ok(true);
     }
 
     // Only strings and BigInts may have the same value but different bit patterns, since
@@ -875,17 +880,17 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
             match kind1 {
                 HeapItemKind::String => {
                     // May allocate
-                    return v1_handle.as_string().eq(&v2_handle.as_string());
+                    return v1_handle.as_string().equals(&v2_handle.as_string());
                 }
                 HeapItemKind::BigInt => {
-                    return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())
+                    return Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()))
                 }
                 _ => {}
             }
         }
     }
 
-    false
+    Ok(false)
 }
 
 // Same as same_value_non_numeric but cannot allocate. Callers must ensure that all string values
@@ -926,8 +931,9 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
 }
 
 /// StringToBigInt (https://tc39.es/ecma262/#sec-stringtobigint)
-fn string_to_bigint(value: Handle<StringValue>) -> Option<BigInt> {
-    parse_string_to_bigint(value)
+fn string_to_bigint(value: Handle<StringValue>) -> AllocResult<Option<BigInt>> {
+    let lexer = StringLexer::new(value)?;
+    Ok(parse_string_to_bigint(lexer))
 }
 
 /// ToPropertyKey (https://tc39.es/ecma262/#sec-topropertykey)
@@ -939,19 +945,19 @@ pub fn to_property_key(
     if value.is_smi() {
         let smi_value = value.as_smi();
         if smi_value >= 0 {
-            return Ok(PropertyKey::array_index(cx, smi_value as u32).to_handle(cx));
+            return Ok(PropertyKey::array_index_handle(cx, smi_value as u32)?);
         }
     }
 
     let key = to_primitive(cx, value_handle, ToPrimitivePreferredType::String)?;
     if key.is_string() {
-        return Ok(PropertyKey::string(cx, key.as_string()).to_handle(cx));
+        return Ok(PropertyKey::string_handle(cx, key.as_string())?);
     } else if key.is_symbol() {
         return Ok(PropertyKey::symbol(key.as_symbol()));
     }
 
     let string_key = to_string(cx, key)?;
-    Ok(PropertyKey::string(cx, string_key).to_handle(cx))
+    Ok(PropertyKey::string_handle(cx, string_key)?)
 }
 
 /// IsLessThan (https://tc39.es/ecma262/#sec-islessthan)
@@ -977,12 +983,12 @@ pub fn is_less_than(
                 // May allocate
                 return Ok(x_handle
                     .as_string()
-                    .cmp(&y_handle.as_string())
+                    .compare(&y_handle.as_string())?
                     .is_lt()
                     .into());
             } else if y_kind == HeapItemKind::BigInt {
                 // May allocate
-                let x_bigint = string_to_bigint(x_handle.as_string());
+                let x_bigint = string_to_bigint(x_handle.as_string())?;
 
                 return if let Some(x_bigint) = x_bigint {
                     Ok(x_bigint.lt(&y_handle.as_bigint().bigint()).into())
@@ -994,7 +1000,7 @@ pub fn is_less_than(
 
         if x_kind == HeapItemKind::BigInt && y_kind == HeapItemKind::String {
             // May allocate
-            let y_bigint = string_to_bigint(y_handle.as_string());
+            let y_bigint = string_to_bigint(y_handle.as_string())?;
 
             return if let Some(y_bigint) = y_bigint {
                 Ok(x_handle.as_bigint().bigint().lt(&y_bigint).into())
@@ -1116,7 +1122,7 @@ pub fn is_loosely_equal(
             match v2.as_pointer().descriptor().kind() {
                 HeapItemKind::String => {
                     // May allocate
-                    let number_v2 = string_to_number(v2_handle.as_string());
+                    let number_v2 = string_to_number(v2_handle.as_string())?;
                     Ok(v1_handle.as_number() == number_v2.as_number())
                 }
                 HeapItemKind::BigInt => {
@@ -1170,7 +1176,7 @@ pub fn is_loosely_equal(
                     // Only strings and BigInts may have the same value but different bit patterns
                     HeapItemKind::String => {
                         // May allocate
-                        Ok(v1_handle.as_string().eq(&v2_handle.as_string()))
+                        Ok(v1_handle.as_string().equals(&v2_handle.as_string())?)
                     }
                     HeapItemKind::BigInt => {
                         Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()))
@@ -1211,7 +1217,7 @@ pub fn is_loosely_equal(
             match kind {
                 HeapItemKind::String => {
                     // May allocate
-                    let v1_number = string_to_number(v1_handle.as_string());
+                    let v1_number = string_to_number(v1_handle.as_string())?;
                     Ok(v1_number.as_number() == v2_handle.as_number())
                 }
                 HeapItemKind::BigInt => {
@@ -1252,7 +1258,7 @@ pub fn is_loosely_equal(
         match (kind1, kind2) {
             (HeapItemKind::String, HeapItemKind::BigInt) => {
                 // May allocate
-                let v1_bigint = string_to_bigint(v1_handle.as_string());
+                let v1_bigint = string_to_bigint(v1_handle.as_string())?;
                 return if let Some(v1_bigint) = v1_bigint {
                     Ok(v1_bigint.eq(&v2_handle.as_bigint().bigint()))
                 } else {
@@ -1261,7 +1267,7 @@ pub fn is_loosely_equal(
             }
             (HeapItemKind::BigInt, HeapItemKind::String) => {
                 // May allocate
-                let v2_bigint = string_to_bigint(v2_handle.as_string());
+                let v2_bigint = string_to_bigint(v2_handle.as_string())?;
                 return if let Some(v2_bigint) = v2_bigint {
                     Ok(v1_handle.as_bigint().bigint().eq(&v2_bigint))
                 } else {
@@ -1286,15 +1292,15 @@ pub fn is_loosely_equal(
 }
 
 /// IsStrictlyEqual (https://tc39.es/ecma262/#sec-isstrictlyequal)
-pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> bool {
+pub fn is_strictly_equal(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocResult<bool> {
     let v1 = *v1_handle;
     let v2 = *v2_handle;
 
     if v1.is_number() {
         if v2.is_number() {
-            return v1.as_number() == v2.as_number();
+            return Ok(v1.as_number() == v2.as_number());
         } else {
-            return false;
+            return Ok(false);
         }
     }
 

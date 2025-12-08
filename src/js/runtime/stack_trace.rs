@@ -1,4 +1,6 @@
-use crate::{handle_scope_guard, parser::loc::find_line_col_for_pos};
+use crate::{
+    handle_scope_guard, parser::loc::find_line_col_for_pos, runtime::alloc_error::AllocResult,
+};
 
 use super::{
     bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
@@ -93,19 +95,19 @@ fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec
 pub fn create_current_stack_frame_info(
     cx: Context,
     skip_current_frame: bool,
-) -> HeapPtr<StackFrameInfoArray> {
+) -> AllocResult<HeapPtr<StackFrameInfoArray>> {
     handle_scope_guard!(cx);
 
     let frames = gather_current_stack_frames(cx, skip_current_frame);
 
     let mut array =
-        StackFrameInfoArray::new_uninit(cx, HeapItemKind::StackFrameInfoArray, frames.len());
+        StackFrameInfoArray::new_uninit(cx, HeapItemKind::StackFrameInfoArray, frames.len())?;
 
     for (i, frame) in frames.iter().enumerate() {
         array.as_mut_slice()[i] = frame.to_heap();
     }
 
-    array
+    Ok(array)
 }
 
 /// Create the string representation of a strack trace for an error, given the stack frame info
@@ -113,9 +115,9 @@ pub fn create_current_stack_frame_info(
 pub fn create_stack_trace(
     mut cx: Context,
     stack_frame_info: Handle<StackFrameInfoArray>,
-) -> CachedStackTraceInfo {
+) -> AllocResult<CachedStackTraceInfo> {
     // Do any preparatory work that may allocate
-    prepare_for_stack_trace(cx, stack_frame_info);
+    prepare_for_stack_trace(cx, stack_frame_info)?;
 
     let mut stack_trace = String::new();
     let mut first_source_file_line_col = None;
@@ -127,7 +129,7 @@ pub fn create_stack_trace(
         // Followed by the name of the function
         let func = stack_frame.function;
         if let Some(name) = func.name() {
-            stack_trace.push_str(&name.to_string());
+            stack_trace.push_str(&name.format()?);
         } else {
             stack_trace.push_str("<anonymous>");
         }
@@ -173,16 +175,19 @@ pub fn create_stack_trace(
         }
     }
 
-    let frames = cx.alloc_string_ptr(&stack_trace);
+    let frames = cx.alloc_string_ptr(&stack_trace)?;
     let source_file_line_col =
         first_source_file_line_col.map(|(file, line, col)| (*file, line, col));
 
-    CachedStackTraceInfo { frames, source_file_line_col }
+    Ok(CachedStackTraceInfo { frames, source_file_line_col })
 }
 
 /// Prepare for a stack trace to be formatted. Perform any allocations that will be needed, such as
 /// calculating line offsets for all source files.
-fn prepare_for_stack_trace(cx: Context, stack_frame_info: Handle<StackFrameInfoArray>) {
+fn prepare_for_stack_trace(
+    cx: Context,
+    stack_frame_info: Handle<StackFrameInfoArray>,
+) -> AllocResult<()> {
     // Handle is shared between iterations
     let mut source_file_handle: Handle<SourceFile> = Handle::empty(cx);
 
@@ -191,9 +196,11 @@ fn prepare_for_stack_trace(cx: Context, stack_frame_info: Handle<StackFrameInfoA
     for i in 0..stack_frame_info.len() {
         if let Some(source_file) = stack_frame_info.as_slice()[i].function.source_file_ptr() {
             source_file_handle.replace(source_file);
-            source_file_handle.line_offsets_ptr(cx);
+            source_file_handle.line_offsets_ptr(cx)?;
         }
     }
+
+    Ok(())
 }
 
 pub fn stack_frame_info_array_byte_size(stack_frame_array: HeapPtr<StackFrameInfoArray>) -> usize {

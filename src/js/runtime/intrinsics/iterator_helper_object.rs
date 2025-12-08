@@ -4,6 +4,7 @@ use crate::{
     extend_object,
     runtime::{
         abstract_operations::call_object,
+        alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         generator_object::GeneratorState,
         heap_item_descriptor::HeapItemKind,
@@ -61,68 +62,76 @@ enum IteratorHelperState {
 impl IteratorHelperObject {
     /// Creates and initializes a new IteratorHelperObject. Does not set the iterator helper's
     /// state, which must be done by the caller.
-    fn new(cx: Context, iterator: &Iterator) -> Handle<IteratorHelperObject> {
+    fn new(cx: Context, iterator: &Iterator) -> AllocResult<Handle<IteratorHelperObject>> {
         let prototype = cx.get_intrinsic(Intrinsic::IteratorHelperPrototype);
         let mut object = object_create_with_proto::<IteratorHelperObject>(
             cx,
             HeapItemKind::IteratorHelperObject,
             prototype,
-        );
+        )?;
 
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);
         set_uninit!(object.is_done, iterator.is_done);
         set_uninit!(object.generator_state, GeneratorState::SuspendedStart);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
-    pub fn new_drop(cx: Context, iterator: &Iterator, limit: f64) -> Handle<IteratorHelperObject> {
-        let mut object = Self::new(cx, iterator);
+    pub fn new_drop(
+        cx: Context,
+        iterator: &Iterator,
+        limit: f64,
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, iterator)?;
         set_uninit!(object.state, IteratorHelperState::Drop(limit));
-        object
+        Ok(object)
     }
 
-    pub fn new_take(cx: Context, iterator: &Iterator, limit: f64) -> Handle<IteratorHelperObject> {
-        let mut object = Self::new(cx, iterator);
+    pub fn new_take(
+        cx: Context,
+        iterator: &Iterator,
+        limit: f64,
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, iterator)?;
         set_uninit!(object.state, IteratorHelperState::Take(limit));
-        object
+        Ok(object)
     }
 
     pub fn new_filter(
         cx: Context,
         iterator: &Iterator,
         predicate: Handle<ObjectValue>,
-    ) -> Handle<IteratorHelperObject> {
-        let mut object = Self::new(cx, iterator);
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, iterator)?;
         set_uninit!(
             object.state,
             IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
         );
-        object
+        Ok(object)
     }
 
     pub fn new_map(
         cx: Context,
         iterator: &Iterator,
         mapper: Handle<ObjectValue>,
-    ) -> Handle<IteratorHelperObject> {
-        let mut object = Self::new(cx, iterator);
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, iterator)?;
         set_uninit!(object.state, IteratorHelperState::Map { mapper: *mapper, counter: 0 });
-        object
+        Ok(object)
     }
 
     pub fn new_flat_map(
         cx: Context,
         iterator: &Iterator,
         mapper: Handle<ObjectValue>,
-    ) -> Handle<IteratorHelperObject> {
-        let mut object = Self::new(cx, iterator);
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, iterator)?;
         set_uninit!(
             object.state,
             IteratorHelperState::FlatMap { mapper: *mapper, inner_iterator: None, counter: 0 }
         );
-        object
+        Ok(object)
     }
 
     pub fn generator_state(&self) -> GeneratorState {
@@ -243,7 +252,9 @@ impl Handle<IteratorHelperObject> {
         }
 
         let value_opt = self.iterator_step_value(cx, &mut iterator)?;
-        Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
+        value_opt
+            .map(|value| Ok(create_iter_result_object(cx, value, false)?.as_object()))
+            .transpose()
     }
 
     fn next_take(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
@@ -266,7 +277,9 @@ impl Handle<IteratorHelperObject> {
 
         let mut iterator = self.iterator(cx);
         let value_opt = self.iterator_step_value(cx, &mut iterator)?;
-        Ok(value_opt.map(|value| create_iter_result_object(cx, value, false).as_object()))
+        value_opt
+            .map(|value| Ok(create_iter_result_object(cx, value, false)?.as_object()))
+            .transpose()
     }
 
     fn next_filter(
@@ -317,7 +330,7 @@ impl Handle<IteratorHelperObject> {
 
             // Return the value as an iterator result if the predicate returns true
             if is_selected {
-                return Ok(Some(create_iter_result_object(cx, value, false).as_object()));
+                return Ok(Some(create_iter_result_object(cx, value, false)?.as_object()));
             }
 
             // Increment the counter for the next iteration
@@ -356,7 +369,7 @@ impl Handle<IteratorHelperObject> {
                 iterator_close(cx, self.iterator_object(), Err(error))?;
                 Ok(None)
             }
-            Ok(value) => Ok(Some(create_iter_result_object(cx, value, false).as_object())),
+            Ok(value) => Ok(Some(create_iter_result_object(cx, value, false)?.as_object())),
         }
     }
 
@@ -448,7 +461,7 @@ impl Handle<IteratorHelperObject> {
                 }
                 // If the inner iterator returns a value then return it as an iterator result
                 Ok(Some(value)) => {
-                    return Ok(Some(create_iter_result_object(cx, value, false).as_object()))
+                    return Ok(Some(create_iter_result_object(cx, value, false)?.as_object()))
                 }
             }
 

@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::{
-    eval_err, handle_scope,
+    completion_value, eval_err, handle_scope,
     runtime::{
         abstract_operations::{call, call_object},
         intrinsics::promise_constructor::execute_then,
@@ -196,7 +196,7 @@ impl AwaitResumeTask {
                 .push_initial_realm_stack_frame(async_generator.realm_ptr())?;
             cx.vm().mark_stack_trace_top();
 
-            async_generator_resume(cx, async_generator, completion_value, completion_type);
+            async_generator_resume(cx, async_generator, completion_value, completion_type)?;
 
             cx.vm().pop_initial_realm_stack_frame();
         }
@@ -254,14 +254,14 @@ impl PromiseThenReactionTask {
 
         let completion = if let Some(capability) = capability {
             // Resolve or reject the capability with the result of the handler
-            match handler_result {
+            match completion_value!(handler_result) {
                 Ok(handler_result) => {
                     let resolve = capability.resolve();
                     call_object(cx, resolve, cx.undefined(), &[handler_result])
                 }
                 Err(handler_result) => {
                     let reject = capability.reject();
-                    call_object(cx, reject, cx.undefined(), &[handler_result.value()])
+                    call_object(cx, reject, cx.undefined(), &[handler_result])
                 }
             }
         } else {

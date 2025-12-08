@@ -3,6 +3,7 @@ use std::{mem::size_of, slice};
 use crate::{
     extend_object, field_offset,
     runtime::{
+        alloc_error::AllocResult,
         collections::InlineArray,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -36,8 +37,8 @@ impl FinalizationRegistryObject {
         constructor: Handle<ObjectValue>,
         cleanup_callback: Handle<ObjectValue>,
     ) -> EvalResult<Handle<FinalizationRegistryObject>> {
-        let cells =
-            FinalizationRegistryCells::new(cx, FinalizationRegistryCells::MIN_CAPACITY).to_handle();
+        let cells = FinalizationRegistryCells::new(cx, FinalizationRegistryCells::MIN_CAPACITY)?
+            .to_handle();
         let mut object = object_create_from_constructor::<FinalizationRegistryObject>(
             cx,
             constructor,
@@ -95,9 +96,9 @@ const CELLS_BYTE_OFFSET: usize = field_offset!(FinalizationRegistryCells, cells)
 impl FinalizationRegistryCells {
     const MIN_CAPACITY: usize = 4;
 
-    fn new(cx: Context, capacity: usize) -> HeapPtr<FinalizationRegistryCells> {
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<FinalizationRegistryCells>> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size);
+        let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size)?;
 
         set_uninit!(
             cells.descriptor,
@@ -112,7 +113,7 @@ impl FinalizationRegistryCells {
 
         // Leave entries uninitialized
 
-        cells
+        Ok(cells)
     }
 
     #[inline]
@@ -137,14 +138,14 @@ impl FinalizationRegistryCells {
     pub fn maybe_grow_for_insertion(
         cx: Context,
         mut registry: Handle<FinalizationRegistryObject>,
-    ) -> HeapPtr<FinalizationRegistryCells> {
+    ) -> AllocResult<HeapPtr<FinalizationRegistryCells>> {
         let old_cells = registry.cells;
         let capacity = old_cells.capacity();
         let num_cells_used = old_cells.num_cells_used();
 
         // Check if we already have enough room for an insertion
         if num_cells_used < capacity {
-            return old_cells;
+            return Ok(old_cells);
         }
 
         let new_num_occupied = old_cells.num_occupied + 1;
@@ -157,7 +158,7 @@ impl FinalizationRegistryCells {
 
         // Save old cells pointer behind handle across allcation
         let old_cells = old_cells.to_handle();
-        let mut new_cells = FinalizationRegistryCells::new(cx, new_capacity);
+        let mut new_cells = FinalizationRegistryCells::new(cx, new_capacity)?;
         let old_cells = *old_cells;
 
         // Copy over occupied cells to new array
@@ -173,7 +174,7 @@ impl FinalizationRegistryCells {
 
         registry.cells = new_cells;
 
-        new_cells
+        Ok(new_cells)
     }
 
     pub fn insert_without_growing(&mut self, cell: FinalizationRegistryCell) {

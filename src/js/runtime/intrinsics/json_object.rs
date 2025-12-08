@@ -8,6 +8,7 @@ use crate::{
             call, call_object, create_data_property, create_data_property_or_throw,
             enumerable_own_property_names, get_v, length_of_array_like, KeyOrValue,
         },
+        alloc_error::AllocResult,
         array_object::array_create,
         error::{syntax_error, type_error},
         function::get_argument,
@@ -31,12 +32,12 @@ use super::intrinsics::Intrinsic;
 pub struct JSONObject;
 
 impl JSONObject {
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut object =
-            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true);
+            ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.parse(), Self::parse, 2, realm);
-        object.intrinsic_func(cx, cx.names.stringify(), Self::stringify, 3, realm);
+        object.intrinsic_func(cx, cx.names.parse(), Self::parse, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.stringify(), Self::stringify, 3, realm)?;
 
         // JSON [ @@toStringTag ] (https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -45,9 +46,9 @@ impl JSONObject {
             cx,
             to_string_tag_key,
             Property::data(math_name_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// JSON.parse (https://tc39.es/ecma262/#sec-json.parse)
@@ -59,7 +60,7 @@ impl JSONObject {
         let text_arg = get_argument(cx, arguments, 0);
         let text_string = to_string(cx, text_arg)?;
 
-        let mut lexer = StringLexer::new(text_string);
+        let mut lexer = StringLexer::new(text_string)?;
 
         // First parse the entire JSON, does not allocate
         let json_value = if let Some(json_value) = parse_json(&mut lexer) {
@@ -69,13 +70,13 @@ impl JSONObject {
         };
 
         // Then convert to a JS value, which may allocate
-        let value = json_value.to_js_value(cx);
+        let value = json_value.to_js_value(cx)?;
 
         let reviver_arg = get_argument(cx, arguments, 1);
         if is_callable(reviver_arg) {
             let reviver = reviver_arg.as_object();
 
-            let root = ordinary_object_create(cx);
+            let root = ordinary_object_create(cx)?;
             let root_name = cx.names.empty_string();
             must!(create_data_property_or_throw(cx, root, root_name, value));
 
@@ -104,7 +105,7 @@ impl JSONObject {
                 let length = length_of_array_like(cx, value)?;
 
                 for i in 0..length {
-                    key.replace(PropertyKey::from_u64(cx, i));
+                    key.replace(PropertyKey::from_u64(cx, i)?);
 
                     let new_element = Self::internalize_json_property(cx, value, key, reviver)?;
 
@@ -130,7 +131,7 @@ impl JSONObject {
             }
         }
 
-        let holder_key_value = holder_key.to_value(cx);
+        let holder_key_value = holder_key.to_value(cx)?;
 
         call_object(cx, reviver, holder.into(), &[holder_key_value, value])
     }
@@ -162,20 +163,20 @@ impl JSONObject {
                 let length = length_of_array_like(cx, replacer_array)?;
 
                 for i in 0..length {
-                    key.replace(PropertyKey::from_u64(cx, i));
+                    key.replace(PropertyKey::from_u64(cx, i)?);
 
                     // Property may be a number of string primitive
                     let array_element = get(cx, replacer_array, key)?;
                     if array_element.is_number() {
                         let string = must!(to_string(cx, array_element));
-                        let property_key = PropertyKey::string(cx, string).to_handle(cx);
+                        let property_key = PropertyKey::string_handle(cx, string)?;
 
                         if property_keys_set.insert(property_key) {
                             property_keys.push(property_key);
                         }
                     } else if array_element.is_string() {
                         let property_key =
-                            PropertyKey::string(cx, array_element.as_string()).to_handle(cx);
+                            PropertyKey::string_handle(cx, array_element.as_string())?;
 
                         if property_keys_set.insert(property_key) {
                             property_keys.push(property_key);
@@ -187,7 +188,7 @@ impl JSONObject {
                             || array_element_object.is_string_object()
                         {
                             let string = to_string(cx, array_element_object.into())?;
-                            let property_key = PropertyKey::string(cx, string).to_handle(cx);
+                            let property_key = PropertyKey::string_handle(cx, string)?;
 
                             if property_keys_set.insert(property_key) {
                                 property_keys.push(property_key);
@@ -229,15 +230,15 @@ impl JSONObject {
         } else if space_value.is_string() {
             let space_string = space_value.as_string();
             if space_string.len() <= 10 {
-                space_string.to_wtf8_string()
+                space_string.to_wtf8_string()?
             } else {
-                space_string.substring(cx, 0, 10).to_wtf8_string()
+                space_string.substring(cx, 0, 10)?.to_wtf8_string()
             }
         } else {
             Wtf8String::new()
         };
 
-        let wrapper = ordinary_object_create(cx);
+        let wrapper = ordinary_object_create(cx)?;
 
         let value = get_argument(cx, arguments, 0);
         must!(create_data_property_or_throw(cx, wrapper, cx.names.empty_string(), value));
@@ -247,7 +248,7 @@ impl JSONObject {
             return Ok(cx.undefined());
         }
 
-        Ok(serializer.build(cx).as_value())
+        Ok(serializer.build(cx)?.as_value())
     }
 }
 
@@ -470,12 +471,12 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
 }
 
 impl JSONValue {
-    pub fn to_js_value(&self, mut cx: Context) -> Handle<Value> {
-        match self {
+    pub fn to_js_value(&self, mut cx: Context) -> AllocResult<Handle<Value>> {
+        let value = match self {
             Self::Null => cx.null(),
             Self::Boolean(b) => cx.bool(*b),
             Self::Number(n) => Value::from(*n).to_handle(cx),
-            Self::String(s) => cx.alloc_wtf8_string(s).into(),
+            Self::String(s) => cx.alloc_wtf8_string(s)?.into(),
             Self::Array(values) => {
                 let array = must!(array_create(cx, 0, None));
 
@@ -483,32 +484,34 @@ impl JSONValue {
                 let mut key = PropertyKey::uninit().to_handle(cx);
 
                 for (i, value) in values.iter().enumerate() {
-                    key.replace(PropertyKey::from_u64(cx, i as u64));
-                    let desc = Property::data(value.to_js_value(cx), true, true, true);
-                    array.as_object().set_property(cx, key, desc);
+                    key.replace(PropertyKey::from_u64(cx, i as u64)?);
+                    let desc = Property::data(value.to_js_value(cx)?, true, true, true);
+                    array.as_object().set_property(cx, key, desc)?;
                 }
 
                 array.into()
             }
             Self::Object(properties) => {
-                let object = ordinary_object_create(cx);
+                let object = ordinary_object_create(cx)?;
 
                 // Key is shared between iterations
                 let mut key_value: Handle<Value> = Handle::empty(cx);
                 let mut key = PropertyKey::uninit().to_handle(cx);
 
                 for (key_string, value) in properties {
-                    key_value.replace(cx.alloc_wtf8_string_ptr(key_string).as_string().into());
-                    key.replace(PropertyKey::string(cx, key_value.as_string()));
+                    key_value.replace(cx.alloc_wtf8_string_ptr(key_string)?.as_string().into());
+                    key.replace(PropertyKey::string(cx, key_value.as_string())?);
 
-                    let value = value.to_js_value(cx);
+                    let value = value.to_js_value(cx)?;
 
                     must!(create_data_property_or_throw(cx, object, key, value));
                 }
 
                 object.into()
             }
-        }
+        };
+
+        Ok(value)
     }
 }
 
@@ -539,8 +542,8 @@ impl JSONSerializer {
         }
     }
 
-    fn build(self, mut cx: Context) -> Handle<StringValue> {
-        cx.alloc_wtf8_string(&self.builder).as_string()
+    fn build(self, mut cx: Context) -> AllocResult<Handle<StringValue>> {
+        Ok(cx.alloc_wtf8_string(&self.builder)?.as_string())
     }
 
     /// SerializeJSONProperty (https://tc39.es/ecma262/#sec-serializejsonproperty)
@@ -559,14 +562,14 @@ impl JSONSerializer {
         if value.is_object() || value.is_bigint() {
             let to_json = get_v(cx, value, cx.names.to_json())?;
             if is_callable(to_json) {
-                let key_value = key.to_value(cx);
+                let key_value = key.to_value(cx)?;
                 value = call(cx, to_json, value, &[key_value])?;
             }
         }
 
         // Call replacer function if one was provided
         if let Some(replacer_function) = self.replacer_function {
-            let key_value = key.to_value(cx);
+            let key_value = key.to_value(cx)?;
             value = call_object(cx, replacer_function, holder.into(), &[key_value, value])?;
         }
 
@@ -593,7 +596,7 @@ impl JSONSerializer {
                 self.builder.push_str("false");
             }
         } else if value.is_string() {
-            self.serialize_json_string(value.as_string());
+            self.serialize_json_string(value.as_string())?;
         } else if value.is_number() {
             let number = value.as_number();
             if number.is_finite() {
@@ -618,10 +621,10 @@ impl JSONSerializer {
     }
 
     /// QuoteJSONString (https://tc39.es/ecma262/#sec-quotejsonstring)
-    fn serialize_json_string(&mut self, string: Handle<StringValue>) {
+    fn serialize_json_string(&mut self, string: Handle<StringValue>) -> AllocResult<()> {
         self.builder.push_char('"');
 
-        for code_point in string.iter_code_points() {
+        for code_point in string.iter_code_points()? {
             // Escape characters
             if code_point == '\x08' as u32 {
                 self.builder.push_str("\\b")
@@ -646,6 +649,8 @@ impl JSONSerializer {
         }
 
         self.builder.push_char('"');
+
+        Ok(())
     }
 
     fn indent(&mut self) {
@@ -695,7 +700,7 @@ impl JSONSerializer {
         let mut has_property = false;
 
         for key in keys {
-            let string_key = key.to_value(cx);
+            let string_key = key.to_value(cx)?;
             debug_assert!(string_key.is_string());
 
             // Mark the string position to revert to if this property should not be added
@@ -716,7 +721,7 @@ impl JSONSerializer {
             }
 
             // Serialize the key and value separated by a colon
-            self.serialize_json_string(string_key.as_string());
+            self.serialize_json_string(string_key.as_string())?;
 
             self.builder.push_char(':');
             if !self.gap.is_empty() {
@@ -759,7 +764,7 @@ impl JSONSerializer {
 
         let length = length_of_array_like(cx, array)?;
         for i in 0..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
 
             // Insert a comma and indentations before all elements but the first
             if i != 0 {

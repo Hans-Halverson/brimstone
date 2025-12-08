@@ -3,7 +3,7 @@ use std::{hash, mem::size_of, num::NonZeroU64, ptr::copy_nonoverlapping};
 use num_bigint::{BigInt, Sign};
 use rand::Rng;
 
-use crate::{field_offset, set_uninit};
+use crate::{field_offset, runtime::alloc_error::AllocResult, set_uninit};
 
 use super::{
     context::Context,
@@ -570,16 +570,16 @@ impl SymbolValue {
         mut cx: Context,
         description: Option<Handle<StringValue>>,
         is_private: bool,
-    ) -> Handle<SymbolValue> {
-        let description = description.map(|d| d.flatten());
-        let mut symbol = cx.alloc_uninit::<SymbolValue>();
+    ) -> AllocResult<Handle<SymbolValue>> {
+        let description = description.map(|d| d.flatten()).transpose()?;
+        let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
 
         set_uninit!(symbol.descriptor, cx.base_descriptors.get(HeapItemKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| *desc));
         set_uninit!(symbol.hash_code, cx.rand.gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
 
-        symbol.to_handle()
+        Ok(symbol.to_handle())
     }
 
     pub fn description_ptr(&self) -> Option<HeapPtr<FlatString>> {
@@ -676,17 +676,17 @@ pub struct BigIntValue {
 impl BigIntValue {
     const DIGITS_OFFSET: usize = field_offset!(BigIntValue, digits);
 
-    pub fn new(cx: Context, value: BigInt) -> Handle<BigIntValue> {
-        Self::new_ptr(cx, value).to_handle()
+    pub fn new(cx: Context, value: BigInt) -> AllocResult<Handle<BigIntValue>> {
+        Ok(Self::new_ptr(cx, value)?.to_handle())
     }
 
-    pub fn new_ptr(cx: Context, value: BigInt) -> HeapPtr<BigIntValue> {
+    pub fn new_ptr(cx: Context, value: BigInt) -> AllocResult<HeapPtr<BigIntValue>> {
         // Extract sign and digits from BigInt
         let (sign, digits) = value.to_u32_digits();
         let len = digits.len();
 
         let size = Self::calculate_size_in_bytes(len);
-        let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size);
+        let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size)?;
 
         // Copy raw parts of BigInt into BigIntValue
         set_uninit!(bigint.descriptor, cx.base_descriptors.get(HeapItemKind::BigInt));
@@ -695,7 +695,7 @@ impl BigIntValue {
 
         unsafe { copy_nonoverlapping(digits.as_ptr(), bigint.digits.as_mut_ptr(), len) };
 
-        bigint
+        Ok(bigint)
     }
 
     pub fn calculate_size_in_bytes(num_u32_digits: usize) -> usize {
@@ -739,13 +739,13 @@ pub struct ValueCollectionKey(Value);
 
 impl ValueCollectionKey {
     // May allocate due to string flattening so do not implement From<Value> directly.
-    pub fn from(value: Handle<Value>) -> Self {
+    pub fn from(value: Handle<Value>) -> AllocResult<Self> {
         if value.is_string() {
-            let flat_string = value.as_string().flatten();
-            return ValueCollectionKey(*flat_string.as_value());
+            let flat_string = value.as_string().flatten()?;
+            return Ok(ValueCollectionKey(*flat_string.as_value()));
         }
 
-        ValueCollectionKey(*value)
+        Ok(ValueCollectionKey(*value))
     }
 
     pub fn get(&self) -> Value {
@@ -815,13 +815,13 @@ pub struct ValueCollectionKeyHandle(Handle<Value>);
 
 impl ValueCollectionKeyHandle {
     /// Identical to ValueCollectionKey::from but stores a handle instead.
-    pub fn new(value: Handle<Value>) -> Self {
+    pub fn new(value: Handle<Value>) -> AllocResult<Self> {
         if value.is_string() {
-            let flat_string = value.as_string().flatten();
-            return ValueCollectionKeyHandle(flat_string.as_string().into());
+            let flat_string = value.as_string().flatten()?;
+            return Ok(ValueCollectionKeyHandle(flat_string.as_string().into()));
         }
 
-        ValueCollectionKeyHandle(value)
+        Ok(ValueCollectionKeyHandle(value))
     }
 
     pub fn get(&self) -> ValueCollectionKey {

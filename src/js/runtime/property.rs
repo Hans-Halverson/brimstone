@@ -1,5 +1,7 @@
 use bitflags::bitflags;
 
+use crate::runtime::alloc_error::AllocResult;
+
 use super::{
     accessor::Accessor,
     gc::{Handle, HeapVisitor},
@@ -99,20 +101,20 @@ impl Property {
         }
     }
 
-    pub fn private_getter(cx: Context, getter: Handle<ObjectValue>) -> Property {
-        let accessor_value = Accessor::new(cx, Some(getter), None);
-        Property {
+    pub fn private_getter(cx: Context, getter: Handle<ObjectValue>) -> AllocResult<Property> {
+        let accessor_value = Accessor::new(cx, Some(getter), None)?;
+        Ok(Property {
             value: accessor_value.into(),
             flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
-        }
+        })
     }
 
-    pub fn private_setter(cx: Context, setter: Handle<ObjectValue>) -> Property {
-        let accessor_value = Accessor::new(cx, None, Some(setter));
-        Property {
+    pub fn private_setter(cx: Context, setter: Handle<ObjectValue>) -> AllocResult<Property> {
+        let accessor_value = Accessor::new(cx, None, Some(setter))?;
+        Ok(Property {
             value: accessor_value.into(),
             flags: PropertyFlags::IS_PRIVATE_ACCESSOR,
-        }
+        })
     }
 
     pub fn private_accessor(accessor: Handle<Accessor>) -> Property {

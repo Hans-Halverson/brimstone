@@ -2,7 +2,11 @@ use std::mem::size_of;
 
 use brimstone_macros::wrap_ordinary_object;
 
-use crate::{extend_object, must, runtime::type_utilities::is_array, set_uninit};
+use crate::{
+    extend_object, must,
+    runtime::{alloc_error::AllocResult, type_utilities::is_array},
+    set_uninit,
+};
 
 use super::{
     abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
@@ -36,13 +40,13 @@ extend_object! {
 impl ArrayObject {
     pub const VIRTUAL_OBJECT_VTABLE: *const () = extract_virtual_object_vtable::<Self>();
 
-    pub fn new(cx: Context, proto: Handle<ObjectValue>) -> Handle<ArrayObject> {
+    pub fn new(cx: Context, proto: Handle<ObjectValue>) -> AllocResult<Handle<ArrayObject>> {
         let mut array =
-            object_create_with_proto::<ArrayObject>(cx, HeapItemKind::ArrayObject, proto);
+            object_create_with_proto::<ArrayObject>(cx, HeapItemKind::ArrayObject, proto)?;
 
         set_uninit!(array.is_length_writable, true);
 
-        array.to_handle()
+        Ok(array.to_handle())
     }
 }
 
@@ -67,7 +71,7 @@ impl VirtualObject for Handle<ArrayObject> {
             }
 
             Ok(true)
-        } else if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
+        } else if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
             array_set_length(cx, *self, desc)
         } else {
             ordinary_define_own_property(cx, self.as_object(), key, desc)
@@ -80,7 +84,7 @@ impl VirtualObject for Handle<ArrayObject> {
         cx: Context,
         key: Handle<PropertyKey>,
     ) -> EvalResult<Option<PropertyDescriptor>> {
-        if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
+        if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
             let length_value =
                 Value::from(self.as_object().array_properties_length()).to_handle(cx);
             return Ok(Some(PropertyDescriptor::data(
@@ -96,7 +100,7 @@ impl VirtualObject for Handle<ArrayObject> {
 
     // Not part of spec, but needed to handle attempts to delete custom length property
     fn delete(&mut self, cx: Context, key: Handle<PropertyKey>) -> EvalResult<bool> {
-        if key.is_string() && key.as_string().eq(&cx.names.length().as_string()) {
+        if key.is_string() && key.as_string().equals(&cx.names.length().as_string())? {
             return Ok(false);
         }
 
@@ -107,7 +111,7 @@ impl VirtualObject for Handle<ArrayObject> {
     fn own_property_keys(&self, cx: Context) -> EvalResult<Vec<Handle<Value>>> {
         let mut keys: Vec<Handle<Value>> = vec![];
 
-        ordinary_filtered_own_indexed_property_keys(cx, self.as_object(), &mut keys, |_| true);
+        ordinary_filtered_own_indexed_property_keys(cx, self.as_object(), &mut keys, |_| true)?;
 
         // Insert length as the first non-index property
         keys.push(cx.names.length().as_string().into());
@@ -140,7 +144,7 @@ pub fn array_create_in_realm(
 
     let proto = proto.unwrap_or_else(|| realm.get_intrinsic(Intrinsic::ArrayPrototype));
 
-    let mut array_object = ArrayObject::new(cx, proto);
+    let mut array_object = ArrayObject::new(cx, proto)?;
 
     let length_value = Value::from(length as u32).to_handle(cx);
     let length_desc = PropertyDescriptor::data(length_value, true, false, false);
@@ -231,7 +235,7 @@ fn array_set_length(
         }
     }
 
-    let has_delete_succeeded = array.as_object().set_array_properties_length(cx, new_len);
+    let has_delete_succeeded = array.as_object().set_array_properties_length(cx, new_len)?;
 
     if let Some(false) = desc.is_writable {
         array.is_length_writable = false;
@@ -241,7 +245,10 @@ fn array_set_length(
 }
 
 /// CreateArrayFromList (https://tc39.es/ecma262/#sec-createarrayfromlist)
-pub fn create_array_from_list(cx: Context, elements: &[Handle<Value>]) -> Handle<ArrayObject> {
+pub fn create_array_from_list(
+    cx: Context,
+    elements: &[Handle<Value>],
+) -> AllocResult<Handle<ArrayObject>> {
     let array = must!(array_create(cx, 0, None));
 
     // Property key is shared between iterations
@@ -249,11 +256,11 @@ pub fn create_array_from_list(cx: Context, elements: &[Handle<Value>]) -> Handle
 
     for (index, element) in elements.iter().enumerate() {
         // TODO: Handle keys out of u32 range
-        key.replace(PropertyKey::array_index(cx, index as u32));
+        key.replace(PropertyKey::array_index(cx, index as u32)?);
         must!(create_data_property_or_throw(cx, array.into(), key, *element));
     }
 
-    array
+    Ok(array)
 }
 
 impl HeapItem for HeapPtr<ArrayObject> {

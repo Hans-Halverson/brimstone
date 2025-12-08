@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr, Value,
@@ -22,15 +23,15 @@ pub struct BsVec<T> {
 
 impl<T: Clone + Copy> BsVec<T> {
     /// Create a new BsVec with the given capacity.
-    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size);
+        let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size)?;
 
         set_uninit!(vec.descriptor, cx.base_descriptors.get(kind));
         set_uninit!(vec.length, 0);
         vec.array.init_with_uninit(capacity);
 
-        vec
+        Ok(vec)
     }
 
     const ARRAY_FIELD_OFFSET: usize = field_offset!(BsVec<u8>, array);
@@ -83,7 +84,7 @@ impl<T: Clone + Copy> HeapItem for HeapPtr<BsVec<T>> {
 /// A BsVec stored as the field of a heap item. Can create new BsVec objects and set the field to
 /// a new BsVec.
 pub trait BsVecField<T: Clone + Copy> {
-    fn new_vec(cx: Context, capacity: usize) -> HeapPtr<BsVec<T>>;
+    fn new_vec(cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsVec<T>>>;
 
     fn get(&self) -> HeapPtr<BsVec<T>>;
 
@@ -92,14 +93,14 @@ pub trait BsVecField<T: Clone + Copy> {
     /// Prepare vec for appending a single item. This will grow the vec and update container to
     /// point to new vec if there is no room to append another item to the vec.
     #[inline]
-    fn maybe_grow_for_push(&mut self, cx: Context) -> HeapPtr<BsVec<T>> {
+    fn maybe_grow_for_push(&mut self, cx: Context) -> AllocResult<HeapPtr<BsVec<T>>> {
         let old_vec = self.get();
 
         // Check if we have room for another item in the vec
         let old_len = old_vec.len();
         let capacity = old_vec.capacity();
         if old_len < capacity {
-            return old_vec;
+            return Ok(old_vec);
         }
 
         // Save old vec behind handle before allocating
@@ -107,7 +108,7 @@ pub trait BsVecField<T: Clone + Copy> {
 
         // Double size of vector, starting at a length of 4
         let new_capacity = (capacity * 2).max(4);
-        let mut new_vec = Self::new_vec(cx, new_capacity);
+        let mut new_vec = Self::new_vec(cx, new_capacity)?;
 
         // Update parent reference from old child to new child map
         self.set(new_vec);
@@ -116,7 +117,7 @@ pub trait BsVecField<T: Clone + Copy> {
         new_vec.length = old_len;
         new_vec.as_mut_slice().copy_from_slice(old_vec.as_slice());
 
-        new_vec
+        Ok(new_vec)
     }
 }
 

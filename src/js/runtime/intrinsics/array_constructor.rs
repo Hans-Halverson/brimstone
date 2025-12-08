@@ -5,6 +5,7 @@ use crate::{
             call_object, construct, create_data_property_or_throw, get_method,
             length_of_array_like, set,
         },
+        alloc_error::AllocResult,
         array_object::array_create,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -26,7 +27,7 @@ pub struct ArrayConstructor;
 
 impl ArrayConstructor {
     /// Properties of the Array Constructor (https://tc39.es/ecma262/#sec-properties-of-the-array-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -34,23 +35,23 @@ impl ArrayConstructor {
             cx.names.array(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::ArrayPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
-        func.intrinsic_func(cx, cx.names.is_array(), Self::is_array, 1, realm);
-        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm);
+        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.is_array(), Self::is_array, 1, realm)?;
+        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm)?;
 
         // get Array [ @@species ] (https://tc39.es/ecma262/#sec-get-array-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Array (https://tc39.es/ecma262/#sec-array)
@@ -79,7 +80,7 @@ impl ArrayConstructor {
 
                 int_len
             } else {
-                let first_key = PropertyKey::array_index(cx, 0).to_handle(cx);
+                let first_key = PropertyKey::array_index_handle(cx, 0)?;
                 must!(create_data_property_or_throw(cx, array.into(), first_key, length));
                 1
             };
@@ -95,7 +96,7 @@ impl ArrayConstructor {
             let mut key = PropertyKey::uninit().to_handle(cx);
 
             for index in 0..arguments.len() {
-                key.replace(PropertyKey::array_index(cx, index as u32));
+                key.replace(PropertyKey::array_index(cx, index as u32)?);
                 let value = get_argument(cx, arguments, index);
 
                 must!(create_data_property_or_throw(cx, array.into(), key, value));
@@ -158,7 +159,11 @@ impl ArrayConstructor {
                     value
                 };
 
-                key.replace(PropertyKey::from_u64(cx, i));
+                // May allocate. Propagate allocation error upwards.
+                match PropertyKey::from_u64(cx, i) {
+                    Ok(k) => key.replace(k),
+                    Err(err) => return Some(Err(err.into())),
+                }
 
                 // Append value to array, returning if abnormal completion
                 let result = create_data_property_or_throw(cx, array, key, value);
@@ -194,7 +199,7 @@ impl ArrayConstructor {
 
         // Copy elements from items array
         for i in 0..length {
-            key.replace(PropertyKey::from_u64(cx, i));
+            key.replace(PropertyKey::from_u64(cx, i)?);
 
             let mut value = get(cx, array_like, key)?;
 
@@ -241,7 +246,7 @@ impl ArrayConstructor {
         let mut key = PropertyKey::uninit().to_handle(cx);
 
         for index in 0..length {
-            key.replace(PropertyKey::array_index(cx, index as u32));
+            key.replace(PropertyKey::array_index(cx, index as u32)?);
             let value = get_argument(cx, arguments, index);
 
             create_data_property_or_throw(cx, array, key, value)?;

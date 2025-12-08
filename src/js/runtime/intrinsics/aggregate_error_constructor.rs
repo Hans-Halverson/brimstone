@@ -5,6 +5,7 @@ use crate::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
             define_property_or_throw,
         },
+        alloc_error::AllocResult,
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
@@ -25,16 +26,16 @@ use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 pub struct AggregateErrorObject;
 
 impl AggregateErrorObject {
-    pub fn new(cx: Context, errors: Handle<Value>) -> Handle<ErrorObject> {
+    pub fn new(cx: Context, errors: Handle<Value>) -> AllocResult<Handle<ErrorObject>> {
         let object = ErrorObject::new(
             cx,
             Intrinsic::AggregateErrorPrototype,
             /* skip_current_frame */ true,
-        );
+        )?;
 
         must!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
 
-        object
+        Ok(object)
     }
 }
 
@@ -42,7 +43,7 @@ pub struct AggregateErrorConstructor;
 
 impl AggregateErrorConstructor {
     /// Properties of the AggregateError Constructor (https://tc39.es/ecma262/#sec-properties-of-the-aggregate-error-constructors)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -50,7 +51,7 @@ impl AggregateErrorConstructor {
             cx.names.aggregate_error(),
             realm,
             Intrinsic::ErrorConstructor,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
@@ -58,9 +59,9 @@ impl AggregateErrorConstructor {
             realm
                 .get_intrinsic(Intrinsic::AggregateErrorPrototype)
                 .into(),
-        );
+        )?;
 
-        func
+        Ok(func)
     }
 
     /// AggregateError (https://tc39.es/ecma262/#sec-aggregate-error)
@@ -91,7 +92,7 @@ impl AggregateErrorConstructor {
                 object.into(),
                 cx.names.message(),
                 message_string.into(),
-            );
+            )?;
         }
 
         let options_arg = get_argument(cx, arguments, 2);
@@ -104,7 +105,7 @@ impl AggregateErrorConstructor {
             None
         })?;
 
-        let errors_array = create_array_from_list(cx, &errors_list).as_object();
+        let errors_array = create_array_from_list(cx, &errors_list)?.as_object();
 
         let errors_desc = PropertyDescriptor::data(errors_array.into(), true, false, true);
         must!(define_property_or_throw(cx, object.into(), cx.names.errors(), errors_desc));

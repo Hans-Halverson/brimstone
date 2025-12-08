@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         collections::{BsHashSet, BsHashSetField},
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -36,7 +37,7 @@ impl WeakSetObject {
         constructor: Handle<ObjectValue>,
     ) -> EvalResult<Handle<WeakSetObject>> {
         let weak_set_data =
-            WeakValueSet::new_initial(cx, HeapItemKind::WeakSetObjectWeakValueSet).to_handle();
+            WeakValueSet::new_initial(cx, HeapItemKind::WeakSetObjectWeakValueSet)?.to_handle();
 
         let mut object = object_create_from_constructor::<WeakSetObject>(
             cx,
@@ -68,12 +69,13 @@ impl Handle<WeakSetObject> {
         WeakSetObjectSetField(*self)
     }
 
-    pub fn insert(&self, cx: Context, item: Handle<Value>) -> bool {
-        let item_handle = ValueCollectionKeyHandle::new(item);
+    pub fn insert(&self, cx: Context, item: Handle<Value>) -> AllocResult<bool> {
+        let item_handle = ValueCollectionKeyHandle::new(item)?;
 
-        self.weak_set_data_field()
-            .maybe_grow_for_insertion(cx)
-            .insert_without_growing(item_handle.get())
+        Ok(self
+            .weak_set_data_field()
+            .maybe_grow_for_insertion(cx)?
+            .insert_without_growing(item_handle.get()))
     }
 }
 
@@ -81,7 +83,7 @@ impl Handle<WeakSetObject> {
 pub struct WeakSetObjectSetField(Handle<WeakSetObject>);
 
 impl BsHashSetField<ValueCollectionKey> for WeakSetObjectSetField {
-    fn new(cx: Context, capacity: usize) -> HeapPtr<WeakValueSet> {
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<WeakValueSet>> {
         WeakValueSet::new(cx, HeapItemKind::WeakSetObjectWeakValueSet, capacity)
     }
 

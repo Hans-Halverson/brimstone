@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::{array::ByteArray, BsArray},
         error::{range_error, type_error},
@@ -85,7 +86,7 @@ impl ArrayBufferObject {
             } else {
                 // Otherwise allocate new zeroed data block and copy the data into it
                 let mut new_uninit =
-                    BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, byte_length);
+                    BsArray::<u8>::new_uninit(cx, HeapItemKind::ByteArray, byte_length)?;
 
                 // Copy data from the old to new data block
                 let copied_size = byte_length.min(data.len());
@@ -99,7 +100,7 @@ impl ArrayBufferObject {
             }
         } else {
             // Initialize data block to all zeros
-            Some(BsArray::<u8>::new(cx, HeapItemKind::ByteArray, byte_length, 0))
+            Some(BsArray::<u8>::new(cx, HeapItemKind::ByteArray, byte_length, 0)?)
         };
 
         Ok(object)
@@ -153,7 +154,7 @@ pub struct ArrayBufferConstructor;
 
 impl ArrayBufferConstructor {
     /// Properties of the ArrayBuffer Constructor (https://tc39.es/ecma262/#sec-properties-of-the-arraybuffer-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -161,21 +162,21 @@ impl ArrayBufferConstructor {
             cx.names.array_buffer(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::ArrayBufferPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.is_view(), Self::is_view, 1, realm);
+        func.intrinsic_func(cx, cx.names.is_view(), Self::is_view, 1, realm)?;
 
         // get ArrayBuffer [ @@species ] (https://tc39.es/ecma262/#sec-get-arraybuffer-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// ArrayBuffer (https://tc39.es/ecma262/#sec-arraybuffer-length)

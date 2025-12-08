@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 
 use crate::{
-    must,
+    completion_value, must,
     runtime::{
         abstract_operations::call_object,
+        alloc_error::AllocResult,
         boxed_value::BoxedValue,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -53,22 +54,22 @@ impl SyntheticModule {
         cx: Context,
         realm: Handle<Realm>,
         export_names: &[Handle<FlatString>],
-    ) -> HeapPtr<SyntheticModule> {
+    ) -> AllocResult<HeapPtr<SyntheticModule>> {
         // Create module scope for the module, with an entry for each exported name
         let name_flags = export_names
             .iter()
             .map(|_| ScopeNameFlags::empty())
             .collect::<Vec<_>>();
-        let scope_names = ScopeNames::new(cx, ScopeFlags::empty(), export_names, &name_flags);
-        let mut module_scope = Scope::new_module(cx, scope_names, realm.global_object());
+        let scope_names = ScopeNames::new(cx, ScopeFlags::empty(), export_names, &name_flags)?;
+        let mut module_scope = Scope::new_module(cx, scope_names, realm.global_object())?;
 
         // Initialize all scope entries to undefined
         for i in 0..scope_names.len() {
-            let boxed_value = BoxedValue::new(cx, cx.undefined());
+            let boxed_value = BoxedValue::new(cx, cx.undefined())?;
             module_scope.set_heap_item_slot(i, boxed_value.as_heap_item());
         }
 
-        let mut module = cx.alloc_uninit::<SyntheticModule>();
+        let mut module = cx.alloc_uninit::<SyntheticModule>()?;
 
         // Note that kind is not initialized here, as it is initialized by the caller
         set_uninit!(module.descriptor, cx.base_descriptors.get(HeapItemKind::SyntheticModule));
@@ -76,20 +77,20 @@ impl SyntheticModule {
         set_uninit!(module.module_scope, *module_scope);
         set_uninit!(module.namespace_object, None);
 
-        module
+        Ok(module)
     }
 
     pub fn new_default_export(
         cx: Context,
         realm: Handle<Realm>,
         default_export_value: Handle<Value>,
-    ) -> Handle<SyntheticModule> {
+    ) -> AllocResult<Handle<SyntheticModule>> {
         let default_export_name = cx.names.default.as_string().as_flat().to_handle();
-        let mut module = Self::new(cx, realm, &[default_export_name]);
+        let mut module = Self::new(cx, realm, &[default_export_name])?;
 
         set_uninit!(module.kind, SyntheticModuleKind::DefaultExport(*default_export_value));
 
-        module.to_handle()
+        Ok(module.to_handle())
     }
 
     fn calculate_size_in_bytes() -> usize {
@@ -137,8 +138,8 @@ impl Module for Handle<SyntheticModule> {
         ModuleEnum::Synthetic(*self)
     }
 
-    fn load_requested_modules(&self, cx: Context) -> Handle<PromiseObject> {
-        must!(coerce_to_ordinary_promise(cx, cx.undefined()))
+    fn load_requested_modules(&self, cx: Context) -> AllocResult<Handle<PromiseObject>> {
+        Ok(must!(coerce_to_ordinary_promise(cx, cx.undefined())))
     }
 
     fn get_exported_names(
@@ -160,19 +161,19 @@ impl Module for Handle<SyntheticModule> {
         cx: Context,
         export_name: HeapPtr<FlatString>,
         _: &mut Vec<(HeapPtr<FlatString>, HeapPtr<SourceTextModule>)>,
-    ) -> ResolveExportResult {
+    ) -> AllocResult<ResolveExportResult> {
         // Resolve the export name by looking through module bindings, returning one if found
         let module_scope = self.module_scope_ptr();
-        let export_name = InternedStrings::get(cx, export_name);
+        let export_name = InternedStrings::get(cx, export_name)?;
 
         if let Some(scope_index) = module_scope.scope_names_ptr().lookup_name(export_name) {
             let boxed_value = module_scope.get_module_slot(scope_index);
-            ResolveExportResult::Resolved {
+            Ok(ResolveExportResult::Resolved {
                 name: ResolveExportName::Local { name: export_name, boxed_value },
                 module: self.as_dyn_module(),
-            }
+            })
         } else {
-            ResolveExportResult::None
+            Ok(ResolveExportResult::None)
         }
     }
 
@@ -181,7 +182,7 @@ impl Module for Handle<SyntheticModule> {
         Ok(())
     }
 
-    fn evaluate(&self, cx: Context) -> Handle<PromiseObject> {
+    fn evaluate(&self, cx: Context) -> AllocResult<Handle<PromiseObject>> {
         let result = match self.kind {
             SyntheticModuleKind::DefaultExport(default_export_value) => {
                 self.evaluate_default_export_module(cx, default_export_value.to_handle(cx))
@@ -192,30 +193,30 @@ impl Module for Handle<SyntheticModule> {
         let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
         let promise = capability.promise().cast::<PromiseObject>();
 
-        match result {
+        match completion_value!(result) {
             Ok(result) => {
                 must!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
             }
             Err(error) => {
-                must!(call_object(cx, capability.reject(), cx.undefined(), &[error.value()]));
+                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             }
         }
 
-        promise
+        Ok(promise)
     }
 
     /// Returns the namespace object used when this module is namespace imported. Lazily creates the
     /// cached namespace object and exports map.
-    fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject> {
+    fn get_namespace_object(&mut self, cx: Context) -> AllocResult<HeapPtr<ModuleNamespaceObject>> {
         if let Some(namespace_object) = self.namespace_object {
-            return namespace_object;
+            return Ok(namespace_object);
         }
 
         // Create and cache the namespace object for this module
-        let namespace_object = ModuleNamespaceObject::new(cx, self.as_dyn_module());
+        let namespace_object = ModuleNamespaceObject::new(cx, self.as_dyn_module())?;
         self.namespace_object = Some(namespace_object);
 
-        namespace_object
+        Ok(namespace_object)
     }
 }
 

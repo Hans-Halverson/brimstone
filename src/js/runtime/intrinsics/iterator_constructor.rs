@@ -2,6 +2,7 @@ use crate::{
     extend_object,
     runtime::{
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
+        alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
@@ -23,7 +24,7 @@ pub struct IteratorConstructor;
 
 impl IteratorConstructor {
     /// Properties of the Iterator Constructor (https://tc39.es/ecma262/#sec-properties-of-the-iterator-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -31,17 +32,17 @@ impl IteratorConstructor {
             cx.names.iterator(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::IteratorPrototype).into(),
-        );
+        )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm);
+        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Iterator (https://tc39.es/ecma262/#sec-iterator-constructor)
@@ -84,7 +85,7 @@ impl IteratorConstructor {
             return Ok(iterator.iterator.as_value());
         }
 
-        Ok(WrappedValidIterator::new(cx, iterator.iterator, iterator.next_method).as_value())
+        Ok(WrappedValidIterator::new(cx, iterator.iterator, iterator.next_method)?.as_value())
     }
 }
 
@@ -101,17 +102,17 @@ impl WrappedValidIterator {
         cx: Context,
         iterator: Handle<ObjectValue>,
         next_method: Handle<Value>,
-    ) -> Handle<ObjectValue> {
+    ) -> AllocResult<Handle<ObjectValue>> {
         let mut object = object_create_with_proto::<WrappedValidIterator>(
             cx,
             HeapItemKind::WrappedValidIterator,
             cx.get_intrinsic(Intrinsic::WrapForValidIteratorPrototype),
-        );
+        )?;
 
         set_uninit!(object.iterator, *iterator);
         set_uninit!(object.next_method, *next_method);
 
-        object.as_object().to_handle()
+        Ok(object.as_object().to_handle())
     }
 
     fn iterator(&self) -> Handle<ObjectValue> {
@@ -139,19 +140,19 @@ impl HeapItem for HeapPtr<WrappedValidIterator> {
 pub struct WrapForValidIteratorPrototype;
 
 impl WrapForValidIteratorPrototype {
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let iterator_prototype = realm.get_intrinsic(Intrinsic::IteratorPrototype);
         let mut object = object_create_with_proto::<ObjectValue>(
             cx,
             HeapItemKind::OrdinaryObject,
             iterator_prototype,
-        )
+        )?
         .to_handle();
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// %WrapForValidIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%wrapforvaliditeratorprototype%.next)
@@ -184,7 +185,7 @@ impl WrapForValidIteratorPrototype {
                 // Call the wrapped iterator's return method if one exists
                 let iterator = wrapper.iterator().as_value();
                 return match get_method(cx, iterator, cx.names.return_())? {
-                    None => Ok(create_iter_result_object(cx, cx.undefined(), true)),
+                    None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
                     Some(return_) => call_object(cx, return_, iterator, &[]),
                 };
             }

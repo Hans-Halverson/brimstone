@@ -13,6 +13,7 @@ use crate::{
     parser::regexp::RegExpFlags,
     runtime::{
         abstract_operations::{call_object, get_method, invoke},
+        alloc_error::AllocResult,
         array_object::{array_create, create_array_from_list},
         error::{range_error, type_error},
         eval_result::EvalResult,
@@ -45,52 +46,64 @@ pub struct StringPrototype;
 
 impl StringPrototype {
     /// Properties of the String Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-string-prototype-object)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let object_proto = realm.get_intrinsic(Intrinsic::ObjectPrototype);
         let empty_string = cx.names.empty_string().as_string();
-        let mut object = StringObject::new_with_proto(cx, object_proto, empty_string).as_object();
+        let mut object = StringObject::new_with_proto(cx, object_proto, empty_string)?.as_object();
 
         // Constructor property is added once StringConstructor has been created
-        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm);
-        object.intrinsic_func(cx, cx.names.char_at(), Self::char_at, 1, realm);
-        object.intrinsic_func(cx, cx.names.char_code_at(), Self::char_code_at, 1, realm);
-        object.intrinsic_func(cx, cx.names.code_point_at(), Self::code_point_at, 1, realm);
-        object.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm);
-        object.intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm);
-        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm);
-        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm);
-        object.intrinsic_func(cx, cx.names.is_well_formed(), Self::is_well_formed, 0, realm);
-        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm);
-        object.intrinsic_func(cx, cx.names.locale_compare(), Self::locale_compare, 1, realm);
-        object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm);
-        object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm);
-        object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm);
-        object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm);
-        object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm);
-        object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm);
-        object.intrinsic_func(cx, cx.names.replace(), Self::replace, 2, realm);
-        object.intrinsic_func(cx, cx.names.replace_all(), Self::replace_all, 2, realm);
-        object.intrinsic_func(cx, cx.names.search(), Self::search, 1, realm);
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm);
-        object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm);
-        object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm);
-        object.intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_locale_lower_case(), Self::to_lower_case, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_locale_upper_case(), Self::to_upper_case, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm);
-        object.intrinsic_func(cx, cx.names.to_well_formed(), Self::to_well_formed, 0, realm);
-        object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm);
-        object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm);
-        object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm);
-        object.intrinsic_func(cx, cx.names.value_of(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.char_at(), Self::char_at, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.char_code_at(), Self::char_code_at, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.code_point_at(), Self::code_point_at, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.is_well_formed(), Self::is_well_formed, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.locale_compare(), Self::locale_compare, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.replace(), Self::replace, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.replace_all(), Self::replace_all, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.search(), Self::search, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_lower_case(),
+            Self::to_lower_case,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_upper_case(),
+            Self::to_upper_case,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.to_well_formed(), Self::to_well_formed, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.value_of(), Self::to_string, 0, realm)?;
 
         // String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm);
+        object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm)?;
 
-        object
+        Ok(object)
     }
 
     /// Additional Properties of the String.prototype Object (https://tc39.es/ecma262/#sec-additional-properties-of-the-string.prototype-object)
@@ -98,31 +111,31 @@ impl StringPrototype {
         mut string_prototype: Handle<ObjectValue>,
         mut cx: Context,
         realm: Handle<Realm>,
-    ) {
-        let substr_name = cx.alloc_string("substr").as_string();
-        let substr = PropertyKey::string_not_array_index(cx, substr_name).to_handle(cx);
-        string_prototype.intrinsic_func(cx, substr, Self::substr, 2, realm);
+    ) -> AllocResult<()> {
+        let substr_name = cx.alloc_string("substr")?.as_string();
+        let substr = PropertyKey::string_not_array_index_handle(cx, substr_name)?;
+        string_prototype.intrinsic_func(cx, substr, Self::substr, 2, realm)?;
 
         // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
         // String.prototype.trimStart and String.prototype.trimEnd respectively.
         let trim_start = must!(get(cx, string_prototype, cx.names.trim_start()));
         let trim_end = must!(get(cx, string_prototype, cx.names.trim_end()));
 
-        let trim_left_name = cx.alloc_string("trimLeft").as_string();
-        let trim_left = PropertyKey::string_not_array_index(cx, trim_left_name).to_handle(cx);
+        let trim_left_name = cx.alloc_string("trimLeft")?.as_string();
+        let trim_left = PropertyKey::string_not_array_index_handle(cx, trim_left_name)?;
 
-        let trim_right_name = cx.alloc_string("trimRight").as_string();
-        let trim_right = PropertyKey::string_not_array_index(cx, trim_right_name).to_handle(cx);
+        let trim_right_name = cx.alloc_string("trimRight")?.as_string();
+        let trim_right = PropertyKey::string_not_array_index_handle(cx, trim_right_name)?;
 
-        string_prototype.intrinsic_data_prop(cx, trim_left, trim_start);
-        string_prototype.intrinsic_data_prop(cx, trim_right, trim_end);
+        string_prototype.intrinsic_data_prop(cx, trim_left, trim_start)?;
+        string_prototype.intrinsic_data_prop(cx, trim_right, trim_end)?;
 
         macro_rules! html_methods {
             ($($name:expr, $method:path, $length:expr),*) => {
                 $(
-                    let name = cx.alloc_string($name).as_string();
-                    let key = PropertyKey::string_not_array_index(cx, name).to_handle(cx);
-                    string_prototype.intrinsic_func(cx, key, $method, $length, realm);
+                    let name = cx.alloc_string($name)?.as_string();
+                    let key = PropertyKey::string_not_array_index_handle(cx, name)?;
+                    string_prototype.intrinsic_func(cx, key, $method, $length, realm)?;
                 )*
             }
         }
@@ -142,6 +155,8 @@ impl StringPrototype {
             "sub", Self::sub, 0,
             "sup", Self::sup, 0
         }
+
+        Ok(())
     }
 
     /// String.prototype.at (https://tc39.es/ecma262/#sec-string.prototype.at)
@@ -171,7 +186,7 @@ impl StringPrototype {
             return Ok(cx.undefined());
         }
 
-        let code_unit_string = FlatString::from_code_unit(cx, string.code_unit_at(index as u32));
+        let code_unit_string = FlatString::from_code_unit(cx, string.code_unit_at(index as u32)?)?;
 
         Ok(code_unit_string.as_value())
     }
@@ -192,7 +207,7 @@ impl StringPrototype {
             return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        let char_string = FlatString::from_code_unit(cx, string.code_unit_at(position as u32));
+        let char_string = FlatString::from_code_unit(cx, string.code_unit_at(position as u32)?)?;
 
         Ok(char_string.as_value())
     }
@@ -213,7 +228,7 @@ impl StringPrototype {
             return Ok(cx.nan());
         }
 
-        let code_unit = string.code_unit_at(position as u32);
+        let code_unit = string.code_unit_at(position as u32)?;
         Ok(cx.smi(code_unit as i32))
     }
 
@@ -233,7 +248,7 @@ impl StringPrototype {
             return Ok(cx.undefined());
         }
 
-        let code_point = string.code_point_at(position as u32);
+        let code_point = string.code_point_at(position as u32)?;
         Ok(cx.smi(code_point as i32))
     }
 
@@ -248,7 +263,7 @@ impl StringPrototype {
 
         for argument in arguments {
             let string = to_string(cx, *argument)?;
-            concat_string = StringValue::concat(cx, concat_string, string);
+            concat_string = StringValue::concat(cx, concat_string, string)?;
         }
 
         Ok(concat_string.as_value())
@@ -289,7 +304,7 @@ impl StringPrototype {
             None => return Ok(cx.bool(false)),
         };
 
-        let ends_with_string = string.substring_equals(search_string, start_index);
+        let ends_with_string = string.substring_equals(search_string, start_index)?;
 
         Ok(cx.bool(ends_with_string))
     }
@@ -318,7 +333,7 @@ impl StringPrototype {
             return Ok(cx.bool(false));
         }
 
-        let found_search_string = string.find(search_string, pos).is_some();
+        let found_search_string = string.find(search_string, pos)?.is_some();
         Ok(cx.bool(found_search_string))
     }
 
@@ -342,7 +357,7 @@ impl StringPrototype {
             return Ok(cx.negative_one());
         }
 
-        match string.find(search_string, pos) {
+        match string.find(search_string, pos)? {
             None => Ok(cx.negative_one()),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
@@ -357,7 +372,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(cx.bool(string.is_well_formed()))
+        Ok(cx.bool(string.is_well_formed()?))
     }
 
     /// String.prototype.lastIndexOf (https://tc39.es/ecma262/#sec-string.prototype.lastindexof)
@@ -383,7 +398,7 @@ impl StringPrototype {
 
         let string_end = pos.clamp(0.0, string.len() as f64) as u32;
 
-        match string.rfind(search_string, string_end) {
+        match string.rfind(search_string, string_end)? {
             None => Ok(cx.negative_one()),
             Some(index) => Ok(Value::from(index).to_handle(cx)),
         }
@@ -401,8 +416,8 @@ impl StringPrototype {
         let other_arg = get_argument(cx, arguments, 0);
         let other_string = to_string(cx, other_arg)?;
 
-        let wtf8_string = string.to_wtf8_string();
-        let wtf8_other_string = other_string.to_wtf8_string();
+        let wtf8_string = string.to_wtf8_string()?;
+        let wtf8_other_string = other_string.to_wtf8_string()?;
         let comparison = ICU
             .collator
             .as_borrowed()
@@ -467,7 +482,7 @@ impl StringPrototype {
                 } else {
                     let flags_string = to_string(cx, flags_string)?;
 
-                    flags_string_contains(flags_string, 'g' as u32)
+                    flags_string_contains(flags_string, 'g' as u32)?
                 };
 
                 if !has_global_flag {
@@ -509,7 +524,7 @@ impl StringPrototype {
         let form = if form_arg.is_undefined() {
             NormalizationForm::NFC
         } else {
-            let form_string = *to_string(cx, form_arg)?.flatten();
+            let form_string = *to_string(cx, form_arg)?.flatten()?;
             if form_string == cx.names.nfc.as_string().as_flat() {
                 NormalizationForm::NFC
             } else if form_string == cx.names.nfd.as_string().as_flat() {
@@ -528,16 +543,16 @@ impl StringPrototype {
 
         let normalized_string = match form {
             NormalizationForm::NFC => {
-                normalize_string(cx, string, |iter| ICU.normalizers.nfc.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfc.normalize_iter(iter))?
             }
             NormalizationForm::NFD => {
-                normalize_string(cx, string, |iter| ICU.normalizers.nfd.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfd.normalize_iter(iter))?
             }
             NormalizationForm::NFKC => {
-                normalize_string(cx, string, |iter| ICU.normalizers.nfkc.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfkc.normalize_iter(iter))?
             }
             NormalizationForm::NFKD => {
-                normalize_string(cx, string, |iter| ICU.normalizers.nfkd.normalize_iter(iter))
+                normalize_string(cx, string, |iter| ICU.normalizers.nfkd.normalize_iter(iter))?
             }
         };
 
@@ -606,19 +621,19 @@ impl StringPrototype {
 
         // Find the number of whole pad strings we can fit into the padding length
         let num_whole_repitions = fill_length / fill_string_length;
-        let mut pad_string = fill_string.repeat(cx, num_whole_repitions).as_string();
+        let mut pad_string = fill_string.repeat(cx, num_whole_repitions)?.as_string();
 
         // Add a partial pad string if the pad strings did not evenly divide the padding length
         let partial_length = fill_length - (num_whole_repitions * fill_string_length);
         if partial_length != 0 {
-            let partial_string = fill_string.substring(cx, 0, partial_length).as_string();
-            pad_string = StringValue::concat(cx, pad_string, partial_string);
+            let partial_string = fill_string.substring(cx, 0, partial_length)?.as_string();
+            pad_string = StringValue::concat(cx, pad_string, partial_string)?;
         }
 
         if is_start {
-            Ok(StringValue::concat(cx, pad_string, string).as_value())
+            Ok(StringValue::concat(cx, pad_string, string)?.as_value())
         } else {
-            Ok(StringValue::concat(cx, string, pad_string).as_value())
+            Ok(StringValue::concat(cx, string, pad_string)?.as_value())
         }
     }
 
@@ -639,7 +654,7 @@ impl StringPrototype {
             return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        Ok(string.repeat(cx, n as u32).as_value())
+        Ok(string.repeat(cx, n as u32)?.as_value())
     }
 
     /// String.prototype.replace (https://tc39.es/ecma262/#sec-string.prototype.replace)
@@ -671,7 +686,7 @@ impl StringPrototype {
         };
 
         // Find the first match of the search string in the target string
-        let matched_position = target_string.find(search_string, 0);
+        let matched_position = target_string.find(search_string, 0)?;
         let matched_position = if let Some(matched_position) = matched_position {
             matched_position
         } else {
@@ -698,7 +713,7 @@ impl StringPrototype {
             // Otherwise replacement is the result of calling GetSubstitution
             ReplaceValue::String(replace_string) => {
                 let substitution_template =
-                    SubstitutionTemplateParser::new(false).parse(cx, replace_string);
+                    SubstitutionTemplateParser::new(false).parse(cx, replace_string)?;
                 must!(substitution_template.get_substitution(
                     cx,
                     target_string,
@@ -711,13 +726,15 @@ impl StringPrototype {
         };
 
         // Replace the matched substring with the replacement string
-        let preceding_string = target_string.substring(cx, 0, matched_position).as_string();
+        let preceding_string = target_string
+            .substring(cx, 0, matched_position)?
+            .as_string();
         let following_string = target_string
-            .substring(cx, matched_position + search_string.len(), target_string.len())
+            .substring(cx, matched_position + search_string.len(), target_string.len())?
             .as_string();
 
         let result_string =
-            StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string]);
+            StringValue::concat_all(cx, &[preceding_string, replacement_string, following_string])?;
 
         Ok(result_string.as_value())
     }
@@ -744,7 +761,7 @@ impl StringPrototype {
 
                 let flags_string = to_string(cx, flags_value)?;
 
-                if !flags_string_contains(flags_string, 'g' as u32) {
+                if !flags_string_contains(flags_string, 'g' as u32)? {
                     return type_error(
                         cx,
                         "String.prototype.replaceAll expects RegExp with global flag",
@@ -771,10 +788,10 @@ impl StringPrototype {
         let mut matched_positions = vec![];
         let advance_by = u32::max(1, search_string.len());
 
-        let mut matched_position = target_string.find(search_string, 0);
+        let mut matched_position = target_string.find(search_string, 0)?;
         while let Some(position) = matched_position {
             matched_positions.push(position);
-            matched_position = target_string.find(search_string, position + advance_by);
+            matched_position = target_string.find(search_string, position + advance_by)?;
         }
 
         let mut string_parts = vec![];
@@ -783,7 +800,7 @@ impl StringPrototype {
         for matched_position in matched_positions {
             // Add the unchanged substring between the last match and this match
             let preserved_substring = target_string
-                .substring(cx, end_of_last_match, matched_position)
+                .substring(cx, end_of_last_match, matched_position)?
                 .as_string();
             string_parts.push(preserved_substring);
 
@@ -808,7 +825,7 @@ impl StringPrototype {
                 // Otherwise replacement is the result of calling GetSubstitution
                 ReplaceValue::String(replace_string) => {
                     let substitution_template =
-                        SubstitutionTemplateParser::new(false).parse(cx, replace_string);
+                        SubstitutionTemplateParser::new(false).parse(cx, replace_string)?;
                     must!(substitution_template.get_substitution(
                         cx,
                         target_string,
@@ -828,12 +845,12 @@ impl StringPrototype {
         // Add the unchanged substring after the last match
         if end_of_last_match < target_string.len() {
             let preserved_substring = target_string
-                .substring(cx, end_of_last_match, target_string.len())
+                .substring(cx, end_of_last_match, target_string.len())?
                 .as_string();
             string_parts.push(preserved_substring);
         }
 
-        Ok(StringValue::concat_all(cx, &string_parts).as_value())
+        Ok(StringValue::concat_all(cx, &string_parts)?.as_value())
     }
 
     /// String.prototype.search (https://tc39.es/ecma262/#sec-string.prototype.search)
@@ -909,7 +926,7 @@ impl StringPrototype {
             return Ok(cx.names.empty_string().as_string().as_value());
         }
 
-        Ok(string.substring(cx, start_index, end_index).as_value())
+        Ok(string.substring(cx, start_index, end_index)?.as_value())
     }
 
     /// String.prototype.split (https://tc39.es/ecma262/#sec-string.prototype.split)
@@ -948,7 +965,7 @@ impl StringPrototype {
             let array_object = array_create(cx, 0, None)?;
             return Ok(array_object.as_value());
         } else if separator_argument.is_undefined() {
-            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
+            return Ok(create_array_from_list(cx, &[string.into()])?.as_value());
         }
 
         // If separator is empty then return each code unit individually, up to the given limit
@@ -958,33 +975,33 @@ impl StringPrototype {
             let limit = u32::min(limit, string.len());
 
             for i in 0..limit {
-                let substring = string.substring(cx, i, i + 1);
+                let substring = string.substring(cx, i, i + 1)?;
                 code_unit_strings.push(substring.into());
             }
 
-            return Ok(create_array_from_list(cx, &code_unit_strings).as_value());
+            return Ok(create_array_from_list(cx, &code_unit_strings)?.as_value());
         }
 
         // If the string is empty then it is the only substring
         let string_length = string.len();
         if string_length == 0 {
-            return Ok(create_array_from_list(cx, &[string.into()]).as_value());
+            return Ok(create_array_from_list(cx, &[string.into()])?.as_value());
         }
 
         let mut substrings = vec![];
 
         // Find the index of the first separator
         let mut i = 0;
-        let mut next_separator_index_opt = string.find(separator, i);
+        let mut next_separator_index_opt = string.find(separator, i)?;
 
         while let Some(next_separator_index) = next_separator_index_opt {
             // Add the substring up until the next separator
-            let substring = string.substring(cx, i, next_separator_index).as_string();
+            let substring = string.substring(cx, i, next_separator_index)?.as_string();
             substrings.push(substring.into());
 
             // If we have reached the limit of substrings then return them
             if substrings.len() == limit as usize {
-                return Ok(create_array_from_list(cx, &substrings).as_value());
+                return Ok(create_array_from_list(cx, &substrings)?.as_value());
             }
 
             // Find and skip the next separator
@@ -996,14 +1013,14 @@ impl StringPrototype {
                 break;
             }
 
-            next_separator_index_opt = string.find(separator, i);
+            next_separator_index_opt = string.find(separator, i)?;
         }
 
         // Now that the last separator has the rest of the string is the last substring
-        let last_substring = string.substring(cx, i, string.len()).as_string();
+        let last_substring = string.substring(cx, i, string.len())?.as_string();
         substrings.push(last_substring.into());
 
-        Ok(create_array_from_list(cx, &substrings).as_value())
+        Ok(create_array_from_list(cx, &substrings)?.as_value())
     }
 
     /// String.prototype.startsWith (https://tc39.es/ecma262/#sec-string.prototype.startswith)
@@ -1048,7 +1065,7 @@ impl StringPrototype {
             return Ok(cx.bool(false));
         }
 
-        let starts_with_string = string.substring_equals(search_string, start_index);
+        let starts_with_string = string.substring_equals(search_string, start_index)?;
 
         Ok(cx.bool(starts_with_string))
     }
@@ -1079,7 +1096,7 @@ impl StringPrototype {
             std::mem::swap(&mut int_start, &mut int_end);
         }
 
-        Ok(string.substring(cx, int_start, int_end).as_value())
+        Ok(string.substring(cx, int_start, int_end)?.as_value())
     }
 
     /// String.prototype.toLowerCase (https://tc39.es/ecma262/#sec-string.prototype.tolowercase)
@@ -1091,7 +1108,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.to_lower_case(cx).as_value())
+        Ok(string.to_lower_case(cx)?.as_value())
     }
 
     /// String.prototype.toString (https://tc39.es/ecma262/#sec-string.prototype.tostring)
@@ -1112,7 +1129,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.to_upper_case(cx).as_value())
+        Ok(string.to_upper_case(cx)?.as_value())
     }
 
     /// String.prototype.toWellFormed (https://tc39.es/ecma262/#sec-string.prototype.towellformed)
@@ -1124,7 +1141,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.to_well_formed(cx).to_handle().as_value())
+        Ok(string.to_well_formed(cx)?.to_handle().as_value())
     }
 
     /// String.prototype.trim (https://tc39.es/ecma262/#sec-string.prototype.trim)
@@ -1136,7 +1153,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.trim(cx, true, true).as_value())
+        Ok(string.trim(cx, true, true)?.as_value())
     }
 
     /// String.prototype.trimEnd (https://tc39.es/ecma262/#sec-string.prototype.trimend)
@@ -1148,7 +1165,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.trim(cx, false, true).as_value())
+        Ok(string.trim(cx, false, true)?.as_value())
     }
 
     /// String.prototype.trimStart (https://tc39.es/ecma262/#sec-string.prototype.trimstart)
@@ -1160,7 +1177,7 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        Ok(string.trim(cx, true, false).as_value())
+        Ok(string.trim(cx, true, false)?.as_value())
     }
 
     /// String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
@@ -1172,9 +1189,9 @@ impl StringPrototype {
         let object = require_object_coercible(cx, this_value)?;
         let string = to_string(cx, object)?;
 
-        let flat_string = string.flatten();
+        let flat_string = string.flatten()?;
 
-        Ok(StringIterator::new(cx, flat_string).as_value())
+        Ok(StringIterator::new(cx, flat_string)?.as_value())
     }
 
     /// String.prototype.substr (https://tc39.es/ecma262/#sec-string.prototype.substr)
@@ -1218,7 +1235,7 @@ impl StringPrototype {
         // Finally find the end index, given the start and length arguments
         let end_index = u32::min(start_index + length, string_length);
 
-        Ok(string.substring(cx, start_index, end_index).as_value())
+        Ok(string.substring(cx, start_index, end_index)?.as_value())
     }
 
     /// CreateHTML (https://tc39.es/ecma262/#sec-createhtml)
@@ -1229,7 +1246,7 @@ impl StringPrototype {
         attribute_and_value: Option<(&str, Handle<Value>)>,
     ) -> EvalResult<Handle<StringValue>> {
         let object = require_object_coercible(cx, value)?;
-        let string = to_string(cx, object)?.to_wtf8_string();
+        let string = to_string(cx, object)?.to_wtf8_string()?;
 
         let mut html = Wtf8String::new();
 
@@ -1237,7 +1254,7 @@ impl StringPrototype {
         html.push_str(tag);
 
         if let Some((attribute, value)) = attribute_and_value {
-            let value_string = to_string(cx, value)?.to_wtf8_string();
+            let value_string = to_string(cx, value)?.to_wtf8_string()?;
 
             html.push_char(' ');
             html.push_str(attribute);
@@ -1261,7 +1278,7 @@ impl StringPrototype {
         html.push_str(tag);
         html.push_char('>');
 
-        Ok(cx.alloc_wtf8_string(&html).as_string())
+        Ok(cx.alloc_wtf8_string(&html)?.as_string())
     }
 
     /// String.prototype.anchor (https://tc39.es/ecma262/#sec-string.prototype.anchor)
@@ -1506,15 +1523,15 @@ fn normalize_string<I: Iterator<Item = char>>(
     cx: Context,
     string: Handle<StringValue>,
     f: impl Fn(CharIterator) -> I,
-) -> Handle<StringValue> {
-    let parts = to_valid_string_parts(*string.flatten());
+) -> AllocResult<Handle<StringValue>> {
+    let parts = to_valid_string_parts(*string.flatten()?);
 
     let mut normalized_string = Wtf8String::new();
 
     for part in parts {
         match part {
             StringPart::ValidRange(start, end) => {
-                let iter = CharIterator::new(string.iter_slice_code_points(start, end));
+                let iter = CharIterator::new(string.iter_slice_code_points(start, end)?);
                 for code_point in f(iter) {
                     normalized_string.push(code_point as CodePoint);
                 }
@@ -1525,9 +1542,9 @@ fn normalize_string<I: Iterator<Item = char>>(
         }
     }
 
-    FlatString::from_wtf8(cx, normalized_string.as_bytes())
+    Ok(FlatString::from_wtf8(cx, normalized_string.as_bytes())?
         .as_string()
-        .to_handle()
+        .to_handle())
 }
 
 /// Replace argument may be either a function or string
@@ -1588,8 +1605,12 @@ impl SubstitutionTemplateParser {
     }
 
     /// GetSubstitution (https://tc39.es/ecma262/#sec-getsubstitution) - precomputed portions
-    pub fn parse(mut self, cx: Context, template: Handle<StringValue>) -> SubstitutionTemplate {
-        let template = template.flatten();
+    pub fn parse(
+        mut self,
+        cx: Context,
+        template: Handle<StringValue>,
+    ) -> AllocResult<SubstitutionTemplate> {
+        let template = template.flatten()?;
         let template_length = template.len();
 
         while self.pos < template_length {
@@ -1662,7 +1683,7 @@ impl SubstitutionTemplateParser {
 
                     // Must be a named capture group, so extract name
                     let name = template
-                        .substring(cx, self.pos + 2, name_end_pos)
+                        .substring(cx, self.pos + 2, name_end_pos)?
                         .as_string();
 
                     self.flush_range_and_skip(name_end_pos - self.pos + 1);
@@ -1678,7 +1699,7 @@ impl SubstitutionTemplateParser {
 
         self.flush_range_and_skip(0);
 
-        SubstitutionTemplate { parts: self.parts, template }
+        Ok(SubstitutionTemplate { parts: self.parts, template })
     }
 }
 
@@ -1698,14 +1719,16 @@ impl SubstitutionTemplate {
         for template_part in &self.parts {
             match template_part {
                 SubstitutionPart::Range(start, end) => {
-                    let substring = self.template.substring(cx, *start, *end).as_string();
+                    let substring = self.template.substring(cx, *start, *end)?.as_string();
                     string_parts.push(substring);
                 }
                 SubstitutionPart::Match => {
                     string_parts.push(matched_string);
                 }
                 SubstitutionPart::BeforeMatch => {
-                    let substring = target_string.substring(cx, 0, matched_position).as_string();
+                    let substring = target_string
+                        .substring(cx, 0, matched_position)?
+                        .as_string();
                     string_parts.push(substring);
                 }
                 SubstitutionPart::AfterMatch => {
@@ -1714,7 +1737,7 @@ impl SubstitutionTemplate {
                         u32::min(matched_position + matched_string.len(), target_string_length);
 
                     let substring = target_string
-                        .substring(cx, after_match_pos, target_string_length)
+                        .substring(cx, after_match_pos, target_string_length)?
                         .as_string();
                     string_parts.push(substring);
                 }
@@ -1745,7 +1768,7 @@ impl SubstitutionTemplate {
                             // Append second digit as a literal
                             let second_digit_char = (index % 10) as u32 + '0' as u32;
                             let second_digit_string =
-                                FlatString::from_code_point(cx, second_digit_char);
+                                FlatString::from_code_point(cx, second_digit_char)?;
                             string_parts.push(second_digit_string.as_string().to_handle());
 
                             continue;
@@ -1753,12 +1776,12 @@ impl SubstitutionTemplate {
                     }
 
                     // Otherwise treat as a literal
-                    let substring = self.template.substring(cx, *start, *end).as_string();
+                    let substring = self.template.substring(cx, *start, *end)?.as_string();
                     string_parts.push(substring);
                 }
                 SubstitutionPart::NamedCapture(name) => {
                     if let Some(named_captures) = named_captures {
-                        let key = PropertyKey::string(cx, *name).to_handle(cx);
+                        let key = PropertyKey::string_handle(cx, *name)?;
                         let captured_string = get(cx, named_captures, key)?;
 
                         if !captured_string.is_undefined() {
@@ -1770,6 +1793,6 @@ impl SubstitutionTemplate {
             }
         }
 
-        Ok(StringValue::concat_all(cx, &string_parts))
+        Ok(StringValue::concat_all(cx, &string_parts)?)
     }
 }

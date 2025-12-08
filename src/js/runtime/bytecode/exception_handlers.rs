@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
@@ -62,9 +63,9 @@ impl ExceptionHandlersBuilder {
         self.handlers.push(handler);
     }
 
-    pub fn finish(&self, cx: Context) -> Option<Handle<ExceptionHandlers>> {
+    pub fn finish(&self, cx: Context) -> AllocResult<Option<Handle<ExceptionHandlers>>> {
         if self.handlers.is_empty() {
-            return None;
+            return Ok(None);
         }
 
         let mut buffer = vec![];
@@ -78,7 +79,7 @@ impl ExceptionHandlersBuilder {
             self.write_operand(&mut buffer, register.signed() as isize as usize);
         }
 
-        Some(ExceptionHandlers::new(cx, buffer, self.width))
+        Ok(Some(ExceptionHandlers::new(cx, buffer, self.width)?))
     }
 
     fn write_operand(&self, buffer: &mut Vec<u8>, value: usize) {
@@ -108,15 +109,19 @@ pub struct ExceptionHandlers {
 }
 
 impl ExceptionHandlers {
-    fn new(cx: Context, handlers: Vec<u8>, width: WidthEnum) -> Handle<ExceptionHandlers> {
+    fn new(
+        cx: Context,
+        handlers: Vec<u8>,
+        width: WidthEnum,
+    ) -> AllocResult<Handle<ExceptionHandlers>> {
         let size = Self::calculate_size_in_bytes(handlers.len());
-        let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size);
+        let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size)?;
 
         set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ExceptionHandlers));
         set_uninit!(object.width, width);
         object.handlers.init_from_slice(&handlers);
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     const HANDLERS_BYTE_OFFSET: usize = field_offset!(ExceptionHandlers, handlers);

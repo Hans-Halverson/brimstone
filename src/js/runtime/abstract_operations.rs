@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     must,
     runtime::{
+        alloc_error::AllocResult,
         iterator::iter_iterator_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         type_utilities::{same_value_zero, to_property_key},
@@ -68,7 +69,7 @@ pub fn set(
 ) -> EvalResult<()> {
     let success = object.set(cx, key, value, object.into())?;
     if !success && should_throw {
-        return err_cannot_set_property(cx, key);
+        return err_cannot_set_property(cx, key.format()?);
     }
 
     Ok(())
@@ -94,7 +95,7 @@ pub fn create_data_property_or_throw(
 ) -> EvalResult<()> {
     let success = create_data_property(cx, object, key, value)?;
     if !success {
-        return type_error(cx, &format!("Cannot create property {key}"));
+        return type_error(cx, &format!("Cannot create property {}", key.format()?));
     }
 
     Ok(())
@@ -106,9 +107,11 @@ pub fn create_non_enumerable_data_property_or_throw(
     object: Handle<ObjectValue>,
     key: Handle<PropertyKey>,
     value: Handle<Value>,
-) {
+) -> AllocResult<()> {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
     must!(define_property_or_throw(cx, object, key, new_desc));
+
+    Ok(())
 }
 
 /// DefinePropertyOrThrow (https://tc39.es/ecma262/#sec-definepropertyorthrow)
@@ -120,7 +123,7 @@ pub fn define_property_or_throw(
 ) -> EvalResult<()> {
     let success = object.define_own_property(cx, key, prop_desc)?;
     if !success {
-        return type_error(cx, &format!("cannot define property {key}"));
+        return type_error(cx, &format!("cannot define property {}", key.format()?));
     }
 
     Ok(())
@@ -133,7 +136,7 @@ pub fn delete_property_or_throw(
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
     if !object.delete(cx, key)? {
-        return type_error(cx, &format!("cannot delete property {key}"));
+        return type_error(cx, &format!("cannot delete property {}", key.format()?));
     }
 
     Ok(())
@@ -317,7 +320,7 @@ pub fn create_list_from_array_like(
     let mut key = PropertyKey::uninit().to_handle(cx);
 
     for i in 0..length {
-        key.replace(PropertyKey::array_index(cx, i as u32));
+        key.replace(PropertyKey::array_index(cx, i as u32)?);
         let next = get(cx, object, key)?;
         vec.push(next);
     }
@@ -446,7 +449,7 @@ pub fn enumerable_own_property_names(
                     KeyOrValue::KeyAndValue => {
                         let value = get(cx, object, key)?;
                         let key_and_value = [key_value, value];
-                        let entry = create_array_from_list(cx, &key_and_value);
+                        let entry = create_array_from_list(cx, &key_and_value)?;
                         properties.push(entry.into());
                     }
                 }
@@ -566,7 +569,7 @@ pub fn private_set(
     };
 
     if property.is_private_field() {
-        object.private_element_set(cx, private_name, value);
+        object.private_element_set(cx, private_name, value)?;
         Ok(())
     } else if property.is_private_method() {
         type_error(cx, "cannot assign to private method")
@@ -640,7 +643,12 @@ pub fn group_by(
         let mut found_group = false;
         for group in &mut groups {
             // Use zero-unaware comparisons because keys are not canonicalized
-            if same_value_zero(key, group.key) {
+            let found_match = match same_value_zero(key, group.key) {
+                Ok(result) => result,
+                Err(error) => return Some(Err(error.into())),
+            };
+
+            if found_match {
                 group.items.push(item);
                 found_group = true;
                 break;

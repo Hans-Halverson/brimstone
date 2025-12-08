@@ -18,7 +18,7 @@ use crate::{
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
-    runtime::{annex_b::init_annex_b_methods, gc::GarbageCollector},
+    runtime::{alloc_error::AllocResult, annex_b::init_annex_b_methods, gc::GarbageCollector},
 };
 
 use super::{
@@ -123,7 +123,7 @@ pub struct ContextCell {
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
 
 impl Context {
-    fn new(options: Rc<Options>) -> Context {
+    fn new(options: Rc<Options>) -> AllocResult<Context> {
         let cx_cell = Box::new(ContextCell {
             heap: Heap::new(options.heap_size),
             global_symbol_registry: HeapPtr::uninit(),
@@ -163,7 +163,7 @@ impl Context {
         if let Some(serialized_heap) = options.serialized_heap {
             cx.init_heap_from_serialized(serialized_heap);
         } else {
-            cx.init_heap_allocated_context_fields();
+            cx.init_heap_allocated_context_fields()?;
         }
 
         // Stop using deterministic PRNG
@@ -172,36 +172,40 @@ impl Context {
         // Annex B methods may not be included in the serialized heap so they must be initialized
         // separately.
         if options.annex_b {
-            init_annex_b_methods(cx, cx.initial_realm());
+            init_annex_b_methods(cx, cx.initial_realm())?;
         }
 
-        cx
+        Ok(cx)
     }
 
-    fn init_heap_allocated_context_fields(&mut self) {
+    fn init_heap_allocated_context_fields(&mut self) -> AllocResult<()> {
         let mut cx = *self;
 
         handle_scope!(cx, {
             // Initialize all uninitialized fields
-            cx.base_descriptors = BaseDescriptors::new(cx);
-            InternedStrings::init(cx);
+            cx.base_descriptors = BaseDescriptors::new(cx)?;
+            InternedStrings::init(cx)?;
 
-            cx.init_builtin_names();
-            cx.init_builtin_symbols();
+            cx.init_builtin_names()?;
+            cx.init_builtin_symbols()?;
 
             cx.global_symbol_registry =
-                GlobalSymbolRegistry::new_initial(cx, HeapItemKind::GlobalSymbolRegistryMap);
-            cx.modules = ModuleCache::new_initial(cx, HeapItemKind::ModuleCacheMap);
+                GlobalSymbolRegistry::new_initial(cx, HeapItemKind::GlobalSymbolRegistryMap)?;
+            cx.modules = ModuleCache::new_initial(cx, HeapItemKind::ModuleCacheMap)?;
 
-            cx.default_array_properties = DenseArrayProperties::new(cx, 0).cast();
+            cx.default_array_properties = DenseArrayProperties::new(cx, 0)?.cast();
             cx.default_named_properties =
-                NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, 0);
+                NamedPropertiesMap::new(cx, HeapItemKind::ObjectNamedPropertiesMap, 0)?;
 
-            cx.initial_realm = *Realm::new(cx);
-        });
+            cx.initial_realm = *Realm::new(cx)?;
+
+            Ok(())
+        })?;
 
         // Stop allocating into the permanent heap
         cx.heap.mark_current_semispace_as_permanent();
+
+        Ok(())
     }
 
     /// Initialize this context from a serialized heap.
@@ -318,7 +322,7 @@ impl Context {
         let realm = module.program_function_ptr().realm_ptr();
         self.vm().push_initial_realm_stack_frame(realm)?;
 
-        let promise = execute_module(*self, module);
+        let promise = execute_module(*self, module)?;
 
         self.run_all_tasks()?;
 
@@ -333,17 +337,23 @@ impl Context {
         Ok(())
     }
 
-    pub fn insert_module(&mut self, cache_key: ModuleCacheKey, module: DynModule) {
+    pub fn insert_module(
+        &mut self,
+        cache_key: ModuleCacheKey,
+        module: DynModule,
+    ) -> AllocResult<()> {
         ModuleCacheField
-            .maybe_grow_for_insertion(*self)
+            .maybe_grow_for_insertion(*self)?
             .insert_without_growing(cache_key.into_heap(), module.to_heap());
+
+        Ok(())
     }
 
-    pub fn alloc_uninit<T>(&self) -> HeapPtr<T> {
+    pub fn alloc_uninit<T>(&self) -> AllocResult<HeapPtr<T>> {
         Heap::alloc_uninit::<T>(*self)
     }
 
-    pub fn alloc_uninit_with_size<T>(&self, size: usize) -> HeapPtr<T> {
+    pub fn alloc_uninit_with_size<T>(&self, size: usize) -> AllocResult<HeapPtr<T>> {
         Heap::alloc_uninit_with_size::<T>(*self, size)
     }
 
@@ -413,33 +423,33 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string_ptr(&mut self, str: &str) -> HeapPtr<FlatString> {
+    pub fn alloc_string_ptr(&mut self, str: &str) -> AllocResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> HeapPtr<FlatString> {
+    pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> AllocResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> HeapPtr<FlatString> {
+    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> AllocResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_string(&mut self, str: &str) -> Handle<FlatString> {
-        self.alloc_string_ptr(str).to_handle()
+    pub fn alloc_string(&mut self, str: &str) -> AllocResult<Handle<FlatString>> {
+        Ok(self.alloc_string_ptr(str)?.to_handle())
     }
 
     #[inline]
-    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> Handle<FlatString> {
-        self.alloc_wtf8_string_ptr(str).to_handle()
+    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> AllocResult<Handle<FlatString>> {
+        Ok(self.alloc_wtf8_string_ptr(str)?.to_handle())
     }
 
     #[inline]
-    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> Handle<FlatString> {
-        self.alloc_wtf8_str_ptr(str).to_handle()
+    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> AllocResult<Handle<FlatString>> {
+        Ok(self.alloc_wtf8_str_ptr(str)?.to_handle())
     }
 
     #[inline]
@@ -567,12 +577,6 @@ impl DerefMut for Context {
     }
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        ContextBuilder::new().build()
-    }
-}
-
 pub struct ContextBuilder {
     options: Option<Rc<Options>>,
 }
@@ -582,7 +586,7 @@ impl ContextBuilder {
         Self { options: None }
     }
 
-    pub fn build(self) -> Context {
+    pub fn build(self) -> AllocResult<Context> {
         // Create default options if none were provided
         let options = self.options.unwrap_or_else(|| Rc::new(Options::default()));
 
@@ -636,7 +640,7 @@ type ModuleCache = BsHashMap<HeapModuleCacheKey, HeapDynModule>;
 pub struct ModuleCacheField;
 
 impl BsHashMapField<HeapModuleCacheKey, HeapDynModule> for ModuleCacheField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<ModuleCache> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<ModuleCache>> {
         ModuleCache::new(cx, HeapItemKind::ModuleCacheMap, capacity)
     }
 
@@ -667,7 +671,7 @@ impl ModuleCacheField {
 pub struct GlobalSymbolRegistryField;
 
 impl BsHashMapField<HeapPtr<FlatString>, HeapPtr<SymbolValue>> for GlobalSymbolRegistryField {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<GlobalSymbolRegistry> {
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<GlobalSymbolRegistry>> {
         GlobalSymbolRegistry::new(cx, HeapItemKind::GlobalSymbolRegistryMap, capacity)
     }
 

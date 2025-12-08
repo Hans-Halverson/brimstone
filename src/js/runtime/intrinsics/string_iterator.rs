@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -28,16 +29,16 @@ extend_object! {
 }
 
 impl StringIterator {
-    pub fn new(cx: Context, string: Handle<FlatString>) -> Handle<StringIterator> {
+    pub fn new(cx: Context, string: Handle<FlatString>) -> AllocResult<Handle<StringIterator>> {
         let mut object = object_create::<StringIterator>(
             cx,
             HeapItemKind::StringIterator,
             Intrinsic::StringIteratorPrototype,
-        );
+        )?;
 
         set_uninit!(object.iter, string.iter_code_points_safe());
 
-        object.to_handle()
+        Ok(object.to_handle())
     }
 
     cast_from_value_fn!(StringIterator, "String Iterator");
@@ -47,22 +48,22 @@ impl StringIterator {
 pub struct StringIteratorPrototype;
 
 impl StringIteratorPrototype {
-    pub fn new(mut cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(mut cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let proto = realm.get_intrinsic(Intrinsic::IteratorPrototype);
-        let mut object = ObjectValue::new(cx, Some(proto), true);
+        let mut object = ObjectValue::new(cx, Some(proto), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm);
+        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
 
         // %StringIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%stringiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("String Iterator").into();
+        let to_string_tag_value = cx.alloc_string("String Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,
             Property::data(to_string_tag_value, false, false, true),
-        );
+        )?;
 
-        object
+        Ok(object)
     }
 
     /// %StringIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%stringiteratorprototype%.next)
@@ -74,11 +75,11 @@ impl StringIteratorPrototype {
         let mut string_iterator = StringIterator::cast_from_value(cx, this_value)?;
 
         match string_iterator.iter.next() {
-            None => Ok(create_iter_result_object(cx, cx.undefined(), true)),
+            None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
             Some(next_code_point) => {
                 let code_point_string =
-                    FlatString::from_code_point(cx, next_code_point).as_string();
-                Ok(create_iter_result_object(cx, code_point_string.into(), false))
+                    FlatString::from_code_point(cx, next_code_point)?.as_string();
+                Ok(create_iter_result_object(cx, code_point_string.into(), false)?)
             }
         }
     }

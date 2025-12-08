@@ -13,9 +13,9 @@ use brimstone_core::{
     handle_scope, must,
     parser::source::Source,
     runtime::{
-        abstract_operations::define_property_or_throw, builtin_function::BuiltinFunction,
-        error::type_error, function::get_argument, gc_object::GcObject, Context, EvalResult,
-        Handle, PropertyDescriptor, PropertyKey, Value,
+        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
+        builtin_function::BuiltinFunction, error::type_error, function::get_argument,
+        gc_object::GcObject, Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Value,
     },
 };
 
@@ -63,9 +63,9 @@ fn main() {
             let test_wtf8_string = Wtf8String::from_str(test_str);
 
             // Set up context for test
-            let reuslt = panic::catch_unwind(|| {
-                let cx = Context::default();
-                install_fuzzilli_function(cx);
+            let result = panic::catch_unwind(|| {
+                let cx = ContextBuilder::new().build().unwrap();
+                install_fuzzilli_function(cx).unwrap();
                 GcObject::install(cx, cx.initial_realm());
 
                 // Execute test case
@@ -75,7 +75,7 @@ fn main() {
             });
 
             // Intentionally cause segfault on panic to signal failure to harness
-            let is_error = match reuslt {
+            let is_error = match result {
                 Ok(result) => result,
                 Err(_) => segfault(),
             };
@@ -94,20 +94,22 @@ fn main() {
     }
 }
 
-fn install_fuzzilli_function(mut cx: Context) {
+fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
     handle_scope!(cx, {
         let realm = cx.initial_realm();
 
         // Register the rust runtime function
         cx.rust_runtime_functions.register(fuzzilli);
 
-        let fuzzilli_string = cx.alloc_string("fuzzilli");
-        let fuzzilli_key = PropertyKey::string(cx, fuzzilli_string.as_string()).to_handle(cx);
-        let fuzzilli_function = BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None);
+        let fuzzilli_string = cx.alloc_string("fuzzilli")?;
+        let fuzzilli_key = PropertyKey::string_handle(cx, fuzzilli_string.as_string())?;
+        let fuzzilli_function = BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None)?;
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
         must!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc))
-    });
+
+        Ok(())
+    })
 }
 
 fn fuzzilli(

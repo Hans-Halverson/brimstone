@@ -8,6 +8,7 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
+        alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, Handle, HeapPtr,
@@ -66,10 +67,10 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
     // Public interface
 
-    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
         // Size of a dense array with the given capacity, in bytes
         let size = Self::calculate_size_in_bytes(capacity);
-        let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size);
+        let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size)?;
 
         set_uninit!(hash_map.descriptor, cx.base_descriptors.get(kind));
         set_uninit!(hash_map.is_tombstone, false);
@@ -81,17 +82,17 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 
         // Leave entries uninitialized
 
-        hash_map
+        Ok(hash_map)
     }
 
     /// Create a new map whose entries are copied from the provided map.
-    pub fn new_from_map(cx: Context, map: Handle<Self>) -> HeapPtr<Self> {
+    pub fn new_from_map(cx: Context, map: Handle<Self>) -> AllocResult<HeapPtr<Self>> {
         let size = Self::calculate_size_in_bytes(map.capacity());
 
-        let copied_map = cx.alloc_uninit_with_size::<Self>(size);
+        let copied_map = cx.alloc_uninit_with_size::<Self>(size)?;
         unsafe { std::ptr::copy(map.as_ptr(), copied_map.as_ptr(), size) };
 
-        copied_map
+        Ok(copied_map)
     }
 
     /// Total number of entries that have been inserted, including those that have been deleted.
@@ -424,7 +425,7 @@ impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
 /// A BsHashMap stored as the field of a heap item. Can create new maps and set the field to a
 /// new map.
 pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<K, V>>;
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsIndexMap<K, V>>>;
 
     fn get(&self) -> HeapPtr<BsIndexMap<K, V>>;
 
@@ -433,13 +434,13 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
     /// Prepare map for insertion of a single entry. This will grow the map and update container to
     /// point to new map if there is no room to insert another entry in the map.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsIndexMap<K, V>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsIndexMap<K, V>>> {
         let old_map = self.get();
         let num_entries_used = old_map.num_entries_used();
         let capacity = old_map.capacity();
 
         if num_entries_used < capacity {
-            return old_map;
+            return Ok(old_map);
         }
 
         // Save old map behind handle before allocating
@@ -457,7 +458,7 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
             new_capacity = capacity * 2;
         }
 
-        let mut new_map = self.new_map(cx, new_capacity);
+        let mut new_map = self.new_map(cx, new_capacity)?;
 
         // Update parent reference from old child to new child map
         self.set(new_map);
@@ -476,7 +477,7 @@ pub trait BsIndexMapField<K: Eq + Hash + Clone, V: Clone> {
             old_map.set_new_map_ptr(new_map);
         }
 
-        new_map
+        Ok(new_map)
     }
 }
 

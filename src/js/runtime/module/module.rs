@@ -6,9 +6,9 @@ use std::{
 use crate::{
     heap_trait_object,
     runtime::{
-        boxed_value::BoxedValue, gc::AnyHeapItem, promise_object::PromiseObject,
-        rust_vtables::extract_module_vtable, string_value::FlatString, Context, EvalResult, Handle,
-        HeapPtr,
+        alloc_error::AllocResult, boxed_value::BoxedValue, gc::AnyHeapItem,
+        promise_object::PromiseObject, rust_vtables::extract_module_vtable,
+        string_value::FlatString, Context, EvalResult, Handle, HeapPtr,
     },
 };
 
@@ -25,7 +25,7 @@ pub trait Module {
         None
     }
 
-    fn load_requested_modules(&self, cx: Context) -> Handle<PromiseObject>;
+    fn load_requested_modules(&self, cx: Context) -> AllocResult<Handle<PromiseObject>>;
 
     fn get_exported_names(
         &self,
@@ -39,13 +39,13 @@ pub trait Module {
         cx: Context,
         export_name: HeapPtr<FlatString>,
         resolve_set: &mut Vec<(HeapPtr<FlatString>, HeapPtr<SourceTextModule>)>,
-    ) -> ResolveExportResult;
+    ) -> AllocResult<ResolveExportResult>;
 
     fn link(&self, cx: Context) -> EvalResult<()>;
 
-    fn evaluate(&self, cx: Context) -> Handle<PromiseObject>;
+    fn evaluate(&self, cx: Context) -> AllocResult<Handle<PromiseObject>>;
 
-    fn get_namespace_object(&mut self, cx: Context) -> HeapPtr<ModuleNamespaceObject>;
+    fn get_namespace_object(&mut self, cx: Context) -> AllocResult<HeapPtr<ModuleNamespaceObject>>;
 }
 
 pub enum ModuleEnum {

@@ -141,7 +141,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
     // Check that all re-exported names are resolvable
     for entry in module.entries_as_slice() {
         if let ModuleEntry::NamedReExport(entry) = entry {
-            let resolution = module.resolve_export(cx, entry.export_name, &mut vec![]);
+            let resolution = module.resolve_export(cx, entry.export_name, &mut vec![])?;
             if !matches!(resolution, ResolveExportResult::Resolved { .. }) {
                 return syntax_error(cx, "could not resolve module specifier");
             }
@@ -156,7 +156,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
             let mut imported_module = module.get_imported_module(&entry.module_request.to_heap());
 
             if let Some(import_name) = entry.import_name {
-                let resolution = imported_module.resolve_export(cx, *import_name, &mut vec![]);
+                let resolution = imported_module.resolve_export(cx, *import_name, &mut vec![])?;
 
                 match resolution {
                     // Regular imports are linked to their corresponding export by referencing
@@ -175,12 +175,13 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                         module: mut resolved_module,
                     } => {
                         // May allocate
-                        let namespace_object = resolved_module.get_namespace_object(cx).to_handle();
+                        let namespace_object =
+                            resolved_module.get_namespace_object(cx)?.to_handle();
 
                         // The BoxedValue for namespace re-exports has not yet been created (unlike
                         // all other exports, which are actual bindings whose BoxedValue is created
                         // when creating the the module scope).
-                        let boxed_value = BoxedValue::new(cx, namespace_object.into());
+                        let boxed_value = BoxedValue::new(cx, namespace_object.into())?;
                         module
                             .module_scope_ptr()
                             .set_heap_item_slot(entry.slot_index, boxed_value.as_heap_item());
@@ -189,7 +190,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
                 }
             } else {
                 // Namespace object may be stored as a module or scope value
-                let namespace_object = imported_module.get_namespace_object(cx);
+                let namespace_object = imported_module.get_namespace_object(cx)?;
                 let namespace_object = namespace_object.as_value();
                 let slot_index = entry.slot_index;
 

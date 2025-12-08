@@ -1,8 +1,8 @@
 use crate::runtime::{
-    abstract_operations::call_object, builtin_function::BuiltinFunction, error::type_error,
-    eval_result::EvalResult, function::get_argument, get, intrinsics::set_object::SetObject,
-    iterator::iter_iterator_values, object_value::ObjectValue, realm::Realm,
-    type_utilities::is_callable, Context, Handle, Value,
+    abstract_operations::call_object, alloc_error::AllocResult, builtin_function::BuiltinFunction,
+    error::type_error, eval_result::EvalResult, function::get_argument, get,
+    intrinsics::set_object::SetObject, iterator::iter_iterator_values, object_value::ObjectValue,
+    realm::Realm, type_utilities::is_callable, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, rust_runtime::return_this};
@@ -11,7 +11,7 @@ pub struct SetConstructor;
 
 impl SetConstructor {
     /// The Set Constructor (https://tc39.es/ecma262/#sec-set-constructor)
-    pub fn new(cx: Context, realm: Handle<Realm>) -> Handle<ObjectValue> {
+    pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
             Self::construct,
@@ -19,19 +19,19 @@ impl SetConstructor {
             cx.names.set(),
             realm,
             Intrinsic::FunctionPrototype,
-        );
+        )?;
 
         func.intrinsic_frozen_property(
             cx,
             cx.names.prototype(),
             realm.get_intrinsic(Intrinsic::SetPrototype).into(),
-        );
+        )?;
 
         // get Set [ @@species ] (https://tc39.es/ecma262/#sec-get-set-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm);
+        func.intrinsic_getter(cx, species_key, return_this, realm)?;
 
-        func
+        Ok(func)
     }
 
     /// Set (https://tc39.es/ecma262/#sec-set-iterable)

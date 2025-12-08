@@ -3,12 +3,16 @@ use std::str::FromStr;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::common::{
-    string::StringWidth,
-    string_iterators::GenericCodeUnitIterator,
-    unicode::{
-        is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace, CodeUnit,
+use crate::{
+    common::{
+        string::StringWidth,
+        string_iterators::GenericCodeUnitIterator,
+        unicode::{
+            is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace,
+            CodeUnit,
+        },
     },
+    runtime::alloc_error::AllocResult,
 };
 
 use super::{
@@ -30,15 +34,15 @@ pub struct StringLexer {
 impl StringLexer {
     // Returns None if the lexer could not be primed, meaning the string starts with invalid
     // unicode.
-    pub fn new(string: Handle<StringValue>) -> StringLexer {
-        let iter = string.iter_code_units();
+    pub fn new(string: Handle<StringValue>) -> AllocResult<StringLexer> {
+        let iter = string.iter_code_units()?;
         let prev_ptr = iter.ptr();
         let mut lexer = StringLexer { iter, prev_ptr, current: None };
 
         // Prime the lexer
         lexer.advance();
 
-        lexer
+        Ok(lexer)
     }
 
     #[inline]
@@ -187,9 +191,7 @@ impl StringLexer {
 /// ToNumber (https://tc39.es/ecma262/#sec-tonumber) Applied to the String Type
 ///
 /// Return None if the string does not conform to the grammar.
-pub fn parse_string_to_number(string: Handle<StringValue>) -> Option<f64> {
-    let mut lexer = StringLexer::new(string);
-
+pub fn parse_string_to_number(mut lexer: StringLexer) -> Option<f64> {
     skip_string_whitespace(&mut lexer);
 
     // Empty or pure whitespace string is treated as 0
@@ -449,9 +451,7 @@ pub fn parse_signed_decimal_literal(lexer: &mut StringLexer) -> Option<f64> {
 /// StringIntegerLiteral Grammar (https://tc39.es/ecma262/#sec-stringintegerliteral-grammar)
 ///
 /// Return None if the string does not conform to the grammar.
-pub fn parse_string_to_bigint(string: Handle<StringValue>) -> Option<BigInt> {
-    let mut lexer = StringLexer::new(string);
-
+pub fn parse_string_to_bigint(mut lexer: StringLexer) -> Option<BigInt> {
     skip_string_whitespace(&mut lexer);
 
     // Empty or pure whitespace string is treated as 0
@@ -562,9 +562,7 @@ fn bigint_literal_with_base(
 
 /// Parse string to a u32,. String must be the canonical representation of a u32, and overflow is
 /// checked. This is used when converting a string to an array property key if possible.
-pub fn parse_string_to_u32(string: Handle<StringValue>) -> Option<u32> {
-    let mut lexer = StringLexer::new(string);
-
+pub fn parse_string_to_u32(mut lexer: StringLexer) -> Option<u32> {
     let mut result;
 
     if let Some(digit) = lexer.current_decimal_value() {
@@ -691,19 +689,19 @@ fn parse_decimal_digits(lexer: &mut StringLexer, num_digits: i32) -> Option<i64>
 /// - Date.prototype.toISOString
 /// - Date.prototype.toString
 /// - Date.prototype.toUTCString
-pub fn parse_string_to_date(string: Handle<StringValue>) -> Option<f64> {
-    if let Some(date) = parse_string_to_iso_date(string) {
-        return Some(date);
+pub fn parse_string_to_date(string: Handle<StringValue>) -> AllocResult<Option<f64>> {
+    let lexer = StringLexer::new(string)?;
+    if let Some(date) = parse_string_to_iso_date(lexer) {
+        return Ok(Some(date));
     }
 
-    parse_string_to_utc_or_default_date(string)
+    let lexer = StringLexer::new(string)?;
+    Ok(parse_string_to_utc_or_default_date(lexer))
 }
 
 /// Date Time String Format (https://tc39.es/ecma262/#sec-date-time-string-format)
 /// Parse string to a date following the simplified ISO 8601 format
-fn parse_string_to_iso_date(string: Handle<StringValue>) -> Option<f64> {
-    let mut lexer = StringLexer::new(string);
-
+fn parse_string_to_iso_date(mut lexer: StringLexer) -> Option<f64> {
     // Parse required year - must be in format:
     //  YYYY
     //  +YYYYYY
@@ -860,9 +858,7 @@ fn utc_time_from_full_date_parts(
 }
 
 // Parse the string to the date format specified in toString or toUTCString
-fn parse_string_to_utc_or_default_date(string: Handle<StringValue>) -> Option<f64> {
-    let mut lexer = StringLexer::new(string);
-
+fn parse_string_to_utc_or_default_date(mut lexer: StringLexer) -> Option<f64> {
     // Both string formats start with the week day
     parse_week_day(&mut lexer)?;
 

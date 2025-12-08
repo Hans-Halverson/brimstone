@@ -4,6 +4,7 @@ use crate::{
         abstract_operations::{
             call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
         },
+        alloc_error::AllocResult,
         bound_function_object::BoundFunctionObject,
         builtin_function::BuiltinFunction,
         bytecode::function::{BytecodeFunction, Closure},
@@ -28,18 +29,22 @@ pub struct FunctionPrototype {}
 
 impl FunctionPrototype {
     /// Start out uninitialized and then initialize later to break dependency cycles.
-    pub fn new_uninit(cx: Context) -> Handle<ObjectValue> {
+    pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectValue>> {
         // Initialized with correct values in initialize method, but set to default value
         // at first to be GC safe until initialize method is called.
         let mut object =
-            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, None);
+            object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, None)?;
         object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());
 
-        object.to_handle().into()
+        Ok(object.to_handle().into())
     }
 
     /// Properties of the Function Prototype Object (https://tc39.es/ecma262/#sec-properties-of-the-function-prototype-object)
-    pub fn initialize(cx: Context, function_prototype: Handle<ObjectValue>, realm: Handle<Realm>) {
+    pub fn initialize(
+        cx: Context,
+        function_prototype: Handle<ObjectValue>,
+        realm: Handle<Realm>,
+    ) -> AllocResult<()> {
         let object_proto_ptr = realm.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
 
         let mut object = function_prototype.as_object();
@@ -56,20 +61,20 @@ impl FunctionPrototype {
             realm,
             /* is_constructor */ false,
             /* name */ None,
-        );
+        )?;
         let scope = realm.default_global_scope();
 
         object
             .cast::<Closure>()
             .init_extra_fields(*function, *scope);
 
-        object.instrinsic_length_prop(cx, 0);
-        object.intrinsic_name_prop(cx, "");
+        object.instrinsic_length_prop(cx, 0)?;
+        object.intrinsic_name_prop(cx, "")?;
 
-        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 2, realm);
-        object.intrinsic_func(cx, cx.names.bind(), Self::bind, 1, realm);
-        object.intrinsic_func(cx, cx.names.call(), Self::call_intrinsic, 1, realm);
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm);
+        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.bind(), Self::bind, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.call(), Self::call_intrinsic, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
 
         // [Function.hasInstance] property
         let has_instance_func = BuiltinFunction::create(
@@ -79,13 +84,15 @@ impl FunctionPrototype {
             cx.well_known_symbols.has_instance(),
             realm,
             None,
-        )
+        )?
         .into();
         object.intrinsic_frozen_property(
             cx,
             cx.well_known_symbols.has_instance(),
             has_instance_func,
-        );
+        )?;
+
+        Ok(())
     }
 
     /// Function.prototype.apply (https://tc39.es/ecma262/#sec-function.prototype.apply)
@@ -150,7 +157,7 @@ impl FunctionPrototype {
             }
         }
 
-        set_function_length_maybe_infinity(cx, bound_func, length);
+        set_function_length_maybe_infinity(cx, bound_func, length)?;
 
         let target_name = get(cx, target, cx.names.name())?;
         let target_name = if target_name.is_string() {
@@ -159,8 +166,8 @@ impl FunctionPrototype {
             cx.names.empty_string().as_string()
         };
 
-        let name_key = PropertyKey::string(cx, target_name).to_handle(cx);
-        set_function_name(cx, bound_func, name_key, Some("bound"));
+        let name_key = PropertyKey::string_handle(cx, target_name)?;
+        set_function_name(cx, bound_func, name_key, Some("bound"))?;
 
         Ok(bound_func.as_value())
     }
@@ -199,18 +206,18 @@ impl FunctionPrototype {
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, *this_object) {
-                return Ok(cx.alloc_string("function () { [native code] }").as_value());
+                return Ok(cx.alloc_string("function () { [native code] }")?.as_value());
             }
 
             // Builtin functions have special formatting using the function name
             if function.rust_runtime_function_id().is_some() {
-                let mut string_parts = vec![cx.alloc_string("function ").as_string()];
+                let mut string_parts = vec![cx.alloc_string("function ")?.as_string()];
                 if let Some(name) = function.name() {
                     string_parts.push(name);
                 }
-                string_parts.push(cx.alloc_string("() { [native code] }").as_string());
+                string_parts.push(cx.alloc_string("() { [native code] }")?.as_string());
 
-                return Ok(StringValue::concat_all(cx, &string_parts).as_value());
+                return Ok(StringValue::concat_all(cx, &string_parts)?.as_value());
             }
 
             // Non-builtin functions return their original slice of the source code
@@ -222,7 +229,7 @@ impl FunctionPrototype {
             // vec since source file may be moved when allocating result string.
             let source_slice = source_contents[source_range].to_vec();
 
-            let func_string = FlatString::from_wtf8(cx, &source_slice)
+            let func_string = FlatString::from_wtf8(cx, &source_slice)?
                 .as_string()
                 .to_handle();
 
@@ -230,7 +237,7 @@ impl FunctionPrototype {
         }
 
         if is_callable_object(this_object) {
-            return Ok(cx.alloc_string("function () { [native code] }").as_value());
+            return Ok(cx.alloc_string("function () { [native code] }")?.as_value());
         }
 
         type_error(cx, "Function.prototype.toString expected a function")

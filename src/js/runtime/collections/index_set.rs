@@ -1,6 +1,7 @@
 use std::hash::Hash;
 
 use crate::runtime::{
+    alloc_error::AllocResult,
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
     Context, Handle, HeapPtr,
@@ -18,8 +19,8 @@ pub struct BsIndexSet<T>(BsIndexMap<T, ()>);
 impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     pub const MIN_CAPACITY: usize = BsIndexMap::<T, ()>::MIN_CAPACITY;
 
-    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> HeapPtr<Self> {
-        BsIndexMap::<T, ()>::new(cx, kind, capacity).cast()
+    pub fn new(cx: Context, kind: HeapItemKind, capacity: usize) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsIndexMap::<T, ()>::new(cx, kind, capacity)?.cast())
     }
 
     pub fn calculate_size_in_bytes(capacity: usize) -> usize {
@@ -27,8 +28,8 @@ impl<T: Eq + Hash + Clone> BsIndexSet<T> {
     }
 
     /// Create a new set whose entries are copied from the provided set.
-    pub fn new_from_set(cx: Context, set: Handle<Self>) -> HeapPtr<Self> {
-        BsIndexMap::<T, ()>::new_from_map(cx, set.cast()).cast()
+    pub fn new_from_set(cx: Context, set: Handle<Self>) -> AllocResult<HeapPtr<Self>> {
+        Ok(BsIndexMap::<T, ()>::new_from_map(cx, set.cast())?.cast())
     }
 
     /// Number of elements inserted in the set.
@@ -82,7 +83,7 @@ impl<T: Eq + Hash + Clone> Handle<BsIndexSet<T>> {
 /// A BsIndexSet stored as the field of a heap item. Can create new set and set the field to a
 /// new set.
 pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
-    fn new(cx: Context, capacity: usize) -> HeapPtr<BsIndexSet<T>>;
+    fn new(cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsIndexSet<T>>>;
 
     fn get(&self) -> HeapPtr<BsIndexSet<T>>;
 
@@ -91,9 +92,9 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
     /// Prepare set for insertion of a single element. This will grow the set and update container
     /// to point to new set if there is no room to insert another entry in the set.
     #[inline]
-    fn maybe_grow_for_insertion(&mut self, cx: Context) -> HeapPtr<BsIndexSet<T>> {
+    fn maybe_grow_for_insertion(&mut self, cx: Context) -> AllocResult<HeapPtr<BsIndexSet<T>>> {
         let mut map_field = IndexMapField(self.clone());
-        map_field.maybe_grow_for_insertion(cx).cast()
+        Ok(map_field.maybe_grow_for_insertion(cx)?.cast())
     }
 }
 
@@ -101,8 +102,8 @@ pub trait BsIndexSetField<T: Eq + Hash + Clone>: Clone {
 struct IndexMapField<T>(T);
 
 impl<T: Eq + Hash + Clone, S: BsIndexSetField<T>> BsIndexMapField<T, ()> for IndexMapField<S> {
-    fn new_map(&self, cx: Context, capacity: usize) -> HeapPtr<BsIndexMap<T, ()>> {
-        S::new(cx, capacity).cast()
+    fn new_map(&self, cx: Context, capacity: usize) -> AllocResult<HeapPtr<BsIndexMap<T, ()>>> {
+        Ok(S::new(cx, capacity)?.cast())
     }
 
     fn get(&self) -> HeapPtr<BsIndexMap<T, ()>> {

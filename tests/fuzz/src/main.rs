@@ -15,7 +15,8 @@ use brimstone_core::{
     runtime::{
         abstract_operations::define_property_or_throw, alloc_error::AllocResult,
         builtin_function::BuiltinFunction, error::type_error, function::get_argument,
-        gc_object::GcObject, Context, EvalResult, Handle, PropertyDescriptor, PropertyKey, Value,
+        gc_object::GcObject, Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor,
+        PropertyKey, Value,
     },
 };
 
@@ -63,22 +64,25 @@ fn main() {
             let test_wtf8_string = Wtf8String::from_str(test_str);
 
             // Set up context for test
-            let result = panic::catch_unwind(|| {
-                let cx = ContextBuilder::new().build().unwrap();
-                install_fuzzilli_function(cx).unwrap();
-                GcObject::install(cx, cx.initial_realm());
+            let completion_or_panic = panic::catch_unwind(|| {
+                let cx = ContextBuilder::new().build()?;
+                install_fuzzilli_function(cx)?;
+                GcObject::install(cx, cx.initial_realm())?;
 
                 // Execute test case
                 let source = Rc::new(Source::new_for_string("", test_wtf8_string).unwrap());
 
-                cx.execute_then_drop(|mut cx| cx.evaluate_script(source).is_err())
+                cx.execute_then_drop(|mut cx| cx.evaluate_script(source))
             });
 
             // Intentionally cause segfault on panic to signal failure to harness
-            let is_error = match result {
-                Ok(result) => result,
+            let completion = match completion_or_panic {
+                Ok(completion) => completion,
                 Err(_) => segfault(),
             };
+
+            // Gracefully error on abnormal completion or on allocation errors
+            let is_error = completion.is_err();
 
             // Flush output as they may be buffered
             stdout().flush().unwrap();
@@ -103,10 +107,11 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
 
         let fuzzilli_string = cx.alloc_string("fuzzilli")?;
         let fuzzilli_key = PropertyKey::string_handle(cx, fuzzilli_string.as_string())?;
-        let fuzzilli_function = BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None)?;
+        let fuzzilli_function =
+            BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None)?;
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
-        must!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc))
+        must!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc));
 
         Ok(())
     })
@@ -128,7 +133,7 @@ fn fuzzilli(
 
     let command = command_arg.as_string();
 
-    match command.to_wtf8_string().as_bytes() {
+    match command.to_wtf8_string()?.as_bytes() {
         b"FUZZILLI_CRASH" => {
             let kind = get_argument(cx, arguments, 1);
             if !kind.is_smi() {
@@ -151,7 +156,7 @@ fn fuzzilli(
 
             let mut dw_file = unsafe { File::from_raw_fd(REPRL_DWFD) };
             dw_file
-                .write_all(printed.as_string().to_wtf8_string().as_bytes())
+                .write_all(printed.as_string().to_wtf8_string()?.as_bytes())
                 .unwrap();
 
             // Flush output but do not close the file

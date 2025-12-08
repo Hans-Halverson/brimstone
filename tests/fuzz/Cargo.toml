@@ -10,7 +10,7 @@ name = "brimstone_fuzz"
 required-features = ["build_fuzz"]
 
 [dependencies]
-brimstone_core = { workspace = true, features = ["alloc_error"] }
+brimstone_core = { workspace = true, features = ["alloc_error", "jemalloc"] }
 brimstone_serialized_heap.workspace = true
 
 [features]

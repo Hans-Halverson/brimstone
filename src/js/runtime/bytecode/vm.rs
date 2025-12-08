@@ -151,7 +151,24 @@ pub struct VM {
     stack_trace_top: Option<StackFrame>,
 
     stack: Vec<StackSlotValue>,
+
+    /// The number of stack frames currently on the stack.
+    num_stack_frames: usize,
 }
+
+/// Max number of stack frames to avoid overflowing the native stack. Rough limit set from
+/// observed values and subject to change.
+///
+/// Release builds can have much deeper stacks.
+#[cfg(not(debug_assertions))]
+const MAX_STACK_DEPTH: usize = 4096;
+
+/// Max number of stack frames to avoid overflowing the native stack. Rough limit set from
+/// observed values and subject to change.
+///
+/// Debug builds only support shallow stacks before overflowing native stack.
+#[cfg(debug_assertions)]
+const MAX_STACK_DEPTH: usize = 80;
 
 impl VM {
     #[inline]
@@ -229,6 +246,7 @@ impl VM {
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
             stack_trace_top: None,
+            num_stack_frames: 0,
 
             stack,
         };
@@ -349,6 +367,9 @@ impl VM {
         let return_address = self.pc();
         let parent_fp = self.fp();
 
+        // Check for stack overflows
+        self.stack_depth_check(stack_frame_size)?;
+
         // Push the saved stack frame stored in generator onto the stack
         unsafe {
             self.set_sp(self.sp().sub(stack_frame_size));
@@ -401,6 +422,7 @@ impl VM {
         // Reset stack
         self.set_sp(self.stack_ptr_end().cast_mut());
         self.set_fp(std::ptr::null_mut());
+        self.num_stack_frames = 0;
     }
 
     /// An empty frame pointer indicates that the stack is empty, no bytecode is currently
@@ -460,6 +482,7 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(RetInstruction);
                     let return_value = self.read_register(instr.return_value());
+
                     return_!(return_value);
                 }};
             }
@@ -681,6 +704,9 @@ impl VM {
                     }
 
                     while let Some(caller_stack_frame) = stack_frame.previous_frame() {
+                        // Ascend into the caller's stack frame
+                        self.num_stack_frames -= 1;
+
                         // If the caller is the Rust runtime then return the thrown error
                         if stack_frame.is_rust_caller() {
                             // Unwind the stack to the caller's frame
@@ -1945,6 +1971,29 @@ impl VM {
         )?))
     }
 
+    /// Track the depth of the stack throwing a stack overflow error when necessary.
+    ///
+    /// Takes in the size of the new stack frame (in number of slots).
+    #[inline]
+    fn stack_depth_check(&mut self, new_frame_num_slots: usize) -> EvalResult<()> {
+        // Check if stack pointer leaves the bounds of the stack (growing downwards). If so throw a
+        // stack overflow error.
+        unsafe {
+            if self.sp().sub(new_frame_num_slots).cast_const() < self.stack_ptr_start() {
+                return range_error(self.cx, "Stack Overflow");
+            }
+        }
+
+        // Check if stack exceeds max depth. This check is to prevent overflowing the native stack
+        // by using a hardcoded limit.
+        self.num_stack_frames += 1;
+        if self.num_stack_frames > MAX_STACK_DEPTH {
+            return range_error(self.cx(), "Stack Overflow");
+        }
+
+        Ok(())
+    }
+
     /// Create a new stack frame constructed for the following arguments.
     ///
     /// Also saves the current PC on the stack frame as the return address, setting the PC to the
@@ -1970,13 +2019,8 @@ impl VM {
         let num_frame_slots =
             num_argument_slots + FIRST_ARGUMENT_SLOT_INDEX + (num_registers as usize);
 
-        // Check if stack pointer leaves the bounds of the stack (growing downwards). If so throw a
-        // stack overflow error.
-        unsafe {
-            if self.sp().sub(num_frame_slots).cast_const() < self.stack_ptr_start() {
-                return range_error(self.cx, "Stack Overfloww");
-            }
-        }
+        // Check for stack overflows
+        self.stack_depth_check(num_frame_slots)?;
 
         // Push arguments
         self.push_call_arguments(args_rev_iter, argc, num_parameters);
@@ -2036,6 +2080,8 @@ impl VM {
             self.set_pc(self.get_return_address());
             self.set_sp(self.fp().add(FIRST_ARGUMENT_SLOT_INDEX + num_arguments));
             self.set_fp(*self.fp() as *mut StackSlotValue);
+
+            self.num_stack_frames -= 1;
         }
     }
 

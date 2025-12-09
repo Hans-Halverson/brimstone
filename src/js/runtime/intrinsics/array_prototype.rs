@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    must,
+    must, must_a,
     runtime::{
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
@@ -1780,22 +1780,22 @@ impl ArrayPrototype {
 
         let true_value = cx.bool(true);
 
-        must!(create_data_property_or_throw(cx, list, cx.names.at(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.entries(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.fill(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.find(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.find_index(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.find_last(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.find_last_index(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.flat(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.includes(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.keys(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.to_reversed(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.to_sorted(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.to_spliced(), true_value));
-        must!(create_data_property_or_throw(cx, list, cx.names.values(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.at(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.copy_within(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.entries(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.fill(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.find(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.find_index(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.find_last(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.find_last_index(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.flat(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.flat_map(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.includes(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.keys(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.to_reversed(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.to_sorted(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.to_spliced(), true_value));
+        must_a!(create_data_property_or_throw(cx, list, cx.names.values(), true_value));
 
         Ok(list)
     }

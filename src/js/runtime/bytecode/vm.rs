@@ -20,8 +20,8 @@ use crate::{
         boxed_value::BoxedValue,
         class_names::{new_class, ClassNames},
         error::{
-            err_assign_constant, err_cannot_set_property, err_not_defined, range_error,
-            reference_error, type_error, type_error_value,
+            err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
+            stack_overflow_error, type_error, type_error_value,
         },
         eval::{
             eval::perform_eval,
@@ -1980,7 +1980,7 @@ impl VM {
         // stack overflow error.
         unsafe {
             if self.sp().sub(new_frame_num_slots).cast_const() < self.stack_ptr_start() {
-                return range_error(self.cx, "Stack Overflow");
+                return stack_overflow_error(self.cx);
             }
         }
 
@@ -1988,7 +1988,7 @@ impl VM {
         // by using a hardcoded limit.
         self.num_stack_frames += 1;
         if self.num_stack_frames > MAX_STACK_DEPTH {
-            return range_error(self.cx(), "Stack Overflow");
+            return stack_overflow_error(self.cx);
         }
 
         Ok(())

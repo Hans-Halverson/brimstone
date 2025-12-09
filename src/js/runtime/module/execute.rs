@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-    completion_value, eval_err, if_abrupt_reject_promise, must,
+    completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
         abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
         alloc_error::AllocResult,
@@ -42,7 +42,7 @@ pub fn execute_module(
     module: Handle<SourceTextModule>,
 ) -> AllocResult<Handle<PromiseObject>> {
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
-    let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+    let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
 
     // Cache the module at its canonical source path
     let source_file_path = Path::new(&module.source_file_path().to_string())
@@ -229,7 +229,7 @@ impl GraphEvaluator {
         }
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
-        let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+        let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
         module.set_top_level_capability(*capability);
 
         let evaluation_result = self.inner_evaluate(cx, module.as_dyn_module(), 0);
@@ -244,7 +244,12 @@ impl GraphEvaluator {
 
                 if !module.is_async_evaluation() {
                     debug_assert!(module.state() == ModuleState::Evaluated);
-                    must!(call_object(cx, capability.resolve(), cx.undefined(), &[cx.undefined()]));
+                    must_a!(call_object(
+                        cx,
+                        capability.resolve(),
+                        cx.undefined(),
+                        &[cx.undefined()]
+                    ));
                 }
 
                 debug_assert!(self.stack.is_empty());
@@ -258,7 +263,7 @@ impl GraphEvaluator {
 
                 debug_assert!(module.state() == ModuleState::Evaluated);
 
-                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             }
         }
 
@@ -389,7 +394,7 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) -> Al
     debug_assert!(module.has_top_level_await());
 
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
-    let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+    let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
 
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
     let promise = capability.promise().cast::<PromiseObject>();
@@ -404,7 +409,7 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) -> Al
     perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None)?;
 
     // Finally call the module function itself, which will resolve or reject the promise
-    must!(cx.vm().execute_module(module, &[promise.into()]));
+    must_a!(cx.vm().execute_module(module, &[promise.into()]));
 
     Ok(())
 }
@@ -546,7 +551,7 @@ fn async_module_execution_rejected(
     // If entire cycle has been completed, reject the top-level capability for the cycle
     if let Some(capability) = module.top_level_capability_ptr() {
         debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module));
-        must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+        must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
     }
 
     Ok(())
@@ -663,7 +668,7 @@ fn continue_dynamic_import(
     let module = match completion_value!(load_completion) {
         Ok(module) => module,
         Err(error) => {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+            must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             return Ok(());
         }
     };

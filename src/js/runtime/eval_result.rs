@@ -48,15 +48,51 @@ pub type EvalResult<T> = Result<T, EvalError>;
 #[macro_export]
 macro_rules! must {
     ($a:expr) => {{
+        use $crate::runtime::eval_result::{EvalError, EvalResult};
+
         let result = $a;
         match result {
-            $crate::runtime::eval_result::EvalResult::Ok(value) => value,
+            EvalResult::Ok(value) => value,
             // Propagate OOMs upwards instead of failing the assertion
             #[cfg(feature = "alloc_error")]
-            Err($crate::runtime::eval_result::EvalError::Alloc(alloc_err)) => {
+            Err(EvalError::Alloc(alloc_err)) => {
                 return Err(alloc_err.into());
             }
-            Err(_) => panic!("Unexpected abnormal completion"),
+            // A thrown value. Propagate upwards only if it is a stack overflow, otherwise fail
+            // the assertion.
+            Err(EvalError::Value(value)) => {
+                if value.is_object() {
+                    if let Some(error) = value.as_object().as_error() {
+                        if error.is_stack_overflow() {
+                            return Err(EvalError::Value(value.into()));
+                        }
+                    }
+                }
+
+                panic!("Unexpected abnormal completion")
+            }
+        }
+    }};
+}
+
+/// Unwrap an EvalResult that must never throw inside an AllocResult
+#[macro_export]
+macro_rules! must_a {
+    ($a:expr) => {{
+        use $crate::runtime::eval_result::{EvalError, EvalResult};
+
+        let result = $a;
+        match result {
+            EvalResult::Ok(value) => value,
+            // Propagate OOMs upwards instead of failing the assertion
+            #[cfg(feature = "alloc_error")]
+            Err(EvalError::Alloc(alloc_err)) => {
+                return Err(alloc_err.into());
+            }
+            // Fail assertion on any thrown value including stack overflows
+            Err(EvalError::Value(_)) => {
+                panic!("Unexpected abnormal completion")
+            }
         }
     }};
 }

@@ -10,7 +10,7 @@ use std::{
 
 use brimstone_core::{
     common::wtf_8::Wtf8String,
-    handle_scope, must,
+    handle_scope, must_a,
     parser::source::Source,
     runtime::{
         abstract_operations::define_property_or_throw, alloc_error::AllocResult,
@@ -111,7 +111,7 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
             BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None)?;
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
-        must!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc));
+        must_a!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc));
 
         Ok(())
     })

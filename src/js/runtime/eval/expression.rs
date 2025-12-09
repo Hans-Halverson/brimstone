@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use num_bigint::{BigInt, Sign};
 
 use crate::{
-    must,
+    must, must_a,
     parser::ast,
     runtime::{
         abstract_operations::{
@@ -37,8 +37,9 @@ pub fn generate_template_object(
 ) -> AllocResult<Handle<ObjectValue>> {
     let num_strings = lit.quasis.len();
     let template_object =
-        must!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
-    let raw_object = must!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
+        must_a!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
+    let raw_object =
+        must_a!(array_create_in_realm(cx, realm, num_strings as u64, None)).as_object();
 
     // Property key is shared between iterations
     let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -51,19 +52,19 @@ pub fn generate_template_object(
             Some(cooked) => cx.alloc_wtf8_str(cooked)?.as_value(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
-        must!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
+        must_a!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
         let raw_value = cx.alloc_wtf8_str(quasi.raw)?;
         let raw_desc = PropertyDescriptor::data(raw_value.as_value(), false, true, false);
-        must!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
+        must_a!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }
 
-    must!(set_integrity_level(cx, raw_object, IntegrityLevel::Frozen));
+    must_a!(set_integrity_level(cx, raw_object, IntegrityLevel::Frozen));
 
     let raw_object_desc = PropertyDescriptor::data(raw_object.into(), false, false, false);
-    must!(define_property_or_throw(cx, template_object, cx.names.raw(), raw_object_desc));
+    must_a!(define_property_or_throw(cx, template_object, cx.names.raw(), raw_object_desc));
 
-    must!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
+    must_a!(set_integrity_level(cx, template_object, IntegrityLevel::Frozen));
 
     Ok(template_object)
 }

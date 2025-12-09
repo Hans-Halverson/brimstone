@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    handle_scope, must,
+    handle_scope, must_a,
     parser::{analyze::analyze, parse_script, source::Source, ParseContext},
     runtime::{alloc_error::AllocResult, bytecode::generator::BytecodeProgramGenerator, get},
 };
@@ -67,7 +67,7 @@ impl Test262Object {
                 .intrinsic_func(cx, print_key, Self::print, 1, realm)?;
 
             // Install the global print log property
-            must!(Self::set_print_log(
+            must_a!(Self::set_print_log(
                 cx,
                 realm.global_object(),
                 cx.names.empty_string().as_string()

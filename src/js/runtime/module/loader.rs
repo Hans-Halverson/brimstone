@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
-    completion_value, must,
+    completion_value, must_a,
     parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
     runtime::{
         abstract_operations::call_object,
@@ -84,7 +84,7 @@ impl GraphLoader {
         if self.pending_modules_count == 0 {
             self.is_loading = false;
 
-            must!(call_object(
+            must_a!(call_object(
                 cx,
                 self.promise_capability.resolve(),
                 cx.undefined(),
@@ -131,7 +131,12 @@ impl GraphLoader {
             }
             Err(error) => {
                 self.is_loading = false;
-                must!(call_object(cx, self.promise_capability.reject(), cx.undefined(), &[error]));
+                must_a!(call_object(
+                    cx,
+                    self.promise_capability.reject(),
+                    cx.undefined(),
+                    &[error]
+                ));
             }
         }
 
@@ -145,7 +150,7 @@ pub fn load_requested_modules(
     module: Handle<SourceTextModule>,
 ) -> AllocResult<Handle<PromiseObject>> {
     let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
-    let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+    let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
     let realm = module.program_function_ptr().realm();
 
     let mut graph_loader = GraphLoader {

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
-    must,
+    must, must_a,
     runtime::{
         abstract_operations::{
             call, call_object, create_data_property, create_data_property_or_throw,
@@ -478,7 +478,7 @@ impl JSONValue {
             Self::Number(n) => Value::from(*n).to_handle(cx),
             Self::String(s) => cx.alloc_wtf8_string(s)?.into(),
             Self::Array(values) => {
-                let array = must!(array_create(cx, 0, None));
+                let array = must_a!(array_create(cx, 0, None));
 
                 // Key is shared between iterations
                 let mut key = PropertyKey::uninit().to_handle(cx);
@@ -504,7 +504,7 @@ impl JSONValue {
 
                     let value = value.to_js_value(cx)?;
 
-                    must!(create_data_property_or_throw(cx, object, key, value));
+                    must_a!(create_data_property_or_throw(cx, object, key, value));
                 }
 
                 object.into()

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    must,
+    must, must_a,
     runtime::{
         alloc_error::AllocResult,
         iterator::iter_iterator_values,
@@ -109,7 +109,7 @@ pub fn create_non_enumerable_data_property_or_throw(
     value: Handle<Value>,
 ) -> AllocResult<()> {
     let new_desc = PropertyDescriptor::data(value, true, false, true);
-    must!(define_property_or_throw(cx, object, key, new_desc));
+    must_a!(define_property_or_throw(cx, object, key, new_desc));
 
     Ok(())
 }

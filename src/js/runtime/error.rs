@@ -140,3 +140,10 @@ pub fn syntax_parse_error<T>(cx: Context, error: &LocalizedParseError) -> EvalRe
     // the SyntaxError object.
     syntax_error(cx, &error.to_string_without_name())
 }
+
+pub fn stack_overflow_error<T>(cx: Context) -> EvalResult<T> {
+    // Mark special RangeError as stack overflow
+    let mut error = RangeError::new_with_message(cx, "Stack Overflow".to_owned())?;
+    error.set_is_stack_overflow(true);
+    eval_err!(error.into())
+}

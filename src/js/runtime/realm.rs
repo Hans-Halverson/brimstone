@@ -1,5 +1,5 @@
 use crate::{
-    field_offset, handle_scope, must, parser::scope_tree::REALM_SCOPE_SLOT_NAME,
+    field_offset, handle_scope, must_a, parser::scope_tree::REALM_SCOPE_SLOT_NAME,
     runtime::alloc_error::AllocResult, set_uninit,
 };
 
@@ -48,7 +48,7 @@ impl Realm {
     pub fn new(cx: Context) -> AllocResult<Handle<Realm>> {
         handle_scope!(cx, {
             let realm = Realm::new_uninit(cx)?;
-            must!(set_default_global_bindings(cx, realm));
+            must_a!(set_default_global_bindings(cx, realm));
             Ok(realm)
         })
     }

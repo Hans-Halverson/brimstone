@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must, must_a,
     runtime::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
@@ -992,10 +992,10 @@ pub fn canonical_numeric_index_string(
     } else if key.is_string() {
         // Otherwise must convert to number then back to string
         let key_string = key.as_string();
-        let number_value = must!(to_number(cx, key_string.into()));
+        let number_value = must_a!(to_number(cx, key_string.into()));
 
         // If string representations are equal, must be canonical numeric index
-        let number_string = must!(to_string(cx, number_value));
+        let number_string = must_a!(to_string(cx, number_value));
         if key_string.equals(&number_string)? {
             if !is_integral_number(*number_value) {
                 return Ok(CanonicalIndexType::Invalid);

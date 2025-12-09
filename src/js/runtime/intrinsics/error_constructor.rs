@@ -29,6 +29,8 @@ extend_object! {
         // Cached stack trace, or the minimal information cached to lazily generate the stack trace
         // when first accessed.
         stack_trace_state: StackTraceState,
+        // Whether this is a stack overflow error.
+        is_stack_overflow: bool,
     }
 }
 
@@ -59,8 +61,10 @@ impl ErrorObject {
         prototype: Intrinsic,
         skip_current_frame: bool,
     ) -> AllocResult<Handle<ErrorObject>> {
-        let error =
+        let mut error =
             object_create::<ErrorObject>(cx, HeapItemKind::ErrorObject, prototype)?.to_handle();
+
+        set_uninit!(error.is_stack_overflow, false);
 
         Self::initialize_stack_trace(cx, error, skip_current_frame)?;
 
@@ -73,13 +77,15 @@ impl ErrorObject {
         prototype: Intrinsic,
         skip_current_frame: bool,
     ) -> EvalResult<Handle<ErrorObject>> {
-        let error = object_create_from_constructor::<ErrorObject>(
+        let mut error = object_create_from_constructor::<ErrorObject>(
             cx,
             constructor,
             HeapItemKind::ErrorObject,
             prototype,
         )?
         .to_handle();
+
+        set_uninit!(error.is_stack_overflow, false);
 
         Self::initialize_stack_trace(cx, error, skip_current_frame)?;
 
@@ -100,6 +106,14 @@ impl ErrorObject {
         error.stack_trace_state = StackTraceState::StackFrameInfo(stack_frame_info);
 
         Ok(())
+    }
+
+    pub fn is_stack_overflow(&self) -> bool {
+        self.is_stack_overflow
+    }
+
+    pub fn set_is_stack_overflow(&mut self, is_stack_overflow: bool) {
+        self.is_stack_overflow = is_stack_overflow;
     }
 }
 

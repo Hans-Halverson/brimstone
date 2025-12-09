@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must_a,
     runtime::{
         abstract_operations::invoke,
         alloc_error::AllocResult,
@@ -153,7 +153,7 @@ impl DatePrototype {
         // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
         let to_gmt_string_name = cx.alloc_string("toGMTString")?.as_string();
         let to_gmt_string_key = PropertyKey::string_not_array_index_handle(cx, to_gmt_string_name)?;
-        let to_gmt_string_method = must!(get(cx, date_prototype, cx.names.to_utc_string()));
+        let to_gmt_string_method = must_a!(get(cx, date_prototype, cx.names.to_utc_string()));
 
         date_prototype.intrinsic_data_prop(cx, to_gmt_string_key, to_gmt_string_method)?;
 

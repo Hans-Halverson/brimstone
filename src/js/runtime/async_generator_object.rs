@@ -1,5 +1,5 @@
 use crate::{
-    completion_value, eval_err, extend_object, field_offset, must,
+    completion_value, eval_err, extend_object, field_offset, must_a,
     runtime::{
         abstract_operations::call_object,
         alloc_error::AllocResult,
@@ -300,10 +300,10 @@ pub fn async_generator_complete_step(
     match completion_value!(completion) {
         Ok(value) => {
             let result_object = create_iter_result_object(cx, value, is_done)?;
-            must!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object]));
+            must_a!(call_object(cx, capability.resolve(), cx.undefined(), &[result_object]));
         }
         Err(error) => {
-            must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+            must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
         }
     }
 

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    completion_value, must,
+    completion_value, must_a,
     runtime::{
         abstract_operations::call_object,
         alloc_error::AllocResult,
@@ -139,7 +139,7 @@ impl Module for Handle<SyntheticModule> {
     }
 
     fn load_requested_modules(&self, cx: Context) -> AllocResult<Handle<PromiseObject>> {
-        Ok(must!(coerce_to_ordinary_promise(cx, cx.undefined())))
+        Ok(must_a!(coerce_to_ordinary_promise(cx, cx.undefined())))
     }
 
     fn get_exported_names(
@@ -190,15 +190,15 @@ impl Module for Handle<SyntheticModule> {
         };
 
         let promise_constructor = cx.get_intrinsic(Intrinsic::PromiseConstructor);
-        let capability = must!(PromiseCapability::new(cx, promise_constructor.into()));
+        let capability = must_a!(PromiseCapability::new(cx, promise_constructor.into()));
         let promise = capability.promise().cast::<PromiseObject>();
 
         match completion_value!(result) {
             Ok(result) => {
-                must!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
+                must_a!(call_object(cx, capability.resolve(), cx.undefined(), &[result]));
             }
             Err(error) => {
-                must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+                must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             }
         }
 

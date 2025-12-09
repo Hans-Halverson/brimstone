@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must, must_a,
     runtime::{
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
@@ -33,7 +33,7 @@ impl AggregateErrorObject {
             /* skip_current_frame */ true,
         )?;
 
-        must!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
+        must_a!(create_data_property_or_throw(cx, object.into(), cx.names.errors(), errors));
 
         Ok(object)
     }

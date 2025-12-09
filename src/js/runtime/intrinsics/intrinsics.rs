@@ -1,5 +1,5 @@
 use crate::{
-    handle_scope, handle_scope_guard, must,
+    handle_scope, handle_scope_guard, must_a,
     runtime::{
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
@@ -351,17 +351,18 @@ impl Intrinsics {
         // Properties of basic intrinsics
         handle_scope!(cx, {
             let object_prototype = realm.get_intrinsic(Intrinsic::ObjectPrototype);
-            let object_prototype_to_string = must!(get(cx, object_prototype, cx.names.to_string()));
+            let object_prototype_to_string =
+                must_a!(get(cx, object_prototype, cx.names.to_string()));
             register_existing_intrinsic!(
                 ObjectPrototypeToString,
                 object_prototype_to_string.as_object()
             );
 
             let array_prototype = realm.get_intrinsic(Intrinsic::ArrayPrototype);
-            let array_prototype_values = must!(get(cx, array_prototype, cx.names.values()));
+            let array_prototype_values = must_a!(get(cx, array_prototype, cx.names.values()));
             register_existing_intrinsic!(ArrayPrototypeValues, array_prototype_values.as_object());
 
-            let array_prototype_to_string = must!(get(cx, array_prototype, cx.names.to_string()));
+            let array_prototype_to_string = must_a!(get(cx, array_prototype, cx.names.to_string()));
             register_existing_intrinsic!(
                 ArrayPrototypeToString,
                 array_prototype_to_string.as_object()
@@ -501,7 +502,7 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), true, false, true);
-        must!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
+        must_a!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
 
         Ok(())
     }
@@ -520,7 +521,7 @@ impl Intrinsics {
 
         let constructor_desc =
             PropertyDescriptor::data(constructor_object.into(), false, false, true);
-        must!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
+        must_a!(prototype_object.define_own_property(cx, cx.names.constructor(), constructor_desc));
 
         Ok(())
     }
@@ -553,7 +554,7 @@ fn create_throw_type_error_intrinsic(
 
         let zero_value = cx.zero();
         let length_desc = PropertyDescriptor::data(zero_value, false, false, false);
-        must!(define_property_or_throw(
+        must_a!(define_property_or_throw(
             cx,
             throw_type_error_func,
             cx.names.length(),
@@ -563,9 +564,9 @@ fn create_throw_type_error_intrinsic(
         // Is anonymous function so name is empty
         let name = cx.names.empty_string().as_string().into();
         let name_desc = PropertyDescriptor::data(name, false, false, false);
-        must!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
+        must_a!(define_property_or_throw(cx, throw_type_error_func, cx.names.name(), name_desc,));
 
-        must!(throw_type_error_func.prevent_extensions(cx));
+        must_a!(throw_type_error_func.prevent_extensions(cx));
 
         Ok(throw_type_error_func.into())
     })
@@ -583,11 +584,11 @@ fn add_restricted_function_properties(
 
     let caller_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, cx.names.caller(), caller_desc));
+    must_a!(define_property_or_throw(cx, func, cx.names.caller(), caller_desc));
 
     let arguments_desc =
         PropertyDescriptor::accessor(Some(thrower_func), Some(thrower_func), false, true);
-    must!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc));
+    must_a!(define_property_or_throw(cx, func, cx.names.arguments(), arguments_desc));
 
     Ok(())
 }

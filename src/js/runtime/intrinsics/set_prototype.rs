@@ -11,7 +11,8 @@ use crate::{
         get,
         intrinsics::set_object::ValueSet,
         iterator::{
-            get_iterator, iter_iterator_method_values, iterator_step, iterator_value, IteratorHint,
+            get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
+            iterator_value, IteratorHint,
         },
         object_value::ObjectValue,
         property::Property,
@@ -408,6 +409,9 @@ impl SetPrototype {
 
                 // Return as soon as we find an element of the other set that is in this set
                 if this_set.set_data_ptr().contains(&set_key) {
+                    // Manually close iterator in path where iterator is not fully consumed
+                    iterator_close(cx, iterator.iterator, Ok(cx.empty()))?;
+
                     return Ok(cx.bool(false));
                 }
             }
@@ -496,6 +500,9 @@ impl SetPrototype {
 
             // Return as soon as we find an element of the other set that is not in this set
             if !this_set.set_data_ptr().contains(&set_key) {
+                // Manually close iterator in path where iterator is not fully consumed
+                iterator_close(cx, iterator.iterator, Ok(cx.empty()))?;
+
                 return Ok(cx.bool(false));
             }
         }

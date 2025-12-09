@@ -7,10 +7,6 @@
       // Bugs (We intend to fix these)
       //
       ////////////////////////////////////////
-      // Bug in iterator close order for some Set methods
-      "built-ins/Set/prototype/isDisjointFrom/set-like-iter-return.js",
-      "built-ins/Set/prototype/isSupersetOf/set-like-iter-return.js",
-
       // Bug when copying within resizable array that resizes during evaluation
       "built-ins/TypedArray/prototype/copyWithin/coerced-target-start-end-shrink.js",
 
@@ -19,9 +15,6 @@
 
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
-
-      // Causes stack overflow
-      "staging/sm/extensions/recursion.js",
 
       ////////////////////////////////////////
       //

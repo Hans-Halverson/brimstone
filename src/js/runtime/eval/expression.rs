@@ -375,8 +375,8 @@ pub fn eval_bitwise_and(
         let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result)?.into())
     } else {
-        let left_smi = must!(to_int32(cx, left_value));
-        let right_smi = must!(to_int32(cx, right_value));
+        let left_smi = must!(to_int32(cx, left_num));
+        let right_smi = must!(to_int32(cx, right_num));
 
         Ok(cx.smi(left_smi & right_smi))
     }
@@ -399,8 +399,8 @@ pub fn eval_bitwise_or(
         let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result)?.into())
     } else {
-        let left_smi = must!(to_int32(cx, left_value));
-        let right_smi = must!(to_int32(cx, right_value));
+        let left_smi = must!(to_int32(cx, left_num));
+        let right_smi = must!(to_int32(cx, right_num));
 
         Ok(cx.smi(left_smi | right_smi))
     }
@@ -423,8 +423,8 @@ pub fn eval_bitwise_xor(
         let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
         Ok(BigIntValue::new(cx, result)?.into())
     } else {
-        let left_smi = must!(to_int32(cx, left_value));
-        let right_smi = must!(to_int32(cx, right_value));
+        let left_smi = must!(to_int32(cx, left_num));
+        let right_smi = must!(to_int32(cx, right_num));
 
         Ok(cx.smi(left_smi ^ right_smi))
     }
@@ -452,8 +452,8 @@ pub fn eval_shift_left(
 
         Ok(BigIntValue::new(cx, result)?.into())
     } else {
-        let left_smi = must!(to_int32(cx, left_value));
-        let right_u32 = must!(to_uint32(cx, right_value));
+        let left_smi = must!(to_int32(cx, left_num));
+        let right_u32 = must!(to_uint32(cx, right_num));
 
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
@@ -484,8 +484,8 @@ pub fn eval_shift_right_arithmetic(
 
         Ok(BigIntValue::new(cx, result)?.into())
     } else {
-        let left_smi = must!(to_int32(cx, left_value));
-        let right_u32 = must!(to_uint32(cx, right_value));
+        let left_smi = must!(to_int32(cx, left_num));
+        let right_u32 = must!(to_uint32(cx, right_num));
 
         // Shift modulus 32
         let shift = right_u32 & 0x1F;
@@ -542,8 +542,8 @@ pub fn eval_shift_right_logical(
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
-    let left_smi = must!(to_uint32(cx, left_value));
-    let right_u32 = must!(to_uint32(cx, right_value));
+    let left_smi = must!(to_uint32(cx, left_num));
+    let right_u32 = must!(to_uint32(cx, right_num));
 
     // Shift modulus 32
     let shift = right_u32 & 0x1F;

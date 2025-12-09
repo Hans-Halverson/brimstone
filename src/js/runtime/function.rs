@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must, must_a,
     runtime::{alloc_error::AllocResult, EvalResult},
 };
 
@@ -18,7 +18,7 @@ pub fn set_function_name(
 ) -> AllocResult<()> {
     let name_string = build_function_name(cx, name, prefix)?;
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.name(), desc));
+    must_a!(define_property_or_throw(cx, func, cx.names.name(), desc));
 
     Ok(())
 }
@@ -60,7 +60,7 @@ pub fn build_function_name(
 pub fn set_function_length(cx: Context, func: Handle<ObjectValue>, length: u32) -> AllocResult<()> {
     let length_value = Value::from(length).to_handle(cx);
     let desc = PropertyDescriptor::data(length_value, false, false, true);
-    must!(define_property_or_throw(cx, func, cx.names.length(), desc));
+    must_a!(define_property_or_throw(cx, func, cx.names.length(), desc));
 
     Ok(())
 }

@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must_a,
     runtime::{abstract_operations::create_data_property_or_throw, alloc_error::AllocResult},
 };
 
@@ -204,12 +204,12 @@ pub fn from_property_descriptor(
     let object = ordinary_object_create(cx)?;
 
     if let Some(value) = desc.value {
-        must!(create_data_property_or_throw(cx, object, cx.names.value(), value,));
+        must_a!(create_data_property_or_throw(cx, object, cx.names.value(), value,));
     }
 
     if let Some(is_writable) = desc.is_writable {
         let is_writable_value = cx.bool(is_writable);
-        must!(create_data_property_or_throw(
+        must_a!(create_data_property_or_throw(
             cx,
             object,
             cx.names.writable(),
@@ -224,7 +224,7 @@ pub fn from_property_descriptor(
             cx.undefined()
         };
 
-        must!(create_data_property_or_throw(cx, object, cx.names.get(), get_value));
+        must_a!(create_data_property_or_throw(cx, object, cx.names.get(), get_value));
     }
 
     if desc.has_set {
@@ -234,12 +234,12 @@ pub fn from_property_descriptor(
             cx.undefined()
         };
 
-        must!(create_data_property_or_throw(cx, object, cx.names.set_(), set_value));
+        must_a!(create_data_property_or_throw(cx, object, cx.names.set_(), set_value));
     }
 
     if let Some(is_enumerable) = desc.is_enumerable {
         let is_enumerable_value = cx.bool(is_enumerable);
-        must!(create_data_property_or_throw(
+        must_a!(create_data_property_or_throw(
             cx,
             object,
             cx.names.enumerable(),
@@ -249,7 +249,7 @@ pub fn from_property_descriptor(
 
     if let Some(is_configurable) = desc.is_configurable {
         let is_configurable_value = cx.bool(is_configurable);
-        must!(create_data_property_or_throw(
+        must_a!(create_data_property_or_throw(
             cx,
             object,
             cx.names.configurable(),

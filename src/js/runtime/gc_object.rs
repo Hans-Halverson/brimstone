@@ -1,5 +1,5 @@
 use crate::{
-    handle_scope, must,
+    handle_scope, must_a,
     runtime::{
         abstract_operations::define_property_or_throw, alloc_error::AllocResult, PropertyDescriptor,
     },
@@ -31,7 +31,7 @@ impl GcObject {
         handle_scope!(cx, {
             let gc_object = GcObject::new(cx, realm)?;
             let desc = PropertyDescriptor::data(gc_object.as_value(), true, false, true);
-            must!(define_property_or_throw(cx, realm.global_object(), cx.names.gc(), desc));
+            must_a!(define_property_or_throw(cx, realm.global_object(), cx.names.gc(), desc));
 
             Ok(())
         })

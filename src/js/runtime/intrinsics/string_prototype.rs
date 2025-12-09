@@ -9,7 +9,7 @@ use crate::{
         },
         wtf_8::Wtf8String,
     },
-    must,
+    must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
         abstract_operations::{call_object, get_method, invoke},
@@ -118,8 +118,8 @@ impl StringPrototype {
 
         // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
         // String.prototype.trimStart and String.prototype.trimEnd respectively.
-        let trim_start = must!(get(cx, string_prototype, cx.names.trim_start()));
-        let trim_end = must!(get(cx, string_prototype, cx.names.trim_end()));
+        let trim_start = must_a!(get(cx, string_prototype, cx.names.trim_start()));
+        let trim_end = must_a!(get(cx, string_prototype, cx.names.trim_end()));
 
         let trim_left_name = cx.alloc_string("trimLeft")?.as_string();
         let trim_left = PropertyKey::string_not_array_index_handle(cx, trim_left_name)?;

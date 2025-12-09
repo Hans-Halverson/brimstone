@@ -12,7 +12,7 @@ use crate::{
         },
         wtf_8::Wtf8String,
     },
-    extend_object, must,
+    extend_object, must, must_a,
     parser::{
         ast::AstAlloc,
         lexer_stream::{
@@ -106,7 +106,7 @@ impl RegExpObject {
         regexp_object: Handle<RegExpObject>,
     ) -> AllocResult<()> {
         let last_index_desc = PropertyDescriptor::data(cx.undefined(), true, false, false);
-        must!(define_property_or_throw(
+        must_a!(define_property_or_throw(
             cx,
             regexp_object.into(),
             cx.names.last_index(),

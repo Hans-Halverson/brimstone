@@ -3,7 +3,7 @@ use std::mem::size_of;
 use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
-    extend_object, must,
+    extend_object, must, must_a,
     runtime::{alloc_error::AllocResult, type_utilities::is_array},
     set_uninit,
 };
@@ -249,7 +249,7 @@ pub fn create_array_from_list(
     cx: Context,
     elements: &[Handle<Value>],
 ) -> AllocResult<Handle<ArrayObject>> {
-    let array = must!(array_create(cx, 0, None));
+    let array = must_a!(array_create(cx, 0, None));
 
     // Property key is shared between iterations
     let mut key = PropertyKey::uninit().to_handle(cx);
@@ -257,7 +257,7 @@ pub fn create_array_from_list(
     for (index, element) in elements.iter().enumerate() {
         // TODO: Handle keys out of u32 range
         key.replace(PropertyKey::array_index(cx, index as u32)?);
-        must!(create_data_property_or_throw(cx, array.into(), key, *element));
+        must_a!(create_data_property_or_throw(cx, array.into(), key, *element));
     }
 
     Ok(array)

@@ -1,7 +1,7 @@
 use std::{mem::size_of, ops::Range};
 
 use crate::{
-    extend_object, field_offset, must,
+    extend_object, field_offset, must_a,
     parser::loc::Pos,
     runtime::{
         abstract_operations::define_property_or_throw,
@@ -171,10 +171,10 @@ impl Closure {
                     .to_handle();
 
             let desc = PropertyDescriptor::data(closure.into(), true, false, true);
-            must!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
+            must_a!(define_property_or_throw(cx, prototype, cx.names.constructor(), desc));
 
             let desc = PropertyDescriptor::data(prototype.into(), true, false, false);
-            must!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
+            must_a!(define_property_or_throw(cx, closure.into(), cx.names.prototype(), desc));
         }
 
         Ok(())

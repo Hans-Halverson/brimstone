@@ -1,5 +1,5 @@
 use crate::{
-    must,
+    must_a,
     runtime::{
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
@@ -229,10 +229,10 @@ pub fn create_iter_result_object(
 ) -> AllocResult<Handle<Value>> {
     let object = ordinary_object_create(cx)?;
 
-    must!(create_data_property_or_throw(cx, object, cx.names.value(), value));
+    must_a!(create_data_property_or_throw(cx, object, cx.names.value(), value));
 
     let is_done_value = cx.bool(is_done);
-    must!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
+    must_a!(create_data_property_or_throw(cx, object, cx.names.done(), is_done_value));
 
     Ok(object.as_value())
 }
@@ -295,7 +295,7 @@ pub fn iter_iterator_method_values<
 /// CreateAsyncFromSyncIterator (https://tc39.es/ecma262/#sec-createasyncfromsynciterator)
 fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> AllocResult<Iterator> {
     let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator)?.into();
-    let next_method = must!(get(cx, async_iterator, cx.names.next()));
+    let next_method = must_a!(get(cx, async_iterator, cx.names.next()));
 
     Ok(Iterator { iterator: async_iterator, next_method, is_done: false })
 }

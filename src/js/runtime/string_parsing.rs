@@ -804,6 +804,7 @@ fn parse_string_to_iso_date(mut lexer: StringLexer) -> Option<f64> {
             return None;
         }
 
+        // Unchecked operations since ranges have already been validated
         sign * (timezone_hour * MS_PER_HOUR as i64 + timezone_minute * MS_PER_MINUTE as i64)
     } else if has_time {
         // TODO: Use current time zone offset
@@ -829,6 +830,8 @@ fn parse_string_to_iso_date(mut lexer: StringLexer) -> Option<f64> {
     )
 }
 
+/// Callers must ensure that the date parts are in valid ranges so that overflow does not occur
+/// when calculating the time value.
 fn utc_time_from_full_date_parts(
     year: i64,
     month: i64,
@@ -840,7 +843,7 @@ fn utc_time_from_full_date_parts(
     timezone_offset_milliseconds: i64,
 ) -> Option<f64> {
     let date_part_milliseconds =
-        year_month_day_to_days_since_unix_epoch(year, month, day) * MS_PER_DAY as i64;
+        year_month_day_to_days_since_unix_epoch(year, month, day).unwrap() * MS_PER_DAY as i64;
 
     let time_part_milliseconds = hour * MS_PER_HOUR as i64
         + minute * MS_PER_MINUTE as i64
@@ -935,6 +938,7 @@ fn parse_string_to_utc_or_default_date(mut lexer: StringLexer) -> Option<f64> {
             return None;
         }
 
+        // Unchecked operations since ranges have already been validated
         sign * (timezone_hour * MS_PER_HOUR as i64 + timezone_minute * MS_PER_MINUTE as i64)
     };
 

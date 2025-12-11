@@ -235,12 +235,14 @@ pub fn make_full_year(year: f64) -> f64 {
     }
 }
 
-// Floor division - round towards negative infintiy
-fn floor_div(a: i64, b: i64) -> i64 {
+/// Floor division - round towards negative infinity
+///
+/// Returns None on overflow.
+fn floor_div(a: i64, b: i64) -> Option<i64> {
     if a >= 0 {
-        a / b
+        a.checked_div(b)
     } else {
-        ((a + 1) / b) - 1
+        a.checked_add(1)?.checked_div(b)?.checked_sub(1)
     }
 }
 
@@ -248,23 +250,33 @@ fn is_leap_year(year: i64) -> bool {
     year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
-// Calculate number of leap years after year 0 but before the given year
-fn leap_years_before_year(year: i64) -> i64 {
-    let year = year - 1;
-    floor_div(year, 4) - floor_div(year, 100) + floor_div(year, 400)
+/// Calculate number of leap years after year 0 but before the given year.
+///
+/// Returns None on overflow.
+fn leap_years_before_year(year: i64) -> Option<i64> {
+    let year = year.checked_sub(1)?;
+    floor_div(year, 4)?
+        .checked_sub(floor_div(year, 100)?)?
+        .checked_add(floor_div(year, 400)?)
 }
 
-// Calculate number of leap years in a time period between two years
-fn leap_years_between_years(start_year: i64, end_year: i64) -> i64 {
-    leap_years_before_year(end_year) - leap_years_before_year(start_year)
+/// Calculate number of leap years in a time period between two years
+///
+/// Returns None on overflow.
+fn leap_years_between_years(start_year: i64, end_year: i64) -> Option<i64> {
+    leap_years_before_year(end_year)?.checked_sub(leap_years_before_year(start_year)?)
 }
 
-fn year_to_days_since_unix_epoch(year: i64) -> i64 {
-    let years_since_epoch = year - 1970;
+fn year_to_days_since_unix_epoch(year: i64) -> Option<i64> {
+    let years_since_epoch = year.checked_sub(1970)?;
     if years_since_epoch >= 0 {
-        years_since_epoch * 365 + leap_years_between_years(1970, year)
+        years_since_epoch
+            .checked_mul(365)?
+            .checked_add(leap_years_between_years(1970, year)?)
     } else {
-        years_since_epoch * 365 - leap_years_between_years(year, 1970)
+        years_since_epoch
+            .checked_mul(365)?
+            .checked_sub(leap_years_between_years(year, 1970)?)
     }
 }
 
@@ -300,8 +312,11 @@ fn year_month_day_to_days_since_year_start(year: i64, month: i64, day: i64) -> i
 
 /// Year + month + day to the number of days since the Unix epoch. Months and days are 1-indexed.
 /// Month must be between 1 and 12, day is not constrained.
-pub fn year_month_day_to_days_since_unix_epoch(year: i64, month: i64, day: i64) -> i64 {
-    year_to_days_since_unix_epoch(year) + year_month_day_to_days_since_year_start(year, month, day)
+///
+/// Returns None on overflow.
+pub fn year_month_day_to_days_since_unix_epoch(year: i64, month: i64, day: i64) -> Option<i64> {
+    year_to_days_since_unix_epoch(year)?
+        .checked_add(year_month_day_to_days_since_year_start(year, month, day))
 }
 
 /// MakeDay (https://tc39.es/ecma262/#sec-makeday)
@@ -327,10 +342,13 @@ pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
     let calculated_year = calculated_year as i64;
     let calculated_month = calculated_month as i64 + 1;
 
-    let num_days_until_month_start =
-        year_month_day_to_days_since_unix_epoch(calculated_year, calculated_month, 1) as f64;
+    let Some(num_days_until_month_start) =
+        year_month_day_to_days_since_unix_epoch(calculated_year, calculated_month, 1)
+    else {
+        return f64::NAN;
+    };
 
-    num_days_until_month_start + date - 1.0
+    (num_days_until_month_start as f64) + date - 1.0
 }
 
 /// MakeDate (https://tc39.es/ecma262/#sec-makedate)

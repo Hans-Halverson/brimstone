@@ -246,8 +246,14 @@ impl Context {
         &mut self.task_queue
     }
 
+    #[inline]
+    pub fn initial_realm_ptr(&self) -> HeapPtr<Realm> {
+        self.initial_realm
+    }
+
+    #[inline]
     pub fn initial_realm(&self) -> Handle<Realm> {
-        self.initial_realm.to_handle()
+        self.initial_realm_ptr().to_handle()
     }
 
     pub fn evaluate_script(&mut self, source: Rc<Source>) -> BsResult<()> {
@@ -308,8 +314,10 @@ impl Context {
 
     /// Execute a program, running until the task queue is empty.
     pub fn run_script(&mut self, bytecode_script: BytecodeScript) -> EvalResult<()> {
-        self.vm().mark_stack_trace_top();
-        self.vm().execute_script(bytecode_script)?;
+        self.with_initial_realm_stack_frame(self.initial_realm_ptr(), |mut cx| {
+            cx.vm().execute_script(bytecode_script)
+        })?;
+
         self.run_all_tasks()?;
 
         Ok(())
@@ -319,10 +327,10 @@ impl Context {
     pub fn run_module(&mut self, module: Handle<SourceTextModule>) -> EvalResult<()> {
         // Loading, linking, and evaluation should all have a current realm set as some objects
         // needing a realm will be created.
-        let realm = module.program_function_ptr().realm_ptr();
-        self.vm().push_initial_realm_stack_frame(realm)?;
-
-        let promise = execute_module(*self, module)?;
+        let promise = self
+            .with_initial_realm_stack_frame(module.program_function_ptr().realm_ptr(), |cx| {
+                Ok(execute_module(cx, module)?)
+            })?;
 
         self.run_all_tasks()?;
 
@@ -332,9 +340,27 @@ impl Context {
             return eval_err!(value.to_handle(*self));
         }
 
+        Ok(())
+    }
+
+    pub fn with_initial_realm_stack_frame<T>(
+        &mut self,
+        realm: HeapPtr<Realm>,
+        f: impl FnOnce(Context) -> EvalResult<T>,
+    ) -> EvalResult<T> {
+        self.vm().debug_assert_stack_empty();
+
+        let push_frame_result = self.vm().push_initial_realm_stack_frame(realm);
+        assert!(push_frame_result.is_ok(), "Initial realm frame overflowed stack");
+
+        // Always mark the top of the stack trace under the initial realm frame
+        self.vm().mark_stack_trace_top();
+
+        let result = f(*self);
+
         self.vm().pop_initial_realm_stack_frame();
 
-        Ok(())
+        result
     }
 
     pub fn insert_module(

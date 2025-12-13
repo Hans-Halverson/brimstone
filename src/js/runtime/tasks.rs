@@ -150,11 +150,14 @@ impl Callback1Task {
         let func = self.func.to_handle(cx);
         let arg = self.arg.to_handle(cx);
 
-        cx.vm().mark_stack_trace_top();
+        // Realm is only used to create errors before setting up the stack frame (e.g. non-callable
+        // a stack overflow). Create these errors in the default realm for this context.
+        let default_realm = cx.initial_realm_ptr();
 
-        call(cx, func, cx.undefined(), &[arg])?;
-
-        Ok(())
+        cx.with_initial_realm_stack_frame(default_realm, |cx| {
+            call(cx, func, cx.undefined(), &[arg])?;
+            Ok(())
+        })
     }
 }
 
@@ -184,24 +187,22 @@ impl AwaitResumeTask {
         };
 
         if let Some(generator) = generator.as_generator() {
-            cx.vm().mark_stack_trace_top();
-            cx.vm()
-                .resume_generator(generator, completion_value, completion_type)?;
+            let realm = generator.closure_ptr().function_ptr().realm_ptr();
+            cx.with_initial_realm_stack_frame(realm, |mut cx| {
+                cx.vm()
+                    .resume_generator(generator, completion_value, completion_type)?;
+                Ok(())
+            })
         } else {
             let async_generator = generator.as_async_generator().unwrap();
 
             // Must execute in the realm of the async generator since AsyncGeneratorResume may need
             // to drain the async queue when the VM stack is empty.
-            cx.vm()
-                .push_initial_realm_stack_frame(async_generator.realm_ptr())?;
-            cx.vm().mark_stack_trace_top();
-
-            async_generator_resume(cx, async_generator, completion_value, completion_type)?;
-
-            cx.vm().pop_initial_realm_stack_frame();
+            cx.with_initial_realm_stack_frame(async_generator.realm_ptr(), |cx| {
+                async_generator_resume(cx, async_generator, completion_value, completion_type)?;
+                Ok(())
+            })
         }
-
-        Ok(())
     }
 }
 
@@ -230,53 +231,45 @@ impl PromiseThenReactionTask {
     }
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
-        if let Some(realm) = self.realm {
-            cx.vm().push_initial_realm_stack_frame(realm)?;
-        }
+        // A null realm indicates there is no handler and no user code will be executed. However
+        // we still set the initial realm to the current realm to be safe in case any intrinsics
+        // need to be accessed (e.g. for creating errors).
+        let realm = self.realm.unwrap_or_else(|| cx.initial_realm_ptr());
 
-        cx.vm().mark_stack_trace_top();
+        cx.with_initial_realm_stack_frame(realm, |cx| {
+            let result = self.result.to_handle(cx);
+            let capability = self.capability.map(|c| c.to_handle());
 
-        let result = self.result.to_handle(cx);
-        let capability = self.capability.map(|c| c.to_handle());
-        let realm = self.realm.map(|r| r.to_handle());
-
-        // Call the handler if it exists on the result value
-        let handler_result = if let Some(handler) = self.handler {
-            let handler = handler.to_handle();
-            call_object(cx, handler, cx.undefined(), &[result])
-        } else {
-            // If no handler was provided treat the handler result as a default normal or throw
-            match self.kind {
-                PromiseReactionKind::Fulfill => Ok(result),
-                PromiseReactionKind::Reject => eval_err!(result),
-            }
-        };
-
-        let completion = if let Some(capability) = capability {
-            // Resolve or reject the capability with the result of the handler
-            match completion_value!(handler_result) {
-                Ok(handler_result) => {
-                    let resolve = capability.resolve();
-                    call_object(cx, resolve, cx.undefined(), &[handler_result])
+            // Call the handler if it exists on the result value
+            let handler_result = if let Some(handler) = self.handler {
+                let handler = handler.to_handle();
+                call_object(cx, handler, cx.undefined(), &[result])
+            } else {
+                // If no handler was provided treat the handler result as a default normal or throw
+                match self.kind {
+                    PromiseReactionKind::Fulfill => Ok(result),
+                    PromiseReactionKind::Reject => eval_err!(result),
                 }
-                Err(handler_result) => {
-                    let reject = capability.reject();
-                    call_object(cx, reject, cx.undefined(), &[handler_result])
+            };
+
+            if let Some(capability) = capability {
+                // Resolve or reject the capability with the result of the handler
+                match completion_value!(handler_result) {
+                    Ok(handler_result) => {
+                        let resolve = capability.resolve();
+                        call_object(cx, resolve, cx.undefined(), &[handler_result])?;
+                    }
+                    Err(handler_result) => {
+                        let reject = capability.reject();
+                        call_object(cx, reject, cx.undefined(), &[handler_result])?;
+                    }
                 }
-            }
-        } else {
-            debug_assert!(handler_result.is_ok());
-            Ok(cx.undefined())
-        };
+            } else {
+                debug_assert!(handler_result.is_ok());
+            };
 
-        // Make sure we clean up the realm's stack frame before returning or throwing
-        if realm.is_some() {
-            cx.vm().pop_initial_realm_stack_frame();
-        }
-
-        completion?;
-
-        Ok(())
+            Ok(())
+        })
     }
 }
 
@@ -303,20 +296,14 @@ impl PromiseThenSettleTask {
     }
 
     fn execute(&self, mut cx: Context) -> EvalResult<()> {
-        cx.vm().push_initial_realm_stack_frame(self.realm)?;
-        cx.vm().mark_stack_trace_top();
+        cx.with_initial_realm_stack_frame(self.realm, |cx| {
+            let then_function = self.then_function.to_handle();
+            let resolution = self.resolution.to_handle().into();
+            let promise = self.promise.to_handle();
 
-        let then_function = self.then_function.to_handle();
-        let resolution = self.resolution.to_handle().into();
-        let promise = self.promise.to_handle();
+            execute_then(cx, then_function, resolution, promise)?;
 
-        let completion = execute_then(cx, then_function, resolution, promise);
-
-        // Make sure we clean up the realm's stack frame before returning or throwing
-        cx.vm().pop_initial_realm_stack_frame();
-
-        completion?;
-
-        Ok(())
+            Ok(())
+        })
     }
 }

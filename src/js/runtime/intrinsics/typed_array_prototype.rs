@@ -253,8 +253,12 @@ impl TypedArrayPrototype {
             return type_error(cx, "typed array is out of bounds");
         }
 
-        let buffer_byte_limit =
-            typed_array_length(&typed_array_record) as u64 * element_size + byte_offset;
+        let length = typed_array_length(&typed_array_record) as u64;
+        let count = (count as u64)
+            .min(length - to_index)
+            .min(length - from_start_index);
+
+        let buffer_byte_limit = length * element_size + byte_offset;
 
         let to_byte_index = to_index * element_size + byte_offset;
         let from_byte_index = from_start_index * element_size + byte_offset;

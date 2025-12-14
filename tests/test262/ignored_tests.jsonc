@@ -7,9 +7,6 @@
       // Bugs (We intend to fix these)
       //
       ////////////////////////////////////////
-      // Bug when copying within resizable array that resizes during evaluation
-      "built-ins/TypedArray/prototype/copyWithin/coerced-target-start-end-shrink.js",
-
       // Different rejection order for promises when evaluating modules with top-level await
       "language/module-code/top-level-await/rejection-order.js",
 

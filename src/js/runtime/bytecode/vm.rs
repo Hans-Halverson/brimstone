@@ -229,6 +229,11 @@ impl VM {
             Some(self.stack_frame())
         };
     }
+
+    pub fn debug_assert_stack_empty(&self) {
+        debug_assert!(self.fp().is_null());
+        debug_assert!(self.num_stack_frames == 0);
+    }
 }
 
 impl VM {
@@ -545,12 +550,12 @@ impl VM {
                             generator_object.as_async_generator().unwrap().to_handle();
                         let yield_value = yield_value.to_handle(self.cx());
 
-                        async_generator_complete_step(
+                        maybe_throw_a!(async_generator_complete_step(
                             self.cx(),
                             async_generator,
                             Ok(yield_value),
                             /* is_done */ false,
-                        )?;
+                        ));
 
                         if let Some(request) = async_generator.peek_request_ptr() {
                             // If there is a pending request then immediately continue with the
@@ -604,16 +609,18 @@ impl VM {
 
                     if return_promise_or_generator.as_object().is_promise() {
                         // Create a new generator object that holds the stack frame's state
-                        let generator = GeneratorObject::new_for_async_function(
+                        let generator = maybe_throw_a!(GeneratorObject::new_for_async_function(
                             self.cx(),
                             pc_to_resume_offset,
                             fp_index,
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
-                        )?
+                        ))
                         .to_handle();
 
-                        argument_promise.add_await_reaction(self.cx(), generator.into())?;
+                        maybe_throw_a!(
+                            argument_promise.add_await_reaction(self.cx(), generator.into())
+                        );
 
                         // Return the promise to the caller
                         return_!(*return_promise_or_generator);
@@ -628,7 +635,9 @@ impl VM {
                             (completion_value_index, completion_type_index),
                             self.stack_frame().as_slice(),
                         );
-                        argument_promise.add_await_reaction(self.cx(), async_generator.into())?;
+                        maybe_throw_a!(
+                            argument_promise.add_await_reaction(self.cx(), async_generator.into())
+                        );
 
                         // Return empty value to signal that the async generator has suspended
                         return_!(Value::empty());
@@ -657,13 +666,13 @@ impl VM {
                     // Create the generator in the started state, copying the current stack frame
                     // and PC to resume.
                     let generator_value = if current_closure.function_ptr().is_async() {
-                        let mut async_generator = maybe_throw!(Ok(AsyncGeneratorObject::new(
+                        let mut async_generator = maybe_throw!(AsyncGeneratorObject::new(
                             self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
                             self.stack_frame().as_slice(),
-                        )?));
+                        ));
 
                         // Store the generator into the provided register in the stored stack frame
                         let generator_value = async_generator.as_value();
@@ -671,13 +680,13 @@ impl VM {
 
                         generator_value
                     } else {
-                        let mut generator = maybe_throw!(Ok(GeneratorObject::new_for_generator(
+                        let mut generator = maybe_throw!(GeneratorObject::new_for_generator(
                             self.cx(),
                             current_closure,
                             pc_to_resume_offset,
                             fp_index,
                             self.stack_frame().as_slice(),
-                        )?));
+                        ));
 
                         // Store the generator into the provided register in the stored stack frame
                         let generator_value = generator.as_value();
@@ -754,6 +763,17 @@ impl VM {
                         Err(EvalError::Alloc(err)) => return Err(err.into()),
                     }
                 };
+            }
+
+            macro_rules! maybe_throw_a {
+                ($eval_result:expr) => {{
+                    let eval_result: AllocResult<_> = $eval_result;
+                    match eval_result {
+                        Ok(result) => result,
+                        // Always propagate allocation errors upwards
+                        Err(err) => return Err(err.into()),
+                    }
+                }};
             }
 
             macro_rules! create_dispatch_table {
@@ -1986,10 +2006,11 @@ impl VM {
 
         // Check if stack exceeds max depth. This check is to prevent overflowing the native stack
         // by using a hardcoded limit.
-        self.num_stack_frames += 1;
-        if self.num_stack_frames > MAX_STACK_DEPTH {
+        if self.num_stack_frames >= MAX_STACK_DEPTH {
             return stack_overflow_error(self.cx);
         }
+
+        self.num_stack_frames += 1;
 
         Ok(())
     }

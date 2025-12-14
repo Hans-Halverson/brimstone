@@ -179,6 +179,10 @@ impl GeneratorObject {
             *register = value.as_raw_bits() as StackSlotValue;
         }
     }
+
+    pub fn closure_ptr(&self) -> HeapPtr<Closure> {
+        StackFrame::for_fp(self.current_fp().cast_mut()).closure()
+    }
 }
 
 impl TGeneratorObject for Handle<GeneratorObject> {

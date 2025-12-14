@@ -167,11 +167,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         self.advance_n(3);
     }
 
-    fn peek(&mut self) -> u32 {
+    fn peek(&self) -> u32 {
         self.peek_n(1)
     }
 
-    fn peek2(&mut self) -> u32 {
+    fn peek2(&self) -> u32 {
         self.peek_n(2)
     }
 
@@ -1077,6 +1077,25 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 '-' if self.is_unicode_aware() => {
                     self.advance2();
                     Ok(ClassRange::Single('-' as u32))
+                }
+                // Annex B supports `\cX` escapes in character classes
+                'c' if self.in_annex_b_mode => {
+                    match_u32!(match self.peek2() {
+                        // For valid control characters the value is the lower 5 bits
+                        '0'..='9' | '_' if !self.is_unicode_aware() => {
+                            self.advance2();
+                            let escaped_value = self.current() % 32;
+                            self.advance();
+
+                            Ok(ClassRange::Single(escaped_value))
+                        }
+                        // If `\c` is not followed by a valid control character then it instead is
+                        // parsed as a literal `\` character followed by a `c` character.
+                        _ => {
+                            self.advance();
+                            Ok(ClassRange::Single('\\' as u32))
+                        }
+                    })
                 }
                 // Unicode properties
                 'p' if self.is_unicode_aware() => {

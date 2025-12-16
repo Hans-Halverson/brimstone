@@ -11,7 +11,7 @@ use crate::{
         options::Options,
         unicode::{
             as_id_part, as_id_start, code_point_from_surrogate_pair, get_hex_value,
-            is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
+            get_octal_value, is_ascii_alphabetic, is_decimal_digit, is_high_surrogate_code_point,
             is_high_surrogate_code_unit, is_id_continue_unicode, is_low_surrogate_code_point,
             is_low_surrogate_code_unit,
         },
@@ -65,6 +65,14 @@ pub struct RegExpParser<'a, T: LexerStream> {
     named_backreferences: Vec<(AstStr<'a>, Pos, AstPtr<Backreference>)>,
     /// All indexed backreferences encountered. Saves the index and source position.
     indexed_backreferences: Vec<(CaptureGroupIndex, Pos)>,
+    /// In Annex-B non-unicode aware mode, when encountering a sequence like `\1`, it is
+    /// unknown at parse time whether it is a backreference or an escape sequence. Keep track of the
+    /// (source position, decimal value) while parsing and check if are valid backreferences after
+    /// parsing.
+    annex_b_maybe_backreferences: HashMap<Pos, u64>,
+    /// The number of capture groups in this RegExp known from a previous parse. Set iff a previous
+    /// parse was completed.
+    already_parsed_num_capture_groups: Option<u64>,
     /// Number of parenthesized groups the parser is currently inside
     group_depth: usize,
     /// Allocator used for allocating AST nodes
@@ -92,6 +100,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             in_annex_b_mode,
             named_backreferences: vec![],
             indexed_backreferences: vec![],
+            annex_b_maybe_backreferences: HashMap::new(),
+            already_parsed_num_capture_groups: None,
             group_depth: 0,
             alloc,
         }
@@ -248,7 +258,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 /* parse_named_capture_groups */ false,
                 options.annex_b,
             );
-            match parser.parse_disjunction() {
+
+            let mut disjunction = match parser.parse_disjunction() {
                 Ok(disjunction) => disjunction,
                 // If we encountered a named capture group then reparse with named capture groups
                 Err(error) if matches!(error.error, ParseError::NamedCaptureGroupEncountered) => {
@@ -263,7 +274,36 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     parser.parse_disjunction()?
                 }
                 Err(error) => return Err(error),
+            };
+
+            // May have encountered backreferences that we must confirm reference an actual capture
+            // group, otherwise we need to reparse knowing the actual number of capture groups.
+            let num_capture_groups = parser.capture_groups.len() as u64;
+            let annex_b_maybe_backreferences =
+                std::mem::take(&mut parser.annex_b_maybe_backreferences);
+            let needs_reparse = annex_b_maybe_backreferences
+                .iter()
+                .any(|(_, capture_group_index)| *capture_group_index > num_capture_groups);
+
+            // Reparse using the set of options from the successful parse before
+            if needs_reparse {
+                let lexer_stream = create_lexer_stream();
+                parser = Self::new(
+                    lexer_stream,
+                    flags,
+                    alloc,
+                    parser.parse_named_capture_groups,
+                    options.annex_b,
+                );
+
+                // Set information gathered from first parse
+                parser.already_parsed_num_capture_groups = Some(num_capture_groups);
+                parser.annex_b_maybe_backreferences = annex_b_maybe_backreferences;
+
+                disjunction = parser.parse_disjunction()?;
             }
+
+            disjunction
         };
 
         parser.resolve_backreferences()?;
@@ -482,7 +522,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         Term::Assertion(Assertion::NotWordBoundary)
                     }
                     // Indexed backreferences
-                    '1'..='9' => {
+                    '1'..='9' if !self.is_annex_b_backreference_like_escape_sequence(start_pos) => {
                         // Skip the `\` but start at the first digit
                         self.advance();
                         let index = self.parse_decimal_digits()?;
@@ -491,6 +531,16 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         if let Some(index) = index.and_then(|index| u32::try_from(index).ok()) {
                             // Save indexed backreference to be analyzed after parsing
                             self.indexed_backreferences.push((index, start_pos));
+
+                            // In Annex B non-unicode aware mode's first pass we don't know if this
+                            // is a backreference or an escape sequence yet so save it for later.
+                            if self.in_annex_b_mode
+                                && !self.is_unicode_aware()
+                                && self.already_parsed_num_capture_groups.is_none()
+                            {
+                                self.annex_b_maybe_backreferences
+                                    .insert(start_pos, index.into());
+                            }
 
                             Term::Backreference(p!(self, Backreference { index }))
                         } else {
@@ -581,6 +631,21 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             is_inverted: false,
             operands: operands.build(),
         }
+    }
+
+    /// Whether the current position is for a sequence that parsed to a backreference in the first
+    /// parse but is actually an escape sequence due to being out of range.
+    ///
+    /// Annex-B non-unicode aware mode only.
+    fn is_annex_b_backreference_like_escape_sequence(&self, start_pos: Pos) -> bool {
+        if let Some(num_capture_groups) = self.already_parsed_num_capture_groups {
+            let capture_index = *self.annex_b_maybe_backreferences.get(&start_pos).unwrap();
+            if capture_index > num_capture_groups {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn parse_quantifier(&mut self, term: Term<'a>) -> ParseResult<Term<'a>> {
@@ -1325,6 +1390,27 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             '0' if !is_decimal_digit(self.peek2()) => {
                 self.advance2();
                 Ok(0)
+            }
+            // Legacy octal escape
+            first_digit @ ('0'..='7') if self.in_annex_b_mode && !self.is_unicode_aware() => {
+                let mut octal_value = get_octal_value(first_digit).unwrap();
+                self.advance2();
+
+                if let Some(next_digit) = get_octal_value(self.current()) {
+                    octal_value *= 8;
+                    octal_value += next_digit;
+                    self.advance();
+                }
+
+                if first_digit <= '3' as u32 {
+                    if let Some(next_digit) = get_octal_value(self.current()) {
+                        octal_value *= 8;
+                        octal_value += next_digit;
+                        self.advance();
+                    }
+                }
+
+                Ok(octal_value)
             }
             _ => {
                 let start_pos = self.pos();

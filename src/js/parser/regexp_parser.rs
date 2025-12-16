@@ -1449,9 +1449,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 } else {
                     let save_state = self.save();
 
-                    // In non-unicode mode all non id_continue characters can be escaped
                     let code_point = self.parse_unicode_codepoint()?;
-                    if !is_id_continue_unicode(code_point) {
+
+                    let is_identity_escape = if self.in_annex_b_mode {
+                        // In Annex B mode all code points except 'c' and 'k' can be escaped
+                        code_point != 'c' as u32
+                            && !(self.parse_named_capture_groups && code_point == 'k' as u32)
+                    } else {
+                        // In non-unicode mode all non id_continue characters can be escaped
+                        !is_id_continue_unicode(code_point)
+                    };
+
+                    if is_identity_escape {
                         Ok(code_point)
                     } else {
                         // Otherwise back up and treat the slash as a literal character, not the

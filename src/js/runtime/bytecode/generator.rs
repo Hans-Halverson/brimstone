@@ -8147,6 +8147,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let for_scope = stmt.scope.as_ref();
         self.gen_scope_start(for_scope, None)?;
 
+        // If an init expression occurs it is evaluated before the RHS and its value is dropped.
+        // Init expression can only occur in sloppy Annex B mode for statements of the following
+        // form: `for (var <id> = <expr> in ...)`.
+        if let ast::ForEachInit::VarDecl(var_decl) = stmt.left.as_ref() {
+            if self.cx.options.annex_b
+                && !self.is_strict
+                && var_decl.kind == ast::VarKind::Var
+                && var_decl.declarations[0].id.is_id()
+                && var_decl.declarations[0].init.is_some()
+            {
+                self.gen_variable_declaration(var_decl)?;
+            }
+        }
+
         let in_pos = stmt.in_of_pos;
         let right_pos = stmt.right.pos();
 

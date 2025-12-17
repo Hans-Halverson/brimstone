@@ -1366,7 +1366,23 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn parse_regexp_escape_sequence(&mut self) -> ParseResult<u32> {
         match_u32!(match self.peek() {
             // Unicode escape sequence
-            'u' => self.parse_regex_unicode_escape_sequence(self.is_unicode_aware()),
+            'u' => {
+                // State before consuming '\u'
+                let save_state = self.save();
+
+                match self.parse_regex_unicode_escape_sequence(self.is_unicode_aware()) {
+                    Ok(code_point) => Ok(code_point),
+                    // In Annex B non-unicode mode a malformed unicode escape sequence is instead
+                    // interpreted as an identity escape of the character 'u'. Backtrack to right
+                    // after consuming '\u'.
+                    Err(_) if self.in_annex_b_mode && !self.is_unicode_aware() => {
+                        self.restore(&save_state);
+                        self.advance2();
+                        Ok('u' as u32)
+                    }
+                    Err(err) => Err(err),
+                }
+            }
             // Standard control characters
             'f' => {
                 self.advance2();
@@ -1400,10 +1416,22 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             'x' => {
                 let start_pos = self.pos();
                 self.advance2();
-                let code_point = self.parse_hex2_digits(start_pos)?;
 
-                // Safe since code point is guaranteed to be in the range [0, 255)
-                Ok(code_point)
+                // State after consuming '\x'
+                let save_state = self.save();
+
+                match self.parse_hex2_digits(start_pos) {
+                    // Safe since code point is guaranteed to be in the range [0, 255)
+                    Ok(code_point) => Ok(code_point),
+                    // In Annex B non-unicode mode a malformed hex escape sequence is instead
+                    // interpreted as an identity escape of the character 'x'. Backtrack to right
+                    // after consuming '\x'.
+                    Err(_) if self.in_annex_b_mode && !self.is_unicode_aware() => {
+                        self.restore(&save_state);
+                        Ok('x' as u32)
+                    }
+                    Err(err) => return Err(err),
+                }
             }
             // The null byte
             '0' if !is_decimal_digit(self.peek2()) => {

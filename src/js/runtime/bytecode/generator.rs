@@ -8174,8 +8174,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             StoreFlags::NEEDS_TDZ_CHECK
         };
 
+        // Next result is always stored in a new register so it does not observably clobber the
+        // left hand side's register.
+        let next_result = self.register_allocator.allocate()?;
+
         // Iteration starts by calling the for-in iterator's `next` method
-        let next_result = self.gen_for_each_next_result_dest(stmt, store_flags)?;
         self.writer
             .for_in_next_instruction(next_result, iterator, in_pos);
 
@@ -8209,23 +8212,6 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Normal completion since the loop could always be avoided entirely
         Ok(StmtCompletion::Normal)
-    }
-
-    /// Determine register in which to place the iterator's `next` result
-    fn gen_for_each_next_result_dest(
-        &mut self,
-        stmt: &ast::ForEachStatement,
-        store_flags: StoreFlags,
-    ) -> EmitResult<GenRegister> {
-        match stmt.left.pattern() {
-            // If storing to an id we attempt to store directly
-            ast::Pattern::Id(id) => {
-                let dest = self.expr_dest_for_id(id, store_flags);
-                self.allocate_destination(dest)
-            }
-            // Otherwise we store to a temporary register
-            _ => self.register_allocator.allocate(),
-        }
     }
 
     fn gen_async_iterator_close(&mut self, iterator: GenRegister, pos: Pos) -> EmitResult<()> {

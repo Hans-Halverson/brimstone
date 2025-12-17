@@ -399,11 +399,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 '*' | '+' | '?' => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                // ']', '{', and '}' are only valid pattern characters in Annex B mode
-                '{' if !self.in_annex_b_mode => {
+                // ']', '{', and '}' are only valid pattern characters in Annex B non-unicode mode
+                '{' if !self.in_annex_b_mode || self.is_unicode_aware() => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                '}' | ']' if !self.in_annex_b_mode =>
+                '}' | ']' if !self.in_annex_b_mode || self.is_unicode_aware() =>
                     return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative
                 '|' => break,
@@ -696,9 +696,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Every quantifier can be postfixed with a `?` to make it lazy
             let is_greedy = !self.eat('?');
 
-            // Check if term is a a non-quantifiable assertion. Only lookaheads are allowed as
-            // quantifiable assertions in Annex B (but all engines appear to support quantifiable
-            // lookaheads in non-Annex B mode).
+            // Check if term is a a non-quantifiable assertion. Lookaheads are allowed as
+            // quantifiable assertions in Annex B.
             match term {
                 Term::Lookaround(Lookaround { is_ahead: true, .. }) if !self.is_unicode_aware() => {
                 }

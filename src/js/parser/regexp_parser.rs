@@ -989,9 +989,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             let atom = self.parse_class_atom()?;
 
             if self.eat('-') {
+                let start_atom = atom;
+
                 // Trailing `-` at the end of the character class
                 if self.eat(']') {
-                    ranges.push(atom);
+                    ranges.push(start_atom);
                     ranges.push(ClassRange::Single('-' as u32));
                     break;
                 }
@@ -999,14 +1001,30 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 // Otherwise this must be a range
                 let end_atom = self.parse_class_atom()?;
 
-                let start = self.class_atom_to_range_bound(atom)?;
-                let end = self.class_atom_to_range_bound(end_atom)?;
+                let start_result = self.class_atom_to_range_bound(&start_atom);
+                let end_result = self.class_atom_to_range_bound(&end_atom);
 
-                if end < start {
-                    return self.error(atom_start_pos, ParseError::InvalidCharacterClassRange);
+                // In Annex B non-unicode mode if either side of the range evaluates to a set of
+                // code points then add each part (left, dash, and right) to the character class
+                // instead of treating it as a range.
+                if self.in_annex_b_mode
+                    && !self.is_unicode_aware()
+                    && (start_result.is_err() || end_result.is_err())
+                {
+                    ranges.push(start_atom);
+                    ranges.push(ClassRange::Single('-' as u32));
+                    ranges.push(end_atom);
+                } else {
+                    // Otherwise both sides must be single code points
+                    let start = start_result?;
+                    let end = end_result?;
+
+                    if end < start {
+                        return self.error(atom_start_pos, ParseError::InvalidCharacterClassRange);
+                    }
+
+                    ranges.push(ClassRange::Range(start, end));
                 }
-
-                ranges.push(ClassRange::Range(start, end));
             } else {
                 ranges.push(atom);
             }
@@ -1019,9 +1037,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         }))
     }
 
-    fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<u32> {
+    fn class_atom_to_range_bound(&mut self, atom: &ClassRange) -> ParseResult<u32> {
         match atom {
-            ClassRange::Single(code_point) => Ok(code_point),
+            ClassRange::Single(code_point) => Ok(*code_point),
             ClassRange::Word
             | ClassRange::NotWord
             | ClassRange::Digit
@@ -1334,8 +1352,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         let (end_operand, _) = self.parse_class_set_operand()?;
 
-        let start = self.class_atom_to_range_bound(start_operand)?;
-        let end = self.class_atom_to_range_bound(end_operand)?;
+        let start = self.class_atom_to_range_bound(&start_operand)?;
+        let end = self.class_atom_to_range_bound(&end_operand)?;
 
         if end < start {
             return self.error(operand_start_pos, ParseError::InvalidCharacterClassRange);
@@ -1429,7 +1447,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         self.restore(&save_state);
                         Ok('x' as u32)
                     }
-                    Err(err) => return Err(err),
+                    Err(err) => Err(err),
                 }
             }
             // The null byte

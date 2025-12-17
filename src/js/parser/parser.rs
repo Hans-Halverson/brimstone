@@ -1250,7 +1250,8 @@ impl<'a> Parser<'a> {
         self.expect(Token::LeftParen)?;
 
         // Both for and for each loops can start with a variable declaration
-        let is_var_decl = self.token == Token::Var
+        let is_var_kind = self.token == Token::Var;
+        let is_var_decl = is_var_kind
             || self.token == Token::Const
             || (self.token == Token::Let && self.is_let_declaration_start()?);
 
@@ -1263,9 +1264,25 @@ impl<'a> Parser<'a> {
 
             match self.token {
                 Token::In | Token::Of => {
-                    // Var decl must consist of a single declaration with no initializer to
-                    // match the `var ForBinding` and `ForDeclaration` productions.
-                    if var_decl.declarations.len() != 1 || var_decl.declarations[0].init.is_some() {
+                    // Var decl must consist of a single declaration to match the `var ForBinding`
+                    // and `ForDeclaration` productions.
+                    if var_decl.declarations.len() != 1 {
+                        return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
+                    }
+
+                    // An initializer is only allowed if all the following are true:
+                    // - Annex B mode
+                    // - Sloppy mode
+                    // - for-in statement
+                    // - Declaration kind is `var`
+                    // - Pattern is a simple identifier
+                    if var_decl.declarations[0].init.is_some()
+                        && !(self.options.annex_b
+                            && !self.in_strict_mode
+                            && self.token == Token::In
+                            && is_var_kind
+                            && var_decl.declarations[0].id.is_id())
+                    {
                         return self.error(var_decl.loc, ParseError::ForEachInitInvalidVarDecl);
                     }
 

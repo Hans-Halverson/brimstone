@@ -167,11 +167,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         self.advance_n(3);
     }
 
-    fn peek(&mut self) -> u32 {
+    fn peek(&self) -> u32 {
         self.peek_n(1)
     }
 
-    fn peek2(&mut self) -> u32 {
+    fn peek2(&self) -> u32 {
         self.peek_n(2)
     }
 
@@ -399,11 +399,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 '*' | '+' | '?' => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                // ']', '{', and '}' are only valid pattern characters in Annex B mode
-                '{' if !self.in_annex_b_mode => {
+                // ']', '{', and '}' are only valid pattern characters in Annex B non-unicode mode
+                '{' if !self.in_annex_b_mode || self.is_unicode_aware() => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                '}' | ']' if !self.in_annex_b_mode =>
+                '}' | ']' if !self.in_annex_b_mode || self.is_unicode_aware() =>
                     return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative
                 '|' => break,
@@ -696,9 +696,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Every quantifier can be postfixed with a `?` to make it lazy
             let is_greedy = !self.eat('?');
 
-            // Check if term is a a non-quantifiable assertion. Only lookaheads are allowed as
-            // quantifiable assertions in Annex B (but all engines appear to support quantifiable
-            // lookaheads in non-Annex B mode).
+            // Check if term is a a non-quantifiable assertion. Lookaheads are allowed as
+            // quantifiable assertions in Annex B.
             match term {
                 Term::Lookaround(Lookaround { is_ahead: true, .. }) if !self.is_unicode_aware() => {
                 }
@@ -990,9 +989,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             let atom = self.parse_class_atom()?;
 
             if self.eat('-') {
+                let start_atom = atom;
+
                 // Trailing `-` at the end of the character class
                 if self.eat(']') {
-                    ranges.push(atom);
+                    ranges.push(start_atom);
                     ranges.push(ClassRange::Single('-' as u32));
                     break;
                 }
@@ -1000,14 +1001,30 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 // Otherwise this must be a range
                 let end_atom = self.parse_class_atom()?;
 
-                let start = self.class_atom_to_range_bound(atom)?;
-                let end = self.class_atom_to_range_bound(end_atom)?;
+                let start_result = self.class_atom_to_range_bound(&start_atom);
+                let end_result = self.class_atom_to_range_bound(&end_atom);
 
-                if end < start {
-                    return self.error(atom_start_pos, ParseError::InvalidCharacterClassRange);
+                // In Annex B non-unicode mode if either side of the range evaluates to a set of
+                // code points then add each part (left, dash, and right) to the character class
+                // instead of treating it as a range.
+                if self.in_annex_b_mode
+                    && !self.is_unicode_aware()
+                    && (start_result.is_err() || end_result.is_err())
+                {
+                    ranges.push(start_atom);
+                    ranges.push(ClassRange::Single('-' as u32));
+                    ranges.push(end_atom);
+                } else {
+                    // Otherwise both sides must be single code points
+                    let start = start_result?;
+                    let end = end_result?;
+
+                    if end < start {
+                        return self.error(atom_start_pos, ParseError::InvalidCharacterClassRange);
+                    }
+
+                    ranges.push(ClassRange::Range(start, end));
                 }
-
-                ranges.push(ClassRange::Range(start, end));
             } else {
                 ranges.push(atom);
             }
@@ -1020,9 +1037,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         }))
     }
 
-    fn class_atom_to_range_bound(&mut self, atom: ClassRange) -> ParseResult<u32> {
+    fn class_atom_to_range_bound(&mut self, atom: &ClassRange) -> ParseResult<u32> {
         match atom {
-            ClassRange::Single(code_point) => Ok(code_point),
+            ClassRange::Single(code_point) => Ok(*code_point),
             ClassRange::Word
             | ClassRange::NotWord
             | ClassRange::Digit
@@ -1077,6 +1094,25 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 '-' if self.is_unicode_aware() => {
                     self.advance2();
                     Ok(ClassRange::Single('-' as u32))
+                }
+                // Annex B supports `\cX` escapes in character classes
+                'c' if self.in_annex_b_mode => {
+                    match_u32!(match self.peek2() {
+                        // For valid control characters the value is the lower 5 bits
+                        '0'..='9' | '_' if !self.is_unicode_aware() => {
+                            self.advance2();
+                            let escaped_value = self.current() % 32;
+                            self.advance();
+
+                            Ok(ClassRange::Single(escaped_value))
+                        }
+                        // If `\c` is not followed by a valid control character then it instead is
+                        // parsed as a literal `\` character followed by a `c` character.
+                        _ => {
+                            self.advance();
+                            Ok(ClassRange::Single('\\' as u32))
+                        }
+                    })
                 }
                 // Unicode properties
                 'p' if self.is_unicode_aware() => {
@@ -1316,8 +1352,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         let (end_operand, _) = self.parse_class_set_operand()?;
 
-        let start = self.class_atom_to_range_bound(start_operand)?;
-        let end = self.class_atom_to_range_bound(end_operand)?;
+        let start = self.class_atom_to_range_bound(&start_operand)?;
+        let end = self.class_atom_to_range_bound(&end_operand)?;
 
         if end < start {
             return self.error(operand_start_pos, ParseError::InvalidCharacterClassRange);
@@ -1347,7 +1383,23 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn parse_regexp_escape_sequence(&mut self) -> ParseResult<u32> {
         match_u32!(match self.peek() {
             // Unicode escape sequence
-            'u' => self.parse_regex_unicode_escape_sequence(self.is_unicode_aware()),
+            'u' => {
+                // State before consuming '\u'
+                let save_state = self.save();
+
+                match self.parse_regex_unicode_escape_sequence(self.is_unicode_aware()) {
+                    Ok(code_point) => Ok(code_point),
+                    // In Annex B non-unicode mode a malformed unicode escape sequence is instead
+                    // interpreted as an identity escape of the character 'u'. Backtrack to right
+                    // after consuming '\u'.
+                    Err(_) if self.in_annex_b_mode && !self.is_unicode_aware() => {
+                        self.restore(&save_state);
+                        self.advance2();
+                        Ok('u' as u32)
+                    }
+                    Err(err) => Err(err),
+                }
+            }
             // Standard control characters
             'f' => {
                 self.advance2();
@@ -1381,10 +1433,22 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             'x' => {
                 let start_pos = self.pos();
                 self.advance2();
-                let code_point = self.parse_hex2_digits(start_pos)?;
 
-                // Safe since code point is guaranteed to be in the range [0, 255)
-                Ok(code_point)
+                // State after consuming '\x'
+                let save_state = self.save();
+
+                match self.parse_hex2_digits(start_pos) {
+                    // Safe since code point is guaranteed to be in the range [0, 255)
+                    Ok(code_point) => Ok(code_point),
+                    // In Annex B non-unicode mode a malformed hex escape sequence is instead
+                    // interpreted as an identity escape of the character 'x'. Backtrack to right
+                    // after consuming '\x'.
+                    Err(_) if self.in_annex_b_mode && !self.is_unicode_aware() => {
+                        self.restore(&save_state);
+                        Ok('x' as u32)
+                    }
+                    Err(err) => Err(err),
+                }
             }
             // The null byte
             '0' if !is_decimal_digit(self.peek2()) => {
@@ -1430,9 +1494,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 } else {
                     let save_state = self.save();
 
-                    // In non-unicode mode all non id_continue characters can be escaped
                     let code_point = self.parse_unicode_codepoint()?;
-                    if !is_id_continue_unicode(code_point) {
+
+                    let is_identity_escape = if self.in_annex_b_mode {
+                        // In Annex B mode all code points except 'c' and 'k' can be escaped
+                        code_point != 'c' as u32
+                            && !(self.parse_named_capture_groups && code_point == 'k' as u32)
+                    } else {
+                        // In non-unicode mode all non id_continue characters can be escaped
+                        !is_id_continue_unicode(code_point)
+                    };
+
+                    if is_identity_escape {
                         Ok(code_point)
                     } else {
                         // Otherwise back up and treat the slash as a literal character, not the

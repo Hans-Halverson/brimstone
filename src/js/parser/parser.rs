@@ -567,7 +567,9 @@ impl<'a> Parser<'a> {
                 let var_decl = self.parse_variable_declaration(false)?;
                 Ok(Statement::VarDecl(p!(self, var_decl)))
             }
-            Token::LeftBrace => Ok(Statement::Block(p!(self, self.parse_block()?))),
+            Token::LeftBrace => {
+                Ok(Statement::Block(p!(self, self.parse_block(ScopeNodeKind::Block)?)))
+            }
             Token::If => self.parse_if_statement(),
             Token::Switch => self.parse_switch_statement(),
             Token::For => self.parse_any_for_statement(),
@@ -1137,12 +1139,11 @@ impl<'a> Parser<'a> {
         Ok(body.build())
     }
 
-    fn parse_block(&mut self) -> ParseResult<Block<'a>> {
+    fn parse_block(&mut self, scope_kind: ScopeNodeKind) -> ParseResult<Block<'a>> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
-
+        let scope = self.scope_builder.enter_scope(scope_kind);
         let mut body = self.alloc_vec();
         while self.token != Token::RightBrace {
             body.push(self.parse_statement_list_item(FunctionContext::empty())?)
@@ -1497,11 +1498,11 @@ impl<'a> Parser<'a> {
         let start_pos = self.current_start_pos();
         self.advance()?;
 
-        let block = p!(self, self.parse_block()?);
+        let block = p!(self, self.parse_block(ScopeNodeKind::Block)?);
 
         // Optional handler block
         let handler = if self.token == Token::Catch {
-            // Set up block scope before catch parameter is parsed, so it is included in block scope
+            // Set up block scope to include the catch parameter bindings
             let scope = self.scope_builder.enter_scope(ScopeNodeKind::Block);
 
             let catch_start_pos = self.current_start_pos();
@@ -1525,7 +1526,7 @@ impl<'a> Parser<'a> {
                 Some(param)
             };
 
-            let body = p!(self, self.parse_block()?);
+            let body = p!(self, self.parse_block(ScopeNodeKind::CatchBody)?);
             let loc = self.mark_loc(catch_start_pos);
 
             self.scope_builder.exit_scope();
@@ -1537,7 +1538,7 @@ impl<'a> Parser<'a> {
 
         let finalizer = if self.token == Token::Finally {
             self.advance()?;
-            Some(p!(self, self.parse_block()?))
+            Some(p!(self, self.parse_block(ScopeNodeKind::Block)?))
         } else {
             None
         };
@@ -4991,7 +4992,8 @@ pub fn parse_script(
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
     let initial_state = parser.save();
     parser.advance()?;
@@ -5006,7 +5008,8 @@ pub fn parse_module(
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_module(alloc), options, alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_module(options.clone(), alloc), options, alloc);
     parser.advance()?;
 
     parser.parse_module()
@@ -5021,7 +5024,8 @@ pub fn parse_script_for_eval(
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_eval(is_direct, alloc), options, alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_eval(options.clone(), is_direct, alloc), options, alloc);
 
     // Inherit strict mode from context
     parser.set_in_strict_mode(inherit_strict_mode);
@@ -5041,7 +5045,8 @@ pub fn parse_function_params_for_function_constructor(
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -5063,7 +5068,8 @@ pub fn parse_function_body_for_function_constructor(
     // Create and prime parser
     let alloc = pcx.alloc();
     let lexer = Lexer::new(pcx.source(), alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options, alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
@@ -5086,7 +5092,8 @@ pub fn parse_function_for_function_constructor(
     let source = pcx.source();
 
     let lexer = Lexer::new(source, alloc);
-    let mut parser = Parser::new(lexer, ScopeTree::new_global(alloc), options.clone(), alloc);
+    let mut parser =
+        Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options.clone(), alloc);
     parser.advance()?;
 
     let func_node = parser.parse_function_declaration(FunctionContext::TOPLEVEL)?;

@@ -1,8 +1,8 @@
-use std::{cell::Cell, sync::LazyLock};
+use std::{cell::Cell, rc::Rc, sync::LazyLock};
 
 use allocator_api2::alloc::Global;
 
-use crate::common::{alloc, wtf_8::Wtf8String};
+use crate::common::{alloc, options::Options, wtf_8::Wtf8String};
 
 use super::{
     ast::{
@@ -19,6 +19,7 @@ pub struct ScopeTree<'a> {
     vm_nodes: ArenaVec<'a, VMScopeNode<'a>>,
     current_node_id: ScopeNodeId,
     alloc: AstAlloc<'a>,
+    options: Rc<Options>,
 }
 
 pub struct SavedScopeTreeState {
@@ -31,12 +32,17 @@ type AddBindingResult<'a> = Result<AstPtr<AstScopeNode<'a>>, ParseError>;
 
 /// Functions for constructing, mutating, and querying the AST scope tree.
 impl<'a> ScopeTree<'a> {
-    fn new_with_root(kind: ScopeNodeKind, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+    fn new_with_root(
+        options: Rc<Options>,
+        kind: ScopeNodeKind,
+        alloc: AstAlloc<'a>,
+    ) -> ScopeTree<'a> {
         let mut scope_tree = ScopeTree {
             ast_nodes: alloc::vec![in alloc],
             vm_nodes: alloc::vec![in alloc],
             current_node_id: INITIAL_SCOPE_ID,
             alloc,
+            options,
         };
 
         // Push the global scope node
@@ -50,17 +56,17 @@ impl<'a> ScopeTree<'a> {
         scope_tree
     }
 
-    pub fn new_global(alloc: AstAlloc<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(ScopeNodeKind::Global, alloc)
+    pub fn new_global(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+        Self::new_with_root(options, ScopeNodeKind::Global, alloc)
     }
 
-    pub fn new_module(alloc: AstAlloc<'a>) -> ScopeTree<'a> {
-        Self::new_with_root(ScopeNodeKind::Module, alloc)
+    pub fn new_module(options: Rc<Options>, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+        Self::new_with_root(options, ScopeNodeKind::Module, alloc)
     }
 
-    pub fn new_eval(is_direct: bool, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
+    pub fn new_eval(options: Rc<Options>, is_direct: bool, alloc: AstAlloc<'a>) -> ScopeTree<'a> {
         // Start off without setting the strict flag. This flag will be right away during parsing.
-        Self::new_with_root(ScopeNodeKind::Eval { is_direct, is_strict: false }, alloc)
+        Self::new_with_root(options, ScopeNodeKind::Eval { is_direct, is_strict: false }, alloc)
     }
 
     pub fn finish_ast_scope_tree(mut self) -> ScopeTree<'a> {
@@ -155,7 +161,7 @@ impl<'a> ScopeTree<'a> {
         // scope (to check for conflicts against lexical declarations).
         if kind == ScopeNodeKind::FunctionBody {
             let func_scope = self.get_ast_node(parent.unwrap());
-            // All bindings in function scope are gaurantueed to be function parameters if a
+            // All bindings in function scope are gauranteed to be function parameters if a
             // function body scope is created.
             for (name, _) in func_scope.iter_bindings() {
                 extra_var_names.insert(*name);
@@ -231,14 +237,31 @@ impl<'a> ScopeTree<'a> {
         // Walk up to the hoist target scope, checking for conflicting lexical bindings
         let mut node_id = self.current_node_id;
         let mut in_with_statement = false;
+        let in_annex_b_mode = self.options.annex_b;
+
+        // Scope node id to return, overriding the scope node where the binding is actually added
+        let mut node_id_override = None;
 
         loop {
             let node = self.get_ast_node_mut(node_id);
 
-            // Error if there is already a lexically scoped binding with this name. Existing var
-            // scoped bindings with the same name are allowed.
             if let Some(binding) = node.bindings.get(name) {
-                if binding.kind.is_lexically_scoped() {
+                // In Annex B mode var declarations are allowed to be declared in a catch block with
+                // a catch parameter of the same name.
+                //
+                // We allow the var declaration to propagate up to its hoist target. All references
+                // to this name within the catch block will reference the catch parameter, including
+                // the initialization within the var declaration itself. To achieve this we return
+                // the catch scope node as the node where the var binding was added while still
+                // adding the var binding to its hoist target scope higher up the scope chain.
+                if in_annex_b_mode
+                    && binding.kind.is_catch_parameter()
+                    && matches!(kind, BindingKind::Var)
+                {
+                    node_id_override = Some(node_id);
+                } else if binding.kind.is_lexically_scoped() {
+                    // Error if there is already a lexically scoped binding with this name. Existing var
+                    // scoped bindings with the same name are allowed.
                     return Err(ParseError::new_name_redeclaration(
                         name.to_owned_in(Global),
                         binding.kind.clone(),
@@ -288,11 +311,22 @@ impl<'a> ScopeTree<'a> {
                         .set_vm_location(VMLocation::WithVar)
                 }
 
-                return Ok(self.get_ast_node_ptr(node_id));
+                let node_id_to_return = node_id_override.unwrap_or(node_id);
+
+                return Ok(self.get_ast_node_ptr(node_id_to_return));
             } else {
                 // Add var name to all scopes except for hoist target, so that later lexical
                 // declarations can check for name conflicts.
-                node.extra_var_names.insert(name);
+                //
+                // The only exception is that Annex B allows `var` declarations to conflict with
+                // catch parameters. We do not add the var name to the catch scope in this case to
+                // avoid throwing a redeclaration error later.
+                if !(in_annex_b_mode
+                    && matches!(node.kind, ScopeNodeKind::CatchBody)
+                    && matches!(kind, BindingKind::Var))
+                {
+                    node.extra_var_names.insert(name);
+                }
             }
 
             node_id = node.parent.unwrap();
@@ -773,6 +807,8 @@ pub enum ScopeNodeKind {
     Switch,
     /// Body of a class declaration.
     Class,
+    /// Block body of a catch clause.
+    CatchBody,
     With,
     /// Scope created within an eval. Var bindings of a sloppy direct eval are added to the parent
     /// var scope.
@@ -797,7 +833,7 @@ impl ScopeNodeKind {
             // the eval scope to be a hoist target during analysis.
             | ScopeNodeKind::Eval { .. }
             | ScopeNodeKind::StaticInitializer => true,
-            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Class | ScopeNodeKind::With => false,
+            ScopeNodeKind::Block | ScopeNodeKind::Switch | ScopeNodeKind::Class | ScopeNodeKind::CatchBody | ScopeNodeKind::With => false,
         }
     }
 
@@ -1074,6 +1110,10 @@ impl<'a> BindingKind<'a> {
 
     pub fn is_function_parameter(&self) -> bool {
         matches!(self, BindingKind::FunctionParameter { .. })
+    }
+
+    pub fn is_catch_parameter(&self) -> bool {
+        matches!(self, BindingKind::CatchParameter { .. })
     }
 
     pub fn is_private_name(&self) -> bool {

@@ -7451,6 +7451,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ScopeNodeKind::Block
             | ScopeNodeKind::Switch
             | ScopeNodeKind::Class
+            | ScopeNodeKind::CatchBody
             | ScopeNodeKind::Eval { .. }
             | ScopeNodeKind::StaticInitializer => {
                 if let Some(vm_node_id) = scope.vm_scope_id() {

@@ -1,0 +1,29 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+    0: NewClosure r0, c0
+    3: StoreGlobal r0, c1
+    6: LoadUndefined r0
+    8: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: test]
+    1: [String: test]
+}
+
+[BytecodeFunction: test] {
+  Parameters: 0, Registers: 4
+     0: LoadImmediate r0, 1
+     3: Mov r2, <scope>
+     6: LoadImmediate r3, 2
+     9: Jump 17 (.L0)
+    11: Mov <scope>, r2
+    14: LoadImmediate r3, 3
+    17: LoadImmediate r1, 4
+    20: LoadImmediate r1, 5
+    23: LoadImmediate r3, 6
+  .L0:
+    26: LoadImmediate r0, 6
+    29: LoadUndefined r2
+    31: Ret r2
+  Exception Handlers:
+    6-9 -> 11 (r1)
+}

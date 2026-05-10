@@ -583,7 +583,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         }
 
         // Keys are sorted in lexicographic order
-        attribute_pairs.sort_by(|(key1, _), (key2, _)| key1.cmp(key2));
+        attribute_pairs.sort_by_key(|(key1, _)| *key1);
 
         Ok(Some(ImportAttributes::new(self.cx, &attribute_pairs)?))
     }
@@ -4083,101 +4083,98 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let mut flags = DefinePropertyFlags::empty();
 
-            let value = if property.value.is_none() {
+            let value = if let Some(property_value) = &property.value {
+                if property.is_method {
+                    // Method properties
+
+                    // Determine method name from the property
+                    let mut name = match &key {
+                        Property::Named { name, .. } => Some(Wtf8Cow::Borrowed(name)),
+                        Property::Computed(_) => {
+                            flags |= DefinePropertyFlags::NEEDS_NAME;
+                            None
+                        }
+                    };
+
+                    // Handle getter or setter methods
+                    if matches!(property.kind, ast::PropertyKind::Get | ast::PropertyKind::Set) {
+                        // DefineProperty instruction needs a flag noting the accessor
+                        let is_getter = matches!(property.kind, ast::PropertyKind::Get);
+                        if is_getter {
+                            flags |= DefinePropertyFlags::GETTER;
+                        } else {
+                            flags |= DefinePropertyFlags::SETTER;
+                        }
+
+                        // Add accessor prefix to the name if name is known
+                        if let Some(known_name) = &name {
+                            let mut prefixed_name = if is_getter {
+                                Wtf8String::from_str("get ")
+                            } else {
+                                Wtf8String::from_str("set ")
+                            };
+                            prefixed_name.push_wtf8_str(known_name.as_str());
+                            name = Some(Wtf8Cow::Owned(prefixed_name));
+                        }
+
+                        // Always use a DefineProperty instruction with flags instead of a
+                        // DefineNamedProperty instruction.
+                        if let Property::Named { constant_index, .. } = &key {
+                            let key_reg = self.register_allocator.allocate()?;
+                            self.writer
+                                .load_constant_instruction(key_reg, *constant_index);
+                            key = Property::Computed(key_reg);
+                        }
+                    }
+
+                    // Function node is added to the pending functions queue
+                    let func_node = if let ast::Expression::Function(func_node) = property_value {
+                        func_node
+                    } else {
+                        unreachable!("method property value is guaranteed to be a function");
+                    };
+
+                    let pending_node =
+                        PendingFunctionNode::Method { node: AstPtr::from_ref(func_node), name };
+                    let method_constant_index = self.enqueue_function_to_generate(pending_node)?;
+
+                    // Method itself is loaded from the constant table
+                    let method_value = self.register_allocator.allocate()?;
+                    self.gen_new_closure_for_function(
+                        func_node,
+                        method_value,
+                        ConstantIndex::new(method_constant_index),
+                    );
+
+                    method_value
+                } else if let Property::Named { is_proto: true, .. } = &key {
+                    // The __proto__ property corresponds to a SetPrototypeOf instruction
+                    let prototype = self.gen_expression(property_value)?;
+                    self.writer.set_prototype_of_instruction(object, prototype);
+                    self.register_allocator.release(prototype);
+
+                    continue;
+                } else {
+                    // Regular key-value properties. Value is statically evaluated as named if the
+                    // keyis statically known, otherwise the DefinePropertyInstruction will handle
+                    // setting the name of the value at runtime if necessary.
+                    match &key {
+                        Property::Named { name, .. } => {
+                            self.gen_named_expression(name, property_value, ExprDest::Any)?
+                        }
+                        Property::Computed(_) => {
+                            if Self::expression_needs_name(property_value) {
+                                flags |= DefinePropertyFlags::NEEDS_NAME;
+                            }
+
+                            self.gen_expression_with_dest(property_value, ExprDest::Any)?
+                        }
+                    }
+                }
+            } else {
                 // Identifier shorthand properties
                 let value_id = property.key.to_id();
                 self.gen_load_identifier(value_id, ExprDest::Any)?
-            } else if property.is_method {
-                // Method properties
-
-                // Determine method name from the property
-                let mut name = match &key {
-                    Property::Named { name, .. } => Some(Wtf8Cow::Borrowed(name)),
-                    Property::Computed(_) => {
-                        flags |= DefinePropertyFlags::NEEDS_NAME;
-                        None
-                    }
-                };
-
-                // Handle getter or setter methods
-                if matches!(property.kind, ast::PropertyKind::Get | ast::PropertyKind::Set) {
-                    // DefineProperty instruction needs a flag noting the accessor
-                    let is_getter = matches!(property.kind, ast::PropertyKind::Get);
-                    if is_getter {
-                        flags |= DefinePropertyFlags::GETTER;
-                    } else {
-                        flags |= DefinePropertyFlags::SETTER;
-                    }
-
-                    // Add accessor prefix to the name if name is known
-                    if let Some(known_name) = &name {
-                        let mut prefixed_name = if is_getter {
-                            Wtf8String::from_str("get ")
-                        } else {
-                            Wtf8String::from_str("set ")
-                        };
-                        prefixed_name.push_wtf8_str(known_name.as_str());
-                        name = Some(Wtf8Cow::Owned(prefixed_name));
-                    }
-
-                    // Always use a DefineProperty instruction with flags instead of a
-                    // DefineNamedProperty instruction.
-                    if let Property::Named { constant_index, .. } = &key {
-                        let key_reg = self.register_allocator.allocate()?;
-                        self.writer
-                            .load_constant_instruction(key_reg, *constant_index);
-                        key = Property::Computed(key_reg);
-                    }
-                }
-
-                // Function node is added to the pending functions queue
-                let func_node = if let ast::Expression::Function(func_node) =
-                    &property.value.as_ref().unwrap()
-                {
-                    func_node
-                } else {
-                    unreachable!("method property value is guaranteed to be a function");
-                };
-
-                let pending_node =
-                    PendingFunctionNode::Method { node: AstPtr::from_ref(func_node), name };
-                let method_constant_index = self.enqueue_function_to_generate(pending_node)?;
-
-                // Method itself is loaded from the constant table
-                let method_value = self.register_allocator.allocate()?;
-                self.gen_new_closure_for_function(
-                    func_node,
-                    method_value,
-                    ConstantIndex::new(method_constant_index),
-                );
-
-                method_value
-            } else if let Property::Named { is_proto: true, .. } = &key {
-                // The __proto__ property corresponds to a SetPrototypeOf instruction
-                let prototype = self.gen_expression(property.value.as_ref().unwrap())?;
-                self.writer.set_prototype_of_instruction(object, prototype);
-                self.register_allocator.release(prototype);
-
-                continue;
-            } else {
-                // Regular key-value properties. Value is statically evaluated as named if the key
-                // is statically known, otherwise the DefinePropertyInstruction will handle setting
-                // the name of the value at runtime if necessary.
-                match &key {
-                    Property::Named { name, .. } => self.gen_named_expression(
-                        name,
-                        property.value.as_ref().unwrap(),
-                        ExprDest::Any,
-                    )?,
-                    Property::Computed(_) => {
-                        let value_expr = property.value.as_ref().unwrap();
-                        if Self::expression_needs_name(value_expr) {
-                            flags |= DefinePropertyFlags::NEEDS_NAME;
-                        }
-
-                        self.gen_expression_with_dest(value_expr, ExprDest::Any)?
-                    }
-                }
             };
 
             self.register_allocator.release(value);
@@ -7677,19 +7674,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let condition = self.gen_outer_expression(&stmt.test)?;
         self.register_allocator.release(condition);
 
-        if stmt.altern.is_none() {
-            let join_block = self.new_block();
-
-            // If there is no alternative, branch between consequent and join block
-            self.write_jump_false_for_expression(&stmt.test.expr, condition, join_block)?;
-
-            self.gen_statement(&stmt.conseq)?;
-            self.start_block(join_block);
-
-            // If there is no alternative then the statement always can complete normally, with
-            // execution continuing afterwards.
-            Ok(StmtCompletion::Normal)
-        } else {
+        if let Some(stmt_altern) = stmt.altern.as_ref() {
             let altern_block = self.new_block();
             let join_block = self.new_block();
 
@@ -7703,11 +7688,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
 
             self.start_block(altern_block);
-            let altern_completion = self.gen_statement(stmt.altern.as_ref().unwrap())?;
+            let altern_completion = self.gen_statement(stmt_altern)?;
 
             self.start_block(join_block);
 
             Ok(conseq_completion.combine(altern_completion))
+        } else {
+            let join_block = self.new_block();
+
+            // If there is no alternative, branch between consequent and join block
+            self.write_jump_false_for_expression(&stmt.test.expr, condition, join_block)?;
+
+            self.gen_statement(&stmt.conseq)?;
+            self.start_block(join_block);
+
+            // If there is no alternative then the statement always can complete normally, with
+            // execution continuing afterwards.
+            Ok(StmtCompletion::Normal)
         }
     }
 

@@ -2328,10 +2328,8 @@ impl<'a> Parser<'a> {
 
                 // A potential sloppy direct eval needs to marked in the scope tree before analysis
                 match &expr {
-                    Expression::Id(id) if id.name == "eval" => {
-                        if !self.in_strict_mode {
-                            self.scope_builder.mark_sloppy_direct_eval();
-                        }
+                    Expression::Id(id) if id.name == "eval" && !self.in_strict_mode => {
+                        self.scope_builder.mark_sloppy_direct_eval();
                     }
                     _ => {}
                 }
@@ -3702,17 +3700,15 @@ impl<'a> Parser<'a> {
 
         // Check for correct number of parameters
         match kind {
-            PropertyKind::Get => {
-                if !params.is_empty() {
+            PropertyKind::Get
+                if !params.is_empty() => {
                     return self.error(loc, ParseError::GetterWrongNumberOfParams);
                 }
-            }
-            PropertyKind::Set => {
+            PropertyKind::Set
                 // Must be a single (non-rest) parameter
-                if params.len() != 1 || !matches!(params[0], FunctionParam::Pattern { .. }) {
+                if (params.len() != 1 || !matches!(params[0], FunctionParam::Pattern { .. })) => {
                     return self.error(loc, ParseError::SetterWrongNumberOfParams);
                 }
-            }
             _ => {}
         }
 
@@ -4844,7 +4840,19 @@ impl<'a> Parser<'a> {
                     is_computed: false,
                     is_rest: true,
                 }
-            } else if property.value.is_none() {
+            } else if let Some(property_value) = property.value {
+                // If the value is an assignment expression with an identifier lhs, this can be
+                // reparsed to an assignment pattern.
+                let value = self.reparse_expression_as_maybe_assignment_pattern(property_value)?;
+
+                ObjectPatternProperty {
+                    loc: property.loc,
+                    key: Some(property.key),
+                    value,
+                    is_computed: property.is_computed,
+                    is_rest: false,
+                }
+            } else {
                 // Shorthand properties
                 let id_pattern = self.reparse_left_hand_side_expression_as_pattern(property.key)?;
 
@@ -4866,19 +4874,6 @@ impl<'a> Parser<'a> {
                     key: None,
                     value,
                     is_computed: false,
-                    is_rest: false,
-                }
-            } else {
-                // If the value is an assignment expression with an identifier lhs, this can be
-                // reparsed to an assignment pattern.
-                let value =
-                    self.reparse_expression_as_maybe_assignment_pattern(property.value.unwrap())?;
-
-                ObjectPatternProperty {
-                    loc: property.loc,
-                    key: Some(property.key),
-                    value,
-                    is_computed: property.is_computed,
                     is_rest: false,
                 }
             };

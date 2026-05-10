@@ -1,9 +1,13 @@
-use crate::runtime::{alloc_error::AllocResult, bytecode::function::Closure};
+use crate::runtime::{
+    alloc_error::AllocResult,
+    bytecode::function::Closure,
+    intrinsics::rust_runtime::{RuntimeFunction, RuntimeFunctionId},
+};
 
 use super::{
     bytecode::function::BytecodeFunction,
     function::{build_function_name, set_function_length, set_function_name},
-    intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunction},
+    intrinsics::intrinsics::Intrinsic,
     object_value::ObjectValue,
     property_key::PropertyKey,
     realm::Realm,
@@ -17,7 +21,33 @@ impl BuiltinFunction {
     /// Create a new builtin function. Function is not a constructor.
     pub fn create(
         cx: Context,
-        builtin_func: RustRuntimeFunction,
+        builtin_func: RuntimeFunction,
+        length: u32,
+        name: Handle<PropertyKey>,
+        realm: Handle<Realm>,
+        prefix: Option<&str>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        Self::create_impl(cx, builtin_func.to_id(), length, name, realm, prefix)
+    }
+
+    /// Create a new builtin function for a custom runtime function. Id is generated when runtime
+    /// function is registered.
+    ///
+    /// Function is not a constructor.
+    pub fn create_custom(
+        cx: Context,
+        builtin_func: RuntimeFunctionId,
+        length: u32,
+        name: Handle<PropertyKey>,
+        realm: Handle<Realm>,
+        prefix: Option<&str>,
+    ) -> AllocResult<Handle<ObjectValue>> {
+        Self::create_impl(cx, builtin_func, length, name, realm, prefix)
+    }
+
+    fn create_impl(
+        cx: Context,
+        builtin_func: RuntimeFunctionId,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
@@ -39,7 +69,7 @@ impl BuiltinFunction {
 
     fn create_builtin_function(
         cx: Context,
-        builtin_func: RustRuntimeFunction,
+        builtin_func: RuntimeFunctionId,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
@@ -47,7 +77,7 @@ impl BuiltinFunction {
         prefix: Option<&str>,
         is_constructor: bool,
     ) -> AllocResult<Handle<Closure>> {
-        let func = Self::create_builtin_function_without_properties(
+        let func = Self::create_builtin_function_without_properties_impl(
             cx,
             builtin_func,
             Some(name),
@@ -79,7 +109,25 @@ impl BuiltinFunction {
     /// Prototype is the raw value for the [[Prototype]] internal slot - n.
     pub fn create_builtin_function_without_properties(
         cx: Context,
-        builtin_func: RustRuntimeFunction,
+        builtin_func: RuntimeFunction,
+        name: Option<Handle<PropertyKey>>,
+        realm: Handle<Realm>,
+        prototype: Option<Handle<ObjectValue>>,
+        is_constructor: bool,
+    ) -> AllocResult<Handle<Closure>> {
+        Self::create_builtin_function_without_properties_impl(
+            cx,
+            builtin_func.to_id(),
+            name,
+            realm,
+            prototype,
+            is_constructor,
+        )
+    }
+
+    fn create_builtin_function_without_properties_impl(
+        cx: Context,
+        builtin_func: RuntimeFunctionId,
         name: Option<Handle<PropertyKey>>,
         realm: Handle<Realm>,
         prototype: Option<Handle<ObjectValue>>,
@@ -102,7 +150,7 @@ impl BuiltinFunction {
     /// Create the constructor function for an intrinsic.
     pub fn intrinsic_constructor(
         cx: Context,
-        builtin_func: RustRuntimeFunction,
+        builtin_func: RuntimeFunction,
         length: u32,
         name: Handle<PropertyKey>,
         realm: Handle<Realm>,
@@ -110,7 +158,7 @@ impl BuiltinFunction {
     ) -> AllocResult<Handle<ObjectValue>> {
         Ok(Self::create_builtin_function(
             cx,
-            builtin_func,
+            builtin_func.to_id(),
             length,
             name,
             realm,

@@ -3,6 +3,7 @@ use crate::runtime::{
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -22,8 +23,20 @@ impl BigIntPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once BigIntConstructor has been created
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::BigIntPrototype_to_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::BigIntPrototype_value_of,
+            0,
+            realm,
+        )?;
 
         // BigInt.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-bigint.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

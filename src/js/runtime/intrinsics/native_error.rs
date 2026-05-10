@@ -7,6 +7,7 @@ use crate::runtime::{
     intrinsics::{
         error_constructor::{install_error_cause, ErrorObject},
         intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
     },
     object_value::ObjectValue,
     realm::Realm,
@@ -15,7 +16,7 @@ use crate::runtime::{
 };
 
 macro_rules! create_native_error {
-    ($native_error:ident, $rust_name:ident, $prototype:ident, $constructor:ident) => {
+    ($native_error:ident, $rust_name:ident, $prototype:ident, $constructor:ident, $construct_fn:expr) => {
         pub struct $native_error;
 
         impl $native_error {
@@ -59,7 +60,7 @@ macro_rules! create_native_error {
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
-                    Self::construct,
+                    $construct_fn,
                     1,
                     cx.names.$rust_name(),
                     realm,
@@ -138,14 +139,45 @@ macro_rules! create_native_error {
     };
 }
 
-create_native_error!(EvalError, eval_error, EvalErrorPrototype, EvalErrorConstructor);
-create_native_error!(RangeError, range_error, RangeErrorPrototype, RangeErrorConstructor);
+create_native_error!(
+    EvalError,
+    eval_error,
+    EvalErrorPrototype,
+    EvalErrorConstructor,
+    RuntimeFunction::EvalErrorConstructor_construct
+);
+create_native_error!(
+    RangeError,
+    range_error,
+    RangeErrorPrototype,
+    RangeErrorConstructor,
+    RuntimeFunction::RangeErrorConstructor_construct
+);
 create_native_error!(
     ReferenceError,
     reference_error,
     ReferenceErrorPrototype,
-    ReferenceErrorConstructor
+    ReferenceErrorConstructor,
+    RuntimeFunction::ReferenceErrorConstructor_construct
 );
-create_native_error!(SyntaxError, syntax_error, SyntaxErrorPrototype, SyntaxErrorConstructor);
-create_native_error!(TypeError, type_error, TypeErrorPrototype, TypeErrorConstructor);
-create_native_error!(URIError, uri_error, URIErrorPrototype, URIErrorConstructor);
+create_native_error!(
+    SyntaxError,
+    syntax_error,
+    SyntaxErrorPrototype,
+    SyntaxErrorConstructor,
+    RuntimeFunction::SyntaxErrorConstructor_construct
+);
+create_native_error!(
+    TypeError,
+    type_error,
+    TypeErrorPrototype,
+    TypeErrorConstructor,
+    RuntimeFunction::TypeErrorConstructor_construct
+);
+create_native_error!(
+    URIError,
+    uri_error,
+    URIErrorPrototype,
+    URIErrorConstructor,
+    RuntimeFunction::URIErrorConstructor_construct
+);

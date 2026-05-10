@@ -11,6 +11,7 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
@@ -95,7 +96,7 @@ impl NumberConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::NumberConstructor_construct,
             1,
             cx.names.number(),
             realm,
@@ -132,10 +133,34 @@ impl NumberConstructor {
         let infinity_value = cx.number(f64::INFINITY);
         func.intrinsic_frozen_property(cx, cx.names.positive_infinity(), infinity_value)?;
 
-        func.intrinsic_func(cx, cx.names.is_finite(), Self::is_finite, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_integer(), Self::is_integer, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_nan(), Self::is_nan, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_safe_integer(), Self::is_safe_integer, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_finite(),
+            RuntimeFunction::NumberConstructor_is_finite,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_integer(),
+            RuntimeFunction::NumberConstructor_is_integer,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_nan(),
+            RuntimeFunction::NumberConstructor_is_nan,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_safe_integer(),
+            RuntimeFunction::NumberConstructor_is_safe_integer,
+            1,
+            realm,
+        )?;
 
         let parse_float = realm.get_intrinsic(Intrinsic::ParseFloat);
         func.intrinsic_data_prop(cx, cx.names.parse_float(), parse_float.into())?;

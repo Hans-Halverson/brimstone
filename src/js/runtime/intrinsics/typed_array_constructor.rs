@@ -8,6 +8,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::iter_iterator_method_values,
         object_value::ObjectValue,
         to_string,
@@ -21,7 +22,6 @@ use crate::{
 
 use super::{
     intrinsics::Intrinsic,
-    rust_runtime::return_this,
     typed_array::DynTypedArray,
     typed_array_prototype::{
         is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
@@ -37,7 +37,7 @@ impl TypedArrayConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::TypedArrayConstructor_construct,
             0,
             cx.names.typed_array(),
             realm,
@@ -50,12 +50,24 @@ impl TypedArrayConstructor {
             realm.get_intrinsic(Intrinsic::TypedArrayPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from(),
+            RuntimeFunction::TypedArrayConstructor_from,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.of(),
+            RuntimeFunction::TypedArrayConstructor_of,
+            0,
+            realm,
+        )?;
 
         // get %TypedArray% [ @@species ] (https://tc39.es/ecma262/#sec-get-%typedarray%-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }
@@ -195,7 +207,7 @@ impl TypedArrayConstructor {
 
 #[macro_export]
 macro_rules! create_typed_array_constructor {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
+    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident, $construct_fn:expr) => {
         macro_rules! element_size {
             () => {
                 std::mem::size_of::<$element_type>()
@@ -589,7 +601,7 @@ macro_rules! create_typed_array_constructor {
             pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
                 let mut func = BuiltinFunction::intrinsic_constructor(
                     cx,
-                    Self::construct,
+                    $construct_fn,
                     3,
                     cx.names.$rust_name(),
                     realm,

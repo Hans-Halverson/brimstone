@@ -1,5 +1,7 @@
 use crate::{
-    handle_scope_guard, parser::loc::find_line_col_for_pos, runtime::alloc_error::AllocResult,
+    handle_scope_guard,
+    parser::loc::find_line_col_for_pos,
+    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
 };
 
 use super::{
@@ -7,7 +9,7 @@ use super::{
     collections::BsArray,
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
-    intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::return_undefined},
+    intrinsics::error_constructor::CachedStackTraceInfo,
     source_file::SourceFile,
     Context, Handle, HeapPtr,
 };
@@ -63,8 +65,8 @@ fn gather_current_stack_frames(mut cx: Context, skip_current_frame: bool) -> Vec
         // Skip the last frame if it's a dummy frame for the realm
         if stack_frame.previous_frame().is_none() {
             let function = stack_frame.closure().function_ptr();
-            if let Some(id) = function.rust_runtime_function_id() {
-                if id == cx.rust_runtime_functions.get_id(return_undefined).unwrap() {
+            if let Some(id) = function.runtime_function_id() {
+                if id == RuntimeFunction::ReturnUndefined.to_id() {
                     break;
                 }
             }

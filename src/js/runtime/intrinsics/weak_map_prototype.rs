@@ -1,5 +1,6 @@
 use crate::runtime::{
     alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
 };
@@ -15,10 +16,34 @@ impl WeakMapPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once WeakMapConstructor has been created
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.delete(),
+            RuntimeFunction::WeakMapPrototype_delete,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get(),
+            RuntimeFunction::WeakMapPrototype_get,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.has(),
+            RuntimeFunction::WeakMapPrototype_has,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_(),
+            RuntimeFunction::WeakMapPrototype_set,
+            2,
+            realm,
+        )?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

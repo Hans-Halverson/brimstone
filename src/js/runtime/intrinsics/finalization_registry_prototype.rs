@@ -1,5 +1,6 @@
 use crate::runtime::{
     alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
     property::Property, realm::Realm, type_utilities::same_value, Context, Handle, Value,
 };
@@ -20,8 +21,20 @@ impl FinalizationRegistryPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once FinalizationRegistryConstructor has been created
-        object.intrinsic_func(cx, cx.names.register(), Self::register, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.unregister(), Self::unregister, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.register(),
+            RuntimeFunction::FinalizationRegistryPrototype_register,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.unregister(),
+            RuntimeFunction::FinalizationRegistryPrototype_unregister,
+            1,
+            realm,
+        )?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

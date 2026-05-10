@@ -3,7 +3,7 @@ use crate::{
         error::{ErrorFormatter, FormatOptions, SourceInfo},
         terminal::stdout_should_use_colors,
     },
-    runtime::alloc_error::AllocResult,
+    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
 };
 
 use super::{
@@ -28,7 +28,7 @@ impl ConsoleObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.log(), Self::log, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.log(), RuntimeFunction::ConsoleObject_log, 0, realm)?;
 
         Ok(object.to_handle())
     }

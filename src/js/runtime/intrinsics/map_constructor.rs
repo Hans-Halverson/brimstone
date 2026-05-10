@@ -9,6 +9,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::iter_iterator_values,
         object_value::ObjectValue,
         property_key::PropertyKey,
@@ -19,7 +20,7 @@ use crate::{
     },
 };
 
-use super::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::return_this};
+use super::{intrinsics::Intrinsic, map_object::MapObject};
 
 pub struct MapConstructor;
 
@@ -28,7 +29,7 @@ impl MapConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::MapConstructor_construct,
             0,
             cx.names.map(),
             realm,
@@ -41,11 +42,17 @@ impl MapConstructor {
             realm.get_intrinsic(Intrinsic::MapPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.group_by(),
+            RuntimeFunction::MapConstructor_group_by,
+            2,
+            realm,
+        )?;
 
         // get Map [ %Symbol.species% ] (https://tc39.es/ecma262/#sec-get-map-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }

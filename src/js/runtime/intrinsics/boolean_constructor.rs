@@ -9,6 +9,7 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
@@ -89,7 +90,7 @@ impl BooleanConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::BooleanConstructor_construct,
             1,
             cx.names.boolean(),
             realm,

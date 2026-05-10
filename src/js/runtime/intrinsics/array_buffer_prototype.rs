@@ -6,6 +6,7 @@ use crate::runtime::{
     function::get_argument,
     heap_item_descriptor::HeapItemKind,
     intrinsics::array_buffer_constructor::throw_if_detached,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -27,22 +28,55 @@ impl ArrayBufferPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once ArrayBufferConstructor has been created
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm)?;
-        object.intrinsic_getter(cx, cx.names.detached(), Self::get_detached, realm)?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.byte_length(),
+            RuntimeFunction::ArrayBufferPrototype_get_byte_length,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.detached(),
+            RuntimeFunction::ArrayBufferPrototype_get_detached,
+            realm,
+        )?;
         object.intrinsic_getter(
             cx,
             cx.names.max_byte_length(),
-            Self::get_max_byte_length,
+            RuntimeFunction::ArrayBufferPrototype_get_max_byte_length,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.resize(), Self::resize, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.resizable(), Self::get_resizable, realm)?;
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.transfer(), Self::transfer, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.resize(),
+            RuntimeFunction::ArrayBufferPrototype_resize,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.resizable(),
+            RuntimeFunction::ArrayBufferPrototype_get_resizable,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.slice(),
+            RuntimeFunction::ArrayBufferPrototype_slice,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.transfer(),
+            RuntimeFunction::ArrayBufferPrototype_transfer,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.transfer_to_fixed_length(),
-            Self::transfer_to_fixed_length,
+            RuntimeFunction::ArrayBufferPrototype_transfer_to_fixed_length,
             0,
             realm,
         )?;

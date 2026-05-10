@@ -10,6 +10,7 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::object_ordinary_init,
         property_descriptor::PropertyDescriptor,
@@ -47,31 +48,85 @@ impl ObjectPrototype {
         object_ordinary_init(cx, *object, descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created
-        object.intrinsic_func(cx, cx.names.has_own_property(), Self::has_own_property, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.is_prototype_of(), Self::is_prototype_of, 1, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.property_is_enumerable(),
-            Self::property_is_enumerable,
+            cx.names.has_own_property(),
+            RuntimeFunction::ObjectPrototype_has_own_property,
             1,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_prototype_of(),
+            RuntimeFunction::ObjectPrototype_is_prototype_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.property_is_enumerable(),
+            RuntimeFunction::ObjectPrototype_property_is_enumerable,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::ObjectPrototype_value_of,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_string(),
+            RuntimeFunction::ObjectPrototype_to_locale_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::ObjectPrototype_to_string,
+            0,
+            realm,
+        )?;
 
         object.intrinsic_getter_and_setter(
             cx,
             cx.names.__proto__(),
-            Self::get_proto,
-            Self::set_proto,
+            RuntimeFunction::ObjectPrototype_get_proto,
+            RuntimeFunction::ObjectPrototype_set_proto,
             realm,
         )?;
 
-        object.intrinsic_func(cx, cx.names.__define_getter__(), Self::define_getter, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.__define_setter__(), Self::define_setter, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.__lookup_getter__(), Self::lookup_getter, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.__lookup_setter__(), Self::lookup_setter, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.__define_getter__(),
+            RuntimeFunction::ObjectPrototype_define_getter,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.__define_setter__(),
+            RuntimeFunction::ObjectPrototype_define_setter,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.__lookup_getter__(),
+            RuntimeFunction::ObjectPrototype_lookup_getter,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.__lookup_setter__(),
+            RuntimeFunction::ObjectPrototype_lookup_setter,
+            1,
+            realm,
+        )?;
 
         Ok(())
     }

@@ -6,7 +6,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
@@ -383,7 +383,7 @@ pub fn async_generator_await_return(
     // Create a resolve function and attach async generator
     let on_resolve = BuiltinFunction::create(
         cx,
-        await_return_resolve,
+        RuntimeFunction::async_generator_object_await_return_resolve,
         1,
         cx.names.empty_string(),
         cx.current_realm(),
@@ -394,7 +394,7 @@ pub fn async_generator_await_return(
     // Create a reject function and attach async generator
     let on_reject = BuiltinFunction::create(
         cx,
-        await_return_reject,
+        RuntimeFunction::async_generator_object_await_return_reject,
         1,
         cx.names.empty_string(),
         cx.current_realm(),

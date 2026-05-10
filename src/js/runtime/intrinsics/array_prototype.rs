@@ -14,6 +14,7 @@ use crate::{
         function::get_argument,
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
@@ -45,48 +46,259 @@ impl ArrayPrototype {
         let mut array = ArrayObject::new(cx, object_proto)?.as_object();
 
         // Create values function as it is referenced by multiple properties
-        let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
+        let values_function = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::ArrayPrototype_values,
+            0,
+            cx.names.values(),
+            realm,
+            None,
+        )?
+        .into();
 
         // Constructor property is added once ArrayConstructor has been created
-        array.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm)?;
-        array.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.flat(), Self::flat, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.flat_map(), Self::flat_map, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.pop(), Self::pop, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.push(), Self::push, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.shift(), Self::shift, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
-        array.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.splice(), Self::splice, 2, realm)?;
-        array.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm)?;
-        array.intrinsic_func(cx, cx.names.to_spliced(), Self::to_spliced, 2, realm)?;
-        array.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        array.intrinsic_func(cx, cx.names.unshift(), Self::unshift, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.at(), RuntimeFunction::ArrayPrototype_at, 1, realm)?;
+        array.intrinsic_func(
+            cx,
+            cx.names.concat(),
+            RuntimeFunction::ArrayPrototype_concat,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.copy_within(),
+            RuntimeFunction::ArrayPrototype_copy_within,
+            2,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.entries(),
+            RuntimeFunction::ArrayPrototype_entries,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.every(),
+            RuntimeFunction::ArrayPrototype_every,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.fill(),
+            RuntimeFunction::ArrayPrototype_fill,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.filter(),
+            RuntimeFunction::ArrayPrototype_filter,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.find(),
+            RuntimeFunction::ArrayPrototype_find,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.find_index(),
+            RuntimeFunction::ArrayPrototype_find_index,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.find_last(),
+            RuntimeFunction::ArrayPrototype_find_last,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.find_last_index(),
+            RuntimeFunction::ArrayPrototype_find_last_index,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.flat(),
+            RuntimeFunction::ArrayPrototype_flat,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.flat_map(),
+            RuntimeFunction::ArrayPrototype_flat_map,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.for_each(),
+            RuntimeFunction::ArrayPrototype_for_each,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.includes(),
+            RuntimeFunction::ArrayPrototype_includes,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.index_of(),
+            RuntimeFunction::ArrayPrototype_index_of,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.join(),
+            RuntimeFunction::ArrayPrototype_join,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.keys(),
+            RuntimeFunction::ArrayPrototype_keys,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.last_index_of(),
+            RuntimeFunction::ArrayPrototype_last_index_of,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(cx, cx.names.map_(), RuntimeFunction::ArrayPrototype_map, 1, realm)?;
+        array.intrinsic_func(cx, cx.names.pop(), RuntimeFunction::ArrayPrototype_pop, 0, realm)?;
+        array.intrinsic_func(
+            cx,
+            cx.names.push(),
+            RuntimeFunction::ArrayPrototype_push,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.reduce(),
+            RuntimeFunction::ArrayPrototype_reduce,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.reduce_right(),
+            RuntimeFunction::ArrayPrototype_reduce_right,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.reverse(),
+            RuntimeFunction::ArrayPrototype_reverse,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.shift(),
+            RuntimeFunction::ArrayPrototype_shift,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.slice(),
+            RuntimeFunction::ArrayPrototype_slice,
+            2,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.some(),
+            RuntimeFunction::ArrayPrototype_some,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.sort(),
+            RuntimeFunction::ArrayPrototype_sort,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.splice(),
+            RuntimeFunction::ArrayPrototype_splice,
+            2,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.to_locale_string(),
+            RuntimeFunction::ArrayPrototype_to_locale_string,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.to_reversed(),
+            RuntimeFunction::ArrayPrototype_to_reversed,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.to_sorted(),
+            RuntimeFunction::ArrayPrototype_to_sorted,
+            1,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.to_spliced(),
+            RuntimeFunction::ArrayPrototype_to_spliced,
+            2,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::ArrayPrototype_to_string,
+            0,
+            realm,
+        )?;
+        array.intrinsic_func(
+            cx,
+            cx.names.unshift(),
+            RuntimeFunction::ArrayPrototype_unshift,
+            1,
+            realm,
+        )?;
         array.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
-        array.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm)?;
+        array.intrinsic_func(
+            cx,
+            cx.names.with(),
+            RuntimeFunction::ArrayPrototype_with,
+            2,
+            realm,
+        )?;
 
         // Array.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();

@@ -1,6 +1,8 @@
 use crate::{
-    field_offset, handle_scope, must_a, parser::scope_tree::REALM_SCOPE_SLOT_NAME,
-    runtime::alloc_error::AllocResult, set_uninit,
+    field_offset, handle_scope, must_a,
+    parser::scope_tree::REALM_SCOPE_SLOT_NAME,
+    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
+    set_uninit,
 };
 
 use super::{
@@ -15,7 +17,6 @@ use super::{
     intrinsics::{
         global_object::set_default_global_bindings,
         intrinsics::{Intrinsic, Intrinsics},
-        rust_runtime::return_undefined,
     },
     object_value::ObjectValue,
     scope::Scope,
@@ -275,7 +276,7 @@ impl Handle<Realm> {
 
         let empty_function = BuiltinFunction::create_builtin_function_without_properties(
             cx,
-            return_undefined,
+            RuntimeFunction::ReturnUndefined,
             /* name */ None,
             *self,
             /* prototype */ Some(self.get_intrinsic(Intrinsic::FunctionPrototype)),

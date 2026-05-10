@@ -5,6 +5,7 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property::Property,
     property_descriptor::{from_property_descriptor, to_property_descriptor},
@@ -23,31 +24,79 @@ impl ReflectObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.construct(), Self::construct, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.define_property(), Self::define_property, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.delete_property(), Self::delete_property, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.get(), Self::get, 2, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.get_own_property_descriptor(),
-            Self::get_own_property_descriptor,
+            cx.names.apply(),
+            RuntimeFunction::ReflectObject_apply,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.construct(),
+            RuntimeFunction::ReflectObject_construct,
             2,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.is_extensible(), Self::is_extensible, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.own_keys(), Self::own_keys, 1, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.prevent_extensions(),
-            Self::prevent_extensions,
+            cx.names.define_property(),
+            RuntimeFunction::ReflectObject_define_property,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.delete_property(),
+            RuntimeFunction::ReflectObject_delete_property,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.get(), RuntimeFunction::ReflectObject_get, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_own_property_descriptor(),
+            RuntimeFunction::ReflectObject_get_own_property_descriptor,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_prototype_of(),
+            RuntimeFunction::ReflectObject_get_prototype_of,
             1,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::ReflectObject_has, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_extensible(),
+            RuntimeFunction::ReflectObject_is_extensible,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.own_keys(),
+            RuntimeFunction::ReflectObject_own_keys,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.prevent_extensions(),
+            RuntimeFunction::ReflectObject_prevent_extensions,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.set_(), RuntimeFunction::ReflectObject_set, 3, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_prototype_of(),
+            RuntimeFunction::ReflectObject_set_prototype_of,
+            2,
+            realm,
+        )?;
 
         // Reflect [ @@toStringTag ] (https://tc39.es/ecma262/#sec-reflect-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

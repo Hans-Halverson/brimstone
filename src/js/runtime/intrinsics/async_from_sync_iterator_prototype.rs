@@ -10,6 +10,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::promise_prototype::perform_promise_then,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::{
             create_iter_result_object, iterator_close, iterator_complete, iterator_next,
             iterator_value, Iterator,
@@ -83,9 +84,27 @@ impl AsyncFromSyncIteratorPrototype {
             true,
         )?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::AsyncFromSyncIteratorPrototype_next,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.return_(),
+            RuntimeFunction::AsyncFromSyncIteratorPrototype_return_,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.throw(),
+            RuntimeFunction::AsyncFromSyncIteratorPrototype_throw,
+            0,
+            realm,
+        )?;
 
         Ok(object)
     }
@@ -257,9 +276,9 @@ fn async_from_sync_iterator_continuation(
 
     // Create a function that turns a value into an iter result object
     let create_iter_result = if is_done {
-        create_done_iter_result_object
+        RuntimeFunction::async_from_sync_iterator_prototype_create_done_iter_result_object
     } else {
-        create_continuing_iter_result_object
+        RuntimeFunction::async_from_sync_iterator_prototype_create_continuing_iter_result_object
     };
 
     let on_fulfilled = BuiltinFunction::create(
@@ -277,7 +296,7 @@ fn async_from_sync_iterator_continuation(
         // Create the reject function with the sync iterator attached
         let on_reject = BuiltinFunction::create(
             cx,
-            async_from_sync_iterator_continuation_on_reject,
+            RuntimeFunction::async_from_sync_iterator_prototype_async_from_sync_iterator_continuation_on_reject,
             1,
             cx.names.empty_string(),
             cx.current_realm(),

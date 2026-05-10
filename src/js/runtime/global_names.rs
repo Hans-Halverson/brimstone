@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    runtime::{alloc_error::AllocResult, error::type_error, heap_item_descriptor::HeapItemKind},
+    runtime::{
+        alloc_error::AllocResult, error::type_error, heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
+    },
     set_uninit,
 };
 
@@ -87,7 +90,7 @@ pub fn create_global_declaration_instantiation_intrinsic(
 ) -> AllocResult<Handle<Value>> {
     Ok(BuiltinFunction::create(
         cx,
-        global_declaration_instantiation_runtime,
+        RuntimeFunction::global_names_global_declaration_instantiation_runtime,
         1,
         cx.names.empty_string(),
         realm,

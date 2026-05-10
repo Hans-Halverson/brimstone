@@ -1,7 +1,8 @@
 use crate::runtime::{
     alloc_error::AllocResult, builtin_function::BuiltinFunction,
     eval::create_dynamic_function::create_dynamic_function, eval_result::EvalResult,
-    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
+    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, realm::Realm, Context,
+    Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -13,7 +14,7 @@ impl GeneratorFunctionConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::GeneratorFunctionConstructor_construct,
             1,
             cx.names.generator_function(),
             realm,

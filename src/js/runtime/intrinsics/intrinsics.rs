@@ -64,6 +64,7 @@ use crate::{
             regexp_constructor::RegExpConstructor,
             regexp_prototype::RegExpPrototype,
             regexp_string_iterator::RegExpStringIteratorPrototype,
+            rust_runtime::RuntimeFunction,
             set_constructor::SetConstructor,
             set_iterator::SetIteratorPrototype,
             set_prototype::SetPrototype,
@@ -544,7 +545,7 @@ fn create_throw_type_error_intrinsic(
         let mut throw_type_error_func =
             BuiltinFunction::create_builtin_function_without_properties(
                 cx,
-                throw_type_error,
+                RuntimeFunction::intrinsics_throw_type_error,
                 /* name */ None,
                 realm,
                 /* prototype */ Some(realm.get_intrinsic(Intrinsic::FunctionPrototype)),

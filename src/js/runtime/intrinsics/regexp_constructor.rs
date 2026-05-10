@@ -32,6 +32,7 @@ use crate::{
         gc::{Handle, HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -44,7 +45,7 @@ use crate::{
     set_uninit,
 };
 
-use super::{intrinsics::Intrinsic, rust_runtime::return_this};
+use super::intrinsics::Intrinsic;
 
 // RegExp (Regular Expression) Objects (https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
 extend_object! {
@@ -139,7 +140,7 @@ impl RegExpConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::RegExpConstructor_construct,
             2,
             cx.names.regexp(),
             realm,
@@ -152,11 +153,17 @@ impl RegExpConstructor {
             realm.get_intrinsic(Intrinsic::RegExpPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.escape(), Self::escape, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.escape(),
+            RuntimeFunction::RegExpConstructor_escape,
+            1,
+            realm,
+        )?;
 
         // get RegExp [ @@species ] (https://tc39.es/ecma262/#sec-get-regexp-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }

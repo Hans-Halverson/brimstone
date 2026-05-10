@@ -1,11 +1,12 @@
 use crate::runtime::{
     abstract_operations::call_object, alloc_error::AllocResult, builtin_function::BuiltinFunction,
     error::type_error, eval_result::EvalResult, function::get_argument, get,
-    intrinsics::set_object::SetObject, iterator::iter_iterator_values, object_value::ObjectValue,
-    realm::Realm, type_utilities::is_callable, Context, Handle, Value,
+    intrinsics::rust_runtime::RuntimeFunction, intrinsics::set_object::SetObject,
+    iterator::iter_iterator_values, object_value::ObjectValue, realm::Realm,
+    type_utilities::is_callable, Context, Handle, Value,
 };
 
-use super::{intrinsics::Intrinsic, rust_runtime::return_this};
+use super::intrinsics::Intrinsic;
 
 pub struct SetConstructor;
 
@@ -14,7 +15,7 @@ impl SetConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::SetConstructor_construct,
             0,
             cx.names.set(),
             realm,
@@ -29,7 +30,7 @@ impl SetConstructor {
 
         // get Set [ @@species ] (https://tc39.es/ecma262/#sec-get-set-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }

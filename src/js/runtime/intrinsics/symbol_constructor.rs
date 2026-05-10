@@ -11,6 +11,7 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
@@ -59,7 +60,7 @@ impl SymbolConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::SymbolConstructor_construct,
             0,
             cx.names.symbol(),
             realm,
@@ -116,8 +117,20 @@ impl SymbolConstructor {
         let unscopables = cx.well_known_symbols.unscopables().as_symbol();
         func.intrinsic_frozen_property(cx, cx.names.unscopables(), unscopables.into())?;
 
-        func.intrinsic_func(cx, cx.names.for_(), Self::for_, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.key_for(), Self::key_for, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.for_(),
+            RuntimeFunction::SymbolConstructor_for_,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.key_for(),
+            RuntimeFunction::SymbolConstructor_key_for,
+            1,
+            realm,
+        )?;
 
         Ok(func)
     }

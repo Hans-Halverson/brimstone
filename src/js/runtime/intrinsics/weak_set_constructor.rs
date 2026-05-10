@@ -5,6 +5,7 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
     object_value::ObjectValue,
     realm::Realm,
@@ -21,7 +22,7 @@ impl WeakSetConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::WeakSetConstructor_construct,
             0,
             cx.names.weak_set(),
             realm,

@@ -14,7 +14,7 @@ use crate::{
         interned_strings::InternedStrings,
         intrinsics::{
             intrinsics::Intrinsic, promise_prototype::perform_promise_then,
-            rust_runtime::RustRuntimeFunction,
+            rust_runtime::RuntimeFunction,
         },
         module::{
             module::{DynModule, ModuleEnum},
@@ -58,11 +58,12 @@ pub fn execute_module(
 
     let promise = module.load_requested_modules(cx)?;
 
-    let on_resolve = callback(cx, load_requested_modules_static_resolve)?;
+    let on_resolve =
+        callback(cx, RuntimeFunction::ModuleExecute_load_requested_modules_static_resolve)?;
     set_module(cx, on_resolve, module)?;
     set_capability(cx, on_resolve, capability)?;
 
-    let on_reject = callback(cx, load_requested_modules_reject)?;
+    let on_reject = callback(cx, RuntimeFunction::ModuleExecute_load_requested_modules_reject)?;
     set_capability(cx, on_reject, capability)?;
 
     perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None)?;
@@ -181,7 +182,7 @@ pub fn load_requested_modules_reject(
     Ok(cx.undefined())
 }
 
-fn callback(cx: Context, func: RustRuntimeFunction) -> AllocResult<Handle<ObjectValue>> {
+fn callback(cx: Context, func: RuntimeFunction) -> AllocResult<Handle<ObjectValue>> {
     let realm = cx.current_realm();
     Ok(BuiltinFunction::create_builtin_function_without_properties(
         cx,
@@ -399,10 +400,11 @@ fn execute_async_module(mut cx: Context, module: Handle<SourceTextModule>) -> Al
     // Known to be a PromiseObject since it was created by the intrinsic Promise constructor
     let promise = capability.promise().cast::<PromiseObject>();
 
-    let on_resolve = callback(cx, async_module_execution_fulfilled)?;
+    let on_resolve = callback(cx, RuntimeFunction::ModuleExecute_async_module_execution_fulfilled)?;
     set_module(cx, on_resolve, module)?;
 
-    let on_reject = callback(cx, async_module_execution_rejected_runtime)?;
+    let on_reject =
+        callback(cx, RuntimeFunction::ModuleExecute_async_module_execution_rejected_runtime)?;
     set_module(cx, on_reject, module)?;
 
     // Set up resolve and reject callbacks which re-enter module graph evaluation
@@ -675,11 +677,12 @@ fn continue_dynamic_import(
 
     let load_promise = module.load_requested_modules(cx)?;
 
-    let on_resolve = callback(cx, load_requested_modules_dynamic_resolve)?;
+    let on_resolve =
+        callback(cx, RuntimeFunction::ModuleExecute_load_requested_modules_dynamic_resolve)?;
     set_dyn_module(cx, on_resolve, module)?;
     set_capability(cx, on_resolve, capability)?;
 
-    let on_reject = callback(cx, load_requested_modules_reject)?;
+    let on_reject = callback(cx, RuntimeFunction::ModuleExecute_load_requested_modules_reject)?;
     set_capability(cx, on_reject, capability)?;
 
     perform_promise_then(cx, load_promise, on_resolve.into(), on_reject.into(), None)?;
@@ -720,11 +723,11 @@ pub fn load_requested_modules_dynamic_resolve(
 
     let evaluate_promise = module.evaluate(cx)?;
 
-    let on_resolve = callback(cx, module_evaluate_dynamic_resolve)?;
+    let on_resolve = callback(cx, RuntimeFunction::ModuleExecute_module_evaluate_dynamic_resolve)?;
     set_dyn_module(cx, on_resolve, module)?;
     set_capability(cx, on_resolve, capability)?;
 
-    let on_reject = callback(cx, load_requested_modules_reject)?;
+    let on_reject = callback(cx, RuntimeFunction::ModuleExecute_load_requested_modules_reject)?;
     set_capability(cx, on_reject, capability)?;
 
     perform_promise_then(cx, evaluate_promise, on_resolve.into(), on_reject.into(), None)?;

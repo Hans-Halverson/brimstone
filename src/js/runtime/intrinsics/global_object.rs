@@ -15,6 +15,7 @@ use crate::{
         error::uri_error,
         eval::eval::perform_eval,
         function::get_argument,
+        intrinsics::rust_runtime::RuntimeFunction,
         property_descriptor::PropertyDescriptor,
         string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
         string_value::{FlatString, StringValue},
@@ -82,13 +83,21 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         value_prop!(cx.names.undefined(), cx.undefined(), false, false, false);
 
         // Function Properties of the Global Object (https://tc39.es/ecma262/#sec-function-properties-of-the-global-object)
-        func_prop!(cx.names.decode_uri(), decode_uri, 1);
-        func_prop!(cx.names.decode_uri_component(), decode_uri_component, 1);
-        func_prop!(cx.names.encode_uri(), encode_uri, 1);
-        func_prop!(cx.names.encode_uri_component(), encode_uri_component, 1);
+        func_prop!(cx.names.decode_uri(), RuntimeFunction::global_object_decode_uri, 1);
+        func_prop!(
+            cx.names.decode_uri_component(),
+            RuntimeFunction::global_object_decode_uri_component,
+            1
+        );
+        func_prop!(cx.names.encode_uri(), RuntimeFunction::global_object_encode_uri, 1);
+        func_prop!(
+            cx.names.encode_uri_component(),
+            RuntimeFunction::global_object_encode_uri_component,
+            1
+        );
         intrinsic_prop!(cx.names.eval(), Eval);
-        func_prop!(cx.names.is_nan(), is_nan, 1);
-        func_prop!(cx.names.is_finite(), is_finite, 1);
+        func_prop!(cx.names.is_nan(), RuntimeFunction::global_object_is_nan, 1);
+        func_prop!(cx.names.is_finite(), RuntimeFunction::global_object_is_finite, 1);
         intrinsic_prop!(cx.names.parse_float(), ParseFloat);
         intrinsic_prop!(cx.names.parse_int(), ParseInt);
 
@@ -149,15 +158,39 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
 }
 
 pub fn create_eval(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
-    Ok(BuiltinFunction::create(cx, eval, 1, cx.names.eval(), realm, None)?.into())
+    Ok(BuiltinFunction::create(
+        cx,
+        RuntimeFunction::global_object_eval,
+        1,
+        cx.names.eval(),
+        realm,
+        None,
+    )?
+    .into())
 }
 
 pub fn create_parse_float(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
-    Ok(BuiltinFunction::create(cx, parse_float, 1, cx.names.parse_float(), realm, None)?.into())
+    Ok(BuiltinFunction::create(
+        cx,
+        RuntimeFunction::global_object_parse_float,
+        1,
+        cx.names.parse_float(),
+        realm,
+        None,
+    )?
+    .into())
 }
 
 pub fn create_parse_int(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<Value>> {
-    Ok(BuiltinFunction::create(cx, parse_int, 2, cx.names.parse_int(), realm, None)?.into())
+    Ok(BuiltinFunction::create(
+        cx,
+        RuntimeFunction::global_object_parse_int,
+        2,
+        cx.names.parse_int(),
+        realm,
+        None,
+    )?
+    .into())
 }
 
 /// eval (https://tc39.es/ecma262/#sec-eval-x)
@@ -568,11 +601,23 @@ pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> All
 
     let escape_name = cx.alloc_string("escape")?.as_string();
     let escape_key = PropertyKey::string_not_array_index_handle(cx, escape_name)?;
-    global_object.intrinsic_func(cx, escape_key, escape, 1, realm)?;
+    global_object.intrinsic_func(
+        cx,
+        escape_key,
+        RuntimeFunction::global_object_escape,
+        1,
+        realm,
+    )?;
 
     let unescape_name = cx.alloc_string("unescape")?.as_string();
     let unescape_key = PropertyKey::string_not_array_index_handle(cx, unescape_name)?;
-    global_object.intrinsic_func(cx, unescape_key, unescape, 1, realm)?;
+    global_object.intrinsic_func(
+        cx,
+        unescape_key,
+        RuntimeFunction::global_object_unescape,
+        1,
+        realm,
+    )?;
 
     Ok(())
 }

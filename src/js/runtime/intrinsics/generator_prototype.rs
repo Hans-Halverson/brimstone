@@ -6,6 +6,7 @@ use crate::runtime::{
     function::get_argument,
     generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
     heap_item_descriptor::HeapItemKind,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     ordinary_object::object_create,
     property::Property,
@@ -26,9 +27,27 @@ impl GeneratorPrototype {
 
         // Constructor property is added once GeneratorFunctionPrototype is created
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::GeneratorPrototype_next,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.return_(),
+            RuntimeFunction::GeneratorPrototype_return_,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.throw(),
+            RuntimeFunction::GeneratorPrototype_throw,
+            1,
+            realm,
+        )?;
 
         // %GeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-generator.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

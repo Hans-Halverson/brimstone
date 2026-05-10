@@ -4,6 +4,7 @@ use crate::runtime::{
     alloc_error::AllocResult,
     error::{range_error, type_error},
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -33,31 +34,178 @@ impl DataViewPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once DataViewConstructor has been created
-        object.intrinsic_getter(cx, cx.names.buffer(), Self::get_buffer, realm)?;
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::get_byte_length, realm)?;
-        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::get_byte_offset, realm)?;
-        object.intrinsic_func(cx, cx.names.get_big_int64(), Self::get_big_int64, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_big_uint64(), Self::get_big_uint64, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_float16(), Self::get_float16, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_float32(), Self::get_float32, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_float64(), Self::get_float64, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_int8(), Self::get_int8, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_int16(), Self::get_int16, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_int32(), Self::get_int32, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_uint8(), Self::get_uint8, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_uint16(), Self::get_uint16, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get_uint32(), Self::get_uint32, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.set_big_int64(), Self::set_big_int64, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_big_uint64(), Self::set_big_uint64, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_float16(), Self::set_float16, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_float32(), Self::set_float32, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_float64(), Self::set_float64, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_int8(), Self::set_int8, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_int16(), Self::set_int16, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_int32(), Self::set_int32, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_uint8(), Self::set_uint8, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_uint16(), Self::set_uint16, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_uint32(), Self::set_uint32, 2, realm)?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.buffer(),
+            RuntimeFunction::DataViewPrototype_get_buffer,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.byte_length(),
+            RuntimeFunction::DataViewPrototype_get_byte_length,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.byte_offset(),
+            RuntimeFunction::DataViewPrototype_get_byte_offset,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_big_int64(),
+            RuntimeFunction::DataViewPrototype_get_big_int64,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_big_uint64(),
+            RuntimeFunction::DataViewPrototype_get_big_uint64,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_float16(),
+            RuntimeFunction::DataViewPrototype_get_float16,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_float32(),
+            RuntimeFunction::DataViewPrototype_get_float32,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_float64(),
+            RuntimeFunction::DataViewPrototype_get_float64,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_int8(),
+            RuntimeFunction::DataViewPrototype_get_int8,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_int16(),
+            RuntimeFunction::DataViewPrototype_get_int16,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_int32(),
+            RuntimeFunction::DataViewPrototype_get_int32,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_uint8(),
+            RuntimeFunction::DataViewPrototype_get_uint8,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_uint16(),
+            RuntimeFunction::DataViewPrototype_get_uint16,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_uint32(),
+            RuntimeFunction::DataViewPrototype_get_uint32,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_big_int64(),
+            RuntimeFunction::DataViewPrototype_set_big_int64,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_big_uint64(),
+            RuntimeFunction::DataViewPrototype_set_big_uint64,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_float16(),
+            RuntimeFunction::DataViewPrototype_set_float16,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_float32(),
+            RuntimeFunction::DataViewPrototype_set_float32,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_float64(),
+            RuntimeFunction::DataViewPrototype_set_float64,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_int8(),
+            RuntimeFunction::DataViewPrototype_set_int8,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_int16(),
+            RuntimeFunction::DataViewPrototype_set_int16,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_int32(),
+            RuntimeFunction::DataViewPrototype_set_int32,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_uint8(),
+            RuntimeFunction::DataViewPrototype_set_uint8,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_uint16(),
+            RuntimeFunction::DataViewPrototype_set_uint16,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_uint32(),
+            RuntimeFunction::DataViewPrototype_set_uint32,
+            2,
+            realm,
+        )?;
 
         // DataView.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-dataview.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

@@ -1,6 +1,7 @@
 use crate::runtime::{
     alloc_error::AllocResult, error::type_error, eval_result::EvalResult,
-    object_value::ObjectValue, property::Property, realm::Realm, Context, Handle, Value,
+    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, property::Property,
+    realm::Realm, Context, Handle, Value,
 };
 
 use super::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject};
@@ -14,7 +15,13 @@ impl WeakRefPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once WeakRefConstructor has been created
-        object.intrinsic_func(cx, cx.names.deref(), Self::deref, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.deref(),
+            RuntimeFunction::WeakRefPrototype_deref,
+            0,
+            realm,
+        )?;
 
         // [Symbol.toStringTag] property
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

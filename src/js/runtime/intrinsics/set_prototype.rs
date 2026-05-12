@@ -9,6 +9,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         intrinsics::set_object::ValueSet,
         iterator::{
             get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
@@ -38,31 +39,98 @@ impl SetPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Create values function as it is referenced by multiple properties
-        let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
+        let values_function = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::SetPrototype_values,
+            0,
+            cx.names.values(),
+            realm,
+            None,
+        )?
+        .into();
 
         // Constructor property is added once SetConstructor has been created
-        object.intrinsic_func(cx, cx.names.add(), Self::add, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.difference(), Self::difference, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.intersection(), Self::intersection, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.is_disjoint_from(), Self::is_disjoint_from, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.is_subset_of(), Self::is_subset_of, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.is_superset_of(), Self::is_superset_of, 1, realm)?;
-        object.intrinsic_data_prop(cx, cx.names.keys(), values_function)?;
-        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm)?;
+        object.intrinsic_func(cx, cx.names.add(), RuntimeFunction::SetPrototype_add, 1, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.symmetric_difference(),
-            Self::symmetric_difference,
+            cx.names.clear(),
+            RuntimeFunction::SetPrototype_clear,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.delete(),
+            RuntimeFunction::SetPrototype_delete,
             1,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.union(), Self::union, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.difference(),
+            RuntimeFunction::SetPrototype_difference,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.entries(),
+            RuntimeFunction::SetPrototype_entries,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.for_each(),
+            RuntimeFunction::SetPrototype_for_each,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::SetPrototype_has, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.intersection(),
+            RuntimeFunction::SetPrototype_intersection,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_disjoint_from(),
+            RuntimeFunction::SetPrototype_is_disjoint_from,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_subset_of(),
+            RuntimeFunction::SetPrototype_is_subset_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_superset_of(),
+            RuntimeFunction::SetPrototype_is_superset_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_data_prop(cx, cx.names.keys(), values_function)?;
+        object.intrinsic_getter(cx, cx.names.size(), RuntimeFunction::SetPrototype_size, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.symmetric_difference(),
+            RuntimeFunction::SetPrototype_symmetric_difference,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.union(),
+            RuntimeFunction::SetPrototype_union,
+            1,
+            realm,
+        )?;
         object.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
 
         // Set.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-set.prototype-%symbol.iterator%)

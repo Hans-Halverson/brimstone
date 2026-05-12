@@ -6,6 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error,
         function::get_argument,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
         property::Property,
@@ -27,9 +28,27 @@ impl PromisePrototype {
 
         // Constructor property is added once PromiseConstructor has been created
 
-        object.intrinsic_func(cx, cx.names.catch(), Self::catch, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.finally(), Self::finally, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.then(), Self::then, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.catch(),
+            RuntimeFunction::PromisePrototype_catch,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.finally(),
+            RuntimeFunction::PromisePrototype_finally,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.then(),
+            RuntimeFunction::PromisePrototype_then,
+            2,
+            realm,
+        )?;
 
         // Promise.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-promise.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
@@ -78,7 +97,7 @@ impl PromisePrototype {
             // Create then and catch functions
             let finally_then = BuiltinFunction::create(
                 cx,
-                Self::finally_then,
+                RuntimeFunction::PromisePrototype_finally_then,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -87,7 +106,7 @@ impl PromisePrototype {
 
             let finally_catch = BuiltinFunction::create(
                 cx,
-                Self::finally_catch,
+                RuntimeFunction::PromisePrototype_finally_catch,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -171,7 +190,7 @@ impl PromisePrototype {
         // Continue to a function that returns the value
         let continue_function = BuiltinFunction::create(
             cx,
-            Self::finally_then_continue,
+            RuntimeFunction::PromisePrototype_finally_then_continue,
             0,
             cx.names.empty_string(),
             cx.current_realm(),
@@ -209,7 +228,7 @@ impl PromisePrototype {
         // Continue to a function that throws the value
         let continue_function = BuiltinFunction::create(
             cx,
-            Self::finally_catch_continue,
+            RuntimeFunction::PromisePrototype_finally_catch_continue,
             0,
             cx.names.empty_string(),
             cx.current_realm(),

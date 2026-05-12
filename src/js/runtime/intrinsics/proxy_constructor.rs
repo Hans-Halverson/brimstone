@@ -8,7 +8,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         gc::Handle,
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         proxy_object::{proxy_create, ProxyObject},
@@ -24,14 +24,20 @@ impl ProxyConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::ProxyConstructor_construct,
             2,
             cx.names.proxy(),
             realm,
             Intrinsic::FunctionPrototype,
         )?;
 
-        func.intrinsic_func(cx, cx.names.revocable(), Self::revocable, 2, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.revocable(),
+            RuntimeFunction::ProxyConstructor_revocable,
+            2,
+            realm,
+        )?;
 
         Ok(func)
     }
@@ -63,8 +69,14 @@ impl ProxyConstructor {
         let proxy = proxy_create(cx, target, handler)?;
 
         let realm = cx.current_realm();
-        let mut revoker =
-            BuiltinFunction::create(cx, revoke, 0, cx.names.empty_string(), realm, None)?;
+        let mut revoker = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::proxy_constructor_revoke,
+            0,
+            cx.names.empty_string(),
+            realm,
+            None,
+        )?;
 
         // Attach the proxy to the revoker so it can be accessed when the revoker is called
         revoker.private_element_set(

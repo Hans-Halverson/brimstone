@@ -19,6 +19,7 @@ use crate::{
         intrinsics::{
             regexp_constructor::{regexp_init, FlagsSource, RegExpSource},
             regexp_string_iterator::RegExpStringIterator,
+            rust_runtime::RuntimeFunction,
             string_prototype::SubstitutionTemplateParser,
         },
         object_value::ObjectValue,
@@ -50,24 +51,122 @@ impl RegExpPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once RegExpConstructor has been created
-        object.intrinsic_func(cx, cx.names.exec(), Self::exec, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.dot_all(), Self::dot_all, realm)?;
-        object.intrinsic_getter(cx, cx.names.flags(), Self::flags, realm)?;
-        object.intrinsic_getter(cx, cx.names.global(), Self::global, realm)?;
-        object.intrinsic_getter(cx, cx.names.has_indices(), Self::has_indices, realm)?;
-        object.intrinsic_getter(cx, cx.names.ignore_case(), Self::ignore_case, realm)?;
-        object.intrinsic_func(cx, cx.well_known_symbols.match_(), Self::match_, 1, realm)?;
-        object.intrinsic_func(cx, cx.well_known_symbols.match_all(), Self::match_all, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.multiline(), Self::multiline, realm)?;
-        object.intrinsic_func(cx, cx.well_known_symbols.replace(), Self::replace, 2, realm)?;
-        object.intrinsic_func(cx, cx.well_known_symbols.search(), Self::search, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.source(), Self::source, realm)?;
-        object.intrinsic_func(cx, cx.well_known_symbols.split(), Self::split, 2, realm)?;
-        object.intrinsic_getter(cx, cx.names.sticky(), Self::sticky, realm)?;
-        object.intrinsic_func(cx, cx.names.test(), Self::test, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        object.intrinsic_getter(cx, cx.names.unicode(), Self::unicode, realm)?;
-        object.intrinsic_getter(cx, cx.names.unicode_sets(), Self::unicode_sets, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.exec(),
+            RuntimeFunction::RegExpPrototype_exec,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.dot_all(),
+            RuntimeFunction::RegExpPrototype_dot_all,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.flags(),
+            RuntimeFunction::RegExpPrototype_flags,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.global(),
+            RuntimeFunction::RegExpPrototype_global,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.has_indices(),
+            RuntimeFunction::RegExpPrototype_has_indices,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.ignore_case(),
+            RuntimeFunction::RegExpPrototype_ignore_case,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.well_known_symbols.match_(),
+            RuntimeFunction::RegExpPrototype_match_,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.well_known_symbols.match_all(),
+            RuntimeFunction::RegExpPrototype_match_all,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.multiline(),
+            RuntimeFunction::RegExpPrototype_multiline,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.well_known_symbols.replace(),
+            RuntimeFunction::RegExpPrototype_replace,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.well_known_symbols.search(),
+            RuntimeFunction::RegExpPrototype_search,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.source(),
+            RuntimeFunction::RegExpPrototype_source,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.well_known_symbols.split(),
+            RuntimeFunction::RegExpPrototype_split,
+            2,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.sticky(),
+            RuntimeFunction::RegExpPrototype_sticky,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.test(),
+            RuntimeFunction::RegExpPrototype_test,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::RegExpPrototype_to_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.unicode(),
+            RuntimeFunction::RegExpPrototype_unicode,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.unicode_sets(),
+            RuntimeFunction::RegExpPrototype_unicode_sets,
+            realm,
+        )?;
 
         Ok(object)
     }
@@ -80,7 +179,13 @@ impl RegExpPrototype {
     ) -> AllocResult<()> {
         let compile_name = cx.alloc_string("compile")?.as_string();
         let compile_key = PropertyKey::string_not_array_index_handle(cx, compile_name)?;
-        regexp_prototype.intrinsic_func(cx, compile_key, Self::compile, 2, realm)
+        regexp_prototype.intrinsic_func(
+            cx,
+            compile_key,
+            RuntimeFunction::RegExpPrototype_compile,
+            2,
+            realm,
+        )
     }
 
     /// RegExp.prototype.exec (https://tc39.es/ecma262/#sec-regexp.prototype.exec)

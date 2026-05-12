@@ -5,7 +5,11 @@ use std::{
 
 use rand::Rng;
 
-use crate::{handle_scope_guard, runtime::alloc_error::AllocResult, set_uninit};
+use crate::{
+    handle_scope_guard,
+    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
+    set_uninit,
+};
 
 use super::{
     accessor::Accessor,
@@ -27,10 +31,9 @@ use super::{
         finalization_registry_object::FinalizationRegistryObject,
         iterator_constructor::WrappedValidIterator, iterator_helper_object::IteratorHelperObject,
         map_object::MapObject, number_constructor::NumberObject, object_prototype::ObjectPrototype,
-        regexp_constructor::RegExpObject, rust_runtime::RustRuntimeFunction, set_object::SetObject,
-        symbol_constructor::SymbolObject, typed_array::DynTypedArray,
-        weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
-        weak_set_object::WeakSetObject,
+        regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
+        typed_array::DynTypedArray, weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
     promise_object::PromiseObject,
     property::{HeapProperty, Property},
@@ -467,7 +470,7 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        func: RustRuntimeFunction,
+        func: RuntimeFunction,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
         handle_scope_guard!(cx);
@@ -481,8 +484,8 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        getter: RustRuntimeFunction,
-        setter: RustRuntimeFunction,
+        getter: RuntimeFunction,
+        setter: RuntimeFunction,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
         handle_scope_guard!(cx);
@@ -497,7 +500,7 @@ impl Handle<ObjectValue> {
         &mut self,
         cx: Context,
         name: Handle<PropertyKey>,
-        func: RustRuntimeFunction,
+        func: RuntimeFunction,
         length: u32,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {

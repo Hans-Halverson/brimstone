@@ -8,6 +8,7 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::date_object::{day, make_date, make_full_year, make_time, time_clip},
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         property::Property,
         string_value::StringValue,
@@ -36,97 +37,319 @@ impl DatePrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once DateConstructor has been created
-        object.intrinsic_func(cx, cx.names.get_date(), Self::get_date, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_day(), Self::get_day, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_full_year(), Self::get_full_year, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_hours(), Self::get_hours, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_milliseconds(), Self::get_milliseconds, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_minutes(), Self::get_minutes, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_month(), Self::get_month, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_seconds(), Self::get_seconds, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_time(), Self::get_time, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_date(),
+            RuntimeFunction::DatePrototype_get_date,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_day(),
+            RuntimeFunction::DatePrototype_get_day,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_full_year(),
+            RuntimeFunction::DatePrototype_get_full_year,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_hours(),
+            RuntimeFunction::DatePrototype_get_hours,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_milliseconds(),
+            RuntimeFunction::DatePrototype_get_milliseconds,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_minutes(),
+            RuntimeFunction::DatePrototype_get_minutes,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_month(),
+            RuntimeFunction::DatePrototype_get_month,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_seconds(),
+            RuntimeFunction::DatePrototype_get_seconds,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_time(),
+            RuntimeFunction::DatePrototype_get_time,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.get_timezone_offset(),
-            Self::get_timezone_offset,
+            RuntimeFunction::DatePrototype_get_timezone_offset,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.get_utc_date(), Self::get_utc_date, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_utc_day(), Self::get_utc_day, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_utc_date(),
+            RuntimeFunction::DatePrototype_get_utc_date,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_utc_day(),
+            RuntimeFunction::DatePrototype_get_utc_day,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.get_utc_full_year(),
-            Self::get_utc_full_year,
+            RuntimeFunction::DatePrototype_get_utc_full_year,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.get_utc_hours(), Self::get_utc_hours, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_utc_hours(),
+            RuntimeFunction::DatePrototype_get_utc_hours,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.get_utc_milliseconds(),
-            Self::get_utc_milliseconds,
+            RuntimeFunction::DatePrototype_get_utc_milliseconds,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.get_utc_minutes(), Self::get_utc_minutes, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_utc_month(), Self::get_utc_month, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.get_utc_seconds(), Self::get_utc_seconds, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.set_date(), Self::set_date, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.set_full_year(), Self::set_full_year, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.set_hours(), Self::set_hours, 4, realm)?;
-        object.intrinsic_func(cx, cx.names.set_milliseconds(), Self::set_milliseconds, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.set_minutes(), Self::set_minutes, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.set_month(), Self::set_month, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_seconds(), Self::set_seconds, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_time(), Self::set_time, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.set_utc_date(), Self::set_utc_date, 1, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.set_utc_full_year(),
-            Self::set_utc_full_year,
-            3,
+            cx.names.get_utc_minutes(),
+            RuntimeFunction::DatePrototype_get_utc_minutes,
+            0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.set_utc_hours(), Self::set_utc_hours, 4, realm)?;
         object.intrinsic_func(
             cx,
-            cx.names.set_utc_milliseconds(),
-            Self::set_utc_milliseconds,
+            cx.names.get_utc_month(),
+            RuntimeFunction::DatePrototype_get_utc_month,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_utc_seconds(),
+            RuntimeFunction::DatePrototype_get_utc_seconds,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_date(),
+            RuntimeFunction::DatePrototype_set_date,
             1,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.set_utc_minutes(), Self::set_utc_minutes, 3, realm)?;
-        object.intrinsic_func(cx, cx.names.set_utc_month(), Self::set_utc_month, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.set_utc_seconds(), Self::set_utc_seconds, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.to_date_string(), Self::to_date_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_iso_string(), Self::to_iso_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_json(), Self::to_json, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_full_year(),
+            RuntimeFunction::DatePrototype_set_full_year,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_hours(),
+            RuntimeFunction::DatePrototype_set_hours,
+            4,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_milliseconds(),
+            RuntimeFunction::DatePrototype_set_milliseconds,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_minutes(),
+            RuntimeFunction::DatePrototype_set_minutes,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_month(),
+            RuntimeFunction::DatePrototype_set_month,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_seconds(),
+            RuntimeFunction::DatePrototype_set_seconds,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_time(),
+            RuntimeFunction::DatePrototype_set_time,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_date(),
+            RuntimeFunction::DatePrototype_set_utc_date,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_full_year(),
+            RuntimeFunction::DatePrototype_set_utc_full_year,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_hours(),
+            RuntimeFunction::DatePrototype_set_utc_hours,
+            4,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_milliseconds(),
+            RuntimeFunction::DatePrototype_set_utc_milliseconds,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_minutes(),
+            RuntimeFunction::DatePrototype_set_utc_minutes,
+            3,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_month(),
+            RuntimeFunction::DatePrototype_set_utc_month,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_utc_seconds(),
+            RuntimeFunction::DatePrototype_set_utc_seconds,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_date_string(),
+            RuntimeFunction::DatePrototype_to_date_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_iso_string(),
+            RuntimeFunction::DatePrototype_to_iso_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_json(),
+            RuntimeFunction::DatePrototype_to_json,
+            1,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_date_string(),
-            Self::to_locale_date_string,
+            RuntimeFunction::DatePrototype_to_locale_date_string,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_string(),
+            RuntimeFunction::DatePrototype_to_locale_string,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_time_string(),
-            Self::to_locale_time_string,
+            RuntimeFunction::DatePrototype_to_locale_time_string,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.to_time_string(), Self::to_time_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_utc_string(), Self::to_utc_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_time_string(),
+            RuntimeFunction::DatePrototype_to_time_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::DatePrototype_to_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_utc_string(),
+            RuntimeFunction::DatePrototype_to_utc_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::DatePrototype_value_of,
+            0,
+            realm,
+        )?;
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
-        let to_primitive_func =
-            BuiltinFunction::create(cx, Self::to_primitive, 1, to_primitive_key, realm, None)?
-                .into();
+        let to_primitive_func = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::DatePrototype_to_primitive,
+            1,
+            to_primitive_key,
+            realm,
+            None,
+        )?
+        .into();
         object.set_property(
             cx,
             to_primitive_key,
@@ -144,11 +367,23 @@ impl DatePrototype {
     ) -> AllocResult<()> {
         let get_year_name = cx.alloc_string("getYear")?.as_string();
         let get_year_key = PropertyKey::string_not_array_index_handle(cx, get_year_name)?;
-        date_prototype.intrinsic_func(cx, get_year_key, Self::get_year, 0, realm)?;
+        date_prototype.intrinsic_func(
+            cx,
+            get_year_key,
+            RuntimeFunction::DatePrototype_get_year,
+            0,
+            realm,
+        )?;
 
         let set_year_name = cx.alloc_string("setYear")?.as_string();
         let set_year_key = PropertyKey::string_not_array_index_handle(cx, set_year_name)?;
-        date_prototype.intrinsic_func(cx, set_year_key, Self::set_year, 1, realm)?;
+        date_prototype.intrinsic_func(
+            cx,
+            set_year_key,
+            RuntimeFunction::DatePrototype_set_year,
+            1,
+            realm,
+        )?;
 
         // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
         let to_gmt_string_name = cx.alloc_string("toGMTString")?.as_string();

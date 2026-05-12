@@ -6,6 +6,7 @@ use crate::{
         alloc_error::AllocResult,
         eval_result::EvalResult,
         function::get_argument,
+        intrinsics::rust_runtime::RuntimeFunction,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,
@@ -60,42 +61,60 @@ impl MathObject {
             Property::data(math_name_value, false, false, true),
         )?;
 
-        object.intrinsic_func(cx, cx.names.abs(), Self::abs, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.acos(), Self::acos, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.acosh(), Self::acosh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.asin(), Self::asin, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.asinh(), Self::asinh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atan(), Self::atan, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atanh(), Self::atanh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.atan2(), Self::atan2, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.cbrt(), Self::cbrt, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.ceil(), Self::ceil, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.clz32(), Self::clz32, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.cos(), Self::cos, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.cosh(), Self::cosh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.exp(), Self::exp, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.expm1(), Self::expm1, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.f16_round(), Self::f16_round, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.floor(), Self::floor, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.fround(), Self::fround, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.hypot(), Self::hypot, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.imul(), Self::imul, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.log(), Self::log, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log1p(), Self::log1p, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log10(), Self::log10, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.log2(), Self::log2, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.max(), Self::max, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.min(), Self::min, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.pow(), Self::pow, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.random(), Self::random, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.round(), Self::round, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sign(), Self::sign, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sin(), Self::sin, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sinh(), Self::sinh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sqrt(), Self::sqrt, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.tan(), Self::tan, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.tanh(), Self::tanh, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.trunc(), Self::trunc, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.abs(), RuntimeFunction::MathObject_abs, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.acos(), RuntimeFunction::MathObject_acos, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.acosh(), RuntimeFunction::MathObject_acosh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.asin(), RuntimeFunction::MathObject_asin, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.asinh(), RuntimeFunction::MathObject_asinh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.atan(), RuntimeFunction::MathObject_atan, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.atanh(), RuntimeFunction::MathObject_atanh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.atan2(), RuntimeFunction::MathObject_atan2, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.cbrt(), RuntimeFunction::MathObject_cbrt, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.ceil(), RuntimeFunction::MathObject_ceil, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.clz32(), RuntimeFunction::MathObject_clz32, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.cos(), RuntimeFunction::MathObject_cos, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.cosh(), RuntimeFunction::MathObject_cosh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.exp(), RuntimeFunction::MathObject_exp, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.expm1(), RuntimeFunction::MathObject_expm1, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.f16_round(),
+            RuntimeFunction::MathObject_f16_round,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.floor(), RuntimeFunction::MathObject_floor, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.fround(),
+            RuntimeFunction::MathObject_fround,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.hypot(), RuntimeFunction::MathObject_hypot, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.imul(), RuntimeFunction::MathObject_imul, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.log(), RuntimeFunction::MathObject_log, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.log1p(), RuntimeFunction::MathObject_log1p, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.log10(), RuntimeFunction::MathObject_log10, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.log2(), RuntimeFunction::MathObject_log2, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.max(), RuntimeFunction::MathObject_max, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.min(), RuntimeFunction::MathObject_min, 2, realm)?;
+        object.intrinsic_func(cx, cx.names.pow(), RuntimeFunction::MathObject_pow, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.random(),
+            RuntimeFunction::MathObject_random,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.round(), RuntimeFunction::MathObject_round, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.sign(), RuntimeFunction::MathObject_sign, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.sin(), RuntimeFunction::MathObject_sin, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.sinh(), RuntimeFunction::MathObject_sinh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.sqrt(), RuntimeFunction::MathObject_sqrt, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.tan(), RuntimeFunction::MathObject_tan, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.tanh(), RuntimeFunction::MathObject_tanh, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.trunc(), RuntimeFunction::MathObject_trunc, 1, realm)?;
 
         Ok(object)
     }

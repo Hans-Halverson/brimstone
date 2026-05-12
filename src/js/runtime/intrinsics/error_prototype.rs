@@ -2,9 +2,9 @@ use crate::{
     common::error::FormatOptions,
     runtime::{
         abstract_operations::get, alloc_error::AllocResult, error::type_error,
-        eval_result::EvalResult, object_value::ObjectValue, realm::Realm,
-        string_value::StringValue, to_console_string, type_utilities::to_string, Context, Handle,
-        Value,
+        eval_result::EvalResult, intrinsics::rust_runtime::RuntimeFunction,
+        object_value::ObjectValue, realm::Realm, string_value::StringValue, to_console_string,
+        type_utilities::to_string, Context, Handle, Value,
     },
 };
 
@@ -25,8 +25,19 @@ impl ErrorPrototype {
             cx.names.message(),
             cx.names.empty_string().as_string().into(),
         )?;
-        object.intrinsic_getter(cx, cx.names.stack(), Self::get_stack, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.stack(),
+            RuntimeFunction::ErrorPrototype_get_stack,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::ErrorPrototype_to_string,
+            0,
+            realm,
+        )?;
 
         Ok(object)
     }

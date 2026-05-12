@@ -9,7 +9,7 @@ use crate::{
         error::{type_error, type_error_value},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::intrinsics::Intrinsic,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         type_utilities::{is_callable, is_constructor_value},
@@ -505,7 +505,7 @@ impl PromiseCapability {
         // Create the executor function and attach the capability object to it
         let mut executor = BuiltinFunction::create(
             cx,
-            Self::executor,
+            RuntimeFunction::PromiseCapability_executor,
             2,
             cx.names.empty_string(),
             cx.current_realm(),

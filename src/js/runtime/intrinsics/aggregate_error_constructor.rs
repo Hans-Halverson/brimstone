@@ -11,6 +11,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         intrinsics::error_constructor::install_error_cause,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::iter_iterator_values,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -46,7 +47,7 @@ impl AggregateErrorConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::AggregateErrorConstructor_construct,
             2,
             cx.names.aggregate_error(),
             realm,

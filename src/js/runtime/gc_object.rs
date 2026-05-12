@@ -1,7 +1,8 @@
 use crate::{
     handle_scope, must_a,
     runtime::{
-        abstract_operations::define_property_or_throw, alloc_error::AllocResult, PropertyDescriptor,
+        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
+        intrinsics::rust_runtime::RuntimeFunction, PropertyDescriptor,
     },
 };
 
@@ -21,7 +22,7 @@ impl GcObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.run(), Self::run, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.run(), RuntimeFunction::GcObject_run, 0, realm)?;
 
         Ok(object.to_handle())
     }

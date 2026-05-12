@@ -11,6 +11,7 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::iter_iterator_method_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
@@ -21,7 +22,7 @@ use crate::{
     },
 };
 
-use super::{intrinsics::Intrinsic, rust_runtime::return_this};
+use super::intrinsics::Intrinsic;
 
 pub struct ArrayConstructor;
 
@@ -30,7 +31,7 @@ impl ArrayConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::ArrayConstructor_construct,
             1,
             cx.names.array(),
             realm,
@@ -43,13 +44,19 @@ impl ArrayConstructor {
             realm.get_intrinsic(Intrinsic::ArrayPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_array(), Self::is_array, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.of(), Self::of, 0, realm)?;
+        func.intrinsic_func(cx, cx.names.from(), RuntimeFunction::ArrayConstructor_from, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_array(),
+            RuntimeFunction::ArrayConstructor_is_array,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(cx, cx.names.of(), RuntimeFunction::ArrayConstructor_of, 0, realm)?;
 
         // get Array [ @@species ] (https://tc39.es/ecma262/#sec-get-array-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }

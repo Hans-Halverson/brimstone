@@ -13,6 +13,7 @@ use crate::{
         error::{syntax_error, type_error},
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         property::Property,
@@ -36,8 +37,14 @@ impl JSONObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.parse(), Self::parse, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.stringify(), Self::stringify, 3, realm)?;
+        object.intrinsic_func(cx, cx.names.parse(), RuntimeFunction::JSONObject_parse, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.stringify(),
+            RuntimeFunction::JSONObject_stringify,
+            3,
+            realm,
+        )?;
 
         // JSON [ @@toStringTag ] (https://tc39.es/ecma262/#sec-json-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

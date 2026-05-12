@@ -13,6 +13,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::{
             object_create_from_constructor, object_create_with_optional_proto,
@@ -35,7 +36,7 @@ impl ObjectConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::ObjectConstructor_construct,
             1,
             cx.names.object(),
             realm,
@@ -48,53 +49,161 @@ impl ObjectConstructor {
             realm.get_intrinsic(Intrinsic::ObjectPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.assign(), Self::assign, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.create(), Self::create, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.define_properties(), Self::define_properties, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.define_property(), Self::define_property, 3, realm)?;
-        func.intrinsic_func(cx, cx.names.from_entries(), Self::from_entries, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.assign(),
+            RuntimeFunction::ObjectConstructor_assign,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.create(),
+            RuntimeFunction::ObjectConstructor_create,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.define_properties(),
+            RuntimeFunction::ObjectConstructor_define_properties,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.define_property(),
+            RuntimeFunction::ObjectConstructor_define_property,
+            3,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from_entries(),
+            RuntimeFunction::ObjectConstructor_from_entries,
+            1,
+            realm,
+        )?;
         func.intrinsic_func(
             cx,
             cx.names.get_own_property_descriptor(),
-            Self::get_own_property_descriptor,
+            RuntimeFunction::ObjectConstructor_get_own_property_descriptor,
             2,
             realm,
         )?;
         func.intrinsic_func(
             cx,
             cx.names.get_own_property_descriptors(),
-            Self::get_own_property_descriptors,
+            RuntimeFunction::ObjectConstructor_get_own_property_descriptors,
             1,
             realm,
         )?;
-        func.intrinsic_func(cx, cx.names.entries(), Self::entries, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.freeze(), Self::freeze, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.entries(),
+            RuntimeFunction::ObjectConstructor_entries,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.freeze(),
+            RuntimeFunction::ObjectConstructor_freeze,
+            1,
+            realm,
+        )?;
         func.intrinsic_func(
             cx,
             cx.names.get_own_property_names(),
-            Self::get_own_property_names,
+            RuntimeFunction::ObjectConstructor_get_own_property_names,
             1,
             realm,
         )?;
         func.intrinsic_func(
             cx,
             cx.names.get_own_property_symbols(),
-            Self::get_own_property_symbols,
+            RuntimeFunction::ObjectConstructor_get_own_property_symbols,
             1,
             realm,
         )?;
-        func.intrinsic_func(cx, cx.names.get_prototype_of(), Self::get_prototype_of, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.group_by(), Self::group_by, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.has_own(), Self::has_own, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.is(), Self::is, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.is_extensible(), Self::is_extensible, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_frozen(), Self::is_frozen, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.is_sealed(), Self::is_sealed, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.keys(), Self::keys, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.prevent_extensions(), Self::prevent_extensions, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.seal(), Self::seal, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.set_prototype_of(), Self::set_prototype_of, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.values(), Self::values, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.get_prototype_of(),
+            RuntimeFunction::ObjectConstructor_get_prototype_of,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.group_by(),
+            RuntimeFunction::ObjectConstructor_group_by,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.has_own(),
+            RuntimeFunction::ObjectConstructor_has_own,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(cx, cx.names.is(), RuntimeFunction::ObjectConstructor_is, 2, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_extensible(),
+            RuntimeFunction::ObjectConstructor_is_extensible,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_frozen(),
+            RuntimeFunction::ObjectConstructor_is_frozen,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_sealed(),
+            RuntimeFunction::ObjectConstructor_is_sealed,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.keys(),
+            RuntimeFunction::ObjectConstructor_keys,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.prevent_extensions(),
+            RuntimeFunction::ObjectConstructor_prevent_extensions,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.seal(),
+            RuntimeFunction::ObjectConstructor_seal,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.set_prototype_of(),
+            RuntimeFunction::ObjectConstructor_set_prototype_of,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.values(),
+            RuntimeFunction::ObjectConstructor_values,
+            1,
+            realm,
+        )?;
 
         Ok(func)
     }

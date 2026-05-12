@@ -11,6 +11,7 @@ use crate::{
                 make_date, make_day, make_full_year, make_time, time_clip, utc, DateObject,
             },
             date_prototype::{this_date_value, to_date_string},
+            rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
         realm::Realm,
@@ -30,7 +31,7 @@ impl DateConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::DateConstructor_construct,
             7,
             cx.names.date(),
             realm,
@@ -43,9 +44,15 @@ impl DateConstructor {
             realm.get_intrinsic(Intrinsic::DatePrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.now(), Self::now, 0, realm)?;
-        func.intrinsic_func(cx, cx.names.parse(), Self::parse, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.utc(), Self::utc, 7, realm)?;
+        func.intrinsic_func(cx, cx.names.now(), RuntimeFunction::DateConstructor_now, 0, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.parse(),
+            RuntimeFunction::DateConstructor_parse,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(cx, cx.names.utc(), RuntimeFunction::DateConstructor_utc, 7, realm)?;
 
         Ok(func)
     }

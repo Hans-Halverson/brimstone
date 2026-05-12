@@ -16,6 +16,7 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::iter_iterator_method_values,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
@@ -134,7 +135,7 @@ pub enum TypedArrayKind {
 }
 
 macro_rules! create_typed_array {
-    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident) => {
+    ($typed_array:ident, $rust_name:ident, $element_type:ident, $content_type:expr, $prototype:ident, $constructor:ident, $to_element:ident, $from_element:ident, $construct_fn:expr) => {
         create_typed_array_constructor!(
             $typed_array,
             $rust_name,
@@ -143,7 +144,8 @@ macro_rules! create_typed_array {
             $prototype,
             $constructor,
             $to_element,
-            $from_element
+            $from_element,
+            $construct_fn
         );
         create_typed_array_prototype!(
             $typed_array,
@@ -173,7 +175,8 @@ create_typed_array!(
     Int8ArrayPrototype,
     Int8ArrayConstructor,
     to_int8_element,
-    from_int8_element
+    from_int8_element,
+    RuntimeFunction::Int8ArrayConstructor_construct
 );
 
 #[inline]
@@ -194,7 +197,8 @@ create_typed_array!(
     UInt8ArrayPrototype,
     UInt8ArrayConstructor,
     to_uint8_element,
-    from_uint8_element
+    from_uint8_element,
+    RuntimeFunction::UInt8ArrayConstructor_construct
 );
 
 #[inline]
@@ -215,7 +219,8 @@ create_typed_array!(
     UInt8ClampedArrayPrototype,
     UInt8ClampedArrayConstructor,
     to_uint8_clamped_element,
-    from_uint8_clamped_element
+    from_uint8_clamped_element,
+    RuntimeFunction::UInt8ClampedArrayConstructor_construct
 );
 
 #[inline]
@@ -236,7 +241,8 @@ create_typed_array!(
     Int16ArrayPrototype,
     Int16ArrayConstructor,
     to_int16_element,
-    from_int16_element
+    from_int16_element,
+    RuntimeFunction::Int16ArrayConstructor_construct
 );
 
 #[inline]
@@ -257,7 +263,8 @@ create_typed_array!(
     UInt16ArrayPrototype,
     UInt16ArrayConstructor,
     to_uint16_element,
-    from_uint16_element
+    from_uint16_element,
+    RuntimeFunction::UInt16ArrayConstructor_construct
 );
 
 #[inline]
@@ -278,7 +285,8 @@ create_typed_array!(
     Int32ArrayPrototype,
     Int32ArrayConstructor,
     to_int32_element,
-    from_int32_element
+    from_int32_element,
+    RuntimeFunction::Int32ArrayConstructor_construct
 );
 
 #[inline]
@@ -299,7 +307,8 @@ create_typed_array!(
     UInt32ArrayPrototype,
     UInt32ArrayConstructor,
     to_uint32_element,
-    from_uint32_element
+    from_uint32_element,
+    RuntimeFunction::UInt32ArrayConstructor_construct
 );
 
 #[inline]
@@ -330,7 +339,8 @@ create_typed_array!(
     BigInt64ArrayPrototype,
     BigInt64ArrayConstructor,
     to_big_int64_element,
-    from_big_int64_element
+    from_big_int64_element,
+    RuntimeFunction::BigInt64ArrayConstructor_construct
 );
 
 #[inline]
@@ -361,7 +371,8 @@ create_typed_array!(
     BigUInt64ArrayPrototype,
     BigUInt64ArrayConstructor,
     to_big_uint64_element,
-    from_big_uint64_element
+    from_big_uint64_element,
+    RuntimeFunction::BigUInt64ArrayConstructor_construct
 );
 
 #[inline]
@@ -383,7 +394,8 @@ create_typed_array!(
     Float16ArrayPrototype,
     Float16ArrayConstructor,
     to_float16_element,
-    from_float16_element
+    from_float16_element,
+    RuntimeFunction::Float16ArrayConstructor_construct
 );
 
 #[inline]
@@ -405,7 +417,8 @@ create_typed_array!(
     Float32ArrayPrototype,
     Float32ArrayConstructor,
     to_float32_element,
-    from_float32_element
+    from_float32_element,
+    RuntimeFunction::Float32ArrayConstructor_construct
 );
 
 #[inline]
@@ -427,5 +440,6 @@ create_typed_array!(
     Float64ArrayPrototype,
     Float64ArrayConstructor,
     to_float64_element,
-    from_float64_element
+    from_float64_element,
+    RuntimeFunction::Float64ArrayConstructor_construct
 );

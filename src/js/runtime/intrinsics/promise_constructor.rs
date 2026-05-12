@@ -11,6 +11,7 @@ use crate::{
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
+            rust_runtime::RuntimeFunction,
         },
         iterator::{get_iterator, iterator_close, iterator_step_value, Iterator, IteratorHint},
         object_value::ObjectValue,
@@ -22,11 +23,7 @@ use crate::{
     },
 };
 
-use super::{
-    intrinsics::Intrinsic,
-    number_constructor::NumberObject,
-    rust_runtime::{return_this, RustRuntimeFunction},
-};
+use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
 
 /// IfAbruptRejectPromise (https://tc39.es/ecma262/#sec-ifabruptrejectpromise)
 #[macro_export]
@@ -52,7 +49,7 @@ impl PromiseConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::PromiseConstructor_construct,
             1,
             cx.names.promise(),
             realm,
@@ -65,18 +62,54 @@ impl PromiseConstructor {
             realm.get_intrinsic(Intrinsic::PromisePrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.all(), Self::all, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.all_settled(), Self::all_settled, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.any(), Self::any, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.race(), Self::race, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.reject(), Self::reject, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.resolve(), Self::resolve, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.try_(), Self::try_, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.with_resolvers(), Self::with_resolvers, 0, realm)?;
+        func.intrinsic_func(cx, cx.names.all(), RuntimeFunction::PromiseConstructor_all, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.all_settled(),
+            RuntimeFunction::PromiseConstructor_all_settled,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(cx, cx.names.any(), RuntimeFunction::PromiseConstructor_any, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.race(),
+            RuntimeFunction::PromiseConstructor_race,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.reject(),
+            RuntimeFunction::PromiseConstructor_reject,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.resolve(),
+            RuntimeFunction::PromiseConstructor_resolve,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.try_(),
+            RuntimeFunction::PromiseConstructor_try_,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.with_resolvers(),
+            RuntimeFunction::PromiseConstructor_with_resolvers,
+            0,
+            realm,
+        )?;
 
         // get Promise [ @@species ] (https://tc39.es/ecma262/#sec-get-promise-%symbol.species%)
         let species_key = cx.well_known_symbols.species();
-        func.intrinsic_getter(cx, species_key, return_this, realm)?;
+        func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
     }
@@ -277,7 +310,7 @@ impl PromiseConstructor {
             // Create a resolve function for each of the promises
             let promise_all_resolve = BuiltinFunction::create(
                 cx,
-                Self::promise_all_resolve,
+                RuntimeFunction::PromiseConstructor_promise_all_resolve,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -387,7 +420,7 @@ impl PromiseConstructor {
             // Create a resolve function for each of the promises
             let promise_all_settled_resolve = BuiltinFunction::create(
                 cx,
-                Self::promise_all_settled_resolve,
+                RuntimeFunction::PromiseConstructor_promise_all_settled_resolve,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -404,7 +437,7 @@ impl PromiseConstructor {
             // Create a reject function for each of the promises
             let promise_all_settled_reject = BuiltinFunction::create(
                 cx,
-                Self::promise_all_settled_reject,
+                RuntimeFunction::PromiseConstructor_promise_all_settled_reject,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -586,7 +619,7 @@ impl PromiseConstructor {
             // Create a reject function for each of the promises
             let promise_any_reject = BuiltinFunction::create(
                 cx,
-                Self::promise_any_reject,
+                RuntimeFunction::PromiseConstructor_promise_any_reject,
                 1,
                 cx.names.empty_string(),
                 cx.current_realm(),
@@ -795,20 +828,24 @@ fn create_resolve_function(
     cx: Context,
     promise: Handle<PromiseObject>,
 ) -> AllocResult<Handle<ObjectValue>> {
-    create_settle_function(cx, promise, resolve_builtin_function)
+    create_settle_function(
+        cx,
+        promise,
+        RuntimeFunction::PromiseConstructor_resolve_builtin_function,
+    )
 }
 
 fn create_reject_function(
     cx: Context,
     promise: Handle<PromiseObject>,
 ) -> AllocResult<Handle<ObjectValue>> {
-    create_settle_function(cx, promise, reject_builtin_function)
+    create_settle_function(cx, promise, RuntimeFunction::PromiseConstructor_reject_builtin_function)
 }
 
 fn create_settle_function(
     cx: Context,
     promise: Handle<PromiseObject>,
-    func: RustRuntimeFunction,
+    func: RuntimeFunction,
 ) -> AllocResult<Handle<ObjectValue>> {
     let mut function =
         BuiltinFunction::create(cx, func, 1, cx.names.empty_string(), cx.current_realm(), None)?;

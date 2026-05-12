@@ -45,7 +45,7 @@ use crate::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
             native_error::TypeError, regexp_constructor::RegExpObject,
-            rust_runtime::RustRuntimeFunctionId,
+            rust_runtime::RuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
@@ -270,10 +270,7 @@ impl VM {
         let init_closure = realm
             .get_intrinsic_ptr(Intrinsic::GlobalDeclarationInstantiation)
             .cast::<Closure>();
-        let init_function_id = init_closure
-            .function_ptr()
-            .rust_runtime_function_id()
-            .unwrap();
+        let init_function_id = init_closure.function_ptr().runtime_function_id().unwrap();
 
         self.call_rust_runtime(
             init_closure,
@@ -1585,7 +1582,7 @@ impl VM {
             self.generate_receiver(Some(*receiver), closure_ptr, closure_ptr.function_ptr())?;
 
         // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = closure_ptr.function_ptr().rust_runtime_function_id() {
+        if let Some(function_id) = closure_ptr.function_ptr().runtime_function_id() {
             // Call rust runtime function directly in its own handle scope
             let cx = self.cx();
             handle_scope!(cx, {
@@ -1647,7 +1644,7 @@ impl VM {
             let function_ptr = closure_ptr.function_ptr();
 
             // Check if this is a call to a function in the Rust runtime
-            if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            if let Some(function_id) = function_ptr.runtime_function_id() {
                 // Calling builtin functions does not pass a receiver - pass empty as the
                 // uninitialized value.
                 let receiver = self.cx().empty();
@@ -1746,7 +1743,7 @@ impl VM {
         let function_ptr = closure_ptr.function_ptr();
 
         // Check if this is a call to a function in the Rust runtime
-        if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+        if let Some(function_id) = function_ptr.runtime_function_id() {
             // Get the receiver to use. May allocate.
             let (closure_ptr, receiver) =
                 self.generate_receiver(receiver, closure_ptr, function_ptr)?;
@@ -1844,7 +1841,7 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         let return_value = handle_scope!(self.cx(), {
-            if let Some(function_id) = function_ptr.rust_runtime_function_id() {
+            if let Some(function_id) = function_ptr.runtime_function_id() {
                 // Calling builtin functions does not pass a receiver - pass empty as the
                 // uninitialized value.
                 let receiver = self.cx().empty();
@@ -2340,7 +2337,7 @@ impl VM {
     fn call_rust_runtime(
         &mut self,
         function: HeapPtr<Closure>,
-        function_id: RustRuntimeFunctionId,
+        function_id: RuntimeFunctionId,
         receiver: Handle<Value>,
         arguments: &[Handle<Value>],
         new_target: Option<Handle<ObjectValue>>,

@@ -23,6 +23,7 @@ use crate::{
             intrinsics::Intrinsic,
             regexp_constructor::{regexp_create, RegExpSource},
             regexp_prototype::flags_string_contains,
+            rust_runtime::RuntimeFunction,
             string_iterator::StringIterator,
         },
         numeric_constants::MAX_U32_AS_F64,
@@ -52,56 +53,248 @@ impl StringPrototype {
         let mut object = StringObject::new_with_proto(cx, object_proto, empty_string)?.as_object();
 
         // Constructor property is added once StringConstructor has been created
-        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.char_at(), Self::char_at, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.char_code_at(), Self::char_code_at, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.code_point_at(), Self::code_point_at, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.concat(), Self::concat, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.ends_with(), Self::ends_with, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.is_well_formed(), Self::is_well_formed, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.locale_compare(), Self::locale_compare, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.match_(), Self::match_, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.match_all(), Self::match_all, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.normalize(), Self::normalize, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.pad_end(), Self::pad_end, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.pad_start(), Self::pad_start, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.repeat(), Self::repeat, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.replace(), Self::replace, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.replace_all(), Self::replace_all, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.search(), Self::search, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.split(), Self::split, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.starts_with(), Self::starts_with, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.substring(), Self::substring, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.at(), RuntimeFunction::StringPrototype_at, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.char_at(),
+            RuntimeFunction::StringPrototype_char_at,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.char_code_at(),
+            RuntimeFunction::StringPrototype_char_code_at,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.code_point_at(),
+            RuntimeFunction::StringPrototype_code_point_at,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.concat(),
+            RuntimeFunction::StringPrototype_concat,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.ends_with(),
+            RuntimeFunction::StringPrototype_ends_with,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.includes(),
+            RuntimeFunction::StringPrototype_includes,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.index_of(),
+            RuntimeFunction::StringPrototype_index_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.is_well_formed(),
+            RuntimeFunction::StringPrototype_is_well_formed,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.last_index_of(),
+            RuntimeFunction::StringPrototype_last_index_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.locale_compare(),
+            RuntimeFunction::StringPrototype_locale_compare,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.match_(),
+            RuntimeFunction::StringPrototype_match_,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.match_all(),
+            RuntimeFunction::StringPrototype_match_all,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.normalize(),
+            RuntimeFunction::StringPrototype_normalize,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.pad_end(),
+            RuntimeFunction::StringPrototype_pad_end,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.pad_start(),
+            RuntimeFunction::StringPrototype_pad_start,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.repeat(),
+            RuntimeFunction::StringPrototype_repeat,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.replace(),
+            RuntimeFunction::StringPrototype_replace,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.replace_all(),
+            RuntimeFunction::StringPrototype_replace_all,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.search(),
+            RuntimeFunction::StringPrototype_search,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.slice(),
+            RuntimeFunction::StringPrototype_slice,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.split(),
+            RuntimeFunction::StringPrototype_split,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.starts_with(),
+            RuntimeFunction::StringPrototype_starts_with,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.substring(),
+            RuntimeFunction::StringPrototype_substring,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::StringPrototype_to_string,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_lower_case(),
-            Self::to_lower_case,
+            RuntimeFunction::StringPrototype_to_lower_case,
             0,
             realm,
         )?;
         object.intrinsic_func(
             cx,
             cx.names.to_locale_upper_case(),
-            Self::to_upper_case,
+            RuntimeFunction::StringPrototype_to_upper_case,
             0,
             realm,
         )?;
-        object.intrinsic_func(cx, cx.names.to_lower_case(), Self::to_lower_case, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_upper_case(), Self::to_upper_case, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_well_formed(), Self::to_well_formed, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.trim(), Self::trim, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.trim_end(), Self::trim_end, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.trim_start(), Self::trim_start, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.value_of(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_lower_case(),
+            RuntimeFunction::StringPrototype_to_lower_case,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_upper_case(),
+            RuntimeFunction::StringPrototype_to_upper_case,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_well_formed(),
+            RuntimeFunction::StringPrototype_to_well_formed,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.trim(),
+            RuntimeFunction::StringPrototype_trim,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.trim_end(),
+            RuntimeFunction::StringPrototype_trim_end,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.trim_start(),
+            RuntimeFunction::StringPrototype_trim_start,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::StringPrototype_to_string,
+            0,
+            realm,
+        )?;
 
         // String.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-string.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
-        object.intrinsic_func(cx, iterator_key, Self::iterator, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            iterator_key,
+            RuntimeFunction::StringPrototype_iterator,
+            0,
+            realm,
+        )?;
 
         Ok(object)
     }
@@ -114,7 +307,13 @@ impl StringPrototype {
     ) -> AllocResult<()> {
         let substr_name = cx.alloc_string("substr")?.as_string();
         let substr = PropertyKey::string_not_array_index_handle(cx, substr_name)?;
-        string_prototype.intrinsic_func(cx, substr, Self::substr, 2, realm)?;
+        string_prototype.intrinsic_func(
+            cx,
+            substr,
+            RuntimeFunction::StringPrototype_substr,
+            2,
+            realm,
+        )?;
 
         // String.prototype.trimLeft and String.prototype.trimRight are direct aliases for
         // String.prototype.trimStart and String.prototype.trimEnd respectively.
@@ -141,19 +340,19 @@ impl StringPrototype {
         }
 
         html_methods! {
-            "anchor", Self::anchor, 1,
-            "big", Self::big, 0,
-            "blink", Self::blink, 0,
-            "bold", Self::bold, 0,
-            "fixed", Self::fixed, 0,
-            "fontcolor", Self::font_color, 1,
-            "fontsize", Self::font_size, 1,
-            "italics", Self::italics, 0,
-            "link", Self::link, 1,
-            "small", Self::small, 0,
-            "strike", Self::strike, 0,
-            "sub", Self::sub, 0,
-            "sup", Self::sup, 0
+            "anchor", RuntimeFunction::StringPrototype_anchor, 1,
+            "big", RuntimeFunction::StringPrototype_big, 0,
+            "blink", RuntimeFunction::StringPrototype_blink, 0,
+            "bold", RuntimeFunction::StringPrototype_bold, 0,
+            "fixed", RuntimeFunction::StringPrototype_fixed, 0,
+            "fontcolor", RuntimeFunction::StringPrototype_font_color, 1,
+            "fontsize", RuntimeFunction::StringPrototype_font_size, 1,
+            "italics", RuntimeFunction::StringPrototype_italics, 0,
+            "link", RuntimeFunction::StringPrototype_link, 1,
+            "small", RuntimeFunction::StringPrototype_small, 0,
+            "strike", RuntimeFunction::StringPrototype_strike, 0,
+            "sub", RuntimeFunction::StringPrototype_sub, 0,
+            "sup", RuntimeFunction::StringPrototype_sup, 0
         }
 
         Ok(())

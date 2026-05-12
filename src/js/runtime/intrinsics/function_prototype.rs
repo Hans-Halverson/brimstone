@@ -13,6 +13,7 @@ use crate::{
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
         property_key::PropertyKey,
@@ -23,7 +24,7 @@ use crate::{
     },
 };
 
-use super::{intrinsics::Intrinsic, rust_runtime::return_undefined};
+use super::intrinsics::Intrinsic;
 
 pub struct FunctionPrototype {}
 
@@ -57,7 +58,7 @@ impl FunctionPrototype {
         // when invoked.
         let function = BytecodeFunction::new_rust_runtime_function(
             cx,
-            return_undefined,
+            RuntimeFunction::ReturnUndefined.to_id(),
             realm,
             /* is_constructor */ false,
             /* name */ None,
@@ -71,15 +72,39 @@ impl FunctionPrototype {
         object.instrinsic_length_prop(cx, 0)?;
         object.intrinsic_name_prop(cx, "")?;
 
-        object.intrinsic_func(cx, cx.names.apply(), Self::apply, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.bind(), Self::bind, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.call(), Self::call_intrinsic, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.apply(),
+            RuntimeFunction::FunctionPrototype_apply,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.bind(),
+            RuntimeFunction::FunctionPrototype_bind,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.call(),
+            RuntimeFunction::FunctionPrototype_call_intrinsic,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::FunctionPrototype_to_string,
+            0,
+            realm,
+        )?;
 
         // [Function.hasInstance] property
         let has_instance_func = BuiltinFunction::create(
             cx,
-            Self::has_instance,
+            RuntimeFunction::FunctionPrototype_has_instance,
             1,
             cx.well_known_symbols.has_instance(),
             realm,
@@ -210,7 +235,7 @@ impl FunctionPrototype {
             }
 
             // Builtin functions have special formatting using the function name
-            if function.rust_runtime_function_id().is_some() {
+            if function.runtime_function_id().is_some() {
                 let mut string_parts = vec![cx.alloc_string("function ")?.as_string()];
                 if let Some(name) = function.name() {
                     string_parts.push(name);

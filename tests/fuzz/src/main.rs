@@ -103,12 +103,12 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
         let realm = cx.initial_realm();
 
         // Register the rust runtime function
-        cx.rust_runtime_functions.register(fuzzilli);
+        let fuzzili_id = cx.rust_runtime_functions.register(fuzzilli).unwrap();
 
         let fuzzilli_string = cx.alloc_string("fuzzilli")?;
         let fuzzilli_key = PropertyKey::string_handle(cx, fuzzilli_string.as_string())?;
         let fuzzilli_function =
-            BuiltinFunction::create(cx, fuzzilli, 2, fuzzilli_key, realm, None)?;
+            BuiltinFunction::create_custom(cx, fuzzili_id, 2, fuzzilli_key, realm, None)?;
 
         let desc = PropertyDescriptor::data(fuzzilli_function.as_value(), true, false, true);
         must_a!(define_property_or_throw(cx, realm.global_object(), fuzzilli_key, desc));

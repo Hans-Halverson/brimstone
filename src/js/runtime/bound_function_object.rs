@@ -1,4 +1,4 @@
-use crate::runtime::alloc_error::AllocResult;
+use crate::runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction};
 
 use super::{
     abstract_operations::{call_object, construct, length_of_array_like},
@@ -39,7 +39,7 @@ impl BoundFunctionObject {
 
         let bound_func = BuiltinFunction::create_builtin_function_without_properties(
             cx,
-            BoundFunctionObject::call,
+            RuntimeFunction::BoundFunctionObject_call,
             /* name */ None,
             // Use realm of calling function. GetFunctionRealm ignores this function and instead
             // uses realm of bound target function.

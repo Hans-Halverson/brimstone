@@ -1,7 +1,8 @@
 use crate::runtime::{
     alloc_error::AllocResult, builtin_function::BuiltinFunction, error::type_error,
-    eval_result::EvalResult, object_value::ObjectValue, property::Property, realm::Realm,
-    string_value::StringValue, value::SymbolValue, Context, Handle, Value,
+    eval_result::EvalResult, intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue,
+    property::Property, realm::Realm, string_value::StringValue, value::SymbolValue, Context,
+    Handle, Value,
 };
 
 use super::intrinsics::Intrinsic;
@@ -15,14 +16,38 @@ impl SymbolPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Constructor property is added once SymbolConstructor has been created
-        object.intrinsic_getter(cx, cx.names.description(), Self::get_description, realm)?;
-        object.intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.description(),
+            RuntimeFunction::SymbolPrototype_get_description,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::SymbolPrototype_to_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::SymbolPrototype_value_of,
+            0,
+            realm,
+        )?;
 
         // [Symbol.toPrimitive] property
         let to_primitive_key = cx.well_known_symbols.to_primitive();
-        let to_primitive_func =
-            BuiltinFunction::create(cx, Self::value_of, 1, to_primitive_key, realm, None)?.into();
+        let to_primitive_func = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::SymbolPrototype_value_of,
+            1,
+            to_primitive_key,
+            realm,
+            None,
+        )?
+        .into();
         object.set_property(
             cx,
             to_primitive_key,

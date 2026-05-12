@@ -11,10 +11,7 @@ use crate::{
         function::{set_function_length, set_function_name},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        intrinsics::{
-            intrinsics::Intrinsic,
-            rust_runtime::{RustRuntimeFunction, RustRuntimeFunctionId},
-        },
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_with_optional_proto, object_create_with_proto,
@@ -254,7 +251,7 @@ pub struct BytecodeFunction {
     source_map: Option<HeapPtr<ByteArray>>,
     /// This function may be a stub function back into the Rust runtime. If this is set then this
     /// function has an empty bytecode array and default values for many other fields.
-    rust_runtime_function_id: Option<RustRuntimeFunctionId>,
+    runtime_function_id: Option<RuntimeFunctionId>,
     /// Inlined bytecode array for the function.
     bytecode: InlineArray<u8>,
 }
@@ -300,21 +297,19 @@ impl BytecodeFunction {
         set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, Some(*source_file));
         set_uninit!(object.source_map, Some(*source_map));
-        set_uninit!(object.rust_runtime_function_id, None);
+        set_uninit!(object.runtime_function_id, None);
         object.bytecode.init_from_slice(&bytecode);
 
         Ok(object.to_handle())
     }
 
     pub fn new_rust_runtime_function(
-        mut cx: Context,
-        builtin_func: RustRuntimeFunction,
+        cx: Context,
+        runtime_func_id: RuntimeFunctionId,
         realm: Handle<Realm>,
         is_constructor: bool,
         name: Option<Handle<StringValue>>,
     ) -> AllocResult<Handle<BytecodeFunction>> {
-        let function_id = cx.rust_runtime_functions.get_id(builtin_func).unwrap();
-
         let size = Self::calculate_size_in_bytes(0);
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
 
@@ -344,7 +339,7 @@ impl BytecodeFunction {
         set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, None);
         set_uninit!(object.source_map, None);
-        set_uninit!(object.rust_runtime_function_id, Some(function_id));
+        set_uninit!(object.runtime_function_id, Some(runtime_func_id));
         object.bytecode.init_from_slice(&[]);
 
         Ok(object.to_handle())
@@ -447,8 +442,8 @@ impl BytecodeFunction {
     }
 
     #[inline]
-    pub fn rust_runtime_function_id(&self) -> Option<RustRuntimeFunctionId> {
-        self.rust_runtime_function_id
+    pub fn runtime_function_id(&self) -> Option<RuntimeFunctionId> {
+        self.runtime_function_id
     }
 }
 

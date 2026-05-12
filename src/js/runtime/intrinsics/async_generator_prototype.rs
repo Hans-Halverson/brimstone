@@ -12,6 +12,7 @@ use crate::{
         function::get_argument,
         generator_object::GeneratorCompletionType,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -38,9 +39,27 @@ impl AsyncGeneratorPrototype {
 
         // Constructor property is added once AsyncGeneratorFunctionPrototype is created
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.throw(), Self::throw, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::AsyncGeneratorPrototype_next,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.return_(),
+            RuntimeFunction::AsyncGeneratorPrototype_return_,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.throw(),
+            RuntimeFunction::AsyncGeneratorPrototype_throw,
+            1,
+            realm,
+        )?;
 
         // %AsyncGeneratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-asyncgenerator-prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

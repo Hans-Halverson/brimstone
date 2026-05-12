@@ -10,6 +10,7 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
@@ -141,7 +142,7 @@ impl ErrorConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::ErrorConstructor_construct,
             1,
             cx.names.error(),
             realm,
@@ -154,7 +155,13 @@ impl ErrorConstructor {
             realm.get_intrinsic(Intrinsic::ErrorPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.is_error(), Self::is_error, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.is_error(),
+            RuntimeFunction::ErrorConstructor_is_error,
+            1,
+            realm,
+        )?;
 
         Ok(func)
     }

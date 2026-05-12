@@ -2,6 +2,7 @@ use crate::runtime::{
     alloc_error::AllocResult,
     error::type_error,
     generator_object::GeneratorState,
+    intrinsics::rust_runtime::RuntimeFunction,
     iterator::{create_iter_result_object, iterator_close},
     object_value::ObjectValue,
     property::Property,
@@ -18,8 +19,20 @@ impl IteratorHelperPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::IteratorHelperPrototype_next,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.return_(),
+            RuntimeFunction::IteratorHelperPrototype_return_,
+            1,
+            realm,
+        )?;
 
         // %IteratorHelperPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

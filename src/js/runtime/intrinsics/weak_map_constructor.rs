@@ -5,6 +5,7 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
@@ -23,7 +24,7 @@ impl WeakMapConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::WeakMapConstructor_construct,
             0,
             cx.names.weak_map(),
             realm,

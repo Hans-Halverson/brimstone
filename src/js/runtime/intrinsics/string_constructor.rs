@@ -8,6 +8,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
@@ -26,7 +27,7 @@ impl StringConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::StringConstructor_construct,
             1,
             cx.names.string(),
             realm,
@@ -39,9 +40,21 @@ impl StringConstructor {
             realm.get_intrinsic(Intrinsic::StringPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.from_char_code(), Self::from_char_code, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.from_code_point(), Self::from_code_point, 1, realm)?;
-        func.intrinsic_func(cx, cx.names.raw(), Self::raw, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from_char_code(),
+            RuntimeFunction::StringConstructor_from_char_code,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from_code_point(),
+            RuntimeFunction::StringConstructor_from_code_point,
+            1,
+            realm,
+        )?;
+        func.intrinsic_func(cx, cx.names.raw(), RuntimeFunction::StringConstructor_raw, 1, realm)?;
 
         Ok(func)
     }

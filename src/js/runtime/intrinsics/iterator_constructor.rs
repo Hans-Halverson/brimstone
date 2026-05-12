@@ -9,6 +9,7 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::{create_iter_result_object, get_iterator_flattenable},
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
@@ -27,7 +28,7 @@ impl IteratorConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::IteratorConstructor_construct,
             0,
             cx.names.iterator(),
             realm,
@@ -40,7 +41,13 @@ impl IteratorConstructor {
             realm.get_intrinsic(Intrinsic::IteratorPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.from(), Self::from, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from(),
+            RuntimeFunction::IteratorConstructor_from,
+            1,
+            realm,
+        )?;
 
         Ok(func)
     }
@@ -149,8 +156,20 @@ impl WrapForValidIteratorPrototype {
         )?
         .to_handle();
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.return_(), Self::return_, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::WrapForValidIteratorPrototype_next,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.return_(),
+            RuntimeFunction::WrapForValidIteratorPrototype_return_,
+            0,
+            realm,
+        )?;
 
         Ok(object)
     }

@@ -5,6 +5,7 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -28,20 +29,51 @@ impl MapPrototype {
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
         // Create values function as it is referenced by multiple properties
-        let entries_function =
-            BuiltinFunction::create(cx, Self::entries, 0, cx.names.entries(), realm, None)?.into();
+        let entries_function = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::MapPrototype_entries,
+            0,
+            cx.names.entries(),
+            realm,
+            None,
+        )?
+        .into();
 
         // Constructor property is added once MapConstructor has been created
-        object.intrinsic_func(cx, cx.names.clear(), Self::clear, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.delete(), Self::delete, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.clear(),
+            RuntimeFunction::MapPrototype_clear,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.delete(),
+            RuntimeFunction::MapPrototype_delete,
+            1,
+            realm,
+        )?;
         object.intrinsic_data_prop(cx, cx.names.entries(), entries_function)?;
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.get(), Self::get, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.has(), Self::has, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 2, realm)?;
-        object.intrinsic_getter(cx, cx.names.size(), Self::size, realm)?;
-        object.intrinsic_func(cx, cx.names.values(), Self::values, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.for_each(),
+            RuntimeFunction::MapPrototype_for_each,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(cx, cx.names.get(), RuntimeFunction::MapPrototype_get, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::MapPrototype_has, 1, realm)?;
+        object.intrinsic_func(cx, cx.names.keys(), RuntimeFunction::MapPrototype_keys, 0, realm)?;
+        object.intrinsic_func(cx, cx.names.set_(), RuntimeFunction::MapPrototype_set, 2, realm)?;
+        object.intrinsic_getter(cx, cx.names.size(), RuntimeFunction::MapPrototype_size, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.values(),
+            RuntimeFunction::MapPrototype_values,
+            0,
+            realm,
+        )?;
 
         // Map.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-map.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();

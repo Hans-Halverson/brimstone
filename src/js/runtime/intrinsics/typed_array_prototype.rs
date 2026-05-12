@@ -17,6 +17,7 @@ use crate::{
         intrinsics::{
             array_buffer_constructor::clone_array_buffer,
             array_iterator::{ArrayIterator, ArrayIteratorKind},
+            rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
         property::Property,
@@ -47,41 +48,236 @@ impl TypedArrayPrototype {
         // Constructor property is added once TypedArrayConstructor has been created
 
         // Create values function as it is referenced by multiple properties
-        let values_function =
-            BuiltinFunction::create(cx, Self::values, 0, cx.names.values(), realm, None)?.into();
+        let values_function = BuiltinFunction::create(
+            cx,
+            RuntimeFunction::TypedArrayPrototype_values,
+            0,
+            cx.names.values(),
+            realm,
+            None,
+        )?
+        .into();
 
-        object.intrinsic_func(cx, cx.names.at(), Self::at, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.buffer(), Self::buffer, realm)?;
-        object.intrinsic_getter(cx, cx.names.byte_length(), Self::byte_length, realm)?;
-        object.intrinsic_getter(cx, cx.names.byte_offset(), Self::byte_offset, realm)?;
-        object.intrinsic_func(cx, cx.names.copy_within(), Self::copy_within, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.entries(), Self::entries, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.every(), Self::every, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.fill(), Self::fill, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.filter(), Self::filter, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.find(), Self::find, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.find_index(), Self::find_index, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.find_last(), Self::find_last, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.find_last_index(), Self::find_last_index, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.for_each(), Self::for_each, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.includes(), Self::includes, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.index_of(), Self::index_of, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.join(), Self::join, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.keys(), Self::keys, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.last_index_of(), Self::last_index_of, 1, realm)?;
-        object.intrinsic_getter(cx, cx.names.length(), Self::length, realm)?;
-        object.intrinsic_func(cx, cx.names.map_(), Self::map, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.reduce(), Self::reduce, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.reduce_right(), Self::reduce_right, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.reverse(), Self::reverse, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.set_(), Self::set, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.slice(), Self::slice, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.some(), Self::some, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.sort(), Self::sort, 1, realm)?;
-        object.intrinsic_func(cx, cx.names.subarray(), Self::subarray, 2, realm)?;
-        object.intrinsic_func(cx, cx.names.to_locale_string(), Self::to_locale_string, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_reversed(), Self::to_reversed, 0, realm)?;
-        object.intrinsic_func(cx, cx.names.to_sorted(), Self::to_sorted, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.at(),
+            RuntimeFunction::TypedArrayPrototype_at,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.buffer(),
+            RuntimeFunction::TypedArrayPrototype_buffer,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.byte_length(),
+            RuntimeFunction::TypedArrayPrototype_byte_length,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.byte_offset(),
+            RuntimeFunction::TypedArrayPrototype_byte_offset,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.copy_within(),
+            RuntimeFunction::TypedArrayPrototype_copy_within,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.entries(),
+            RuntimeFunction::TypedArrayPrototype_entries,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.every(),
+            RuntimeFunction::TypedArrayPrototype_every,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.fill(),
+            RuntimeFunction::TypedArrayPrototype_fill,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.filter(),
+            RuntimeFunction::TypedArrayPrototype_filter,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.find(),
+            RuntimeFunction::TypedArrayPrototype_find,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.find_index(),
+            RuntimeFunction::TypedArrayPrototype_find_index,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.find_last(),
+            RuntimeFunction::TypedArrayPrototype_find_last,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.find_last_index(),
+            RuntimeFunction::TypedArrayPrototype_find_last_index,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.for_each(),
+            RuntimeFunction::TypedArrayPrototype_for_each,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.includes(),
+            RuntimeFunction::TypedArrayPrototype_includes,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.index_of(),
+            RuntimeFunction::TypedArrayPrototype_index_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.join(),
+            RuntimeFunction::TypedArrayPrototype_join,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.keys(),
+            RuntimeFunction::TypedArrayPrototype_keys,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.last_index_of(),
+            RuntimeFunction::TypedArrayPrototype_last_index_of,
+            1,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.length(),
+            RuntimeFunction::TypedArrayPrototype_length,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.map_(),
+            RuntimeFunction::TypedArrayPrototype_map,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.reduce(),
+            RuntimeFunction::TypedArrayPrototype_reduce,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.reduce_right(),
+            RuntimeFunction::TypedArrayPrototype_reduce_right,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.reverse(),
+            RuntimeFunction::TypedArrayPrototype_reverse,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.set_(),
+            RuntimeFunction::TypedArrayPrototype_set,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.slice(),
+            RuntimeFunction::TypedArrayPrototype_slice,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.some(),
+            RuntimeFunction::TypedArrayPrototype_some,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.sort(),
+            RuntimeFunction::TypedArrayPrototype_sort,
+            1,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.subarray(),
+            RuntimeFunction::TypedArrayPrototype_subarray,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_locale_string(),
+            RuntimeFunction::TypedArrayPrototype_to_locale_string,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_reversed(),
+            RuntimeFunction::TypedArrayPrototype_to_reversed,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_sorted(),
+            RuntimeFunction::TypedArrayPrototype_to_sorted,
+            1,
+            realm,
+        )?;
         // Use Array.prototype.toString directly
         object.intrinsic_data_prop(
             cx,
@@ -91,7 +287,13 @@ impl TypedArrayPrototype {
                 .into(),
         )?;
         object.intrinsic_data_prop(cx, cx.names.values(), values_function)?;
-        object.intrinsic_func(cx, cx.names.with(), Self::with, 2, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.with(),
+            RuntimeFunction::TypedArrayPrototype_with,
+            2,
+            realm,
+        )?;
 
         // %TypedArray%.prototype [ @@iterator ] (https://tc39.es/ecma262/#sec-%typedarray%.prototype-%symbol.iterator%)
         let iterator_key = cx.well_known_symbols.iterator();
@@ -103,7 +305,12 @@ impl TypedArrayPrototype {
 
         // get %TypedArray%.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-%typedarray%.prototype-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        object.intrinsic_getter(cx, to_string_tag_key, Self::get_to_string_tag, realm)?;
+        object.intrinsic_getter(
+            cx,
+            to_string_tag_key,
+            RuntimeFunction::TypedArrayPrototype_get_to_string_tag,
+            realm,
+        )?;
 
         Ok(object)
     }

@@ -10,6 +10,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -83,7 +84,13 @@ impl SetIteratorPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
-        object.intrinsic_func(cx, cx.names.next(), Self::next, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.next(),
+            RuntimeFunction::SetIteratorPrototype_next,
+            0,
+            realm,
+        )?;
 
         // %SetIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%setiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();

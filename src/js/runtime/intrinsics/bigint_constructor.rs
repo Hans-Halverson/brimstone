@@ -13,6 +13,7 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::rust_runtime::RuntimeFunction,
         object_value::ObjectValue,
         ordinary_object::object_create,
         realm::Realm,
@@ -63,7 +64,7 @@ impl BigIntConstructor {
     pub fn new(cx: Context, realm: Handle<Realm>) -> AllocResult<Handle<ObjectValue>> {
         let mut func = BuiltinFunction::intrinsic_constructor(
             cx,
-            Self::construct,
+            RuntimeFunction::BigIntConstructor_construct,
             1,
             cx.names.bigint(),
             realm,
@@ -76,8 +77,20 @@ impl BigIntConstructor {
             realm.get_intrinsic(Intrinsic::BigIntPrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.as_int_n(), Self::as_int_n, 2, realm)?;
-        func.intrinsic_func(cx, cx.names.as_uint_n(), Self::as_uint_n, 2, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.as_int_n(),
+            RuntimeFunction::BigIntConstructor_as_int_n,
+            2,
+            realm,
+        )?;
+        func.intrinsic_func(
+            cx,
+            cx.names.as_uint_n(),
+            RuntimeFunction::BigIntConstructor_as_uint_n,
+            2,
+            realm,
+        )?;
 
         Ok(func)
     }

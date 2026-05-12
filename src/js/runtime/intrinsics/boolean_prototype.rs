@@ -1,6 +1,7 @@
 use crate::runtime::{
     alloc_error::AllocResult, error::type_error, eval_result::EvalResult,
-    object_value::ObjectValue, realm::Realm, Context, Handle, Value,
+    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, realm::Realm, Context,
+    Handle, Value,
 };
 
 use super::{boolean_constructor::BooleanObject, intrinsics::Intrinsic};
@@ -14,12 +15,20 @@ impl BooleanPrototype {
         let object = BooleanObject::new_with_proto(cx, object_proto, false)?;
 
         // Constructor property is added once BooleanConstructor has been created
-        object
-            .as_object()
-            .intrinsic_func(cx, cx.names.to_string(), Self::to_string, 0, realm)?;
-        object
-            .as_object()
-            .intrinsic_func(cx, cx.names.value_of(), Self::value_of, 0, realm)?;
+        object.as_object().intrinsic_func(
+            cx,
+            cx.names.to_string(),
+            RuntimeFunction::BooleanPrototype_to_string,
+            0,
+            realm,
+        )?;
+        object.as_object().intrinsic_func(
+            cx,
+            cx.names.value_of(),
+            RuntimeFunction::BooleanPrototype_value_of,
+            0,
+            realm,
+        )?;
 
         Ok(object.into())
     }

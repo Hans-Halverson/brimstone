@@ -79,6 +79,7 @@ pub trait AstVisitor<'a>: Sized {
             Pattern::Assign(patt) => self.visit_assignment_pattern(patt),
             Pattern::Member(expr) => self.visit_member_expression(expr),
             Pattern::SuperMember(expr) => self.visit_super_member_expression(expr),
+            Pattern::InvalidCall(expr) => self.visit_call_expression(expr),
         }
     }
 

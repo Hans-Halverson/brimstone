@@ -1031,7 +1031,7 @@ impl<'a> Parser<'a> {
                 Pattern::Assign(_) => {
                     has_parameter_expressions = true;
                 }
-                Pattern::Member(_) | Pattern::SuperMember(_) => {}
+                Pattern::Member(_) | Pattern::SuperMember(_) | Pattern::InvalidCall(_) => {}
             });
         }
 
@@ -1701,7 +1701,11 @@ impl<'a> Parser<'a> {
                 let left = if operator == AssignmentOperator::Equals {
                     self.reparse_expression_as_assignment_left_hand_side(expr, start_pos)?
                 } else {
-                    self.reparse_expression_as_operator_assignment_left_hand_side(expr, start_pos)?
+                    self.reparse_expression_as_operator_assignment_left_hand_side(
+                        expr,
+                        start_pos,
+                        operator.is_logical(),
+                    )?
                 };
 
                 self.advance()?;
@@ -4733,7 +4737,7 @@ impl<'a> Parser<'a> {
         expr: Expression<'a>,
         start_pos: Pos,
     ) -> ParseResult<Pattern<'a>> {
-        match self.reparse_left_hand_side_expression_as_pattern(expr) {
+        match self.reparse_left_hand_side_expression_as_pattern(expr, /* allow_call */ true) {
             Some(pattern) => Ok(pattern),
             None => {
                 let loc = self.mark_loc(start_pos);
@@ -4747,7 +4751,7 @@ impl<'a> Parser<'a> {
         expr: Expression<'a>,
         start_pos: Pos,
     ) -> ParseResult<Pattern<'a>> {
-        match self.reparse_left_hand_side_expression_as_pattern(expr) {
+        match self.reparse_left_hand_side_expression_as_pattern(expr, /* allow_call */ true) {
             Some(pattern) => Ok(pattern),
             None => {
                 let loc = self.mark_loc(start_pos);
@@ -4760,11 +4764,17 @@ impl<'a> Parser<'a> {
         &self,
         expr: Expression<'a>,
         start_pos: Pos,
+        is_logical: bool,
     ) -> ParseResult<Pattern<'a>> {
         let reparsed_pattern = match expr {
             // Only valid operator assignment left hand side expressions
-            Expression::Id(_) | Expression::Member(_) | Expression::SuperMember(_) => {
-                self.reparse_left_hand_side_expression_as_pattern(expr)
+            Expression::Id(_)
+            | Expression::Member(_)
+            | Expression::SuperMember(_)
+            | Expression::Call(_) => {
+                // Non-logical assignment patterns can be call expressions (in sloppy Annex B mode)
+                let allow_call = !is_logical;
+                self.reparse_left_hand_side_expression_as_pattern(expr, allow_call)
             }
             _ => None,
         };
@@ -4781,6 +4791,7 @@ impl<'a> Parser<'a> {
     fn reparse_left_hand_side_expression_as_pattern(
         &self,
         expr: Expression<'a>,
+        allow_call: bool,
     ) -> Option<Pattern<'a>> {
         match expr {
             Expression::Id(id) => {
@@ -4802,6 +4813,12 @@ impl<'a> Parser<'a> {
             }
             Expression::Member(expr) => Some(Pattern::Member(expr)),
             Expression::SuperMember(expr) => Some(Pattern::SuperMember(expr)),
+            // Annex B allows call expressions as assignment targets in sloppy mode
+            Expression::Call(expr)
+                if self.options.annex_b && !self.in_strict_mode && allow_call =>
+            {
+                Some(Pattern::InvalidCall(expr))
+            }
             _ => None,
         }
     }
@@ -4829,7 +4846,10 @@ impl<'a> Parser<'a> {
                 let value = match property.key {
                     Expression::Object(_) | Expression::Array(_) => return None,
                     lhs_pattern => {
-                        self.reparse_left_hand_side_expression_as_pattern(lhs_pattern)?
+                        self.reparse_left_hand_side_expression_as_pattern(
+                            lhs_pattern,
+                            /* allow_call */ false,
+                        )?
                     }
                 };
 
@@ -4854,7 +4874,10 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Shorthand properties
-                let id_pattern = self.reparse_left_hand_side_expression_as_pattern(property.key)?;
+                let id_pattern = self.reparse_left_hand_side_expression_as_pattern(
+                    property.key,
+                    /* allow_call */ false,
+                )?;
 
                 // Check the property kind to see if this is a shorthand pattern initializer
                 let value = if let PropertyKind::PatternInitializer(initializer) = property.kind {
@@ -4909,8 +4932,10 @@ impl<'a> Parser<'a> {
                         return None;
                     }
 
-                    let argument =
-                        self.reparse_left_hand_side_expression_as_pattern(spread.argument)?;
+                    let argument = self.reparse_left_hand_side_expression_as_pattern(
+                        spread.argument,
+                        /* allow_call */ false,
+                    )?;
                     ArrayPatternElement::Rest(RestElement { loc: spread.loc, argument })
                 }
             };
@@ -4941,7 +4966,9 @@ impl<'a> Parser<'a> {
 
                 Some(Pattern::Assign(p!(self, AssignmentPattern { loc, left, right })))
             }
-            other_expr => Some(self.reparse_left_hand_side_expression_as_pattern(other_expr)?),
+            other_expr => Some(self.reparse_left_hand_side_expression_as_pattern(
+                other_expr, /* allow_call */ false,
+            )?),
         }
     }
 
@@ -4957,6 +4984,8 @@ impl<'a> Parser<'a> {
                 }
             }
             Expression::Member(_) | Expression::SuperMember(_) => true,
+            // Annex B: Assigning to call expressions parses but errors at runtime
+            Expression::Call(_) if self.options.annex_b && !self.in_strict_mode => true,
             _ => false,
         }
     }

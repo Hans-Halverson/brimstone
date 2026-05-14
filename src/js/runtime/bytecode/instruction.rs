@@ -1690,6 +1690,14 @@ define_instructions!(
         operands: {}
     }
 
+    /// Throw a ReferenceError for attempting to assign to a call expression in Annex B.
+    ErrorAssignToCallExpression {
+        camel_case: ErrorAssignToCallExpressionInstruction,
+        snake_case: error_assign_to_call_expression_instruction,
+        can_throw: true,
+        operands: {}
+    }
+
     /// Throw a TypeError for a throw completion in a yield* where the iterator does not have a
     /// throw method.
     ErrorIteratorNoThrowMethod {

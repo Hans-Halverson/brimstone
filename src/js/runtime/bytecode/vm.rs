@@ -18,6 +18,7 @@ use crate::{
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
         boxed_value::BoxedValue,
+        bytecode::instruction::ErrorAssignToCallExpressionInstruction,
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
@@ -1192,6 +1193,12 @@ impl VM {
                             dispatch_or_throw!(
                                 ErrorDeleteSuperPropertyInstruction,
                                 execute_error_delete_super_property
+                            )
+                        }
+                        OpCode::ErrorAssignToCallExpression => {
+                            dispatch_or_throw!(
+                                ErrorAssignToCallExpressionInstruction,
+                                execute_error_assign_to_call_expression
                             )
                         }
                         OpCode::ErrorIteratorNoThrowMethod => {
@@ -4422,6 +4429,14 @@ impl VM {
         _: &ErrorDeleteSuperPropertyInstruction<W>,
     ) -> EvalResult<()> {
         reference_error(self.cx(), "cannot delete super property")
+    }
+
+    #[inline]
+    fn execute_error_assign_to_call_expression<W: Width>(
+        &mut self,
+        _: &ErrorAssignToCallExpressionInstruction<W>,
+    ) -> EvalResult<()> {
+        reference_error(self.cx(), "cannot assign to call expression")
     }
 
     #[inline]

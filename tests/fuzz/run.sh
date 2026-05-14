@@ -13,6 +13,8 @@ RESULTS_DIR="$CURRENT_DIR/results"
 # Build brimstone for fuzzing and install dependencies
 "$CURRENT_DIR/build.sh"
 
+HOST_TRIPLE=$(rustc -vV | sed -n 's/host: //p')
+
 # Build and run fuzzilli
 cd "$FUZZILLI_DIR"
 
@@ -24,4 +26,4 @@ swift run \
   --storagePath="$RESULTS_DIR" \
   --jobs=4 \
   "$@" \
-  "$ROOT_DIR/target/debug/brimstone_fuzz"
+  "$ROOT_DIR/target/$HOST_TRIPLE/debug/brimstone_fuzz"

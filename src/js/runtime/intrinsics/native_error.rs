@@ -11,6 +11,7 @@ use crate::runtime::{
     },
     object_value::ObjectValue,
     realm::Realm,
+    string_value::StringValue,
     type_utilities::to_string,
     Context, Handle, HeapPtr, Value,
 };
@@ -26,8 +27,15 @@ macro_rules! create_native_error {
                 message: String,
             ) -> AllocResult<Handle<ErrorObject>> {
                 // Be sure to allocate before creating object
-                let message_value = cx.alloc_string(&message)?.into();
+                let message_value = cx.alloc_string(&message)?.as_string();
+                Self::new_with_message_value(cx, message_value)
+            }
 
+            #[allow(dead_code)]
+            pub fn new_with_message_value(
+                cx: Context,
+                message: Handle<StringValue>,
+            ) -> AllocResult<Handle<ErrorObject>> {
                 let object = ErrorObject::new(
                     cx,
                     Intrinsic::$prototype,
@@ -36,7 +44,7 @@ macro_rules! create_native_error {
 
                 object
                     .as_object()
-                    .intrinsic_data_prop(cx, cx.names.message(), message_value)?;
+                    .intrinsic_data_prop(cx, cx.names.message(), message.into())?;
 
                 Ok(object)
             }

@@ -18,7 +18,6 @@ use crate::{
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
         boxed_value::BoxedValue,
-        bytecode::instruction::ErrorAssignToCallExpressionInstruction,
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
@@ -44,8 +43,10 @@ use crate::{
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
-            generator_prototype::GeneratorPrototype, intrinsics::Intrinsic,
-            native_error::TypeError, regexp_constructor::RegExpObject,
+            generator_prototype::GeneratorPrototype,
+            intrinsics::Intrinsic,
+            native_error::{ReferenceError, TypeError},
+            regexp_constructor::RegExpObject,
             rust_runtime::RuntimeFunctionId,
         },
         iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
@@ -85,8 +86,7 @@ use super::{
         DefinePrivatePropertyFlags, DefinePrivatePropertyInstruction, DefinePropertyFlags,
         DefinePropertyInstruction, DeleteBindingInstruction, DeletePropertyInstruction,
         DivInstruction, DupScopeInstruction, DynamicImportInstruction, ErrorConstInstruction,
-        ErrorDeleteSuperPropertyInstruction, ErrorIteratorNoThrowMethodInstruction, EvalFlags,
-        ExpInstruction, ForInNextInstruction, GeneratorStartInstruction,
+        EvalFlags, ExpInstruction, ForInNextInstruction, GeneratorStartInstruction,
         GetAsyncIteratorInstruction, GetIteratorInstruction, GetMethodInstruction,
         GetNamedPropertyInstruction, GetNamedSuperPropertyInstruction,
         GetPrivatePropertyInstruction, GetPropertyInstruction, GetSuperConstructorInstruction,
@@ -119,8 +119,9 @@ use super::{
         ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction, StoreDynamicInstruction,
         StoreGlobalInstruction, StoreToModuleInstruction, StoreToScopeInstruction,
         StrictEqualInstruction, StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-        ToNumberInstruction, ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
-        ToStringInstruction, TypeOfInstruction, YieldInstruction,
+        ThrowNewErrorInstruction, ThrowNewErrorKind, ToNumberInstruction, ToNumericInstruction,
+        ToObjectInstruction, ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction,
+        YieldInstruction,
     },
     instruction_traits::{
         GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -1189,23 +1190,8 @@ impl VM {
                         OpCode::ErrorConst => {
                             dispatch_or_throw!(ErrorConstInstruction, execute_error_const)
                         }
-                        OpCode::ErrorDeleteSuperProperty => {
-                            dispatch_or_throw!(
-                                ErrorDeleteSuperPropertyInstruction,
-                                execute_error_delete_super_property
-                            )
-                        }
-                        OpCode::ErrorAssignToCallExpression => {
-                            dispatch_or_throw!(
-                                ErrorAssignToCallExpressionInstruction,
-                                execute_error_assign_to_call_expression
-                            )
-                        }
-                        OpCode::ErrorIteratorNoThrowMethod => {
-                            dispatch_or_throw!(
-                                ErrorIteratorNoThrowMethodInstruction,
-                                execute_error_iterator_no_throw_method
-                            )
+                        OpCode::ThrowNewError => {
+                            dispatch_or_throw!(ThrowNewErrorInstruction, execute_throw_new_error)
                         }
                         OpCode::NewForInIterator => {
                             dispatch_or_throw!(
@@ -4424,27 +4410,22 @@ impl VM {
     }
 
     #[inline]
-    fn execute_error_delete_super_property<W: Width>(
+    fn execute_throw_new_error<W: Width>(
         &mut self,
-        _: &ErrorDeleteSuperPropertyInstruction<W>,
+        instr: &ThrowNewErrorInstruction<W>,
     ) -> EvalResult<()> {
-        reference_error(self.cx(), "cannot delete super property")
-    }
+        let error_type_operand = instr.error_type().value().to_usize() as u8;
+        let kind = ThrowNewErrorKind::from_u8(error_type_operand).unwrap();
+        let message = self.get_constant(instr.message()).as_string().to_handle();
 
-    #[inline]
-    fn execute_error_assign_to_call_expression<W: Width>(
-        &mut self,
-        _: &ErrorAssignToCallExpressionInstruction<W>,
-    ) -> EvalResult<()> {
-        reference_error(self.cx(), "cannot assign to call expression")
-    }
+        let error_value = match kind {
+            ThrowNewErrorKind::ReferenceError => {
+                ReferenceError::new_with_message_value(self.cx(), message)?
+            }
+            ThrowNewErrorKind::TypeError => TypeError::new_with_message_value(self.cx(), message)?,
+        };
 
-    #[inline]
-    fn execute_error_iterator_no_throw_method<W: Width>(
-        &mut self,
-        _: &ErrorIteratorNoThrowMethodInstruction<W>,
-    ) -> EvalResult<()> {
-        type_error(self.cx(), "iterator does not have a throw method")
+        eval_err!(error_value.into())
     }
 
     #[inline]

@@ -64,7 +64,7 @@ use super::{
     constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
     exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
     function::Closure,
-    instruction::{DecodeInfo, DefinePrivatePropertyFlags, EvalFlags, OpCode},
+    instruction::{DecodeInfo, DefinePrivatePropertyFlags, EvalFlags, OpCode, ThrowNewErrorKind},
     operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
     register_allocator::TemporaryRegisterAllocator,
     width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
@@ -3280,8 +3280,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.register_allocator.release(property);
                 }
 
-                self.writer
-                    .error_delete_super_property_instruction(delete_pos);
+                self.gen_throw_new_error(
+                    ThrowNewErrorKind::ReferenceError,
+                    "cannot delete super property",
+                    delete_pos,
+                )?;
 
                 // No need to initialize dest since it will not be used
                 self.allocate_destination(dest)
@@ -4800,8 +4803,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
         let call_result = self.gen_call_expression(call, dest, None)?;
-        self.writer
-            .error_assign_to_call_expression_instruction(call.loc.start);
+        self.gen_throw_new_error(
+            ThrowNewErrorKind::ReferenceError,
+            "cannot assign to call expression",
+            call.loc.start,
+        )?;
 
         Ok(call_result)
     }
@@ -5505,7 +5511,11 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.iterator_close_instruction(iterator, pos);
         }
 
-        self.writer.error_iterator_no_throw_method_instruction(pos);
+        self.gen_throw_new_error(
+            ThrowNewErrorKind::TypeError,
+            "iterator does not have a throw method",
+            pos,
+        )?;
 
         // If throw method does exist then call it
         self.start_block(has_throw_method_block);
@@ -9335,6 +9345,19 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else {
             Ok(cx.names.default_name().as_string().as_flat())
         }
+    }
+
+    fn gen_throw_new_error(
+        &mut self,
+        kind: ThrowNewErrorKind,
+        message: &str,
+        pos: usize,
+    ) -> EmitResult<()> {
+        let error_type = UInt::new(kind as u32);
+        let message_constant_index = self.add_string_constant(message)?;
+        self.writer
+            .throw_new_error_instruction(error_type, message_constant_index, pos);
+        Ok(())
     }
 }
 

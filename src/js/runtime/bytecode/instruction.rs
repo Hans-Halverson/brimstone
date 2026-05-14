@@ -1682,29 +1682,15 @@ define_instructions!(
         }
     }
 
-    /// Throw a ReferenceError for attempting to delete a super property.
-    ErrorDeleteSuperProperty {
-        camel_case: ErrorDeleteSuperPropertyInstruction,
-        snake_case: error_delete_super_property_instruction,
+    /// Throw a new native error of the given type with a static message in the constant table.
+    ThrowNewError {
+        camel_case: ThrowNewErrorInstruction,
+        snake_case: throw_new_error_instruction,
         can_throw: true,
-        operands: {}
-    }
-
-    /// Throw a ReferenceError for attempting to assign to a call expression in Annex B.
-    ErrorAssignToCallExpression {
-        camel_case: ErrorAssignToCallExpressionInstruction,
-        snake_case: error_assign_to_call_expression_instruction,
-        can_throw: true,
-        operands: {}
-    }
-
-    /// Throw a TypeError for a throw completion in a yield* where the iterator does not have a
-    /// throw method.
-    ErrorIteratorNoThrowMethod {
-        camel_case: ErrorIteratorNoThrowMethodInstruction,
-        snake_case: error_iterator_no_throw_method_instruction,
-        can_throw: true,
-        operands: {}
+        operands: {
+            [0] error_type: UInt,
+            [1] message: ConstantIndex,
+        }
     }
 
     /// Create a new for-in iterator for the given object, storing in dest. Gathers all the iterable
@@ -1946,6 +1932,23 @@ bitflags! {
         const GETTER = 1 << 1;
         /// Whether to define a setter property.
         const SETTER = 1 << 2;
+    }
+}
+
+/// The kind of native error thrown by the `ThrowNewError` instruction.
+#[repr(u8)]
+pub enum ThrowNewErrorKind {
+    ReferenceError = 0,
+    TypeError = 1,
+}
+
+impl ThrowNewErrorKind {
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(Self::ReferenceError),
+            1 => Some(Self::TypeError),
+            _ => None,
+        }
     }
 }
 

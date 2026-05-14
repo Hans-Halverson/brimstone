@@ -67,7 +67,10 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
         .annex_b(flags.contains(TestFlags::ANNEX_B))
         .heap_size(10 * 1024 * 1024)
         .build();
-    let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+    let cx = ContextBuilder::new()
+        .set_options(Rc::new(options))
+        .build()
+        .unwrap();
     let source = Rc::new(Source::new_from_file(&format!("benches/{file}")).unwrap());
     let pcx = ParseContext::new(source);
     (cx, pcx)
@@ -202,7 +205,10 @@ fn context_benches(c: &mut Criterion) {
         || {},
         |_| {
             let options = OptionsBuilder::new().serialized_heap(None).build();
-            let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+            let cx = ContextBuilder::new()
+                .set_options(Rc::new(options))
+                .build()
+                .unwrap();
             (cx, ())
         },
         cleanup2_step,
@@ -217,7 +223,10 @@ fn context_benches(c: &mut Criterion) {
             let options = OptionsBuilder::new()
                 .serialized_heap(Some(serialized_heap))
                 .build();
-            let cx = ContextBuilder::new().set_options(Rc::new(options)).build();
+            let cx = ContextBuilder::new()
+                .set_options(Rc::new(options))
+                .build()
+                .unwrap();
             (cx, ())
         },
         cleanup2_step,

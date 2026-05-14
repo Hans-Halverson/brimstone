@@ -1557,6 +1557,11 @@ pub enum Pattern<'a> {
     Assign(P<'a, AssignmentPattern<'a>>),
     Member(P<'a, MemberExpression<'a>>),
     SuperMember(P<'a, SuperMemberExpression<'a>>),
+    /// In sloppy Annex B mode call expressions are allowed as assignment target patterns and
+    /// instead error at runtime after evaluating the call.
+    ///
+    /// This variant is only preset in sloppy Annex B mode in valid assignment targets.
+    InvalidCall(P<'a, CallExpression<'a>>),
 }
 
 impl<'a> Pattern<'a> {
@@ -1591,7 +1596,7 @@ impl<'a> Pattern<'a> {
                 }
             }
             Pattern::Assign(patt) => patt.left.iter_patterns(f),
-            Pattern::Member(_) | Pattern::SuperMember(_) => {}
+            Pattern::Member(_) | Pattern::SuperMember(_) | Pattern::InvalidCall(_) => {}
         }
     }
 
@@ -1601,7 +1606,7 @@ impl<'a> Pattern<'a> {
             Pattern::Array(patt) => patt.iter_bound_names(f),
             Pattern::Object(patt) => patt.iter_bound_names(f),
             Pattern::Assign(patt) => patt.iter_bound_names(f),
-            Pattern::Member(_) | Pattern::SuperMember(_) => {}
+            Pattern::Member(_) | Pattern::SuperMember(_) | Pattern::InvalidCall(_) => {}
         }
     }
 
@@ -1613,6 +1618,7 @@ impl<'a> Pattern<'a> {
             Pattern::Assign(patt) => patt.loc,
             Pattern::Member(expr) => expr.loc,
             Pattern::SuperMember(expr) => expr.loc,
+            Pattern::InvalidCall(expr) => expr.loc,
         }
     }
 

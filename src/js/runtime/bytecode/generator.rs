@@ -2824,6 +2824,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             | ast::Pattern::Array(_)
             | ast::Pattern::Member(_)
             | ast::Pattern::SuperMember(_) => ExprDest::Any,
+            ast::Pattern::InvalidCall(_) => unreachable!(),
         }
     }
 
@@ -4718,6 +4719,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_store_to_pattern(pattern, stored_value, store_flags)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
+            ast::Pattern::InvalidCall(call) => self.gen_invalid_call_assigment(call, dest),
             ast::Pattern::Assign(_) => {
                 unreachable!("invalid assigment left hand side")
             }
@@ -4788,6 +4790,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
             _ => unreachable!("invalid logical assignment operator"),
         }
+    }
+
+    /// Call expressions can be parsed as an assignment target in sloppy Annex B mode. They
+    /// first evaluate the call expression then throw a `ReferenceError`.
+    fn gen_invalid_call_assigment(
+        &mut self,
+        call: &'a ast::CallExpression<'a>,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
+        let call_result = self.gen_call_expression(call, dest, None)?;
+        self.writer
+            .error_assign_to_call_expression_instruction(call.loc.start);
+
+        Ok(call_result)
     }
 
     fn gen_update_expression(
@@ -4946,6 +4962,8 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.register_allocator.release(object);
 
             self.gen_mov_reg_to_dest(temp, dest)
+        } else if let ast::Expression::Call(call) = &expr.argument {
+            self.gen_invalid_call_assigment(call, dest)
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
@@ -6111,6 +6129,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 Ok(reference)
             }
+            ast::Pattern::InvalidCall(_) => unreachable!(),
         }
     }
 
@@ -7990,7 +8009,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 // Loop body starts by storing this iteration's value to the pattern
                 this.enter_has_assign_expr_context(stmt.left.has_assign_expr());
-                this.gen_store_to_pattern(stmt.left.pattern(), value, store_flags)?;
+                this.gen_for_each_init_store(&stmt.left, value, store_flags)?;
                 this.register_allocator.release(value);
                 this.exit_has_assign_expr_context();
 
@@ -8199,7 +8218,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Otherwise `next` returned a key, so store the key to the pattern
         self.enter_has_assign_expr_context(stmt.left.has_assign_expr());
-        self.gen_store_to_pattern(stmt.left.pattern(), next_result, store_flags)?;
+        self.gen_for_each_init_store(&stmt.left, next_result, store_flags)?;
         self.register_allocator.release(next_result);
         self.exit_has_assign_expr_context();
 
@@ -8224,6 +8243,23 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Normal completion since the loop could always be avoided entirely
         Ok(StmtCompletion::Normal)
+    }
+
+    fn gen_for_each_init_store(
+        &mut self,
+        init: &'a ast::ForEachInit<'a>,
+        value: GenRegister,
+        store_flags: StoreFlags,
+    ) -> EmitResult<()> {
+        // Annex B allows call expressions in for-each initializers
+        if let ast::Pattern::InvalidCall(call) = init.pattern() {
+            let call_result = self.gen_invalid_call_assigment(call, ExprDest::Any)?;
+            self.register_allocator.release(call_result);
+
+            return Ok(());
+        }
+
+        self.gen_store_to_pattern(init.pattern(), value, store_flags)
     }
 
     fn gen_async_iterator_close(&mut self, iterator: GenRegister, pos: Pos) -> EmitResult<()> {

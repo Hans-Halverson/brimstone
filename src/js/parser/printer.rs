@@ -949,6 +949,7 @@ impl<'a> Printer<'a> {
             Pattern::Assign(patt) => self.print_assign_pattern(patt),
             Pattern::Member(expr) => self.print_member_expression(expr),
             Pattern::SuperMember(expr) => self.print_super_member_expression(expr),
+            Pattern::InvalidCall(expr) => self.print_call_expression(expr),
         }
     }
 

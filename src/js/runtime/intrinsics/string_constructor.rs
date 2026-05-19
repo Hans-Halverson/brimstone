@@ -158,7 +158,7 @@ impl StringConstructor {
         _: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let substitution_count = arguments.len() - 1;
+        let substitution_count = arguments.len().saturating_sub(1);
 
         let template_arg = get_argument(cx, arguments, 0);
         let cooked = to_object(cx, template_arg)?;

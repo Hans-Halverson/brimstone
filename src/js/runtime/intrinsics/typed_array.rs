@@ -321,7 +321,8 @@ pub fn to_big_int64_element(cx: Context, value: Handle<Value>) -> EvalResult<i64
     match sign {
         Sign::Plus => Ok(digits[0] as i64),
         Sign::NoSign => Ok(0),
-        Sign::Minus => Ok(-(digits[0] as i64)),
+        // Wrapping negation correctly keeps i64::MIN as i64::MIN
+        Sign::Minus => Ok((digits[0] as i64).wrapping_neg()),
     }
 }
 

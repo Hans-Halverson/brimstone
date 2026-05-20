@@ -1,9 +1,9 @@
 Error: 
-  ┌ tests/js_error/source_locations/expression/super_call/basic.js:3:11
+  ┌ source_locations/expression/super_call/basic.js:3:11
   |
 3 |     throw new Error();
   |           ^
 Stack trace:
-  at A (tests/js_error/source_locations/expression/super_call/basic.js:3:11)
-  at B (tests/js_error/source_locations/expression/super_call/basic.js:9:5)
-  at <global> (tests/js_error/source_locations/expression/super_call/basic.js:13:1)
+  at A (source_locations/expression/super_call/basic.js:3:11)
+  at B (source_locations/expression/super_call/basic.js:9:5)
+  at <global> (source_locations/expression/super_call/basic.js:13:1)

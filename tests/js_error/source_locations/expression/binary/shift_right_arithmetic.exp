@@ -1,7 +1,7 @@
 TypeError: BigInt cannot be converted to number
-  ┌ tests/js_error/source_locations/expression/binary/shift_right_arithmetic.js:1:3
+  ┌ source_locations/expression/binary/shift_right_arithmetic.js:1:3
   |
 1 | 1 >> 2n
   |   ^
 Stack trace:
-  at <global> (tests/js_error/source_locations/expression/binary/shift_right_arithmetic.js:1:3)
+  at <global> (source_locations/expression/binary/shift_right_arithmetic.js:1:3)

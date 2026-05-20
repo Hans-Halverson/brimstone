@@ -1,8 +1,8 @@
 Error: 
-  ┌ tests/js_error/source_locations/statement/for_of/iterator_close.js:8:15
+  ┌ source_locations/statement/for_of/iterator_close.js:8:15
   |
 8 |         throw new Error();
   |               ^
 Stack trace:
-  at get return (tests/js_error/source_locations/statement/for_of/iterator_close.js:8:15)
-  at <global> (tests/js_error/source_locations/statement/for_of/iterator_close.js:14:12)
+  at get return (source_locations/statement/for_of/iterator_close.js:8:15)
+  at <global> (source_locations/statement/for_of/iterator_close.js:14:12)

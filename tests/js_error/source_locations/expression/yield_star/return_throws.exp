@@ -1,10 +1,10 @@
 Error: return
-  ┌ tests/js_error/source_locations/expression/yield_star/return_throws.js:8:15
+  ┌ source_locations/expression/yield_star/return_throws.js:8:15
   |
 8 |         throw new Error('return');
   |               ^
 Stack trace:
-  at return (tests/js_error/source_locations/expression/yield_star/return_throws.js:8:15)
-  at generator (tests/js_error/source_locations/expression/yield_star/return_throws.js:15:3)
+  at return (source_locations/expression/yield_star/return_throws.js:8:15)
+  at generator (source_locations/expression/yield_star/return_throws.js:15:3)
   at return (<native>)
-  at <global> (tests/js_error/source_locations/expression/yield_star/return_throws.js:20:1)
+  at <global> (source_locations/expression/yield_star/return_throws.js:20:1)

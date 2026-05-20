@@ -1,8 +1,8 @@
 Error: 
-  ┌ tests/js_error/source_locations/class/static_initializer/call.js:4:11
+  ┌ source_locations/class/static_initializer/call.js:4:11
   |
 4 |     throw new Error();
   |           ^
 Stack trace:
-  at staticInitializer (tests/js_error/source_locations/class/static_initializer/call.js:4:11)
-  at <global> (tests/js_error/source_locations/class/static_initializer/call.js:2:1)
+  at staticInitializer (source_locations/class/static_initializer/call.js:4:11)
+  at <global> (source_locations/class/static_initializer/call.js:2:1)

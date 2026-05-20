@@ -1,8 +1,8 @@
 Error: 
-  ┌ tests/js_error/source_locations/class/fields/to_property_key.js:1:37
+  ┌ source_locations/class/fields/to_property_key.js:1:37
   |
 1 | var poisoned = { toString() { throw new Error() } };
   |                                     ^
 Stack trace:
-  at toString (tests/js_error/source_locations/class/fields/to_property_key.js:1:37)
-  at <global> (tests/js_error/source_locations/class/fields/to_property_key.js:4:4)
+  at toString (source_locations/class/fields/to_property_key.js:1:37)
+  at <global> (source_locations/class/fields/to_property_key.js:4:4)

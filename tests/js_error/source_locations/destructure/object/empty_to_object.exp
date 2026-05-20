@@ -1,7 +1,7 @@
 TypeError: null has no properties
-  ┌ tests/js_error/source_locations/destructure/object/empty_to_object.js:1:5
+  ┌ source_locations/destructure/object/empty_to_object.js:1:5
   |
 1 | var {} = null;
   |     ^
 Stack trace:
-  at <global> (tests/js_error/source_locations/destructure/object/empty_to_object.js:1:5)
+  at <global> (source_locations/destructure/object/empty_to_object.js:1:5)

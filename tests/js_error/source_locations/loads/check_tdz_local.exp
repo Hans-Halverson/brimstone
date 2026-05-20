@@ -1,8 +1,8 @@
 ReferenceError: can't access `x` before initialization
-  ┌ tests/js_error/source_locations/loads/check_tdz_local.js:2:3
+  ┌ source_locations/loads/check_tdz_local.js:2:3
   |
 2 |   x;
   |   ^
 Stack trace:
-  at test (tests/js_error/source_locations/loads/check_tdz_local.js:2:3)
-  at <global> (tests/js_error/source_locations/loads/check_tdz_local.js:6:1)
+  at test (source_locations/loads/check_tdz_local.js:2:3)
+  at <global> (source_locations/loads/check_tdz_local.js:6:1)

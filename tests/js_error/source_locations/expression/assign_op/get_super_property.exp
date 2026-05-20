@@ -1,9 +1,9 @@
 Error: 
-  ┌ tests/js_error/source_locations/expression/assign_op/get_super_property.js:3:11
+  ┌ source_locations/expression/assign_op/get_super_property.js:3:11
   |
 3 |     throw new Error();
   |           ^
 Stack trace:
-  at get foo (tests/js_error/source_locations/expression/assign_op/get_super_property.js:3:11)
-  at test (tests/js_error/source_locations/expression/assign_op/get_super_property.js:9:10)
-  at <global> (tests/js_error/source_locations/expression/assign_op/get_super_property.js:14:1)
+  at get foo (source_locations/expression/assign_op/get_super_property.js:3:11)
+  at test (source_locations/expression/assign_op/get_super_property.js:9:10)
+  at <global> (source_locations/expression/assign_op/get_super_property.js:14:1)

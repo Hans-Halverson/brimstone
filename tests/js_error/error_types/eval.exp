@@ -1,7 +1,7 @@
 Error: This is an error
-  ┌ tests/js_error/error_types/eval.js:1:7
+  ┌ error_types/eval.js:1:7
   |
 1 | throw new Error('This is an error');
   |       ^
 Stack trace:
-  at <global> (tests/js_error/error_types/eval.js:1:7)
+  at <global> (error_types/eval.js:1:7)

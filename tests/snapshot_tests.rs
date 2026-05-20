@@ -95,10 +95,13 @@ fn print_error(path: &str) -> GenericResult<String> {
             cx.evaluate_script(source)
         };
 
-        match result {
-            Ok(_) => Err(format!("{path}: Expected an error").into()),
-            Err(err) => Ok(err.format(cx, &FormatOptions::default())),
-        }
+        let err_string = match result {
+            Ok(_) => return Err(format!("{path}: Expected an error").into()),
+            Err(err) => err.format(cx, &FormatOptions::default()),
+        };
+
+        // Remove the directory prefix to make paths relative to the test directory
+        Ok(err_string.replace("tests/js_error/", ""))
     })
 }
 

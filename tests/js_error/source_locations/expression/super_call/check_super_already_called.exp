@@ -1,8 +1,8 @@
 ReferenceError: super constructor called multiple times
-  ┌ tests/js_error/source_locations/expression/super_call/check_super_already_called.js:6:5
+  ┌ source_locations/expression/super_call/check_super_already_called.js:6:5
   |
 6 |     super();
   |     ^
 Stack trace:
-  at C (tests/js_error/source_locations/expression/super_call/check_super_already_called.js:6:5)
-  at <global> (tests/js_error/source_locations/expression/super_call/check_super_already_called.js:10:1)
+  at C (source_locations/expression/super_call/check_super_already_called.js:6:5)
+  at <global> (source_locations/expression/super_call/check_super_already_called.js:10:1)

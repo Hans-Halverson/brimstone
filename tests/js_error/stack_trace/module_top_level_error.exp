@@ -1,8 +1,8 @@
 Error: test
-  ┌ tests/js_error/stack_trace/module_top_level_error.js:2:9
+  ┌ stack_trace/module_top_level_error.js:2:9
   |
 2 |   throw new Error('test');
   |         ^
 Stack trace:
-  at foo (tests/js_error/stack_trace/module_top_level_error.js:2:9)
-  at <module> (tests/js_error/stack_trace/module_top_level_error.js:5:1)
+  at foo (stack_trace/module_top_level_error.js:2:9)
+  at <module> (stack_trace/module_top_level_error.js:5:1)

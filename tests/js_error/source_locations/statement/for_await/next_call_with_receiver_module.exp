@@ -1,10 +1,10 @@
 Error: 
-  ┌ tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:5:15
+  ┌ source_locations/statement/for_await/next_call_with_receiver_module.js:5:15
   |
 5 |         throw new Error()
   |               ^
 Stack trace:
-  at next (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:5:15)
+  at next (source_locations/statement/for_await/next_call_with_receiver_module.js:5:15)
   at next (<native>)
-  at foo (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:13:20)
-  at <module> (tests/js_error/source_locations/statement/for_await/next_call_with_receiver_module.js:16:7)
+  at foo (source_locations/statement/for_await/next_call_with_receiver_module.js:13:20)
+  at <module> (source_locations/statement/for_await/next_call_with_receiver_module.js:16:7)

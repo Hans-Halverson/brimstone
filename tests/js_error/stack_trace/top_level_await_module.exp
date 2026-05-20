@@ -1,8 +1,8 @@
 Error: test
-  ┌ tests/js_error/stack_trace/top_level_await_module.js:2:9
+  ┌ stack_trace/top_level_await_module.js:2:9
   |
 2 |   throw new Error('test');
   |         ^
 Stack trace:
-  at foo (tests/js_error/stack_trace/top_level_await_module.js:2:9)
-  at <module> (tests/js_error/stack_trace/top_level_await_module.js:5:7)
+  at foo (stack_trace/top_level_await_module.js:2:9)
+  at <module> (stack_trace/top_level_await_module.js:5:7)

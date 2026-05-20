@@ -158,6 +158,7 @@ pub enum HeapItemKind {
 
     // Vectors
     ValueVec,
+    WeakVec,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -392,6 +393,7 @@ impl BaseDescriptors {
         other_heap_item_descriptor!(HeapItemKind::GlobalScopes);
 
         other_heap_item_descriptor!(HeapItemKind::ValueVec);
+        other_heap_item_descriptor!(HeapItemKind::WeakVec);
 
         Ok(base_descriptors)
     }

@@ -8,10 +8,10 @@ A simple, generic snapshot test runner is found in the `snapshot` directory. Thi
 
 All snapshot tests are run with `cargo test`.
 
-- `js_bytecode` contains snapshot tests for bytecode generation.
-- `js_error` contains snapshot tests for error messages.
-- `js_parser` contains snapshot tests for the parser.
-- `js_regexp_bytecode` contains snapshot tests for regexp bytecode generation.
+- `bytecode` contains snapshot tests for bytecode generation.
+- `error` contains snapshot tests for error messages.
+- `parser` contains snapshot tests for the parser.
+- `regexp_bytecode` contains snapshot tests for regexp bytecode generation.
 
 # Integration Tests
 

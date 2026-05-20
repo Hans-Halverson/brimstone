@@ -11,4 +11,4 @@ clap = { workspace = true, features = ["derive"] }
 
 [[test]]
 name = "snapshot_tests"
-path = "snapshot_tests.rs"
+path = "snapshot/snapshot_tests.rs"

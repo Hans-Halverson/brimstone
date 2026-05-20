@@ -1,20 +1,16 @@
 use std::{ops::Range, ptr::NonNull};
 
-use crate::{
-    common::constants::MAX_HEAP_SIZE,
-    runtime::{
-        collections::BsWeakVec,
-        gc::Heap,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        interned_strings::InternedStrings,
-        intrinsics::{
-            finalization_registry_object::FinalizationRegistryObject,
-            weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
-            weak_set_object::WeakSetObject,
-        },
-        string_value::FlatString,
-        Context, Value,
+use crate::runtime::{
+    collections::BsWeakVec,
+    gc::Heap,
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    interned_strings::InternedStrings,
+    intrinsics::{
+        finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
+    string_value::FlatString,
+    Context, Value,
 };
 
 use super::{AnyHeapItem, HeapItem, HeapPtr, HeapVisitor};
@@ -153,7 +149,7 @@ impl GarbageCollector {
                 }
             }
 
-            new_heap_size = new_heap_size.min(MAX_HEAP_SIZE);
+            new_heap_size = new_heap_size.min(cx.options.max_heap_size);
 
             Some(new_heap_size)
         } else {

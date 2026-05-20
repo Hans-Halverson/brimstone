@@ -1,7 +1,7 @@
 use brimstone_core::{
     common::{
         error::FormatOptions,
-        options::{Options, OptionsBuilder},
+        options::{Args, Options, OptionsBuilder},
     },
     parser::{self, ast, source::Source, ParseContext},
     runtime::{
@@ -13,11 +13,13 @@ use brimstone_core::{
 
 use std::{
     cmp::min,
-    env, error, fs,
+    env, error, fs, iter,
     path::{Path, PathBuf},
     rc::Rc,
     sync::{LazyLock, Mutex},
 };
+
+use clap::Parser;
 
 type GenericResult<T> = Result<T, Box<dyn error::Error>>;
 
@@ -56,7 +58,8 @@ fn js_parser_snapshot_tests() -> GenericResult<()> {
 fn print_ast(path: &str) -> GenericResult<String> {
     let options = OptionsBuilder::new()
         .annex_b(path.contains("annex_b"))
-        .build();
+        .build()
+        .unwrap();
 
     let pcx = new_parse_context(path)?;
     let parse_result = parse_script_or_module(&pcx, path, Rc::new(options))?;
@@ -77,7 +80,8 @@ fn print_error(path: &str) -> GenericResult<String> {
 
     let options = OptionsBuilder::new()
         .annex_b(path.contains("annex_b"))
-        .build();
+        .build()
+        .unwrap();
 
     let cx = ContextBuilder::new()
         .set_options(Rc::new(options))
@@ -96,6 +100,31 @@ fn print_error(path: &str) -> GenericResult<String> {
             Err(err) => Ok(err.format(cx, &FormatOptions::default())),
         }
     })
+}
+
+#[test]
+fn js_cli_error_snapshot_tests() -> GenericResult<()> {
+    init();
+
+    let parser_tests_dir = get_test_root("js_cli");
+    run_snapshot_tests(&parser_tests_dir, &mut |path| print_cli_error(path))
+}
+
+fn print_cli_error(path: &str) -> GenericResult<String> {
+    let file = fs::read_to_string(path).unwrap();
+
+    // Clap expects the first argument to be the binary name so add a fake value
+    let args_iter = iter::once("<binary>").chain(file.split_whitespace());
+
+    let args = match Args::try_parse_from(args_iter) {
+        Ok(args) => args,
+        Err(err) => return Ok(err.to_string()),
+    };
+
+    match OptionsBuilder::new_from_args(&args).build() {
+        Ok(_) => Ok("PARSED".to_string()),
+        Err(err) => Ok(err.to_string()),
+    }
 }
 
 #[test]
@@ -139,7 +168,8 @@ fn run_and_return_bytecode(
     let options = OptionsBuilder::new()
         .print_bytecode(true)
         .dump_buffer(Some(Mutex::new(String::new())))
-        .build();
+        .build()
+        .unwrap();
     let options = Rc::new(options);
 
     let cx = ContextBuilder::new()
@@ -160,7 +190,8 @@ fn print_regexp_bytecode(path: &str) -> GenericResult<String> {
         .print_regexp_bytecode(true)
         .dump_buffer(Some(Mutex::new(String::new())))
         .no_color(true)
-        .build();
+        .build()
+        .unwrap();
 
     let options = Rc::new(options);
     let cx = ContextBuilder::new()
@@ -268,7 +299,7 @@ fn visit_directory(
             visit_directory(env, &path, test_fn)?
         } else if path.is_file() {
             if let Some(extension) = path.extension() {
-                if let Some("js") = extension.to_str() {
+                if let Some("js" | "test") = extension.to_str() {
                     process_snapshot_test_file(env, &path, test_fn)?
                 }
             }

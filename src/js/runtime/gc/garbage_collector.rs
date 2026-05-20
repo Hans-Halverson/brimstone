@@ -391,23 +391,28 @@ impl GarbageCollector {
         let mut next_weak_ref = self.weak_ref_list;
         while let Some(mut weak_ref) = next_weak_ref {
             let target = weak_ref.weak_ref_target();
+            next_weak_ref = weak_ref.next_weak_ref();
 
-            debug_assert!(target.is_pointer());
-            let target_ptr = target.as_pointer().as_ptr().cast();
-
-            if self.is_in_moved_space(target_ptr) {
-                let target_descriptor = target.as_pointer().descriptor();
-
-                // Target is known to be live if it has already moved (and left a forwarding pointer)
-                if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
-                    weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
-                } else {
-                    // Otherwise target was garbage collected so reset target to undefined
-                    weak_ref.set_weak_ref_target(Value::undefined());
-                }
+            // Target may have already been cleared to undefined by a prior GC
+            if !target.is_pointer() {
+                continue;
             }
 
-            next_weak_ref = weak_ref.next_weak_ref();
+            let target_ptr = target.as_pointer().as_ptr().cast();
+
+            if !self.is_in_moved_space(target_ptr) {
+                continue;
+            }
+
+            let target_descriptor = target.as_pointer().descriptor();
+
+            // Target is known to be live if it has already moved (and left a forwarding pointer)
+            if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
+            } else {
+                // Otherwise target was garbage collected so reset target to undefined
+                weak_ref.set_weak_ref_target(Value::undefined());
+            }
         }
     }
 

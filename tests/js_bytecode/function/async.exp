@@ -61,37 +61,37 @@
      2: LoadImmediate r1, 1
      5: LoadImmediate r1, 2
      8: LoadImmediate r2, 3
-    11: Add r1, r1, r2
-    15: Await r1, r2, r0, r1
-    20: JumpTrue r2, 5 (.L0)
-    23: Throw r1
+    11: Add r1, r1, r2, fb0
+    16: Await r1, r2, r0, r1
+    21: JumpTrue r2, 5 (.L0)
+    24: Throw r1
   .L0:
-    25: LoadImmediate r1, 4
-    28: LoadUndefined r1
-    30: ResolvePromise r0, r1
-    33: Ret r0
-    35: RejectPromise r0, r1
-    38: Ret r0
+    26: LoadImmediate r1, 4
+    29: LoadUndefined r1
+    31: ResolvePromise r0, r1
+    34: Ret r0
+    36: RejectPromise r0, r1
+    39: Ret r0
   Exception Handlers:
-    2-35 -> 35 (r1)
+    2-36 -> 36 (r1)
 }
 
 [BytecodeFunction: paramExpressions] {
   Parameters: 1, Registers: 3
      0: NewPromise r0
-     2: JumpNotUndefined a0, 13 (.L0)
+     2: JumpNotUndefined a0, 14 (.L0)
      5: LoadImmediate r1, 1
      8: LoadImmediate r2, 2
-    11: Add a0, r1, r2
+    11: Add a0, r1, r2, fb0
   .L0:
-    15: LoadImmediate r1, 3
-    18: LoadUndefined r1
-    20: ResolvePromise r0, r1
-    23: Ret r0
-    25: RejectPromise r0, r1
-    28: Ret r0
+    16: LoadImmediate r1, 3
+    19: LoadUndefined r1
+    21: ResolvePromise r0, r1
+    24: Ret r0
+    26: RejectPromise r0, r1
+    29: Ret r0
   Exception Handlers:
-    2-25 -> 25 (r1)
+    2-26 -> 26 (r1)
 }
 
 [BytecodeFunction: returnInFinally] {

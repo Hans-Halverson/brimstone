@@ -54,8 +54,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 1, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, fb0
+    19: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -75,23 +75,23 @@
     31: PushWithScope r1, c1
     34: LoadDynamic r1, c2
     37: LoadImmediate r2, 2
-    40: Add r1, r1, r2
-    44: LoadImmediate r1, 0
-    47: StoreDynamic r1, c2
-    50: LoadImmediate r0, 3
-    53: LoadImmediate r1, 4
-    56: Add r1, r0, r1
-    60: LoadDynamic r1, c3
-    63: LoadImmediate r2, 5
-    66: Add r1, r1, r2
-    70: LoadImmediate r1, 6
-    73: Add r1, r0, r1
-    77: LoadDynamic r1, c3
-    80: LoadImmediate r2, 7
-    83: Add r1, r1, r2
-    87: PopScope 
-    88: LoadUndefined r1
-    90: Ret r1
+    40: Add r1, r1, r2, fb0
+    45: LoadImmediate r1, 0
+    48: StoreDynamic r1, c2
+    51: LoadImmediate r0, 3
+    54: LoadImmediate r1, 4
+    57: Add r1, r0, r1, fb1
+    62: LoadDynamic r1, c3
+    65: LoadImmediate r2, 5
+    68: Add r1, r1, r2, fb2
+    73: LoadImmediate r1, 6
+    76: Add r1, r0, r1, fb3
+    81: LoadDynamic r1, c3
+    84: LoadImmediate r2, 7
+    87: Add r1, r1, r2, fb4
+    92: PopScope 
+    93: LoadUndefined r1
+    95: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

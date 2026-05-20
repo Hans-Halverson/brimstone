@@ -33,8 +33,8 @@
      0: LoadImmediate r2, 3
      3: LoadImmediate r0, 1
      6: LoadImmediate r1, 2
-     9: Add r2, r0, r1
-    13: Ret r2
+     9: Add r2, r0, r1, fb0
+    14: Ret r2
 }
 
 [BytecodeFunction: testDuplicates] {
@@ -50,13 +50,13 @@
      0: LoadImmediate r0, 1
      3: LoadImmediate r4, 1
      6: LoadImmediate r5, 2
-     9: Add r4, r4, r5
-    13: LoadImmediate r5, 3
-    16: Add r1, r4, r5
-    20: Mov r2, a0
-    23: LoadGlobal r3, c0
-    26: LoadUndefined r4
-    28: Ret r4
+     9: Add r4, r4, r5, fb0
+    14: LoadImmediate r5, 3
+    17: Add r1, r4, r5, fb1
+    22: Mov r2, a0
+    25: LoadGlobal r3, c0
+    28: LoadUndefined r4
+    30: Ret r4
   Constant Table:
     0: [String: y]
 }

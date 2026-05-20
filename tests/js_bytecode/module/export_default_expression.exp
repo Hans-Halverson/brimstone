@@ -2,8 +2,8 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
      3: LoadImmediate r1, 2
-     6: Add r0, r0, r1
-    10: StoreToModule r0, 1, 0
-    14: LoadUndefined r0
-    16: Ret r0
+     6: Add r0, r0, r1, fb0
+    11: StoreToModule r0, 1, 0
+    15: LoadUndefined r0
+    17: Ret r0
 }

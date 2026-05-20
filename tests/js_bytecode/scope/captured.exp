@@ -71,8 +71,8 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadImmediate r1, 2
-     7: Add r0, r0, r1
-    11: Ret r0
+     7: Add r0, r0, r1, fb0
+    12: Ret r0
 }
 
 [BytecodeFunction: multipleCaptures] {
@@ -94,8 +94,8 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadFromScope r1, 1, 0
-     8: Add r0, r0, r1
-    12: Ret r0
+     8: Add r0, r0, r1, fb0
+    13: Ret r0
 }
 
 [BytecodeFunction: capturedLexical] {
@@ -114,9 +114,9 @@
     35: CheckTdz r1, c2
     38: LoadFromScope r2, 1, 0
     42: CheckTdz r2, c3
-    45: Add r1, r1, r2
-    49: LoadUndefined r1
-    51: Ret r1
+    45: Add r1, r1, r2, fb0
+    50: LoadUndefined r1
+    52: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -130,8 +130,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 1, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, fb0
+    19: Ret r0
   Constant Table:
     0: [String: c1]
     1: [String: l1]
@@ -173,15 +173,15 @@
      0: NewClosure r0, c0
      3: LoadGlobal r1, c1
      6: LoadGlobal r2, c2
-     9: Add r1, r1, r2
-    13: LoadGlobal r2, c3
-    16: Add r1, r1, r2
-    20: LoadImmediate r1, 3
-    23: StoreGlobal r1, c1
-    26: LoadImmediate r1, 5
-    29: StoreGlobal r1, c3
-    32: LoadUndefined r1
-    34: Ret r1
+     9: Add r1, r1, r2, fb0
+    14: LoadGlobal r2, c3
+    17: Add r1, r1, r2, fb1
+    22: LoadImmediate r1, 3
+    25: StoreGlobal r1, c1
+    28: LoadImmediate r1, 5
+    31: StoreGlobal r1, c3
+    34: LoadUndefined r1
+    36: Ret r1
   Constant Table:
     0: [BytecodeFunction: inner1]
     1: [String: globalVar1]
@@ -197,11 +197,11 @@
      8: StoreToScope r1, 0, 0
     12: LoadGlobal r1, c2
     15: LoadGlobal r2, c3
-    18: Add r1, r1, r2
-    22: LoadGlobal r2, c4
-    25: Add r1, r1, r2
-    29: LoadUndefined r1
-    31: Ret r1
+    18: Add r1, r1, r2, fb0
+    23: LoadGlobal r2, c4
+    26: Add r1, r1, r2, fb1
+    31: LoadUndefined r1
+    33: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner2]
@@ -214,12 +214,12 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadGlobal r1, c0
-     7: Add r0, r0, r1
-    11: LoadGlobal r1, c1
-    14: Add r0, r0, r1
-    18: LoadGlobal r1, c2
-    21: Add r0, r0, r1
-    25: Ret r0
+     7: Add r0, r0, r1, fb0
+    12: LoadGlobal r1, c1
+    15: Add r0, r0, r1, fb1
+    20: LoadGlobal r1, c2
+    23: Add r0, r0, r1, fb2
+    28: Ret r0
   Constant Table:
     0: [String: globalVar1]
     1: [String: globalConst1]
@@ -247,9 +247,9 @@
      8: StoreToScope r1, 0, 0
     12: LoadFromScope r1, 0, 1
     16: LoadFromScope r2, 0, 0
-    20: Add r1, r1, r2
-    24: LoadUndefined r1
-    26: Ret r1
+    20: Add r1, r1, r2, fb0
+    25: LoadUndefined r1
+    27: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner2]
@@ -263,11 +263,11 @@
      8: StoreToScope r1, 0, 0
     12: LoadFromScope r1, 0, 2
     16: LoadFromScope r2, 0, 1
-    20: Add r1, r1, r2
-    24: LoadFromScope r2, 0, 0
-    28: Add r1, r1, r2
-    32: LoadUndefined r1
-    34: Ret r1
+    20: Add r1, r1, r2, fb0
+    25: LoadFromScope r2, 0, 0
+    29: Add r1, r1, r2, fb1
+    34: LoadUndefined r1
+    36: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner3]
@@ -278,11 +278,11 @@
      0: LoadImmediate r0, 4
      3: LoadFromScope r1, 0, 2
      7: LoadFromScope r2, 0, 1
-    11: Add r1, r1, r2
-    15: LoadFromScope r2, 0, 0
-    19: Add r1, r1, r2
-    23: Add r1, r1, r0
-    27: Ret r1
+    11: Add r1, r1, r2, fb0
+    16: LoadFromScope r2, 0, 0
+    20: Add r1, r1, r2, fb1
+    25: Add r1, r1, r0, fb2
+    30: Ret r1
 }
 
 [BytecodeFunction: arrowFunctionsCapture] {
@@ -326,10 +326,10 @@
     22: StoreToScope r1, 2, 0
     26: LoadFromScope r1, 0, 0
     30: LoadFromScope r2, 1, 0
-    34: Add r1, r1, r2
-    38: LoadFromScope r2, 2, 0
-    42: Add r1, r1, r2
-    46: Ret r1
+    34: Add r1, r1, r2, fb0
+    39: LoadFromScope r2, 2, 0
+    43: Add r1, r1, r2, fb1
+    48: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]
@@ -339,10 +339,10 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadFromScope r1, 1, 0
-     8: Add r0, r0, r1
-    12: LoadFromScope r1, 2, 0
-    16: Add r0, r0, r1
-    20: Ret r0
+     8: Add r0, r0, r1, fb0
+    13: LoadFromScope r1, 2, 0
+    17: Add r0, r0, r1, fb1
+    22: Ret r0
 }
 
 [BytecodeFunction: blockScopes] {
@@ -384,14 +384,14 @@
      0: LoadFromScope r0, 0, 3
      4: LoadFromScope r1, 0, 2
      8: CheckTdz r1, c0
-    11: Add r0, r0, r1
-    15: LoadFromScope r1, 0, 1
-    19: CheckTdz r1, c1
-    22: Add r0, r0, r1
-    26: LoadFromScope r1, 0, 0
-    30: CheckTdz r1, c2
-    33: Add r0, r0, r1
-    37: Ret r0
+    11: Add r0, r0, r1, fb0
+    16: LoadFromScope r1, 0, 1
+    20: CheckTdz r1, c1
+    23: Add r0, r0, r1, fb1
+    28: LoadFromScope r1, 0, 0
+    32: CheckTdz r1, c2
+    35: Add r0, r0, r1, fb2
+    40: Ret r0
   Constant Table:
     0: [String: v2]
     1: [String: v3]

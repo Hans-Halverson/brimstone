@@ -36,15 +36,15 @@
     108: CheckTdz r0, c16
     111: LoadFromScope r1, 5, 0
     115: CheckTdz r1, c17
-    118: Add r0, r0, r1
-    122: StoreToScope r0, 9, 0
-    126: LoadFromScope r0, 11, 0
-    130: CheckTdz r0, c18
-    133: StoreToScope r0, 10, 0
-    137: LoadImmediate r0, 1
-    140: StoreToScope r0, 11, 0
-    144: LoadUndefined r0
-    146: Ret r0
+    118: Add r0, r0, r1, fb0
+    123: StoreToScope r0, 9, 0
+    127: LoadFromScope r0, 11, 0
+    131: CheckTdz r0, c18
+    134: StoreToScope r0, 10, 0
+    138: LoadImmediate r0, 1
+    141: StoreToScope r0, 11, 0
+    145: LoadUndefined r0
+    147: Ret r0
   Constant Table:
     0: [BytecodeFunction: tdzGlobals]
     1: [String: tdzGlobals]
@@ -90,8 +90,8 @@
      0: LoadImmediate r2, 3
      3: LoadImmediate r0, 1
      6: LoadImmediate r1, 2
-     9: Add r2, r0, r1
-    13: Ret r2
+     9: Add r2, r0, r1, fb0
+    14: Ret r2
 }
 
 [BytecodeFunction: tdzLocals] {
@@ -102,16 +102,16 @@
      6: LoadImmediate r5, 3
      9: CheckTdz r1, c0
     12: CheckTdz r2, c1
-    15: Add r0, r1, r2
-    19: LoadImmediate r1, 1
-    22: LoadImmediate r2, 1
-    25: CheckTdz r4, c2
-    28: Mov r3, r4
-    31: LoadImmediate r4, 2
-    34: CheckTdz r1, c0
-    37: CheckTdz r2, c1
-    40: Add r5, r1, r2
-    44: Ret r5
+    15: Add r0, r1, r2, fb0
+    20: LoadImmediate r1, 1
+    23: LoadImmediate r2, 1
+    26: CheckTdz r4, c2
+    29: Mov r3, r4
+    32: LoadImmediate r4, 2
+    35: CheckTdz r1, c0
+    38: CheckTdz r2, c1
+    41: Add r5, r1, r2, fb1
+    46: Ret r5
   Constant Table:
     0: [String: c1]
     1: [String: l1]
@@ -136,9 +136,9 @@
   Parameters: 0, Registers: 2
      0: LoadUndefined r0
      2: LoadImmediate r1, 2
-     5: Add r1, r0, r1
-     9: LoadUndefined r1
-    11: Ret r1
+     5: Add r1, r0, r1, fb0
+    10: LoadUndefined r1
+    12: Ret r1
 }
 
 [BytecodeFunction: assigningConst] {

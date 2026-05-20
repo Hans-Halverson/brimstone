@@ -21,8 +21,8 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
      3: LoadFromScope r1, 1, 0
-     7: Add r0, r0, r1
-    11: Ret r0
+     7: Add r0, r0, r1, fb0
+    12: Ret r0
 }
 
 [BytecodeFunction: capturedFunctionThis] {
@@ -44,16 +44,16 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 2
      3: LoadFromScope r1, 0, 0
-     7: Add r0, r0, r1
-    11: Ret r0
+     7: Add r0, r0, r1, fb0
+    12: Ret r0
 }
 
 [BytecodeFunction: <anonymous>] {
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 3
      3: NewClosure r1, c0
-     6: Add r0, r0, r1
-    10: Ret r0
+     6: Add r0, r0, r1, fb0
+    11: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
 }
@@ -62,8 +62,8 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 4
      3: NewClosure r1, c0
-     6: Add r0, r0, r1
-    10: Ret r0
+     6: Add r0, r0, r1, fb0
+    11: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
 }
@@ -72,8 +72,8 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 5
      3: LoadFromScope r1, 0, 0
-     7: Add r0, r0, r1
-    11: Ret r0
+     7: Add r0, r0, r1, fb0
+    12: Ret r0
 }
 
 [BytecodeFunction: noCapture] {

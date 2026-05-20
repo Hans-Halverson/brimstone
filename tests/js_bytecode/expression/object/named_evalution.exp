@@ -81,13 +81,13 @@
      0: NewObject r0
      2: LoadImmediate r1, 1
      5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: NewClosure r2, c0
-    15: DefineProperty r0, r1, r2, 1
-    20: LoadImmediate r1, 3
-    23: NewClosure r2, c1
-    26: DefineProperty r0, r1, r2, 1
-    31: Ret r0
+     8: Add r1, r1, r2, fb0
+    13: NewClosure r2, c0
+    16: DefineProperty r0, r1, r2, 1
+    21: LoadImmediate r1, 3
+    24: NewClosure r2, c1
+    27: DefineProperty r0, r1, r2, 1
+    32: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]

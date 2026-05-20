@@ -76,9 +76,9 @@
      5: DefineNamedProperty r0, c0, r1
      9: LoadImmediate r1, 2
     12: LoadImmediate r2, 3
-    15: Add r1, r1, r2
-    19: DefineNamedProperty r0, c1, r1
-    23: Ret r0
+    15: Add r1, r1, r2, fb0
+    20: DefineNamedProperty r0, c1, r1
+    24: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: global]
@@ -108,10 +108,10 @@
     19: DefineProperty r0, r1, r2, 0
     24: LoadImmediate r1, 4
     27: LoadImmediate r2, 5
-    30: Add r1, r1, r2
-    34: LoadImmediate r2, 6
-    37: DefineProperty r0, r1, r2, 0
-    42: Ret r0
+    30: Add r1, r1, r2, fb0
+    35: LoadImmediate r2, 6
+    38: DefineProperty r0, r1, r2, 0
+    43: Ret r0
   Constant Table:
     0: [String: a]
 }
@@ -122,9 +122,9 @@
      2: CopyDataProperties r0, a0, a0, 0
      7: LoadImmediate r1, 1
     10: LoadImmediate r2, 2
-    13: Add r1, r1, r2
-    17: CopyDataProperties r0, r1, r1, 0
-    22: Ret r0
+    13: Add r1, r1, r2, fb0
+    18: CopyDataProperties r0, r1, r1, 0
+    23: Ret r0
 }
 
 [BytecodeFunction: proto] {
@@ -132,9 +132,9 @@
      0: NewObject r0
      2: LoadImmediate r1, 1
      5: LoadImmediate r2, 2
-     8: Add r1, r1, r2
-    12: SetPrototypeOf r0, r1
-    15: Ret r0
+     8: Add r1, r1, r2, fb0
+    13: SetPrototypeOf r0, r1
+    16: Ret r0
   Constant Table:
     0: [String: __proto__]
 }

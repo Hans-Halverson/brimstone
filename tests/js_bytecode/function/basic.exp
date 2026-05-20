@@ -23,8 +23,8 @@
 
 [BytecodeFunction: test1] {
   Parameters: 2, Registers: 1
-    0: Add r0, a0, a1
-    4: Ret r0
+    0: Add r0, a0, a1, fb0
+    5: Ret r0
 }
 
 [BytecodeFunction: test2] {

@@ -50,62 +50,62 @@
 [BytecodeFunction: logicalAndBoolean] {
   Parameters: 0, Registers: 3
      0: LoadTrue r0
-     2: JumpFalse r0, 13 (.L0)
+     2: JumpFalse r0, 14 (.L0)
      5: LoadImmediate r1, 1
      8: LoadImmediate r2, 2
-    11: Add r0, r1, r2
+    11: Add r0, r1, r2, fb0
   .L0:
-    15: Ret r0
+    16: Ret r0
 }
 
 [BytecodeFunction: logicalAndNotBoolean] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
      3: LoadImmediate r2, 2
-     6: Add r0, r1, r2
-    10: JumpToBooleanFalse r0, 13 (.L0)
-    13: LoadImmediate r1, 3
-    16: LoadImmediate r2, 4
-    19: Add r0, r1, r2
+     6: Add r0, r1, r2, fb0
+    11: JumpToBooleanFalse r0, 14 (.L0)
+    14: LoadImmediate r1, 3
+    17: LoadImmediate r2, 4
+    20: Add r0, r1, r2, fb1
   .L0:
-    23: Ret r0
+    25: Ret r0
 }
 
 [BytecodeFunction: logicalOrBoolean] {
   Parameters: 0, Registers: 3
      0: LoadTrue r0
-     2: JumpTrue r0, 13 (.L0)
+     2: JumpTrue r0, 14 (.L0)
      5: LoadImmediate r1, 1
      8: LoadImmediate r2, 2
-    11: Add r0, r1, r2
+    11: Add r0, r1, r2, fb0
   .L0:
-    15: Ret r0
+    16: Ret r0
 }
 
 [BytecodeFunction: logicalOrNotBoolean] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
      3: LoadImmediate r2, 2
-     6: Add r0, r1, r2
-    10: JumpToBooleanTrue r0, 13 (.L0)
-    13: LoadImmediate r1, 3
-    16: LoadImmediate r2, 4
-    19: Add r0, r1, r2
+     6: Add r0, r1, r2, fb0
+    11: JumpToBooleanTrue r0, 14 (.L0)
+    14: LoadImmediate r1, 3
+    17: LoadImmediate r2, 4
+    20: Add r0, r1, r2, fb1
   .L0:
-    23: Ret r0
+    25: Ret r0
 }
 
 [BytecodeFunction: nullishCoalesce] {
   Parameters: 0, Registers: 3
      0: LoadImmediate r1, 1
      3: LoadImmediate r2, 2
-     6: Add r0, r1, r2
-    10: JumpNotNullish r0, 13 (.L0)
-    13: LoadImmediate r1, 3
-    16: LoadImmediate r2, 4
-    19: Add r0, r1, r2
+     6: Add r0, r1, r2, fb0
+    11: JumpNotNullish r0, 14 (.L0)
+    14: LoadImmediate r1, 3
+    17: LoadImmediate r2, 4
+    20: Add r0, r1, r2, fb1
   .L0:
-    23: Ret r0
+    25: Ret r0
 }
 
 [BytecodeFunction: logicalAndWithTemporary] {

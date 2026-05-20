@@ -39,9 +39,9 @@
   .L1:
     12: LoadImmediate r0, 2
     15: LoadImmediate r1, 3
-    18: Add r1, r0, r1
-    22: LoadUndefined r1
-    24: Ret r1
+    18: Add r1, r0, r1, fb0
+    23: LoadUndefined r1
+    25: Ret r1
 }
 
 [BytecodeFunction: sameNameCaptureParamOnly] {
@@ -56,9 +56,9 @@
   .L1:
     18: LoadImmediate r0, 2
     21: LoadImmediate r1, 3
-    24: Add r1, r0, r1
-    28: LoadUndefined r1
-    30: Ret r1
+    24: Add r1, r0, r1, fb0
+    29: LoadUndefined r1
+    31: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: y]

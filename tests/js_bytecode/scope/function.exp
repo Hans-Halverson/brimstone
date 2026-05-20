@@ -23,11 +23,11 @@
      2: LoadEmpty r1
      4: CheckTdz r0, c0
      7: CheckTdz r1, c1
-    10: Add r2, r0, r1
-    14: LoadImmediate r0, 1
-    17: LoadImmediate r1, 2
-    20: LoadUndefined r2
-    22: Ret r2
+    10: Add r2, r0, r1, fb0
+    15: LoadImmediate r0, 1
+    18: LoadImmediate r1, 2
+    21: LoadUndefined r2
+    23: Ret r2
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -90,10 +90,10 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadFromScope r1, 1, 0
-     8: Add r0, r0, r1
-    12: LoadFromScope r1, 2, 0
-    16: Add r0, r0, r1
-    20: LoadFromScope r1, 3, 0
-    24: Add r0, r0, r1
-    28: Ret r0
+     8: Add r0, r0, r1, fb0
+    13: LoadFromScope r1, 2, 0
+    17: Add r0, r0, r1, fb1
+    22: LoadFromScope r1, 3, 0
+    26: Add r0, r0, r1, fb2
+    31: Ret r0
 }

@@ -28,8 +28,8 @@
     33: LoadImmediate r2, 2
     36: Sub r2, a0, r2
     40: Call r1, r1, r2, 1
-    45: Add r0, r0, r1
-    49: Ret r0
+    45: Add r0, r0, r1, fb0
+    50: Ret r0
   Constant Table:
     0: [String: fib]
 }

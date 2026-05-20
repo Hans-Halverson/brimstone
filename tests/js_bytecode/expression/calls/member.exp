@@ -32,12 +32,12 @@
     23: CallWithReceiver r1, r1, a0, r2, 3
     29: LoadImmediate r1, 1
     32: LoadImmediate r2, 2
-    35: Add r0, r1, r2
-    39: GetNamedProperty r1, r0, c0
-    43: LoadImmediate r2, 4
-    46: CallWithReceiver r1, r1, r0, r2, 1
-    52: LoadUndefined r1
-    54: Ret r1
+    35: Add r0, r1, r2, fb0
+    40: GetNamedProperty r1, r0, c0
+    44: LoadImmediate r2, 4
+    47: CallWithReceiver r1, r1, r0, r2, 1
+    53: LoadUndefined r1
+    55: Ret r1
   Constant Table:
     0: [String: foo]
 }
@@ -49,22 +49,22 @@
      7: CallWithReceiver r1, r1, a0, r1, 0
     13: LoadImmediate r1, 0
     16: LoadImmediate r2, 9
-    19: Add r1, r1, r2
-    23: LoadConstant r2, c0
-    26: GetProperty r2, r1, r2
-    30: LoadImmediate r3, 1
-    33: LoadImmediate r4, 2
-    36: LoadImmediate r5, 3
-    39: CallWithReceiver r1, r2, r1, r3, 3
-    45: LoadImmediate r1, 1
-    48: LoadImmediate r2, 2
-    51: Add r0, r1, r2
-    55: LoadConstant r1, c0
-    58: GetProperty r1, r0, r1
-    62: LoadImmediate r2, 4
-    65: CallWithReceiver r1, r1, r0, r2, 1
-    71: LoadUndefined r1
-    73: Ret r1
+    19: Add r1, r1, r2, fb0
+    24: LoadConstant r2, c0
+    27: GetProperty r2, r1, r2
+    31: LoadImmediate r3, 1
+    34: LoadImmediate r4, 2
+    37: LoadImmediate r5, 3
+    40: CallWithReceiver r1, r2, r1, r3, 3
+    46: LoadImmediate r1, 1
+    49: LoadImmediate r2, 2
+    52: Add r0, r1, r2, fb1
+    57: LoadConstant r1, c0
+    60: GetProperty r1, r0, r1
+    64: LoadImmediate r2, 4
+    67: CallWithReceiver r1, r1, r0, r2, 1
+    73: LoadUndefined r1
+    75: Ret r1
   Constant Table:
     0: [String: foo]
 }

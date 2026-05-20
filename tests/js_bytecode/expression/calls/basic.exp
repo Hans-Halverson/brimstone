@@ -34,9 +34,9 @@
      9: Mov r3, a0
     12: LoadGlobal r4, c0
     15: Call r1, r1, r2, 3
-    20: Add r0, r0, r1
-    24: LoadUndefined r0
-    26: Ret r0
+    20: Add r0, r0, r1, fb0
+    25: LoadUndefined r0
+    27: Ret r0
   Constant Table:
     0: [String: foo]
 }

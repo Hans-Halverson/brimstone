@@ -27,28 +27,28 @@
      2: GetIterator r2, r3, r4
   .L0:
      6: IteratorNext r4, r5, r2, r3
-    11: JumpTrue r5, 35 (.L2)
+    11: JumpTrue r5, 36 (.L2)
     14: Mov r0, r4
     17: Mov r6, <scope>
     20: LoadEmpty r1
     22: CheckTdz r1, c0
-    25: Add r7, r0, r1
-    29: LoadImmediate r1, 0
-    32: Jump 12 (.L1)
-    34: LoadImmediate r4, 0
-    37: Mov <scope>, r6
-    40: IteratorClose r2
-    42: Throw r5
+    25: Add r7, r0, r1, fb0
+    30: LoadImmediate r1, 0
+    33: Jump 12 (.L1)
+    35: LoadImmediate r4, 0
+    38: Mov <scope>, r6
+    41: IteratorClose r2
+    43: Throw r5
   .L1:
-    44: Jump -38 (.L0)
+    45: Jump -39 (.L0)
   .L2:
-    46: LoadUndefined r2
-    48: Ret r2
+    47: LoadUndefined r2
+    49: Ret r2
   Constant Table:
     0: [String: inner]
   Exception Handlers:
-    14-32 -> 34 (r5)
-    40-42 -> 42
+    14-33 -> 35 (r5)
+    41-43 -> 43
 }
 
 [BytecodeFunction: captures] {
@@ -101,8 +101,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 0, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, fb0
+    19: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]

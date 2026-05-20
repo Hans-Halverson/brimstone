@@ -60,17 +60,17 @@
     30: StoreDynamic r0, c2
     33: LoadDynamic r0, c2
     36: LoadImmediate r1, 2
-    39: Add r0, r0, r1
-    43: LoadImmediate r0, 3
-    46: StoreDynamic r0, c2
-    49: PopScope 
-    50: LoadDynamic r0, c2
-    53: LoadImmediate r1, 4
-    56: Add r0, r0, r1
-    60: LoadImmediate r0, 5
-    63: StoreDynamic r0, c2
-    66: LoadUndefined r0
-    68: Ret r0
+    39: Add r0, r0, r1, fb0
+    44: LoadImmediate r0, 3
+    47: StoreDynamic r0, c2
+    50: PopScope 
+    51: LoadDynamic r0, c2
+    54: LoadImmediate r1, 4
+    57: Add r0, r0, r1, fb1
+    62: LoadImmediate r0, 5
+    65: StoreDynamic r0, c2
+    68: LoadUndefined r0
+    70: Ret r0
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

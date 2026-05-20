@@ -31,22 +31,22 @@
     14: JumpTrue r3, 25 (.L0)
     17: LoadImmediate r3, 2
     20: StrictEqual r3, r2, r3
-    24: JumpTrue r3, 25 (.L1)
+    24: JumpTrue r3, 26 (.L1)
     27: LoadImmediate r3, 3
     30: StrictEqual r3, r2, r3
-    34: JumpTrue r3, 17 (.L2)
-    37: Jump 16 (.L3)
+    34: JumpTrue r3, 18 (.L2)
+    37: Jump 17 (.L3)
   .L0:
     39: CheckTdz r0, c0
     42: CheckTdz r1, c1
-    45: Add r2, r0, r1
+    45: Add r2, r0, r1, fb0
   .L1:
-    49: LoadTrue r0
+    50: LoadTrue r0
   .L2:
-    51: LoadFalse r1
+    52: LoadFalse r1
   .L3:
-    53: LoadUndefined r2
-    55: Ret r2
+    54: LoadUndefined r2
+    56: Ret r2
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -137,8 +137,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 0, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, fb0
+    19: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]

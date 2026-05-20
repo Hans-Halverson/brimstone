@@ -119,20 +119,20 @@
      2: LoadEmpty r1
      4: LoadImmediate r2, 1
      7: LoadImmediate r3, 2
-    10: Add r2, r2, r3
-    14: ToPropertyKey r2, r2
-    17: StoreToScope r2, 0, 0
-    21: LoadImmediate r2, 3
-    24: LoadImmediate r3, 4
-    27: Add r2, r2, r3
-    31: ToPropertyKey r2, r2
-    34: StoreToScope r2, 1, 0
-    38: NewClass r0, c2, c1, r1, r0
-    44: NewClosure r2, c3
-    47: CallWithReceiver r2, r2, r0, r2, 0
-    53: PopScope 
-    54: LoadUndefined r1
-    56: Ret r1
+    10: Add r2, r2, r3, fb0
+    15: ToPropertyKey r2, r2
+    18: StoreToScope r2, 0, 0
+    22: LoadImmediate r2, 3
+    25: LoadImmediate r3, 4
+    28: Add r2, r2, r3, fb1
+    33: ToPropertyKey r2, r2
+    36: StoreToScope r2, 1, 0
+    40: NewClass r0, c2, c1, r1, r0
+    46: NewClosure r2, c3
+    49: CallWithReceiver r2, r2, r0, r2, 0
+    55: PopScope 
+    56: LoadUndefined r1
+    58: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: C]
@@ -229,20 +229,20 @@
     14: StoreToScope r2, 5, 0
     18: LoadImmediate r2, 1
     21: LoadImmediate r3, 2
-    24: Add r2, r2, r3
-    28: ToPropertyKey r2, r2
-    31: StoreToScope r2, 0, 0
-    35: LoadImmediate r2, 3
-    38: LoadImmediate r3, 4
-    41: Add r2, r2, r3
-    45: ToPropertyKey r2, r2
-    48: StoreToScope r2, 1, 0
-    52: NewClass r0, c4, c3, r1, r0
-    58: NewClosure r2, c5
-    61: CallWithReceiver r2, r2, r0, r2, 0
-    67: PopScope 
-    68: LoadUndefined r1
-    70: Ret r1
+    24: Add r2, r2, r3, fb0
+    29: ToPropertyKey r2, r2
+    32: StoreToScope r2, 0, 0
+    36: LoadImmediate r2, 3
+    39: LoadImmediate r3, 4
+    42: Add r2, r2, r3, fb1
+    47: ToPropertyKey r2, r2
+    50: StoreToScope r2, 1, 0
+    54: NewClass r0, c4, c3, r1, r0
+    60: NewClosure r2, c5
+    63: CallWithReceiver r2, r2, r0, r2, 0
+    69: PopScope 
+    70: LoadUndefined r1
+    72: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: private1]
@@ -300,13 +300,13 @@
      2: LoadEmpty r1
      4: LoadImmediate r2, 1
      7: LoadImmediate r3, 2
-    10: Add r2, r2, r3
-    14: ToPropertyKey r2, r2
-    17: StoreToScope r2, 0, 0
-    21: NewClass r0, c2, c1, r1, r0
-    27: PopScope 
-    28: LoadUndefined r1
-    30: Ret r1
+    10: Add r2, r2, r3, fb0
+    15: ToPropertyKey r2, r2
+    18: StoreToScope r2, 0, 0
+    22: NewClass r0, c2, c1, r1, r0
+    28: PopScope 
+    29: LoadUndefined r1
+    31: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: C]
@@ -432,20 +432,20 @@
     18: NewClosure r2, c3
     21: LoadImmediate r3, 1
     24: LoadImmediate r4, 2
-    27: Add r3, r3, r4
-    31: ToPropertyKey r3, r3
-    34: StoreToScope r3, 0, 0
-    38: LoadImmediate r3, 3
-    41: LoadImmediate r4, 4
-    44: Add r3, r3, r4
-    48: ToPropertyKey r3, r3
-    51: NewClosure r4, c4
-    54: NewClosure r5, c5
-    57: StoreToScope r5, 1, 0
-    61: NewClass r0, c7, c6, r1, r2
-    67: PopScope 
-    68: LoadUndefined r1
-    70: Ret r1
+    27: Add r3, r3, r4, fb0
+    32: ToPropertyKey r3, r3
+    35: StoreToScope r3, 0, 0
+    39: LoadImmediate r3, 3
+    42: LoadImmediate r4, 4
+    45: Add r3, r3, r4, fb1
+    50: ToPropertyKey r3, r3
+    53: NewClosure r4, c4
+    56: NewClosure r5, c5
+    59: StoreToScope r5, 1, 0
+    63: NewClass r0, c7, c6, r1, r2
+    69: PopScope 
+    70: LoadUndefined r1
+    72: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: private1]
@@ -514,17 +514,17 @@
     13: StoreToScope r2, 3, 0
     17: LoadImmediate r2, 1
     20: LoadImmediate r3, 2
-    23: Add r2, r2, r3
-    27: ToPropertyKey r2, r2
-    30: StoreToScope r2, 0, 0
-    34: NewClosure r2, c2
-    37: StoreToScope r2, 1, 0
-    41: NewClosure r2, c3
-    44: NewClass r0, c5, c4, r1, r2
-    50: StoreToScope r0, 2, 0
-    54: PopScope 
-    55: LoadUndefined r1
-    57: Ret r1
+    23: Add r2, r2, r3, fb0
+    28: ToPropertyKey r2, r2
+    31: StoreToScope r2, 0, 0
+    35: NewClosure r2, c2
+    38: StoreToScope r2, 1, 0
+    42: NewClosure r2, c3
+    45: NewClass r0, c5, c4, r1, r2
+    51: StoreToScope r0, 2, 0
+    55: PopScope 
+    56: LoadUndefined r1
+    58: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: private1]
@@ -579,15 +579,15 @@
      7: StoreToScope r2, 2, 0
     11: LoadImmediate r2, 1
     14: LoadImmediate r3, 2
-    17: Add r2, r2, r3
-    21: ToPropertyKey r2, r2
-    24: StoreToScope r2, 0, 0
-    28: NewClass r0, c3, c2, r1, r0
-    34: NewClosure r2, c4
-    37: CallWithReceiver r2, r2, r0, r2, 0
-    43: PopScope 
-    44: LoadUndefined r1
-    46: Ret r1
+    17: Add r2, r2, r3, fb0
+    22: ToPropertyKey r2, r2
+    25: StoreToScope r2, 0, 0
+    29: NewClass r0, c3, c2, r1, r0
+    35: NewClosure r2, c4
+    38: CallWithReceiver r2, r2, r0, r2, 0
+    44: PopScope 
+    45: LoadUndefined r1
+    47: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: private]
@@ -626,20 +626,20 @@
     14: StoreToScope r2, 5, 0
     18: LoadImmediate r2, 1
     21: LoadImmediate r3, 2
-    24: Add r2, r2, r3
-    28: ToPropertyKey r2, r2
-    31: StoreToScope r2, 0, 0
-    35: LoadImmediate r2, 3
-    38: LoadImmediate r3, 4
-    41: Add r2, r2, r3
-    45: ToPropertyKey r2, r2
-    48: StoreToScope r2, 1, 0
-    52: NewClass r0, c4, c3, r1, r0
-    58: NewClosure r2, c5
-    61: CallWithReceiver r2, r2, r0, r2, 0
-    67: PopScope 
-    68: LoadUndefined r1
-    70: Ret r1
+    24: Add r2, r2, r3, fb0
+    29: ToPropertyKey r2, r2
+    32: StoreToScope r2, 0, 0
+    36: LoadImmediate r2, 3
+    39: LoadImmediate r3, 4
+    42: Add r2, r2, r3, fb1
+    47: ToPropertyKey r2, r2
+    50: StoreToScope r2, 1, 0
+    54: NewClass r0, c4, c3, r1, r0
+    60: NewClosure r2, c5
+    63: CallWithReceiver r2, r2, r0, r2, 0
+    69: PopScope 
+    70: LoadUndefined r1
+    72: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: private1]

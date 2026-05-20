@@ -11,33 +11,33 @@
      23: NewClosure r7, c4
      26: LoadImmediate r8, 1
      29: LoadImmediate r9, 2
-     32: Add r8, r8, r9
-     36: ToPropertyKey r8, r8
-     39: NewClosure r9, c5
-     42: NewClosure r10, c6
-     45: NewClosure r11, c7
-     48: LoadImmediate r12, 3
-     51: LoadImmediate r13, 4
-     54: Add r12, r12, r13
-     58: ToPropertyKey r12, r12
-     61: NewClosure r13, c8
-     64: LoadImmediate r14, 5
-     67: LoadImmediate r15, 6
-     70: Add r14, r14, r15
-     74: ToPropertyKey r14, r14
-     77: NewClosure r15, c9
-     80: NewClosure r16, c10
-     83: NewClosure r17, c11
-     86: NewClosure r18, c12
-     89: LoadImmediate r19, 1
-     92: LoadImmediate r20, 2
-     95: Add r19, r19, r20
-     99: ToPropertyKey r19, r19
-    102: NewClosure r20, c13
-    105: NewClass r0, c15, c14, r1, r2
-    111: StoreToScope r0, 1, 0
-    115: LoadUndefined r0
-    117: Ret r0
+     32: Add r8, r8, r9, fb0
+     37: ToPropertyKey r8, r8
+     40: NewClosure r9, c5
+     43: NewClosure r10, c6
+     46: NewClosure r11, c7
+     49: LoadImmediate r12, 3
+     52: LoadImmediate r13, 4
+     55: Add r12, r12, r13, fb1
+     60: ToPropertyKey r12, r12
+     63: NewClosure r13, c8
+     66: LoadImmediate r14, 5
+     69: LoadImmediate r15, 6
+     72: Add r14, r14, r15, fb2
+     77: ToPropertyKey r14, r14
+     80: NewClosure r15, c9
+     83: NewClosure r16, c10
+     86: NewClosure r17, c11
+     89: NewClosure r18, c12
+     92: LoadImmediate r19, 1
+     95: LoadImmediate r20, 2
+     98: Add r19, r19, r20, fb3
+    103: ToPropertyKey r19, r19
+    106: NewClosure r20, c13
+    109: NewClass r0, c15, c14, r1, r2
+    115: StoreToScope r0, 1, 0
+    119: LoadUndefined r0
+    121: Ret r0
   Constant Table:
     0: [BytecodeFunction: named1]
     1: [BytecodeFunction: named2]

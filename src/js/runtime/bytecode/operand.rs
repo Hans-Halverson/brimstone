@@ -123,11 +123,15 @@ operand_type!(SInt, SIGNED);
 // An index into the constant table
 operand_type!(ConstantIndex, UNSIGNED);
 
+// An index into a feedback vector
+operand_type!(FeedbackSlotIndex, UNSIGNED);
+
 pub enum OperandType {
     Register,
     UInt,
     SInt,
     ConstantIndex,
+    FeedbackSlotIndex,
 }
 
 /// Registers may be either registers local to a function or arguments to that function. Registers
@@ -311,9 +315,27 @@ impl<W: Width> ConstantIndex<W> {
     }
 }
 
+impl<W: Width> FeedbackSlotIndex<W> {
+    #[inline]
+    pub fn new(value: W::UInt) -> Self {
+        Self::from_unsigned(value)
+    }
+
+    #[inline]
+    pub fn value(&self) -> W::UInt {
+        self.unsigned()
+    }
+}
+
 impl<W: Width> fmt::Display for ConstantIndex<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "c{}", self.value())
+    }
+}
+
+impl<W: Width> fmt::Display for FeedbackSlotIndex<W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "fb{}", self.value())
     }
 }
 

@@ -1,4 +1,9 @@
-use crate::runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value};
+use crate::runtime::{
+    gc::HeapVisitor,
+    ic::feedback::{FeedbackSlot, FeedbackVector},
+    scope::Scope,
+    HeapPtr, Value,
+};
 
 use super::{constant_table::ConstantTable, function::Closure};
 
@@ -20,6 +25,8 @@ use super::{constant_table::ConstantTable, function::Closure};
 ///     |      closure     |  (closure of the caller)
 /// +40 +------------------+
 ///     |  constant_table  |  (constant table of the called closure)
+/// +40 +------------------+
+///     | feedback_vector  |  (feedback vector of the called closure)
 /// +32 +------------------+
 ///     |       scope      |  (current VM scope)
 /// +24 +------------------+
@@ -187,6 +194,29 @@ impl StackFrame {
         unsafe { &mut *(self.fp.add(CONSTANT_TABLE_SLOT_INDEX) as *mut HeapPtr<ConstantTable>) }
     }
 
+    #[inline]
+    pub fn feedback_vector(&self) -> HeapPtr<FeedbackVector> {
+        let ptr = unsafe { *self.fp.add(FEEDBACK_VECTOR_SLOT_INDEX) };
+        HeapPtr::from_ptr(ptr as *mut FeedbackVector)
+    }
+
+    #[inline]
+    pub fn feedback_vector_mut(&self) -> &mut HeapPtr<FeedbackVector> {
+        unsafe { &mut *(self.fp.add(FEEDBACK_VECTOR_SLOT_INDEX) as *mut HeapPtr<FeedbackVector>) }
+    }
+
+    #[inline]
+    pub fn get_feedback(&self, slot: usize) -> FeedbackSlot {
+        *self.feedback_vector().slots().get_unchecked(slot)
+    }
+
+    #[inline]
+    pub fn set_feedback(&mut self, slot: usize, value: FeedbackSlot) {
+        self.feedback_vector()
+            .slots_mut()
+            .set_unchecked(slot, value);
+    }
+
     /// The callee function in this stack frame.
     #[inline]
     pub fn closure(&self) -> HeapPtr<Closure> {
@@ -273,6 +303,7 @@ impl StackFrame {
 
         visitor.visit_pointer(self.closure_mut());
         visitor.visit_pointer(self.constant_table_mut());
+        visitor.visit_pointer(self.feedback_vector_mut());
         visitor.visit_pointer(self.scope_mut());
     }
 }
@@ -313,10 +344,12 @@ pub const SCOPE_SLOT_INDEX: usize = 3;
 
 const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 
-pub const CLOSURE_SLOT_INDEX: usize = 5;
+const FEEDBACK_VECTOR_SLOT_INDEX: usize = 5;
 
-const ARGC_SLOT_INDEX: usize = 6;
+pub const CLOSURE_SLOT_INDEX: usize = 6;
 
-pub const RECEIVER_SLOT_INDEX: usize = 7;
+const ARGC_SLOT_INDEX: usize = 7;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 8;
+pub const RECEIVER_SLOT_INDEX: usize = 8;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 9;

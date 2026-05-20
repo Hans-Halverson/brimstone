@@ -41,6 +41,7 @@ use crate::{
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         heap_item_descriptor::HeapItemKind,
+        ic::feedback::{AddFeedbackState, FeedbackSlot, FeedbackVector},
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype,
@@ -60,6 +61,7 @@ use crate::{
         scope::Scope,
         scope_names::ScopeNames,
         source_file::SourceFile,
+        string_value::StringValue,
         to_string,
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
@@ -218,6 +220,16 @@ impl VM {
     #[inline]
     fn stack_ptr_end(&self) -> *const StackSlotValue {
         self.stack.as_ptr_range().end
+    }
+
+    #[inline]
+    fn get_feedback(&self, slot_index: usize) -> FeedbackSlot {
+        self.stack_frame().get_feedback(slot_index)
+    }
+
+    #[inline]
+    fn set_feedback(&mut self, slot_index: usize, slot: FeedbackSlot) {
+        self.stack_frame().set_feedback(slot_index, slot);
     }
 
     pub fn stack_trace_top(&self) -> Option<StackFrame> {
@@ -2045,6 +2057,14 @@ impl VM {
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
 
+        // push the feedback vector
+        let feedback_vector = unsafe {
+            std::mem::transmute::<Option<HeapPtr<FeedbackVector>>, usize>(
+                bytecode_function.feedback_vector_ptr(),
+            )
+        };
+        self.push(feedback_vector);
+
         // Push the constant table
         let constant_table = unsafe {
             std::mem::transmute::<Option<HeapPtr<ConstantTable>>, usize>(
@@ -2730,9 +2750,89 @@ impl VM {
             let left_value = self.read_register_to_handle(instr.left());
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
+            let slot_index = instr.feedback_slot_offset().value().to_usize();
 
+            // this should always be an addop - otherwise something has gone very wrong
+            let feedback_slot = self.get_feedback(slot_index);
+            debug_assert!(matches!(feedback_slot, FeedbackSlot::AddOp(_)));
+
+            // try the fast path
+
+            // see if we should update feedback - this is only the case
+            // if we see that the feedback state is unitialized
+            let mut should_update_feedback = false;
+
+            if let FeedbackSlot::AddOp(add_feedback_state) = self.get_feedback(slot_index) {
+                match add_feedback_state {
+                    AddFeedbackState::Uninitialized => {
+                        should_update_feedback = true;
+                    }
+                    AddFeedbackState::SmiSmi => {
+                        if left_value.is_smi() && right_value.is_smi() {
+                            let l = left_value.as_smi() as i64;
+                            let r = right_value.as_smi() as i64;
+                            let sum = l + r;
+                            if sum >= i32::MIN as i64 && sum <= i32::MAX as i64 {
+                                let result = self.cx.smi(sum as i32);
+                                self.write_register(dest, *result);
+                                return Ok(());
+                            }
+                            // Overflow — widen feedback to Number, fall through to slow path
+                            self.set_feedback(
+                                slot_index,
+                                FeedbackSlot::AddOp(AddFeedbackState::Number),
+                            );
+                        }
+                    }
+                    AddFeedbackState::Number => {
+                        if left_value.is_number() && right_value.is_number() {
+                            let result = self
+                                .cx
+                                .number(left_value.as_number() + right_value.as_number());
+                            self.write_register(dest, *result);
+                            return Ok(());
+                        }
+                    }
+                    AddFeedbackState::StringConcat => {
+                        if left_value.is_string() && right_value.is_string() {
+                            let left_string = left_value.as_string();
+                            let right_string = right_value.as_string();
+                            let result =
+                                StringValue::concat(self.cx, left_string, right_string)?.as_value();
+                            self.write_register(dest, *result);
+                            return Ok(());
+                        }
+                    }
+                    AddFeedbackState::BigInt => {
+                        if left_value.is_bigint() && right_value.is_bigint() {
+                            let result =
+                                left_value.as_bigint().bigint() + right_value.as_bigint().bigint();
+                            let result: Handle<Value> = BigIntValue::new(self.cx, result)?.into();
+                            self.write_register(dest, *result);
+                            return Ok(());
+                        }
+                    }
+                    AddFeedbackState::Any => {}
+                }
+            }
+            // slow path
             // May allocate
             let result = eval_add(self.cx(), left_value, right_value)?;
+
+            if should_update_feedback {
+                let new_state = if left_value.is_smi() && right_value.is_smi() && result.is_smi() {
+                    AddFeedbackState::SmiSmi
+                } else if left_value.is_number() && right_value.is_number() {
+                    AddFeedbackState::Number
+                } else if left_value.is_string() || right_value.is_string() {
+                    AddFeedbackState::StringConcat
+                } else if left_value.is_bigint() && right_value.is_bigint() {
+                    AddFeedbackState::BigInt
+                } else {
+                    AddFeedbackState::Any
+                };
+                self.set_feedback(slot_index, FeedbackSlot::AddOp(new_state));
+            }
 
             self.write_register(dest, *result);
 

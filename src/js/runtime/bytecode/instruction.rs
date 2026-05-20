@@ -11,7 +11,10 @@ use super::{
     writer::BytecodeWriter,
 };
 
-use crate::{count, replace_expr, runtime::debug_print::DebugPrinter};
+use crate::{
+    count, replace_expr,
+    runtime::{bytecode::operand::FeedbackSlotIndex, debug_print::DebugPrinter},
+};
 
 /// Generic properties of instructions.
 #[allow(dead_code)]
@@ -566,6 +569,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] feedback_slot_offset: FeedbackSlotIndex,
         }
     }
 

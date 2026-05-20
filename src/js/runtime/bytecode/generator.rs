@@ -34,6 +34,7 @@ use crate::{
         bytecode::{
             function::{dump_bytecode_function, BytecodeFunction},
             instruction::DefinePropertyFlags,
+            operand::FeedbackSlotIndex,
             source_map::BytecodeSourceMap,
         },
         class_names::{ClassNames, HomeObjectLocation, Method},
@@ -42,6 +43,7 @@ use crate::{
         gc::Escapable,
         global_names::GlobalNames,
         heap_item_descriptor::HeapItemKind,
+        ic::feedback::{FeedbackSlot, FeedbackVector},
         interned_strings::InternedStrings,
         module::{
             import_attributes::ImportAttributes,
@@ -1102,6 +1104,9 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Queue of functions that still need to be generated.
     pending_functions_queue: PendingFunctionNodes<'a>,
+
+    /// The feedback slots to allocate for this function
+    feedback_slots: Vec<FeedbackSlot>,
 }
 
 impl<'a> BytecodeFunctionGenerator<'a> {
@@ -1160,6 +1165,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
             pending_functions_queue: vec![],
+            feedback_slots: vec![],
         }
     }
 
@@ -1241,6 +1247,13 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_base_constructor,
             func.is_async(),
         ))
+    }
+
+    fn add_feedback_index_slot(&mut self, slot_kind: FeedbackSlot) -> u32 {
+        let slot_offset = self.feedback_slots.len();
+        self.feedback_slots.push(slot_kind);
+        debug_assert!(slot_offset <= (u32::MAX as usize));
+        slot_offset as u32
     }
 
     fn new_for_program(
@@ -1998,6 +2011,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions)?;
 
+        let feedback_vector = if self.feedback_slots.is_empty() {
+            None
+        } else {
+            Some(FeedbackVector::new(self.cx, &self.feedback_slots)?)
+        };
+
         let bytecode_function = BytecodeFunction::new(
             self.cx,
             bytecode,
@@ -2017,6 +2036,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             self.source_file,
             source_positions_object,
+            feedback_vector,
         )?;
 
         Ok(EmitFunctionResult {
@@ -3337,7 +3357,17 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         match expr.operator {
-            ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Add => {
+                // Add feedback slot with add type uninitialized
+                let slot_offset = self.add_feedback_index_slot(FeedbackSlot::add_uninit());
+                self.writer.add_instruction(
+                    dest,
+                    left,
+                    right,
+                    FeedbackSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::BinaryOperator::Subtract => self.writer.sub_instruction(dest, left, right, pos),
             ast::BinaryOperator::Multiply => self.writer.mul_instruction(dest, left, right, pos),
             ast::BinaryOperator::Divide => self.writer.div_instruction(dest, left, right, pos),
@@ -4740,7 +4770,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let pos = expr.operator_pos;
 
         match operator {
-            ast::AssignmentOperator::Add => self.writer.add_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Add => {
+                let feedback_slot_offset = self.add_feedback_index_slot(FeedbackSlot::add_uninit());
+                self.writer.add_instruction(
+                    dest,
+                    left,
+                    right,
+                    FeedbackSlotIndex::new(feedback_slot_offset),
+                    pos,
+                )
+            }
             ast::AssignmentOperator::Subtract => {
                 self.writer.sub_instruction(dest, left, right, pos)
             }
@@ -5918,7 +5957,15 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .to_string_instruction(temp, expression_reg, expression_pos);
 
                     // Cannot throw since both values are guaranteed to be strings
-                    self.writer.add_instruction(acc, acc, temp, NO_POS);
+                    let feedback_slot_offset =
+                        self.add_feedback_index_slot(FeedbackSlot::add_string_concat());
+                    self.writer.add_instruction(
+                        acc,
+                        acc,
+                        temp,
+                        FeedbackSlotIndex::new(feedback_slot_offset),
+                        NO_POS,
+                    );
 
                     self.register_allocator.release(temp);
                 }
@@ -5942,7 +5989,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.writer.load_constant_instruction(temp, constant_index);
 
                 // Cannot throw since both values are guaranteed to be strings
-                self.writer.add_instruction(acc, acc, temp, NO_POS);
+                let slot_offset = self.add_feedback_index_slot(FeedbackSlot::add_string_concat());
+                self.writer.add_instruction(
+                    acc,
+                    acc,
+                    temp,
+                    FeedbackSlotIndex::new(slot_offset),
+                    NO_POS,
+                );
             }
         }
 

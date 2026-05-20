@@ -23,6 +23,7 @@ use crate::runtime::{
     generator_object::GeneratorObject,
     global_names::GlobalNames,
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    ic::feedback::FeedbackVector,
     interned_strings::InternedStringsSetField,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject,
@@ -217,6 +218,7 @@ impl HeapPtr<AnyHeapItem> {
             }
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
             HeapItemKind::ValueVec => value_vec_byte_size(self.cast()),
+            HeapItemKind::FeedbackVector => self.cast::<FeedbackVector>().byte_size(),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }
@@ -380,6 +382,7 @@ impl HeapPtr<AnyHeapItem> {
                 .visit_pointers(visitor),
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
             HeapItemKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::FeedbackVector => self.cast::<FeedbackVector>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

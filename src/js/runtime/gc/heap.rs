@@ -1,7 +1,7 @@
 use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 
 use crate::{
-    common::{constants::MAX_HEAP_SIZE, serialized_heap::SerializedHeap},
+    common::serialized_heap::SerializedHeap,
     runtime::{alloc_error::AllocResult, gc::garbage_collector::GarbageCollector, Context},
 };
 
@@ -250,7 +250,7 @@ impl Heap {
                 // If there is not room run a gc cycle
 
                 // Resize the heap
-                if cx.heap.heap_size() < MAX_HEAP_SIZE {
+                if cx.heap.heap_size() < cx.options.max_heap_size {
                     Self::run_gc(cx, GcType::Grow { alloc_size: Some(alloc_size) });
                 } else {
                     Self::run_gc(cx, GcType::Normal);

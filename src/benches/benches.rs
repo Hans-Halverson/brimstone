@@ -65,8 +65,9 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
     // Use a 10 MB heap size
     let options = OptionsBuilder::new()
         .annex_b(flags.contains(TestFlags::ANNEX_B))
-        .heap_size(10 * 1024 * 1024)
-        .build();
+        .min_heap_size(10 * 1024 * 1024)
+        .build()
+        .unwrap();
     let cx = ContextBuilder::new()
         .set_options(Rc::new(options))
         .build()
@@ -204,7 +205,7 @@ fn context_benches(c: &mut Criterion) {
         "context creation",
         || {},
         |_| {
-            let options = OptionsBuilder::new().serialized_heap(None).build();
+            let options = OptionsBuilder::new().serialized_heap(None).build().unwrap();
             let cx = ContextBuilder::new()
                 .set_options(Rc::new(options))
                 .build()
@@ -222,7 +223,8 @@ fn context_benches(c: &mut Criterion) {
             let serialized_heap = get_default_serialized_heap().unwrap();
             let options = OptionsBuilder::new()
                 .serialized_heap(Some(serialized_heap))
-                .build();
+                .build()
+                .unwrap();
             let cx = ContextBuilder::new()
                 .set_options(Rc::new(options))
                 .build()

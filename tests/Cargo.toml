@@ -7,6 +7,7 @@ publish = false
 [dev-dependencies]
 brimstone_core.workspace = true
 brimstone_serialized_heap.workspace = true
+clap = { workspace = true, features = ["derive"] }
 
 [[test]]
 name = "snapshot_tests"

@@ -15,9 +15,15 @@ use brimstone_core::{
     },
 };
 
-fn create_context(args: &Args) -> AllocResult<Context> {
-    let options = Rc::new(Options::new_from_args(args));
+fn parse_options(args: &Args) -> Rc<Options> {
+    match Options::new_from_args(args) {
+        Ok(options) => Rc::new(options),
+        Err(err) => print_error_message_and_exit(&err.to_string()),
+    }
+}
 
+fn create_context(args: &Args) -> AllocResult<Context> {
+    let options = parse_options(args);
     let cx = ContextBuilder::new().set_options(options).build()?;
 
     if args.expose_gc {

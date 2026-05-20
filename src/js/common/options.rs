@@ -1,9 +1,14 @@
-use std::sync::{Mutex, MutexGuard};
+use std::{
+    fmt,
+    sync::{Mutex, MutexGuard},
+};
 
 use clap::Parser;
 
+use crate::common::constants::{MAX_HEAP_SIZE, MIN_HEAP_SIZE};
+
 use super::{
-    constants::DEFAULT_HEAP_SIZE,
+    constants::{DEFAULT_MAX_HEAP_SIZE, DEFAULT_MIN_HEAP_SIZE},
     serialized_heap::{get_default_serialized_heap, SerializedHeap},
 };
 
@@ -39,9 +44,15 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_test_262: bool,
 
-    /// The starting heap size, in bytes.
-    #[arg(long)]
-    pub heap_size: Option<usize>,
+    /// The minimum heap size. Must be between 4MB and 4GB, specified in the form "XMB" or "XGB"
+    /// where X is a power of 2.
+    #[arg(long, value_parser = parse_min_heap_size_arg)]
+    pub min_heap_size: Option<usize>,
+
+    /// The minimum heap size. Must be between 4MB and 4GB, specified in the form "XMB" or "XGB"
+    /// where X is a power of 2.
+    #[arg(long, value_parser = parse_max_heap_size_arg)]
+    pub max_heap_size: Option<usize>,
 
     /// Do not use colors when printing to terminal. Otherwise use colors if supported.
     #[arg(long, default_value_t = false)]
@@ -72,8 +83,11 @@ pub struct Options {
     /// Buffer to write all dumped output into instead of stdout
     pub dump_buffer: Option<Mutex<String>>,
 
-    /// The heap size to use in bytes.
-    pub heap_size: usize,
+    /// The minimum heap size in bytes
+    pub min_heap_size: usize,
+
+    /// The maximum heap size in bytes
+    pub max_heap_size: usize,
 
     /// Whether to use colors when printing to the terminal
     pub no_color: bool,
@@ -87,7 +101,7 @@ pub struct Options {
 
 impl Options {
     /// Create a new options struct from command line arguments.
-    pub fn new_from_args(args: &Args) -> Self {
+    pub fn new_from_args(args: &Args) -> Result<Self, OptionCreationError> {
         OptionsBuilder::new_from_args(args).build()
     }
 
@@ -101,7 +115,7 @@ impl Options {
 impl Default for Options {
     /// Create a new options struct with default values.
     fn default() -> Self {
-        OptionsBuilder::new().build()
+        OptionsBuilder::new().build().unwrap()
     }
 }
 
@@ -116,7 +130,8 @@ impl OptionsBuilder {
             print_bytecode: false,
             print_regexp_bytecode: false,
             dump_buffer: None,
-            heap_size: DEFAULT_HEAP_SIZE,
+            min_heap_size: DEFAULT_MIN_HEAP_SIZE,
+            max_heap_size: DEFAULT_MAX_HEAP_SIZE,
             no_color: false,
             parse_stats: false,
             serialized_heap: get_default_serialized_heap(),
@@ -130,14 +145,31 @@ impl OptionsBuilder {
             .print_ast(args.print_ast)
             .print_bytecode(args.print_bytecode)
             .print_regexp_bytecode(args.print_regexp_bytecode)
-            .heap_size(args.heap_size.unwrap_or(DEFAULT_HEAP_SIZE))
+            .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_MIN_HEAP_SIZE))
+            .max_heap_size(args.max_heap_size.unwrap_or(DEFAULT_MAX_HEAP_SIZE))
             .no_color(args.no_color)
             .parse_stats(args.parse_stats)
     }
 
     /// Return the options that have been built, consuming the builder.
-    pub fn build(self) -> Options {
-        self.0
+    pub fn build(self) -> Result<Options, OptionCreationError> {
+        self.validate()?;
+
+        Ok(self.0)
+    }
+
+    fn validate(&self) -> Result<(), OptionCreationError> {
+        validate_max_heap_size_arg(self.0.max_heap_size).map_err(OptionCreationError::new)?;
+        validate_min_heap_size_arg(self.0.min_heap_size).map_err(OptionCreationError::new)?;
+
+        if self.0.min_heap_size > self.0.max_heap_size {
+            return Err(OptionCreationError::new(format!(
+                "Min heap size ({} bytes) cannot be greater than max heap size ({} bytes)",
+                self.0.min_heap_size, self.0.max_heap_size
+            )));
+        }
+
+        Ok(())
     }
 
     pub fn annex_b(mut self, annex_b: bool) -> Self {
@@ -160,8 +192,13 @@ impl OptionsBuilder {
         self
     }
 
-    pub fn heap_size(mut self, heap_size: usize) -> Self {
-        self.0.heap_size = heap_size;
+    pub fn min_heap_size(mut self, min_heap_size: usize) -> Self {
+        self.0.min_heap_size = min_heap_size;
+        self
+    }
+
+    pub fn max_heap_size(mut self, max_heap_size: usize) -> Self {
+        self.0.max_heap_size = max_heap_size;
         self
     }
 
@@ -186,5 +223,90 @@ impl OptionsBuilder {
     ) -> Self {
         self.0.serialized_heap = serialized_heap;
         self
+    }
+}
+
+fn parse_min_heap_size_arg(size_arg: &str) -> Result<usize, String> {
+    let size = parse_heap_size_arg(size_arg)
+        .map_err(|_| "Min heap size must be specified in the form XMB or XGB".to_string())?;
+
+    validate_min_heap_size_arg(size)?;
+
+    Ok(size)
+}
+
+fn validate_min_heap_size_arg(size: usize) -> Result<(), String> {
+    if size < MIN_HEAP_SIZE {
+        return Err(format!("Min heap size must be at least {} bytes", MIN_HEAP_SIZE));
+    }
+
+    if !size.is_power_of_two() {
+        return Err("Min heap size must be a power of 2".to_string());
+    }
+
+    Ok(())
+}
+
+fn parse_max_heap_size_arg(size_arg: &str) -> Result<usize, String> {
+    let size = parse_heap_size_arg(size_arg)
+        .map_err(|_| "Max heap size must be specified in the form XMB or XGB".to_string())?;
+
+    validate_max_heap_size_arg(size)?;
+
+    Ok(size)
+}
+
+fn validate_max_heap_size_arg(size: usize) -> Result<(), String> {
+    if size > MAX_HEAP_SIZE {
+        return Err(format!("Max heap size must be at most {} bytes", MAX_HEAP_SIZE));
+    }
+
+    if !size.is_power_of_two() {
+        return Err("Max heap size must be a power of 2".to_string());
+    }
+
+    Ok(())
+}
+
+/// Parse a heap size argument in the form "XMB" or "XGB".
+fn parse_heap_size_arg(size_arg: &str) -> Result<usize, ()> {
+    if size_arg.ends_with("MB") {
+        let size = parse_heap_size_number(size_arg)?;
+        Ok(size * 1024 * 1024)
+    } else if size_arg.ends_with("GB") {
+        let size = parse_heap_size_number(size_arg)?;
+        Ok(size * 1024 * 1024 * 1024)
+    } else {
+        Err(())
+    }
+}
+
+fn parse_heap_size_number(size_arg: &str) -> Result<usize, ()> {
+    let size_no_suffix = &size_arg[..size_arg.len() - 2];
+    if let Ok(size) = size_no_suffix.parse::<usize>() {
+        Ok(size)
+    } else {
+        Err(())
+    }
+}
+
+#[derive(Debug)]
+pub struct OptionCreationError(String);
+
+impl OptionCreationError {
+    pub fn new(message: String) -> Self {
+        Self(message)
+    }
+}
+
+impl fmt::Display for OptionCreationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<&str> for OptionCreationError {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
     }
 }

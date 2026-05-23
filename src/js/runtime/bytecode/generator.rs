@@ -34,6 +34,12 @@ use crate::{
         bytecode::{
             function::{dump_bytecode_function, BytecodeFunction},
             instruction::DefinePropertyFlags,
+            operand::{
+                AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex,
+                DivICSlotIndex, ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex,
+                ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex,
+                SubICSlotIndex,
+            },
             source_map::BytecodeSourceMap,
         },
         class_names::{ClassNames, HomeObjectLocation, Method},
@@ -42,6 +48,7 @@ use crate::{
         gc::Escapable,
         global_names::GlobalNames,
         heap_item_descriptor::HeapItemKind,
+        ic::vector::ICVector,
         interned_strings::InternedStrings,
         module::{
             import_attributes::ImportAttributes,
@@ -1102,6 +1109,14 @@ pub struct BytecodeFunctionGenerator<'a> {
 
     /// Queue of functions that still need to be generated.
     pending_functions_queue: PendingFunctionNodes<'a>,
+
+    /// The number of IC Stubs to allocate in the
+    /// ICVector. Since ICStubs are generic, every
+    /// single one will initially be instantiated as
+    /// `None`. Then, when we hit the opcode in the VM
+    /// we will generate ICs, changing the slot in the ICVector
+    /// from `None` to the concrete stub
+    num_ic_slots: u32,
 }
 
 impl<'a> BytecodeFunctionGenerator<'a> {
@@ -1160,6 +1175,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             register_allocator: TemporaryRegisterAllocator::new(num_local_registers),
             exception_handler_builder: ExceptionHandlersBuilder::new(),
             pending_functions_queue: vec![],
+            num_ic_slots: 0,
         }
     }
 
@@ -1241,6 +1257,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             is_base_constructor,
             func.is_async(),
         ))
+    }
+
+    fn add_ic_stub(&mut self) -> u32 {
+        let offset = self.num_ic_slots;
+        self.num_ic_slots += 1;
+        offset
     }
 
     fn new_for_program(
@@ -1998,6 +2020,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let source_positions_object = BytecodeSourceMap::new(self.cx, &source_positions)?;
 
+        let ic_vector = if self.num_ic_slots == 0 {
+            None
+        } else {
+            Some(ICVector::new(self.cx, self.num_ic_slots as usize)?)
+        };
+
         let bytecode_function = BytecodeFunction::new(
             self.cx,
             bytecode,
@@ -2017,6 +2045,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             name,
             self.source_file,
             source_positions_object,
+            ic_vector,
         )?;
 
         Ok(EmitFunctionResult {
@@ -3337,12 +3366,67 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let dest = self.allocate_destination(dest)?;
 
         match expr.operator {
-            ast::BinaryOperator::Add => self.writer.add_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Subtract => self.writer.sub_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Multiply => self.writer.mul_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Divide => self.writer.div_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Remainder => self.writer.rem_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Exponent => self.writer.exp_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Add => {
+                // Add feedback slot with add type uninitialized
+                let slot_offset = self.add_ic_stub();
+                self.writer.add_instruction(
+                    dest,
+                    left,
+                    right,
+                    AddICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Subtract => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.sub_instruction(
+                    dest,
+                    left,
+                    right,
+                    SubICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Multiply => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.mul_instruction(
+                    dest,
+                    left,
+                    right,
+                    MulICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Divide => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.div_instruction(
+                    dest,
+                    left,
+                    right,
+                    DivICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Remainder => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.rem_instruction(
+                    dest,
+                    left,
+                    right,
+                    RemICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Exponent => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.exp_instruction(
+                    dest,
+                    left,
+                    right,
+                    ExpICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::BinaryOperator::EqEq => {
                 self.writer.loose_equal_instruction(dest, left, right, pos)
             }
@@ -3365,18 +3449,66 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::BinaryOperator::GreaterThanOrEqual => self
                 .writer
                 .greater_than_or_equal_instruction(dest, left, right, pos),
-            ast::BinaryOperator::And => self.writer.bit_and_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Or => self.writer.bit_or_instruction(dest, left, right, pos),
-            ast::BinaryOperator::Xor => self.writer.bit_xor_instruction(dest, left, right, pos),
-            ast::BinaryOperator::ShiftLeft => {
-                self.writer.shift_left_instruction(dest, left, right, pos)
+            ast::BinaryOperator::And => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_and_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitAndICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::BinaryOperator::ShiftRightArithmetic => self
-                .writer
-                .shift_right_arithmetic_instruction(dest, left, right, pos),
-            ast::BinaryOperator::ShiftRightLogical => self
-                .writer
-                .shift_right_logical_instruction(dest, left, right, pos),
+            ast::BinaryOperator::Or => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_or_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitOrICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::Xor => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_xor_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitXorICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::ShiftLeft => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_left_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftLeftICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::ShiftRightArithmetic => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_right_arithmetic_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftRightArithICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::ShiftRightLogical => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_right_logical_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftRightLogicalICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::BinaryOperator::In => self.writer.in_instruction(dest, right, left, pos),
             ast::BinaryOperator::InPrivate => unreachable!(),
             ast::BinaryOperator::InstanceOf => {
@@ -4740,32 +4872,126 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let pos = expr.operator_pos;
 
         match operator {
-            ast::AssignmentOperator::Add => self.writer.add_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Add => {
+                let ic_stub_offset = self.add_ic_stub();
+                self.writer.add_instruction(
+                    dest,
+                    left,
+                    right,
+                    AddICSlotIndex::new(ic_stub_offset),
+                    pos,
+                )
+            }
             ast::AssignmentOperator::Subtract => {
-                self.writer.sub_instruction(dest, left, right, pos)
+                let ic_stub_offset = self.add_ic_stub();
+                self.writer.sub_instruction(
+                    dest,
+                    left,
+                    right,
+                    SubICSlotIndex::new(ic_stub_offset),
+                    pos,
+                )
             }
             ast::AssignmentOperator::Multiply => {
-                self.writer.mul_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.mul_instruction(
+                    dest,
+                    left,
+                    right,
+                    MulICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::AssignmentOperator::Divide => self.writer.div_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::Divide => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.div_instruction(
+                    dest,
+                    left,
+                    right,
+                    DivICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::AssignmentOperator::Remainder => {
-                self.writer.rem_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.rem_instruction(
+                    dest,
+                    left,
+                    right,
+                    RemICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
             ast::AssignmentOperator::Exponent => {
-                self.writer.exp_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.exp_instruction(
+                    dest,
+                    left,
+                    right,
+                    ExpICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::AssignmentOperator::And => self.writer.bit_and_instruction(dest, left, right, pos),
-            ast::AssignmentOperator::Or => self.writer.bit_or_instruction(dest, left, right, pos),
-            ast::AssignmentOperator::Xor => self.writer.bit_xor_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::And => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_and_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitAndICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::AssignmentOperator::Or => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_or_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitOrICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::AssignmentOperator::Xor => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.bit_xor_instruction(
+                    dest,
+                    left,
+                    right,
+                    BitXorICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::AssignmentOperator::ShiftLeft => {
-                self.writer.shift_left_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_left_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftLeftICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::AssignmentOperator::ShiftRightArithmetic => self
-                .writer
-                .shift_right_arithmetic_instruction(dest, left, right, pos),
-            ast::AssignmentOperator::ShiftRightLogical => self
-                .writer
-                .shift_right_logical_instruction(dest, left, right, pos),
+            ast::AssignmentOperator::ShiftRightArithmetic => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_right_arithmetic_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftRightArithICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::AssignmentOperator::ShiftRightLogical => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.shift_right_logical_instruction(
+                    dest,
+                    left,
+                    right,
+                    ShiftRightLogicalICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::AssignmentOperator::Equals => unreachable!("bytecode for simple assignment"),
             ast::AssignmentOperator::LogicalAnd
             | ast::AssignmentOperator::LogicalOr
@@ -5918,7 +6144,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                         .to_string_instruction(temp, expression_reg, expression_pos);
 
                     // Cannot throw since both values are guaranteed to be strings
-                    self.writer.add_instruction(acc, acc, temp, NO_POS);
+                    let ic_stub_offset = self.add_ic_stub();
+                    self.writer.add_instruction(
+                        acc,
+                        acc,
+                        temp,
+                        AddICSlotIndex::new(ic_stub_offset),
+                        NO_POS,
+                    );
 
                     self.register_allocator.release(temp);
                 }
@@ -5942,7 +6175,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.writer.load_constant_instruction(temp, constant_index);
 
                 // Cannot throw since both values are guaranteed to be strings
-                self.writer.add_instruction(acc, acc, temp, NO_POS);
+                let ic_stub_offset = self.add_ic_stub();
+                self.writer.add_instruction(
+                    acc,
+                    acc,
+                    temp,
+                    AddICSlotIndex::new(ic_stub_offset),
+                    NO_POS,
+                );
             }
         }
 

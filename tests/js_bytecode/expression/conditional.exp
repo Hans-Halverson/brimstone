@@ -15,43 +15,43 @@
 
 [BytecodeFunction: testBasic] {
   Parameters: 0, Registers: 4
-     0: LoadImmediate r0, 1
-     3: JumpToBooleanFalse r0, 8 (.L0)
-     6: LoadImmediate r0, 2
-     9: Jump 5 (.L1)
+      0: LoadImmediate r0, 1
+      3: JumpToBooleanFalse r0, 8 (.L0)
+      6: LoadImmediate r0, 2
+      9: Jump 5 (.L1)
   .L0:
-    11: LoadImmediate r0, 3
+     11: LoadImmediate r0, 3
   .L1:
-    14: LoadImmediate r0, 1
-    17: LoadImmediate r1, 2
-    20: Add r0, r0, r1
-    24: JumpToBooleanFalse r0, 15 (.L2)
-    27: LoadImmediate r1, 3
-    30: LoadImmediate r2, 4
-    33: Add r0, r1, r2
-    37: Jump 12 (.L3)
+     14: LoadImmediate r0, 1
+     17: LoadImmediate r1, 2
+     20: Add r0, r0, r1, ic0
+     25: JumpToBooleanFalse r0, 16 (.L2)
+     28: LoadImmediate r1, 3
+     31: LoadImmediate r2, 4
+     34: Add r0, r1, r2, ic1
+     39: Jump 13 (.L3)
   .L2:
-    39: LoadImmediate r1, 5
-    42: LoadImmediate r2, 6
-    45: Add r0, r1, r2
+     41: LoadImmediate r1, 5
+     44: LoadImmediate r2, 6
+     47: Add r0, r1, r2, ic2
   .L3:
-    49: LoadGlobal r0, c0
-    52: LoadImmediate r1, 1
-    55: JumpToBooleanFalse r1, 15 (.L4)
-    58: LoadImmediate r2, 2
-    61: LoadImmediate r3, 3
-    64: Add r1, r2, r3
-    68: Jump 19 (.L5)
+     52: LoadGlobal r0, c0
+     55: LoadImmediate r1, 1
+     58: JumpToBooleanFalse r1, 16 (.L4)
+     61: LoadImmediate r2, 2
+     64: LoadImmediate r3, 3
+     67: Add r1, r2, r3, ic3
+     72: Jump 21 (.L5)
   .L4:
-    70: LoadImmediate r2, 4
-    73: LoadImmediate r3, 5
-    76: Add r2, r2, r3
-    80: LoadImmediate r3, 6
-    83: Add r1, r2, r3
+     74: LoadImmediate r2, 4
+     77: LoadImmediate r3, 5
+     80: Add r2, r2, r3, ic4
+     85: LoadImmediate r3, 6
+     88: Add r1, r2, r3, ic5
   .L5:
-    87: Call r0, r0, r1, 1
-    92: LoadUndefined r0
-    94: Ret r0
+     93: Call r0, r0, r1, 1
+     98: LoadUndefined r0
+    100: Ret r0
   Constant Table:
     0: [String: use]
 }

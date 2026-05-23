@@ -1,6 +1,56 @@
-use crate::runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value};
+use crate::runtime::{
+    bytecode::{
+        operand::{
+            AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
+            ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
+            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex,
+        },
+        width::{UnsignedWidthRepr, Width},
+    },
+    gc::HeapVisitor,
+    ic::{
+        stubs::binary_arith::{
+            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, MulICStub,
+            RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, SubICStub,
+        },
+        vector::{ICEntry, ICVector},
+    },
+    scope::Scope,
+    Handle, HeapPtr, Value,
+};
 
 use super::{constant_table::ConstantTable, function::Closure};
+
+macro_rules! def_insert_ic_stub {
+    ($($op:ident),*) => {
+        $(
+            paste::paste! {
+                #[inline]
+                pub fn [<insert_ $op:lower _ic_stub>]<W: Width>(
+                    &mut self,
+                    slot: [<$op ICSlotIndex>]<W>,
+                    mut stub: Handle<[<$op ICStub>]>,
+                ) {
+                    let Some(ic_vector) = self.ic_vector_mut().as_mut() else {
+                            debug_assert!(false, concat!("IC vector should exist when inserting ", stringify!([<$op ICStub>])));
+                            return;
+                    };
+                    let head = ic_vector
+                        .slots_mut()
+                        .get_unchecked_mut(slot.value().to_usize());
+                    match head {
+                        Some(ICEntry::$op(ptr)) => stub.set_next(Some(*ptr)),
+                        Some(_) => unreachable!(
+                            concat!(stringify!([<$op ICStub>]), " head was a different type than expected.")
+                        ),
+                        None => stub.set_next(None),
+                    }
+                    *head = Some(ICEntry::$op(*stub));
+                }
+            }
+        )*
+    };
+}
 
 /// Stack frame layout:
 ///
@@ -12,14 +62,16 @@ use super::{constant_table::ConstantTable, function::Closure};
 ///     |       ...        |
 ///     +------------------+
 ///     |       arg0       |  (first arg)
-/// +64 +------------------+                     ^                ^
+/// +72 +------------------+                     ^                ^
 ///     |     receiver     |  (receiver)         | caller's frame |
-/// +56 +------------------+                     +----------------+
+/// +64 +------------------+                     +----------------+
 ///     |       argc       |                     | callee's frame |
-/// +48 +------------------+                     v                v
+/// +56 +------------------+                     v                v
 ///     |      closure     |  (closure of the caller)
-/// +40 +------------------+
+/// +48 +------------------+
 ///     |  constant_table  |  (constant table of the called closure)
+/// +40 +------------------+
+///     |    ic_vector     |  (ic vector of the called closure)
 /// +32 +------------------+
 ///     |       scope      |  (current VM scope)
 /// +24 +------------------+
@@ -187,6 +239,24 @@ impl StackFrame {
         unsafe { &mut *(self.fp.add(CONSTANT_TABLE_SLOT_INDEX) as *mut HeapPtr<ConstantTable>) }
     }
 
+    #[inline]
+    pub fn ic_vector(&self) -> Option<HeapPtr<ICVector>> {
+        unsafe {
+            std::mem::transmute::<usize, Option<HeapPtr<ICVector>>>(
+                *self.fp.add(IC_VECTOR_SLOT_INDEX),
+            )
+        }
+    }
+
+    #[inline]
+    pub fn ic_vector_mut(&mut self) -> &mut Option<HeapPtr<ICVector>> {
+        unsafe { &mut *(self.fp.add(IC_VECTOR_SLOT_INDEX) as *mut Option<HeapPtr<ICVector>>) }
+    }
+
+    pub fn get_ic_stub(&self, slot: usize) -> Option<ICEntry> {
+        *self.ic_vector()?.slots().get_unchecked(slot)
+    }
+
     /// The callee function in this stack frame.
     #[inline]
     pub fn closure(&self) -> HeapPtr<Closure> {
@@ -273,8 +343,24 @@ impl StackFrame {
 
         visitor.visit_pointer(self.closure_mut());
         visitor.visit_pointer(self.constant_table_mut());
+        visitor.visit_pointer_opt(self.ic_vector_mut());
         visitor.visit_pointer(self.scope_mut());
     }
+
+    def_insert_ic_stub!(
+        Add,
+        Sub,
+        Mul,
+        Div,
+        Rem,
+        Exp,
+        BitAnd,
+        BitOr,
+        BitXor,
+        ShiftLeft,
+        ShiftRightArith,
+        ShiftRightLogical
+    );
 }
 
 pub struct StackFrameIter {
@@ -313,10 +399,12 @@ pub const SCOPE_SLOT_INDEX: usize = 3;
 
 const CONSTANT_TABLE_SLOT_INDEX: usize = 4;
 
-pub const CLOSURE_SLOT_INDEX: usize = 5;
+const IC_VECTOR_SLOT_INDEX: usize = 5;
 
-const ARGC_SLOT_INDEX: usize = 6;
+pub const CLOSURE_SLOT_INDEX: usize = 6;
 
-pub const RECEIVER_SLOT_INDEX: usize = 7;
+const ARGC_SLOT_INDEX: usize = 7;
 
-pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 8;
+pub const RECEIVER_SLOT_INDEX: usize = 8;
+
+pub const FIRST_ARGUMENT_SLOT_INDEX: usize = 9;

@@ -26,6 +26,7 @@ pub mod gc_object;
 mod generator_object;
 pub mod global_names;
 mod heap_item_descriptor;
+mod ic;
 mod interned_strings;
 pub mod intrinsics;
 mod iterator;

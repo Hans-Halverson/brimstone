@@ -11,7 +11,13 @@ use super::{
     writer::BytecodeWriter,
 };
 
-use crate::{count, replace_expr, runtime::debug_print::DebugPrinter};
+use crate::{
+    count, replace_expr,
+    runtime::{
+        bytecode::operand::{AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex, ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex},
+        debug_print::DebugPrinter,
+    },
+};
 
 /// Generic properties of instructions.
 #[allow(dead_code)]
@@ -566,6 +572,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: AddICSlotIndex,
         }
     }
 
@@ -578,6 +585,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: SubICSlotIndex,
         }
     }
 
@@ -590,6 +598,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: MulICSlotIndex,
         }
     }
 
@@ -602,6 +611,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: DivICSlotIndex,
         }
     }
 
@@ -615,6 +625,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: RemICSlotIndex,
         }
     }
 
@@ -627,6 +638,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: ExpICSlotIndex,
         }
     }
 
@@ -639,6 +651,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: BitAndICSlotIndex,
         }
     }
 
@@ -651,6 +664,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: BitOrICSlotIndex,
         }
     }
 
@@ -663,6 +677,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: BitXorICSlotIndex,
         }
     }
 
@@ -675,6 +690,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: ShiftLeftICSlotIndex,
         }
     }
 
@@ -688,6 +704,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: ShiftRightArithICSlotIndex,
         }
     }
 
@@ -701,6 +718,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: ShiftRightLogicalICSlotIndex,
         }
     }
 

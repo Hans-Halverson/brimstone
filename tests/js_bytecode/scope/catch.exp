@@ -85,8 +85,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 0, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, ic0
+    19: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -128,19 +128,19 @@
   Parameters: 0, Registers: 4
      0: Mov r2, <scope>
      3: LoadImmediate r3, 1
-     6: Jump 28 (.L0)
+     6: Jump 29 (.L0)
      8: Mov <scope>, r2
     11: PushLexicalScope c0
     13: LoadEmpty r3
     15: StoreToScope r3, 0, 0
     19: NewClosure r1, c1
     22: LoadImmediate r3, 1
-    25: Add r3, r3, r0
-    29: StoreToScope r3, 0, 0
-    33: PopScope 
+    25: Add r3, r3, r0, ic0
+    30: StoreToScope r3, 0, 0
+    34: PopScope 
   .L0:
-    34: LoadUndefined r2
-    36: Ret r2
+    35: LoadUndefined r2
+    37: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner]

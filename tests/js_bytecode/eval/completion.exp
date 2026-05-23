@@ -117,12 +117,12 @@
      0: LoadConstant r0, c0
      3: LoadImmediate r1, 1
      6: LoadImmediate r2, 2
-     9: Add r0, r1, r2
-    13: LoadDynamic r1, c1
-    16: LoadDynamic r2, c2
-    19: Add r0, r1, r2
-    23: LoadConstant r0, c3
-    26: Ret r0
+     9: Add r0, r1, r2, ic0
+    14: LoadDynamic r1, c1
+    17: LoadDynamic r2, c2
+    20: Add r0, r1, r2, ic1
+    25: LoadConstant r0, c3
+    28: Ret r0
   Constant Table:
     0: [String: expression statement completions]
     1: [String: a]

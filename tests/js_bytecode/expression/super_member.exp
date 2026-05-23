@@ -36,9 +36,9 @@
      0: LoadFromScope r0, 0, 0
      4: LoadImmediate r1, 1
      7: LoadImmediate r2, 2
-    10: Add r1, r1, r2
-    14: GetSuperProperty r0, r0, <this>, r1
-    19: Ret r0
+    10: Add r1, r1, r2, ic0
+    15: GetSuperProperty r0, r0, <this>, r1
+    20: Ret r0
 }
 
 [BytecodeFunction: captured] {

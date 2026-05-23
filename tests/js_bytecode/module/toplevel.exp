@@ -16,9 +16,9 @@
     43: NewClosure r1, c2
     46: LoadImmediate r2, 100
     49: LoadFromScope r3, 1, 0
-    53: Add r2, r2, r3
-    57: LoadUndefined r2
-    59: Ret r2
+    53: Add r2, r2, r3, ic0
+    58: LoadUndefined r2
+    60: Ret r2
   Constant Table:
     0: [BytecodeFunction: toplevelMethod]
     1: [BytecodeFunction: testToplevelBinding]
@@ -42,14 +42,14 @@
      0: LoadFromScope r0, 1, 0
      4: LoadFromScope r1, 2, 0
      8: CheckTdz r1, c0
-    11: Add r0, r0, r1
-    15: LoadFromScope r1, 3, 0
-    19: CheckTdz r1, c1
-    22: Add r0, r0, r1
-    26: LoadFromScope r1, 4, 0
-    30: Add r0, r0, r1
-    34: LoadUndefined r0
-    36: Ret r0
+    11: Add r0, r0, r1, ic0
+    16: LoadFromScope r1, 3, 0
+    20: CheckTdz r1, c1
+    23: Add r0, r0, r1, ic1
+    28: LoadFromScope r1, 4, 0
+    32: Add r0, r0, r1, ic2
+    37: LoadUndefined r0
+    39: Ret r0
   Constant Table:
     0: [String: x2]
     1: [String: x3]

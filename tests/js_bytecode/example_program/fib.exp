@@ -22,14 +22,14 @@
   .L0:
     15: LoadGlobal r0, c0
     18: LoadImmediate r1, 1
-    21: Sub r1, a0, r1
-    25: Call r0, r0, r1, 1
-    30: LoadGlobal r1, c0
-    33: LoadImmediate r2, 2
-    36: Sub r2, a0, r2
-    40: Call r1, r1, r2, 1
-    45: Add r0, r0, r1
-    49: Ret r0
+    21: Sub r1, a0, r1, ic0
+    26: Call r0, r0, r1, 1
+    31: LoadGlobal r1, c0
+    34: LoadImmediate r2, 2
+    37: Sub r2, a0, r2, ic1
+    42: Call r1, r1, r2, 1
+    47: Add r0, r0, r1, ic2
+    52: Ret r0
   Constant Table:
     0: [String: fib]
 }

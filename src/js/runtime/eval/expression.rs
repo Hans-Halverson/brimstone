@@ -13,16 +13,24 @@ use crate::{
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
         error::{range_error, type_error},
+        eval::common::{
+            add_bigint_fast, add_number_fast, add_string_fast, bitwise_and_bigint_fast,
+            bitwise_and_number_fast, bitwise_or_bigint_fast, bitwise_or_number_fast,
+            bitwise_xor_bigint_fast, bitwise_xor_number_fast, div_bigint_fast, div_number_fast,
+            exp_bigint_fast, exp_number_fast, is_bigint, is_string, mul_bigint_fast,
+            mul_number_fast, rem_bigint_fast, rem_number_fast, shift_left_bigint_fast,
+            shift_left_number_fast, shift_right_arith_bigint_fast, shift_right_arith_number_fast,
+            shift_right_logical_number_fast, sub_bigint_fast, sub_number_fast,
+        },
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
-        numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
         property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::{
             is_less_than, to_boolean, to_int32, to_numeric, to_object, to_primitive,
-            to_property_key, to_string, to_uint32, ToPrimitivePreferredType,
+            to_property_key, to_string, ToPrimitivePreferredType,
         },
         value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
         Context, Handle, Realm,
@@ -144,26 +152,24 @@ pub fn eval_add(
 ) -> EvalResult<Handle<Value>> {
     let left_prim = to_primitive(cx, left_value, ToPrimitivePreferredType::None)?;
     let right_prim = to_primitive(cx, right_value, ToPrimitivePreferredType::None)?;
-    if left_prim.is_string() || right_prim.is_string() {
+    if is_string(left_prim) || is_string(right_prim) {
         let left_string = to_string(cx, left_prim)?;
         let right_string = to_string(cx, right_prim)?;
-
-        return Ok(StringValue::concat(cx, left_string, right_string)?.as_value());
+        return Ok(add_string_fast(cx, left_string, right_string)?);
     }
 
     let left_num = to_numeric(cx, left_prim)?;
     let right_num = to_numeric(cx, right_prim)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() + right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        Ok(add_bigint_fast(cx, left_num, right_num)?)
     } else {
-        Ok(cx.number(left_num.as_number() + right_num.as_number()))
+        Ok(add_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -175,16 +181,15 @@ pub fn eval_subtract(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() - right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        Ok(sub_bigint_fast(cx, left_num, right_num)?)
     } else {
-        Ok(cx.number(left_num.as_number() - right_num.as_number()))
+        Ok(sub_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -196,16 +201,15 @@ pub fn eval_multiply(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() * right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        Ok(mul_bigint_fast(cx, left_num, right_num)?)
     } else {
-        Ok(cx.number(left_num.as_number() * right_num.as_number()))
+        Ok(mul_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -217,21 +221,15 @@ pub fn eval_divide(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let bigint_right = right_num.as_bigint().bigint();
-        if bigint_right.eq(&BigInt::default()) {
-            return range_error(cx, "BigInt division by zero");
-        }
-
-        let result = left_num.as_bigint().bigint() / bigint_right;
-        Ok(BigIntValue::new(cx, result)?.into())
+        div_bigint_fast(cx, left_num, right_num)
     } else {
-        Ok(cx.number(left_num.as_number() / right_num.as_number()))
+        Ok(div_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -243,26 +241,15 @@ pub fn eval_remainder(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let bigint_right = right_num.as_bigint().bigint();
-        if bigint_right.eq(&BigInt::default()) {
-            return range_error(cx, "BigInt division by zero");
-        }
-
-        let bigint_left = left_num.as_bigint().bigint();
-        if bigint_left.eq(&BigInt::default()) {
-            return Ok(BigIntValue::new(cx, BigInt::default())?.into());
-        }
-
-        let result = bigint_left % bigint_right;
-        Ok(BigIntValue::new(cx, result)?.into())
+        rem_bigint_fast(cx, left_num, right_num)
     } else {
-        Ok(cx.number(left_num.as_number() % right_num.as_number()))
+        Ok(rem_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -274,30 +261,15 @@ pub fn eval_exponentiation(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let base_bignum = left_num.as_bigint().bigint();
-        let exponent_bignum = right_num.as_bigint().bigint();
-
-        if exponent_bignum.lt(&BigInt::default()) {
-            return range_error(cx, "BigInt negative exponent");
-        } else if exponent_bignum.eq(&BigInt::default()) && base_bignum.eq(&BigInt::default()) {
-            return Ok(BigIntValue::new(cx, 1.into())?.into());
-        }
-
-        if let Ok(exponent_u32) = exponent_bignum.try_into() {
-            let result = base_bignum.pow(exponent_u32);
-            Ok(BigIntValue::new(cx, result)?.into())
-        } else {
-            // This guarantees a bigint that is too large
-            range_error(cx, "BigInt is too large")
-        }
+        exp_bigint_fast(cx, left_num, right_num)
     } else {
-        Ok(cx.number(number_exponentiate(left_num.as_number(), right_num.as_number())))
+        Ok(exp_number_fast(cx, left_num, right_num))
     }
 }
 
@@ -367,19 +339,15 @@ pub fn eval_bitwise_and(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() & right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        bitwise_and_bigint_fast(cx, left_num, right_num)
     } else {
-        let left_smi = must!(to_int32(cx, left_num));
-        let right_smi = must!(to_int32(cx, right_num));
-
-        Ok(cx.smi(left_smi & right_smi))
+        bitwise_and_number_fast(cx, left_num, right_num)
     }
 }
 
@@ -391,19 +359,15 @@ pub fn eval_bitwise_or(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() | right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        bitwise_or_bigint_fast(cx, left_num, right_num)
     } else {
-        let left_smi = must!(to_int32(cx, left_num));
-        let right_smi = must!(to_int32(cx, right_num));
-
-        Ok(cx.smi(left_smi | right_smi))
+        bitwise_or_number_fast(cx, left_num, right_num)
     }
 }
 
@@ -415,19 +379,15 @@ pub fn eval_bitwise_xor(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = left_num.as_bigint().bigint() ^ right_num.as_bigint().bigint();
-        Ok(BigIntValue::new(cx, result)?.into())
+        bitwise_xor_bigint_fast(cx, left_num, right_num)
     } else {
-        let left_smi = must!(to_int32(cx, left_num));
-        let right_smi = must!(to_int32(cx, right_num));
-
-        Ok(cx.smi(left_smi ^ right_smi))
+        bitwise_xor_number_fast(cx, left_num, right_num)
     }
 }
 
@@ -445,21 +405,9 @@ pub fn eval_shift_left(
     }
 
     if left_is_bigint {
-        let result = eval_bigint_left_shift(
-            cx,
-            &left_num.as_bigint().bigint(),
-            &right_num.as_bigint().bigint(),
-        )?;
-
-        Ok(BigIntValue::new(cx, result)?.into())
+        shift_left_bigint_fast(cx, left_num, right_num)
     } else {
-        let left_smi = must!(to_int32(cx, left_num));
-        let right_u32 = must!(to_uint32(cx, right_num));
-
-        // Shift modulus 32
-        let shift = right_u32 & 0x1F;
-
-        Ok(cx.smi(left_smi << shift))
+        shift_left_number_fast(cx, left_num, right_num)
     }
 }
 
@@ -471,32 +419,20 @@ pub fn eval_shift_right_arithmetic(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint != right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint != is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
     if left_is_bigint {
-        let result = eval_bigint_left_shift(
-            cx,
-            &left_num.as_bigint().bigint(),
-            &-right_num.as_bigint().bigint(),
-        )?;
-
-        Ok(BigIntValue::new(cx, result)?.into())
+        shift_right_arith_bigint_fast(cx, left_num, right_num)
     } else {
-        let left_smi = must!(to_int32(cx, left_num));
-        let right_u32 = must!(to_uint32(cx, right_num));
-
-        // Shift modulus 32
-        let shift = right_u32 & 0x1F;
-
-        Ok(cx.smi(left_smi >> shift))
+        shift_right_arith_number_fast(cx, left_num, right_num)
     }
 }
 
 /// BigInt::leftShift (https://tc39.es/ecma262/#sec-numeric-types-bigint-leftShift)
-fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalResult<BigInt> {
+pub fn eval_bigint_left_shift(cx: Context, left: &BigInt, right: &BigInt) -> EvalResult<BigInt> {
     let bigint_2: BigInt = 2.into();
 
     if right.lt(&BigInt::default()) {
@@ -538,18 +474,12 @@ pub fn eval_shift_right_logical(
     let left_num = to_numeric(cx, left_value)?;
     let right_num = to_numeric(cx, right_value)?;
 
-    let left_is_bigint = left_num.is_bigint();
-    if left_is_bigint || right_num.is_bigint() {
+    let left_is_bigint = is_bigint(left_num);
+    if left_is_bigint || is_bigint(right_num) {
         return type_error(cx, "BigInt cannot be converted to number");
     }
 
-    let left_smi = must!(to_uint32(cx, left_num));
-    let right_u32 = must!(to_uint32(cx, right_num));
-
-    // Shift modulus 32
-    let shift = right_u32 & 0x1F;
-
-    Ok(Value::from(left_smi >> shift).to_handle(cx))
+    shift_right_logical_number_fast(cx, left_num, right_num)
 }
 
 /// InstanceofOperator (https://tc39.es/ecma262/#sec-instanceofoperator)

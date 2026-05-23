@@ -26,7 +26,7 @@
      17: LoadEmpty r3
      19: StoreToScope r3, 0, 0
      23: IteratorNext r3, r4, r1, r2
-     28: JumpTrue r4, 112 (.L8)
+     28: JumpTrue r4, 114 (.L8)
      31: StoreToScope r3, 0, 0
      35: Mov r5, <scope>
      38: PushLexicalScope c1
@@ -52,34 +52,34 @@
   .L2:
      93: PopScope 
      94: PopScope 
-     95: Jump 42 (.L7)
+     95: Jump 44 (.L7)
      97: LoadImmediate r3, 0
   .L3:
     100: Mov <scope>, r5
     103: IteratorClose r1
-    105: Jump 17 (.L5)
+    105: Jump 18 (.L5)
     107: LoadImmediate r6, 0
-    110: StrictEqual r6, r3, r6
-    114: JumpFalse r6, 6 (.L4)
-    117: Mov r5, r4
+    110: StrictEqual r6, r3, r6, ic0
+    115: JumpFalse r6, 6 (.L4)
+    118: Mov r5, r4
   .L4:
-    120: Throw r5
+    121: Throw r5
   .L5:
-    122: LoadImmediate r5, 0
-    125: StrictEqual r5, r3, r5
-    129: JumpFalse r5, 5 (.L6)
-    132: Throw r4
+    123: LoadImmediate r5, 0
+    126: StrictEqual r5, r3, r5, ic1
+    131: JumpFalse r5, 5 (.L6)
+    134: Throw r4
   .L6:
-    134: PopScope 
-    135: Jump 6 (.L9)
+    136: PopScope 
+    137: Jump 6 (.L9)
   .L7:
-    137: PopScope 
-    138: Jump -123 (.L0)
+    139: PopScope 
+    140: Jump -125 (.L0)
   .L8:
-    140: PopScope 
+    142: PopScope 
   .L9:
-    141: LoadUndefined r1
-    143: Ret r1
+    143: LoadUndefined r1
+    145: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]
@@ -114,7 +114,7 @@
       4: GetIterator r1, r2, r3
   .L0:
       8: IteratorNext r3, r4, r1, r2
-     13: JumpTrue r4, 110 (.L8)
+     13: JumpTrue r4, 112 (.L8)
      16: StoreToScope r3, 0, 0
      20: Mov r5, <scope>
      23: PushLexicalScope c1
@@ -140,30 +140,30 @@
   .L2:
      78: PopScope 
      79: PopScope 
-     80: Jump 41 (.L7)
+     80: Jump 43 (.L7)
      82: LoadImmediate r3, 0
   .L3:
      85: Mov <scope>, r5
      88: IteratorClose r1
-     90: Jump 17 (.L5)
+     90: Jump 18 (.L5)
      92: LoadImmediate r6, 0
-     95: StrictEqual r6, r3, r6
-     99: JumpFalse r6, 6 (.L4)
-    102: Mov r5, r4
+     95: StrictEqual r6, r3, r6, ic0
+    100: JumpFalse r6, 6 (.L4)
+    103: Mov r5, r4
   .L4:
-    105: Throw r5
+    106: Throw r5
   .L5:
-    107: LoadImmediate r5, 0
-    110: StrictEqual r5, r3, r5
-    114: JumpFalse r5, 5 (.L6)
-    117: Throw r4
+    108: LoadImmediate r5, 0
+    111: StrictEqual r5, r3, r5, ic1
+    116: JumpFalse r5, 5 (.L6)
+    119: Throw r4
   .L6:
-    119: Jump 4 (.L8)
+    121: Jump 4 (.L8)
   .L7:
-    121: Jump -113 (.L0)
+    123: Jump -115 (.L0)
   .L8:
-    123: LoadUndefined r1
-    125: Ret r1
+    125: LoadUndefined r1
+    127: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [ScopeNames]

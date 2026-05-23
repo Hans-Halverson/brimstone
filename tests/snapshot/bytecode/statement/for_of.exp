@@ -117,7 +117,7 @@
       5: GetIterator r1, r2, r3
   .L0:
       9: IteratorNext r3, r4, r1, r2
-     14: JumpTrue r4, 97 (.L10)
+     14: JumpTrue r4, 100 (.L10)
      17: Mov r0, r3
      20: Mov r5, <scope>
      23: LoadImmediate r6, 2
@@ -135,36 +135,36 @@
      51: Mov r4, a0
      54: Jump 7 (.L4)
   .L3:
-     56: Jump 53 (.L9)
+     56: Jump 56 (.L9)
      58: LoadImmediate r3, 0
   .L4:
      61: Mov <scope>, r5
      64: IteratorClose r1
-     66: Jump 17 (.L6)
+     66: Jump 18 (.L6)
      68: LoadImmediate r6, 0
-     71: StrictEqual r6, r3, r6
-     75: JumpFalse r6, 6 (.L5)
-     78: Mov r5, r4
+     71: StrictEqual r6, r3, r6, ic0
+     76: JumpFalse r6, 6 (.L5)
+     79: Mov r5, r4
   .L5:
-     81: Throw r5
+     82: Throw r5
   .L6:
-     83: LoadImmediate r5, 0
-     86: StrictEqual r5, r3, r5
-     90: JumpFalse r5, 5 (.L7)
-     93: Throw r4
+     84: LoadImmediate r5, 0
+     87: StrictEqual r5, r3, r5, ic1
+     92: JumpFalse r5, 5 (.L7)
+     95: Throw r4
   .L7:
-     95: LoadImmediate r5, 2
-     98: StrictEqual r5, r3, r5
-    102: JumpFalse r5, 5 (.L8)
-    105: Ret r4
+     97: LoadImmediate r5, 2
+    100: StrictEqual r5, r3, r5, ic2
+    105: JumpFalse r5, 5 (.L8)
+    108: Ret r4
   .L8:
-    107: Jump 4 (.L10)
+    110: Jump 4 (.L10)
   .L9:
-    109: Jump -100 (.L0)
+    112: Jump -103 (.L0)
   .L10:
-    111: LoadImmediate r1, 5
-    114: LoadUndefined r1
-    116: Ret r1
+    114: LoadImmediate r1, 5
+    117: LoadUndefined r1
+    119: Ret r1
   Exception Handlers:
     17-56 -> 58 (r4)
     64-66 -> 68 (r5)

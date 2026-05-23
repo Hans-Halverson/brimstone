@@ -244,19 +244,19 @@
     51: Mov <scope>, r3
     54: LoadImmediate r3, 1
     57: LoadImmediate r3, 0
-    60: StrictEqual r3, r1, r3
-    64: JumpFalse r3, 5 (.L3)
-    67: Throw r2
+    60: StrictEqual r3, r1, r3, ic0
+    65: JumpFalse r3, 5 (.L3)
+    68: Throw r2
   .L3:
-    69: LoadImmediate r3, 2
-    72: StrictEqual r3, r1, r3
-    76: JumpFalse r3, 5 (.L4)
-    79: Jump 4 (.L5)
+    70: LoadImmediate r3, 2
+    73: StrictEqual r3, r1, r3, ic1
+    78: JumpFalse r3, 5 (.L4)
+    81: Jump 4 (.L5)
   .L4:
-    81: Ret r2
+    83: Ret r2
   .L5:
-    83: LoadUndefined r1
-    85: Ret r1
+    85: LoadUndefined r1
+    87: Ret r1
   Constant Table:
     0: [String: value]
     1: [String: done]

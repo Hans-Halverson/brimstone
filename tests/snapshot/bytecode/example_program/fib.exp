@@ -15,21 +15,21 @@
 [BytecodeFunction: fib] {
   Parameters: 1, Registers: 3
      0: LoadImmediate r0, 2
-     3: LessThan r0, a0, r0
-     7: JumpFalse r0, 8 (.L0)
-    10: LoadImmediate r0, 1
-    13: Ret r0
+     3: LessThan r0, a0, r0, ic0
+     8: JumpFalse r0, 8 (.L0)
+    11: LoadImmediate r0, 1
+    14: Ret r0
   .L0:
-    15: LoadGlobal r0, c0
-    18: LoadImmediate r1, 1
-    21: Sub r1, a0, r1, ic0
-    26: Call r0, r0, r1, 1
-    31: LoadGlobal r1, c0
-    34: LoadImmediate r2, 2
-    37: Sub r2, a0, r2, ic1
-    42: Call r1, r1, r2, 1
-    47: Add r0, r0, r1, ic2
-    52: Ret r0
+    16: LoadGlobal r0, c0
+    19: LoadImmediate r1, 1
+    22: Sub r1, a0, r1, ic1
+    27: Call r0, r0, r1, 1
+    32: LoadGlobal r1, c0
+    35: LoadImmediate r2, 2
+    38: Sub r2, a0, r2, ic2
+    43: Call r1, r1, r2, 1
+    48: Add r0, r0, r1, ic3
+    53: Ret r0
   Constant Table:
     0: [String: fib]
 }

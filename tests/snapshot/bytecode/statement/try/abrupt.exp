@@ -117,14 +117,14 @@
     22: Mov <scope>, r2
     25: LoadImmediate r2, 3
     28: LoadImmediate r2, 0
-    31: StrictEqual r2, r0, r2
-    35: JumpFalse r2, 5 (.L1)
-    38: Throw r1
+    31: StrictEqual r2, r0, r2, ic0
+    36: JumpFalse r2, 5 (.L1)
+    39: Throw r1
   .L1:
-    40: Jump 2 (.L2)
+    41: Jump 2 (.L2)
   .L2:
-    42: LoadUndefined r0
-    44: Ret r0
+    43: LoadUndefined r0
+    45: Ret r0
   Exception Handlers:
     3-6 -> 11
     11-19 -> 19 (r1)

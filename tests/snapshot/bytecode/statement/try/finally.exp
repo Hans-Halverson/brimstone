@@ -41,15 +41,15 @@
     17: Mov <scope>, r2
     20: LoadImmediate r2, 3
     23: LoadImmediate r2, 0
-    26: StrictEqual r2, r0, r2
-    30: JumpFalse r2, 5 (.L1)
-    33: Throw r1
+    26: StrictEqual r2, r0, r2, ic0
+    31: JumpFalse r2, 5 (.L1)
+    34: Throw r1
   .L1:
-    35: Jump 2 (.L2)
+    36: Jump 2 (.L2)
   .L2:
-    37: LoadImmediate r0, 4
-    40: LoadUndefined r0
-    42: Ret r0
+    38: LoadImmediate r0, 4
+    41: LoadUndefined r0
+    43: Ret r0
   Exception Handlers:
     6-9 -> 14 (r1)
 }
@@ -70,15 +70,15 @@
     28: Mov <scope>, r2
     31: LoadImmediate r2, 4
     34: LoadImmediate r2, 0
-    37: StrictEqual r2, r0, r2
-    41: JumpFalse r2, 5 (.L1)
-    44: Throw r1
+    37: StrictEqual r2, r0, r2, ic0
+    42: JumpFalse r2, 5 (.L1)
+    45: Throw r1
   .L1:
-    46: Jump 2 (.L2)
+    47: Jump 2 (.L2)
   .L2:
-    48: LoadImmediate r0, 5
-    51: LoadUndefined r0
-    53: Ret r0
+    49: LoadImmediate r0, 5
+    52: LoadUndefined r0
+    54: Ret r0
   Exception Handlers:
     6-9 -> 14
     14-20 -> 25 (r1)
@@ -100,15 +100,15 @@
     28: Mov <scope>, r3
     31: LoadImmediate r3, 4
     34: LoadImmediate r3, 0
-    37: StrictEqual r3, r1, r3
-    41: JumpFalse r3, 5 (.L1)
-    44: Throw r2
+    37: StrictEqual r3, r1, r3, ic0
+    42: JumpFalse r3, 5 (.L1)
+    45: Throw r2
   .L1:
-    46: Jump 2 (.L2)
+    47: Jump 2 (.L2)
   .L2:
-    48: LoadImmediate r1, 5
-    51: LoadUndefined r1
-    53: Ret r1
+    49: LoadImmediate r1, 5
+    52: LoadUndefined r1
+    54: Ret r1
   Exception Handlers:
     6-9 -> 14 (r0)
     14-20 -> 25 (r2)
@@ -131,15 +131,15 @@
     32: Mov <scope>, r3
     35: LoadImmediate r3, 4
     38: LoadImmediate r3, 0
-    41: StrictEqual r3, r1, r3
-    45: JumpFalse r3, 5 (.L1)
-    48: Throw r2
+    41: StrictEqual r3, r1, r3, ic0
+    46: JumpFalse r3, 5 (.L1)
+    49: Throw r2
   .L1:
-    50: Jump 2 (.L2)
+    51: Jump 2 (.L2)
   .L2:
-    52: LoadImmediate r1, 5
-    55: LoadUndefined r1
-    57: Ret r1
+    53: LoadImmediate r1, 5
+    56: LoadUndefined r1
+    58: Ret r1
   Constant Table:
     0: [String: e]
   Exception Handlers:
@@ -161,38 +161,38 @@
     23: Mov <scope>, r5
     26: LoadImmediate r5, 4
     29: LoadImmediate r5, 0
-    32: StrictEqual r5, r3, r5
-    36: JumpFalse r5, 5 (.L1)
-    39: Throw r4
+    32: StrictEqual r5, r3, r5, ic0
+    37: JumpFalse r5, 5 (.L1)
+    40: Throw r4
   .L1:
-    41: Jump 2 (.L2)
+    42: Jump 2 (.L2)
   .L2:
-    43: LoadImmediate r0, 1
-    46: Jump 5 (.L3)
-    48: LoadImmediate r0, 0
+    44: LoadImmediate r0, 1
+    47: Jump 5 (.L3)
+    49: LoadImmediate r0, 0
   .L3:
-    51: Mov <scope>, r2
-    54: LoadImmediate r2, 5
-    57: LoadImmediate r2, 0
-    60: StrictEqual r2, r0, r2
-    64: JumpFalse r2, 5 (.L4)
-    67: Throw r1
+    52: Mov <scope>, r2
+    55: LoadImmediate r2, 5
+    58: LoadImmediate r2, 0
+    61: StrictEqual r2, r0, r2, ic1
+    66: JumpFalse r2, 5 (.L4)
+    69: Throw r1
   .L4:
-    69: Jump 2 (.L5)
+    71: Jump 2 (.L5)
   .L5:
-    71: LoadImmediate r0, 6
-    74: LoadUndefined r0
-    76: Ret r0
+    73: LoadImmediate r0, 6
+    76: LoadUndefined r0
+    78: Ret r0
   Exception Handlers:
     12-15 -> 20 (r4)
-    6-43 -> 48 (r1)
+    6-44 -> 49 (r1)
 }
 
 [BytecodeFunction: allBranches] {
   Parameters: 3, Registers: 4
   .L0:
       0: LoadTrue r0
-      2: JumpFalse r0, 105 (.L10)
+      2: JumpFalse r0, 109 (.L10)
       5: Mov r2, <scope>
       8: JumpToBooleanFalse a0, 8 (.L1)
      11: LoadImmediate r0, 1
@@ -215,32 +215,32 @@
      46: Mov <scope>, r2
      49: LoadImmediate r2, 2
      52: LoadImmediate r2, 0
-     55: StrictEqual r2, r0, r2
-     59: JumpFalse r2, 5 (.L5)
-     62: Throw r1
+     55: StrictEqual r2, r0, r2, ic0
+     60: JumpFalse r2, 5 (.L5)
+     63: Throw r1
   .L5:
-     64: LoadImmediate r2, 4
-     67: StrictEqual r2, r0, r2
-     71: JumpFalse r2, 5 (.L6)
-     74: Jump 28 (.L9)
+     65: LoadImmediate r2, 4
+     68: StrictEqual r2, r0, r2, ic1
+     73: JumpFalse r2, 5 (.L6)
+     76: Jump 30 (.L9)
   .L6:
-     76: LoadImmediate r2, 3
-     79: StrictEqual r2, r0, r2
-     83: JumpFalse r2, 5 (.L7)
-     86: Ret r1
+     78: LoadImmediate r2, 3
+     81: StrictEqual r2, r0, r2, ic2
+     86: JumpFalse r2, 5 (.L7)
+     89: Ret r1
   .L7:
-     88: LoadImmediate r2, 1
-     91: StrictEqual r2, r0, r2
-     95: JumpFalse r2, 5 (.L8)
-     98: Jump 9 (.L10)
+     91: LoadImmediate r2, 1
+     94: StrictEqual r2, r0, r2, ic3
+     99: JumpFalse r2, 5 (.L8)
+    102: Jump 9 (.L10)
   .L8:
-    100: Jump -100 (.L0)
+    104: Jump -104 (.L0)
   .L9:
-    102: LoadImmediate r0, 3
-    105: Jump -105 (.L0)
+    106: LoadImmediate r0, 3
+    109: Jump -109 (.L0)
   .L10:
-    107: LoadUndefined r0
-    109: Ret r0
+    111: LoadUndefined r0
+    113: Ret r0
   Exception Handlers:
     8-38 -> 43 (r1)
 }

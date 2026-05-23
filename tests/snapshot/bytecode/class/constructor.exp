@@ -245,18 +245,18 @@
     35: Mov <scope>, r4
     38: LoadImmediate r4, 2
     41: LoadImmediate r4, 0
-    44: StrictEqual r4, r2, r4
-    48: JumpFalse r4, 5 (.L1)
-    51: Throw r3
+    44: StrictEqual r4, r2, r4, ic0
+    49: JumpFalse r4, 5 (.L1)
+    52: Throw r3
   .L1:
-    53: Mov r5, r3
-    56: JumpNotUndefined r3, 8 (.L2)
-    59: CheckThisInitialized <this>
-    61: Mov r5, <this>
+    54: Mov r5, r3
+    57: JumpNotUndefined r3, 8 (.L2)
+    60: CheckThisInitialized <this>
+    62: Mov r5, <this>
   .L2:
-    64: Ret r5
-    66: CheckThisInitialized <this>
-    68: Ret <this>
+    65: Ret r5
+    67: CheckThisInitialized <this>
+    69: Ret <this>
   Exception Handlers:
     22-32 -> 32 (r3)
 }
@@ -283,19 +283,19 @@
     49: Mov <scope>, r4
     52: LoadImmediate r4, 2
     55: LoadImmediate r4, 0
-    58: StrictEqual r4, r2, r4
-    62: JumpFalse r4, 5 (.L1)
-    65: Throw r3
+    58: StrictEqual r4, r2, r4, ic0
+    63: JumpFalse r4, 5 (.L1)
+    66: Throw r3
   .L1:
-    67: Mov r5, r3
-    70: JumpNotUndefined r3, 9 (.L2)
-    73: LoadFromScope r5, 0, 0
-    77: CheckThisInitialized r5
+    68: Mov r5, r3
+    71: JumpNotUndefined r3, 9 (.L2)
+    74: LoadFromScope r5, 0, 0
+    78: CheckThisInitialized r5
   .L2:
-    79: Ret r5
-    81: LoadFromScope r2, 0, 0
-    85: CheckThisInitialized r2
-    87: Ret r2
+    80: Ret r5
+    82: LoadFromScope r2, 0, 0
+    86: CheckThisInitialized r2
+    88: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: <anonymous>]

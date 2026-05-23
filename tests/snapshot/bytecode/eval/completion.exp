@@ -315,14 +315,14 @@
     25: LoadUndefined r0
     27: LoadImmediate r0, 2
     30: LoadImmediate r4, 0
-    33: StrictEqual r4, r1, r4
-    37: JumpFalse r4, 5 (.L1)
-    40: Throw r2
+    33: StrictEqual r4, r1, r4, ic0
+    38: JumpFalse r4, 5 (.L1)
+    41: Throw r2
   .L1:
-    42: Mov r0, r3
-    45: Jump 2 (.L2)
+    43: Mov r0, r3
+    46: Jump 2 (.L2)
   .L2:
-    47: Ret r0
+    48: Ret r0
   Constant Table:
     0: [String: try-finally completion]
   Exception Handlers:
@@ -348,14 +348,14 @@
     36: LoadUndefined r0
     38: LoadImmediate r0, 3
     41: LoadImmediate r4, 0
-    44: StrictEqual r4, r1, r4
-    48: JumpFalse r4, 5 (.L1)
-    51: Throw r2
+    44: StrictEqual r4, r1, r4, ic0
+    49: JumpFalse r4, 5 (.L1)
+    52: Throw r2
   .L1:
-    53: Mov r0, r3
-    56: Jump 2 (.L2)
+    54: Mov r0, r3
+    57: Jump 2 (.L2)
   .L2:
-    58: Ret r0
+    59: Ret r0
   Constant Table:
     0: [String: try-catch-finally completion]
   Exception Handlers:

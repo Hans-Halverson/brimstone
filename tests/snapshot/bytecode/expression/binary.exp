@@ -21,25 +21,25 @@
      15: Div r0, a0, a1, ic3
      20: Rem r0, a0, a1, ic4
      25: Exp r0, a0, a1, ic5
-     30: LooseEqual r0, a0, a1
-     34: LooseNotEqual r0, a0, a1
-     38: StrictEqual r0, a0, a1
-     42: StrictNotEqual r0, a0, a1
-     46: LessThan r0, a0, a1
-     50: LessThanOrEqual r0, a0, a1
-     54: GreaterThan r0, a0, a1
-     58: GreaterThanOrEqual r0, a0, a1
-     62: BitAnd r0, a0, a1, ic6
-     67: BitOr r0, a0, a1, ic7
-     72: BitXor r0, a0, a1, ic8
-     77: ShiftLeft r0, a0, a1, ic9
-     82: ShiftRightArithmetic r0, a0, a1, ic10
-     87: ShiftRightLogical r0, a0, a1, ic11
-     92: LoadConstant r0, c0
-     95: In r0, a1, r0
-     99: InstanceOf r0, a0, a1
-    103: LoadUndefined r0
-    105: Ret r0
+     30: LooseEqual r0, a0, a1, ic6
+     35: LooseNotEqual r0, a0, a1, ic7
+     40: StrictEqual r0, a0, a1, ic8
+     45: StrictNotEqual r0, a0, a1, ic9
+     50: LessThan r0, a0, a1, ic10
+     55: LessThanOrEqual r0, a0, a1, ic11
+     60: GreaterThan r0, a0, a1, ic12
+     65: GreaterThanOrEqual r0, a0, a1, ic13
+     70: BitAnd r0, a0, a1, ic14
+     75: BitOr r0, a0, a1, ic15
+     80: BitXor r0, a0, a1, ic16
+     85: ShiftLeft r0, a0, a1, ic17
+     90: ShiftRightArithmetic r0, a0, a1, ic18
+     95: ShiftRightLogical r0, a0, a1, ic19
+    100: LoadConstant r0, c0
+    103: In r0, a1, r0
+    107: InstanceOf r0, a0, a1
+    111: LoadUndefined r0
+    113: Ret r0
   Constant Table:
     0: [String: x]
 }

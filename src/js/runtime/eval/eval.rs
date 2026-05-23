@@ -45,7 +45,10 @@ pub fn perform_eval(
     let private_names = get_private_names_from_scopes(direct_scope.map(|s| *s));
 
     // Use the file path of the active source file
-    let file_path = cx.vm().current_source_file().path().to_string();
+    let file_path = cx
+        .vm()
+        .current_source_file()
+        .map_or_else(|| "<anonymous>".to_string(), |source| source.path().to_string());
 
     // Parse source code
     let source = match Source::new_for_eval(file_path, code.to_wtf8_string()?) {

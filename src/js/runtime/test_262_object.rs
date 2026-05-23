@@ -169,7 +169,10 @@ impl Test262Object {
         }
 
         // Use the file path of the active source file
-        let file_path = cx.vm().current_source_file().path().to_string();
+        let file_path = cx
+            .vm()
+            .current_source_file()
+            .map_or_else(|| "<anonymous>".to_string(), |source| source.path().to_string());
 
         let source =
             match Source::new_for_eval(file_path, script_text.as_string().to_wtf8_string()?) {

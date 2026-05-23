@@ -1382,15 +1382,18 @@ impl VM {
     }
 
     /// Walk the stack, returning the first source file that is found.
-    pub fn current_source_file(&self) -> HeapPtr<SourceFile> {
+    ///
+    /// It is possible that no source file can be found if the stack contains only frames for
+    /// builtin functions.
+    pub fn current_source_file(&self) -> Option<HeapPtr<SourceFile>> {
         let mut stack_frame = self.stack_frame();
 
         loop {
             if let Some(source_file) = stack_frame.closure().function_ptr().source_file_ptr() {
-                return source_file;
+                return Some(source_file);
             }
 
-            stack_frame = stack_frame.previous_frame().unwrap();
+            stack_frame = stack_frame.previous_frame()?;
         }
     }
 

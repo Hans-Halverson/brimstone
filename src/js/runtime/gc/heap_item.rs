@@ -437,9 +437,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::GtICStub => self.cast::<GtICStub>().visit_pointers(visitor),
             HeapItemKind::GteICStub => self.cast::<GteICStub>().visit_pointers(visitor),
             HeapItemKind::StrictEqICStub => self.cast::<StrictEqICStub>().visit_pointers(visitor),
-            HeapItemKind::StrictNeqICStub => {
-                self.cast::<StrictNeqICStub>().visit_pointers(visitor)
-            }
+            HeapItemKind::StrictNeqICStub => self.cast::<StrictNeqICStub>().visit_pointers(visitor),
             HeapItemKind::LooseEqICStub => self.cast::<LooseEqICStub>().visit_pointers(visitor),
             HeapItemKind::LooseNeqICStub => self.cast::<LooseNeqICStub>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),

@@ -36,11 +36,10 @@ use crate::{
             instruction::DefinePropertyFlags,
             operand::{
                 AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex,
-                DivICSlotIndex, ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex,
-                LooseEqICSlotIndex, LooseNeqICSlotIndex, LtICSlotIndex, LteICSlotIndex,
-                MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex,
-                ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex, StrictNeqICSlotIndex,
-                SubICSlotIndex,
+                DivICSlotIndex, ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex,
+                LooseNeqICSlotIndex, LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex,
+                ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex,
+                StrictEqICSlotIndex, StrictNeqICSlotIndex, SubICSlotIndex,
             },
             source_map::BytecodeSourceMap,
         },
@@ -6967,8 +6966,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let cond = self.register_allocator.allocate()?;
             self.gen_load_finally_branch_id(finally_scope.throw_branch(), cond)?;
             let slot_offset = self.add_ic_stub();
-            self.writer
-                .strict_not_equal_instruction(cond, cond, discriminant, StrictNeqICSlotIndex::new(slot_offset));
+            self.writer.strict_not_equal_instruction(
+                cond,
+                cond,
+                discriminant,
+                StrictNeqICSlotIndex::new(slot_offset),
+            );
 
             // If the iterating did not throw then continue to throwing error from close
             let close_handler_rethrow_block = self.new_block();
@@ -8094,8 +8097,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
                 let is_equal = self.register_allocator.allocate()?;
                 let slot_offset = self.add_ic_stub();
-                self.writer
-                    .strict_equal_instruction(is_equal, discriminant, test, StrictEqICSlotIndex::new(slot_offset));
+                self.writer.strict_equal_instruction(
+                    is_equal,
+                    discriminant,
+                    test,
+                    StrictEqICSlotIndex::new(slot_offset),
+                );
 
                 // Jump to the case body if the discriminant is equal to the test value
                 self.register_allocator.release(is_equal);
@@ -8439,8 +8446,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let temp = self.register_allocator.allocate()?;
         self.gen_load_finally_branch_id(finally_scope.throw_branch, temp)?;
         let slot_offset = self.add_ic_stub();
-        self.writer
-            .strict_equal_instruction(temp, finally_scope.discriminant_register, temp, StrictEqICSlotIndex::new(slot_offset));
+        self.writer.strict_equal_instruction(
+            temp,
+            finally_scope.discriminant_register,
+            temp,
+            StrictEqICSlotIndex::new(slot_offset),
+        );
         self.write_jump_false_instruction(temp, throw_block)?;
         self.register_allocator.release(temp);
 
@@ -9196,8 +9207,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if the discriminant matches the branch id
         self.gen_load_finally_branch_id(finally_branch_id, test_value)?;
         let slot_offset = self.add_ic_stub();
-        self.writer
-            .strict_equal_instruction(test_value, discriminant, test_value, StrictEqICSlotIndex::new(slot_offset));
+        self.writer.strict_equal_instruction(
+            test_value,
+            discriminant,
+            test_value,
+            StrictEqICSlotIndex::new(slot_offset),
+        );
 
         // Jump to the next branch if the discriminant does not match
         let next_branch_block = finally_branch_blocks[i + 1];

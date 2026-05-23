@@ -241,7 +241,6 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::ShiftRightLogicalICStub => {
                 self.cast::<ShiftRightLogicalICStub>().byte_size()
             }
-            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

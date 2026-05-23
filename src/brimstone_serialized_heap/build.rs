@@ -5,7 +5,7 @@ use std::{
 };
 
 use brimstone_core::{
-    common::options::OptionsBuilder,
+    common::{constants::MEGABYTE_BYTES, options::OptionsBuilder},
     runtime::{gc::HeapSerializer, ContextBuilder},
 };
 
@@ -21,7 +21,7 @@ fn main() {
 }
 
 /// A 4 MB heap is sufficient
-const HEAP_SIZE: usize = 4 * 1024 * 1024;
+const HEAP_SIZE: usize = 4 * MEGABYTE_BYTES;
 
 fn gen_serialized_heap_file(out_path: &Path) -> String {
     let options = OptionsBuilder::new()

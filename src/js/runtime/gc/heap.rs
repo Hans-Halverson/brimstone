@@ -1,7 +1,7 @@
 use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 
 use crate::{
-    common::serialized_heap::SerializedHeap,
+    common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
     runtime::{alloc_error::AllocResult, gc::garbage_collector::GarbageCollector, Context},
 };
 
@@ -50,7 +50,7 @@ pub struct Heap {
 
 /// The heap is always aligned to a 1GB boundary. Must be aligned to a power of two alignment
 /// greater than the heap size so that we can mask heap pointers to find start of heap.
-const HEAP_ALIGNMENT: usize = 1024 * 1024 * 1024;
+const HEAP_ALIGNMENT: usize = GIGABYTE_BYTES;
 
 /// All heap items are aligned to 8-byte boundaries
 type HeapItemAlignmentType = u64;

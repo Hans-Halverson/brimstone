@@ -47,7 +47,12 @@ impl<T: Clone + Copy> BsVec<T> {
     }
 
     #[inline]
-    fn capacity(&self) -> usize {
+    pub fn set_len(&mut self, len: usize) {
+        self.length = len;
+    }
+
+    #[inline]
+    pub fn capacity(&self) -> usize {
         self.array.len()
     }
 

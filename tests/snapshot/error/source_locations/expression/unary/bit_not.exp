@@ -1,0 +1,7 @@
+TypeError: symbol cannot be converted to number
+  ┌ source_locations/expression/unary/bit_not.js:1:1
+  |
+1 | ~Symbol.iterator;
+  | ^
+Stack trace:
+  at <global> (source_locations/expression/unary/bit_not.js:1:1)

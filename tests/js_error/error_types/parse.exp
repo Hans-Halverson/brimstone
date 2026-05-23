@@ -1,5 +1,0 @@
-SyntaxError: Unknown token @
-  ┌ tests/js_error/error_types/parse.js:1:5
-  |
-1 | 1 + @
-  |     ^

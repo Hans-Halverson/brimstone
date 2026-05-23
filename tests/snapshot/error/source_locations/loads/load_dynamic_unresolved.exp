@@ -1,0 +1,9 @@
+ReferenceError: x is not defined
+  ┌ <eval>:1:1
+  |
+1 | x
+  | ^
+Stack trace:
+  at <eval> (<eval>:1:1)
+  at test (source_locations/loads/load_dynamic_unresolved.js:2:3)
+  at <global> (source_locations/loads/load_dynamic_unresolved.js:5:1)

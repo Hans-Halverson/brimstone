@@ -1,7 +1,0 @@
-ReferenceError: module value is not initialized
-  ┌ tests/js_error/source_locations/loads/load_from_module_uninitialized.js:1:1
-  |
-1 | x = 2;
-  | ^
-Stack trace:
-  at <module> (tests/js_error/source_locations/loads/load_from_module_uninitialized.js:1:1)

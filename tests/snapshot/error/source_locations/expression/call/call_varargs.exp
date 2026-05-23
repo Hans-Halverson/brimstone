@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/expression/call/call_varargs.js:2:9
+  |
+2 |   throw new Error();
+  |         ^
+Stack trace:
+  at foo (source_locations/expression/call/call_varargs.js:2:9)
+  at <global> (source_locations/expression/call/call_varargs.js:5:1)

@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/destructure/object/copy_data_properties_throws.js:3:11
+  |
+3 |     throw new Error()
+  |           ^
+Stack trace:
+  at getOwnPropertyDescriptor (source_locations/destructure/object/copy_data_properties_throws.js:3:11)
+  at <global> (source_locations/destructure/object/copy_data_properties_throws.js:10:7)

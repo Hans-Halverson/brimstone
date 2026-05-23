@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/statement/for_in/for_in_next.js:7:13
+  |
+7 |       throw new Error()
+  |             ^
+Stack trace:
+  at has (source_locations/statement/for_in/for_in_next.js:7:13)
+  at <global> (source_locations/statement/for_in/for_in_next.js:12:12)

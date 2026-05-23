@@ -1,0 +1,10 @@
+Error: 
+  ┌ source_locations/expression/yield_star/get_async_iterator_throws_module.js:3:11
+  |
+3 |     throw new Error();
+  |           ^
+Stack trace:
+  at <anonymous> (source_locations/expression/yield_star/get_async_iterator_throws_module.js:3:11)
+  at generator (source_locations/expression/yield_star/get_async_iterator_throws_module.js:8:3)
+  at next (<native>)
+  at <module> (source_locations/expression/yield_star/get_async_iterator_throws_module.js:12:7)

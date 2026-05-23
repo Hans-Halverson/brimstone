@@ -1,0 +1,10 @@
+Error: 
+  ┌ source_locations/statement/return/await_throws_module.js:2:63
+  |
+2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error(); } });
+  |                                                               ^
+Stack trace:
+  at get (source_locations/statement/return/await_throws_module.js:2:63)
+  at generator (source_locations/statement/return/await_throws_module.js:5:3)
+  at next (<native>)
+  at <module> (source_locations/statement/return/await_throws_module.js:9:7)

@@ -1,0 +1,7 @@
+TypeError: super class must be a constructor
+  ┌ source_locations/class/new_class.js:1:2
+  |
+1 | (class C extends 1 {})
+  |  ^
+Stack trace:
+  at <global> (source_locations/class/new_class.js:1:2)

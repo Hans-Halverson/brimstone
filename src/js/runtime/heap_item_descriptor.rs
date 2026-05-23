@@ -158,6 +158,7 @@ pub enum HeapItemKind {
 
     // Vectors
     ValueVec,
+    WeakVec,
 
     // IC Vector
     ICVector,
@@ -408,6 +409,7 @@ impl BaseDescriptors {
         other_heap_item_descriptor!(HeapItemKind::GlobalScopes);
 
         other_heap_item_descriptor!(HeapItemKind::ValueVec);
+        other_heap_item_descriptor!(HeapItemKind::WeakVec);
 
         other_heap_item_descriptor!(HeapItemKind::ICVector);
         other_heap_item_descriptor!(HeapItemKind::AddICStub);

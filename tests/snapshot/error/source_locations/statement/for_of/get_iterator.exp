@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/statement/for_of/get_iterator.js:3:11
+  |
+3 |     throw new Error();
+  |           ^
+Stack trace:
+  at <anonymous> (source_locations/statement/for_of/get_iterator.js:3:11)
+  at <global> (source_locations/statement/for_of/get_iterator.js:7:15)

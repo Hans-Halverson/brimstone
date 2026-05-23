@@ -1,5 +1,0 @@
-SyntaxError: Redeclaration of let x
-  ┌ tests/js_error/error_types/analyze.js:4:7
-  |
-4 |   let x = 3;
-  |       ^

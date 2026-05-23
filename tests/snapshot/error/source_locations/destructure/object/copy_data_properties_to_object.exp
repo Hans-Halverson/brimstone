@@ -1,0 +1,7 @@
+TypeError: null has no properties
+  ┌ source_locations/destructure/object/copy_data_properties_to_object.js:1:5
+  |
+1 | var {...a} = null;
+  |     ^
+Stack trace:
+  at <global> (source_locations/destructure/object/copy_data_properties_to_object.js:1:5)

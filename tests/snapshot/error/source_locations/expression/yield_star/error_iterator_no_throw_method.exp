@@ -1,0 +1,9 @@
+TypeError: iterator does not have a throw method
+   ┌ source_locations/expression/yield_star/error_iterator_no_throw_method.js:12:3
+   |
+12 |   yield* iterable;
+   |   ^
+Stack trace:
+  at generator (source_locations/expression/yield_star/error_iterator_no_throw_method.js:12:3)
+  at throw (<native>)
+  at <global> (source_locations/expression/yield_star/error_iterator_no_throw_method.js:17:1)

@@ -1,0 +1,9 @@
+Error: 
+  ┌ source_locations/statement/for_await/await_throws_module.js:2:63
+  |
+2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error(); } });
+  |                                                               ^
+Stack trace:
+  at get (source_locations/statement/for_await/await_throws_module.js:2:63)
+  at foo (source_locations/statement/for_await/await_throws_module.js:15:20)
+  at <module> (source_locations/statement/for_await/await_throws_module.js:18:7)

@@ -1,8 +1,0 @@
-Error: 
-  ┌ tests/js_error/source_locations/statement/for_of/get_iterator.js:3:11
-  |
-3 |     throw new Error();
-  |           ^
-Stack trace:
-  at <anonymous> (tests/js_error/source_locations/statement/for_of/get_iterator.js:3:11)
-  at <global> (tests/js_error/source_locations/statement/for_of/get_iterator.js:7:15)

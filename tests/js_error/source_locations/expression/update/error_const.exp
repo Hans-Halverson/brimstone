@@ -1,8 +1,0 @@
-TypeError: can't assign constant `x`
-  ┌ tests/js_error/source_locations/expression/update/error_const.js:3:3
-  |
-3 |   x++;
-  |   ^
-Stack trace:
-  at test (tests/js_error/source_locations/expression/update/error_const.js:3:3)
-  at <global> (tests/js_error/source_locations/expression/update/error_const.js:6:1)

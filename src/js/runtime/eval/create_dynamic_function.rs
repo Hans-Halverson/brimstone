@@ -102,7 +102,10 @@ pub fn create_dynamic_function(
     };
 
     // Use the file path of the active source file
-    let file_path = cx.vm().current_source_file().path().to_string();
+    let file_path = cx
+        .vm()
+        .current_source_file()
+        .map_or_else(|| "<anonymous>".to_string(), |source| source.path().to_string());
 
     // Make sure that parameter list and body are valid by themselves. Only need to check that they
     // parse correctly, full analysis will be performed on entire function text.

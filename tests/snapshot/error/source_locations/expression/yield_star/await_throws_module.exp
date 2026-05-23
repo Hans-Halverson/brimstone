@@ -1,0 +1,10 @@
+Error: 
+  ┌ source_locations/expression/yield_star/await_throws_module.js:2:63
+  |
+2 | Object.defineProperty(promise, 'constructor', { get() { throw new Error(); } });
+  |                                                               ^
+Stack trace:
+  at get (source_locations/expression/yield_star/await_throws_module.js:2:63)
+  at generator (source_locations/expression/yield_star/await_throws_module.js:15:3)
+  at next (<native>)
+  at <module> (source_locations/expression/yield_star/await_throws_module.js:19:7)

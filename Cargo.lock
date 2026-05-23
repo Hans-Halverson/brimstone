@@ -145,6 +145,7 @@ version = "0.1.0"
 dependencies = [
  "brimstone_core",
  "brimstone_serialized_heap",
+ "clap",
 ]
 
 [[package]]

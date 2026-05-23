@@ -1,0 +1,3 @@
+error: Invalid value '1024GB' for '--max-heap-size <MAX_HEAP_SIZE>': Max heap size must be at most 4294967296 bytes
+
+For more information try '--help'

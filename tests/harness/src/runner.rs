@@ -231,8 +231,9 @@ fn run_single_test(
     // Set up options for test
     let options = OptionsBuilder::new()
         .annex_b(test.is_annex_b)
-        .heap_size(HEAP_SIZE)
-        .build();
+        .min_heap_size(HEAP_SIZE)
+        .build()
+        .unwrap();
 
     // Each test is executed in its own realm
     let cx = ContextBuilder::new()

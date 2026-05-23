@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/destructure/object/to_property_key_rest.js:1:37
+  |
+1 | var poisoned = { toString() { throw new Error() } };
+  |                                     ^
+Stack trace:
+  at toString (source_locations/destructure/object/to_property_key_rest.js:1:37)
+  at <global> (source_locations/destructure/object/to_property_key_rest.js:3:8)

@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/class/fields/to_property_key.js:1:37
+  |
+1 | var poisoned = { toString() { throw new Error() } };
+  |                                     ^
+Stack trace:
+  at toString (source_locations/class/fields/to_property_key.js:1:37)
+  at <global> (source_locations/class/fields/to_property_key.js:4:4)

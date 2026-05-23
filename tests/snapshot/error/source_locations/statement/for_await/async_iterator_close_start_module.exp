@@ -1,0 +1,9 @@
+Error: 
+  ┌ source_locations/statement/for_await/async_iterator_close_start_module.js:8:15
+  |
+8 |         throw new Error();
+  |               ^
+Stack trace:
+  at get return (source_locations/statement/for_await/async_iterator_close_start_module.js:8:15)
+  at return (<native>)
+  at foo (source_locations/statement/for_await/async_iterator_close_start_module.js:15:20)

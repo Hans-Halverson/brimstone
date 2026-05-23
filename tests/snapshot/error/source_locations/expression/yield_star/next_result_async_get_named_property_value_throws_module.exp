@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/expression/yield_star/next_result_async_get_named_property_value_throws_module.js:8:19
+  |
+8 |             throw new Error();
+  |                   ^
+Stack trace:
+  at get value (source_locations/expression/yield_star/next_result_async_get_named_property_value_throws_module.js:8:19)
+  at generator (source_locations/expression/yield_star/next_result_async_get_named_property_value_throws_module.js:17:3)

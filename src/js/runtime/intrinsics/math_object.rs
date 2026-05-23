@@ -7,6 +7,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         intrinsics::rust_runtime::RuntimeFunction,
+        numeric_constants::MAX_I32_PLUS_ONE_AS_F64,
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,
@@ -129,10 +130,15 @@ impl MathObject {
         let n = to_number(cx, argument)?;
 
         if n.is_smi() {
-            Ok(cx.smi(i32::abs(n.as_smi())))
-        } else {
-            Ok(cx.number(f64::abs(n.as_double())))
+            if let Some(smi) = n.as_smi().checked_abs() {
+                return Ok(cx.smi(smi));
+            } else {
+                // Only possible if i32::MIN which is larger than an i32 can represent
+                return Ok(cx.number(MAX_I32_PLUS_ONE_AS_F64));
+            }
         }
+
+        Ok(cx.number(f64::abs(n.as_double())))
     }
 
     /// Math.acos (https://tc39.es/ecma262/#sec-math.acos)

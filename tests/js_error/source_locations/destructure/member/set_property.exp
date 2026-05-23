@@ -1,8 +1,0 @@
-Error: 
-  ┌ tests/js_error/source_locations/destructure/member/set_property.js:3:11
-  |
-3 |     throw new Error();
-  |           ^
-Stack trace:
-  at set foo (tests/js_error/source_locations/destructure/member/set_property.js:3:11)
-  at <global> (tests/js_error/source_locations/destructure/member/set_property.js:7:10)

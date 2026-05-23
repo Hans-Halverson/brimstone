@@ -1,0 +1,7 @@
+ReferenceError: can't access `x` before initialization
+  ┌ source_locations/loads/check_tdz_global.js:1:2
+  |
+1 | (x);
+  |  ^
+Stack trace:
+  at <global> (source_locations/loads/check_tdz_global.js:1:2)

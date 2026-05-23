@@ -400,7 +400,7 @@ pub fn async_generator_await_return(
         cx.current_realm(),
         None,
     )?;
-    set_async_generator(cx, on_resolve, async_generator)?;
+    set_async_generator(cx, on_reject, async_generator)?;
 
     perform_promise_then(cx, promise, on_resolve.into(), on_reject.into(), None)?;
 

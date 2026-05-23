@@ -1,5 +1,0 @@
-SyntaxError: Inverted character class cannot contain strings
-  ┌ tests/js_error/regexp/unicode_sets/inverted_class_with_unicode_property_of_strings.js:1:4
-  |
-1 | /[^\p{Basic_Emoji}]/v;
-  |    ^

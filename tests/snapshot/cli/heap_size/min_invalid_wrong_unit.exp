@@ -1,0 +1,3 @@
+error: Invalid value '4TB' for '--min-heap-size <MIN_HEAP_SIZE>': Min heap size must be specified in the form XMB or XGB
+
+For more information try '--help'

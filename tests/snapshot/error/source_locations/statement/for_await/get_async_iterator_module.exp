@@ -1,0 +1,9 @@
+Error: 
+  ┌ source_locations/statement/for_await/get_async_iterator_module.js:3:11
+  |
+3 |     throw new Error();
+  |           ^
+Stack trace:
+  at <anonymous> (source_locations/statement/for_await/get_async_iterator_module.js:3:11)
+  at foo (source_locations/statement/for_await/get_async_iterator_module.js:8:23)
+  at <module> (source_locations/statement/for_await/get_async_iterator_module.js:11:7)

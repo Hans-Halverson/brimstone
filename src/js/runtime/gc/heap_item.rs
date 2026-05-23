@@ -17,6 +17,7 @@ use crate::runtime::{
             u32_array_visit_pointers, value_array_byte_size, value_array_visit_pointers,
         },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
+        BsWeakVec,
     },
     context::{GlobalSymbolRegistryField, ModuleCacheField},
     for_in_iterator::ForInIterator,
@@ -224,6 +225,7 @@ impl HeapPtr<AnyHeapItem> {
             }
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
             HeapItemKind::ValueVec => value_vec_byte_size(self.cast()),
+            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
             HeapItemKind::ICVector => self.cast::<ICVector>().byte_size(),
             HeapItemKind::AddICStub => self.cast::<AddICStub>().byte_size(),
             HeapItemKind::SubICStub => self.cast::<SubICStub>().byte_size(),
@@ -402,6 +404,7 @@ impl HeapPtr<AnyHeapItem> {
                 .visit_pointers(visitor),
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
             HeapItemKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
             HeapItemKind::ICVector => self.cast::<ICVector>().visit_pointers(visitor),
             HeapItemKind::AddICStub => self.cast::<AddICStub>().visit_pointers(visitor),
             HeapItemKind::SubICStub => self.cast::<SubICStub>().visit_pointers(visitor),

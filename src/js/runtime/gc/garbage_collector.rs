@@ -1,19 +1,16 @@
 use std::{ops::Range, ptr::NonNull};
 
-use crate::{
-    common::constants::MAX_HEAP_SIZE,
-    runtime::{
-        gc::Heap,
-        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        interned_strings::InternedStrings,
-        intrinsics::{
-            finalization_registry_object::FinalizationRegistryObject,
-            weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
-            weak_set_object::WeakSetObject,
-        },
-        string_value::FlatString,
-        Context, Value,
+use crate::runtime::{
+    collections::BsWeakVec,
+    gc::Heap,
+    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    interned_strings::InternedStrings,
+    intrinsics::{
+        finalization_registry_object::FinalizationRegistryObject, weak_map_object::WeakMapObject,
+        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
+    string_value::FlatString,
+    Context, Value,
 };
 
 use super::{AnyHeapItem, HeapItem, HeapPtr, HeapVisitor};
@@ -40,17 +37,20 @@ pub struct GarbageCollector {
     // item.
     alloc_ptr: *const u8,
 
-    // Chain of pointers to all WeakRefs that have been visited during this gc cycle
+    // Intrusive list of all WeakRefs that have been visited during this gc cycle
     weak_ref_list: Option<HeapPtr<WeakRefObject>>,
 
-    // Chain of pointers to all WeakSets that have been visited during this gc cycle
+    // Intrusive list of all WeakSets that have been visited during this gc cycle
     weak_set_list: Option<HeapPtr<WeakSetObject>>,
 
-    // Chain of pointers to all WeakMaps that have been visited during this gc cycle
+    // Intrusive list of all WeakMaps that have been visited during this gc cycle
     weak_map_list: Option<HeapPtr<WeakMapObject>>,
 
-    // Chain of pointers to all FinalizationRegistries that have been visited during this gc cycle
+    // Intrusive list of all FinalizationRegistries that have been visited during this gc cycle
     finalization_registry_list: Option<HeapPtr<FinalizationRegistryObject>>,
+
+    // Intrusive list of all WeakVecs that have been visited during this gc cycle
+    weak_vec_list: Option<HeapPtr<BsWeakVec>>,
 }
 
 #[derive(Clone, Debug)]
@@ -83,6 +83,7 @@ impl GarbageCollector {
             weak_set_list: None,
             weak_map_list: None,
             finalization_registry_list: None,
+            weak_vec_list: None,
         }
     }
 
@@ -148,7 +149,7 @@ impl GarbageCollector {
                 }
             }
 
-            new_heap_size = new_heap_size.min(MAX_HEAP_SIZE);
+            new_heap_size = new_heap_size.min(cx.options.max_heap_size);
 
             Some(new_heap_size)
         } else {
@@ -281,6 +282,7 @@ impl GarbageCollector {
             HeapItemKind::WeakMapObject => {
                 self.add_visited_weak_map(new_heap_item.cast::<WeakMapObject>())
             }
+            HeapItemKind::WeakVec => self.add_visited_weak_vec(new_heap_item.cast::<BsWeakVec>()),
             HeapItemKind::FinalizationRegistryObject => self.add_visited_finalization_registry(
                 new_heap_item.cast::<FinalizationRegistryObject>(),
             ),
@@ -357,10 +359,16 @@ impl GarbageCollector {
         self.weak_set_list = Some(weak_set);
     }
 
-    // Add a weak map to the linked list of weak map that are live during this garbage collection.
+    // Add a weak map to the linked list of weak maps that are live during this garbage collection.
     fn add_visited_weak_map(&mut self, mut weak_map: HeapPtr<WeakMapObject>) {
         weak_map.set_next_weak_map(self.weak_map_list);
         self.weak_map_list = Some(weak_map);
+    }
+
+    // Add a weak vec to the linked list of weak vecs that are live during this garbage collection.
+    fn add_visited_weak_vec(&mut self, mut weak_vec: HeapPtr<BsWeakVec>) {
+        weak_vec.set_next_weak_vec(self.weak_vec_list);
+        self.weak_vec_list = Some(weak_vec);
     }
 
     // Add a finalization registry to the linked list of finalization registries that are live
@@ -381,6 +389,7 @@ impl GarbageCollector {
         self.fix_weak_refs();
         self.fix_weak_sets();
         self.fix_weak_maps();
+        self.fix_weak_vecs();
         self.fix_finalization_registries(cx);
     }
 
@@ -391,23 +400,28 @@ impl GarbageCollector {
         let mut next_weak_ref = self.weak_ref_list;
         while let Some(mut weak_ref) = next_weak_ref {
             let target = weak_ref.weak_ref_target();
+            next_weak_ref = weak_ref.next_weak_ref();
 
-            debug_assert!(target.is_pointer());
-            let target_ptr = target.as_pointer().as_ptr().cast();
-
-            if self.is_in_moved_space(target_ptr) {
-                let target_descriptor = target.as_pointer().descriptor();
-
-                // Target is known to be live if it has already moved (and left a forwarding pointer)
-                if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
-                    weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
-                } else {
-                    // Otherwise target was garbage collected so reset target to undefined
-                    weak_ref.set_weak_ref_target(Value::undefined());
-                }
+            // Target may have already been cleared to undefined by a prior GC
+            if !target.is_pointer() {
+                continue;
             }
 
-            next_weak_ref = weak_ref.next_weak_ref();
+            let target_ptr = target.as_pointer().as_ptr().cast();
+
+            if !self.is_in_moved_space(target_ptr) {
+                continue;
+            }
+
+            let target_descriptor = target.as_pointer().descriptor();
+
+            // Target is known to be live if it has already moved (and left a forwarding pointer)
+            if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
+                weak_ref.set_weak_ref_target(Value::heap_item(forwarding_ptr));
+            } else {
+                // Otherwise target was garbage collected so reset target to undefined
+                weak_ref.set_weak_ref_target(Value::undefined());
+            }
         }
     }
 
@@ -600,6 +614,53 @@ impl GarbageCollector {
 
             next_finalization_registry = finalization_registry.next_finalization_registry();
         }
+    }
+
+    /// Walk the intrusive list of live weak vecs and compress each one.
+    fn fix_weak_vecs(&mut self) {
+        // Walk all live weak vecs in the list
+        let mut next_weak_vec = self.weak_vec_list;
+        while let Some(weak_vec) = next_weak_vec {
+            self.compress_weak_vec(weak_vec);
+            next_weak_vec = weak_vec.next_weak_vec();
+        }
+    }
+
+    /// Compress a `BsWeakVec` by removing elements that have been garbage collected.
+    ///
+    /// Vector is compressed in place by moving live elements down to fill the slots of dead
+    /// elements. Note that backing array is never shrunk.
+    fn compress_weak_vec(&self, mut weak_vec: HeapPtr<BsWeakVec>) {
+        let len = weak_vec.len();
+        let mut next_kept_index = 0;
+
+        for index in 0..len {
+            let element = weak_vec.as_mut_slice()[index];
+
+            let kept_element = if element.is_pointer() {
+                let element_ptr = element.as_pointer().as_ptr().cast::<u8>();
+                if self.is_in_moved_space(element_ptr) {
+                    let element_descriptor = element.as_pointer().descriptor();
+
+                    // Element is known to be live if it has already moved (and left a forwarding
+                    // pointer)
+                    decode_forwarding_pointer(element_descriptor).map(Value::heap_item)
+                } else {
+                    // Pointer is not from a GC'd space
+                    Some(element)
+                }
+            } else {
+                // Non-pointer values are never GC'd
+                Some(element)
+            };
+
+            if let Some(element) = kept_element {
+                weak_vec.as_mut_slice()[next_kept_index] = element;
+                next_kept_index += 1;
+            }
+        }
+
+        weak_vec.set_len(next_kept_index);
     }
 
     fn prune_weak_interned_strings(&mut self, cx: Context) {

@@ -1,5 +1,0 @@
-SyntaxError: Redeclaration of const foo
-  ┌ tests/js_error/annex_b/statement/catch_parameter_conflict_leave_hoisted_var.js:9:9
-  |
-9 |     var foo = 4;
-  |         ^

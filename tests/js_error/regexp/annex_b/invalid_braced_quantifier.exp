@@ -1,5 +1,0 @@
-SyntaxError: Invalid quantifier bounds in regular expression
-  ┌ tests/js_error/regexp/annex_b/invalid_braced_quantifier.js:2:3
-  |
-2 | /a{2,1}/;
-  |   ^

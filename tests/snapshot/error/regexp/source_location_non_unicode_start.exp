@@ -1,0 +1,5 @@
+SyntaxError: Invalid quantifier bounds in regular expression
+  ┌ regexp/source_location_non_unicode_start.js:1:3
+  |
+1 | /a{2,1}/;
+  |   ^

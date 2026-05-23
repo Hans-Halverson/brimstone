@@ -1,5 +1,0 @@
-SyntaxError: Inverted character class cannot contain strings
-  ┌ tests/js_error/parser/regexp_inverted_class_contains_strings.js:1:4
-  |
-1 | /[^\q{abc}]/v;
-  |    ^

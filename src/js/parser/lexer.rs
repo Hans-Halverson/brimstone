@@ -1254,6 +1254,10 @@ impl<'a> Lexer<'a> {
                         value,
                     );
                 }
+                EOF_CHAR => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnterminatedTemplateLiteral);
+                }
                 // Otherwise skip the next character, performing UTF-8 validation
                 _ => {
                     let _ = self.lex_ascii_or_unicode_character()?;

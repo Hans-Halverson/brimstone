@@ -1,0 +1,8 @@
+Error: 
+  ┌ source_locations/destructure/array/hole_iterator_next.js:8:17
+  |
+8 |           throw new Error();
+  |                 ^
+Stack trace:
+  at next (source_locations/destructure/array/hole_iterator_next.js:8:17)
+  at <global> (source_locations/destructure/array/hole_iterator_next.js:19:9)

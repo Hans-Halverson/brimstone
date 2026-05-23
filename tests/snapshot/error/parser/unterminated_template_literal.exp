@@ -1,0 +1,5 @@
+SyntaxError: Unterminated template literal
+  ┌ parser/unterminated_template_literal.js:1:2
+  |
+1 | `
+  |  ^

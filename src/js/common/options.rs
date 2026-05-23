@@ -5,7 +5,7 @@ use std::{
 
 use clap::Parser;
 
-use crate::common::constants::{MAX_HEAP_SIZE, MIN_HEAP_SIZE};
+use crate::common::constants::{GIGABYTE_BYTES, MAX_HEAP_SIZE, MEGABYTE_BYTES, MIN_HEAP_SIZE};
 
 use super::{
     constants::{DEFAULT_MAX_HEAP_SIZE, DEFAULT_MIN_HEAP_SIZE},
@@ -272,10 +272,10 @@ fn validate_max_heap_size_arg(size: usize) -> Result<(), String> {
 fn parse_heap_size_arg(size_arg: &str) -> Result<usize, ()> {
     if size_arg.ends_with("MB") {
         let size = parse_heap_size_number(size_arg)?;
-        Ok(size * 1024 * 1024)
+        Ok(size * MEGABYTE_BYTES)
     } else if size_arg.ends_with("GB") {
         let size = parse_heap_size_number(size_arg)?;
-        Ok(size * 1024 * 1024 * 1024)
+        Ok(size * GIGABYTE_BYTES)
     } else {
         Err(())
     }

@@ -7,4 +7,6 @@ pub const MIN_POSITIVE_SUBNORMAL_F64: f64 = 5e-324;
 pub const MAX_U8_AS_F64: f64 = u8::MAX as f64;
 pub const MAX_U32_AS_F64: f64 = u32::MAX as f64;
 
+pub const MAX_I32_PLUS_ONE_AS_F64: f64 = (i32::MAX as i64 + 1) as f64;
+
 pub const MAX_SAFE_INTEGER_U64: u64 = 9007199254740991;

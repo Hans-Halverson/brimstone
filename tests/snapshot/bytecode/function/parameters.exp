@@ -115,10 +115,10 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 0
      4: LoadFromScope r1, 1, 0
-     8: Add r0, r0, r1
-    12: LoadFromScope r1, 2, 0
-    16: Add r0, r0, r1
-    20: Ret r0
+     8: Add r0, r0, r1, ic0
+    13: LoadFromScope r1, 2, 0
+    17: Add r0, r0, r1, ic1
+    22: Ret r0
 }
 
 [BytecodeFunction: tdz] {
@@ -130,9 +130,9 @@
   .L0:
     11: Mov r0, a1
     14: CheckTdz r0, c0
-    17: Add r1, a0, r0
-    21: LoadUndefined r1
-    23: Ret r1
+    17: Add r1, a0, r0, ic0
+    22: LoadUndefined r1
+    24: Ret r1
   Constant Table:
     0: [String: b]
 }
@@ -153,9 +153,9 @@
     32: LoadFromScope r1, 0, 0
     36: LoadFromScope r2, 1, 0
     40: CheckTdz r2, c1
-    43: Add r1, r1, r2
-    47: LoadUndefined r1
-    49: Ret r1
+    43: Add r1, r1, r2, ic0
+    48: LoadUndefined r1
+    50: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [String: b]
@@ -167,8 +167,8 @@
      0: LoadFromScope r0, 0, 0
      4: LoadFromScope r1, 1, 0
      8: CheckTdz r1, c0
-    11: Add r0, r0, r1
-    15: Ret r0
+    11: Add r0, r0, r1, ic0
+    16: Ret r0
   Constant Table:
     0: [String: b]
 }

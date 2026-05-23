@@ -56,13 +56,13 @@
      0: LoadImmediate r1, 1
      3: ToString r0, r1
      6: LoadConstant r1, c0
-     9: Add r0, r0, r1
-    13: Mov a0, r0
-    16: LoadImmediate r1, 1
-    19: ToString r0, r1
-    22: LoadConstant r1, c0
-    25: Add r0, r0, r1
-    29: Ret r0
+     9: Add r0, r0, r1, ic0
+    14: Mov a0, r0
+    17: LoadImmediate r1, 1
+    20: ToString r0, r1
+    23: LoadConstant r1, c0
+    26: Add r0, r0, r1, ic1
+    31: Ret r0
   Constant Table:
     0: [String: test]
 }
@@ -72,8 +72,8 @@
      0: LoadConstant r0, c0
      3: LoadImmediate r1, 1
      6: ToString r1, r1
-     9: Add r0, r0, r1
-    13: Ret r0
+     9: Add r0, r0, r1, ic0
+    14: Ret r0
   Constant Table:
     0: [String: test]
 }
@@ -84,11 +84,11 @@
      3: ToString r0, r1
      6: LoadImmediate r1, 2
      9: ToString r1, r1
-    12: Add r0, r0, r1
-    16: LoadImmediate r1, 3
-    19: ToString r1, r1
-    22: Add r0, r0, r1
-    26: Ret r0
+    12: Add r0, r0, r1, ic0
+    17: LoadImmediate r1, 3
+    20: ToString r1, r1
+    23: Add r0, r0, r1, ic1
+    28: Ret r0
 }
 
 [BytecodeFunction: expressionsAndNonEmptyLiterals] {
@@ -96,15 +96,15 @@
      0: LoadConstant r0, c0
      3: LoadImmediate r1, 1
      6: ToString r1, r1
-     9: Add r0, r0, r1
-    13: LoadConstant r1, c1
-    16: Add r0, r0, r1
-    20: LoadImmediate r1, 2
-    23: ToString r1, r1
-    26: Add r0, r0, r1
-    30: LoadConstant r1, c2
-    33: Add r0, r0, r1
-    37: Ret r0
+     9: Add r0, r0, r1, ic0
+    14: LoadConstant r1, c1
+    17: Add r0, r0, r1, ic1
+    22: LoadImmediate r1, 2
+    25: ToString r1, r1
+    28: Add r0, r0, r1, ic2
+    33: LoadConstant r1, c2
+    36: Add r0, r0, r1, ic3
+    41: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]
@@ -117,14 +117,14 @@
      3: ToString a1, a1
      6: LoadConstant r0, c0
      9: ToString r1, a0
-    12: Add r0, r0, r1
-    16: LoadConstant r1, c1
-    19: Add r0, r0, r1
-    23: ToString r1, a1
-    26: Add r0, r0, r1
-    30: LoadConstant r1, c2
-    33: Add r0, r0, r1
-    37: Ret r0
+    12: Add r0, r0, r1, ic0
+    17: LoadConstant r1, c1
+    20: Add r0, r0, r1, ic1
+    25: ToString r1, a1
+    28: Add r0, r0, r1, ic2
+    33: LoadConstant r1, c2
+    36: Add r0, r0, r1, ic3
+    41: Ret r0
   Constant Table:
     0: [String: a]
     1: [String: b]

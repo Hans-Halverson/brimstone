@@ -24,6 +24,13 @@ use crate::runtime::{
     generator_object::GeneratorObject,
     global_names::GlobalNames,
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+    ic::{
+        stubs::binary_arith::{
+            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, MulICStub,
+            RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, SubICStub,
+        },
+        vector::ICVector,
+    },
     interned_strings::InternedStringsSetField,
     intrinsics::{
         array_buffer_constructor::ArrayBufferObject,
@@ -218,6 +225,21 @@ impl HeapPtr<AnyHeapItem> {
             }
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
             HeapItemKind::ValueVec => value_vec_byte_size(self.cast()),
+            HeapItemKind::ICVector => self.cast::<ICVector>().byte_size(),
+            HeapItemKind::AddICStub => self.cast::<AddICStub>().byte_size(),
+            HeapItemKind::SubICStub => self.cast::<SubICStub>().byte_size(),
+            HeapItemKind::MulICStub => self.cast::<MulICStub>().byte_size(),
+            HeapItemKind::DivICStub => self.cast::<DivICStub>().byte_size(),
+            HeapItemKind::RemICStub => self.cast::<RemICStub>().byte_size(),
+            HeapItemKind::ExpICStub => self.cast::<ExpICStub>().byte_size(),
+            HeapItemKind::BitAndICStub => self.cast::<BitAndICStub>().byte_size(),
+            HeapItemKind::BitOrICStub => self.cast::<BitOrICStub>().byte_size(),
+            HeapItemKind::BitXorICStub => self.cast::<BitXorICStub>().byte_size(),
+            HeapItemKind::ShiftLeftICStub => self.cast::<ShiftLeftICStub>().byte_size(),
+            HeapItemKind::ShiftRightArithICStub => self.cast::<ShiftRightArithICStub>().byte_size(),
+            HeapItemKind::ShiftRightLogicalICStub => {
+                self.cast::<ShiftRightLogicalICStub>().byte_size()
+            }
             HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
@@ -382,6 +404,23 @@ impl HeapPtr<AnyHeapItem> {
                 .visit_pointers(visitor),
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
             HeapItemKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::ICVector => self.cast::<ICVector>().visit_pointers(visitor),
+            HeapItemKind::AddICStub => self.cast::<AddICStub>().visit_pointers(visitor),
+            HeapItemKind::SubICStub => self.cast::<SubICStub>().visit_pointers(visitor),
+            HeapItemKind::MulICStub => self.cast::<MulICStub>().visit_pointers(visitor),
+            HeapItemKind::DivICStub => self.cast::<DivICStub>().visit_pointers(visitor),
+            HeapItemKind::RemICStub => self.cast::<RemICStub>().visit_pointers(visitor),
+            HeapItemKind::ExpICStub => self.cast::<ExpICStub>().visit_pointers(visitor),
+            HeapItemKind::BitAndICStub => self.cast::<BitAndICStub>().visit_pointers(visitor),
+            HeapItemKind::BitOrICStub => self.cast::<BitOrICStub>().visit_pointers(visitor),
+            HeapItemKind::BitXorICStub => self.cast::<BitXorICStub>().visit_pointers(visitor),
+            HeapItemKind::ShiftLeftICStub => self.cast::<ShiftLeftICStub>().visit_pointers(visitor),
+            HeapItemKind::ShiftRightArithICStub => {
+                self.cast::<ShiftRightArithICStub>().visit_pointers(visitor)
+            }
+            HeapItemKind::ShiftRightLogicalICStub => self
+                .cast::<ShiftRightLogicalICStub>()
+                .visit_pointers(visitor),
             HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }

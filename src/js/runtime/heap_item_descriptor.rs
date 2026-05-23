@@ -160,6 +160,22 @@ pub enum HeapItemKind {
     ValueVec,
     WeakVec,
 
+    // IC Vector
+    ICVector,
+    // IC Stubs
+    AddICStub,
+    SubICStub,
+    MulICStub,
+    DivICStub,
+    RemICStub,
+    ExpICStub,
+    BitAndICStub,
+    BitOrICStub,
+    BitXorICStub,
+    ShiftLeftICStub,
+    ShiftRightArithICStub,
+    ShiftRightLogicalICStub,
+
     // Numerical value is the number of kinds in the enum
     Last,
 }
@@ -394,6 +410,20 @@ impl BaseDescriptors {
 
         other_heap_item_descriptor!(HeapItemKind::ValueVec);
         other_heap_item_descriptor!(HeapItemKind::WeakVec);
+
+        other_heap_item_descriptor!(HeapItemKind::ICVector);
+        other_heap_item_descriptor!(HeapItemKind::AddICStub);
+        other_heap_item_descriptor!(HeapItemKind::SubICStub);
+        other_heap_item_descriptor!(HeapItemKind::MulICStub);
+        other_heap_item_descriptor!(HeapItemKind::DivICStub);
+        other_heap_item_descriptor!(HeapItemKind::RemICStub);
+        other_heap_item_descriptor!(HeapItemKind::ExpICStub);
+        other_heap_item_descriptor!(HeapItemKind::BitAndICStub);
+        other_heap_item_descriptor!(HeapItemKind::BitOrICStub);
+        other_heap_item_descriptor!(HeapItemKind::BitXorICStub);
+        other_heap_item_descriptor!(HeapItemKind::ShiftLeftICStub);
+        other_heap_item_descriptor!(HeapItemKind::ShiftRightArithICStub);
+        other_heap_item_descriptor!(HeapItemKind::ShiftRightLogicalICStub);
 
         Ok(base_descriptors)
     }

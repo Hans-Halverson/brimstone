@@ -18,6 +18,11 @@ use crate::{
         array_object::{array_create, ArrayObject},
         async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
         boxed_value::BoxedValue,
+        bytecode::operand::{
+            AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
+            ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
+            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex,
+        },
         class_names::{new_class, ClassNames},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
@@ -41,6 +46,15 @@ use crate::{
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         heap_item_descriptor::HeapItemKind,
+        ic::{
+            generate::ICStubGenerator,
+            stubs::binary_arith::{
+                AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub,
+                MulICStub, RemICStub, ShiftLeftICStub, ShiftRightArithICStub,
+                ShiftRightLogicalICStub, SubICStub,
+            },
+            vector::{ICEntry, ICVector},
+        },
         intrinsics::{
             async_generator_prototype::AsyncGeneratorPrototype,
             generator_prototype::GeneratorPrototype,
@@ -172,6 +186,39 @@ const MAX_STACK_DEPTH: usize = 4096;
 #[cfg(debug_assertions)]
 const MAX_STACK_DEPTH: usize = 80;
 
+macro_rules! def_ic_stub_methods {
+    ($($op:ident),*) => {
+        $(
+            paste::paste! {
+                #[inline]
+                fn [<get_ $op:lower _ic_stub>]<W: Width>(
+                    &self,
+                    slot_index: [<$op ICSlotIndex>]<W>,
+                ) -> Option<HeapPtr<[<$op ICStub>]>> {
+                    match self
+                        .stack_frame()
+                        .get_ic_stub(slot_index.value().to_usize())?
+                    {
+                        ICEntry::$op(heap_ptr) => Some(heap_ptr),
+                        _ => unreachable!(
+                            concat!("Expected ", stringify!([<$op ICStub>]), " but got different stub kind")
+                        ),
+                    }
+                }
+
+                #[inline]
+                fn [<insert_ $op:lower _ic_stub>]<W: Width>(
+                    &mut self,
+                    slot_index: [<$op ICSlotIndex>]<W>,
+                    slot: Handle<[<$op ICStub>]>,
+                ) {
+                    self.stack_frame().[<insert_ $op:lower _ic_stub>](slot_index, slot);
+                }
+            }
+        )*
+    };
+}
+
 impl VM {
     #[inline]
     fn cx(&self) -> Context {
@@ -220,6 +267,22 @@ impl VM {
         self.stack.as_ptr_range().end
     }
 
+    // IC stub getters and setters
+    def_ic_stub_methods!(
+        Add,
+        Sub,
+        Mul,
+        Div,
+        Rem,
+        Exp,
+        BitAnd,
+        BitOr,
+        BitXor,
+        ShiftLeft,
+        ShiftRightArith,
+        ShiftRightLogical
+    );
+
     pub fn stack_trace_top(&self) -> Option<StackFrame> {
         self.stack_trace_top
     }
@@ -236,6 +299,35 @@ impl VM {
         debug_assert!(self.fp().is_null());
         debug_assert!(self.num_stack_frames == 0);
     }
+}
+
+macro_rules! eval_with_ic {
+    ($self:ident, $op:ident, $instr:expr,
+     $left_value:expr, $right_value:expr, $dest:expr,
+     $body:block) => {
+        paste::paste! {{
+            let slot_index = $instr.ic_stub_offset();
+
+            if let Some(stub) = $self.[<get_ $op:lower _ic_stub>](slot_index) {
+                match stub.try_execute($self.cx(), $left_value, $right_value) {
+                    Some(result) => {
+                        $self.write_register($dest, *result?);
+                        return Ok(());
+                    }
+                    None => {}
+                }
+            };
+
+            let result = { $body };
+
+            let gen = ICStubGenerator::new(&$self.cx);
+            if let Some(new_stub) =
+                gen.[<new_stub_for_ $op:lower>](&$left_value, &$right_value, &result)
+            {
+                $self.[<insert_ $op:lower _ic_stub>](slot_index, new_stub?);
+            }
+        }}
+    };
 }
 
 impl VM {
@@ -2048,6 +2140,14 @@ impl VM {
         // Push the function
         self.push(closure.as_ptr() as StackSlotValue);
 
+        // push the feedback vector
+        let feedback_vector = unsafe {
+            std::mem::transmute::<Option<HeapPtr<ICVector>>, usize>(
+                bytecode_function.feedback_vector_ptr(),
+            )
+        };
+        self.push(feedback_vector);
+
         // Push the constant table
         let constant_table = unsafe {
             std::mem::transmute::<Option<HeapPtr<ConstantTable>>, usize>(
@@ -2734,10 +2834,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_add(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Add, instr, left_value, right_value, dest, {
+                let result = eval_add(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2750,10 +2851,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_subtract(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Sub, instr, left_value, right_value, dest, {
+                let result = eval_subtract(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2766,10 +2868,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_multiply(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Mul, instr, left_value, right_value, dest, {
+                let result = eval_multiply(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2782,10 +2885,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_divide(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Div, instr, left_value, right_value, dest, {
+                let result = eval_divide(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2798,10 +2902,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_remainder(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Rem, instr, left_value, right_value, dest, {
+                let result = eval_remainder(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2814,10 +2919,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_exponentiation(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Exp, instr, left_value, right_value, dest, {
+                let result = eval_exponentiation(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2830,10 +2936,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, BitAnd, instr, left_value, right_value, dest, {
+                let result = eval_bitwise_and(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2846,10 +2953,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, BitOr, instr, left_value, right_value, dest, {
+                let result = eval_bitwise_or(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2862,10 +2970,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, BitXor, instr, left_value, right_value, dest, {
+                let result = eval_bitwise_xor(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2878,10 +2987,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_shift_left(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, ShiftLeft, instr, left_value, right_value, dest, {
+                let result = eval_shift_left(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2897,10 +3007,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, ShiftRightArith, instr, left_value, right_value, dest, {
+                let result = eval_shift_right_arithmetic(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -2916,10 +3027,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, ShiftRightLogical, instr, left_value, right_value, dest, {
+                let result = eval_shift_right_logical(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })

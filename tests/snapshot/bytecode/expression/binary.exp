@@ -15,31 +15,31 @@
 
 [BytecodeFunction: test1] {
   Parameters: 2, Registers: 1
-     0: Add r0, a0, a1
-     4: Sub r0, a0, a1
-     8: Mul r0, a0, a1
-    12: Div r0, a0, a1
-    16: Rem r0, a0, a1
-    20: Exp r0, a0, a1
-    24: LooseEqual r0, a0, a1
-    28: LooseNotEqual r0, a0, a1
-    32: StrictEqual r0, a0, a1
-    36: StrictNotEqual r0, a0, a1
-    40: LessThan r0, a0, a1
-    44: LessThanOrEqual r0, a0, a1
-    48: GreaterThan r0, a0, a1
-    52: GreaterThanOrEqual r0, a0, a1
-    56: BitAnd r0, a0, a1
-    60: BitOr r0, a0, a1
-    64: BitXor r0, a0, a1
-    68: ShiftLeft r0, a0, a1
-    72: ShiftRightArithmetic r0, a0, a1
-    76: ShiftRightLogical r0, a0, a1
-    80: LoadConstant r0, c0
-    83: In r0, a1, r0
-    87: InstanceOf r0, a0, a1
-    91: LoadUndefined r0
-    93: Ret r0
+      0: Add r0, a0, a1, ic0
+      5: Sub r0, a0, a1, ic1
+     10: Mul r0, a0, a1, ic2
+     15: Div r0, a0, a1, ic3
+     20: Rem r0, a0, a1, ic4
+     25: Exp r0, a0, a1, ic5
+     30: LooseEqual r0, a0, a1
+     34: LooseNotEqual r0, a0, a1
+     38: StrictEqual r0, a0, a1
+     42: StrictNotEqual r0, a0, a1
+     46: LessThan r0, a0, a1
+     50: LessThanOrEqual r0, a0, a1
+     54: GreaterThan r0, a0, a1
+     58: GreaterThanOrEqual r0, a0, a1
+     62: BitAnd r0, a0, a1, ic6
+     67: BitOr r0, a0, a1, ic7
+     72: BitXor r0, a0, a1, ic8
+     77: ShiftLeft r0, a0, a1, ic9
+     82: ShiftRightArithmetic r0, a0, a1, ic10
+     87: ShiftRightLogical r0, a0, a1, ic11
+     92: LoadConstant r0, c0
+     95: In r0, a1, r0
+     99: InstanceOf r0, a0, a1
+    103: LoadUndefined r0
+    105: Ret r0
   Constant Table:
     0: [String: x]
 }

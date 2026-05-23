@@ -121,10 +121,10 @@
      3: LoadTrue r0
      5: LoadImmediate r0, 1
      8: LoadImmediate r1, 2
-    11: Add r0, r0, r1
-    15: LoadTrue r0
-    17: LoadUndefined r0
-    19: Ret r0
+    11: Add r0, r0, r1, ic0
+    16: LoadTrue r0
+    18: LoadUndefined r0
+    20: Ret r0
 }
 
 [BytecodeFunction: deleteIdVars] {
@@ -234,9 +234,9 @@
   Parameters: 0, Registers: 2
      0: LoadImmediate r0, 1
      3: LoadImmediate r1, 2
-     6: Add r0, r0, r1
-    10: ThrowNewError 0, c0
-    13: Ret r0
+     6: Add r0, r0, r1, ic0
+    11: ThrowNewError 0, c0
+    14: Ret r0
   Constant Table:
     0: [String: cannot delete super property]
 }

@@ -83,11 +83,11 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 0, 1
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: LoadFromScope r1, 0, 0
-    22: CheckTdz r1, c2
-    25: Add r0, r0, r1
-    29: Ret r0
+    14: Add r0, r0, r1, ic0
+    19: LoadFromScope r1, 0, 0
+    23: CheckTdz r1, c2
+    26: Add r0, r0, r1, ic1
+    31: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -147,8 +147,8 @@
      4: CheckTdz r0, c0
      7: LoadFromScope r1, 0, 0
     11: CheckTdz r1, c1
-    14: Add r0, r0, r1
-    18: Ret r0
+    14: Add r0, r0, r1, ic0
+    19: Ret r0
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -204,11 +204,11 @@
      0: LoadFromScope r0, 0, 2
      4: LoadFromScope r1, 0, 1
      8: CheckTdz r1, c0
-    11: Add r0, r0, r1
-    15: LoadFromScope r1, 0, 0
-    19: CheckTdz r1, c1
-    22: Add r0, r0, r1
-    26: Ret r0
+    11: Add r0, r0, r1, ic0
+    16: LoadFromScope r1, 0, 0
+    20: CheckTdz r1, c1
+    23: Add r0, r0, r1, ic1
+    28: Ret r0
   Constant Table:
     0: [String: y]
     1: [String: z]
@@ -256,11 +256,11 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 0, 1
      4: LoadFromScope r1, 1, 1
-     8: Add r0, r0, r1
-    12: LoadFromScope r1, 0, 0
-    16: CheckTdz r1, c0
-    19: Add r0, r0, r1
-    23: Ret r0
+     8: Add r0, r0, r1, ic0
+    13: LoadFromScope r1, 0, 0
+    17: CheckTdz r1, c0
+    20: Add r0, r0, r1, ic1
+    25: Ret r0
   Constant Table:
     0: [String: z]
 }

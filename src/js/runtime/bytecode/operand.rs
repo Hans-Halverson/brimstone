@@ -123,11 +123,37 @@ operand_type!(SInt, SIGNED);
 // An index into the constant table
 operand_type!(ConstantIndex, UNSIGNED);
 
+// Indices into ICs
+operand_type!(AddICSlotIndex, UNSIGNED);
+operand_type!(SubICSlotIndex, UNSIGNED);
+operand_type!(MulICSlotIndex, UNSIGNED);
+operand_type!(DivICSlotIndex, UNSIGNED);
+operand_type!(RemICSlotIndex, UNSIGNED);
+operand_type!(ExpICSlotIndex, UNSIGNED);
+operand_type!(BitAndICSlotIndex, UNSIGNED);
+operand_type!(BitOrICSlotIndex, UNSIGNED);
+operand_type!(BitXorICSlotIndex, UNSIGNED);
+operand_type!(ShiftLeftICSlotIndex, UNSIGNED);
+operand_type!(ShiftRightArithICSlotIndex, UNSIGNED);
+operand_type!(ShiftRightLogicalICSlotIndex, UNSIGNED);
+
 pub enum OperandType {
     Register,
     UInt,
     SInt,
     ConstantIndex,
+    AddICSlotIndex,
+    SubICSlotIndex,
+    MulICSlotIndex,
+    DivICSlotIndex,
+    RemICSlotIndex,
+    ExpICSlotIndex,
+    BitAndICSlotIndex,
+    BitOrICSlotIndex,
+    BitXorICSlotIndex,
+    ShiftLeftICSlotIndex,
+    ShiftRightArithICSlotIndex,
+    ShiftRightLogicalICSlotIndex,
 }
 
 /// Registers may be either registers local to a function or arguments to that function. Registers
@@ -310,6 +336,44 @@ impl<W: Width> ConstantIndex<W> {
         self.unsigned()
     }
 }
+
+macro_rules! define_ic_slot_index_impl {
+    ($($name:ident),* $(,)?) => {
+        $(
+            impl<W: Width> $name<W> {
+                #[inline]
+                pub fn new(value: W::UInt) -> Self {
+                    Self::from_unsigned(value)
+                }
+                #[inline]
+                pub fn value(&self) -> W::UInt {
+                    self.unsigned()
+                }
+            }
+
+            impl<W: Width> fmt::Display for $name<W> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(f, "ic{}", self.value())
+                }
+            }
+        )*
+    }
+}
+
+define_ic_slot_index_impl!(
+    AddICSlotIndex,
+    SubICSlotIndex,
+    MulICSlotIndex,
+    DivICSlotIndex,
+    RemICSlotIndex,
+    ExpICSlotIndex,
+    BitAndICSlotIndex,
+    BitOrICSlotIndex,
+    BitXorICSlotIndex,
+    ShiftLeftICSlotIndex,
+    ShiftRightArithICSlotIndex,
+    ShiftRightLogicalICSlotIndex,
+);
 
 impl<W: Width> fmt::Display for ConstantIndex<W> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

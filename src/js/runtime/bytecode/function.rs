@@ -11,6 +11,7 @@ use crate::{
         function::{set_function_length, set_function_name},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        ic::vector::ICVector,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
         object_value::ObjectValue,
         ordinary_object::{
@@ -252,6 +253,8 @@ pub struct BytecodeFunction {
     /// This function may be a stub function back into the Rust runtime. If this is set then this
     /// function has an empty bytecode array and default values for many other fields.
     runtime_function_id: Option<RuntimeFunctionId>,
+    /// Feedback vector for IC stubs
+    feedback_vector: Option<HeapPtr<ICVector>>,
     /// Inlined bytecode array for the function.
     bytecode: InlineArray<u8>,
 }
@@ -276,6 +279,7 @@ impl BytecodeFunction {
         name: Option<Handle<StringValue>>,
         source_file: Handle<SourceFile>,
         source_map: Handle<ByteArray>,
+        feedback_vector: Option<Handle<ICVector>>,
     ) -> AllocResult<Handle<BytecodeFunction>> {
         let size = Self::calculate_size_in_bytes(bytecode.len());
         let mut object = cx.alloc_uninit_with_size::<BytecodeFunction>(size)?;
@@ -298,6 +302,7 @@ impl BytecodeFunction {
         set_uninit!(object.source_file, Some(*source_file));
         set_uninit!(object.source_map, Some(*source_map));
         set_uninit!(object.runtime_function_id, None);
+        set_uninit!(object.feedback_vector, feedback_vector.map(|v| *v));
         object.bytecode.init_from_slice(&bytecode);
 
         Ok(object.to_handle())
@@ -339,6 +344,7 @@ impl BytecodeFunction {
         set_uninit!(object.name, name.map(|n| *n));
         set_uninit!(object.source_file, None);
         set_uninit!(object.source_map, None);
+        set_uninit!(object.feedback_vector, None);
         set_uninit!(object.runtime_function_id, Some(runtime_func_id));
         object.bytecode.init_from_slice(&[]);
 
@@ -359,6 +365,11 @@ impl BytecodeFunction {
     #[inline]
     pub fn constant_table_ptr(&self) -> Option<HeapPtr<ConstantTable>> {
         self.constant_table
+    }
+
+    #[inline]
+    pub fn feedback_vector_ptr(&self) -> Option<HeapPtr<ICVector>> {
+        self.feedback_vector
     }
 
     #[inline]
@@ -517,6 +528,7 @@ impl HeapItem for HeapPtr<BytecodeFunction> {
         visitor.visit_pointer(&mut self.descriptor);
 
         visitor.visit_pointer_opt(&mut self.constant_table);
+        visitor.visit_pointer_opt(&mut self.feedback_vector);
         visitor.visit_pointer_opt(&mut self.exception_handlers);
         visitor.visit_pointer(&mut self.realm);
         visitor.visit_pointer_opt(&mut self.name);

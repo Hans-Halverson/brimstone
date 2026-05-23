@@ -35,20 +35,20 @@
   Parameters: 0, Registers: 2
      0: LoadGlobal r0, c0
      3: LoadImmediate r1, 1
-     6: Add r0, r0, r1
-    10: LoadUndefined r0
-    12: Ret r0
+     6: Add r0, r0, r1, ic0
+    11: LoadUndefined r0
+    13: Ret r0
   Constant Table:
     0: [String: y]
 }
 
 [BytecodeFunction: anonymous] {
   Parameters: 2, Registers: 2
-     0: Add r0, a0, a1
-     4: LoadGlobal r1, c0
-     7: Add r0, r0, r1
-    11: LoadUndefined r0
-    13: Ret r0
+     0: Add r0, a0, a1, ic0
+     5: LoadGlobal r1, c0
+     8: Add r0, r0, r1, ic1
+    13: LoadUndefined r0
+    15: Ret r0
   Constant Table:
     0: [String: z]
 }

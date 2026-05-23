@@ -77,8 +77,8 @@
   Parameters: 0, Registers: 2
      0: LoadFromScope r0, 3, 0
      4: LoadFromScope r1, 4, 0
-     8: Add r0, r0, r1
-    12: LoadFromScope r1, 2, 0
-    16: Add r0, r0, r1
-    20: Ret r0
+     8: Add r0, r0, r1, ic0
+    13: LoadFromScope r1, 2, 0
+    17: Add r0, r0, r1, ic1
+    22: Ret r0
 }

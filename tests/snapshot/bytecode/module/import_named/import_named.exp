@@ -11,22 +11,22 @@
   Parameters: 0, Registers: 3
      0: LoadFromModule r1, 1, 0
      4: LoadFromModule r2, 2, 0
-     8: Add r1, r1, r2
-    12: LoadFromModule r2, 3, 0
-    16: Add r1, r1, r2
-    20: LoadFromModule r2, 4, 0
-    24: Add r1, r1, r2
-    28: PushLexicalScope c0
-    30: LoadEmpty r1
-    32: StoreToScope r1, 0, 0
-    36: NewClosure r0, c1
-    39: LoadImmediate r1, 0
-    42: StoreToScope r1, 0, 0
-    46: LoadFromModule r1, 1, 1
-    50: Call r1, r0, r1, 1
-    55: PopScope 
-    56: LoadUndefined r1
-    58: Ret r1
+     8: Add r1, r1, r2, ic0
+    13: LoadFromModule r2, 3, 0
+    17: Add r1, r1, r2, ic1
+    22: LoadFromModule r2, 4, 0
+    26: Add r1, r1, r2, ic2
+    31: PushLexicalScope c0
+    33: LoadEmpty r1
+    35: StoreToScope r1, 0, 0
+    39: NewClosure r0, c1
+    42: LoadImmediate r1, 0
+    45: StoreToScope r1, 0, 0
+    49: LoadFromModule r1, 1, 1
+    53: Call r1, r0, r1, 1
+    58: PopScope 
+    59: LoadUndefined r1
+    61: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: capturing]
@@ -37,9 +37,9 @@
      0: LoadFromModule r0, 1, 1
      4: LoadFromScope r1, 0, 0
      8: CheckTdz r1, c0
-    11: Add r0, r0, r1
-    15: LoadUndefined r0
-    17: Ret r0
+    11: Add r0, r0, r1, ic0
+    16: LoadUndefined r0
+    18: Ret r0
   Constant Table:
     0: [String: c]
 }

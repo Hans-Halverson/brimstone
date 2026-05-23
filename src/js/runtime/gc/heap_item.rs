@@ -225,6 +225,7 @@ impl HeapPtr<AnyHeapItem> {
             }
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().byte_size(),
             HeapItemKind::ValueVec => value_vec_byte_size(self.cast()),
+            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().byte_size(),
             HeapItemKind::ICVector => self.cast::<ICVector>().byte_size(),
             HeapItemKind::AddICStub => self.cast::<AddICStub>().byte_size(),
             HeapItemKind::SubICStub => self.cast::<SubICStub>().byte_size(),
@@ -404,6 +405,7 @@ impl HeapPtr<AnyHeapItem> {
                 .visit_pointers(visitor),
             HeapItemKind::GlobalScopes => self.cast::<GlobalScopes>().visit_pointers(visitor),
             HeapItemKind::ValueVec => value_vec_visit_pointers(self.cast_mut(), visitor),
+            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
             HeapItemKind::ICVector => self.cast::<ICVector>().visit_pointers(visitor),
             HeapItemKind::AddICStub => self.cast::<AddICStub>().visit_pointers(visitor),
             HeapItemKind::SubICStub => self.cast::<SubICStub>().visit_pointers(visitor),
@@ -421,7 +423,6 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::ShiftRightLogicalICStub => self
                 .cast::<ShiftRightLogicalICStub>()
                 .visit_pointers(visitor),
-            HeapItemKind::WeakVec => self.cast::<BsWeakVec>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

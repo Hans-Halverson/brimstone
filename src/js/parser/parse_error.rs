@@ -26,6 +26,7 @@ pub enum ParseError {
     InvalidUnicode,
     UnterminatedStringLiteral,
     UnterminatedRegExpLiteral,
+    UnterminatedTemplateLiteral,
     MalformedEscapeSeqence,
     MalformedNumericLiteral,
     BigIntLeadingZero,
@@ -196,6 +197,9 @@ impl fmt::Display for ParseError {
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
             ParseError::UnterminatedRegExpLiteral => {
                 write!(f, "Unterminated regular expression literal")
+            }
+            ParseError::UnterminatedTemplateLiteral => {
+                write!(f, "Unterminated template literal")
             }
             ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),

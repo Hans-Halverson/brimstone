@@ -36,8 +36,10 @@ use crate::{
             instruction::DefinePropertyFlags,
             operand::{
                 AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex,
-                DivICSlotIndex, ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex,
-                ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex,
+                DivICSlotIndex, ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex,
+                LooseEqICSlotIndex, LooseNeqICSlotIndex, LtICSlotIndex, LteICSlotIndex,
+                MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex,
+                ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex, StrictNeqICSlotIndex,
                 SubICSlotIndex,
             },
             source_map::BytecodeSourceMap,
@@ -3428,27 +3430,83 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 )
             }
             ast::BinaryOperator::EqEq => {
-                self.writer.loose_equal_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.loose_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    LooseEqICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::BinaryOperator::NotEq => self
-                .writer
-                .loose_not_equal_instruction(dest, left, right, pos),
-            ast::BinaryOperator::EqEqEq => self.writer.strict_equal_instruction(dest, left, right),
+            ast::BinaryOperator::NotEq => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.loose_not_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    LooseNeqICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
+            ast::BinaryOperator::EqEqEq => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.strict_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    StrictEqICSlotIndex::new(slot_offset),
+                )
+            }
             ast::BinaryOperator::NotEqEq => {
-                self.writer.strict_not_equal_instruction(dest, left, right)
+                let slot_offset = self.add_ic_stub();
+                self.writer.strict_not_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    StrictNeqICSlotIndex::new(slot_offset),
+                )
             }
             ast::BinaryOperator::LessThan => {
-                self.writer.less_than_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.less_than_instruction(
+                    dest,
+                    left,
+                    right,
+                    LtICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::BinaryOperator::LessThanOrEqual => self
-                .writer
-                .less_than_or_equal_instruction(dest, left, right, pos),
+            ast::BinaryOperator::LessThanOrEqual => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.less_than_or_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    LteICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::BinaryOperator::GreaterThan => {
-                self.writer.greater_than_instruction(dest, left, right, pos)
+                let slot_offset = self.add_ic_stub();
+                self.writer.greater_than_instruction(
+                    dest,
+                    left,
+                    right,
+                    GtICSlotIndex::new(slot_offset),
+                    pos,
+                )
             }
-            ast::BinaryOperator::GreaterThanOrEqual => self
-                .writer
-                .greater_than_or_equal_instruction(dest, left, right, pos),
+            ast::BinaryOperator::GreaterThanOrEqual => {
+                let slot_offset = self.add_ic_stub();
+                self.writer.greater_than_or_equal_instruction(
+                    dest,
+                    left,
+                    right,
+                    GteICSlotIndex::new(slot_offset),
+                    pos,
+                )
+            }
             ast::BinaryOperator::And => {
                 let slot_offset = self.add_ic_stub();
                 self.writer.bit_and_instruction(
@@ -6908,8 +6966,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             // Check if iterating threw by checking discriminant
             let cond = self.register_allocator.allocate()?;
             self.gen_load_finally_branch_id(finally_scope.throw_branch(), cond)?;
+            let slot_offset = self.add_ic_stub();
             self.writer
-                .strict_not_equal_instruction(cond, cond, discriminant);
+                .strict_not_equal_instruction(cond, cond, discriminant, StrictNeqICSlotIndex::new(slot_offset));
 
             // If the iterating did not throw then continue to throwing error from close
             let close_handler_rethrow_block = self.new_block();
@@ -8034,8 +8093,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.register_allocator.release(test);
 
                 let is_equal = self.register_allocator.allocate()?;
+                let slot_offset = self.add_ic_stub();
                 self.writer
-                    .strict_equal_instruction(is_equal, discriminant, test);
+                    .strict_equal_instruction(is_equal, discriminant, test, StrictEqICSlotIndex::new(slot_offset));
 
                 // Jump to the case body if the discriminant is equal to the test value
                 self.register_allocator.release(is_equal);
@@ -8378,8 +8438,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Check if original body threw by checking the finally discriminant
         let temp = self.register_allocator.allocate()?;
         self.gen_load_finally_branch_id(finally_scope.throw_branch, temp)?;
+        let slot_offset = self.add_ic_stub();
         self.writer
-            .strict_equal_instruction(temp, finally_scope.discriminant_register, temp);
+            .strict_equal_instruction(temp, finally_scope.discriminant_register, temp, StrictEqICSlotIndex::new(slot_offset));
         self.write_jump_false_instruction(temp, throw_block)?;
         self.register_allocator.release(temp);
 
@@ -9134,8 +9195,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Check if the discriminant matches the branch id
         self.gen_load_finally_branch_id(finally_branch_id, test_value)?;
+        let slot_offset = self.add_ic_stub();
         self.writer
-            .strict_equal_instruction(test_value, discriminant, test_value);
+            .strict_equal_instruction(test_value, discriminant, test_value, StrictEqICSlotIndex::new(slot_offset));
 
         // Jump to the next branch if the discriminant does not match
         let next_branch_block = finally_branch_blocks[i + 1];

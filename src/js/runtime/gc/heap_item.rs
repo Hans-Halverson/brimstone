@@ -26,8 +26,10 @@ use crate::runtime::{
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     ic::{
         stubs::binary_arith::{
-            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, MulICStub,
-            RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, SubICStub,
+            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
+            GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub, RemICStub,
+            ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, StrictEqICStub,
+            StrictNeqICStub, SubICStub,
         },
         vector::ICVector,
     },
@@ -241,6 +243,14 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::ShiftRightLogicalICStub => {
                 self.cast::<ShiftRightLogicalICStub>().byte_size()
             }
+            HeapItemKind::LtICStub => self.cast::<LtICStub>().byte_size(),
+            HeapItemKind::LteICStub => self.cast::<LteICStub>().byte_size(),
+            HeapItemKind::GtICStub => self.cast::<GtICStub>().byte_size(),
+            HeapItemKind::GteICStub => self.cast::<GteICStub>().byte_size(),
+            HeapItemKind::StrictEqICStub => self.cast::<StrictEqICStub>().byte_size(),
+            HeapItemKind::StrictNeqICStub => self.cast::<StrictNeqICStub>().byte_size(),
+            HeapItemKind::LooseEqICStub => self.cast::<LooseEqICStub>().byte_size(),
+            HeapItemKind::LooseNeqICStub => self.cast::<LooseNeqICStub>().byte_size(),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }
@@ -422,6 +432,16 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::ShiftRightLogicalICStub => self
                 .cast::<ShiftRightLogicalICStub>()
                 .visit_pointers(visitor),
+            HeapItemKind::LtICStub => self.cast::<LtICStub>().visit_pointers(visitor),
+            HeapItemKind::LteICStub => self.cast::<LteICStub>().visit_pointers(visitor),
+            HeapItemKind::GtICStub => self.cast::<GtICStub>().visit_pointers(visitor),
+            HeapItemKind::GteICStub => self.cast::<GteICStub>().visit_pointers(visitor),
+            HeapItemKind::StrictEqICStub => self.cast::<StrictEqICStub>().visit_pointers(visitor),
+            HeapItemKind::StrictNeqICStub => {
+                self.cast::<StrictNeqICStub>().visit_pointers(visitor)
+            }
+            HeapItemKind::LooseEqICStub => self.cast::<LooseEqICStub>().visit_pointers(visitor),
+            HeapItemKind::LooseNeqICStub => self.cast::<LooseNeqICStub>().visit_pointers(visitor),
             HeapItemKind::Last => unreachable!("No objects are created with this descriptor"),
         }
     }

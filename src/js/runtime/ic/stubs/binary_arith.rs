@@ -53,7 +53,15 @@ def_op!(
     (BitXorOp, BitXorICStub),
     (ShiftLeftOp, ShiftLeftICStub),
     (ShiftRightArithOp, ShiftRightArithICStub),
-    (ShiftRightLogicalOp, ShiftRightLogicalICStub)
+    (ShiftRightLogicalOp, ShiftRightLogicalICStub),
+    (LtOp, LtICStub),
+    (LteOp, LteICStub),
+    (GtOp, GtICStub),
+    (GteOp, GteICStub),
+    (StrictEqOp, StrictEqICStub),
+    (StrictNeqOp, StrictNeqICStub),
+    (LooseEqOp, LooseEqICStub),
+    (LooseNeqOp, LooseNeqICStub)
 );
 
 pub trait BinaryArithOp {

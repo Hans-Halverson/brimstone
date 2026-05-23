@@ -6,8 +6,10 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         ic::stubs::binary_arith::{
-            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, MulICStub,
-            RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, SubICStub,
+            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
+            GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub, RemICStub,
+            ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, StrictEqICStub,
+            StrictNeqICStub, SubICStub,
         },
         Context, Handle, HeapPtr,
     },
@@ -28,6 +30,14 @@ pub enum ICEntry {
     ShiftLeft(HeapPtr<ShiftLeftICStub>),
     ShiftRightArith(HeapPtr<ShiftRightArithICStub>),
     ShiftRightLogical(HeapPtr<ShiftRightLogicalICStub>),
+    Lt(HeapPtr<LtICStub>),
+    Lte(HeapPtr<LteICStub>),
+    Gt(HeapPtr<GtICStub>),
+    Gte(HeapPtr<GteICStub>),
+    StrictEq(HeapPtr<StrictEqICStub>),
+    StrictNeq(HeapPtr<StrictNeqICStub>),
+    LooseEq(HeapPtr<LooseEqICStub>),
+    LooseNeq(HeapPtr<LooseNeqICStub>),
 }
 
 #[repr(C)]
@@ -106,6 +116,14 @@ impl HeapItem for HeapPtr<ICVector> {
                     ICEntry::ShiftLeft(heap_ptr) => visitor.visit_pointer(heap_ptr),
                     ICEntry::ShiftRightArith(heap_ptr) => visitor.visit_pointer(heap_ptr),
                     ICEntry::ShiftRightLogical(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::Lt(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::Lte(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::Gt(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::Gte(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::StrictEq(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::StrictNeq(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::LooseEq(heap_ptr) => visitor.visit_pointer(heap_ptr),
+                    ICEntry::LooseNeq(heap_ptr) => visitor.visit_pointer(heap_ptr),
                 }
             }
         }

@@ -12,6 +12,7 @@ use super::{
     abstract_operations::{call_object, get, get_method},
     bytecode::function::Closure,
     error::{range_error, syntax_error, type_error},
+    eval::common::{less_than_bigint_fast, less_than_number_fast, less_than_string_fast},
     eval_result::EvalResult,
     gc::{Handle, HeapPtr},
     heap_item_descriptor::HeapItemKind,
@@ -980,12 +981,7 @@ pub fn is_less_than(
 
         if x_kind == HeapItemKind::String {
             if y_kind == HeapItemKind::String {
-                // May allocate
-                return Ok(x_handle
-                    .as_string()
-                    .compare(&y_handle.as_string())?
-                    .is_lt()
-                    .into());
+                return Ok(*less_than_string_fast(cx, x_handle, y_handle)?);
             } else if y_kind == HeapItemKind::BigInt {
                 // May allocate
                 let x_bigint = string_to_bigint(x_handle.as_string())?;
@@ -1020,18 +1016,10 @@ pub fn is_less_than(
     let y_is_bigint = num_y.is_bigint();
     if x_is_bigint == y_is_bigint {
         if x_is_bigint {
-            Ok(num_x
-                .as_bigint()
-                .bigint()
-                .lt(&num_y.as_bigint().bigint())
-                .into())
+            Ok(*less_than_bigint_fast(cx, num_x_handle, num_y_handle)?)
         } else {
             // Both are numbers
-            if num_x.is_nan() || num_y.is_nan() {
-                return Ok(Value::undefined());
-            }
-
-            Ok((num_x.as_number() < num_y.as_number()).into())
+            Ok(*less_than_number_fast(cx, num_x_handle, num_y_handle)?)
         }
     } else if x_is_bigint {
         // x is a BigInt and y is a number

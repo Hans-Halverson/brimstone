@@ -14,7 +14,13 @@ use super::{
 use crate::{
     count, replace_expr,
     runtime::{
-        bytecode::operand::{AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex, ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex},
+        bytecode::operand::{
+            AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
+            ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex, LooseNeqICSlotIndex,
+            LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
+            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex,
+            StrictNeqICSlotIndex, SubICSlotIndex,
+        },
         debug_print::DebugPrinter,
     },
 };
@@ -731,6 +737,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: LooseEqICSlotIndex,
         }
     }
 
@@ -744,6 +751,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: LooseNeqICSlotIndex,
         }
     }
 
@@ -756,6 +764,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: StrictEqICSlotIndex,
         }
     }
 
@@ -768,6 +777,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: StrictNeqICSlotIndex,
         }
     }
 
@@ -780,6 +790,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: LtICSlotIndex,
         }
     }
 
@@ -793,6 +804,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: LteICSlotIndex,
         }
     }
 
@@ -805,6 +817,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: GtICSlotIndex,
         }
     }
 
@@ -818,6 +831,7 @@ define_instructions!(
             [0] dest: Register,
             [1] left: Register,
             [2] right: Register,
+            [3] ic_stub_offset: GteICSlotIndex,
         }
     }
 

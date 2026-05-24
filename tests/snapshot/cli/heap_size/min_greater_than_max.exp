@@ -1,1 +1,1 @@
-Min heap size (67108864 bytes) cannot be greater than max heap size (33554432 bytes)
+Min heap size (64MB) cannot be greater than max heap size (32MB)

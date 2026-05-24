@@ -164,8 +164,9 @@ impl OptionsBuilder {
 
         if self.0.min_heap_size > self.0.max_heap_size {
             return Err(OptionCreationError::new(format!(
-                "Min heap size ({} bytes) cannot be greater than max heap size ({} bytes)",
-                self.0.min_heap_size, self.0.max_heap_size
+                "Min heap size ({}) cannot be greater than max heap size ({})",
+                format_byte_size(self.0.min_heap_size),
+                format_byte_size(self.0.max_heap_size)
             )));
         }
 
@@ -237,7 +238,7 @@ fn parse_min_heap_size_arg(size_arg: &str) -> Result<usize, String> {
 
 fn validate_min_heap_size_arg(size: usize) -> Result<(), String> {
     if size < MIN_HEAP_SIZE {
-        return Err(format!("Min heap size must be at least {} bytes", MIN_HEAP_SIZE));
+        return Err(format!("Min heap size must be at least {}", format_byte_size(MIN_HEAP_SIZE)));
     }
 
     if !size.is_power_of_two() {
@@ -258,7 +259,7 @@ fn parse_max_heap_size_arg(size_arg: &str) -> Result<usize, String> {
 
 fn validate_max_heap_size_arg(size: usize) -> Result<(), String> {
     if size > MAX_HEAP_SIZE {
-        return Err(format!("Max heap size must be at most {} bytes", MAX_HEAP_SIZE));
+        return Err(format!("Max heap size must be at most {}", format_byte_size(MAX_HEAP_SIZE)));
     }
 
     if !size.is_power_of_two() {
@@ -287,6 +288,17 @@ fn parse_heap_size_number(size_arg: &str) -> Result<usize, ()> {
         Ok(size)
     } else {
         Err(())
+    }
+}
+
+/// Format a byte size as "XMB", "XGB", or "XB".
+fn format_byte_size(size: usize) -> String {
+    if size.is_multiple_of(GIGABYTE_BYTES) {
+        format!("{}GB", size / GIGABYTE_BYTES)
+    } else if size.is_multiple_of(MEGABYTE_BYTES) {
+        format!("{}MB", size / MEGABYTE_BYTES)
+    } else {
+        format!("{size}B")
     }
 }
 

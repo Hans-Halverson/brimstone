@@ -1,4 +1,6 @@
-use crate::runtime::{
+use crate::{
+    common::constants::MEGABYTE_BYTES,
+    runtime::{
     bytecode::{
         operand::{
             AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
@@ -21,6 +23,7 @@ use crate::runtime::{
     },
     scope::Scope,
     Handle, HeapPtr, Value,
+},
 };
 
 use super::{constant_table::ConstantTable, function::Closure};
@@ -397,8 +400,8 @@ impl Iterator for StackFrameIter {
 /// Generic value stored in a stack slot.
 pub type StackSlotValue = usize;
 
-/// Total size of the stack, 4MB.
-const STACK_SIZE: usize = 4 * 1024 * 1024;
+/// Total size of the stack.
+const STACK_SIZE: usize = 4 * MEGABYTE_BYTES;
 
 /// Total number of stack slots that fit in the stack.
 pub const NUM_STACK_SLOTS: usize = STACK_SIZE / std::mem::size_of::<StackSlotValue>();

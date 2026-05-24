@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-29:26",
+  loc: "1:1-48:2",
   body: [
     {
       type: "ExpressionStatement",
@@ -343,6 +343,180 @@
         generator: false,
         has_use_strict_directive: false,
       },
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "32:1-34:2",
+      id: {
+        type: "Identifier",
+        loc: "32:11-32:12",
+        name: "f",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "32:14-34:2",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "33:3-33:14",
+            kind: {
+              type: "ArrowFunctionExpression",
+              loc: "33:3-33:14",
+              id: null,
+              params: [],
+              body: {
+                type: "Identifier",
+                loc: "33:9-33:14",
+                name: "yield",
+              },
+              async: false,
+              generator: false,
+              has_use_strict_directive: false,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "36:1-38:2",
+      id: {
+        type: "Identifier",
+        loc: "36:11-36:12",
+        name: "f",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "36:14-38:2",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "37:3-37:17",
+            kind: {
+              type: "ArrowFunctionExpression",
+              loc: "37:3-37:17",
+              id: null,
+              params: [
+                {
+                  type: "Identifier",
+                  loc: "37:3-37:8",
+                  name: "async",
+                },
+              ],
+              body: {
+                type: "Identifier",
+                loc: "37:12-37:17",
+                name: "yield",
+              },
+              async: false,
+              generator: false,
+              has_use_strict_directive: false,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "40:1-44:2",
+      id: {
+        type: "Identifier",
+        loc: "40:11-40:12",
+        name: "f",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "40:15-44:2",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "41:3-43:4",
+            kind: {
+              type: "ArrowFunctionExpression",
+              loc: "41:3-43:4",
+              id: null,
+              params: [],
+              body: {
+                type: "Block",
+                loc: "41:9-43:4",
+                body: [
+                  {
+                    type: "ExpressionStatement",
+                    loc: "42:5-42:11",
+                    kind: {
+                      type: "Identifier",
+                      loc: "42:5-42:10",
+                      name: "yield",
+                    },
+                  },
+                ],
+              },
+              async: false,
+              generator: false,
+              has_use_strict_directive: false,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
+    },
+    {
+      type: "FunctionDeclaration",
+      loc: "46:1-48:2",
+      id: {
+        type: "Identifier",
+        loc: "46:11-46:12",
+        name: "f",
+      },
+      params: [],
+      body: {
+        type: "Block",
+        loc: "46:15-48:2",
+        body: [
+          {
+            type: "ExpressionStatement",
+            loc: "47:3-47:18",
+            kind: {
+              type: "ArrowFunctionExpression",
+              loc: "47:3-47:17",
+              id: null,
+              params: [],
+              body: {
+                type: "BinaryExpression",
+                loc: "47:9-47:17",
+                operator: "*",
+                left: {
+                  type: "Identifier",
+                  loc: "47:9-47:14",
+                  name: "yield",
+                },
+                right: {
+                  type: "Literal",
+                  loc: "47:16-47:17",
+                  value: 1,
+                },
+              },
+              async: false,
+              generator: false,
+              has_use_strict_directive: false,
+            },
+          },
+        ],
+      },
+      async: false,
+      generator: true,
+      has_use_strict_directive: false,
     },
   ],
   sourceType: "script",

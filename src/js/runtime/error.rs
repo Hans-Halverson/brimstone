@@ -3,7 +3,7 @@ use crate::{
     eval_err,
     parser::{LocalizedParseError, LocalizedParseErrors},
     runtime::{
-        alloc_error::{format_oom_error_message, AllocError, AllocResult},
+        alloc_error::{format_oom_error_message, AllocError},
         eval_result::EvalError,
     },
 };
@@ -83,23 +83,23 @@ impl BsError {
 /// Generic result type from the JS engine.
 pub type BsResult<T> = Result<T, BsError>;
 
-pub fn syntax_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+fn syntax_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(SyntaxError::new_with_message(cx, message.to_owned())?.into())
 }
 
-pub fn type_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+pub fn type_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(TypeError::new_with_message(cx, message.to_owned())?.into())
 }
 
-fn reference_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+fn reference_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(ReferenceError::new_with_message(cx, message.to_owned())?.into())
 }
 
-pub fn range_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+pub fn range_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(RangeError::new_with_message(cx, message.to_owned())?.into())
 }
 
-fn uri_error_value(cx: Context, message: &str) -> AllocResult<Handle<Value>> {
+fn uri_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(URIError::new_with_message(cx, message.to_owned())?.into())
 }
 

@@ -14,7 +14,7 @@ use crate::{
         serialized_heap::SerializedHeap,
         wtf_8::{Wtf8Str, Wtf8String},
     },
-    eval_err, handle_scope,
+    eval_err, handle_scope, must_a,
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
@@ -452,37 +452,60 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string_ptr(&mut self, str: &str) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn alloc_string_ptr(&mut self, str: &str) -> EvalResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn alloc_static_string_ptr(
+        &mut self,
+        str: &'static str,
+    ) -> AllocResult<HeapPtr<FlatString>> {
+        // Assumes that all static strings are less than the maximum string length
+        Ok(must_a!(self.alloc_string_ptr(str)))
+    }
+
+    #[inline]
+    pub fn alloc_wtf8_string_ptr(&mut self, str: &Wtf8String) -> EvalResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn alloc_wtf8_str_ptr(&mut self, str: &Wtf8Str) -> EvalResult<HeapPtr<FlatString>> {
         FlatString::from_wtf8(*self, str.as_bytes())
     }
 
     #[inline]
-    pub fn alloc_string(&mut self, str: &str) -> AllocResult<Handle<StringValue>> {
+    pub fn alloc_static_wtf8_str_ptr(
+        &mut self,
+        str: &'static Wtf8Str,
+    ) -> AllocResult<HeapPtr<FlatString>> {
+        // Assumes that all static strings are less than the maximum string length
+        Ok(must_a!(self.alloc_wtf8_str_ptr(str)))
+    }
+
+    #[inline]
+    pub fn alloc_string(&mut self, str: &str) -> EvalResult<Handle<StringValue>> {
         Ok(self.alloc_string_ptr(str)?.as_string().to_handle())
     }
 
     #[inline]
-    pub fn alloc_flat_string(&mut self, str: &str) -> AllocResult<Handle<FlatString>> {
+    pub fn alloc_static_string(&mut self, str: &'static str) -> AllocResult<Handle<StringValue>> {
+        Ok(self.alloc_static_string_ptr(str)?.as_string().to_handle())
+    }
+
+    #[inline]
+    pub fn alloc_flat_string(&mut self, str: &str) -> EvalResult<Handle<FlatString>> {
         Ok(self.alloc_string_ptr(str)?.to_handle())
     }
 
     #[inline]
-    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> AllocResult<Handle<FlatString>> {
+    pub fn alloc_wtf8_string(&mut self, str: &Wtf8String) -> EvalResult<Handle<FlatString>> {
         Ok(self.alloc_wtf8_string_ptr(str)?.to_handle())
     }
 
     #[inline]
-    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> AllocResult<Handle<FlatString>> {
+    pub fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> EvalResult<Handle<FlatString>> {
         Ok(self.alloc_wtf8_str_ptr(str)?.to_handle())
     }
 

@@ -365,7 +365,7 @@ impl DatePrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let get_year_name = cx.alloc_string("getYear")?;
+        let get_year_name = cx.alloc_static_string("getYear")?;
         let get_year_key = PropertyKey::string_not_array_index_handle(cx, get_year_name)?;
         date_prototype.intrinsic_func(
             cx,
@@ -375,7 +375,7 @@ impl DatePrototype {
             realm,
         )?;
 
-        let set_year_name = cx.alloc_string("setYear")?;
+        let set_year_name = cx.alloc_static_string("setYear")?;
         let set_year_key = PropertyKey::string_not_array_index_handle(cx, set_year_name)?;
         date_prototype.intrinsic_func(
             cx,
@@ -386,7 +386,7 @@ impl DatePrototype {
         )?;
 
         // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
-        let to_gmt_string_name = cx.alloc_string("toGMTString")?;
+        let to_gmt_string_name = cx.alloc_static_string("toGMTString")?;
         let to_gmt_string_key = PropertyKey::string_not_array_index_handle(cx, to_gmt_string_name)?;
         let to_gmt_string_method = must_a!(get(cx, date_prototype, cx.names.to_utc_string()));
 
@@ -1430,7 +1430,7 @@ impl DatePrototype {
 
     fn to_date_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date")?.as_value());
+            return Ok(cx.alloc_static_string("Invalid Date")?.as_value());
         }
 
         let date_value = local_time(date_value);
@@ -1574,7 +1574,7 @@ impl DatePrototype {
 
     fn to_time_string_shared(mut cx: Context, date_value: f64) -> EvalResult<Handle<Value>> {
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date")?.as_value());
+            return Ok(cx.alloc_static_string("Invalid Date")?.as_value());
         }
 
         let local_date_value = local_time(date_value);
@@ -1600,7 +1600,7 @@ impl DatePrototype {
         };
 
         if date_value.is_nan() {
-            return Ok(cx.alloc_string("Invalid Date")?.as_value());
+            return Ok(cx.alloc_static_string("Invalid Date")?.as_value());
         }
 
         let year = year_from_time(date_value);
@@ -1794,7 +1794,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
 }
 
 /// ToDateString (https://tc39.es/ecma262/#sec-todatestring)
-pub fn to_date_string(mut cx: Context, time_value: f64) -> AllocResult<Handle<StringValue>> {
+pub fn to_date_string(mut cx: Context, time_value: f64) -> EvalResult<Handle<StringValue>> {
     if time_value.is_nan() {
         return cx.alloc_string("Invalid Date");
     }

@@ -8,7 +8,7 @@ use crate::{
         alloc_error::AllocResult,
         collections::{array::ByteArray, InlineArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
-        function::{set_function_length, set_function_name},
+        function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunctionId},
@@ -20,7 +20,7 @@ use crate::{
         scope::Scope,
         source_file::SourceFile,
         string_value::StringValue,
-        Context, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm,
+        Context, Handle, HeapPtr, PropertyDescriptor, Realm,
     },
     set_uninit,
 };
@@ -154,11 +154,11 @@ impl Closure {
 
         // Default to the empty string if a name was not provided
         let name = if let Some(name) = function.name {
-            PropertyKey::string_handle(cx, name.to_handle())?
+            name.to_handle()
         } else {
-            cx.names.empty_string()
+            cx.names.empty_string().as_string()
         };
-        set_function_name(cx, closure.into(), name, None)?;
+        set_simple_function_name(cx, closure.into(), name)?;
 
         // MakeConstructor (https://tc39.es/ecma262/#sec-makeconstructor)
         if function.is_constructor() {

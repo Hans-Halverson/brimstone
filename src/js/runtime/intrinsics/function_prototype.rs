@@ -231,16 +231,18 @@ impl FunctionPrototype {
 
             // First check for if the closure is a bound function
             if BoundFunctionObject::is_bound_function(cx, *this_object) {
-                return Ok(cx.alloc_string("function () { [native code] }")?.as_value());
+                return Ok(cx
+                    .alloc_static_string("function () { [native code] }")?
+                    .as_value());
             }
 
             // Builtin functions have special formatting using the function name
             if function.runtime_function_id().is_some() {
-                let mut string_parts = vec![cx.alloc_string("function ")?];
+                let mut string_parts = vec![cx.alloc_static_string("function ")?];
                 if let Some(name) = function.name() {
                     string_parts.push(name);
                 }
-                string_parts.push(cx.alloc_string("() { [native code] }")?);
+                string_parts.push(cx.alloc_static_string("() { [native code] }")?);
 
                 return Ok(StringValue::concat_all(cx, &string_parts)?.as_value());
             }
@@ -262,7 +264,9 @@ impl FunctionPrototype {
         }
 
         if is_callable_object(this_object) {
-            return Ok(cx.alloc_string("function () { [native code] }")?.as_value());
+            return Ok(cx
+                .alloc_static_string("function () { [native code] }")?
+                .as_value());
         }
 
         type_error(cx, "Function.prototype.toString expected a function")

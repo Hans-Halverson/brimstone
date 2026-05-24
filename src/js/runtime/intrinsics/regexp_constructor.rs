@@ -442,10 +442,10 @@ fn parse_pattern(
 fn escape_pattern_string(
     mut cx: Context,
     pattern_string: Handle<StringValue>,
-) -> AllocResult<Handle<StringValue>> {
+) -> EvalResult<Handle<StringValue>> {
     // Special case the empty pattern string - equivalent to an empty non-capturing group
     if pattern_string.is_empty() {
-        return cx.alloc_string("(?:)");
+        return Ok(cx.alloc_static_string("(?:)")?);
     }
 
     // Only need to escape line terminators and forward slash

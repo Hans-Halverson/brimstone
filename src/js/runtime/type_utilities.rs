@@ -544,8 +544,8 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Ok(cx.alloc_string("null")?),
-            UNDEFINED_TAG => Ok(cx.alloc_string("undefined")?),
+            NULL_TAG => Ok(cx.alloc_static_string("null")?),
+            UNDEFINED_TAG => Ok(cx.alloc_static_string("undefined")?),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
                 Ok(cx.alloc_string(str)?)

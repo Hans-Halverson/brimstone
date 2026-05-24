@@ -9,13 +9,24 @@ use super::{
     value::Value, Context, Handle,
 };
 
+pub fn set_simple_function_name(
+    cx: Context,
+    func: Handle<ObjectValue>,
+    name: Handle<StringValue>,
+) -> AllocResult<()> {
+    let desc = PropertyDescriptor::data(name.into(), false, false, true);
+    must_a!(define_property_or_throw(cx, func, cx.names.name(), desc));
+
+    Ok(())
+}
+
 /// SetFunctionName (https://tc39.es/ecma262/#sec-setfunctionname)
 pub fn set_function_name(
     cx: Context,
     func: Handle<ObjectValue>,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
-) -> AllocResult<()> {
+) -> EvalResult<()> {
     let name_string = build_function_name(cx, name, prefix)?;
     let desc = PropertyDescriptor::data(name_string.into(), false, false, true);
     must_a!(define_property_or_throw(cx, func, cx.names.name(), desc));
@@ -27,16 +38,16 @@ pub fn build_function_name(
     mut cx: Context,
     name: Handle<PropertyKey>,
     prefix: Option<&str>,
-) -> AllocResult<Handle<StringValue>> {
+) -> EvalResult<Handle<StringValue>> {
     // Convert name to string value, property formatting symbol name
     let name_string = if name.is_symbol() {
         let symbol = name.as_symbol();
         if let Some(description) = symbol.description() {
             if symbol.is_private() {
-                StringValue::concat(cx, cx.alloc_string("#")?, description.as_string())?
+                StringValue::concat(cx, cx.alloc_static_string("#")?, description.as_string())?
             } else {
-                let left_paren = cx.alloc_string("[")?;
-                let right_paren = cx.alloc_string("]")?;
+                let left_paren = cx.alloc_static_string("[")?;
+                let right_paren = cx.alloc_static_string("]")?;
 
                 StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])?
             }

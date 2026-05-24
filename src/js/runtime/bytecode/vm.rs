@@ -1960,7 +1960,7 @@ impl VM {
     /// Check that a value is a constructor (either a closure or proxy object), returning the
     /// categorization of the callable object
     #[inline]
-    fn check_value_is_constructor(&self, value: Value) -> AllocResult<CallableObject> {
+    fn check_value_is_constructor(&self, value: Value) -> EvalResult<CallableObject> {
         if value.is_pointer() {
             let kind = value.as_pointer().descriptor().kind();
             if kind == HeapItemKind::Closure {

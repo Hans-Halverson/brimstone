@@ -28,6 +28,15 @@ impl EvalError {
     pub fn new_alloc(err: AllocError) -> Self {
         EvalError::Alloc(err)
     }
+
+    #[cfg(feature = "alloc_error")]
+    #[inline]
+    pub fn into_alloc(self) -> AllocError {
+        match self {
+            EvalError::Alloc(err) => err,
+            _ => panic!("Expected EvalError::Alloc"),
+        }
+    }
 }
 
 impl Escapable for EvalError {

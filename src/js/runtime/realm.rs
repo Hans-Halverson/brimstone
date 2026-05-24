@@ -267,7 +267,10 @@ impl Handle<Realm> {
         self.lexical_names = LexicalNamesMap::new_initial(cx, HeapItemKind::LexicalNamesMap)?;
 
         // All global scopes have the realm in their first slot
-        let binding_names = &[InternedStrings::alloc_wtf8_str(cx, &REALM_SCOPE_SLOT_NAME)?];
+        let binding_names = &[InternedStrings::alloc_static_wtf8_str(
+            cx,
+            &REALM_SCOPE_SLOT_NAME,
+        )?];
         let binding_flags = &[ScopeNameFlags::empty()];
         let scope_names =
             ScopeNames::new(cx, ScopeFlags::IS_VAR_SCOPE, binding_names, binding_flags)?;

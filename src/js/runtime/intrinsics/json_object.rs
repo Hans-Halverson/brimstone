@@ -478,7 +478,7 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
 }
 
 impl JSONValue {
-    pub fn to_js_value(&self, mut cx: Context) -> AllocResult<Handle<Value>> {
+    pub fn to_js_value(&self, mut cx: Context) -> EvalResult<Handle<Value>> {
         let value = match self {
             Self::Null => cx.null(),
             Self::Boolean(b) => cx.bool(*b),
@@ -549,7 +549,7 @@ impl JSONSerializer {
         }
     }
 
-    fn build(self, mut cx: Context) -> AllocResult<Handle<StringValue>> {
+    fn build(self, mut cx: Context) -> EvalResult<Handle<StringValue>> {
         Ok(cx.alloc_wtf8_string(&self.builder)?.as_string())
     }
 

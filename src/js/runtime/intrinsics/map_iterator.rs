@@ -98,7 +98,7 @@ impl MapIteratorPrototype {
 
         // %MapIteratorPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%mapiteratorprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let to_string_tag_value = cx.alloc_string("Map Iterator")?.into();
+        let to_string_tag_value = cx.alloc_static_string("Map Iterator")?.into();
         object.set_property(
             cx,
             to_string_tag_key,

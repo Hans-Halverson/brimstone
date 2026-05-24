@@ -1,5 +1,5 @@
 use crate::{
-    handle_scope_guard,
+    handle_scope_guard, must_a,
     parser::loc::find_line_col_for_pos,
     runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
 };
@@ -177,7 +177,9 @@ pub fn create_stack_trace(
         }
     }
 
-    let frames = cx.alloc_string_ptr(&stack_trace)?;
+    // Panic if the stack trace is too large to represent as a string
+    let frames = must_a!(cx.alloc_string_ptr(&stack_trace));
+
     let source_file_line_col =
         first_source_file_line_col.map(|(file, line, col)| (*file, line, col));
 

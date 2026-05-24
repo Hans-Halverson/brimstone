@@ -459,10 +459,10 @@ impl Handle<ObjectValue> {
         self.set_property(cx, cx.names.length(), Property::data(length_value, false, false, true))
     }
 
-    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &str) -> AllocResult<()> {
+    pub fn intrinsic_name_prop(&mut self, mut cx: Context, name: &'static str) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
-        let name_value = cx.alloc_string(name)?.into();
+        let name_value = cx.alloc_static_string(name)?.into();
         self.set_property(cx, cx.names.name(), Property::data(name_value, false, false, true))
     }
 

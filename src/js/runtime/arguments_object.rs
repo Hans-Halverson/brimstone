@@ -75,7 +75,7 @@ impl MappedArgumentsObject {
         scope: Handle<Scope>,
         num_parameters: usize,
     ) -> EvalResult<Handle<MappedArgumentsObject>> {
-        let shadowed_name = InternedStrings::alloc_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
+        let shadowed_name = InternedStrings::alloc_static_wtf8_str(cx, &SHADOWED_SCOPE_SLOT_NAME)?;
 
         let size = Self::calculate_size_in_bytes(num_parameters);
         let mut object = object_create_with_size::<MappedArgumentsObject>(

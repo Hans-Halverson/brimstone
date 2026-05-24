@@ -62,7 +62,7 @@ pub fn get_iterator(
                 method
             } else {
                 // Inlined from eventual call to IsCallable(undefined) which would fail
-                return type_error(cx, "value is not a function");
+                return type_error(cx, "expected a function");
             }
         }
     };
@@ -125,7 +125,7 @@ pub fn iterator_next(
     };
 
     if !result.is_object() {
-        return type_error(cx, "iterator's next method must return an object");
+        return type_error(cx, "Iterator `next` method must return an object");
     }
 
     Ok(result.as_object())
@@ -172,7 +172,7 @@ pub fn iterator_close(
 
     let inner_value = inner_result?;
     if !inner_value.is_object() {
-        return type_error(cx, "iterator's return method must return an object");
+        return type_error(cx, "Iterator `return` method must return an object");
     }
 
     completion

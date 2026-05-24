@@ -65,7 +65,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error(cx, "delete method must be called on WeakMap");
+            return type_error(cx, "WeakMap.prototype.delete must be called on a WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -88,7 +88,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error(cx, "get method must be called on WeakMap");
+            return type_error(cx, "WeakMap.prototype.get must be called on a WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -115,7 +115,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error(cx, "has method must be called on WeakMap");
+            return type_error(cx, "WeakMap.prototype.has must be called on a WeakMap");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
@@ -138,7 +138,7 @@ impl WeakMapPrototype {
         let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
             weak_map_object
         } else {
-            return type_error(cx, "set method must be called on WeakMap");
+            return type_error(cx, "WeakMap.prototype.set must be called on a WeakMap");
         };
 
         let key = get_argument(cx, arguments, 0);

@@ -88,7 +88,7 @@ impl TypedArrayConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
-            return type_error(cx, "TypedArray.from must be called on constructor");
+            return type_error(cx, "TypedArray.from must be called on a constructor");
         }
 
         let this_constructor = this_value.as_object();
@@ -98,7 +98,7 @@ impl TypedArrayConstructor {
             if argument.is_undefined() {
                 None
             } else if !is_callable(argument) {
-                return type_error(cx, "map function must be a function");
+                return type_error(cx, "TypedArray.from map function must be a function");
             } else {
                 Some(argument.as_object())
             }
@@ -182,7 +182,7 @@ impl TypedArrayConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_constructor_value(this_value) {
-            return type_error(cx, "TypedArray.of must be called on constructor");
+            return type_error(cx, "TypedArray.of must be called on a constructor");
         }
 
         let this_constructor = this_value.as_object();

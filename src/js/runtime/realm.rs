@@ -193,7 +193,7 @@ impl Handle<Realm> {
             let is_global_lex_name = self.get_lexical_name(*name).is_some();
 
             if is_global_var_name || is_global_lex_name {
-                return syntax_error(cx, &format!("redeclaration of {}", *name));
+                return syntax_error(cx, &format!("redeclaration of `{}`", *name));
             }
         }
 
@@ -209,7 +209,7 @@ impl Handle<Realm> {
     ) -> EvalResult<()> {
         for name in names {
             if self.get_lexical_name(*name).is_some() {
-                return syntax_error(cx, &format!("redeclaration of {name}"));
+                return syntax_error(cx, &format!("redeclaration of `{name}`"));
             }
         }
 

@@ -164,7 +164,7 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.drop called on non-object");
+            return type_error(cx, "Iterator.prototype.drop must be called on an object");
         }
 
         let iterator_object = this_value.as_object();
@@ -202,14 +202,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.every called on non-object");
+            return type_error(cx, "Iterator.prototype.every must be called on an object");
         }
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.every predicate is not a function")?;
+                type_error_value(cx, "Iterator.prototype.every predicate must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -247,14 +247,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.filter called on non-object");
+            return type_error(cx, "Iterator.prototype.filter must be called on an object");
         }
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.filter predicate is not a function")?;
+                type_error_value(cx, "Iterator.prototype.filter predicate must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -271,14 +271,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.find called on non-object");
+            return type_error(cx, "Iterator.prototype.find must be called on an object");
         }
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.find predicate is not a function")?;
+                type_error_value(cx, "Iterator.prototype.find predicate must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -316,14 +316,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.flatMap called on non-object");
+            return type_error(cx, "Iterator.prototype.flatMap must be called on an object");
         }
 
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.flatMap mapper is not a function")?;
+                type_error_value(cx, "Iterator.prototype.flatMap mapper must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
@@ -340,14 +340,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.forEach called on non-object");
+            return type_error(cx, "Iterator.prototype.forEach must be called on an object");
         }
 
         // Verify the callback argument is a function, closing the underlying iterator if not
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.forEach callback is not a function")?;
+                type_error_value(cx, "Iterator.prototype.forEach callback must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
@@ -382,13 +382,13 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.map called on non-object");
+            return type_error(cx, "Iterator.prototype.map must be called on an object");
         }
 
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
-            let error = type_error_value(cx, "Iterator.prototype.map mapper is not a function")?;
+            let error = type_error_value(cx, "Iterator.prototype.map mapper must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
@@ -405,14 +405,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.reduce called on non-object");
+            return type_error(cx, "Iterator.prototype.reduce must be called on an object");
         }
 
         // Verify the callback argument is a function, closing the underlying iterator if not
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.reduce callback is not a function")?;
+                type_error_value(cx, "Iterator.prototype.reduce callback must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let callback = callback_arg.as_object();
@@ -469,14 +469,14 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.some called on non-object");
+            return type_error(cx, "Iterator.prototype.some must be called on an object");
         }
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
-                type_error_value(cx, "Iterator.prototype.some predicate is not a function")?;
+                type_error_value(cx, "Iterator.prototype.some predicate must be a function")?;
             return iterator_close(cx, this_value.as_object(), eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
@@ -514,7 +514,7 @@ impl IteratorPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.take called on non-object");
+            return type_error(cx, "Iterator.prototype.take must be called on an object");
         }
 
         let iterator_object = this_value.as_object();
@@ -552,7 +552,7 @@ impl IteratorPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.toArray called on non-object");
+            return type_error(cx, "Iterator.prototype.toArray must be called on an object");
         }
 
         let mut iterated = get_iterator_direct(cx, this_value.as_object())?;

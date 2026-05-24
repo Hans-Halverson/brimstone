@@ -613,7 +613,7 @@ impl JSONSerializer {
                 self.builder.push_str("null");
             }
         } else if value.is_bigint() {
-            return type_error(cx, "BigInt value can't be serialized to JSON");
+            return type_error(cx, "BigInt value cannot be serialized to JSON");
         } else if value.is_object() && !is_callable(value) {
             if is_array(cx, value)? {
                 self.serialize_json_array(cx, value.as_object())?;
@@ -674,7 +674,7 @@ impl JSONSerializer {
             .any(|ancestor| ancestor.ptr_eq(&value_ptr));
 
         if has_cycle {
-            type_error(cx, "Cyclic object can't be serialized to JSON")
+            type_error(cx, "cyclic object cannot be serialized to JSON")
         } else {
             Ok(())
         }

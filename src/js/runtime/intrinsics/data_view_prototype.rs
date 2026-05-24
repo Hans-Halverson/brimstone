@@ -536,7 +536,7 @@ impl DataViewPrototype {
 #[inline]
 fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<DataViewObject>> {
     if !value.is_object() {
-        return type_error(cx, "expected data view");
+        return type_error(cx, "expected a DataView");
     }
 
     let object = value.as_object();
@@ -544,7 +544,7 @@ fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
         return Ok(data_view);
     }
 
-    type_error(cx, "expected data view")
+    type_error(cx, "expected a DataView")
 }
 
 /// GetViewValue (https://tc39.es/ecma262/#sec-getviewvalue)

@@ -125,7 +125,7 @@ impl ArrayConstructor {
             None
         } else {
             if !is_callable(map_function_arg) {
-                return type_error(cx, "Array.from map function is not callable");
+                return type_error(cx, "Array.from map function must be a function");
             }
 
             Some(map_function_arg.as_object())

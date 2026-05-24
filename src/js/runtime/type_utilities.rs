@@ -689,10 +689,10 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
 pub fn require_object_coercible(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_nullish() {
         if value.is_null() {
-            return type_error(cx, "can't convert null to object");
+            return type_error(cx, "cannot convert null to object");
         }
 
-        return type_error(cx, "can't convert undefined to object");
+        return type_error(cx, "cannot convert undefined to object");
     }
 
     Ok(value)

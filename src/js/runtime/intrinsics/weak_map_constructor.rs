@@ -61,7 +61,7 @@ impl WeakMapConstructor {
 
         let adder = get(cx, weak_map.into(), cx.names.set_())?;
         if !is_callable(adder) {
-            return type_error(cx, "WeakMap adder is not callable");
+            return type_error(cx, "WeakMap adder must be a function");
         }
 
         add_entries_from_iterable(cx, weak_map.into(), iterable, |cx, key, value| {

@@ -165,7 +165,7 @@ impl Test262Object {
     ) -> EvalResult<Handle<Value>> {
         let script_text = get_argument(cx, arguments, 0);
         if !script_text.is_string() {
-            return type_error(cx, "expected string");
+            return type_error(cx, "expected a string");
         }
 
         // Use the file path of the active source file

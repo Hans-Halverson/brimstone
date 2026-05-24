@@ -184,7 +184,7 @@ impl SymbolConstructor {
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {
-            return type_error(cx, "expected symbol value");
+            return type_error(cx, "expected a Symbol");
         }
         let symbol_value = *symbol_value.as_symbol();
 

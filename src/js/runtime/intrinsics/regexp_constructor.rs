@@ -235,7 +235,7 @@ impl RegExpConstructor {
     ) -> EvalResult<Handle<Value>> {
         let string_arg = get_argument(cx, arguments, 0);
         if !string_arg.is_string() {
-            return type_error(cx, "RegExp.escape called with non-string argument");
+            return type_error(cx, "RegExp.escape argument must be a string");
         }
         let string = string_arg.as_string();
 

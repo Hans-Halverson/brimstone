@@ -218,10 +218,10 @@ impl fmt::Display for ParseError {
                 write!(f, "Rest element may not have a trailing comma")
             }
             ParseError::ThrowArgumentOnNewLine => {
-                write!(f, "No line break is allowed between 'throw' and its expression")
+                write!(f, "No line break is allowed between `throw` and its expression")
             }
             ParseError::ArrowOnNewLine => {
-                write!(f, "No line break is allowed between arrow arguments and '=>'")
+                write!(f, "No line break is allowed between arrow arguments and `=>`")
             }
             ParseError::AmbiguousLetBracket => {
                 write!(f, "Expression cannot start with ambiguous `let [`")
@@ -242,28 +242,28 @@ impl fmt::Display for ParseError {
                 write!(f, "Identifier is a reserved word")
             }
             ParseError::ExpectedNewTarget => {
-                write!(f, "Expected new.target")
+                write!(f, "Expected `new.target`")
             }
             ParseError::ExpectedImportMeta => {
-                write!(f, "Expected import.meta")
+                write!(f, "Expected `import.meta`")
             }
             ParseError::ImportMetaOutsideModule => {
-                write!(f, "import.meta is only allowed in modules")
+                write!(f, "`import.meta` is only allowed in modules")
             }
             ParseError::ExponentLHSUnary => {
                 write!(
                     f,
-                    "Unparenthesized unary expression can't appear on the left hand side of '**'"
+                    "Unparenthesized unary expression cannot appear on the left hand side of `**`"
                 )
             }
             ParseError::TaggedTemplateInChain => {
                 write!(f, "Tagged template cannot be used in optional chain")
             }
             ParseError::NullishCoalesceMixedWithLogical => {
-                write!(f, "Parentheses are required when mixing '??' with '&&' or '||' expressions")
+                write!(f, "Parentheses are required when mixing `??` with `&&` or `||` expressions")
             }
             ParseError::HashNotFollowedByIdentifier => {
-                write!(f, "Expected '#' to be immediately followed by an identifier")
+                write!(f, "Expected `#` to be immediately followed by an identifier")
             }
             ParseError::ForEachInitInvalidVarDecl => {
                 write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
@@ -273,13 +273,13 @@ impl fmt::Display for ParseError {
                 if name == &*ANONYMOUS_DEFAULT_EXPORT_NAME {
                     write!(f, "Default export was already declared in this module")
                 } else {
-                    write!(f, "Redeclaration of {kind} {name}")
+                    write!(f, "Redeclaration of {kind} `{name}`")
                 }
             }
             ParseError::DuplicateLabel => write!(f, "Duplicate label"),
             ParseError::LabelNotFound => write!(f, "Label not found"),
             ParseError::WithInStrictMode => {
-                write!(f, "Strict mode code may not contain 'with' statements")
+                write!(f, "Strict mode code may not contain `with` statements")
             }
             ParseError::DeleteIdentifierInStrictMode => {
                 write!(f, "Cannot delete variables in strict mode")
@@ -288,7 +288,7 @@ impl fmt::Display for ParseError {
                 write!(f, "Cannot delete private properties")
             }
             ParseError::LegacyOctalLiteralInStrictMode => {
-                write!(f, "Cannot use '0'-prefixed octal literals in strict mode")
+                write!(f, "Cannot use `0`-prefixed octal literals in strict mode")
             }
             ParseError::LegacyOctalEscapeSequenceInStrictMode => {
                 write!(f, "Octal escape sequences are not allowed in strict mode")
@@ -297,13 +297,13 @@ impl fmt::Display for ParseError {
                 write!(f, "\\8 and \\9 escape sequences are not allowed in strict mode")
             }
             ParseError::AssignEvalInStrictMode => {
-                write!(f, "Cannot assign to 'eval' in strict mode")
+                write!(f, "Cannot assign to `eval` in strict mode")
             }
             ParseError::AssignArgumentsInStrictMode => {
-                write!(f, "Cannot assign to 'arguments' in strict mode")
+                write!(f, "Cannot assign to `arguments` in strict mode")
             }
             ParseError::UseStrictFunctionNonSimpleParameterList => {
-                write!(f, "'use strict' only allowed in functions with simple parameter lists")
+                write!(f, "`use strict` only allowed in functions with simple parameter lists")
             }
             ParseError::InvalidDuplicateParameters(reason) => {
                 let reason_string = match reason {
@@ -347,22 +347,22 @@ impl fmt::Display for ParseError {
                 write!(f, "Object property initializers do not use `=`")
             }
             ParseError::DuplicatePrivateName(name) => {
-                write!(f, "Redeclaration of private name {name}")
+                write!(f, "Redeclaration of private name `{name}`")
             }
             ParseError::PrivateNameOutsideClass => {
                 write!(f, "Private name outside class")
             }
             ParseError::PrivateNameNotDefined(name) => {
-                write!(f, "Reference to undeclared private name {name}")
+                write!(f, "Reference to undeclared private name `{name}`")
             }
             ParseError::PrivateNameConstructor => {
-                write!(f, "Private name not allowed to be #constructor")
+                write!(f, "Private name not allowed to be `#constructor`")
             }
             ParseError::ArgumentsInClassInitializer => {
-                write!(f, "'arguments' is not allowed in class field initializer or static initialization block")
+                write!(f, "`arguments` is not allowed in class field initializer or static initialization block")
             }
             ParseError::NewTargetOutsideFunction => {
-                write!(f, "new.target only allowed in functions")
+                write!(f, "`new.target` only allowed in functions")
             }
             ParseError::SuperPropertyOutsideMethod => {
                 write!(f, "Super property accesses only allowed in methods")
@@ -377,7 +377,7 @@ impl fmt::Display for ParseError {
                 write!(f, "Const declarations must have an initializer")
             }
             ParseError::LetNameInLexicalDeclaration => {
-                write!(f, "Lexical declarations can't define a 'let' binding")
+                write!(f, "Lexical declarations cannot define a `let` binding")
             }
             ParseError::GetterWrongNumberOfParams => {
                 write!(f, "Getter functions must have no parameters")
@@ -404,7 +404,7 @@ impl fmt::Display for ParseError {
                 write!(f, "Exported name is not defined in module")
             }
             ParseError::DuplicateExport(name) => {
-                write!(f, "Export with name \"{name}\" already exists in module")
+                write!(f, "Export with name `{name}` already exists in module")
             }
             ParseError::ImportAttributeInvalidKey => {
                 write!(f, "Import attribute key must be an identifier or string")

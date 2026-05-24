@@ -194,7 +194,7 @@ pub fn array_species_create(
     }
 
     if !is_constructor_value(constructor) {
-        return type_error(cx, "expected array constructor");
+        return type_error(cx, "expected an Array constructor");
     }
 
     let length_value = Value::from(length).to_handle(cx);

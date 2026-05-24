@@ -103,7 +103,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "clear method must be called on map");
+            return type_error(cx, "Map.prototype.clear must be called on a Map");
         };
 
         map.map_data().clear();
@@ -120,7 +120,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "delete method must be called on map");
+            return type_error(cx, "Map.prototype.delete must be called on a Map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -142,7 +142,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "entries method must be called on map");
+            return type_error(cx, "Map.prototype.entries must be called on a Map");
         };
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue)?.as_value())
@@ -157,12 +157,12 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "forEach method must be called on map");
+            return type_error(cx, "Map.prototype.forEach must be called on a Map");
         };
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "Map.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -194,7 +194,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "get method must be called on map");
+            return type_error(cx, "Map.prototype.get must be called on a Map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -217,7 +217,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "has method must be called on map");
+            return type_error(cx, "Map.prototype.has must be called on a Map");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -237,7 +237,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "keys method must be called on map");
+            return type_error(cx, "Map.prototype.keys must be called on a Map");
         };
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::Key)?.as_value())
@@ -252,7 +252,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "set method must be called on map");
+            return type_error(cx, "Map.prototype.set must be called on a Map");
         };
 
         let mut key = get_argument(cx, arguments, 0);
@@ -277,7 +277,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "size accessor must be called on map");
+            return type_error(cx, "Map.prototype.size must be called on a Map");
         };
 
         Ok(Value::from(map.map_data().num_entries_occupied()).to_handle(cx))
@@ -292,7 +292,7 @@ impl MapPrototype {
         let map = if let Some(map) = this_map_value(this_value) {
             map
         } else {
-            return type_error(cx, "values method must be called on map");
+            return type_error(cx, "Map.prototype.values must be called on a Map");
         };
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::Value)?.as_value())

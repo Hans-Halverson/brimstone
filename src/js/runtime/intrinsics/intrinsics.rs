@@ -533,7 +533,7 @@ pub fn throw_type_error(
     _: Handle<Value>,
     _: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    type_error(cx, "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
+    type_error(cx, "`caller`, `callee`, and `arguments` properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 }
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)

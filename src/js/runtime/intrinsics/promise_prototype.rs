@@ -78,7 +78,7 @@ impl PromisePrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Promise.prototype.finally called on non-object");
+            return type_error(cx, "Promise.prototype.finally must be called on an object");
         }
         let promise = this_value.as_object().cast::<PromiseObject>();
 
@@ -259,7 +259,7 @@ impl PromisePrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_promise(*this_value) {
-            return type_error(cx, "Promise.prototype.then called on non-promise");
+            return type_error(cx, "Promise.prototype.then must be called on a Promise");
         }
         let promise = this_value.as_object().cast::<PromiseObject>();
 

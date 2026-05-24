@@ -161,7 +161,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "add method must be called on set");
+            return type_error(cx, "Set.prototype.add must be called on a Set");
         };
 
         // Convert negative zero to positive zero in set
@@ -182,7 +182,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "clear method must be called on set");
+            return type_error(cx, "Set.prototype.clear must be called on a Set");
         };
 
         set.set_data_ptr().clear();
@@ -199,7 +199,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "delete method must be called on set");
+            return type_error(cx, "Set.prototype.delete must be called on a Set");
         };
 
         let key = get_argument(cx, arguments, 0);
@@ -221,7 +221,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "difference method must be called on set");
+            return type_error(cx, "Set.prototype.difference must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -290,7 +290,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "entries method must be called on set");
+            return type_error(cx, "Set.prototype.entries must be called on a Set");
         };
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
@@ -305,12 +305,12 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "forEach method must be called on set");
+            return type_error(cx, "Set.prototype.forEach must be called on a Set");
         };
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "Set.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -340,7 +340,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "has method must be called on set");
+            return type_error(cx, "Set.prototype.has must be called on a Set");
         };
 
         let value = get_argument(cx, arguments, 0);
@@ -360,7 +360,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "intersection method must be called on set");
+            return type_error(cx, "Set.prototype.intersection must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -432,7 +432,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "isDisjointFrom method must be called on set");
+            return type_error(cx, "Set.prototype.isDisjointFrom must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -497,7 +497,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "isSubsetOf method must be called on set");
+            return type_error(cx, "Set.prototype.isSubsetOf must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -541,7 +541,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "isSupersetOf method must be called on set");
+            return type_error(cx, "Set.prototype.isSupersetOf must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -587,7 +587,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "size accessor must be called on set");
+            return type_error(cx, "Set.prototype.size must be called on a Set");
         };
 
         Ok(Value::from(set.set_data_ptr().num_entries_occupied()).to_handle(cx))
@@ -602,7 +602,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "symmetricDifference method must be called on set");
+            return type_error(cx, "Set.prototype.symmetricDifference must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -654,7 +654,7 @@ impl SetPrototype {
         let this_set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "union method must be called on set");
+            return type_error(cx, "Set.prototype.union must be called on a Set");
         };
 
         let other = get_argument(cx, arguments, 0);
@@ -692,7 +692,7 @@ impl SetPrototype {
         let set = if let Some(set) = this_set_value(this_value) {
             set
         } else {
-            return type_error(cx, "values method must be called on set");
+            return type_error(cx, "Set.prototype.values must be called on a Set");
         };
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::Value)?.as_value())
@@ -717,7 +717,7 @@ struct SetRecord {
 /// GetSetRecord (https://tc39.es/ecma262/#sec-getsetrecord)
 fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
     if !value.is_object() {
-        return type_error(cx, "value is not an object");
+        return type_error(cx, "expected an object");
     }
 
     let object = value.as_object();
@@ -725,22 +725,22 @@ fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
     let raw_size = get(cx, object, cx.names.size())?;
     let num_size = to_number(cx, raw_size)?;
     if num_size.is_nan() {
-        return type_error(cx, "size is not a number");
+        return type_error(cx, "`size` property must be a number");
     }
 
     let int_size = must!(to_integer_or_infinity(cx, num_size));
     if int_size < 0.0 {
-        return type_error(cx, "size is negative");
+        return type_error(cx, "`size` property must not be negative");
     }
 
     let has_method = get(cx, object, cx.names.has())?;
     if !is_callable(has_method) {
-        return type_error(cx, "has method is not callable");
+        return type_error(cx, "`has` method must be a function");
     }
 
     let keys_method = get(cx, object, cx.names.keys())?;
     if !is_callable(keys_method) {
-        return type_error(cx, "keys method is not callable");
+        return type_error(cx, "`keys` method must be a function");
     }
 
     Ok(SetRecord {

@@ -1,4 +1,4 @@
-ReferenceError: x is not defined
+ReferenceError: `x` is not defined
   ┌ source_locations/loads/load_global_unresolved.js:3:3
   |
 3 |   x;

@@ -302,7 +302,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         let get = get(cx, object, cx.names.get())?;
         let is_function = is_callable(get);
         if !is_function && !get.is_undefined() {
-            return type_error(cx, "getter is not callable");
+            return type_error(cx, "getter must be a function");
         }
 
         desc.has_get = true;
@@ -317,7 +317,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
         let set = get(cx, object, cx.names.set_())?;
         let is_function = is_callable(set);
         if !is_function && !set.is_undefined() {
-            return type_error(cx, "setter is not callable");
+            return type_error(cx, "setter must be a function");
         }
 
         desc.has_set = true;
@@ -329,7 +329,7 @@ pub fn to_property_descriptor(cx: Context, value: Handle<Value>) -> EvalResult<P
     }
 
     if (desc.has_get || desc.has_set) && (desc.value.is_some() || desc.is_writable.is_some()) {
-        return type_error(cx, "property desriptor must be data or accesor");
+        return type_error(cx, "property descriptor must be data or accessor");
     }
 
     Ok(desc)

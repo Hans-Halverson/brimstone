@@ -1,4 +1,4 @@
-ReferenceError: can't access `x` before initialization
+ReferenceError: cannot access `x` before initialization
   ┌ source_locations/loads/check_tdz_local.js:2:3
   |
 2 |   x;

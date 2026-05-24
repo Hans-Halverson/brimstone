@@ -310,7 +310,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return type_error(cx, "value is not an object");
+            return type_error(cx, "expected an object");
         }
 
         let properties_arg = get_argument(cx, arguments, 1);

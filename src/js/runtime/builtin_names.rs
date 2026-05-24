@@ -43,7 +43,7 @@ macro_rules! builtin_names {
                 $({
                     handle_scope_guard!(*self);
                     self.names.$rust_name = {
-                        let string_value = self.alloc_string($js_name)?.as_string();
+                        let string_value = self.alloc_string($js_name)?;
                         PropertyKey::string_not_array_index(*self, string_value)?
                     };
                 })*
@@ -507,7 +507,7 @@ macro_rules! builtin_symbols {
                 $({
                     handle_scope_guard!(*self);
                     self.well_known_symbols.$rust_name = {
-                        let description = self.alloc_string($description)?.as_string();
+                        let description = self.alloc_string($description)?;
                         *PropertyKey::symbol(SymbolValue::new(*self, Some(description), /* is_private */ false)?)
                     };
                 })*

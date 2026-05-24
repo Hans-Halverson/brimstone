@@ -236,11 +236,11 @@ impl FunctionPrototype {
 
             // Builtin functions have special formatting using the function name
             if function.runtime_function_id().is_some() {
-                let mut string_parts = vec![cx.alloc_string("function ")?.as_string()];
+                let mut string_parts = vec![cx.alloc_string("function ")?];
                 if let Some(name) = function.name() {
                     string_parts.push(name);
                 }
-                string_parts.push(cx.alloc_string("() { [native code] }")?.as_string());
+                string_parts.push(cx.alloc_string("() { [native code] }")?);
 
                 return Ok(StringValue::concat_all(cx, &string_parts)?.as_value());
             }

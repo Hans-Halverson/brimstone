@@ -73,7 +73,7 @@ impl ErrorPrototype {
         } else if message_string.is_empty() {
             Ok(name_string.as_value())
         } else {
-            let separator = cx.alloc_string(": ")?.as_string();
+            let separator = cx.alloc_string(": ")?;
             Ok(StringValue::concat_all(cx, &[name_string, separator, message_string])?.as_value())
         }
     }

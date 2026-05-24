@@ -177,7 +177,7 @@ impl RegExpPrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let compile_name = cx.alloc_string("compile")?.as_string();
+        let compile_name = cx.alloc_string("compile")?;
         let compile_key = PropertyKey::string_not_array_index_handle(cx, compile_name)?;
         regexp_prototype.intrinsic_func(
             cx,
@@ -272,7 +272,7 @@ impl RegExpPrototype {
         let flags_string = if flags_string.is_empty() {
             cx.names.empty_string().as_string()
         } else {
-            cx.alloc_string(&flags_string)?.as_string()
+            cx.alloc_string(&flags_string)?
         };
 
         Ok(flags_string.as_value())
@@ -703,7 +703,7 @@ impl RegExpPrototype {
 
         // Make sure the sticky flag is included in the flags string
         if !is_sticky {
-            let y_string = cx.alloc_string("y")?.as_string();
+            let y_string = cx.alloc_string("y")?;
             flags_string = StringValue::concat(cx, flags_string, y_string)?;
         }
 

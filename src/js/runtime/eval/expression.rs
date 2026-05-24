@@ -111,7 +111,7 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<
         }
     };
 
-    Ok(cx.alloc_string(type_string)?.as_string())
+    cx.alloc_string(type_string)
 }
 
 pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {

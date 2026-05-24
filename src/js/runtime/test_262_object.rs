@@ -28,7 +28,7 @@ impl Test262Object {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
-        let create_realm_string = cx.alloc_string("createRealm")?.as_string();
+        let create_realm_string = cx.alloc_string("createRealm")?;
         let create_realm_key = PropertyKey::string_handle(cx, create_realm_string)?;
         object.intrinsic_func(
             cx,
@@ -38,7 +38,7 @@ impl Test262Object {
             realm,
         )?;
 
-        let eval_script_string = cx.alloc_string("evalScript")?.as_string();
+        let eval_script_string = cx.alloc_string("evalScript")?;
         let eval_script_key = PropertyKey::string_handle(cx, eval_script_string)?;
         object.intrinsic_func(
             cx,
@@ -48,11 +48,11 @@ impl Test262Object {
             realm,
         )?;
 
-        let global_string = cx.alloc_string("global")?.as_string();
+        let global_string = cx.alloc_string("global")?;
         let global_key = PropertyKey::string_handle(cx, global_string)?;
         object.intrinsic_data_prop(cx, global_key, realm.global_object().into())?;
 
-        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer")?.as_string();
+        let detach_array_buffer_string = cx.alloc_string("detachArrayBuffer")?;
         let detach_array_buffer_key = PropertyKey::string_handle(cx, detach_array_buffer_string)?;
         object.intrinsic_func(
             cx,
@@ -80,7 +80,7 @@ impl Test262Object {
             )?;
 
             // Also install a global print function needed in tests
-            let print_string = cx.alloc_string("print")?.as_string();
+            let print_string = cx.alloc_string("print")?;
             let print_key = PropertyKey::string_handle(cx, print_string)?;
             realm.global_object().intrinsic_func(
                 cx,
@@ -102,7 +102,7 @@ impl Test262Object {
     }
 
     fn print_log_key(mut cx: Context) -> AllocResult<Handle<PropertyKey>> {
-        let print_log_string = cx.alloc_string("$$printLog")?.as_string();
+        let print_log_string = cx.alloc_string("$$printLog")?;
         PropertyKey::string_handle(cx, print_log_string)
     }
 
@@ -233,6 +233,6 @@ impl Test262Object {
 }
 
 fn test_262_key(mut cx: Context) -> AllocResult<Handle<PropertyKey>> {
-    let test_262_string = cx.alloc_string("$262")?.as_string();
+    let test_262_string = cx.alloc_string("$262")?;
     PropertyKey::string_handle(cx, test_262_string)
 }

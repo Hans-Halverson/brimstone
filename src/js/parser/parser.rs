@@ -1837,9 +1837,12 @@ impl<'a> Parser<'a> {
         &mut self,
         param_flags: FunctionFlags,
     ) -> ParseResult<(P<'a, FunctionBody<'a>>, FunctionFlags)> {
-        if self.token == Token::LeftBrace {
+        // Arrow functions cannot be generators - yield is never allowed
+        let did_allow_yield = swap_and_save(&mut self.allow_yield, false);
+
+        let (body, strict_flags) = if self.token == Token::LeftBrace {
             let (block, strict_flags) = self.parse_function_block_body(param_flags)?;
-            Ok((p!(self, FunctionBody::Block(block)), strict_flags))
+            (p!(self, FunctionBody::Block(block)), strict_flags)
         } else {
             // Arrow function expression body cannot have a "use strict" directive, so inherits
             // strict mode from surrounding context.
@@ -1848,11 +1851,15 @@ impl<'a> Parser<'a> {
                 strict_flags |= FunctionFlags::IS_STRICT_MODE;
             }
 
-            Ok((
+            (
                 p!(self, FunctionBody::Expression(wrap_outer(self.parse_assignment_expression()?))),
                 strict_flags,
-            ))
-        }
+            )
+        };
+
+        self.allow_yield = did_allow_yield;
+
+        Ok((body, strict_flags))
     }
 
     fn parse_yield_expression(&mut self) -> ParseResult<P<'a, YieldExpression<'a>>> {

@@ -1303,7 +1303,7 @@ impl TypedArrayPrototype {
         let source_element_size = source.element_size();
 
         if target_offset == f64::INFINITY
-            || source_length as u64 + target_offset as u64 > target_length
+            || (source_length as u64).saturating_add(target_offset as u64) > target_length
         {
             return range_error(cx, "TypedArray.prototype.set offset is out of range");
         }
@@ -1372,7 +1372,7 @@ impl TypedArrayPrototype {
         let source = to_object(cx, source)?;
         let source_length = length_of_array_like(cx, source)?;
 
-        if offset == f64::INFINITY || source_length + offset as u64 > target_length {
+        if offset == f64::INFINITY || source_length.saturating_add(offset as u64) > target_length {
             return range_error(cx, "TypedArray.prototype.set offset is out of range");
         }
         let offset = offset as u64;

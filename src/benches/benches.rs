@@ -5,7 +5,10 @@ use std::{
 
 use bitflags::bitflags;
 use brimstone_core::{
-    common::{options::OptionsBuilder, serialized_heap::get_default_serialized_heap},
+    common::{
+        constants::MEGABYTE_BYTES, options::OptionsBuilder,
+        serialized_heap::get_default_serialized_heap,
+    },
     parser::{
         analyze::{analyze, AnalyzedProgramResult},
         parse_module, parse_script,
@@ -65,7 +68,7 @@ fn setup_step(file: &str, flags: TestFlags) -> (Context, ParseContext) {
     // Use a 10 MB heap size
     let options = OptionsBuilder::new()
         .annex_b(flags.contains(TestFlags::ANNEX_B))
-        .min_heap_size(10 * 1024 * 1024)
+        .min_heap_size(10 * MEGABYTE_BYTES)
         .build()
         .unwrap();
     let cx = ContextBuilder::new()

@@ -305,7 +305,7 @@ impl StringPrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let substr_name = cx.alloc_string("substr")?.as_string();
+        let substr_name = cx.alloc_string("substr")?;
         let substr = PropertyKey::string_not_array_index_handle(cx, substr_name)?;
         string_prototype.intrinsic_func(
             cx,
@@ -320,10 +320,10 @@ impl StringPrototype {
         let trim_start = must_a!(get(cx, string_prototype, cx.names.trim_start()));
         let trim_end = must_a!(get(cx, string_prototype, cx.names.trim_end()));
 
-        let trim_left_name = cx.alloc_string("trimLeft")?.as_string();
+        let trim_left_name = cx.alloc_string("trimLeft")?;
         let trim_left = PropertyKey::string_not_array_index_handle(cx, trim_left_name)?;
 
-        let trim_right_name = cx.alloc_string("trimRight")?.as_string();
+        let trim_right_name = cx.alloc_string("trimRight")?;
         let trim_right = PropertyKey::string_not_array_index_handle(cx, trim_right_name)?;
 
         string_prototype.intrinsic_data_prop(cx, trim_left, trim_start)?;
@@ -332,7 +332,7 @@ impl StringPrototype {
         macro_rules! html_methods {
             ($($name:expr, $method:path, $length:expr),*) => {
                 $(
-                    let name = cx.alloc_string($name)?.as_string();
+                    let name = cx.alloc_string($name)?;
                     let key = PropertyKey::string_not_array_index_handle(cx, name)?;
                     string_prototype.intrinsic_func(cx, key, $method, $length, realm)?;
                 )*

@@ -445,7 +445,7 @@ fn escape_pattern_string(
 ) -> AllocResult<Handle<StringValue>> {
     // Special case the empty pattern string - equivalent to an empty non-capturing group
     if pattern_string.is_empty() {
-        return Ok(cx.alloc_string("(?:)")?.as_string());
+        return cx.alloc_string("(?:)");
     }
 
     // Only need to escape line terminators and forward slash

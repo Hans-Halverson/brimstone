@@ -599,7 +599,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
 pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
     let mut global_object = realm.global_object();
 
-    let escape_name = cx.alloc_string("escape")?.as_string();
+    let escape_name = cx.alloc_string("escape")?;
     let escape_key = PropertyKey::string_not_array_index_handle(cx, escape_name)?;
     global_object.intrinsic_func(
         cx,
@@ -609,7 +609,7 @@ pub fn init_global_annex_b_methods(mut cx: Context, realm: Handle<Realm>) -> All
         realm,
     )?;
 
-    let unescape_name = cx.alloc_string("unescape")?.as_string();
+    let unescape_name = cx.alloc_string("unescape")?;
     let unescape_key = PropertyKey::string_not_array_index_handle(cx, unescape_name)?;
     global_object.intrinsic_func(
         cx,

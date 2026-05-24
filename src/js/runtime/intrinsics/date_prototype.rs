@@ -365,7 +365,7 @@ impl DatePrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let get_year_name = cx.alloc_string("getYear")?.as_string();
+        let get_year_name = cx.alloc_string("getYear")?;
         let get_year_key = PropertyKey::string_not_array_index_handle(cx, get_year_name)?;
         date_prototype.intrinsic_func(
             cx,
@@ -375,7 +375,7 @@ impl DatePrototype {
             realm,
         )?;
 
-        let set_year_name = cx.alloc_string("setYear")?.as_string();
+        let set_year_name = cx.alloc_string("setYear")?;
         let set_year_key = PropertyKey::string_not_array_index_handle(cx, set_year_name)?;
         date_prototype.intrinsic_func(
             cx,
@@ -386,7 +386,7 @@ impl DatePrototype {
         )?;
 
         // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
-        let to_gmt_string_name = cx.alloc_string("toGMTString")?.as_string();
+        let to_gmt_string_name = cx.alloc_string("toGMTString")?;
         let to_gmt_string_key = PropertyKey::string_not_array_index_handle(cx, to_gmt_string_name)?;
         let to_gmt_string_method = must_a!(get(cx, date_prototype, cx.names.to_utc_string()));
 
@@ -1874,7 +1874,7 @@ fn time_zone_string(string: &mut String, _time_value: f64) {
 /// ToDateString (https://tc39.es/ecma262/#sec-todatestring)
 pub fn to_date_string(mut cx: Context, time_value: f64) -> AllocResult<Handle<StringValue>> {
     if time_value.is_nan() {
-        return Ok(cx.alloc_string("Invalid Date")?.as_string());
+        return cx.alloc_string("Invalid Date");
     }
 
     let local_time_value = local_time(time_value);
@@ -1886,7 +1886,7 @@ pub fn to_date_string(mut cx: Context, time_value: f64) -> AllocResult<Handle<St
     time_string(&mut string, local_time_value);
     time_zone_string(&mut string, time_value);
 
-    Ok(cx.alloc_string(&string)?.as_string())
+    cx.alloc_string(&string)
 }
 
 #[inline]

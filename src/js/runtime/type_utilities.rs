@@ -536,7 +536,7 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
             match value.as_pointer().descriptor().kind() {
                 HeapItemKind::BigInt => {
                     let bigint_string = value.as_bigint().bigint().to_string();
-                    Ok(cx.alloc_string(&bigint_string)?.as_string())
+                    Ok(cx.alloc_string(&bigint_string)?)
                 }
                 HeapItemKind::Symbol => type_error(cx, "symbol cannot be converted to string"),
                 _ => unreachable!(),
@@ -544,20 +544,20 @@ pub fn to_string(mut cx: Context, value_handle: Handle<Value>) -> EvalResult<Han
         }
     } else {
         match value.get_tag() {
-            NULL_TAG => Ok(cx.alloc_string("null")?.as_string()),
-            UNDEFINED_TAG => Ok(cx.alloc_string("undefined")?.as_string()),
+            NULL_TAG => Ok(cx.alloc_string("null")?),
+            UNDEFINED_TAG => Ok(cx.alloc_string("undefined")?),
             BOOL_TAG => {
                 let str = if value.as_bool() { "true" } else { "false" };
-                Ok(cx.alloc_string(str)?.as_string())
+                Ok(cx.alloc_string(str)?)
             }
             SMI_TAG => {
                 let smi_string = value.as_smi().to_string();
-                Ok(cx.alloc_string(&smi_string)?.as_string())
+                Ok(cx.alloc_string(&smi_string)?)
             }
             // Otherwise must be double
             _ => {
                 let double_string = number_to_string(value.as_double());
-                Ok(cx.alloc_string(&double_string)?.as_string())
+                Ok(cx.alloc_string(&double_string)?)
             }
         }
     }

@@ -27,7 +27,7 @@ macro_rules! create_native_error {
                 message: String,
             ) -> AllocResult<Handle<ErrorObject>> {
                 // Be sure to allocate before creating object
-                let message_value = cx.alloc_string(&message)?.as_string();
+                let message_value = cx.alloc_string(&message)?;
                 Self::new_with_message_value(cx, message_value)
             }
 

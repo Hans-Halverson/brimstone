@@ -33,10 +33,10 @@ pub fn build_function_name(
         let symbol = name.as_symbol();
         if let Some(description) = symbol.description() {
             if symbol.is_private() {
-                StringValue::concat(cx, cx.alloc_string("#")?.as_string(), description.as_string())?
+                StringValue::concat(cx, cx.alloc_string("#")?, description.as_string())?
             } else {
-                let left_paren = cx.alloc_string("[")?.as_string();
-                let right_paren = cx.alloc_string("]")?.as_string();
+                let left_paren = cx.alloc_string("[")?;
+                let right_paren = cx.alloc_string("]")?;
 
                 StringValue::concat_all(cx, &[left_paren, description.as_string(), right_paren])?
             }
@@ -49,7 +49,7 @@ pub fn build_function_name(
 
     // Add prefix to name
     if let Some(prefix) = prefix {
-        let prefix_string = cx.alloc_string(&format!("{prefix} "))?.as_string();
+        let prefix_string = cx.alloc_string(&format!("{prefix} "))?;
         StringValue::concat(cx, prefix_string, name_string)
     } else {
         Ok(name_string)

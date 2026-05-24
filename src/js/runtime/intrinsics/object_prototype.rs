@@ -219,8 +219,8 @@ impl ObjectPrototype {
         let tag = get(cx, object, to_string_tag_key)?;
 
         let tag_string = if tag.is_string() {
-            let string_prefix = cx.alloc_string("[object ")?.as_string();
-            let string_suffix = cx.alloc_string("]")?.as_string();
+            let string_prefix = cx.alloc_string("[object ")?;
+            let string_suffix = cx.alloc_string("]")?;
 
             let full_string =
                 StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])?;

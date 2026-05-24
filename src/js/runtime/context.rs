@@ -18,7 +18,10 @@ use crate::{
     parser::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
-    runtime::{alloc_error::AllocResult, annex_b::init_annex_b_methods, gc::GarbageCollector},
+    runtime::{
+        alloc_error::AllocResult, annex_b::init_annex_b_methods, gc::GarbageCollector,
+        string_value::StringValue,
+    },
 };
 
 use super::{
@@ -464,7 +467,12 @@ impl Context {
     }
 
     #[inline]
-    pub fn alloc_string(&mut self, str: &str) -> AllocResult<Handle<FlatString>> {
+    pub fn alloc_string(&mut self, str: &str) -> AllocResult<Handle<StringValue>> {
+        Ok(self.alloc_string_ptr(str)?.as_string().to_handle())
+    }
+
+    #[inline]
+    pub fn alloc_flat_string(&mut self, str: &str) -> AllocResult<Handle<FlatString>> {
         Ok(self.alloc_string_ptr(str)?.to_handle())
     }
 

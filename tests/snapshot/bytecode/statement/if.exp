@@ -101,16 +101,16 @@
 
 [BytecodeFunction: testIfNoToBoolean] {
   Parameters: 1, Registers: 1
-     0: LessThan r0, a0, a0
-     4: JumpFalse r0, 8 (.L0)
-     7: LoadImmediate r0, 1
-    10: Ret r0
+     0: LessThan r0, a0, a0, ic0
+     5: JumpFalse r0, 8 (.L0)
+     8: LoadImmediate r0, 1
+    11: Ret r0
   .L0:
-    12: LessThan r0, a0, a0
-    16: JumpFalse r0, 8 (.L1)
-    19: LoadImmediate r0, 2
-    22: Ret r0
+    13: LessThan r0, a0, a0, ic1
+    18: JumpFalse r0, 8 (.L1)
+    21: LoadImmediate r0, 2
+    24: Ret r0
   .L1:
-    24: LoadImmediate r0, 3
-    27: Ret r0
+    26: LoadImmediate r0, 3
+    29: Ret r0
 }

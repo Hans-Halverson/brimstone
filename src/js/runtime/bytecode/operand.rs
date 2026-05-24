@@ -136,6 +136,14 @@ operand_type!(BitXorICSlotIndex, UNSIGNED);
 operand_type!(ShiftLeftICSlotIndex, UNSIGNED);
 operand_type!(ShiftRightArithICSlotIndex, UNSIGNED);
 operand_type!(ShiftRightLogicalICSlotIndex, UNSIGNED);
+operand_type!(LtICSlotIndex, UNSIGNED);
+operand_type!(LteICSlotIndex, UNSIGNED);
+operand_type!(GtICSlotIndex, UNSIGNED);
+operand_type!(GteICSlotIndex, UNSIGNED);
+operand_type!(StrictEqICSlotIndex, UNSIGNED);
+operand_type!(StrictNeqICSlotIndex, UNSIGNED);
+operand_type!(LooseEqICSlotIndex, UNSIGNED);
+operand_type!(LooseNeqICSlotIndex, UNSIGNED);
 
 pub enum OperandType {
     Register,
@@ -154,6 +162,14 @@ pub enum OperandType {
     ShiftLeftICSlotIndex,
     ShiftRightArithICSlotIndex,
     ShiftRightLogicalICSlotIndex,
+    LtICSlotIndex,
+    LteICSlotIndex,
+    GtICSlotIndex,
+    GteICSlotIndex,
+    StrictEqICSlotIndex,
+    StrictNeqICSlotIndex,
+    LooseEqICSlotIndex,
+    LooseNeqICSlotIndex,
 }
 
 /// Registers may be either registers local to a function or arguments to that function. Registers
@@ -373,6 +389,14 @@ define_ic_slot_index_impl!(
     ShiftLeftICSlotIndex,
     ShiftRightArithICSlotIndex,
     ShiftRightLogicalICSlotIndex,
+    LtICSlotIndex,
+    LteICSlotIndex,
+    GtICSlotIndex,
+    GteICSlotIndex,
+    StrictEqICSlotIndex,
+    StrictNeqICSlotIndex,
+    LooseEqICSlotIndex,
+    LooseNeqICSlotIndex,
 );
 
 impl<W: Width> fmt::Display for ConstantIndex<W> {

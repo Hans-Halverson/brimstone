@@ -27,26 +27,26 @@
      3: LoadEmpty r0
      5: LoadEmpty r1
      7: LoadImmediate r3, 1
-    10: StrictEqual r3, r2, r3
-    14: JumpTrue r3, 25 (.L0)
-    17: LoadImmediate r3, 2
-    20: StrictEqual r3, r2, r3
-    24: JumpTrue r3, 26 (.L1)
-    27: LoadImmediate r3, 3
-    30: StrictEqual r3, r2, r3
-    34: JumpTrue r3, 18 (.L2)
-    37: Jump 17 (.L3)
+    10: StrictEqual r3, r2, r3, ic0
+    15: JumpTrue r3, 27 (.L0)
+    18: LoadImmediate r3, 2
+    21: StrictEqual r3, r2, r3, ic1
+    26: JumpTrue r3, 27 (.L1)
+    29: LoadImmediate r3, 3
+    32: StrictEqual r3, r2, r3, ic2
+    37: JumpTrue r3, 18 (.L2)
+    40: Jump 17 (.L3)
   .L0:
-    39: CheckTdz r0, c0
-    42: CheckTdz r1, c1
-    45: Add r2, r0, r1, ic0
+    42: CheckTdz r0, c0
+    45: CheckTdz r1, c1
+    48: Add r2, r0, r1, ic3
   .L1:
-    50: LoadTrue r0
+    53: LoadTrue r0
   .L2:
-    52: LoadFalse r1
+    55: LoadFalse r1
   .L3:
-    54: LoadUndefined r2
-    56: Ret r2
+    57: LoadUndefined r2
+    59: Ret r2
   Constant Table:
     0: [String: x]
     1: [String: y]
@@ -57,28 +57,28 @@
      0: LoadImmediate r2, 0
      3: LoadEmpty r1
      5: LoadImmediate r3, 1
-     8: StrictEqual r3, r2, r3
-    12: JumpTrue r3, 15 (.L0)
-    15: LoadImmediate r3, 2
-    18: StrictEqual r3, r2, r3
-    22: JumpTrue r3, 10 (.L1)
-    25: Jump 10 (.L2)
+     8: StrictEqual r3, r2, r3, ic0
+    13: JumpTrue r3, 16 (.L0)
+    16: LoadImmediate r3, 2
+    19: StrictEqual r3, r2, r3, ic1
+    24: JumpTrue r3, 10 (.L1)
+    27: Jump 10 (.L2)
   .L0:
-    27: LoadTrue r1
-    29: CheckTdz r1, c0
+    29: LoadTrue r1
+    31: CheckTdz r1, c0
   .L1:
-    32: CheckTdz r1, c0
+    34: CheckTdz r1, c0
   .L2:
-    35: LoadImmediate r2, 3
-    38: LoadImmediate r3, 1
-    41: StrictEqual r3, r2, r3
-    45: JumpTrue r3, 5 (.L3)
-    48: Jump 4 (.L4)
+    37: LoadImmediate r2, 3
+    40: LoadImmediate r3, 1
+    43: StrictEqual r3, r2, r3, ic2
+    48: JumpTrue r3, 5 (.L3)
+    51: Jump 4 (.L4)
   .L3:
-    50: LoadTrue r0
+    53: LoadTrue r0
   .L4:
-    52: LoadUndefined r2
-    54: Ret r2
+    55: LoadUndefined r2
+    57: Ret r2
   Constant Table:
     0: [String: x]
 }
@@ -91,30 +91,30 @@
      7: StoreToScope r3, 0, 0
     11: NewClosure r0, c1
     14: LoadImmediate r3, 1
-    17: StrictEqual r3, r2, r3
-    21: JumpTrue r3, 25 (.L0)
-    24: LoadImmediate r3, 2
-    27: StrictEqual r3, r2, r3
-    31: JumpTrue r3, 22 (.L1)
-    34: LoadImmediate r3, 3
-    37: StrictEqual r3, r2, r3
-    41: JumpTrue r3, 12 (.L1)
-    44: Jump 28 (.L2)
+    17: StrictEqual r3, r2, r3, ic0
+    22: JumpTrue r3, 27 (.L0)
+    25: LoadImmediate r3, 2
+    28: StrictEqual r3, r2, r3, ic1
+    33: JumpTrue r3, 23 (.L1)
+    36: LoadImmediate r3, 3
+    39: StrictEqual r3, r2, r3, ic2
+    44: JumpTrue r3, 12 (.L1)
+    47: Jump 28 (.L2)
   .L0:
-    46: LoadImmediate r2, 1
-    49: StoreToScope r2, 0, 0
+    49: LoadImmediate r2, 1
+    52: StoreToScope r2, 0, 0
   .L1:
-    53: PushLexicalScope c2
-    55: LoadEmpty r2
-    57: StoreToScope r2, 0, 0
-    61: NewClosure r1, c3
-    64: LoadImmediate r2, 1
-    67: StoreToScope r2, 0, 0
-    71: PopScope 
+    56: PushLexicalScope c2
+    58: LoadEmpty r2
+    60: StoreToScope r2, 0, 0
+    64: NewClosure r1, c3
+    67: LoadImmediate r2, 1
+    70: StoreToScope r2, 0, 0
+    74: PopScope 
   .L2:
-    72: PopScope 
-    73: LoadUndefined r2
-    75: Ret r2
+    75: PopScope 
+    76: LoadUndefined r2
+    78: Ret r2
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: inner1]
@@ -152,20 +152,20 @@
      7: StoreToScope r2, 0, 0
     11: NewClosure r0, c1
     14: LoadImmediate r2, 1
-    17: StrictEqual r2, r1, r2
-    21: JumpTrue r2, 5 (.L0)
-    24: Jump 12 (.L1)
+    17: StrictEqual r2, r1, r2, ic0
+    22: JumpTrue r2, 5 (.L0)
+    25: Jump 12 (.L1)
   .L0:
-    26: LoadImmediate r1, 1
-    29: StoreToScope r1, 0, 0
-    33: PopScope 
-    34: Jump 3 (.L2)
+    27: LoadImmediate r1, 1
+    30: StoreToScope r1, 0, 0
+    34: PopScope 
+    35: Jump 3 (.L2)
   .L1:
-    36: PopScope 
+    37: PopScope 
   .L2:
-    37: LoadImmediate r1, 2
-    40: LoadUndefined r1
-    42: Ret r1
+    38: LoadImmediate r1, 2
+    41: LoadUndefined r1
+    43: Ret r1
   Constant Table:
     0: [ScopeNames]
     1: [BytecodeFunction: captures]

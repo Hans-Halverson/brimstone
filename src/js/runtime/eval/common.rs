@@ -534,3 +534,269 @@ pub fn shift_right_logical_number_fast(
 
     Ok(Value::from(left_smi >> shift).to_handle(cx))
 }
+
+/// smi equal fast
+#[inline]
+pub fn strict_equal_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    cx.bool(left.as_smi() == right.as_smi())
+}
+
+/// number equal fast
+#[inline]
+pub fn strict_equal_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    cx.bool(left.as_number() == right.as_number())
+}
+
+/// bigint equal fast
+#[inline]
+pub fn strict_equal_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    cx.bool(left.as_bigint().bigint().eq(&right.as_bigint().bigint()))
+}
+
+/// string equal fast
+#[inline]
+pub fn strict_equal_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    Ok(cx.bool(left.as_string().equals(&right.as_string())?))
+}
+
+/// smi not equal fast
+#[inline]
+pub fn strict_not_equal_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    let res = strict_equal_smi_fast(cx, left, right);
+    cx.bool(res.is_false())
+}
+
+/// number not equal fast
+#[inline]
+pub fn strict_not_equal_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    let res = strict_equal_number_fast(cx, left, right);
+    cx.bool(res.is_false())
+}
+
+/// bigint not equal fast
+#[inline]
+pub fn strict_not_equal_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> Handle<Value> {
+    let res = strict_equal_bigint_fast(cx, left, right);
+    cx.bool(res.is_false())
+}
+
+/// string not equal fast
+#[inline]
+pub fn strict_not_equal_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = strict_equal_string_fast(cx, left, right)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// smi less than fast
+#[inline]
+pub fn less_than_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    Ok(cx.bool(left.as_smi() < right.as_smi()))
+}
+
+/// number less than fast
+#[inline]
+pub fn less_than_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    if left.is_nan() || right.is_nan() {
+        return Ok(cx.undefined());
+    }
+
+    Ok(cx.bool(left.as_number() < right.as_number()))
+}
+
+/// bigint less than fast
+#[inline]
+pub fn less_than_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    Ok(cx.bool(left.as_bigint().bigint().lt(&right.as_bigint().bigint())))
+}
+
+/// string less than fast
+#[inline]
+pub fn less_than_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    Ok(cx.bool(
+        left.as_string()
+            .compare(&right.as_string())
+            .map(|o| o.is_lt())?,
+    ))
+}
+
+/// smi greater than fast
+#[inline]
+pub fn greater_than_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    less_than_smi_fast(cx, right, left)
+}
+
+/// number greater than fast
+#[inline]
+pub fn greater_than_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    // Can return undefined in case of NaN
+    let res = less_than_number_fast(cx, right, left)?;
+    if res.is_undefined() {
+        Ok(cx.bool(false))
+    } else {
+        Ok(cx.bool(res.as_bool()))
+    }
+}
+
+/// bigint greater than fast
+#[inline]
+pub fn greater_than_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    less_than_bigint_fast(cx, right, left)
+}
+
+/// string greater than fast
+#[inline]
+pub fn greater_than_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    less_than_string_fast(cx, right, left)
+}
+
+/// smi less than or equal fast
+#[inline]
+pub fn less_than_or_equal_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_smi_fast(cx, right, left)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// number less than or equal fast
+#[inline]
+pub fn less_than_or_equal_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_number_fast(cx, right, left)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// bigint less than or equal fast
+#[inline]
+pub fn less_than_or_equal_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_bigint_fast(cx, right, left)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// string less than or equal fast
+#[inline]
+pub fn less_than_or_equal_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_string_fast(cx, right, left)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// smi greater than or equal fast
+#[inline]
+pub fn greater_than_or_equal_smi_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_smi_fast(cx, left, right)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// number greater than or equal fast
+#[inline]
+pub fn greater_than_or_equal_number_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_number_fast(cx, left, right)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// bigint greater than or equal fast
+#[inline]
+pub fn greater_than_or_equal_bigint_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_bigint_fast(cx, left, right)?;
+    Ok(cx.bool(res.is_false()))
+}
+
+/// string greater than or equal fast
+#[inline]
+pub fn greater_than_or_equal_string_fast(
+    cx: Context,
+    left: Handle<Value>,
+    right: Handle<Value>,
+) -> EvalResult<Handle<Value>> {
+    let res = less_than_bigint_fast(cx, left, right)?;
+    Ok(cx.bool(res.is_false()))
+}

@@ -20,8 +20,10 @@ use crate::{
         boxed_value::BoxedValue,
         bytecode::operand::{
             AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
-            ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
-            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex,
+            ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex, LooseNeqICSlotIndex,
+            LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
+            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex,
+            StrictNeqICSlotIndex, SubICSlotIndex,
         },
         class_names::{new_class, ClassNames},
         error::{
@@ -49,9 +51,10 @@ use crate::{
         ic::{
             generate::ICStubGenerator,
             stubs::binary_arith::{
-                AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub,
-                MulICStub, RemICStub, ShiftLeftICStub, ShiftRightArithICStub,
-                ShiftRightLogicalICStub, SubICStub,
+                AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
+                GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub,
+                RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub,
+                StrictEqICStub, StrictNeqICStub, SubICStub,
             },
             vector::{ICEntry, ICVector},
         },
@@ -280,7 +283,15 @@ impl VM {
         BitXor,
         ShiftLeft,
         ShiftRightArith,
-        ShiftRightLogical
+        ShiftRightLogical,
+        Lt,
+        Lte,
+        Gt,
+        Gte,
+        StrictEq,
+        StrictNeq,
+        LooseEq,
+        LooseNeq
     );
 
     pub fn stack_trace_top(&self) -> Option<StackFrame> {
@@ -3047,10 +3058,12 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, Value::bool(result));
+            eval_with_ic!(self, LooseEq, instr, left_value, right_value, dest, {
+                let result = is_loosely_equal(self.cx(), left_value, right_value)?;
+                let result_handle = self.cx().bool(result);
+                self.write_register(dest, *result_handle);
+                result_handle
+            });
 
             Ok(())
         })
@@ -3066,10 +3079,12 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = is_loosely_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, Value::bool(!result));
+            eval_with_ic!(self, LooseNeq, instr, left_value, right_value, dest, {
+                let result = is_loosely_equal(self.cx(), left_value, right_value)?;
+                let result_handle = self.cx().bool(!result);
+                self.write_register(dest, *result_handle);
+                result_handle
+            });
 
             Ok(())
         })
@@ -3080,18 +3095,20 @@ impl VM {
         &mut self,
         instr: &StrictEqualInstruction<W>,
     ) -> EvalResult<()> {
-        handle_scope_guard!(self.cx());
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+            eval_with_ic!(self, StrictEq, instr, left_value, right_value, dest, {
+                let result = is_strictly_equal(left_value, right_value)?;
+                let result_handle = self.cx().bool(result);
+                self.write_register(dest, *result_handle);
+                result_handle
+            });
 
-        // May allocate
-        let result = is_strictly_equal(left_value, right_value)?;
-
-        self.write_register(dest, Value::bool(result));
-
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3099,18 +3116,20 @@ impl VM {
         &mut self,
         instr: &StrictNotEqualInstruction<W>,
     ) -> EvalResult<()> {
-        handle_scope_guard!(self.cx());
+        handle_scope!(self.cx(), {
+            let left_value = self.read_register_to_handle(instr.left());
+            let right_value = self.read_register_to_handle(instr.right());
+            let dest = instr.dest();
 
-        let left_value = self.read_register_to_handle(instr.left());
-        let right_value = self.read_register_to_handle(instr.right());
-        let dest = instr.dest();
+            eval_with_ic!(self, StrictNeq, instr, left_value, right_value, dest, {
+                let result = is_strictly_equal(left_value, right_value)?;
+                let result_handle = self.cx().bool(!result);
+                self.write_register(dest, *result_handle);
+                result_handle
+            });
 
-        // May allocate
-        let result = is_strictly_equal(left_value, right_value)?;
-
-        self.write_register(dest, Value::bool(!result));
-
-        Ok(())
+            Ok(())
+        })
     }
 
     #[inline]
@@ -3120,10 +3139,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_less_than(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Lt, instr, left_value, right_value, dest, {
+                let result = eval_less_than(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -3139,10 +3159,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Lte, instr, left_value, right_value, dest, {
+                let result = eval_less_than_or_equal(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -3158,10 +3179,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_greater_than(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Gt, instr, left_value, right_value, dest, {
+                let result = eval_greater_than(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })
@@ -3177,10 +3199,11 @@ impl VM {
             let right_value = self.read_register_to_handle(instr.right());
             let dest = instr.dest();
 
-            // May allocate
-            let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
-
-            self.write_register(dest, *result);
+            eval_with_ic!(self, Gte, instr, left_value, right_value, dest, {
+                let result = eval_greater_than_or_equal(self.cx(), left_value, right_value)?;
+                self.write_register(dest, *result);
+                result
+            });
 
             Ok(())
         })

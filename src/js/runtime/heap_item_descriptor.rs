@@ -175,6 +175,14 @@ pub enum HeapItemKind {
     ShiftLeftICStub,
     ShiftRightArithICStub,
     ShiftRightLogicalICStub,
+    LtICStub,
+    LteICStub,
+    GtICStub,
+    GteICStub,
+    StrictEqICStub,
+    StrictNeqICStub,
+    LooseEqICStub,
+    LooseNeqICStub,
 
     // Numerical value is the number of kinds in the enum
     Last,
@@ -424,6 +432,14 @@ impl BaseDescriptors {
         other_heap_item_descriptor!(HeapItemKind::ShiftLeftICStub);
         other_heap_item_descriptor!(HeapItemKind::ShiftRightArithICStub);
         other_heap_item_descriptor!(HeapItemKind::ShiftRightLogicalICStub);
+        other_heap_item_descriptor!(HeapItemKind::LtICStub);
+        other_heap_item_descriptor!(HeapItemKind::LteICStub);
+        other_heap_item_descriptor!(HeapItemKind::GtICStub);
+        other_heap_item_descriptor!(HeapItemKind::GteICStub);
+        other_heap_item_descriptor!(HeapItemKind::StrictEqICStub);
+        other_heap_item_descriptor!(HeapItemKind::StrictNeqICStub);
+        other_heap_item_descriptor!(HeapItemKind::LooseEqICStub);
+        other_heap_item_descriptor!(HeapItemKind::LooseNeqICStub);
 
         Ok(base_descriptors)
     }

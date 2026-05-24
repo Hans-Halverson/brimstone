@@ -2,16 +2,20 @@ use crate::runtime::{
     bytecode::{
         operand::{
             AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
-            ExpICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
-            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, SubICSlotIndex,
+            ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex, LooseNeqICSlotIndex,
+            LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
+            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex,
+            StrictNeqICSlotIndex, SubICSlotIndex,
         },
         width::{UnsignedWidthRepr, Width},
     },
     gc::HeapVisitor,
     ic::{
         stubs::binary_arith::{
-            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, MulICStub,
-            RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, SubICStub,
+            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
+            GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub, RemICStub,
+            ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, StrictEqICStub,
+            StrictNeqICStub, SubICStub,
         },
         vector::{ICEntry, ICVector},
     },
@@ -359,7 +363,15 @@ impl StackFrame {
         BitXor,
         ShiftLeft,
         ShiftRightArith,
-        ShiftRightLogical
+        ShiftRightLogical,
+        Lt,
+        Lte,
+        Gt,
+        Gte,
+        StrictEq,
+        StrictNeq,
+        LooseEq,
+        LooseNeq
     );
 }
 

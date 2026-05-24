@@ -4,12 +4,21 @@ use crate::runtime::{
         bitwise_and_number_fast, bitwise_and_smi_fast, bitwise_or_bigint_fast,
         bitwise_or_number_fast, bitwise_or_smi_fast, bitwise_xor_bigint_fast,
         bitwise_xor_number_fast, bitwise_xor_smi_fast, div_bigint_fast, div_number_fast,
-        div_smi_fast, exp_bigint_fast, exp_number_fast, exp_smi_fast, is_bigint, is_number, is_smi,
-        is_string, mul_bigint_fast, mul_number_fast, mul_smi_fast, rem_bigint_fast,
+        div_smi_fast, exp_bigint_fast, exp_number_fast, exp_smi_fast, greater_than_bigint_fast,
+        greater_than_number_fast, greater_than_or_equal_bigint_fast,
+        greater_than_or_equal_number_fast, greater_than_or_equal_smi_fast,
+        greater_than_or_equal_string_fast, greater_than_smi_fast, greater_than_string_fast,
+        is_bigint, is_number, is_smi, is_string, less_than_bigint_fast, less_than_number_fast,
+        less_than_or_equal_bigint_fast, less_than_or_equal_number_fast,
+        less_than_or_equal_smi_fast, less_than_or_equal_string_fast, less_than_smi_fast,
+        less_than_string_fast, mul_bigint_fast, mul_number_fast, mul_smi_fast, rem_bigint_fast,
         rem_number_fast, rem_smi_fast, shift_left_bigint_fast, shift_left_number_fast,
         shift_left_smi_fast, shift_right_arith_bigint_fast, shift_right_arith_number_fast,
         shift_right_arith_smi_fast, shift_right_logical_number_fast, shift_right_logical_smi_fast,
-        sub_bigint_fast, sub_number_fast, sub_smi_fast,
+        strict_equal_bigint_fast, strict_equal_number_fast, strict_equal_smi_fast,
+        strict_equal_string_fast, strict_not_equal_bigint_fast, strict_not_equal_number_fast,
+        strict_not_equal_smi_fast, strict_not_equal_string_fast, sub_bigint_fast, sub_number_fast,
+        sub_smi_fast,
     },
     ic::{
         fgc::FGC,
@@ -84,6 +93,7 @@ impl ICBackend for BinaryExecutor {
         let BinaryExecutor { cx, state } = self;
 
         match op {
+            // arith
             ICOp::AddSmi => ic_op!(state, cx, add_smi_fast),
             ICOp::AddNumber => ic_op!(state, cx, add_number_fast),
             ICOp::AddBigInt => ic_op!(state, cx, add_bigint_fast?),
@@ -122,6 +132,47 @@ impl ICBackend for BinaryExecutor {
             ICOp::ShiftRightArithBigInt => ic_op!(state, cx, shift_right_arith_bigint_fast?),
             ICOp::ShiftRightLogicalSmi => ic_op!(state, cx, shift_right_logical_smi_fast?),
             ICOp::ShiftRightLogicalNumber => ic_op!(state, cx, shift_right_logical_number_fast?),
+            // <, >, <=, >=
+            ICOp::LtSmi => ic_op!(state, cx, less_than_smi_fast?),
+            ICOp::LtNumber => ic_op!(state, cx, less_than_number_fast?),
+            ICOp::LtBigInt => ic_op!(state, cx, less_than_bigint_fast?),
+            ICOp::LtString => ic_op!(state, cx, less_than_string_fast?),
+            ICOp::LteSmi => ic_op!(state, cx, less_than_or_equal_smi_fast?),
+            ICOp::LteNumber => ic_op!(state, cx, less_than_or_equal_number_fast?),
+            ICOp::LteBigInt => ic_op!(state, cx, less_than_or_equal_bigint_fast?),
+            ICOp::LteString => ic_op!(state, cx, less_than_or_equal_string_fast?),
+            ICOp::GtSmi => ic_op!(state, cx, greater_than_smi_fast?),
+            ICOp::GtNumber => ic_op!(state, cx, greater_than_number_fast?),
+            ICOp::GtBigInt => ic_op!(state, cx, greater_than_bigint_fast?),
+            ICOp::GtString => ic_op!(state, cx, greater_than_string_fast?),
+            ICOp::GteSmi => ic_op!(state, cx, greater_than_or_equal_smi_fast?),
+            ICOp::GteNumber => ic_op!(state, cx, greater_than_or_equal_number_fast?),
+            ICOp::GteBigInt => ic_op!(state, cx, greater_than_or_equal_bigint_fast?),
+            ICOp::GteString => ic_op!(state, cx, greater_than_or_equal_string_fast?),
+            // equality
+            // INVARIANT: Mixed types will never hit the fast path - they should always
+            // be guarded by checks
+            // If this changes, we'll need to change to two impls for Loose and Strict equality
+            ICOp::StrictEqSmi | ICOp::LooseEqSmi => ic_op!(state, cx, strict_equal_smi_fast),
+            ICOp::StrictEqNumber | ICOp::LooseEqNumber => {
+                ic_op!(state, cx, strict_equal_number_fast)
+            }
+            ICOp::StrictEqBigInt | ICOp::LooseEqBigInt => {
+                ic_op!(state, cx, strict_equal_bigint_fast)
+            }
+            ICOp::StrictEqString | ICOp::LooseEqString => {
+                ic_op!(state, cx, strict_equal_string_fast?)
+            }
+            ICOp::StrictNeqSmi | ICOp::LooseNeqSmi => ic_op!(state, cx, strict_not_equal_smi_fast),
+            ICOp::StrictNeqNumber | ICOp::LooseNeqNumber => {
+                ic_op!(state, cx, strict_not_equal_number_fast)
+            }
+            ICOp::StrictNeqBigInt | ICOp::LooseNeqBigInt => {
+                ic_op!(state, cx, strict_not_equal_bigint_fast)
+            }
+            ICOp::StrictNeqString | ICOp::LooseNeqString => {
+                ic_op!(state, cx, strict_not_equal_string_fast?)
+            }
         }
     }
 }

@@ -53,12 +53,12 @@ impl FinalizationRegistryPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let registry_object =
-            if let Some(registry_object) = this_finalization_registry_value(this_value) {
-                registry_object
-            } else {
-                return type_error(cx, "register method must be called on FinalizationRegistry");
-            };
+        let Some(registry_object) = this_finalization_registry_value(this_value) else {
+            return type_error(
+                cx,
+                "FinalizationRegistry.prototype.register must be called on a FinalizationRegistry",
+            );
+        };
 
         let target = get_argument(cx, arguments, 0);
         let held_value = get_argument(cx, arguments, 1);
@@ -71,7 +71,7 @@ impl FinalizationRegistryPrototype {
         if same_value(target, held_value)? {
             return type_error(
                 cx,
-                "The target and held value arguments to register cannot be the same value",
+                "the target and held value arguments to register cannot be the same value",
             );
         }
 
@@ -102,12 +102,12 @@ impl FinalizationRegistryPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let registry_object =
-            if let Some(registry_object) = this_finalization_registry_value(this_value) {
-                registry_object
-            } else {
-                return type_error(cx, "unregister method must be called on FinalizationRegistry");
-            };
+        let Some(registry_object) = this_finalization_registry_value(this_value) else {
+            return type_error(
+                cx,
+                "FinalizationRegistry.prototype.unregister must be called on a FinalizationRegistry",
+            );
+        };
 
         let unregister_token = get_argument(cx, arguments, 0);
 

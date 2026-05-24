@@ -218,7 +218,7 @@ fn generator_validate(
         }
     }
 
-    type_error(cx, "expected generator")
+    type_error(cx, "expected a generator")
 }
 
 /// GeneratorResume (https://tc39.es/ecma262/#sec-generatorresume)

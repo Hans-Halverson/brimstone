@@ -519,7 +519,7 @@ impl StringPrototype {
 
         let search_string = get_argument(cx, arguments, 0);
         if is_regexp(cx, search_string)? {
-            return type_error(cx, "String.prototype.includes cannot take a regular expression");
+            return type_error(cx, "String.prototype.includes cannot take a RegExp");
         }
 
         let search_string = to_string(cx, search_string)?;

@@ -1,4 +1,4 @@
-SyntaxError: Redeclaration of let x
+SyntaxError: Redeclaration of let `x`
   ┌ error_types/analyze.js:4:7
   |
 4 |   let x = 3;

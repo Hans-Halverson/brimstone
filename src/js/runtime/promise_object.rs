@@ -485,7 +485,7 @@ impl PromiseCapability {
     /// NewPromiseCapability (https://tc39.es/ecma262/#sec-newpromisecapability)
     pub fn new(cx: Context, constructor: Handle<Value>) -> EvalResult<Handle<PromiseCapability>> {
         if !is_constructor_value(constructor) {
-            return type_error(cx, "expected constructor");
+            return type_error(cx, "expected a constructor");
         }
         let constructor = constructor.as_object();
 
@@ -523,9 +523,9 @@ impl PromiseCapability {
         let promise = construct(cx, constructor, &[executor.into()], None)?;
 
         if !is_callable(capability.resolve.to_handle(cx)) {
-            return type_error(cx, "resolve must be callable");
+            return type_error(cx, "`resolve` must be a function");
         } else if !is_callable(capability.reject.to_handle(cx)) {
-            return type_error(cx, "reject must be callable");
+            return type_error(cx, "`reject` must be a function");
         }
 
         // Finally store the promise in the capability record, completing it

@@ -249,7 +249,7 @@ impl ArrayBufferPrototype {
         } else if new_object.is_shared_array_buffer() {
             return type_error(cx, "constructor cannot return SharedArrayBuffer");
         } else {
-            return type_error(cx, "expected array buffer");
+            return type_error(cx, "expected an ArrayBuffer");
         };
 
         throw_if_detached(cx, *new_array_buffer)?;
@@ -317,5 +317,8 @@ fn require_array_buffer(
         }
     }
 
-    type_error(cx, &format!("ArrayBuffer.prototype.{method_name} expected ArrayBuffer"))
+    type_error(
+        cx,
+        &format!("ArrayBuffer.prototype.{method_name} must be called on an ArrayBuffer"),
+    )
 }

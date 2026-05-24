@@ -549,7 +549,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.every callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -654,7 +654,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.filter callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -711,7 +711,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "TypedArray.prototype.find expected function");
+            return type_error(cx, "TypedArray.prototype.find callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -739,7 +739,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "TypedArray.prototype.findIndex expected function");
+            return type_error(cx, "TypedArray.prototype.findIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -767,7 +767,7 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "TypedArray.prototype.findLast expected function");
+            return type_error(cx, "TypedArray.prototype.findLast callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -796,7 +796,10 @@ impl TypedArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "TypedArray.prototype.findLastIndex expected function");
+            return type_error(
+                cx,
+                "TypedArray.prototype.findLastIndex callback must be a function",
+            );
         }
 
         let predicate_function = predicate_function.as_object();
@@ -825,7 +828,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1084,7 +1087,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.map mapper must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1125,7 +1128,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.reduce callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1172,7 +1175,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.reduceRight callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1507,7 +1510,7 @@ impl TypedArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "expected function");
+            return type_error(cx, "TypedArray.prototype.some callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1541,7 +1544,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error(cx, "Sort comparator must be a function");
+            return type_error(cx, "TypedArray.prototype.sort comparator must be a function");
         };
 
         let typed_array_record = validate_typed_array(cx, this_value)?;
@@ -1710,7 +1713,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<Handle<Value>> {
         let compare_function_arg = get_argument(cx, arguments, 0);
         if !compare_function_arg.is_undefined() && !is_callable(compare_function_arg) {
-            return type_error(cx, "Sort comparator must be a function");
+            return type_error(cx, "TypedArray.prototype.toSorted comparator must be a function");
         };
 
         let typed_array_record = validate_typed_array(cx, this_value)?;
@@ -1874,12 +1877,12 @@ macro_rules! create_typed_array_prototype {
 #[inline]
 fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
     if !value.is_object() {
-        return type_error(cx, "expected typed array");
+        return type_error(cx, "expected a TypedArray");
     }
 
     let object = value.as_object();
     if !object.is_typed_array() {
-        return type_error(cx, "expected typed array");
+        return type_error(cx, "expected a TypedArray");
     }
 
     Ok(object.as_typed_array())

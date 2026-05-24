@@ -591,7 +591,7 @@ pub fn dynamic_import(
 
     if !options.is_undefined() {
         if !options.is_object() {
-            let error = type_error_value(cx, "Import options must be an object")?;
+            let error = type_error_value(cx, "import options must be an object")?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
             return Ok(capability.promise());
         }
@@ -602,7 +602,7 @@ pub fn dynamic_import(
 
         if !attributes_object.is_undefined() {
             if !attributes_object.is_object() {
-                let error = type_error_value(cx, "Import attributes must be an object")?;
+                let error = type_error_value(cx, "import attributes must be an object")?;
                 must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
                 return Ok(capability.promise());
             }
@@ -621,7 +621,7 @@ pub fn dynamic_import(
                 let value = must!(get(cx, entry, PropertyKey::from_u8(1).to_handle(cx)));
 
                 if !value.is_string() {
-                    let error = type_error_value(cx, "Import attribute values must be strings")?;
+                    let error = type_error_value(cx, "import attribute values must be strings")?;
                     must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
                     return Ok(capability.promise());
                 }

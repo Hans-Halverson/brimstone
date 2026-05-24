@@ -1,4 +1,4 @@
-ReferenceError: x is not defined
+ReferenceError: `x` is not defined
   ┌ source_locations/stores/store_global_unresolved.js:5:3
   |
 5 |   x = 1;

@@ -1,4 +1,4 @@
-TypeError: can't assign constant `x`
+TypeError: cannot assign constant `x`
   ┌ source_locations/stores/error_const.js:3:3
   |
 3 |   x = 2;

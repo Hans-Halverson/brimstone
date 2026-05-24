@@ -1954,7 +1954,7 @@ impl VM {
             }
         }
 
-        Ok(CallableObject::Error(type_error_value(self.cx(), "value is not a function")?))
+        Ok(CallableObject::Error(type_error_value(self.cx(), "expected a function")?))
     }
 
     /// Check that a value is a constructor (either a closure or proxy object), returning the
@@ -1978,10 +1978,7 @@ impl VM {
             }
         }
 
-        Ok(CallableObject::Error(type_error_value(
-            self.cx(),
-            "value is not a constructor",
-        )?))
+        Ok(CallableObject::Error(type_error_value(self.cx(), "expected a constructor")?))
     }
 
     /// Track the depth of the stack throwing a stack overflow error when necessary.
@@ -4062,7 +4059,7 @@ impl VM {
             if function.is_nullish() {
                 self.write_register(dest, Value::undefined());
             } else if !is_callable(function) {
-                return type_error(self.cx(), "value is not a function");
+                return type_error(self.cx(), "expected a function");
             } else {
                 self.write_register(dest, *function);
             }
@@ -4352,7 +4349,7 @@ impl VM {
         let name = self.get_constant(instr.name_constant_index()).as_string();
         let name_str = name.to_handle().format()?;
 
-        reference_error(self.cx(), &format!("can't access `{name_str}` before initialization"))
+        reference_error(self.cx(), &format!("cannot access `{name_str}` before initialization"))
     }
 
     #[inline]
@@ -4549,7 +4546,7 @@ impl VM {
     ) -> EvalResult<()> {
         // Iterator's function must return an object, otherwise error
         if !iterator_result.is_object() {
-            return type_error(self.cx(), "iterator's next method must return an object");
+            return type_error(self.cx(), "Iterator `next` method must return an object");
         }
         let iterator_result = iterator_result.as_object();
 
@@ -4585,7 +4582,7 @@ impl VM {
 
                 // Return method must return an object otherwise error
                 if !return_result.is_object() {
-                    return type_error(self.cx(), "iterator's return method must return an object");
+                    return type_error(self.cx(), "Iterator `return` method must return an object");
                 }
             }
 
@@ -4627,7 +4624,7 @@ impl VM {
 
         // Return method must return an object otherwise error.
         if !return_result.is_object() {
-            return type_error(self.cx(), "iterator's return method must return an object");
+            return type_error(self.cx(), "Iterator `return` method must return an object");
         }
 
         Ok(())

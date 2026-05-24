@@ -321,7 +321,7 @@ pub fn async_generator_validate(
         }
     }
 
-    type_error(cx, "expected async generator")
+    type_error(cx, "expected an async generator")
 }
 
 /// AsyncGeneratorResume (https://tc39.es/ecma262/#sec-asyncgeneratorresume)

@@ -118,21 +118,21 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "proxy can't report a non-configurable own property '{}' as non-existent",
+                        "proxy cannot report a non-configurable own property `{}` as non-existent",
                         key.format()?
                     ),
                 );
             }
 
             if !is_extensible_(cx, target)? {
-                return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key.format()?));
+                return type_error(cx, &format!("proxy cannot report an existing own property `{}` as non-existent on a non-extensible object", key.format()?));
             }
 
             return Ok(None);
         } else if !trap_result.is_object() {
             return type_error(
                 cx,
-                "proxy getOwnPropertyDescriptor must return an object or undefined",
+                "proxy `getOwnPropertyDescriptor` must return an object or undefined",
             );
         }
 
@@ -146,7 +146,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return type_error(
                 cx,
                 &format!(
-                    "proxy can't report an incompatible property descriptor for '{}'",
+                    "proxy cannot report an incompatible property descriptor for `{}`",
                     key.format()?
                 ),
             );
@@ -155,10 +155,10 @@ impl VirtualObject for Handle<ProxyObject> {
         if let Some(false) = result_desc.is_configurable {
             if let None | Some(PropertyDescriptor { is_configurable: Some(true), .. }) = target_desc
             {
-                return type_error(cx, &format!("proxy can't report existing configurable property '{}' as non-configurable", key.format()?));
+                return type_error(cx, &format!("proxy cannot report existing configurable property `{}` as non-configurable", key.format()?));
             } else if let Some(false) = result_desc.is_writable {
                 if let Some(true) = target_desc.unwrap().is_writable {
-                    return type_error(cx, &format!("proxy can't report a non-configurable, non-writable property '{}' as writable", key.format()?));
+                    return type_error(cx, &format!("proxy cannot report a non-configurable, non-writable property `{}` as writable", key.format()?));
                 }
             }
         }
@@ -207,7 +207,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "proxy can't define a new property '{}' on a non-extensible object",
+                        "proxy cannot define a new property `{}` on a non-extensible object",
                         key.format()?
                     ),
                 );
@@ -215,7 +215,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "proxy can't define a non-existent property '{}' as non-configurable",
+                        "proxy cannot define a non-existent property `{}` as non-configurable",
                         key.format()?
                     ),
                 );
@@ -230,7 +230,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "proxy can't report an incompatible property descriptor for '{}'",
+                        "proxy cannot report an incompatible property descriptor for `{}`",
                         key.format()?
                     ),
                 );
@@ -238,7 +238,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
             if is_setting_non_configurable {
                 if let Some(true) = target_desc.is_configurable {
-                    return type_error(cx, &format!("proxy can't define an existing configurable property '{}' as non-configurable", key.format()?));
+                    return type_error(cx, &format!("proxy cannot define an existing configurable property `{}` as non-configurable", key.format()?));
                 }
             }
 
@@ -246,7 +246,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 if let Some(false) = target_desc.is_configurable {
                     if let Some(true) = target_desc.is_writable {
                         if let Some(false) = desc.is_writable {
-                            return type_error(cx, &format!("proxy can't define an existing non-configurable writable property '{}' as non-writable", key.format()?));
+                            return type_error(cx, &format!("proxy cannot define an existing non-configurable writable property `{}` as non-writable", key.format()?));
                         }
                     }
                 }
@@ -282,13 +282,13 @@ impl VirtualObject for Handle<ProxyObject> {
                     return type_error(
                         cx,
                         &format!(
-                            "proxy can't report a non-configurable own property '{}' as non-existent", key.format()?
+                            "proxy cannot report a non-configurable own property `{}` as non-existent", key.format()?
                         ),
                     );
                 }
 
                 if !is_extensible_(cx, target)? {
-                    return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key.format()?));
+                    return type_error(cx, &format!("proxy cannot report an existing own property `{}` as non-existent on a non-extensible object", key.format()?));
                 }
             }
         }
@@ -325,14 +325,14 @@ impl VirtualObject for Handle<ProxyObject> {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
                         if !same_value(trap_result, target_desc.value.unwrap())? {
-                            return type_error(cx, &format!("proxy must report the same value for the non-writable, non-configurable property '{}'", key.format()?));
+                            return type_error(cx, &format!("proxy must report the same value for the non-writable, non-configurable property `{}`", key.format()?));
                         }
                     }
                 } else if target_desc.is_accessor_descriptor()
                     && target_desc.get.is_none()
                     && !trap_result.is_undefined()
                 {
-                    return type_error(cx, &format!("proxy must report undefined for a non-configurable accessor property '{}' without a getter", key.format()?));
+                    return type_error(cx, &format!("proxy must report undefined for a non-configurable accessor property `{}` without a getter", key.format()?));
                 }
             }
         }
@@ -374,11 +374,11 @@ impl VirtualObject for Handle<ProxyObject> {
                 if target_desc.is_data_descriptor() {
                     if let Some(false) = target_desc.is_writable {
                         if !same_value(value, target_desc.value.unwrap())? {
-                            return type_error(cx, &format!("proxy can't successfully set a non-writable, non-configurable property '{}'", key.format()?));
+                            return type_error(cx, &format!("proxy cannot successfully set a non-writable, non-configurable property `{}`", key.format()?));
                         }
                     }
                 } else if target_desc.is_accessor_descriptor() && target_desc.set.is_none() {
-                    return type_error(cx, &format!("proxy can't succesfully set an accessor property '{}' without a setter", key.format()?));
+                    return type_error(cx, &format!("proxy cannot successfully set an accessor property `{}` without a setter", key.format()?));
                 }
             }
         }
@@ -414,7 +414,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "property '{}' is non-configurable and can't be deleted",
+                        "property `{}` is non-configurable and cannot be deleted",
                         key.format()?
                     ),
                 );
@@ -427,7 +427,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return type_error(
                 cx,
                 &format!(
-                    "proxy can't delete property '{}' on a non-extensible object",
+                    "proxy cannot delete property `{}` on a non-extensible object",
                     key.format()?
                 ),
             );
@@ -455,7 +455,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         // Inlined CreateListFromArrayLike with type filtering and duplicate detection
         if !trap_result.is_object() {
-            return type_error(cx, "proxy ownKeys must return an array");
+            return type_error(cx, "proxy `ownKeys` must return an array");
         }
 
         let trap_result_object = trap_result.as_object();
@@ -472,7 +472,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if !next.is_string() && !next.is_symbol() {
                 return type_error(
                     cx,
-                    "proxy ownKeys must return an array with only string and symbol objects",
+                    "proxy `ownKeys` must return an array with only string and symbol objects",
                 );
             }
 
@@ -481,7 +481,7 @@ impl VirtualObject for Handle<ProxyObject> {
                 return type_error(
                     cx,
                     &format!(
-                        "proxy ownKeys can't report property '{}' more than once",
+                        "proxy `ownKeys` cannot report property `{}` more than once",
                         key.format()?
                     ),
                 );
@@ -513,7 +513,7 @@ impl VirtualObject for Handle<ProxyObject> {
             if !unchecked_result_keys.remove(&key) {
                 return type_error(
                     cx,
-                    &format!("proxy can't skip a non-configurable property '{}'", key.format()?),
+                    &format!("proxy cannot skip a non-configurable property `{}`", key.format()?),
                 );
             }
         }
@@ -524,7 +524,7 @@ impl VirtualObject for Handle<ProxyObject> {
 
         for key in target_configurable_keys {
             if !unchecked_result_keys.remove(&key) {
-                return type_error(cx, &format!("proxy can't report an existing own property '{}' as non-existent on a non-extensible object", key.format()?));
+                return type_error(cx, &format!("proxy cannot report an existing own property `{}` as non-existent on a non-extensible object", key.format()?));
             }
         }
 
@@ -533,7 +533,7 @@ impl VirtualObject for Handle<ProxyObject> {
             return type_error(
                 cx,
                 &format!(
-                    "proxy can't report a new property '{}' on a non-extensible object",
+                    "proxy cannot report a new property `{}` on a non-extensible object",
                     key.format()?
                 ),
             );
@@ -631,7 +631,7 @@ impl ProxyObject {
         } else if handler_proto.is_null() {
             None
         } else {
-            return type_error(cx, "proxy getPrototypeOf handler must return object or null");
+            return type_error(cx, "proxy `getPrototypeOf` handler must return object or null");
         };
 
         if is_extensible_(cx, target)? {
@@ -643,7 +643,7 @@ impl ProxyObject {
         if !same_opt_object_value_handles(handler_proto, target_proto) {
             return type_error(
                 cx,
-                "proxy getPrototypeOf handler didn't return the target object's prototype",
+                "proxy `getPrototypeOf` handler didn't return the target object's prototype",
             );
         }
 
@@ -690,7 +690,7 @@ impl ProxyObject {
         let target_proto = target.get_prototype_of(cx)?;
 
         if !same_opt_object_value_handles(proto, target_proto) {
-            return type_error(cx, "proxy setPrototypeOf handler returned true, even though the target's prototype is immutable because the target is non-extensible");
+            return type_error(cx, "proxy `setPrototypeOf` handler returned true, even though the target's prototype is immutable because the target is non-extensible");
         }
 
         Ok(true)
@@ -719,7 +719,7 @@ impl ProxyObject {
         let target_result = is_extensible_(cx, target)?;
 
         if trap_result != target_result {
-            return type_error(cx, "proxy must report same extensiblitity as target");
+            return type_error(cx, "proxy must report same extensibility as target");
         }
 
         Ok(trap_result)
@@ -746,7 +746,7 @@ impl ProxyObject {
         let trap_result = to_boolean(*trap_result);
 
         if trap_result && is_extensible_(cx, target)? {
-            return type_error(cx, "proxy can't report an extensible object as non-extensible");
+            return type_error(cx, "proxy cannot report an extensible object as non-extensible");
         }
 
         Ok(trap_result)

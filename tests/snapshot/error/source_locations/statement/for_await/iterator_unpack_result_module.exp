@@ -1,4 +1,4 @@
-TypeError: iterator's next method must return an object
+TypeError: Iterator `next` method must return an object
    ┌ source_locations/statement/for_await/iterator_unpack_result_module.js:12:20
    |
 12 |   for await (var x of iter) {}

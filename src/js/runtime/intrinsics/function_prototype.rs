@@ -127,7 +127,7 @@ impl FunctionPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error(cx, "value is not a function");
+            return type_error(cx, "expected a function");
         }
 
         let this_arg = get_argument(cx, arguments, 0);
@@ -148,7 +148,7 @@ impl FunctionPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error(cx, "value is not a function");
+            return type_error(cx, "expected a function");
         }
 
         let target = this_value.as_object();
@@ -204,7 +204,7 @@ impl FunctionPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !is_callable(this_value) {
-            return type_error(cx, "value is not a function");
+            return type_error(cx, "expected a function");
         }
 
         if arguments.is_empty() {

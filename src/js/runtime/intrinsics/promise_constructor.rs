@@ -738,7 +738,7 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Promise.resolve called on non-object");
+            return type_error(cx, "Promise.resolve must be called on an object");
         }
 
         let result = get_argument(cx, arguments, 0);
@@ -752,7 +752,7 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Promise.try called on non-object");
+            return type_error(cx, "Promise.try must be called on an object");
         }
 
         let capability = PromiseCapability::new(cx, this_value)?;
@@ -906,7 +906,7 @@ fn get_promise_resolve(
 ) -> EvalResult<Handle<ObjectValue>> {
     let resolve = get(cx, constructor, cx.names.resolve())?;
     if !is_callable(resolve) {
-        return type_error(cx, "resolve property must be a function");
+        return type_error(cx, "`resolve` property must be a function");
     }
 
     Ok(resolve.as_object())

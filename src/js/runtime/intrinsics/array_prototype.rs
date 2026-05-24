@@ -553,7 +553,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.every expected function");
+            return type_error(cx, "Array.prototype.every callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -643,7 +643,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.filter expected function");
+            return type_error(cx, "Array.prototype.filter callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -693,7 +693,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "Array.prototype.find expected function");
+            return type_error(cx, "Array.prototype.find callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -718,7 +718,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "Array.prototype.findIndex expected function");
+            return type_error(cx, "Array.prototype.findIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -743,7 +743,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "Array.prototype.findLast expected function");
+            return type_error(cx, "Array.prototype.findLast callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -769,7 +769,7 @@ impl ArrayPrototype {
 
         let predicate_function = get_argument(cx, arguments, 0);
         if !is_callable(predicate_function) {
-            return type_error(cx, "Array.prototype.findLastIndex expected function");
+            return type_error(cx, "Array.prototype.findLastIndex callback must be a function");
         }
 
         let predicate_function = predicate_function.as_object();
@@ -891,7 +891,7 @@ impl ArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         if !is_callable(mapper_function) {
-            return type_error(cx, "Array.prototype.flatMap expected function");
+            return type_error(cx, "Array.prototype.flatMap mapper must be a function");
         }
 
         let array = array_species_create(cx, object, 0)?;
@@ -921,7 +921,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.forEach expected function");
+            return type_error(cx, "Array.prototype.forEach callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1147,7 +1147,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.map expected function");
+            return type_error(cx, "Array.prototype.map mapper must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1241,7 +1241,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.reduce expected function");
+            return type_error(cx, "Array.prototype.reduce callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1300,7 +1300,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.reduceRight expected function");
+            return type_error(cx, "Array.prototype.reduceRight callback must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -1525,7 +1525,7 @@ impl ArrayPrototype {
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Array.prototype.some expected function");
+            return type_error(cx, "Array.prototype.some callback must be a function");
         }
 
         let callback_function = callback_function.as_object();

@@ -559,7 +559,7 @@ pub fn eval_instanceof_expression(
     target: Handle<Value>,
 ) -> EvalResult<bool> {
     if !target.is_object() {
-        return type_error(cx, "invalid instanceof operand");
+        return type_error(cx, "invalid `instanceof` operand");
     }
 
     let has_instance_key = cx.well_known_symbols.has_instance();
@@ -571,7 +571,7 @@ pub fn eval_instanceof_expression(
 
     let target_object = target.as_object();
     if !target_object.is_callable() {
-        return type_error(cx, "invalid 'instanceof' operand");
+        return type_error(cx, "invalid `instanceof` operand");
     }
 
     let has_instance = ordinary_has_instance(cx, target, value)?;
@@ -584,7 +584,7 @@ pub fn eval_in_expression(
     right_value: Handle<Value>,
 ) -> EvalResult<bool> {
     if !right_value.is_object() {
-        return type_error(cx, "right side of 'in' must be an object");
+        return type_error(cx, "right side of `in` must be an object");
     }
 
     let property_key = to_property_key(cx, left_value)?;

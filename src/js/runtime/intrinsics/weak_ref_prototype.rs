@@ -43,7 +43,7 @@ impl WeakRefPrototype {
         if let Some(weak_ref_object) = this_weak_ref_value(this_value) {
             Ok(weak_ref_object.weak_ref_target().to_handle(cx))
         } else {
-            type_error(cx, "deref method must be called on WeakRef")
+            type_error(cx, "WeakRef.prototype.deref must be called on a WeakRef")
         }
     }
 }

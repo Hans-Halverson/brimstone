@@ -404,7 +404,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getDate method must be called on Date object");
+            return type_error(cx, "Date.prototype.getDate must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -425,7 +425,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getDay method must be called on Date object");
+            return type_error(cx, "Date.prototype.getDay must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -446,10 +446,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getFullYear method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getFullYear must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -470,7 +467,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getHours method must be called on Date object");
+            return type_error(cx, "Date.prototype.getHours must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -491,10 +488,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getMilliseconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getMilliseconds must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -515,10 +509,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getMinutes method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getMinutes must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -539,7 +530,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getMonth method must be called on Date object");
+            return type_error(cx, "Date.prototype.getMonth must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -560,10 +551,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getSeconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getSeconds must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -584,7 +572,7 @@ impl DatePrototype {
         if let Some(date_value) = this_date_value(this_value) {
             Ok(Value::from(date_value).to_handle(cx))
         } else {
-            type_error(cx, "getTime method must be called on date object")
+            type_error(cx, "Date.prototype.getTime must be called on a Date")
         }
     }
 
@@ -597,7 +585,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "getTimezeonOffset method must be called on date object");
+            return type_error(cx, "Date.prototype.getTimezoneOffset must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -618,7 +606,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getUTCDate must be called on Date object");
+            return type_error(cx, "Date.prototype.getUTCDate must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -639,7 +627,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getUTCDay must be called on Date object");
+            return type_error(cx, "Date.prototype.getUTCDay must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -660,7 +648,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getUTCFullYear must be called on Date object");
+            return type_error(cx, "Date.prototype.getUTCFullYear must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -681,7 +669,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getUTCHours must be called on Date object");
+            return type_error(cx, "Date.prototype.getUTCHours must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -702,10 +690,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getUTCMilliseconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getUTCMilliseconds must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -726,10 +711,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getUTCMinutes method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getUTCMinutes must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -750,10 +732,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getUTCMonth method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getUTCMonth must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -774,10 +753,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.getUTCSeconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.getUTCSeconds must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -798,7 +774,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.setDate method must be called on Date object");
+            return type_error(cx, "Date.prototype.setDate must be called on a Date");
         };
 
         let date_arg = get_argument(cx, arguments, 0);
@@ -829,10 +805,7 @@ impl DatePrototype {
         let mut date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setFullYear method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setFullYear must be called on a Date");
         };
 
         let year_arg = get_argument(cx, arguments, 0);
@@ -875,7 +848,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.setHours method must be called on Date object");
+            return type_error(cx, "Date.prototype.setHours must be called on a Date");
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
@@ -942,10 +915,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setMilliseconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setMilliseconds must be called on a Date");
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
@@ -981,10 +951,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setMinutes method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setMinutes must be called on a Date");
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
@@ -1039,7 +1006,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.setMonth method must be called on Date object");
+            return type_error(cx, "Date.prototype.setMonth must be called on a Date");
         };
 
         let month_arg = get_argument(cx, arguments, 0);
@@ -1082,10 +1049,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setSeconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setSeconds must be called on a Date");
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
@@ -1131,7 +1095,7 @@ impl DatePrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if this_date_value(this_value).is_none() {
-            return type_error(cx, "Date.prototype.setTime method must be called on Date object");
+            return type_error(cx, "Date.prototype.setTime must be called on a Date");
         };
 
         let time_arg = get_argument(cx, arguments, 0);
@@ -1151,10 +1115,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCDate method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCDate must be called on a Date");
         };
 
         let date_arg = get_argument(cx, arguments, 0);
@@ -1183,10 +1144,7 @@ impl DatePrototype {
         let mut date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCFullYear method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCFullYear must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -1227,10 +1185,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCHours method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCHours must be called on a Date");
         };
 
         let hours_arg = get_argument(cx, arguments, 0);
@@ -1293,10 +1248,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCMilliseconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCMilliseconds must be called on a Date");
         };
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
@@ -1330,10 +1282,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCMinutes method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCMinutes must be called on a Date");
         };
 
         let minutes_arg = get_argument(cx, arguments, 0);
@@ -1386,10 +1335,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCMonth method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCMonth must be called on a Date");
         };
 
         let month_arg = get_argument(cx, arguments, 0);
@@ -1430,10 +1376,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.setUTCSeconds method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.setUTCSeconds must be called on a Date");
         };
 
         let seconds_arg = get_argument(cx, arguments, 0);
@@ -1479,10 +1422,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toDateString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toDateString must be called on a Date");
         };
 
         Self::to_date_string_shared(cx, date_value)
@@ -1510,10 +1450,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toISOString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toISOString must be called on a Date");
         };
 
         if !date_value.is_finite() {
@@ -1569,10 +1506,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toLocaleDateString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toLocaleDateString must be called on a Date");
         };
 
         Self::to_date_string_shared(cx, date_value)
@@ -1587,10 +1521,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toLocaleString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toLocaleString must be called on a Date");
         };
 
         Ok(to_date_string(cx, date_value)?.as_value())
@@ -1605,10 +1536,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toLocaleTimeString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toLocaleTimeString must be called on a Date");
         };
 
         Self::to_time_string_shared(cx, date_value)
@@ -1623,7 +1551,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.toString method must be called on Date object");
+            return type_error(cx, "Date.prototype.toString must be called on a Date");
         };
 
         Ok(to_date_string(cx, date_value)?.as_value())
@@ -1638,10 +1566,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toTimeString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toTimeString must be called on a Date");
         };
 
         Self::to_time_string_shared(cx, date_value)
@@ -1671,10 +1596,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(
-                cx,
-                "Date.prototype.toUTCString method must be called on Date object",
-            );
+            return type_error(cx, "Date.prototype.toUTCString must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -1707,7 +1629,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.valueOf method must be called on Date object");
+            return type_error(cx, "Date.prototype.valueOf must be called on a Date");
         };
 
         Ok(Value::from(date_value).to_handle(cx))
@@ -1720,7 +1642,7 @@ impl DatePrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Date.prototype[@@toPrimitive] must be called on object");
+            return type_error(cx, "Date.prototype[@@toPrimitive] must be called on an object");
         }
 
         let hint = get_argument(cx, arguments, 0);
@@ -1743,7 +1665,7 @@ impl DatePrototype {
             }
         }
 
-        type_error(cx, "Invalid hint to Date.prototype[@@toPrimitive]")
+        type_error(cx, "invalid hint to Date.prototype[@@toPrimitive]")
     }
 
     /// Date.prototype.getYear (https://tc39.es/ecma262/#sec-date.prototype.getyear)
@@ -1755,7 +1677,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.getYear method must be called on Date object");
+            return type_error(cx, "Date.prototype.getYear must be called on a Date");
         };
 
         if date_value.is_nan() {
@@ -1776,7 +1698,7 @@ impl DatePrototype {
         let date_value = if let Some(date_value) = this_date_value(this_value) {
             date_value
         } else {
-            return type_error(cx, "Date.prototype.setYear method must be called on Date object");
+            return type_error(cx, "Date.prototype.setYear must be called on a Date");
         };
 
         let year_arg = get_argument(cx, arguments, 0);

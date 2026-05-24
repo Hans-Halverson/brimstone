@@ -399,11 +399,11 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
     macro_rules! parse_hex_byte {
         () => {{
             if i + 2 >= string_length {
-                return uri_error(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "invalid URI escape sequence");
             }
 
             if flat_string.code_unit_at(i) != '%' as u16 {
-                return uri_error(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "invalid URI escape sequence");
             }
 
             let byte = match (
@@ -411,7 +411,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
                 get_hex_value(flat_string.code_unit_at(i + 2) as u32),
             ) {
                 (Some(first), Some(second)) => ((first << 4) | second) as u8,
-                _ => return uri_error(cx, "Invalid URI escape sequence"),
+                _ => return uri_error(cx, "invalid URI escape sequence"),
             };
 
             i += 3;
@@ -425,7 +425,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
             let code_unit = parse_hex_byte!();
 
             if !is_continuation_byte(code_unit) {
-                return uri_error(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "invalid URI escape sequence");
             }
 
             code_unit
@@ -458,7 +458,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 // Check for overlong encoding
                 if code_point == 0 {
-                    return uri_error(cx, "Invalid URI escape sequence");
+                    return uri_error(cx, "invalid URI escape sequence");
                 }
 
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
@@ -470,7 +470,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 // Check for overlong encoding
                 if code_point == 0 {
-                    return uri_error(cx, "Invalid URI escape sequence");
+                    return uri_error(cx, "invalid URI escape sequence");
                 }
 
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
@@ -478,7 +478,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 // Check for surrogate code points
                 if char::from_u32(code_point).is_none() {
-                    return uri_error(cx, "Invalid URI escape sequence");
+                    return uri_error(cx, "invalid URI escape sequence");
                 }
 
                 decoded_string.push(code_point);
@@ -488,7 +488,7 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 // Check for overlong encoding
                 if code_point == 0 {
-                    return uri_error(cx, "Invalid URI escape sequence");
+                    return uri_error(cx, "invalid URI escape sequence");
                 }
 
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 12;
@@ -497,12 +497,12 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
 
                 // Verify code point is in range
                 if char::from_u32(code_point).is_none() {
-                    return uri_error(cx, "Invalid URI escape sequence");
+                    return uri_error(cx, "invalid URI escape sequence");
                 }
 
                 decoded_string.push(code_point);
             } else {
-                return uri_error(cx, "Invalid URI escape sequence");
+                return uri_error(cx, "invalid URI escape sequence");
             }
         } else {
             decoded_string.push(code_unit as u32);
@@ -551,7 +551,7 @@ fn encode<const INCLUDE_URI_UNESCAPED: bool>(
         let char = match char::from_u32(code_point) {
             Some(char) => char,
             None => {
-                return uri_error(cx, "Unpaired surrogate cannot be encoded in URI");
+                return uri_error(cx, "unpaired surrogate cannot be encoded in URI");
             }
         };
 

@@ -1,4 +1,4 @@
-TypeError: invalid instanceof operand
+TypeError: invalid `instanceof` operand
   ┌ source_locations/expression/binary/instanceof.js:1:6
   |
 1 | ({}) instanceof null

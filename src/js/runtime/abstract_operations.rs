@@ -95,7 +95,7 @@ pub fn create_data_property_or_throw(
 ) -> EvalResult<()> {
     let success = create_data_property(cx, object, key, value)?;
     if !success {
-        return type_error(cx, &format!("Cannot create property {}", key.format()?));
+        return type_error(cx, &format!("cannot create property `{}`", key.format()?));
     }
 
     Ok(())
@@ -123,7 +123,7 @@ pub fn define_property_or_throw(
 ) -> EvalResult<()> {
     let success = object.define_own_property(cx, key, prop_desc)?;
     if !success {
-        return type_error(cx, &format!("cannot define property {}", key.format()?));
+        return type_error(cx, &format!("cannot define property `{}`", key.format()?));
     }
 
     Ok(())
@@ -136,7 +136,7 @@ pub fn delete_property_or_throw(
     key: Handle<PropertyKey>,
 ) -> EvalResult<()> {
     if !object.delete(cx, key)? {
-        return type_error(cx, &format!("cannot delete property {}", key.format()?));
+        return type_error(cx, &format!("cannot delete property `{}`", key.format()?));
     }
 
     Ok(())
@@ -154,7 +154,7 @@ pub fn get_method(
     }
 
     if !is_callable(func) {
-        return type_error(cx, "value is not a function");
+        return type_error(cx, "expected a function");
     }
 
     Ok(Some(func.as_object()))
@@ -308,7 +308,7 @@ pub fn create_list_from_array_like(
     object: Handle<Value>,
 ) -> EvalResult<Vec<Handle<Value>>> {
     if !object.is_object() {
-        return type_error(cx, "value is not an object");
+        return type_error(cx, "expected an object");
     }
 
     let object = object.as_object();
@@ -394,7 +394,7 @@ pub fn species_constructor(
     }
 
     if !constructor.is_object() {
-        return type_error(cx, "constructor must be a function");
+        return type_error(cx, "expected a constructor");
     }
 
     let species_key = cx.well_known_symbols.species();
@@ -538,7 +538,7 @@ pub fn private_get(
     private_name: Handle<SymbolValue>,
 ) -> EvalResult<Handle<Value>> {
     let property = match object.private_element_find(cx, private_name) {
-        None => return type_error(cx, "can't access private field or method"),
+        None => return type_error(cx, "cannot access private field or method"),
         Some(property) => property,
     };
 
@@ -608,7 +608,7 @@ pub fn group_by(
     require_object_coercible(cx, items)?;
 
     if !is_callable(callback) {
-        return type_error(cx, "callback must be a function");
+        return type_error(cx, "expected a function");
     }
 
     let callback = callback.as_object();
@@ -696,7 +696,7 @@ pub fn setter_that_ignores_prototype_properties(
     value: Handle<Value>,
 ) -> EvalResult<()> {
     if !this_value.is_object() {
-        return type_error(cx, "this is not an object");
+        return type_error(cx, "expected an object");
     }
     let this_object = this_value.as_object();
 

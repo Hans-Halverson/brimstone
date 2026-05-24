@@ -241,13 +241,13 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
     if is_global_scope {
         for func_name in &eval_func_names {
             if !can_declare_global_function(cx, scope_object, func_name.cast())? {
-                return type_error(cx, &format!("cannot declare global function {}", *func_name));
+                return type_error(cx, &format!("cannot declare global function `{}`", *func_name));
             }
         }
 
         for var_name in &eval_var_names {
             if !can_declare_global_var(cx, scope_object, var_name.cast())? {
-                return type_error(cx, &format!("cannot declare global var {}", *var_name));
+                return type_error(cx, &format!("cannot declare global variable `{}`", *var_name));
             }
         }
     }
@@ -285,5 +285,5 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 }
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
-    syntax_error(cx, &format!("identifier '{name}' has already been declared"))
+    syntax_error(cx, &format!("identifier `{name}` has already been declared"))
 }

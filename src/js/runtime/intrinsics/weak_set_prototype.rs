@@ -58,7 +58,7 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error(cx, "add method must be called on WeakSet");
+            return type_error(cx, "WeakSet.prototype.add must be called on a WeakSet");
         };
 
         let value = get_argument(cx, arguments, 0);
@@ -80,7 +80,7 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error(cx, "delete method must be called on WeakSet");
+            return type_error(cx, "WeakSet.prototype.delete must be called on a WeakSet");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
@@ -103,7 +103,7 @@ impl WeakSetPrototype {
         let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
             weak_set_object
         } else {
-            return type_error(cx, "has method must be called on WeakSet");
+            return type_error(cx, "WeakSet.prototype.has must be called on a WeakSet");
         };
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set

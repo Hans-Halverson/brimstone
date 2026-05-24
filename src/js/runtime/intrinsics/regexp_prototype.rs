@@ -197,7 +197,7 @@ impl RegExpPrototype {
         let regexp_object = if let Some(regexp_object) = as_regexp_object(this_value) {
             regexp_object
         } else {
-            return type_error(cx, "RegExp.prototype.exec must be called on a regular expression");
+            return type_error(cx, "RegExp.prototype.exec must be called on a RegExp");
         };
 
         let string_arg = get_argument(cx, arguments, 0);
@@ -222,7 +222,7 @@ impl RegExpPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Expected a regular expression");
+            return type_error(cx, "expected a RegExp");
         }
 
         let this_object = this_value.as_object();
@@ -312,7 +312,7 @@ impl RegExpPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@match] must be called on object");
+            return type_error(cx, "RegExp.prototype[@@match] must be called on an object");
         }
 
         let regexp_object = this_value.as_object();
@@ -383,7 +383,7 @@ impl RegExpPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@matchAll] must be called on object");
+            return type_error(cx, "RegExp.prototype[@@matchAll] must be called on an object");
         }
 
         let regexp_object = this_value.as_object();
@@ -428,7 +428,7 @@ impl RegExpPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@replace] must be called on object");
+            return type_error(cx, "RegExp.prototype[@@replace] must be called on an object");
         }
 
         let regexp_object = this_value.as_object();
@@ -618,7 +618,7 @@ impl RegExpPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@search] must be called on object");
+            return type_error(cx, "RegExp.prototype[@@search] must be called on an object");
         }
 
         let regexp_object = this_value.as_object();
@@ -667,7 +667,7 @@ impl RegExpPrototype {
             }
         }
 
-        type_error(cx, "Expected a regular expression")
+        type_error(cx, "expected a RegExp")
     }
 
     /// RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
@@ -847,7 +847,7 @@ impl RegExpPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Expected a regular expression");
+            return type_error(cx, "expected a RegExp");
         }
 
         let this_object = this_value.as_object();
@@ -895,10 +895,7 @@ impl RegExpPrototype {
         let regexp_object = if let Some(regexp_object) = as_regexp_object(this_value) {
             regexp_object
         } else {
-            return type_error(
-                cx,
-                "RegExp.prototype.compile must be called on a regular expression",
-            );
+            return type_error(cx, "RegExp.prototype.compile must be called on a RegExp");
         };
 
         let pattern_arg = get_argument(cx, arguments, 0);
@@ -938,7 +935,7 @@ fn regexp_has_flag(
         }
     }
 
-    type_error(cx, "Expected a regular expression")
+    type_error(cx, "expected a RegExp")
 }
 
 pub fn flags_string_contains(
@@ -959,14 +956,14 @@ pub fn regexp_exec(
     if is_callable(exec) {
         let exec_result = call(cx, exec, regexp_object.into(), &[string_value.into()])?;
         if !exec_result.is_null() && !exec_result.is_object() {
-            return type_error(cx, "Regular expression exec must return null or an object");
+            return type_error(cx, "regular expression exec must return null or an object");
         }
 
         return Ok(exec_result);
     }
 
     if !regexp_object.is_regexp_object() {
-        return type_error(cx, "Expected a regular expression");
+        return type_error(cx, "expected a RegExp");
     }
 
     regexp_builtin_exec(cx, regexp_object.cast::<RegExpObject>(), string_value)

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use crate::common::wtf_8::Wtf8String;
+use crate::common::{constants::MAX_STRING_LENGTH, wtf_8::Wtf8String};
 
 use super::loc::calculate_line_offsets;
 use super::parse_error::ParseResult;
@@ -18,42 +18,67 @@ pub struct Source {
 }
 
 impl Source {
-    fn new(file_path: String, display_name: Option<String>, contents: Wtf8String) -> Source {
-        Source {
+    fn new(
+        file_path: String,
+        display_name: Option<String>,
+        contents: Wtf8String,
+    ) -> ParseResult<Source> {
+        // Guarantee that file path and display name are within allowed string range
+        if file_path.len() > MAX_STRING_LENGTH as usize {
+            return Err(LocalizedParseError::new_without_loc(ParseError::StringTooLarge(
+                "File path".to_string(),
+            )));
+        }
+
+        if let Some(display_name) = &display_name {
+            if display_name.len() > MAX_STRING_LENGTH as usize {
+                return Err(LocalizedParseError::new_without_loc(ParseError::StringTooLarge(
+                    "Display name".to_string(),
+                )));
+            }
+        }
+
+        Ok(Source {
             file_path,
             display_name,
             contents,
             line_offsets: RefCell::new(None),
-        }
+        })
     }
 
     pub fn new_from_file(file_path: &str) -> ParseResult<Source> {
         let wtf8_contents = Self::read_file_to_wtf8_string(file_path)?;
 
         // Guarantee that source size is within allowed range
-        if is_source_too_large(wtf8_contents.len()) {
-            return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(true)));
+        if wtf8_contents.len() > MAX_STRING_LENGTH as usize {
+            return Err(LocalizedParseError::new_without_loc(ParseError::StringTooLarge(
+                "File".to_string(),
+            )));
         }
 
-        Ok(Source::new(file_path.to_owned(), None, wtf8_contents))
+        Self::new(file_path.to_owned(), None, wtf8_contents)
     }
 
     pub fn new_for_eval(file_path: String, contents: Wtf8String) -> ParseResult<Source> {
         // Guarantee that source size is within allowed range
-        if is_source_too_large(contents.len()) {
-            return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(false)));
+        if contents.len() > MAX_STRING_LENGTH as usize {
+            return Err(LocalizedParseError::new_without_loc(ParseError::StringTooLarge(
+                "String".to_string(),
+            )));
         }
 
-        Ok(Self::new(file_path, Some("<eval>".to_owned()), contents))
+        Self::new(file_path, Some("<eval>".to_owned()), contents)
     }
 
     pub fn new_for_string(file_path: &str, contents: Wtf8String) -> ParseResult<Source> {
         // Guarantee that source size is within allowed range
-        if is_source_too_large(contents.len()) {
-            return Err(LocalizedParseError::new_without_loc(ParseError::SourceTooLarge(false)));
+        if contents.len() > MAX_STRING_LENGTH as usize {
+            return Err(LocalizedParseError::new_without_loc(ParseError::StringTooLarge(
+                "String".to_string(),
+            )));
         }
 
-        Ok(Self::new(file_path.to_owned(), None, contents))
+        Self::new(file_path.to_owned(), None, contents)
     }
 
     pub fn read_file_to_wtf8_string(file_path: &str) -> ParseResult<Wtf8String> {
@@ -111,10 +136,4 @@ impl Source {
     pub fn has_display_name(&self) -> bool {
         self.display_name.is_some()
     }
-}
-
-/// Source files are limited to 2^32 bytes (4GB) in size so that positions can be represented with
-/// a u32.
-fn is_source_too_large(size: usize) -> bool {
-    size >= u32::MAX as usize
 }

@@ -12,6 +12,7 @@ use std::{
 
 use crate::{
     common::{
+        constants::MAX_STRING_LENGTH,
         string::StringWidth,
         string_iterators::{
             CodePointIterator, CodeUnitIterator, GenericCodePointIterator, GenericCodeUnitIterator,
@@ -23,8 +24,8 @@ use crate::{
         },
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
-    field_offset,
-    runtime::alloc_error::AllocResult,
+    field_offset, must_a,
+    runtime::{alloc_error::AllocResult, error::range_error, EvalResult},
     set_uninit, static_assert,
 };
 
@@ -50,8 +51,6 @@ enum StringKind {
     TwoByte,
 }
 
-const MAX_STRING_LENGTH: u32 = u32::MAX - 2;
-
 /// Fields common to all strings.
 #[repr(C)]
 pub struct StringValue {
@@ -67,8 +66,11 @@ impl StringValue {
         cx: Context,
         left: Handle<StringValue>,
         right: Handle<StringValue>,
-    ) -> AllocResult<Handle<StringValue>> {
-        let new_len = left.len() + right.len();
+    ) -> EvalResult<Handle<StringValue>> {
+        // Saturating add to avoid overflow since `check_string_length` will throw if saturated
+        let new_len = (left.len() as u64).saturating_add(right.len() as u64);
+        let new_len = check_string_length(cx, new_len)?;
+
         let width = if left.width() == StringWidth::TwoByte || right.width() == StringWidth::TwoByte
         {
             StringWidth::TwoByte
@@ -82,7 +84,7 @@ impl StringValue {
     pub fn concat_all(
         cx: Context,
         strings: &[Handle<StringValue>],
-    ) -> AllocResult<Handle<StringValue>> {
+    ) -> EvalResult<Handle<StringValue>> {
         if strings.is_empty() {
             Ok(cx.names.empty_string().as_string())
         } else {
@@ -358,8 +360,8 @@ impl Handle<StringValue> {
 
             unsafe { buf.set_len(string_index_to_usize(length)) };
 
-            let cx = self.cx();
-            let flat_string = FlatString::new_one_byte(cx, &buf)?;
+            // Safe since flatten doesn't change the length of a string, so length is still valid
+            let flat_string = must_a!(FlatString::new_one_byte(self.cx(), &buf));
 
             concat_string.left = flat_string.as_string();
             concat_string.right = None;
@@ -399,8 +401,8 @@ impl Handle<StringValue> {
 
             unsafe { buf.set_len(string_index_to_usize(length)) };
 
-            let cx = self.cx();
-            let flat_string = FlatString::new_two_byte(cx, &buf)?;
+            // Safe since flatten doesn't change the length of a string, so length is still valid
+            let flat_string = must_a!(FlatString::new_two_byte(self.cx(), &buf));
 
             concat_string.left = flat_string.as_string();
             concat_string.right = None;
@@ -453,7 +455,10 @@ impl Handle<StringValue> {
                     std::slice::from_raw_parts(start_ptr, length as usize).to_owned()
                 };
 
-                Ok(FlatString::new_one_byte(cx, &buf)?.as_string().to_handle())
+                // Safe since trim cannot increase the length of a string, so length is still valid
+                Ok(must_a!(FlatString::new_one_byte(cx, &buf))
+                    .as_string()
+                    .to_handle())
             }
             StringWidth::TwoByte => {
                 // Must copy into a temporary buffer as GC may occur
@@ -462,21 +467,34 @@ impl Handle<StringValue> {
                     std::slice::from_raw_parts(start_ptr as *const u16, length as usize).to_owned()
                 };
 
-                Ok(FlatString::new_two_byte(cx, &buf)?.as_string().to_handle())
+                // Safe since trim cannot increase the length of a string, so length is still valid
+                Ok(must_a!(FlatString::new_two_byte(cx, &buf))
+                    .as_string()
+                    .to_handle())
             }
         }
     }
 
-    pub fn repeat(&self, cx: Context, n: u32) -> AllocResult<Handle<FlatString>> {
+    pub fn repeat(&self, cx: Context, n: u32) -> EvalResult<Handle<FlatString>> {
         let flat_string = self.flatten()?;
 
         match flat_string.width() {
             StringWidth::OneByte => {
-                let repeated_buf = flat_string.as_one_byte_slice().repeat(n as usize);
+                // Check resulting length before allocating rust string
+                let slice = flat_string.as_one_byte_slice();
+                let result_len = (flat_string.len() as u64).saturating_mul(n as u64);
+                check_string_length(cx, result_len)?;
+
+                let repeated_buf = slice.repeat(n as usize);
                 Ok(FlatString::new_one_byte(cx, &repeated_buf)?.to_handle())
             }
             StringWidth::TwoByte => {
-                let repeated_buf = flat_string.as_two_byte_slice().repeat(n as usize);
+                // Check resulting length before allocating rust string
+                let slice = flat_string.as_two_byte_slice();
+                let result_len = (flat_string.len() as u64).saturating_mul(n as u64);
+                check_string_length(cx, result_len)?;
+
+                let repeated_buf = slice.repeat(n as usize);
                 Ok(FlatString::new_two_byte(cx, &repeated_buf)?.to_handle())
             }
         }
@@ -497,7 +515,7 @@ impl Handle<StringValue> {
         Ok(slice_code_units.consume_equals(&mut search_code_units))
     }
 
-    pub fn to_lower_case(self, cx: Context) -> AllocResult<Handle<FlatString>> {
+    pub fn to_lower_case(self, cx: Context) -> EvalResult<Handle<FlatString>> {
         let flat_string = self.flatten()?;
 
         match flat_string.width() {
@@ -534,7 +552,7 @@ impl Handle<StringValue> {
         }
     }
 
-    pub fn to_upper_case(self, cx: Context) -> AllocResult<Handle<FlatString>> {
+    pub fn to_upper_case(self, cx: Context) -> EvalResult<Handle<FlatString>> {
         let flat_string = self.flatten()?;
 
         let code_point_iter = match flat_string.width() {
@@ -566,7 +584,7 @@ impl Handle<StringValue> {
         Ok(FlatString::from_wtf8(cx, uppercased.as_bytes())?.to_handle())
     }
 
-    pub fn to_wtf8_string(self) -> AllocResult<Wtf8String> {
+    pub fn to_wtf8_string(self) -> EvalResult<Wtf8String> {
         let flat_string = self.flatten()?;
         Ok(flat_string.to_wtf8_string())
     }
@@ -576,7 +594,7 @@ impl Handle<StringValue> {
         Ok(flat_string.is_well_formed())
     }
 
-    pub fn to_well_formed(self, cx: Context) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn to_well_formed(self, cx: Context) -> EvalResult<HeapPtr<FlatString>> {
         let flat_string = self.flatten()?;
         flat_string.to_well_formed(cx)
     }
@@ -651,6 +669,21 @@ impl Handle<StringValue> {
     }
 }
 
+/// Checks if the string length is within the allowed maximum length and returns length if so.
+///
+/// Otherwise returns a RangeError.
+fn check_string_length(cx: Context, length: u64) -> EvalResult<u32> {
+    if length > MAX_STRING_LENGTH as u64 {
+        return string_exceeds_max_length_error(cx);
+    }
+
+    Ok(length as u32)
+}
+
+pub fn string_exceeds_max_length_error<T>(cx: Context) -> EvalResult<T> {
+    range_error(cx, "String exceeds maximum length")
+}
+
 impl From<Handle<StringValue>> for Handle<ObjectValue> {
     fn from(value: Handle<StringValue>) -> Self {
         value.cast()
@@ -720,8 +753,8 @@ struct FlatStringNoInteriorMutability {
 impl FlatString {
     const DATA_OFFSET: usize = field_offset!(FlatStringNoInteriorMutability, data);
 
-    fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> AllocResult<HeapPtr<FlatString>> {
-        let len = Self::check_string_length(one_byte_slice.len());
+    fn new_one_byte(cx: Context, one_byte_slice: &[u8]) -> EvalResult<HeapPtr<FlatString>> {
+        let len = check_string_length(cx, one_byte_slice.len() as u64)?;
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::OneByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
@@ -743,8 +776,8 @@ impl FlatString {
         Ok(string)
     }
 
-    fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> AllocResult<HeapPtr<FlatString>> {
-        let len = Self::check_string_length(two_byte_slice.len());
+    fn new_two_byte(cx: Context, two_byte_slice: &[u16]) -> EvalResult<HeapPtr<FlatString>> {
+        let len = check_string_length(cx, two_byte_slice.len() as u64)?;
 
         let size = Self::calculate_size_in_bytes(len, StringWidth::TwoByte);
         let mut string = cx.alloc_uninit_with_size::<FlatString>(size)?;
@@ -766,7 +799,7 @@ impl FlatString {
         Ok(string)
     }
 
-    pub fn from_wtf8(cx: Context, bytes: &[u8]) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn from_wtf8(cx: Context, bytes: &[u8]) -> EvalResult<HeapPtr<FlatString>> {
         // Scan string to find total number of code units and see if a two-byte string must be used
         let mut has_two_byte_chars = false;
         let mut has_non_ascii_one_byte_chars = false;
@@ -839,23 +872,25 @@ impl FlatString {
     pub fn from_one_byte_slice(
         cx: Context,
         one_byte_slice: &[u8],
-    ) -> AllocResult<HeapPtr<FlatString>> {
+    ) -> EvalResult<HeapPtr<FlatString>> {
         FlatString::new_one_byte(cx, one_byte_slice)
     }
 
     pub fn from_code_unit(cx: Context, code_unit: CodeUnit) -> AllocResult<Handle<FlatString>> {
-        Self::from_code_points(cx, &[code_unit as CodePoint])
+        // Safe since string length will never exceed limit
+        Ok(must_a!(Self::from_code_points(cx, &[code_unit as CodePoint])))
     }
 
     pub fn from_code_point(cx: Context, code_point: CodePoint) -> AllocResult<Handle<FlatString>> {
-        Self::from_code_points(cx, &[code_point])
+        // Safe since string length will never exceed limit
+        Ok(must_a!(Self::from_code_points(cx, &[code_point])))
     }
 
     #[inline]
     pub fn from_code_points(
         cx: Context,
         code_points: &[CodePoint],
-    ) -> AllocResult<Handle<FlatString>> {
+    ) -> EvalResult<Handle<FlatString>> {
         let is_one_byte = code_points.iter().all(|code_point| is_latin1(*code_point));
 
         if is_one_byte {
@@ -890,15 +925,6 @@ impl FlatString {
                 Self::DATA_OFFSET + string_index_to_usize(length) * size_of::<u16>()
             }
         }
-    }
-
-    fn check_string_length(length: usize) -> u32 {
-        // TODO: Throw error when attempting to allocate string that is too large
-        if length > MAX_STRING_LENGTH as usize {
-            panic!("String length exceeds maximum string length");
-        }
-
-        length as u32
     }
 
     #[inline]
@@ -1011,12 +1037,18 @@ impl FlatString {
             StringWidth::OneByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_one_byte_slice()[start..end].to_owned();
-                Ok(FlatString::new_one_byte(cx, substring_buf)?.to_handle())
+
+                // Safe since substring cannot increase the length of a string, so length is still
+                // valid.
+                Ok(must_a!(FlatString::new_one_byte(cx, substring_buf)).to_handle())
             }
             StringWidth::TwoByte => {
                 // Copy substring to new buffer as allocation may trigger a GC
                 let substring_buf = &self.as_two_byte_slice()[start..end].to_owned();
-                Ok(FlatString::new_two_byte(cx, substring_buf)?.to_handle())
+
+                // Safe since substring cannot increase the length of a string, so length is still
+                // valid.
+                Ok(must_a!(FlatString::new_two_byte(cx, substring_buf)).to_handle())
             }
         }
     }
@@ -1077,7 +1109,7 @@ impl HeapPtr<FlatString> {
         }
     }
 
-    pub fn to_well_formed(self, cx: Context) -> AllocResult<HeapPtr<FlatString>> {
+    pub fn to_well_formed(self, cx: Context) -> EvalResult<HeapPtr<FlatString>> {
         match self.width() {
             // One byte strings are always well-formed so never allocate new string
             StringWidth::OneByte => Ok(self),
@@ -1263,7 +1295,7 @@ impl ConcatString {
         right: Handle<StringValue>,
         len: u32,
         width: StringWidth,
-    ) -> AllocResult<Handle<StringValue>> {
+    ) -> EvalResult<Handle<StringValue>> {
         let mut string = cx.alloc_uninit::<ConcatString>()?;
 
         set_uninit!(string.descriptor, cx.base_descriptors.get(HeapItemKind::String));

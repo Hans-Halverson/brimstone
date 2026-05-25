@@ -15,7 +15,7 @@ use crate::{
         error::{ErrorFormatter, FormatOptions},
         wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
     },
-    handle_scope,
+    handle_scope, must_a,
     parser::{
         analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
         ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
@@ -134,6 +134,10 @@ impl<'a> BytecodeProgramGenerator<'a> {
             pending_functions_queue: VecDeque::new(),
             all_functions,
         })
+    }
+
+    fn alloc_wtf8_str(&mut self, str: &Wtf8Str) -> AllocResult<Handle<FlatString>> {
+        alloc_wtf8_str_from_source(self.cx, str)
     }
 
     /// Perform postprocessing for generated functions, such as adding to the list of all functions
@@ -323,7 +327,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
         for toplevel in program.toplevels.iter() {
             match toplevel {
                 ast::Toplevel::Import(import) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(import.source.value)?;
+                    let module_specifier = self.alloc_wtf8_str(import.source.value)?;
 
                     let module_request =
                         self.gen_module_request(module_specifier, import.attributes.as_deref())?;
@@ -341,12 +345,12 @@ impl<'a> BytecodeProgramGenerator<'a> {
                                     .map(|imported| self.alloc_export_name_string(imported))
                                     .transpose()?
                                     .map(Ok)
-                                    .unwrap_or_else(|| self.cx.alloc_wtf8_str(import.local.name))?;
+                                    .unwrap_or_else(|| self.alloc_wtf8_str(import.local.name))?;
                                 (&import.local, Some(imported))
                             }
                         };
 
-                        let local_name = self.cx.alloc_wtf8_str(local_id.name)?;
+                        let local_name = self.alloc_wtf8_str(local_id.name)?;
                         let slot_index = Self::id_module_slot_index(local_id);
                         let is_exported = local_id.get_binding().is_exported();
 
@@ -370,7 +374,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     source_attributes,
                     ..
                 }) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(source.value)?;
+                    let module_specifier = self.alloc_wtf8_str(source.value)?;
                     let module_request =
                         self.gen_module_request(module_specifier, source_attributes.as_deref())?;
 
@@ -415,7 +419,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     let module_specifier = export
                         .source
                         .as_ref()
-                        .map(|source| self.cx.alloc_wtf8_str(source.value))
+                        .map(|source| self.alloc_wtf8_str(source.value))
                         .transpose()?;
 
                     // Collect all exported ids from the declaration
@@ -427,7 +431,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
                     // Exporting a full named declaration adds export entries for each exported id
                     for (exported_id_name, slot_index) in exported_id_data.into_iter() {
-                        let local_name = self.cx.alloc_wtf8_str(exported_id_name)?;
+                        let local_name = self.alloc_wtf8_str(exported_id_name)?;
 
                         local_exports.push(LocalExportEntry {
                             export_name: local_name,
@@ -494,7 +498,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                     }
                 }
                 ast::Toplevel::ExportAll(export) => {
-                    let module_specifier = self.cx.alloc_wtf8_str(export.source.value)?;
+                    let module_specifier = self.alloc_wtf8_str(export.source.value)?;
                     let module_request = self.gen_module_request(
                         module_specifier,
                         export.source_attributes.as_deref(),
@@ -628,8 +632,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
         module_name: &ast::ExportName,
     ) -> AllocResult<Handle<FlatString>> {
         match module_name {
-            ast::ExportName::Id(id) => self.cx.alloc_wtf8_str(id.name),
-            ast::ExportName::String(lit) => self.cx.alloc_wtf8_str(lit.value),
+            ast::ExportName::Id(id) => self.alloc_wtf8_str(id.name),
+            ast::ExportName::String(lit) => self.alloc_wtf8_str(lit.value),
         }
     }
 
@@ -1681,16 +1685,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.writer.mov_instruction(dest, src);
     }
 
-    fn get_cached_str(&mut self, str: &str) -> AllocResult<Handle<StringValue>> {
-        InternedStrings::get_generator_cache_str(self.cx, str)
+    fn get_cached_static_str(&mut self, str: &'static str) -> AllocResult<Handle<StringValue>> {
+        InternedStrings::get_generator_cache_static_str(self.cx, str)
     }
 
     fn get_cached_wtf8_str(&mut self, str: &Wtf8Str) -> AllocResult<Handle<StringValue>> {
         InternedStrings::get_generator_cache_wtf8_str(self.cx, str)
     }
 
-    fn add_string_constant(&mut self, str: &str) -> EmitResult<GenConstantIndex> {
-        let string = self.get_cached_str(str)?.as_flat();
+    fn add_string_constant(&mut self, str: &'static str) -> EmitResult<GenConstantIndex> {
+        let string = self.get_cached_static_str(str)?.as_flat();
         let constant_index = self.constant_table_builder.add_string(string)?;
         Ok(ConstantIndex::new(constant_index))
     }
@@ -9331,7 +9335,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     /// Generate the name of a declaration that is part of a default export declaration, defaulting
     /// to "*default*" if the declaration has no name.
     fn gen_default_export_name(
-        mut cx: Context,
+        cx: Context,
         decl: &ast::ExportDefaultKind,
     ) -> AllocResult<Handle<FlatString>> {
         let id = match decl {
@@ -9341,7 +9345,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         };
 
         if let Some(id) = id {
-            cx.alloc_wtf8_str(id.name)
+            alloc_wtf8_str_from_source(cx, id.name)
         } else {
             Ok(cx.names.default_name().as_string().as_flat())
         }
@@ -9350,7 +9354,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     fn gen_throw_new_error(
         &mut self,
         kind: ThrowNewErrorKind,
-        message: &str,
+        message: &'static str,
         pos: usize,
     ) -> EmitResult<()> {
         let error_type = UInt::new(kind as u32);
@@ -9414,6 +9418,16 @@ impl<T: Escapable> Escapable for EmitResult<T> {
             Err(err) => Err(*err),
         }
     }
+}
+
+/// Allocate a FlatString for the given Wtf8Str. This function expects the input Wtf8Str to have
+/// come directly from the source text, meaning it is guaranteed to be less than the max string
+/// length.
+pub fn alloc_wtf8_str_from_source(
+    mut cx: Context,
+    str: &Wtf8Str,
+) -> AllocResult<Handle<FlatString>> {
+    Ok(must_a!(cx.alloc_wtf8_str(str)))
 }
 
 type BlockId = usize;

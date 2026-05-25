@@ -22,7 +22,7 @@ pub enum ParseError {
     UnexpectedToken(Box<String>),
     #[allow(clippy::box_collection)]
     ExpectedToken(Box<(String, String)>),
-    SourceTooLarge(bool),
+    StringTooLarge(String),
     InvalidUnicode,
     UnterminatedStringLiteral,
     UnterminatedRegExpLiteral,
@@ -189,9 +189,8 @@ impl fmt::Display for ParseError {
                 let (actual, expected) = payload.as_ref();
                 write!(f, "Unexpected token {actual}, expected {expected}")
             }
-            ParseError::SourceTooLarge(is_file) => {
-                let source = if *is_file { "File" } else { "String" };
-                write!(f, "{source} is too large, max size is 2^32 bytes")
+            ParseError::StringTooLarge(name) => {
+                write!(f, "{name} is too large, max size is 2^32 bytes")
             }
             ParseError::InvalidUnicode => write!(f, "Invalid utf-8 sequence"),
             ParseError::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),

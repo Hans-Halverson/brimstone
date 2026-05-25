@@ -1,0 +1,7 @@
+RangeError: String exceeds maximum length
+  ┌ runtime/string/concat_string_too_large.js:4:9
+  |
+4 |     sum += str;
+  |         ^
+Stack trace:
+  at <global> (runtime/string/concat_string_too_large.js:4:9)

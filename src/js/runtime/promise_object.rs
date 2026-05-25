@@ -193,7 +193,7 @@ pub fn resolve(
     mut cx: Context,
     mut promise: Handle<PromiseObject>,
     resolution: Handle<Value>,
-) -> AllocResult<()> {
+) -> EvalResult<()> {
     // Resolving an already settled promise has no effect. Immediately mark promise as
     // "already resolved" to prevent further settlement, since fulfill or reject may not be called
     // right away.

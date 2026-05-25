@@ -1,6 +1,9 @@
 use std::hash;
 
-use crate::runtime::{alloc_error::AllocResult, string_parsing::StringLexer};
+use crate::{
+    must_a,
+    runtime::{alloc_error::AllocResult, string_parsing::StringLexer},
+};
 
 use super::{
     gc::{Handle, HandleContents, ToHandleContents},
@@ -82,7 +85,8 @@ impl PropertyKey {
     #[inline]
     pub fn array_index(mut cx: Context, value: u32) -> AllocResult<PropertyKey> {
         if value == u32::MAX {
-            let string_value = cx.alloc_string(&value.to_string())?;
+            // Safe since string length is guaranteed to be valid
+            let string_value = must_a!(cx.alloc_string(&value.to_string()));
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
@@ -102,7 +106,8 @@ impl PropertyKey {
 
     pub fn from_u64(mut cx: Context, value: u64) -> AllocResult<PropertyKey> {
         if value >= u32::MAX as u64 {
-            let string_value = cx.alloc_string(&value.to_string())?;
+            // Safe since string length is guaranteed to be valid
+            let string_value = must_a!(cx.alloc_string(&value.to_string()));
             return PropertyKey::string_not_array_index(cx, string_value);
         }
 
@@ -181,7 +186,8 @@ impl Handle<PropertyKey> {
     pub fn to_value(self, mut cx: Context) -> AllocResult<Handle<Value>> {
         if self.value.is_smi() {
             let array_index_string = self.as_array_index().to_string();
-            Ok(cx.alloc_string(&array_index_string)?.into())
+            // Safe since string length is guaranteed to be valid
+            Ok(must_a!(cx.alloc_string(&array_index_string)).into())
         } else {
             Ok(self.cast())
         }

@@ -117,12 +117,12 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
 pub fn symbol_descriptive_string(
     mut cx: Context,
     symbol: Handle<SymbolValue>,
-) -> AllocResult<Handle<StringValue>> {
+) -> EvalResult<Handle<StringValue>> {
     match symbol.description() {
-        None => Ok(cx.alloc_string("Symbol()")?),
+        None => Ok(cx.alloc_static_string("Symbol()")?),
         Some(description) => {
-            let symbol_prefix = cx.alloc_string("Symbol(")?;
-            let symbol_suffix = cx.alloc_string(")")?;
+            let symbol_prefix = cx.alloc_static_string("Symbol(")?;
+            let symbol_suffix = cx.alloc_static_string(")")?;
 
             StringValue::concat_all(cx, &[symbol_prefix, description.as_string(), symbol_suffix])
         }

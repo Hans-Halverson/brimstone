@@ -1,5 +1,5 @@
 use crate::{
-    field_offset,
+    field_offset, must_a,
     parser::{loc::calculate_line_offsets, source::Source},
     runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
     set_uninit,
@@ -31,9 +31,11 @@ type LineOffsetArray = BsArray<u32>;
 impl SourceFile {
     #[inline]
     pub fn new(mut cx: Context, source: &Source) -> AllocResult<Handle<SourceFile>> {
-        let path = cx.alloc_flat_string(source.file_path())?;
+        // Source guarantees that file path and display name are guaranteed to be within allowed
+        // string length.
+        let path = must_a!(cx.alloc_flat_string(source.file_path()));
         let display_name = if source.has_display_name() {
-            Some(cx.alloc_flat_string(source.display_name())?)
+            Some(must_a!(cx.alloc_flat_string(source.display_name())))
         } else {
             None
         };

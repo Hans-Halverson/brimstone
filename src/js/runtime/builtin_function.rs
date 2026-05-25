@@ -1,7 +1,10 @@
-use crate::runtime::{
-    alloc_error::AllocResult,
-    bytecode::function::Closure,
-    intrinsics::rust_runtime::{RuntimeFunction, RuntimeFunctionId},
+use crate::{
+    must_a,
+    runtime::{
+        alloc_error::AllocResult,
+        bytecode::function::Closure,
+        intrinsics::rust_runtime::{RuntimeFunction, RuntimeFunctionId},
+    },
 };
 
 use super::{
@@ -98,7 +101,10 @@ impl BuiltinFunction {
         prefix: Option<&str>,
     ) -> AllocResult<()> {
         set_function_length(cx, func, length)?;
-        set_function_name(cx, func, name, prefix)?;
+
+        // Assumes that the name property for all built-in functions is within the string length
+        // limit, otherwise panic.
+        must_a!(set_function_name(cx, func, name, prefix));
 
         Ok(())
     }
@@ -133,8 +139,10 @@ impl BuiltinFunction {
         prototype: Option<Handle<ObjectValue>>,
         is_constructor: bool,
     ) -> AllocResult<Handle<Closure>> {
+        // Assumes that the name property for all built-in functions is within the string length
+        // limit, otherwise panic.
         let name = name
-            .map(|name| build_function_name(cx, name, None))
+            .map(|name| Ok(must_a!(build_function_name(cx, name, None))))
             .transpose()?;
         let bytecode_function = BytecodeFunction::new_rust_runtime_function(
             cx,

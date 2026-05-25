@@ -36,7 +36,7 @@ impl IteratorHelperPrototype {
 
         // %IteratorHelperPrototype% [ @@toStringTag ] (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
-        let iterator_helper = cx.alloc_string("Iterator Helper")?;
+        let iterator_helper = cx.alloc_static_string("Iterator Helper")?;
         object.set_property(
             cx,
             to_string_tag_key,

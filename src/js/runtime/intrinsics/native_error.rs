@@ -25,10 +25,10 @@ macro_rules! create_native_error {
             pub fn new_with_message(
                 mut cx: Context,
                 message: String,
-            ) -> AllocResult<Handle<ErrorObject>> {
+            ) -> EvalResult<Handle<ErrorObject>> {
                 // Be sure to allocate before creating object
                 let message_value = cx.alloc_string(&message)?;
-                Self::new_with_message_value(cx, message_value)
+                Ok(Self::new_with_message_value(cx, message_value)?)
             }
 
             #[allow(dead_code)]

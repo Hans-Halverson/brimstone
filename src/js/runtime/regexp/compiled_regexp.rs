@@ -6,6 +6,7 @@ use crate::{
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
         alloc_error::AllocResult,
+        bytecode::generator::alloc_wtf8_str_from_source,
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
@@ -44,7 +45,7 @@ const INSTRUCTIONS_BYTE_OFFSET: usize = field_offset!(CompiledRegExpObject, inst
 
 impl CompiledRegExpObject {
     pub fn new(
-        mut cx: Context,
+        cx: Context,
         instructions: Vec<u32>,
         regexp: &RegExp,
         escaped_pattern_source: Handle<StringValue>,
@@ -58,7 +59,7 @@ impl CompiledRegExpObject {
         for capture_group in regexp.capture_groups.iter() {
             let handle = if let Some(name_string) = capture_group {
                 has_named_capture_groups = true;
-                Some(cx.alloc_wtf8_str_ptr(name_string)?.to_handle())
+                Some(alloc_wtf8_str_from_source(cx, name_string)?)
             } else {
                 None
             };

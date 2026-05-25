@@ -3,7 +3,8 @@ use hashbrown::HashMap;
 
 use crate::{
     common::wtf_8::{Wtf8Str, Wtf8String},
-    runtime::alloc_error::AllocResult,
+    must_a,
+    runtime::{alloc_error::AllocResult, EvalResult},
     set_uninit,
 };
 
@@ -81,16 +82,27 @@ impl InternedStrings {
         }
     }
 
-    pub fn alloc_wtf8_str(mut cx: Context, str: &Wtf8Str) -> AllocResult<Handle<FlatString>> {
+    pub fn alloc_wtf8_str(mut cx: Context, str: &Wtf8Str) -> EvalResult<Handle<FlatString>> {
         let string_value = cx.alloc_wtf8_str_ptr(str)?;
         Ok(InternedStrings::get(cx, string_value)?.to_handle())
     }
 
-    pub fn get_generator_cache_str(mut cx: Context, str: &str) -> AllocResult<Handle<StringValue>> {
+    pub fn alloc_static_wtf8_str(
+        mut cx: Context,
+        str: &'static Wtf8Str,
+    ) -> AllocResult<Handle<FlatString>> {
+        let string_value = cx.alloc_static_wtf8_str_ptr(str)?;
+        Ok(InternedStrings::get(cx, string_value)?.to_handle())
+    }
+
+    pub fn get_generator_cache_static_str(
+        mut cx: Context,
+        str: &'static str,
+    ) -> AllocResult<Handle<StringValue>> {
         match cx.interned_strings.generator_cache.get(str.as_bytes()) {
             Some(interned_string) => Ok(interned_string.as_string().to_handle()),
             None => {
-                let string_value = cx.alloc_string_ptr(str)?;
+                let string_value = cx.alloc_static_string_ptr(str)?;
                 let interned_string = InternedStrings::get(cx, string_value)?.to_handle();
 
                 cx.interned_strings
@@ -102,6 +114,10 @@ impl InternedStrings {
         }
     }
 
+    /// Get the interned heap string for the given Wtf8Str during bytecode generation.
+    ///
+    /// Wtf8Str is assumed to have come from the source, meaning it must be smaller than the max
+    /// string length.
     pub fn get_generator_cache_wtf8_str(
         mut cx: Context,
         str: &Wtf8Str,
@@ -109,7 +125,9 @@ impl InternedStrings {
         match cx.interned_strings.generator_cache.get(str) {
             Some(interned_string) => Ok(interned_string.as_string().to_handle()),
             None => {
-                let string_value = cx.alloc_wtf8_str_ptr(str)?;
+                // Safe to unwrap since string came from source text and must be smaller than max
+                // string length.
+                let string_value = must_a!(cx.alloc_wtf8_str_ptr(str));
                 let interned_string = InternedStrings::get(cx, string_value)?.to_handle();
 
                 cx.interned_strings

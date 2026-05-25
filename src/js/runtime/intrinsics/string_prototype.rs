@@ -30,7 +30,9 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
-        string_value::{FlatString, StringValue, UnsafeCodePointIterator},
+        string_value::{
+            string_exceeds_max_length_error, FlatString, StringValue, UnsafeCodePointIterator,
+        },
         to_string,
         type_utilities::{
             is_callable, is_regexp, require_object_coercible, to_integer_or_infinity, to_length,
@@ -305,7 +307,7 @@ impl StringPrototype {
         mut cx: Context,
         realm: Handle<Realm>,
     ) -> AllocResult<()> {
-        let substr_name = cx.alloc_string("substr")?;
+        let substr_name = cx.alloc_static_string("substr")?;
         let substr = PropertyKey::string_not_array_index_handle(cx, substr_name)?;
         string_prototype.intrinsic_func(
             cx,
@@ -320,10 +322,10 @@ impl StringPrototype {
         let trim_start = must_a!(get(cx, string_prototype, cx.names.trim_start()));
         let trim_end = must_a!(get(cx, string_prototype, cx.names.trim_end()));
 
-        let trim_left_name = cx.alloc_string("trimLeft")?;
+        let trim_left_name = cx.alloc_static_string("trimLeft")?;
         let trim_left = PropertyKey::string_not_array_index_handle(cx, trim_left_name)?;
 
-        let trim_right_name = cx.alloc_string("trimRight")?;
+        let trim_right_name = cx.alloc_static_string("trimRight")?;
         let trim_right = PropertyKey::string_not_array_index_handle(cx, trim_right_name)?;
 
         string_prototype.intrinsic_data_prop(cx, trim_left, trim_start)?;
@@ -332,7 +334,7 @@ impl StringPrototype {
         macro_rules! html_methods {
             ($($name:expr, $method:path, $length:expr),*) => {
                 $(
-                    let name = cx.alloc_string($name)?;
+                    let name = cx.alloc_static_string($name)?;
                     let key = PropertyKey::string_not_array_index_handle(cx, name)?;
                     string_prototype.intrinsic_func(cx, key, $method, $length, realm)?;
                 )*
@@ -847,8 +849,10 @@ impl StringPrototype {
 
         let n_arg = get_argument(cx, arguments, 0);
         let n = to_integer_or_infinity(cx, n_arg)?;
-        if !(0.0..=MAX_U32_AS_F64).contains(&n) {
-            return range_error(cx, "count must be a finite, positive number that does not exceed the maximum string size");
+        if n.is_sign_negative() || n.is_infinite() {
+            return range_error(cx, "count must be a finite, non-negative number");
+        } else if n > MAX_U32_AS_F64 {
+            return string_exceeds_max_length_error(cx);
         } else if n == 0.0 {
             return Ok(cx.names.empty_string().as_string().as_value());
         }
@@ -1722,7 +1726,7 @@ fn normalize_string<I: Iterator<Item = char>>(
     cx: Context,
     string: Handle<StringValue>,
     f: impl Fn(CharIterator) -> I,
-) -> AllocResult<Handle<StringValue>> {
+) -> EvalResult<Handle<StringValue>> {
     let parts = to_valid_string_parts(*string.flatten()?);
 
     let mut normalized_string = Wtf8String::new();
@@ -1992,6 +1996,6 @@ impl SubstitutionTemplate {
             }
         }
 
-        Ok(StringValue::concat_all(cx, &string_parts)?)
+        StringValue::concat_all(cx, &string_parts)
     }
 }

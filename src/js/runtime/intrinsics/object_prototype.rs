@@ -206,9 +206,9 @@ impl ObjectPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if this_value.is_undefined() {
-            return Ok(cx.alloc_string("[object Undefined]")?.as_value());
+            return Ok(cx.alloc_static_string("[object Undefined]")?.as_value());
         } else if this_value.is_null() {
-            return Ok(cx.alloc_string("[object Null]")?.as_value());
+            return Ok(cx.alloc_static_string("[object Null]")?.as_value());
         }
 
         let object = to_object(cx, this_value)?;
@@ -219,8 +219,8 @@ impl ObjectPrototype {
         let tag = get(cx, object, to_string_tag_key)?;
 
         let tag_string = if tag.is_string() {
-            let string_prefix = cx.alloc_string("[object ")?;
-            let string_suffix = cx.alloc_string("]")?;
+            let string_prefix = cx.alloc_static_string("[object ")?;
+            let string_suffix = cx.alloc_static_string("]")?;
 
             let full_string =
                 StringValue::concat_all(cx, &[string_prefix, tag.as_string(), string_suffix])?;

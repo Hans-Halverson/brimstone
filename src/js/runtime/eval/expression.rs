@@ -12,6 +12,7 @@ use crate::{
         },
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
+        bytecode::generator::alloc_wtf8_str_from_source,
         error::{range_error, type_error},
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
@@ -31,7 +32,7 @@ use crate::{
 
 /// GetTemplateObject (https://tc39.es/ecma262/#sec-gettemplateobject)
 pub fn generate_template_object(
-    mut cx: Context,
+    cx: Context,
     realm: Handle<Realm>,
     lit: &ast::TemplateLiteral,
 ) -> AllocResult<Handle<ObjectValue>> {
@@ -49,12 +50,12 @@ pub fn generate_template_object(
 
         let cooked_value = match &quasi.cooked {
             None => cx.undefined(),
-            Some(cooked) => cx.alloc_wtf8_str(cooked)?.as_value(),
+            Some(cooked) => alloc_wtf8_str_from_source(cx, cooked)?.as_value(),
         };
         let cooked_desc = PropertyDescriptor::data(cooked_value, false, true, false);
         must_a!(define_property_or_throw(cx, template_object, index_key, cooked_desc));
 
-        let raw_value = cx.alloc_wtf8_str(quasi.raw)?;
+        let raw_value = alloc_wtf8_str_from_source(cx, quasi.raw)?;
         let raw_desc = PropertyDescriptor::data(raw_value.as_value(), false, true, false);
         must_a!(define_property_or_throw(cx, raw_object, index_key, raw_desc));
     }
@@ -111,7 +112,7 @@ pub fn eval_typeof(mut cx: Context, value: Handle<Value>) -> AllocResult<Handle<
         }
     };
 
-    cx.alloc_string(type_string)
+    cx.alloc_static_string(type_string)
 }
 
 pub fn eval_negate(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {

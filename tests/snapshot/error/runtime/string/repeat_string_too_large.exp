@@ -1,0 +1,8 @@
+RangeError: String exceeds maximum length
+  ┌ runtime/string/repeat_string_too_large.js:1:1
+  |
+1 | ("a".repeat(2 ** 16)).repeat((2 ** 31));
+  | ^
+Stack trace:
+  at repeat (<native>)
+  at <global> (runtime/string/repeat_string_too_large.js:1:1)

@@ -26,7 +26,7 @@ use super::{
     collections::InlineArray,
     error::type_error,
     function::get_argument,
-    generator_object::{GeneratorCompletionType, TGeneratorObject},
+    generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
     intrinsics::promise_prototype::perform_promise_then,
     promise_object::coerce_to_ordinary_promise,
     Value,
@@ -46,12 +46,12 @@ extend_object! {
         pc_to_resume_offset: usize,
         // Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Indices of registers for the completion operands to return when the generator is resumed.
-        // The value is written to the first register and the completion type is written to the
-        // second register.
+        // Registers for the completion operands to return when the generator is resumed. The value
+        // is written to the first register and the completion type is written to the second
+        // register.
         //
         // Value is from AsyncGenerator.prototype.{next, return, throw}.
-        completion_indices: Option<(u32, u32)>,
+        completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
         // A queue of requests to resume the async generator. Forms a singly linked list, where the
         // head is the next request that should be consumed.
         request_queue: Option<HeapPtr<AsyncGeneratorRequest>>,
@@ -122,7 +122,7 @@ impl AsyncGeneratorObject {
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
         set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.completion_indices, None);
+        set_uninit!(generator.completion_registers, None);
         set_uninit!(generator.request_queue, None);
         generator.stack_frame.init_from_slice(stack_frame);
 
@@ -159,31 +159,31 @@ impl AsyncGeneratorObject {
     pub fn suspend_yield(
         &mut self,
         pc_to_resume_offset: usize,
-        completion_indices: (u32, u32),
+        completion_registers: (GeneratorRegister, GeneratorRegister),
         stack_frame: &[StackSlotValue],
     ) {
         self.state = AsyncGeneratorState::SuspendedYield;
-        self.save_state(pc_to_resume_offset, completion_indices, stack_frame);
+        self.save_state(pc_to_resume_offset, completion_registers, stack_frame);
     }
 
     pub fn suspend_await(
         &mut self,
         pc_to_resume_offset: usize,
-        completion_indices: (u32, u32),
+        completion_registers: (GeneratorRegister, GeneratorRegister),
         stack_frame: &[StackSlotValue],
     ) {
         self.state = AsyncGeneratorState::SuspendedAwait;
-        self.save_state(pc_to_resume_offset, completion_indices, stack_frame);
+        self.save_state(pc_to_resume_offset, completion_registers, stack_frame);
     }
 
     fn save_state(
         &mut self,
         pc_to_resume_offset: usize,
-        completion_indices: (u32, u32),
+        completion_registers: (GeneratorRegister, GeneratorRegister),
         stack_frame: &[StackSlotValue],
     ) {
         self.pc_to_resume_offset = pc_to_resume_offset;
-        self.completion_indices = Some(completion_indices);
+        self.completion_registers = Some(completion_registers);
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);
     }
 
@@ -223,8 +223,8 @@ impl TGeneratorObject for Handle<AsyncGeneratorObject> {
         self.fp_index
     }
 
-    fn completion_indices(&self) -> Option<(u32, u32)> {
-        self.completion_indices
+    fn completion_registers(&self) -> Option<(GeneratorRegister, GeneratorRegister)> {
+        self.completion_registers
     }
 
     fn stack_frame(&self) -> &[StackSlotValue] {

@@ -12,3 +12,6 @@ pub mod stack_frame;
 pub mod vm;
 mod width;
 mod writer;
+
+pub use operand::Register;
+pub use width::ExtraWide;

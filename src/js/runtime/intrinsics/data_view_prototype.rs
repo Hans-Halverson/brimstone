@@ -224,7 +224,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let data_view = require_is_data_view(cx, this_value)?;
+        let data_view = this_data_view(cx, this_value, "buffer")?;
         Ok(data_view.viewed_array_buffer().as_value())
     }
 
@@ -234,11 +234,11 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let data_view = require_is_data_view(cx, this_value)?;
+        let data_view = this_data_view(cx, this_value, "byteLength")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
         if is_view_out_of_bounds(&data_view_record) {
-            return type_error(cx, "DataView is out of bounds");
+            return type_error(cx, "DataView.prototype.byteLength DataView is out of bounds");
         }
 
         let byte_length = get_view_byte_length(&data_view_record);
@@ -252,11 +252,11 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let data_view = require_is_data_view(cx, this_value)?;
+        let data_view = this_data_view(cx, this_value, "byteOffset")?;
         let data_view_record = make_data_view_with_buffer_witness_record(data_view);
 
         if is_view_out_of_bounds(&data_view_record) {
-            return type_error(cx, "DataView is out of bounds");
+            return type_error(cx, "DataView.prototype.byteOffset DataView is out of bounds");
         }
 
         Ok(Value::from(data_view.byte_offset()).to_handle(cx))
@@ -268,7 +268,14 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_big_int64_element, i64::swap_bytes)
+        get_view_value(
+            cx,
+            this_value,
+            arguments,
+            "getBigInt64",
+            from_big_int64_element,
+            i64::swap_bytes,
+        )
     }
 
     /// DataView.prototype.getBigUint64 (https://tc39.es/ecma262/#sec-dataview.prototype.getbiguint64)
@@ -277,7 +284,14 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_big_uint64_element, u64::swap_bytes)
+        get_view_value(
+            cx,
+            this_value,
+            arguments,
+            "getBigUint64",
+            from_big_uint64_element,
+            u64::swap_bytes,
+        )
     }
 
     /// DataView.prototype.getFloat16 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat16)
@@ -286,7 +300,14 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_float16_element, f16_swap_bytes)
+        get_view_value(
+            cx,
+            this_value,
+            arguments,
+            "getFloat16",
+            from_float16_element,
+            f16_swap_bytes,
+        )
     }
 
     /// DataView.prototype.getFloat32 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat32)
@@ -295,7 +316,14 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_float32_element, f32_swap_bytes)
+        get_view_value(
+            cx,
+            this_value,
+            arguments,
+            "getFloat32",
+            from_float32_element,
+            f32_swap_bytes,
+        )
     }
 
     /// DataView.prototype.getFloat64 (https://tc39.es/ecma262/#sec-dataview.prototype.getfloat64)
@@ -304,7 +332,14 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_float64_element, f64_swap_bytes)
+        get_view_value(
+            cx,
+            this_value,
+            arguments,
+            "getFloat64",
+            from_float64_element,
+            f64_swap_bytes,
+        )
     }
 
     /// DataView.prototype.getInt8 (https://tc39.es/ecma262/#sec-dataview.prototype.getint8)
@@ -313,7 +348,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_int8_element, |element| element)
+        get_view_value(cx, this_value, arguments, "getInt8", from_int8_element, |element| element)
     }
 
     /// DataView.prototype.getInt16 (https://tc39.es/ecma262/#sec-dataview.prototype.getint16)
@@ -322,7 +357,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_int16_element, i16::swap_bytes)
+        get_view_value(cx, this_value, arguments, "getInt16", from_int16_element, i16::swap_bytes)
     }
 
     /// DataView.prototype.getInt32 (https://tc39.es/ecma262/#sec-dataview.prototype.getint32)
@@ -331,7 +366,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_int32_element, i32::swap_bytes)
+        get_view_value(cx, this_value, arguments, "getInt32", from_int32_element, i32::swap_bytes)
     }
 
     /// DataView.prototype.getUint8 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint8)
@@ -340,7 +375,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_uint8_element, |element| element)
+        get_view_value(cx, this_value, arguments, "getUint8", from_uint8_element, |element| element)
     }
 
     /// DataView.prototype.getUint16 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint16)
@@ -349,7 +384,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_uint16_element, u16::swap_bytes)
+        get_view_value(cx, this_value, arguments, "getUint16", from_uint16_element, u16::swap_bytes)
     }
 
     /// DataView.prototype.getUint32 (https://tc39.es/ecma262/#sec-dataview.prototype.getuint32)
@@ -358,7 +393,7 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        get_view_value(cx, this_value, arguments, from_uint32_element, u32::swap_bytes)
+        get_view_value(cx, this_value, arguments, "getUint32", from_uint32_element, u32::swap_bytes)
     }
 
     /// DataView.prototype.setBigInt64 (https://tc39.es/ecma262/#sec-dataview.prototype.setbigint64)
@@ -371,6 +406,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setBigInt64",
             ContentType::BigInt,
             to_big_int64_element,
             i64::swap_bytes,
@@ -387,6 +423,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setBigUint64",
             ContentType::BigInt,
             to_big_uint64_element,
             u64::swap_bytes,
@@ -403,6 +440,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setFloat16",
             ContentType::Number,
             to_float16_element,
             f16_swap_bytes,
@@ -419,6 +457,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setFloat32",
             ContentType::Number,
             to_float32_element,
             f32_swap_bytes,
@@ -435,6 +474,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setFloat64",
             ContentType::Number,
             to_float64_element,
             f64_swap_bytes,
@@ -447,9 +487,15 @@ impl DataViewPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        set_view_value(cx, this_value, arguments, ContentType::Number, to_int8_element, |element| {
-            element
-        })
+        set_view_value(
+            cx,
+            this_value,
+            arguments,
+            "setInt8",
+            ContentType::Number,
+            to_int8_element,
+            |element| element,
+        )
     }
 
     /// DataView.prototype.setInt16 (https://tc39.es/ecma262/#sec-dataview.prototype.setint16)
@@ -462,6 +508,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setInt16",
             ContentType::Number,
             to_int16_element,
             i16::swap_bytes,
@@ -478,6 +525,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setInt32",
             ContentType::Number,
             to_int32_element,
             i32::swap_bytes,
@@ -494,6 +542,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setUint8",
             ContentType::Number,
             to_uint8_element,
             |element| element,
@@ -510,6 +559,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setUint16",
             ContentType::Number,
             to_uint16_element,
             u16::swap_bytes,
@@ -526,6 +576,7 @@ impl DataViewPrototype {
             cx,
             this_value,
             arguments,
+            "setUint32",
             ContentType::Number,
             to_uint32_element,
             u32::swap_bytes,
@@ -534,9 +585,16 @@ impl DataViewPrototype {
 }
 
 #[inline]
-fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<DataViewObject>> {
+fn this_data_view(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<DataViewObject>> {
     if !value.is_object() {
-        return type_error(cx, "expected a DataView");
+        return type_error(
+            cx,
+            &format!("DataView.prototype.{method_name} must be called on a DataView"),
+        );
     }
 
     let object = value.as_object();
@@ -544,7 +602,7 @@ fn require_is_data_view(cx: Context, value: Handle<Value>) -> EvalResult<Handle<
         return Ok(data_view);
     }
 
-    type_error(cx, "expected a DataView")
+    type_error(cx, &format!("DataView.prototype.{method_name} must be called on a DataView"))
 }
 
 /// GetViewValue (https://tc39.es/ecma262/#sec-getviewvalue)
@@ -553,10 +611,11 @@ fn get_view_value<T>(
     cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
+    method_name: &str,
     from_element_fn: fn(Context, T) -> AllocResult<Handle<Value>>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
-    let data_view = require_is_data_view(cx, this_value)?;
+    let data_view = this_data_view(cx, this_value, method_name)?;
 
     let get_index_arg = get_argument(cx, arguments, 0);
     let get_index = to_index(cx, get_index_arg)?;
@@ -564,7 +623,10 @@ fn get_view_value<T>(
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
     if is_view_out_of_bounds(&data_view_record) {
-        return type_error(cx, "DataView is out of bounds");
+        return type_error(
+            cx,
+            &format!("DataView.prototype.{method_name} DataView is out of bounds"),
+        );
     }
 
     let view_size = get_view_byte_length(&data_view_record);
@@ -573,7 +635,10 @@ fn get_view_value<T>(
     let element_size = std::mem::size_of::<T>();
 
     if get_index + element_size > view_size {
-        return range_error(cx, "byte offset is too large");
+        return range_error(
+            cx,
+            &format!("DataView.prototype.{method_name} byte offset is too large"),
+        );
     }
 
     let buffer_index = get_index + view_offset;
@@ -605,11 +670,12 @@ fn set_view_value<T>(
     cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],
+    method_name: &str,
     content_type: ContentType,
     to_element_fn: fn(Context, Handle<Value>) -> EvalResult<T>,
     swap_element_bytes_fn: fn(T) -> T,
 ) -> EvalResult<Handle<Value>> {
-    let data_view = require_is_data_view(cx, this_value)?;
+    let data_view = this_data_view(cx, this_value, method_name)?;
 
     let get_index_arg = get_argument(cx, arguments, 0);
     let get_index = to_index(cx, get_index_arg)?;
@@ -624,7 +690,10 @@ fn set_view_value<T>(
 
     let data_view_record = make_data_view_with_buffer_witness_record(data_view);
     if is_view_out_of_bounds(&data_view_record) {
-        return type_error(cx, "DataView is out of bounds");
+        return type_error(
+            cx,
+            &format!("DataView.prototype.{method_name} DataView is out of bounds"),
+        );
     }
 
     let view_size = get_view_byte_length(&data_view_record);
@@ -632,7 +701,10 @@ fn set_view_value<T>(
 
     let element_size = std::mem::size_of::<T>();
     if get_index + element_size > view_size {
-        return range_error(cx, "byte offset is too large");
+        return range_error(
+            cx,
+            &format!("DataView.prototype.{method_name} byte offset is too large"),
+        );
     }
 
     // Convert number to bytes with correct endianness

@@ -366,7 +366,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "at")?;
         let string = to_string(cx, object)?;
 
         let length = string.len() as i64;
@@ -398,7 +398,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "charAt")?;
         let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
@@ -419,7 +419,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "charCodeAt")?;
         let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
@@ -439,7 +439,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "codePointAt")?;
         let string = to_string(cx, object)?;
 
         let position_arg = get_argument(cx, arguments, 0);
@@ -459,7 +459,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "concat")?;
         let mut concat_string = to_string(cx, object)?;
 
         for argument in arguments {
@@ -476,13 +476,13 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "endsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
         if is_regexp(cx, search_value)? {
-            return type_error(cx, "first argument to endsWith cannot be a RegExp");
+            return type_error(cx, "String.prototype.endsWith first argument cannot be a RegExp");
         }
 
         let search_string = to_string(cx, search_value)?;
@@ -516,7 +516,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "includes")?;
         let string = to_string(cx, object)?;
 
         let search_string = get_argument(cx, arguments, 0);
@@ -544,7 +544,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "indexOf")?;
         let string = to_string(cx, object)?;
 
         let search_arg = get_argument(cx, arguments, 0);
@@ -570,7 +570,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "isWellFormed")?;
         let string = to_string(cx, object)?;
 
         Ok(cx.bool(string.is_well_formed()?))
@@ -582,7 +582,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "lastIndexOf")?;
         let string = to_string(cx, object)?;
 
         let search_arg = get_argument(cx, arguments, 0);
@@ -611,7 +611,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "localeCompare")?;
         let string = to_string(cx, object)?;
 
         let other_arg = get_argument(cx, arguments, 0);
@@ -639,7 +639,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_object = require_object_coercible(cx, this_value)?;
+        let this_object = this_object_coercible_value(cx, this_value, "match")?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
         if regexp_arg.is_object() {
@@ -667,7 +667,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_object = require_object_coercible(cx, this_value)?;
+        let this_object = this_object_coercible_value(cx, this_value, "matchAll")?;
 
         let regexp_arg = get_argument(cx, arguments, 0);
         if regexp_arg.is_object() {
@@ -718,7 +718,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "normalize")?;
         let string = to_string(cx, object)?;
 
         let form_arg = get_argument(cx, arguments, 0);
@@ -769,7 +769,7 @@ impl StringPrototype {
         let max_length_arg = get_argument(cx, arguments, 0);
         let fill_string_arg = get_argument(cx, arguments, 1);
 
-        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false)
+        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, false, "padEnd")
     }
 
     /// String.prototype.padStart (https://tc39.es/ecma262/#sec-string.prototype.padstart)
@@ -781,7 +781,7 @@ impl StringPrototype {
         let max_length_arg = get_argument(cx, arguments, 0);
         let fill_string_arg = get_argument(cx, arguments, 1);
 
-        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true)
+        Self::pad_string(cx, this_value, max_length_arg, fill_string_arg, true, "padStart")
     }
 
     pub fn pad_string(
@@ -790,8 +790,9 @@ impl StringPrototype {
         max_length_arg: Handle<Value>,
         fill_string_arg: Handle<Value>,
         is_start: bool,
+        method_name: &str,
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, method_name)?;
         let string = to_string(cx, object)?;
 
         let int_max_length = to_length(cx, max_length_arg)?;
@@ -801,7 +802,13 @@ impl StringPrototype {
         if int_max_length <= string_length as u64 {
             return Ok(string.as_value());
         } else if int_max_length > u32::MAX as u64 {
-            return range_error(cx, "target string length exceeds maximum string size");
+            return range_error(
+                cx,
+                &format!(
+                    "String.prototype.{} target string length exceeds maximum string size",
+                    method_name
+                ),
+            );
         }
 
         let int_max_length = int_max_length as u32;
@@ -844,13 +851,16 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "repeat")?;
         let string = to_string(cx, object)?;
 
         let n_arg = get_argument(cx, arguments, 0);
         let n = to_integer_or_infinity(cx, n_arg)?;
         if n.is_sign_negative() || n.is_infinite() {
-            return range_error(cx, "count must be a finite, non-negative number");
+            return range_error(
+                cx,
+                "String.prototype.repeat count must be a finite, non-negative number",
+            );
         } else if n > MAX_U32_AS_F64 {
             return string_exceeds_max_length_error(cx);
         } else if n == 0.0 {
@@ -866,7 +876,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "replace")?;
 
         let search_arg = get_argument(cx, arguments, 0);
         let replace_arg = get_argument(cx, arguments, 1);
@@ -948,7 +958,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "replaceAll")?;
 
         let search_arg = get_argument(cx, arguments, 0);
         let replace_arg = get_argument(cx, arguments, 1);
@@ -1062,7 +1072,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "search")?;
 
         // Use the @@search method of the argument if one exists
         let regexp_arg = get_argument(cx, arguments, 0);
@@ -1092,7 +1102,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "slice")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
@@ -1138,7 +1148,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "split")?;
 
         let separator_argument = get_argument(cx, arguments, 0);
         let limit_argument = get_argument(cx, arguments, 1);
@@ -1232,13 +1242,13 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "startsWith")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
         let search_value = get_argument(cx, arguments, 0);
         if is_regexp(cx, search_value)? {
-            return type_error(cx, "first argument to startsWith cannot be a RegExp");
+            return type_error(cx, "String.prototype.startsWith first argument cannot be a RegExp");
         }
 
         let search_string = to_string(cx, search_value)?;
@@ -1279,7 +1289,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "substring")?;
         let string = to_string(cx, object)?;
         let length = string.len();
 
@@ -1308,7 +1318,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "toLowerCase")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_lower_case(cx)?.as_value())
@@ -1320,7 +1330,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        this_string_value(cx, this_value)
+        this_string_value(cx, this_value, "toString")
     }
 
     /// String.prototype.toUpperCase (https://tc39.es/ecma262/#sec-string.prototype.touppercase)
@@ -1329,7 +1339,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "toUpperCase")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_upper_case(cx)?.as_value())
@@ -1341,7 +1351,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "toWellFormed")?;
         let string = to_string(cx, object)?;
 
         Ok(string.to_well_formed(cx)?.to_handle().as_value())
@@ -1353,7 +1363,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "trim")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, true, true)?.as_value())
@@ -1365,7 +1375,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "trimEnd")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, false, true)?.as_value())
@@ -1377,7 +1387,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "trimStart")?;
         let string = to_string(cx, object)?;
 
         Ok(string.trim(cx, true, false)?.as_value())
@@ -1389,7 +1399,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "iterator")?;
         let string = to_string(cx, object)?;
 
         let flat_string = string.flatten()?;
@@ -1403,7 +1413,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let object = require_object_coercible(cx, this_value)?;
+        let object = this_object_coercible_value(cx, this_value, "substr")?;
         let string = to_string(cx, object)?;
 
         let string_length = string.len() as u32;
@@ -1446,9 +1456,10 @@ impl StringPrototype {
         mut cx: Context,
         value: Handle<Value>,
         tag: &str,
+        method_name: &str,
         attribute_and_value: Option<(&str, Handle<Value>)>,
     ) -> EvalResult<Handle<StringValue>> {
-        let object = require_object_coercible(cx, value)?;
+        let object = this_object_coercible_value(cx, value, method_name)?;
         let string = to_string(cx, object)?.to_wtf8_string()?;
 
         let mut html = Wtf8String::new();
@@ -1491,7 +1502,8 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let name_arg = get_argument(cx, arguments, 0);
-        let html_string = Self::create_html(cx, this_value, "a", Some(("name", name_arg)))?;
+        let html_string =
+            Self::create_html(cx, this_value, "a", "anchor", Some(("name", name_arg)))?;
         Ok(html_string.as_value())
     }
 
@@ -1501,7 +1513,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "big", None)?;
+        let html_string = Self::create_html(cx, this_value, "big", "big", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1511,7 +1523,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "blink", None)?;
+        let html_string = Self::create_html(cx, this_value, "blink", "blink", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1521,7 +1533,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "b", None)?;
+        let html_string = Self::create_html(cx, this_value, "b", "bold", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1531,7 +1543,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "tt", None)?;
+        let html_string = Self::create_html(cx, this_value, "tt", "fixed", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1542,7 +1554,8 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let color_arg = get_argument(cx, arguments, 0);
-        let html_string = Self::create_html(cx, this_value, "font", Some(("color", color_arg)))?;
+        let html_string =
+            Self::create_html(cx, this_value, "font", "fontcolor", Some(("color", color_arg)))?;
         Ok(html_string.as_value())
     }
 
@@ -1553,7 +1566,8 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let size_arg = get_argument(cx, arguments, 0);
-        let html_string = Self::create_html(cx, this_value, "font", Some(("size", size_arg)))?;
+        let html_string =
+            Self::create_html(cx, this_value, "font", "fontsize", Some(("size", size_arg)))?;
         Ok(html_string.as_value())
     }
 
@@ -1563,7 +1577,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "i", None)?;
+        let html_string = Self::create_html(cx, this_value, "i", "italics", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1574,7 +1588,7 @@ impl StringPrototype {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let url_arg = get_argument(cx, arguments, 0);
-        let html_string = Self::create_html(cx, this_value, "a", Some(("href", url_arg)))?;
+        let html_string = Self::create_html(cx, this_value, "a", "link", Some(("href", url_arg)))?;
         Ok(html_string.as_value())
     }
 
@@ -1584,7 +1598,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "small", None)?;
+        let html_string = Self::create_html(cx, this_value, "small", "small", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1594,7 +1608,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "strike", None)?;
+        let html_string = Self::create_html(cx, this_value, "strike", "strike", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1604,7 +1618,7 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "sub", None)?;
+        let html_string = Self::create_html(cx, this_value, "sub", "sub", None)?;
         Ok(html_string.as_value())
     }
 
@@ -1614,12 +1628,31 @@ impl StringPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let html_string = Self::create_html(cx, this_value, "sup", None)?;
+        let html_string = Self::create_html(cx, this_value, "sup", "sup", None)?;
         Ok(html_string.as_value())
     }
 }
 
-fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
+fn this_object_coercible_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<Value>> {
+    if value.is_nullish() {
+        return type_error(
+            cx,
+            &format!("String.prototype.{} called on null or undefined", method_name),
+        );
+    }
+
+    Ok(value)
+}
+
+fn this_string_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<Value>> {
     if value.is_string() {
         return Ok(value);
     }
@@ -1631,7 +1664,7 @@ fn this_string_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
         }
     }
 
-    type_error(cx, "value cannot be converted to string")
+    type_error(cx, &format!("String.prototype.{} must be called on a string", method_name))
 }
 
 #[allow(clippy::upper_case_acronyms)]

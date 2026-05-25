@@ -321,7 +321,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "at")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -353,7 +353,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = require_typed_array(cx, this_value)?;
+        let typed_array = this_typed_array(cx, this_value, "buffer")?;
         Ok(typed_array.viewed_array_buffer().as_value())
     }
 
@@ -363,7 +363,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = require_typed_array(cx, this_value)?;
+        let typed_array = this_typed_array(cx, this_value, "byteLength")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -381,7 +381,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = require_typed_array(cx, this_value)?;
+        let typed_array = this_typed_array(cx, this_value, "byteOffset")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -397,7 +397,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "copyWithin")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -529,7 +529,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "entries")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::KeyAndValue)?.as_value())
@@ -541,7 +541,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "every")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -581,7 +581,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "fill")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -624,7 +624,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.fill typed array is out of bounds");
         }
 
         let end_index = u64::min(end_index, typed_array_length(&typed_array_record) as u64);
@@ -646,7 +646,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "filter")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -684,7 +684,8 @@ impl TypedArrayPrototype {
         // Then create a new array that contains the kept values
         let num_kept_values = kept_values.len();
         let num_kept_values_value = Value::from(num_kept_values).to_handle(cx);
-        let array = typed_array_species_create_object(cx, typed_array, &[num_kept_values_value])?;
+        let array =
+            typed_array_species_create_object(cx, typed_array, &[num_kept_values_value], "filter")?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -703,7 +704,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "find")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -731,7 +732,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "findIndex")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -759,7 +760,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "findLast")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -788,7 +789,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "findLastIndex")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -820,7 +821,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "forEach")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -857,7 +858,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "includes")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -904,7 +905,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "indexOf")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -952,7 +953,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "join")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -993,7 +994,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "keys")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Key)?.as_value())
@@ -1005,7 +1006,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "lastIndexOf")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1061,7 +1062,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = require_typed_array(cx, this_value)?;
+        let typed_array = this_typed_array(cx, this_value, "length")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -1079,7 +1080,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "map")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1094,7 +1095,7 @@ impl TypedArrayPrototype {
         let this_arg = get_argument(cx, arguments, 1);
 
         let length_value = Value::from(length).to_handle(cx);
-        let array = typed_array_species_create_object(cx, typed_array, &[length_value])?;
+        let array = typed_array_species_create_object(cx, typed_array, &[length_value], "map")?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1120,7 +1121,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "reduce")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1137,7 +1138,7 @@ impl TypedArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error(cx, "reduce does not have initial value");
+            return type_error(cx, "TypedArray.prototype.reduce does not have an initial value");
         } else {
             initial_index = 1;
             let first_index_key = PropertyKey::array_index_handle(cx, 0)?;
@@ -1167,7 +1168,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "reduceRight")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1184,7 +1185,10 @@ impl TypedArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error(cx, "reduceRight does not have initial value");
+            return type_error(
+                cx,
+                "TypedArray.prototype.reduceRight does not have an initial value",
+            );
         } else {
             let last_index_key = PropertyKey::from_u64_handle(cx, initial_index as u64)?;
             initial_index -= 1;
@@ -1214,7 +1218,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "reverse")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1252,7 +1256,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "set")?;
         let typed_array = typed_array_record.typed_array;
 
         let offset_arg = get_argument(cx, arguments, 1);
@@ -1287,7 +1291,7 @@ impl TypedArrayPrototype {
 
         let target_record = make_typed_array_with_buffer_witness_record(target);
         if is_typed_array_out_of_bounds(&target_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.set target typed array is out of bounds");
         }
         let target_length = typed_array_length(&target_record) as u64;
 
@@ -1295,7 +1299,7 @@ impl TypedArrayPrototype {
 
         let source_record = make_typed_array_with_buffer_witness_record(source);
         if is_typed_array_out_of_bounds(&source_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.set source typed array is out of bounds");
         }
         let source_length = typed_array_length(&source_record);
 
@@ -1367,7 +1371,7 @@ impl TypedArrayPrototype {
     ) -> EvalResult<()> {
         let target_record = make_typed_array_with_buffer_witness_record(target);
         if is_typed_array_out_of_bounds(&target_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.set target typed array is out of bounds");
         }
 
         let target_length = typed_array_length(&target_record) as u64;
@@ -1401,7 +1405,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "slice")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1438,7 +1442,7 @@ impl TypedArrayPrototype {
 
         let count = end_index.saturating_sub(start_index);
         let count_value = Value::from(count).to_handle(cx);
-        let new_typed_array = typed_array_species_create(cx, typed_array, &[count_value])?;
+        let new_typed_array = typed_array_species_create(cx, typed_array, &[count_value], "slice")?;
         let array = new_typed_array.into_object_value();
 
         if count == 0 {
@@ -1447,7 +1451,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.slice typed array is out of bounds");
         }
 
         let end_index = u64::min(end_index, typed_array_length(&typed_array_record) as u64);
@@ -1502,7 +1506,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "some")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1547,7 +1551,7 @@ impl TypedArrayPrototype {
             return type_error(cx, "TypedArray.prototype.sort comparator must be a function");
         };
 
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "sort")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1578,7 +1582,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array = require_typed_array(cx, this_value)?;
+        let typed_array = this_typed_array(cx, this_value, "subarray")?;
         let buffer = typed_array.viewed_array_buffer();
 
         let source_record = make_typed_array_with_buffer_witness_record(typed_array);
@@ -1629,6 +1633,7 @@ impl TypedArrayPrototype {
                 cx,
                 typed_array,
                 &[buffer.into(), begin_byte_offset_value],
+                "subarray",
             )?
         } else {
             let new_length_value = Value::from(new_length).to_handle(cx);
@@ -1636,6 +1641,7 @@ impl TypedArrayPrototype {
                 cx,
                 typed_array,
                 &[buffer.into(), begin_byte_offset_value, new_length_value],
+                "subarray",
             )?
         };
 
@@ -1648,7 +1654,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "toLocaleString")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1682,13 +1688,13 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "toReversed")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let array = typed_array_create_same_type(cx, typed_array, length)?;
+        let array = typed_array_create_same_type(cx, typed_array, length, "toReversed")?;
 
         // Keys are shared between iterations
         let mut from_key = PropertyKey::uninit().to_handle(cx);
@@ -1716,13 +1722,13 @@ impl TypedArrayPrototype {
             return type_error(cx, "TypedArray.prototype.toSorted comparator must be a function");
         };
 
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "toSorted")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
         let length = typed_array_length(&typed_array_record) as u64;
 
-        let sorted_array = typed_array_create_same_type(cx, typed_array, length)?;
+        let sorted_array = typed_array_create_same_type(cx, typed_array, length, "toSorted")?;
 
         let sorted_values = sort_indexed_properties::<INCLUDE_HOLES, TYPED_ARRAY>(
             cx,
@@ -1749,7 +1755,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "values")?;
         let typed_array_object = typed_array_record.typed_array.into_object_value();
 
         Ok(ArrayIterator::new(cx, typed_array_object, ArrayIteratorKind::Value)?.as_value())
@@ -1761,7 +1767,7 @@ impl TypedArrayPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let typed_array_record = validate_typed_array(cx, this_value)?;
+        let typed_array_record = this_typed_array_record(cx, this_value, "with")?;
         let typed_array = typed_array_record.typed_array;
 
         let object = typed_array.into_object_value();
@@ -1806,7 +1812,7 @@ impl TypedArrayPrototype {
         }
         let actual_index = actual_index as u64;
 
-        let array = typed_array_create_same_type(cx, typed_array, length as u64)?;
+        let array = typed_array_create_same_type(cx, typed_array, length as u64, "with")?;
 
         // Key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -1875,17 +1881,22 @@ macro_rules! create_typed_array_prototype {
 }
 
 #[inline]
-fn require_typed_array(cx: Context, value: Handle<Value>) -> EvalResult<DynTypedArray> {
-    if !value.is_object() {
-        return type_error(cx, "expected a TypedArray");
+fn this_typed_array(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<DynTypedArray> {
+    if value.is_object() {
+        let object = value.as_object();
+        if object.is_typed_array() {
+            return Ok(object.as_typed_array());
+        }
     }
 
-    let object = value.as_object();
-    if !object.is_typed_array() {
-        return type_error(cx, "expected a TypedArray");
-    }
-
-    Ok(object.as_typed_array())
+    type_error(
+        cx,
+        &format!("TypedArray.prototype.{method_name} must be called on a TypedArray"),
+    )
 }
 
 /// TypedArraySpeciesCreate (https://tc39.es/ecma262/#typedarray-species-create)
@@ -1893,8 +1904,9 @@ fn typed_array_species_create_object(
     cx: Context,
     exemplar: DynTypedArray,
     arguments: &[Handle<Value>],
+    method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let result = typed_array_species_create(cx, exemplar, arguments)?;
+    let result = typed_array_species_create(cx, exemplar, arguments, method_name)?;
     Ok(result.into_object_value())
 }
 
@@ -1902,6 +1914,7 @@ fn typed_array_species_create(
     cx: Context,
     exemplar: DynTypedArray,
     arguments: &[Handle<Value>],
+    method_name: &str,
 ) -> EvalResult<DynTypedArray> {
     let intrinsic = match exemplar.kind() {
         TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
@@ -1920,10 +1933,18 @@ fn typed_array_species_create(
 
     let constructor = species_constructor(cx, exemplar.into_object_value(), intrinsic)?;
 
-    let result = typed_array_create_from_constructor(cx, constructor, arguments)?;
+    let result = typed_array_create_from_constructor(
+        cx,
+        constructor,
+        arguments,
+        &format!("TypedArray.prototype.{method_name}"),
+    )?;
 
     if result.content_type() != exemplar.content_type() {
-        return type_error(cx, "typed arrays must both contain either numbers or BigInts");
+        return type_error(
+            cx,
+            &format!("TypedArray.prototype.{method_name} species constructor must return a typed array that contains {}", exemplar.content_type().format()),
+        );
     }
 
     Ok(result)
@@ -1934,8 +1955,9 @@ pub fn typed_array_create_from_constructor_object(
     cx: Context,
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
+    full_method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let result = typed_array_create_from_constructor(cx, constructor, arguments)?;
+    let result = typed_array_create_from_constructor(cx, constructor, arguments, full_method_name)?;
     Ok(result.into_object_value())
 }
 
@@ -1943,20 +1965,28 @@ pub fn typed_array_create_from_constructor(
     cx: Context,
     constructor: Handle<ObjectValue>,
     arguments: &[Handle<Value>],
+    full_method_name: &str,
 ) -> EvalResult<DynTypedArray> {
     let new_typed_array = construct(cx, constructor, arguments, None)?;
 
-    let new_typed_array_record = validate_typed_array(cx, new_typed_array.into())?;
+    let new_typed_array_record = species_constructor_result_typed_array_record(
+        cx,
+        new_typed_array.into(),
+        full_method_name,
+    )?;
 
     if arguments.len() == 1 && arguments[0].is_number() {
         if is_typed_array_out_of_bounds(&new_typed_array_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, &format!("{full_method_name} species constructor returned a typed array that is out of bounds"));
         }
 
         let new_typed_array_length = typed_array_length(&new_typed_array_record);
 
         if (new_typed_array_length as f64) < arguments[0].as_number() {
-            return type_error(cx, "typed array does not have expected length");
+            return type_error(
+                cx,
+                &format!("{full_method_name} species constructor returned a typed array that does not have the expected length"),
+            );
         }
     }
 
@@ -1968,6 +1998,7 @@ fn typed_array_create_same_type(
     cx: Context,
     exemplar: DynTypedArray,
     length: u64,
+    method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
     let constructor_instrinsic = match exemplar.kind() {
         TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
@@ -1987,20 +2018,56 @@ fn typed_array_create_same_type(
     let constructor = cx.get_intrinsic(constructor_instrinsic);
     let length_value = Value::from(length).to_handle(cx);
 
-    typed_array_create_from_constructor_object(cx, constructor, &[length_value])
+    typed_array_create_from_constructor_object(
+        cx,
+        constructor,
+        &[length_value],
+        &format!("TypedArray.prototype.{method_name}"),
+    )
 }
 
 /// ValidateTypedArray (https://tc39.es/ecma262/#sec-validatetypedarray)
 #[inline]
-fn validate_typed_array(
+fn this_typed_array_record(
     cx: Context,
     value: Handle<Value>,
+    method_name: &str,
 ) -> EvalResult<TypedArrayWithBufferWitnessRecord> {
-    let typed_array = require_typed_array(cx, value)?;
+    let typed_array = this_typed_array(cx, value, method_name)?;
     let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
 
     if is_typed_array_out_of_bounds(&typed_array_record) {
-        return type_error(cx, "typed array is out of bounds");
+        return type_error(
+            cx,
+            &format!("TypedArray.prototype.{method_name} typed array is out of bounds"),
+        );
+    }
+
+    Ok(typed_array_record)
+}
+
+fn species_constructor_result_typed_array_record(
+    cx: Context,
+    value: Handle<Value>,
+    full_method_name: &str,
+) -> EvalResult<TypedArrayWithBufferWitnessRecord> {
+    if !value.is_object() || !value.as_object().is_typed_array() {
+        return type_error(
+            cx,
+            &format!("{full_method_name} species constructor must return a typed array"),
+        );
+    }
+
+    let typed_array = value.as_object().as_typed_array();
+    let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+
+    if is_typed_array_out_of_bounds(&typed_array_record) {
+        return type_error(
+            cx,
+            &format!(
+                "{full_method_name} species constructor returned a typed array that is out of bounds"
+            ),
+        );
     }
 
     Ok(typed_array_record)

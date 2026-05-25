@@ -110,12 +110,12 @@ impl DataViewConstructor {
 
         let buffer_argument = get_argument(cx, arguments, 0);
         if !buffer_argument.is_object() {
-            return type_error(cx, "first argument must be an array buffer");
+            return type_error(cx, "DataView constructor first argument must be an array buffer");
         }
 
         let buffer_object = buffer_argument.as_object();
         if !buffer_object.is_array_buffer() {
-            return type_error(cx, "first argument must be an array buffer");
+            return type_error(cx, "DataView constructor first argument must be an array buffer");
         }
 
         let buffer_object = buffer_object.cast::<ArrayBufferObject>();
@@ -130,7 +130,7 @@ impl DataViewConstructor {
             return range_error(
                 cx,
                 &format!(
-                    "offset {offset} is out of bounds for buffer with byte length {buffer_byte_length}"
+                    "DataView constructor offset {offset} is out of bounds for buffer with byte length {buffer_byte_length}"
                 ),
             );
         }
@@ -146,7 +146,10 @@ impl DataViewConstructor {
             let view_byte_length = to_index(cx, byte_length_argument)?;
 
             if offset + view_byte_length > buffer_byte_length {
-                return range_error(cx, "data view byte length is too large for this buffer");
+                return range_error(
+                    cx,
+                    "DataView constructor byte length is too large for this buffer",
+                );
             }
 
             Some(view_byte_length)
@@ -166,12 +169,15 @@ impl DataViewConstructor {
         // Also check if underlying buffer was resized during construction and redo bounds checks
         let buffer_byte_length = buffer_object.byte_length();
         if offset > buffer_byte_length {
-            return range_error(cx, "offset is out of bounds for buffer");
+            return range_error(cx, "DataView constructor offset is out of bounds for buffer");
         }
 
         if !byte_length_argument.is_undefined() {
             if offset + view_byte_length.unwrap() > buffer_byte_length {
-                return range_error(cx, "byte length is too large for this buffer");
+                return range_error(
+                    cx,
+                    "DataView constructor byte length is too large for this buffer",
+                );
             }
         }
 

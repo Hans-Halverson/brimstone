@@ -59,7 +59,7 @@ impl WeakSetConstructor {
 
         let adder = get(cx, weak_set.into(), cx.names.add())?;
         if !is_callable(adder) {
-            return type_error(cx, "WeakSet adder must be a function");
+            return type_error(cx, "WeakSet constructor result must have an `add` method");
         }
 
         let iterator = get_iterator(cx, iterable, IteratorHint::Sync, None)?;

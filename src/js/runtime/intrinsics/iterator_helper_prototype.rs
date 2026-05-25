@@ -53,19 +53,16 @@ impl IteratorHelperPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // GenerateResume adapted for Iterator Helper Objects
-        let mut object = match validate_iterator_helper_object(this_value) {
-            None => {
-                return type_error(
-                    cx,
-                    "%IteratorHelperPrototype%.next called on a non-Iterator Helper object",
-                )
-            }
-            Some(object) => object,
-        };
+        let mut object = this_iterator_helper_object(cx, this_value, "next")?;
 
         let is_start = match object.generator_state() {
             // Error if the "generator" is already executing
-            GeneratorState::Executing => return type_error(cx, "generator is already executing"),
+            GeneratorState::Executing => {
+                return type_error(
+                    cx,
+                    "%IteratorHelperPrototype%.next generator is already executing",
+                );
+            }
             // Error if the "generator" is already completed
             GeneratorState::Completed => {
                 return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
@@ -101,19 +98,16 @@ impl IteratorHelperPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let mut object = match validate_iterator_helper_object(this_value) {
-            None => {
-                return type_error(
-                    cx,
-                    "%IteratorHelperPrototype%.return called on a non-Iterator Helper object",
-                )
-            }
-            Some(object) => object,
-        };
+        let mut object = this_iterator_helper_object(cx, this_value, "return")?;
 
         match object.generator_state() {
             // Error if the "generator" is already executing
-            GeneratorState::Executing => return type_error(cx, "generator is already executing"),
+            GeneratorState::Executing => {
+                return type_error(
+                    cx,
+                    "%IteratorHelperPrototype%.return generator is already executing",
+                );
+            }
             // On completion set the "generator" to completed and return the done result
             GeneratorState::Completed => {
                 return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
@@ -137,10 +131,19 @@ impl IteratorHelperPrototype {
     }
 }
 
-fn validate_iterator_helper_object(value: Handle<Value>) -> Option<Handle<IteratorHelperObject>> {
-    if !value.is_object() {
-        return None;
+fn this_iterator_helper_object(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<IteratorHelperObject>> {
+    if value.is_object() {
+        if let Some(iterator_helper) = value.as_object().as_iterator_helper_object() {
+            return Ok(iterator_helper);
+        }
     }
 
-    value.as_object().as_iterator_helper_object()
+    type_error(
+        cx,
+        &format!("%IteratorHelperPrototype%.{method_name} must be called on an Iterator Helper"),
+    )
 }

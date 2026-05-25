@@ -100,11 +100,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.clear must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "clear")?;
 
         map.map_data().clear();
 
@@ -117,11 +113,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.delete must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "delete")?;
 
         let key = get_argument(cx, arguments, 0);
 
@@ -139,11 +131,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.entries must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "entries")?;
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::KeyAndValue)?.as_value())
     }
@@ -154,15 +142,11 @@ impl MapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.forEach must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "forEach")?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
-            return type_error(cx, "Map.prototype.forEach callback must be a function");
+            return type_error(cx, "Map.prototype.forEach argument must be a function");
         }
 
         let callback_function = callback_function.as_object();
@@ -191,11 +175,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.get must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "get")?;
 
         let key = get_argument(cx, arguments, 0);
 
@@ -214,11 +194,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.has must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "has")?;
 
         let key = get_argument(cx, arguments, 0);
 
@@ -234,11 +210,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.keys must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "keys")?;
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::Key)?.as_value())
     }
@@ -249,11 +221,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.set must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "set")?;
 
         let mut key = get_argument(cx, arguments, 0);
         let value = get_argument(cx, arguments, 1);
@@ -274,11 +242,7 @@ impl MapPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.size must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "size")?;
 
         Ok(Value::from(map.map_data().num_entries_occupied()).to_handle(cx))
     }
@@ -289,20 +253,22 @@ impl MapPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let map = if let Some(map) = this_map_value(this_value) {
-            map
-        } else {
-            return type_error(cx, "Map.prototype.values must be called on a Map");
-        };
+        let map = this_map_value(cx, this_value, "values")?;
 
         Ok(MapIterator::new(cx, map, MapIteratorKind::Value)?.as_value())
     }
 }
 
-fn this_map_value(value: Handle<Value>) -> Option<Handle<MapObject>> {
-    if !value.is_object() {
-        return None;
+fn this_map_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<MapObject>> {
+    if value.is_object() {
+        if let Some(map) = value.as_object().as_map_object() {
+            return Ok(map);
+        }
     }
 
-    value.as_object().as_map_object()
+    type_error(cx, &format!("Map.prototype.{} must be called on a Map", method_name))
 }

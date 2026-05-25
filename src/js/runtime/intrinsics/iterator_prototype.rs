@@ -163,17 +163,13 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.drop must be called on an object");
-        }
-
-        let iterator_object = this_value.as_object();
+        let this_object = this_object(cx, this_value, "drop")?;
 
         // Verify the limit is a number, closing the underlying iterator if not
         let num_limit_arg = get_argument(cx, arguments, 0);
         let num_limit = match to_number(cx, num_limit_arg) {
             Err(error) => {
-                return iterator_close(cx, iterator_object, Err(error));
+                return iterator_close(cx, this_object, Err(error));
             }
             Ok(num_limit) => num_limit,
         };
@@ -181,17 +177,17 @@ impl IteratorPrototype {
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
             let error = range_error_value(cx, "Iterator.prototype.drop limit is NaN")?;
-            return iterator_close(cx, iterator_object, eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
             let error = range_error_value(cx, "Iterator.prototype.drop limit is negative")?;
-            return iterator_close(cx, iterator_object, eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper drop object
-        let iterated = get_iterator_direct(cx, iterator_object)?;
+        let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_drop(cx, &iterated, integer_limit)?.as_value())
     }
 
@@ -201,20 +197,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.every must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "every")?;
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.every predicate must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut counter: u64 = 0;
         let mut counter_handle: Handle<Value> = Handle::empty(cx);
 
@@ -246,21 +240,19 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.filter must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "filter")?;
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.filter predicate must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
-        let iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_filter(cx, &iterated, predicate)?.as_value())
     }
 
@@ -270,20 +262,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.find must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "find")?;
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.find predicate must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut counter: u64 = 0;
         let mut counter_handle: Handle<Value> = Handle::empty(cx);
 
@@ -315,21 +305,19 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.flatMap must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "flatMap")?;
 
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.flatMap mapper must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
-        let iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_flat_map(cx, &iterated, mapper)?.as_value())
     }
 
@@ -339,20 +327,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.forEach must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "forEach")?;
 
         // Verify the callback argument is a function, closing the underlying iterator if not
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.forEach callback must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let callback = callback_arg.as_object();
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut counter: u64 = 0;
         let mut counter_handle: Handle<Value> = Handle::empty(cx);
 
@@ -381,20 +367,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.map must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "map")?;
 
         // Verify the mapper argument is a function, closing the underlying iterator if not
         let mapper_arg = get_argument(cx, arguments, 0);
         if !is_callable(mapper_arg) {
             let error = type_error_value(cx, "Iterator.prototype.map mapper must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let mapper = mapper_arg.as_object();
 
         // Get the underlying iterator and create a new iterator helper map object
-        let iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_map(cx, &iterated, mapper)?.as_value())
     }
 
@@ -404,20 +388,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.reduce must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "reduce")?;
 
         // Verify the callback argument is a function, closing the underlying iterator if not
         let callback_arg = get_argument(cx, arguments, 0);
         if !is_callable(callback_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.reduce callback must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let callback = callback_arg.as_object();
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
 
         let mut accumulator;
         let mut counter: u64;
@@ -468,20 +450,18 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.some must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "some")?;
 
         // Verify the predicate argument is a function, closing the underlying iterator if not
         let predicate_arg = get_argument(cx, arguments, 0);
         if !is_callable(predicate_arg) {
             let error =
                 type_error_value(cx, "Iterator.prototype.some predicate must be a function")?;
-            return iterator_close(cx, this_value.as_object(), eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
         let predicate = predicate_arg.as_object();
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut counter: u64 = 0;
         let mut counter_handle: Handle<Value> = Handle::empty(cx);
 
@@ -513,17 +493,13 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.take must be called on an object");
-        }
-
-        let iterator_object = this_value.as_object();
+        let this_object = this_object(cx, this_value, "take")?;
 
         // Verify the limit is a number, closing the underlying iterator if not
         let num_limit_arg = get_argument(cx, arguments, 0);
         let num_limit = match to_number(cx, num_limit_arg) {
             Err(error) => {
-                return iterator_close(cx, iterator_object, Err(error));
+                return iterator_close(cx, this_object, Err(error));
             }
             Ok(num_limit) => num_limit,
         };
@@ -531,17 +507,17 @@ impl IteratorPrototype {
         // Verify that the limit is not NaN or negative, closing the underlying iterator if it is
         if num_limit.is_nan() {
             let error = range_error_value(cx, "Iterator.prototype.take limit is NaN")?;
-            return iterator_close(cx, iterator_object, eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
 
         let integer_limit = must!(to_integer_or_infinity(cx, num_limit));
         if integer_limit < 0.0 {
             let error = range_error_value(cx, "Iterator.prototype.take limit is negative")?;
-            return iterator_close(cx, iterator_object, eval_err!(error));
+            return iterator_close(cx, this_object, eval_err!(error));
         }
 
         // Get the underlying iterator and create a new iterator helper take object
-        let iterated = get_iterator_direct(cx, iterator_object)?;
+        let iterated = get_iterator_direct(cx, this_object)?;
         Ok(IteratorHelperObject::new_take(cx, &iterated, integer_limit)?.as_value())
     }
 
@@ -551,11 +527,9 @@ impl IteratorPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "Iterator.prototype.toArray must be called on an object");
-        }
+        let this_object = this_object(cx, this_value, "toArray")?;
 
-        let mut iterated = get_iterator_direct(cx, this_value.as_object())?;
+        let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut items = vec![];
 
         // Collect all all items from the iterator until the iterator is done
@@ -595,4 +569,16 @@ impl IteratorPrototype {
 
         Ok(cx.undefined())
     }
+}
+
+fn this_object(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<ObjectValue>> {
+    if value.is_object() {
+        return Ok(value.as_object());
+    }
+
+    type_error(cx, &format!("Iterator.prototype.{method_name} must be called on an object"))
 }

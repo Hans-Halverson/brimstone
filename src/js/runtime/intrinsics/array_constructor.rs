@@ -82,7 +82,7 @@ impl ArrayConstructor {
                 let int_len = must!(to_uint32(cx, length));
 
                 if int_len as f64 != length.as_number() {
-                    return range_error(cx, "invalid array size");
+                    return range_error(cx, "Array constructor length is too large");
                 }
 
                 int_len
@@ -150,7 +150,7 @@ impl ArrayConstructor {
 
             iter_iterator_method_values(cx, items_arg, iterator, &mut |cx, value| {
                 if i >= MAX_SAFE_INTEGER_U64 {
-                    return Some(type_error(cx, "array is too large"));
+                    return Some(type_error(cx, "Array.from array is too large"));
                 }
 
                 let value = if let Some(map_function) = map_function {

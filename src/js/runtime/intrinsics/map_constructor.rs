@@ -78,7 +78,7 @@ impl MapConstructor {
 
         let adder = get(cx, map_object, cx.names.set_())?;
         if !is_callable(adder) {
-            return type_error(cx, "map must contain a set method");
+            return type_error(cx, "Map constructor result must have a `set` method");
         }
 
         add_entries_from_iterable(cx, map_object.into(), iterable, |cx, key, value| {

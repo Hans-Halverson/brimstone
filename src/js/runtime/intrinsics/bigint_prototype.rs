@@ -55,7 +55,7 @@ impl BigIntPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let bigint_value = this_bigint_value(cx, this_value)?;
+        let bigint_value = this_bigint_value(cx, this_value, "toString")?;
 
         let radix = get_argument(cx, arguments, 0);
         let radix = if radix.is_undefined() {
@@ -63,7 +63,10 @@ impl BigIntPrototype {
         } else {
             let radix_int = to_integer_or_infinity(cx, radix)?;
             if !(2.0..=36.0).contains(&radix_int) {
-                return range_error(cx, "radix must be an integer between 2 and 36");
+                return range_error(
+                    cx,
+                    "BigInt.prototype.toString radix must be an integer between 2 and 36",
+                );
             }
 
             radix_int as u32
@@ -80,11 +83,15 @@ impl BigIntPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        Ok(this_bigint_value(cx, this_value)?.into())
+        Ok(this_bigint_value(cx, this_value, "valueOf")?.into())
     }
 }
 
-fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<BigIntValue>> {
+fn this_bigint_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<BigIntValue>> {
     if value.is_bigint() {
         return Ok(value.as_bigint());
     }
@@ -96,5 +103,5 @@ fn this_bigint_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Big
         }
     }
 
-    type_error(cx, "value cannot be converted to BigInt")
+    type_error(cx, &format!("BigInt.prototype.{method_name} must be called on a BigInt"))
 }

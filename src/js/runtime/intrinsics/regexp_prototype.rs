@@ -194,11 +194,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let regexp_object = if let Some(regexp_object) = as_regexp_object(this_value) {
-            regexp_object
-        } else {
-            return type_error(cx, "RegExp.prototype.exec must be called on a RegExp");
-        };
+        let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.exec")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
@@ -212,7 +208,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::DOT_ALL)
+        regexp_has_flag(cx, this_value, RegExpFlags::DOT_ALL, "RegExp.prototype.dotAll")
     }
 
     /// get RegExp.prototype.flags (https://tc39.es/ecma262/#sec-get-regexp.prototype.flags)
@@ -221,11 +217,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "expected a RegExp");
-        }
-
-        let this_object = this_value.as_object();
+        let this_object = this_object(cx, this_value, "RegExp.prototype.flags")?;
 
         let mut flags_string = String::new();
 
@@ -284,7 +276,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::GLOBAL)
+        regexp_has_flag(cx, this_value, RegExpFlags::GLOBAL, "RegExp.prototype.global")
     }
 
     /// get RegExp.prototype.hasIndices (https://tc39.es/ecma262/#sec-get-regexp.prototype.hasIndices)
@@ -293,7 +285,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::HAS_INDICES)
+        regexp_has_flag(cx, this_value, RegExpFlags::HAS_INDICES, "RegExp.prototype.hasIndices")
     }
 
     /// get RegExp.prototype.ignoreCase (https://tc39.es/ecma262/#sec-get-regexp.prototype.ignorecase)
@@ -302,7 +294,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::IGNORE_CASE)
+        regexp_has_flag(cx, this_value, RegExpFlags::IGNORE_CASE, "RegExp.prototype.ignoreCase")
     }
 
     /// RegExp.prototype [ @@match ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.match%)
@@ -311,11 +303,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@match] must be called on an object");
-        }
-
-        let regexp_object = this_value.as_object();
+        let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@match]")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
@@ -328,7 +316,7 @@ impl RegExpPrototype {
             || flags_string_contains(flags_string, 'v' as u32)?;
 
         if !is_global {
-            return regexp_exec(cx, regexp_object, string_value);
+            return regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]");
         }
 
         let zero_value = cx.zero();
@@ -338,7 +326,7 @@ impl RegExpPrototype {
         let mut n = 0;
 
         loop {
-            let result = regexp_exec(cx, regexp_object, string_value)?;
+            let result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@match]")?;
             if result.is_null() {
                 if n == 0 {
                     return Ok(cx.null());
@@ -382,11 +370,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@matchAll] must be called on an object");
-        }
-
-        let regexp_object = this_value.as_object();
+        let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@matchAll]")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
@@ -418,7 +402,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE)
+        regexp_has_flag(cx, this_value, RegExpFlags::MULTILINE, "RegExp.prototype.multiline")
     }
 
     /// RegExp.prototype [ @@replace ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.replace%)
@@ -427,11 +411,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@replace] must be called on an object");
-        }
-
-        let regexp_object = this_value.as_object();
+        let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@replace]")?;
 
         let target_string_arg = get_argument(cx, arguments, 0);
         let target_string = to_string(cx, target_string_arg)?;
@@ -469,7 +449,8 @@ impl RegExpPrototype {
 
         loop {
             // Search target string, finding all matches if global
-            let exec_result = regexp_exec(cx, regexp_object, target_string)?;
+            let exec_result =
+                regexp_exec(cx, regexp_object, target_string, "RegExp.prototype[@@replace]")?;
             if exec_result.is_null() {
                 break;
             }
@@ -617,11 +598,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "RegExp.prototype[@@search] must be called on an object");
-        }
-
-        let regexp_object = this_value.as_object();
+        let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@search]")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
@@ -634,7 +611,7 @@ impl RegExpPrototype {
         }
 
         // Perform RegExp search
-        let result = regexp_exec(cx, regexp_object, string_value)?;
+        let result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype[@@search]")?;
 
         // Restore original last index
         let current_last_index = get(cx, regexp_object, cx.names.last_index())?;
@@ -667,7 +644,7 @@ impl RegExpPrototype {
             }
         }
 
-        type_error(cx, "expected a RegExp")
+        type_error(cx, "RegExp.prototype.source must be called on a RegExp")
     }
 
     /// RegExp.prototype [ @@split ] (https://tc39.es/ecma262/#sec-regexp.prototype-%symbol.split%)
@@ -676,11 +653,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let regexp_object = if this_value.is_object() {
-            this_value.as_object()
-        } else {
-            return type_error(cx, "RegExp.prototype[@@split] must be called on an object");
-        };
+        let regexp_object = this_object(cx, this_value, "RegExp.prototype[@@split]")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
@@ -726,7 +699,7 @@ impl RegExpPrototype {
 
         // Handle the empty string case
         if string_value.is_empty() {
-            let exec_result = regexp_exec(cx, splitter, string_value)?;
+            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
             if !exec_result.is_null() {
                 return Ok(result_array.as_value());
             }
@@ -750,7 +723,7 @@ impl RegExpPrototype {
             set(cx, splitter, cx.names.last_index(), q_value, true)?;
 
             // Execute RegExp at current index, advancing to next index if there is no match
-            let exec_result = regexp_exec(cx, splitter, string_value)?;
+            let exec_result = regexp_exec(cx, splitter, string_value, "RegExp.prototype[@@split]")?;
 
             if exec_result.is_null() {
                 q = advance_string_index(string_value, q, is_unicode)?;
@@ -817,7 +790,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::STICKY)
+        regexp_has_flag(cx, this_value, RegExpFlags::STICKY, "RegExp.prototype.sticky")
     }
 
     /// RegExp.prototype.test (https://tc39.es/ecma262/#sec-regexp.prototype.test)
@@ -826,16 +799,12 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let regexp_object = if this_value.is_object() {
-            this_value.as_object()
-        } else {
-            return type_error(cx, "RegExp.prototype.test must be called on an object");
-        };
+        let regexp_object = this_object(cx, this_value, "test")?;
 
         let string_arg = get_argument(cx, arguments, 0);
         let string_value = to_string(cx, string_arg)?;
 
-        let exec_result = regexp_exec(cx, regexp_object, string_value)?;
+        let exec_result = regexp_exec(cx, regexp_object, string_value, "RegExp.prototype.test")?;
 
         Ok(cx.bool(!exec_result.is_null()))
     }
@@ -846,11 +815,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !this_value.is_object() {
-            return type_error(cx, "expected a RegExp");
-        }
-
-        let this_object = this_value.as_object();
+        let this_object = this_object(cx, this_value, "toString")?;
 
         let pattern_value = get(cx, this_object, cx.names.source())?;
         let pattern_string = to_string(cx, pattern_value)?;
@@ -874,7 +839,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE)
+        regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_AWARE, "RegExp.prototype.unicode")
     }
 
     /// get RegExp.prototype.unicodeSets (https://tc39.es/ecma262/#sec-get-regexp.prototype.unicodesets)
@@ -883,7 +848,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_SETS)
+        regexp_has_flag(cx, this_value, RegExpFlags::UNICODE_SETS, "RegExp.prototype.unicodeSets")
     }
 
     /// RegExp.prototype.compile (https://tc39.es/ecma262/#sec-regexp.prototype.compile)
@@ -892,11 +857,7 @@ impl RegExpPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let regexp_object = if let Some(regexp_object) = as_regexp_object(this_value) {
-            regexp_object
-        } else {
-            return type_error(cx, "RegExp.prototype.compile must be called on a RegExp");
-        };
+        let regexp_object = this_regexp_object(cx, this_value, "RegExp.prototype.compile")?;
 
         let pattern_arg = get_argument(cx, arguments, 0);
         let flags_arg = get_argument(cx, arguments, 1);
@@ -918,11 +879,38 @@ impl RegExpPrototype {
     }
 }
 
+fn this_object(
+    cx: Context,
+    this_value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<ObjectValue>> {
+    if this_value.is_object() {
+        return Ok(this_value.as_object());
+    }
+
+    type_error(cx, &format!("{method_name} must be called on an object"))
+}
+
+fn this_regexp_object(
+    cx: Context,
+    this_value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<RegExpObject>> {
+    if this_value.is_object() {
+        if let Some(regexp_object) = this_value.as_object().as_regexp_object() {
+            return Ok(regexp_object);
+        }
+    }
+
+    type_error(cx, &format!("{method_name} must be called on a RegExp"))
+}
+
 /// RegExpHasFlag (https://tc39.es/ecma262/#sec-regexphasflag)
 fn regexp_has_flag(
     cx: Context,
     this_value: Handle<Value>,
     flag: RegExpFlags,
+    method_name: &str,
 ) -> EvalResult<Handle<Value>> {
     if this_value.is_object() {
         let this_object = this_value.as_object();
@@ -935,7 +923,7 @@ fn regexp_has_flag(
         }
     }
 
-    type_error(cx, "expected a RegExp")
+    type_error(cx, &format!("{method_name} must be called on a RegExp"))
 }
 
 pub fn flags_string_contains(
@@ -950,20 +938,21 @@ pub fn regexp_exec(
     cx: Context,
     regexp_object: Handle<ObjectValue>,
     string_value: Handle<StringValue>,
+    method_name: &str,
 ) -> EvalResult<Handle<Value>> {
     let exec = get(cx, regexp_object, cx.names.exec())?;
 
     if is_callable(exec) {
         let exec_result = call(cx, exec, regexp_object.into(), &[string_value.into()])?;
         if !exec_result.is_null() && !exec_result.is_object() {
-            return type_error(cx, "regular expression exec must return null or an object");
+            return type_error(cx, &format!("{method_name} `exec` must return null or an object"));
         }
 
         return Ok(exec_result);
     }
 
     if !regexp_object.is_regexp_object() {
-        return type_error(cx, "expected a RegExp");
+        return type_error(cx, &format!("{method_name} must be called on a RegExp"));
     }
 
     regexp_builtin_exec(cx, regexp_object.cast::<RegExpObject>(), string_value)

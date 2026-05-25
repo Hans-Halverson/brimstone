@@ -180,16 +180,11 @@ impl WrapForValidIteratorPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        // Check if called on a WrappedIteratorObject
-        if this_value.is_object() {
-            if let Some(wrapper) = this_value.as_object().as_wrapped_valid_iterator_object() {
-                // Call the wrapped iterator's next method
-                let iterator = wrapper.iterator().as_value();
-                return call(cx, wrapper.next_method(cx), iterator, &[]);
-            }
-        }
+        let wrapper = this_wrapped_valid_iterator_object(cx, this_value, "next")?;
 
-        type_error(cx, "%WrappedValidIterator%.prototype.next called on incompatible object")
+        // Call the wrapped iterator's next method
+        let iterator = wrapper.iterator().as_value();
+        call(cx, wrapper.next_method(cx), iterator, &[])
     }
 
     /// %WrapForValidIteratorPrototype%.next (https://tc39.es/ecma262/#sec-%wrapforvaliditeratorprototype%.next)
@@ -198,18 +193,33 @@ impl WrapForValidIteratorPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        // Check if called on a WrappedIteratorObject
-        if this_value.is_object() {
-            if let Some(wrapper) = this_value.as_object().as_wrapped_valid_iterator_object() {
-                // Call the wrapped iterator's return method if one exists
-                let iterator = wrapper.iterator().as_value();
-                return match get_method(cx, iterator, cx.names.return_())? {
-                    None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
-                    Some(return_) => call_object(cx, return_, iterator, &[]),
-                };
-            }
-        }
+        let wrapper = this_wrapped_valid_iterator_object(cx, this_value, "return")?;
 
-        type_error(cx, "%WrappedValidIterator%.prototype.return called on incompatible object")
+        // Call the wrapped iterator's return method if one exists
+        let iterator = wrapper.iterator().as_value();
+
+        match get_method(cx, iterator, cx.names.return_())? {
+            None => Ok(create_iter_result_object(cx, cx.undefined(), true)?),
+            Some(return_) => call_object(cx, return_, iterator, &[]),
+        }
     }
+}
+
+fn this_wrapped_valid_iterator_object(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<WrappedValidIterator>> {
+    if value.is_object() {
+        if let Some(wrapper) = value.as_object().as_wrapped_valid_iterator_object() {
+            return Ok(wrapper);
+        }
+    }
+
+    type_error(
+        cx,
+        &format!(
+            "%WrappedValidIterator%.prototype.{method_name} must be called on a WrappedValidIterator"
+        ),
+    )
 }

@@ -142,6 +142,7 @@ impl PromiseConstructor {
         cx: Context,
         constructor: Handle<Value>,
         iterable: Handle<Value>,
+        method_name: &str,
         mut f: impl FnMut(
             Context,
             &mut Iterator,
@@ -153,7 +154,7 @@ impl PromiseConstructor {
         let capability = PromiseCapability::new(cx, constructor)?;
         let constructor = constructor.as_object();
 
-        let resolve_completion = get_promise_resolve(cx, constructor);
+        let resolve_completion = get_promise_resolve(cx, constructor, method_name);
         let resolve = if_abrupt_reject_promise!(cx, resolve_completion, capability);
 
         let iterator_completion = get_iterator(cx, iterable, IteratorHint::Sync, None);
@@ -274,7 +275,7 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
-        Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all)
+        Self::collect_iterable_promises(cx, this_value, iterable, "all", Self::perform_promise_all)
     }
 
     /// PerformPromiseAll (https://tc39.es/ecma262/#sec-performpromiseall)
@@ -381,7 +382,13 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
-        Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_all_settled)
+        Self::collect_iterable_promises(
+            cx,
+            this_value,
+            iterable,
+            "allSettled",
+            Self::perform_promise_all_settled,
+        )
     }
 
     /// Promise.allSettled (https://tc39.es/ecma262/#sec-performpromiseallsettled)
@@ -581,7 +588,7 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
-        Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_any)
+        Self::collect_iterable_promises(cx, this_value, iterable, "any", Self::perform_promise_any)
     }
 
     /// PerformPromiseAny (https://tc39.es/ecma262/#sec-performpromiseany)
@@ -691,7 +698,13 @@ impl PromiseConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let iterable = get_argument(cx, arguments, 0);
-        Self::collect_iterable_promises(cx, this_value, iterable, Self::perform_promise_race)
+        Self::collect_iterable_promises(
+            cx,
+            this_value,
+            iterable,
+            "race",
+            Self::perform_promise_race,
+        )
     }
 
     /// PerformPromiseRace (https://tc39.es/ecma262/#sec-performpromiserace)
@@ -903,10 +916,14 @@ pub fn reject_builtin_function(
 fn get_promise_resolve(
     cx: Context,
     constructor: Handle<ObjectValue>,
+    method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
     let resolve = get(cx, constructor, cx.names.resolve())?;
     if !is_callable(resolve) {
-        return type_error(cx, "`resolve` property must be a function");
+        return type_error(
+            cx,
+            &format!("Promise.{method_name} must be called on an object with a `resolve` method"),
+        );
     }
 
     Ok(resolve.as_object())

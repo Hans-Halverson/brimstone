@@ -392,7 +392,7 @@ impl ArrayPrototype {
             let length = length_of_array_like(cx, element)?;
 
             if *n + length > MAX_SAFE_INTEGER_U64 {
-                return type_error(cx, "array is too large");
+                return type_error(cx, "Array.prototype.concat array is too large");
             }
 
             // Property key is shared between iterations
@@ -415,7 +415,7 @@ impl ArrayPrototype {
             }
         } else {
             if *n >= MAX_SAFE_INTEGER_U64 {
-                return type_error(cx, "array is too large");
+                return type_error(cx, "Array.prototype.concat array is too large");
             }
 
             let index_key = PropertyKey::from_u64_handle(cx, *n)?;
@@ -803,7 +803,17 @@ impl ArrayPrototype {
 
         let array = array_species_create(cx, object, 0)?;
 
-        Self::flatten_into_array(cx, array, object, length, 0, depth, None, cx.undefined())?;
+        Self::flatten_into_array(
+            cx,
+            array,
+            object,
+            length,
+            0,
+            depth,
+            None,
+            cx.undefined(),
+            "flat",
+        )?;
 
         Ok(array.as_value())
     }
@@ -818,6 +828,7 @@ impl ArrayPrototype {
         depth: f64,
         mapper_function: Option<Handle<Value>>,
         this_arg: Handle<Value>,
+        method_name: &str,
     ) -> EvalResult<u64> {
         let mut target_index = start;
 
@@ -861,10 +872,14 @@ impl ArrayPrototype {
                         new_depth,
                         None,
                         this_arg,
+                        method_name,
                     )?;
                 } else {
                     if target_index >= MAX_SAFE_INTEGER_U64 {
-                        return type_error(cx, "array is too large");
+                        return type_error(
+                            cx,
+                            &format!("Array.prototype.{method_name} array is too large"),
+                        );
                     }
 
                     target_key.replace(PropertyKey::from_u64(cx, target_index)?);
@@ -905,6 +920,7 @@ impl ArrayPrototype {
             1.0,
             Some(mapper_function),
             this_arg,
+            "flatMap",
         )?;
 
         Ok(array.as_value())
@@ -1213,7 +1229,7 @@ impl ArrayPrototype {
 
         let new_length = length + arguments.len() as u64;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error(cx, "index is too large");
+            return type_error(cx, "Array.prototype.push array is too large");
         }
 
         // Property key is shared between iterations
@@ -1250,7 +1266,7 @@ impl ArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error(cx, "reduce does not have initial value");
+            return type_error(cx, "Array.prototype.reduce does not have an initial value");
         } else {
             // Property key is shared between iterations
             let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -1258,7 +1274,10 @@ impl ArrayPrototype {
             // Find the first value in the array if an initial value was not specified
             loop {
                 if initial_index >= length {
-                    return type_error(cx, "reduce of empty array with no initial value");
+                    return type_error(
+                        cx,
+                        "Array.prototype.reduce of empty array with no initial value",
+                    );
                 }
 
                 index_key.replace(PropertyKey::from_u64(cx, initial_index)?);
@@ -1309,14 +1328,17 @@ impl ArrayPrototype {
         let mut accumulator = if arguments.len() >= 2 {
             get_argument(cx, arguments, 1)
         } else if length == 0 {
-            return type_error(cx, "reduceRight does not have initial value");
+            return type_error(cx, "Array.prototype.reduceRight does not have an initial value");
         } else {
             let mut index_key = PropertyKey::uninit().to_handle(cx);
 
             // Find the first value in the array if an initial value was not specified
             loop {
                 if initial_index < 0 {
-                    return type_error(cx, "reduce of empty array with no initial value");
+                    return type_error(
+                        cx,
+                        "Array.prototype.reduceRight of empty array with no initial value",
+                    );
                 }
 
                 index_key.replace(PropertyKey::from_u64(cx, initial_index as u64)?);
@@ -1627,7 +1649,7 @@ impl ArrayPrototype {
 
         let new_length = length + insert_count - actual_delete_count;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error(cx, "array is too large");
+            return type_error(cx, "Array.prototype.splice array is too large");
         }
 
         // Create array containing deleted elements, which will be return value
@@ -1826,7 +1848,7 @@ impl ArrayPrototype {
         // Determine length of new array and make sure it is in range
         let new_length = length + insert_count - actual_skip_count;
         if new_length > MAX_SAFE_INTEGER_U64 {
-            return type_error(cx, "TypedArray.prototype.toSpliced result array is too large");
+            return type_error(cx, "Array.prototype.toSpliced array is too large");
         }
 
         let array = array_create(cx, new_length, None)?;
@@ -1890,7 +1912,7 @@ impl ArrayPrototype {
         let num_arguments = arguments.len() as u64;
         if num_arguments > 0 {
             if length + num_arguments > MAX_SAFE_INTEGER_U64 {
-                return type_error(cx, "array is too large");
+                return type_error(cx, "Array.prototype.unshift array is too large");
             }
 
             // Shared between iterations

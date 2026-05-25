@@ -151,7 +151,10 @@ impl ArrayBufferPrototype {
         let max_byte_length = if let Some(max_byte_length) = array_buffer.max_byte_length() {
             max_byte_length
         } else {
-            return type_error(cx, "array buffer is not resizable");
+            return type_error(
+                cx,
+                "ArrayBuffer.prototype.resize cannot be used on a fixed-length ArrayBuffer",
+            );
         };
 
         let new_length_arg = get_argument(cx, arguments, 0);
@@ -160,7 +163,10 @@ impl ArrayBufferPrototype {
         throw_if_detached(cx, *array_buffer)?;
 
         if new_byte_length > max_byte_length {
-            return range_error(cx, "new length exceeds max byte length");
+            return range_error(
+                cx,
+                "ArrayBuffer.prototype.resize new length exceeds max byte length",
+            );
         }
 
         // Create new data block with copy of old data at start
@@ -246,18 +252,26 @@ impl ArrayBufferPrototype {
         // Check type of object returned from constructor
         let mut new_array_buffer = if let Some(array_buffer) = new_object.as_array_buffer() {
             array_buffer
-        } else if new_object.is_shared_array_buffer() {
-            return type_error(cx, "constructor cannot return SharedArrayBuffer");
         } else {
-            return type_error(cx, "expected an ArrayBuffer");
+            // Includes case where constructor returns a shared array buffer
+            return type_error(
+                cx,
+                "ArrayBuffer.prototype.slice species constructor must return an ArrayBuffer",
+            );
         };
 
         throw_if_detached(cx, *new_array_buffer)?;
 
         if new_array_buffer.ptr_eq(&array_buffer) {
-            return type_error(cx, "constructor cannot return same array buffer");
+            return type_error(
+                cx,
+                "ArrayBuffer.prototype.slice species constructor cannot return the same ArrayBuffer",
+            );
         } else if (new_array_buffer.byte_length() as u64) < new_length {
-            return type_error(cx, "new array buffer is too small");
+            return type_error(
+                cx,
+                "ArrayBuffer.prototype.slice species constructor returned an ArrayBuffer that is too small",
+            );
         }
 
         // Original array buffer may have become detached during previous calls

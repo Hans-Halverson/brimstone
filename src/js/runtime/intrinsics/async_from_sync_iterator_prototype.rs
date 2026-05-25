@@ -177,7 +177,10 @@ impl AsyncFromSyncIteratorPrototype {
         // Return result must be an object
         let return_result = if_abrupt_reject_promise!(cx, return_result_completion, capability);
         if !return_result.is_object() {
-            let error = type_error_value(cx, "return method must return an object")?;
+            let error = type_error_value(
+                cx,
+                "AsyncFromSyncIterator.prototype.return method must return an object",
+            )?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -214,7 +217,10 @@ impl AsyncFromSyncIteratorPrototype {
             if_abrupt_reject_promise!(cx, close_result, capability);
 
             // Reject the promise with a new TypeError
-            let error = type_error_value(cx, "throw method is not present")?;
+            let error = type_error_value(
+                cx,
+                "AsyncFromSyncIterator.prototype.throw method is not present",
+            )?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());
@@ -232,7 +238,10 @@ impl AsyncFromSyncIteratorPrototype {
         // Throw result must be an object
         let throw_result = if_abrupt_reject_promise!(cx, throw_result_completion, capability);
         if !throw_result.is_object() {
-            let error = type_error_value(cx, "throw method must return an object")?;
+            let error = type_error_value(
+                cx,
+                "AsyncFromSyncIterator.prototype.throw method must return an object",
+            )?;
             must!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
 
             return Ok(capability.promise().as_value());

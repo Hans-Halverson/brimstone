@@ -49,7 +49,7 @@ impl ProxyConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_none() {
-            return type_error(cx, "Proxy is a constructor");
+            return type_error(cx, "Proxy constructor must be called with new");
         }
 
         let target = get_argument(cx, arguments, 0);

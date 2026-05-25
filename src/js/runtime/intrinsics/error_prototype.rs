@@ -49,7 +49,7 @@ impl ErrorPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "expected an object");
+            return type_error(cx, "Error.prototype.toString must be called on an object");
         }
 
         let this_object = this_value.as_object();

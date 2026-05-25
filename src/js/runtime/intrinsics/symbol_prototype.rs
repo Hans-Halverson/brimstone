@@ -71,7 +71,7 @@ impl SymbolPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = this_symbol_value(cx, this_value)?;
+        let symbol_value = this_symbol_value(cx, this_value, "description")?;
         match symbol_value.as_symbol().description() {
             None => Ok(cx.undefined()),
             Some(desc) => Ok(desc.as_value()),
@@ -84,7 +84,7 @@ impl SymbolPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let symbol_value = this_symbol_value(cx, this_value)?;
+        let symbol_value = this_symbol_value(cx, this_value, "toString")?;
         Ok(symbol_descriptive_string(cx, symbol_value.as_symbol())?.as_value())
     }
 
@@ -94,11 +94,15 @@ impl SymbolPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        this_symbol_value(cx, this_value)
+        this_symbol_value(cx, this_value, "valueOf")
     }
 }
 
-fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
+fn this_symbol_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<Value>> {
     if value.is_symbol() {
         return Ok(value);
     }
@@ -110,7 +114,7 @@ fn this_symbol_value(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Val
         }
     }
 
-    type_error(cx, "value cannot be converted to symbol")
+    type_error(cx, &format!("Symbol.prototype.{} must be called on a symbol", method_name))
 }
 
 /// SymbolDescriptiveString (https://tc39.es/ecma262/#sec-symboldescriptivestring)

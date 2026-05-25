@@ -56,7 +56,7 @@ impl SetConstructor {
 
         let adder = get(cx, set_object, cx.names.add())?;
         if !is_callable(adder) {
-            return type_error(cx, "set must contain an add method");
+            return type_error(cx, "Set constructor result must have an `add` method");
         }
 
         let adder = adder.as_object();

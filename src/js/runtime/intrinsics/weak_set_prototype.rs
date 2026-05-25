@@ -55,15 +55,14 @@ impl WeakSetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
-            weak_set_object
-        } else {
-            return type_error(cx, "WeakSet.prototype.add must be called on a WeakSet");
-        };
+        let weak_set_object = this_weak_set_value(cx, this_value, "add")?;
 
         let value = get_argument(cx, arguments, 0);
         if !can_be_held_weakly(cx, *value) {
-            return type_error(cx, "WeakSet only holds objects and symbols");
+            return type_error(
+                cx,
+                "WeakSet.prototype.add argument must be an object or an unregistered symbol",
+            );
         }
 
         weak_set_object.insert(cx, value)?;
@@ -77,11 +76,7 @@ impl WeakSetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
-            weak_set_object
-        } else {
-            return type_error(cx, "WeakSet.prototype.delete must be called on a WeakSet");
-        };
+        let weak_set_object = this_weak_set_value(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
         let value = get_argument(cx, arguments, 0);
@@ -100,11 +95,7 @@ impl WeakSetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_set_object = if let Some(weak_set_object) = this_weak_set_value(this_value) {
-            weak_set_object
-        } else {
-            return type_error(cx, "WeakSet.prototype.has must be called on a WeakSet");
-        };
+        let weak_set_object = this_weak_set_value(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value set
         let value = get_argument(cx, arguments, 0);
@@ -118,10 +109,16 @@ impl WeakSetPrototype {
     }
 }
 
-fn this_weak_set_value(value: Handle<Value>) -> Option<Handle<WeakSetObject>> {
-    if !value.is_object() {
-        return None;
+fn this_weak_set_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<WeakSetObject>> {
+    if value.is_object() {
+        if let Some(weak_set_object) = value.as_object().as_weak_set_object() {
+            return Ok(weak_set_object);
+        }
     }
 
-    value.as_object().as_weak_set_object()
+    type_error(cx, &format!("WeakSet.prototype.{} must be called on a WeakSet", method_name))
 }

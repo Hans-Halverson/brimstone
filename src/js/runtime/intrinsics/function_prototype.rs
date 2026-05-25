@@ -2,7 +2,8 @@ use crate::{
     must,
     runtime::{
         abstract_operations::{
-            call_object, create_list_from_array_like, has_own_property, ordinary_has_instance,
+            call_object, create_list_from_array_like_arguments, has_own_property,
+            ordinary_has_instance,
         },
         alloc_error::AllocResult,
         bound_function_object::BoundFunctionObject,
@@ -134,7 +135,8 @@ impl FunctionPrototype {
         if arg_array.is_nullish() {
             call_object(cx, this_function, this_arg, &[])
         } else {
-            let arg_list = create_list_from_array_like(cx, arg_array)?;
+            let arg_list =
+                create_list_from_array_like_arguments(cx, arg_array, "Function.prototype.apply")?;
             call_object(cx, this_function, this_arg, &arg_list)
         }
     }

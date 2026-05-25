@@ -1067,6 +1067,11 @@ impl<'a> Lexer<'a> {
 
                         self.eat('\n');
                     }
+                    // EOF directly after backslash
+                    EOF_CHAR => {
+                        let loc = self.mark_loc(self.pos);
+                        return self.error(loc, ParseError::UnterminatedStringLiteral);
+                    }
                     // Non-escape character, use character directly
                     other => {
                         if is_ascii(other) {
@@ -1383,6 +1388,11 @@ impl<'a> Lexer<'a> {
 
                         self.eat('\n');
                     }
+                    // EOF directly after backslash
+                    EOF_CHAR => {
+                        let loc = self.mark_loc(self.pos);
+                        return self.error(loc, ParseError::UnterminatedTemplateLiteral);
+                    }
                     // Non-escape character, use character directly
                     other => {
                         if is_ascii(other) {
@@ -1432,6 +1442,10 @@ impl<'a> Lexer<'a> {
                     value.push_char('\n');
 
                     self.eat('\n');
+                }
+                EOF_CHAR => {
+                    let loc = self.mark_loc(self.pos);
+                    return self.error(loc, ParseError::UnterminatedTemplateLiteral);
                 }
                 _ => value.push(self.lex_ascii_or_unicode_character()?),
             })
@@ -1684,7 +1698,7 @@ impl<'a> Lexer<'a> {
         // Must start with an identifier start code point. Fast path for ASCII-only identifiers.
         let (token, loc) = if is_id_start_ascii(self.current) {
             self.lex_identifier_ascii(start_pos)?
-        } else {
+        } else if self.current != EOF_CHAR {
             // Otherwise starts with either a unicode code point or an escape sequence
             let start_code_point = if self.current == '\\' as u32 {
                 self.lex_identifier_unicode_escape_sequence()?
@@ -1702,6 +1716,10 @@ impl<'a> Lexer<'a> {
                 let loc = self.mark_loc(start_pos);
                 return self.error(loc, ParseError::HashNotFollowedByIdentifier);
             }
+        } else {
+            // Hash followed by EOF
+            let loc = self.mark_loc(start_pos);
+            return self.error(loc, ParseError::HashNotFollowedByIdentifier);
         };
 
         let Token::Identifier(id) = token else {

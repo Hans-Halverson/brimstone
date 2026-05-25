@@ -277,12 +277,19 @@ impl ArrayBufferPrototype {
         // Original array buffer may have become detached during previous calls
         throw_if_detached(cx, *array_buffer)?;
 
-        // Copy data from original array buffer to new array buffer
-        unsafe {
-            let source = array_buffer.data().as_ptr().add(start_index as usize);
-            let target = new_array_buffer.data().as_mut_ptr();
+        // Original array buffer may have become resized during previous calls. Make sure to adjust
+        // copied length accordingly.
+        let current_length = array_buffer.byte_length() as u64;
+        if start_index < current_length {
+            let copied_length = u64::min(new_length, current_length - start_index);
 
-            std::ptr::copy_nonoverlapping(source, target, new_length as usize)
+            // Copy data from original array buffer to new array buffer
+            unsafe {
+                let source = array_buffer.data().as_ptr().add(start_index as usize);
+                let target = new_array_buffer.data().as_mut_ptr();
+
+                std::ptr::copy_nonoverlapping(source, target, copied_length as usize);
+            }
         }
 
         Ok(new_array_buffer.as_value())

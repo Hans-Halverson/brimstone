@@ -1,6 +1,10 @@
 use std::{collections::HashSet, mem::size_of};
 
-use crate::{extend_object, must, runtime::alloc_error::AllocResult, set_uninit};
+use crate::{
+    extend_object, must,
+    runtime::{alloc_error::AllocResult, error::range_error},
+    set_uninit,
+};
 
 use super::{
     abstract_operations::{
@@ -460,6 +464,13 @@ impl VirtualObject for Handle<ProxyObject> {
 
         let trap_result_object = trap_result.as_object();
         let length = length_of_array_like(cx, trap_result_object)?;
+
+        // Cap own keys length so that we don't allocate too large of a rust vec
+        const MAX_OWN_KEYS: usize = 1 << 20;
+
+        if length as usize >= MAX_OWN_KEYS {
+            return range_error(cx, "proxy `ownKeys` result exceeds maximum allowed length");
+        }
 
         let mut trap_result_keys = Vec::with_capacity(length as usize);
         let mut unchecked_result_keys = HashSet::new();

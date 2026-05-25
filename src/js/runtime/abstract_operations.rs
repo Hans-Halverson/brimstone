@@ -4,6 +4,7 @@ use crate::{
     must, must_a,
     runtime::{
         alloc_error::AllocResult,
+        error::range_error,
         iterator::iter_iterator_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         type_utilities::{same_value_zero, to_property_key},
@@ -302,10 +303,15 @@ pub fn length_of_array_like(cx: Context, object: Handle<ObjectValue>) -> EvalRes
     to_length(cx, length_value)
 }
 
+/// Cap number of elements that can be created from an array-like object so that we don't allocate
+/// too large of a rust vec.
+const MAX_ARRAY_LIKE_LENGTH: usize = 2 << 16;
+
 /// CreateListFromArrayLike (https://tc39.es/ecma262/#sec-createlistfromarraylike)
-pub fn create_list_from_array_like(
+pub fn create_list_from_array_like_arguments(
     cx: Context,
     object: Handle<Value>,
+    method_name: &str,
 ) -> EvalResult<Vec<Handle<Value>>> {
     if !object.is_object() {
         return type_error(cx, "expected an object");
@@ -313,6 +319,10 @@ pub fn create_list_from_array_like(
 
     let object = object.as_object();
     let length = length_of_array_like(cx, object)?;
+
+    if length > MAX_ARRAY_LIKE_LENGTH as u64 {
+        return range_error(cx, &format!("{} arguments list is too large", method_name));
+    }
 
     let mut vec = Vec::with_capacity(length as usize);
 

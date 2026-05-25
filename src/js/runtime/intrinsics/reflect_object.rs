@@ -1,5 +1,5 @@
 use crate::runtime::{
-    abstract_operations::{call_object, construct, create_list_from_array_like},
+    abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
     alloc_error::AllocResult,
     array_object::create_array_from_list,
     error::type_error,
@@ -123,7 +123,8 @@ impl ReflectObject {
 
         let this_argument = get_argument(cx, arguments, 1);
         let arguments_arg = get_argument(cx, arguments, 2);
-        let arguments_list = create_list_from_array_like(cx, arguments_arg)?;
+        let arguments_list =
+            create_list_from_array_like_arguments(cx, arguments_arg, "Reflect.apply")?;
 
         call_object(cx, target.as_object(), this_argument, &arguments_list)
     }
@@ -153,7 +154,8 @@ impl ReflectObject {
         };
 
         let arguments_arg = get_argument(cx, arguments, 1);
-        let arguments_list = create_list_from_array_like(cx, arguments_arg)?;
+        let arguments_list =
+            create_list_from_array_like_arguments(cx, arguments_arg, "Reflect.construct")?;
 
         Ok(construct(cx, target, &arguments_list, Some(new_target))?.as_value())
     }

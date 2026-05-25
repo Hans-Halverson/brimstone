@@ -217,6 +217,13 @@ impl<W: Width> Register<W> {
     pub fn local_index(&self) -> usize {
         decode_local_register(self.value().to_isize())
     }
+
+    #[inline]
+    pub fn to_extra_wide(self) -> Register<ExtraWide> {
+        Register::<ExtraWide>::from_signed(<ExtraWide as Width>::SInt::from_isize(
+            self.value().to_isize(),
+        ))
+    }
 }
 
 #[inline]

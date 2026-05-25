@@ -397,17 +397,11 @@ impl VM {
         stack_frame.set_return_value_address((&mut return_value) as *mut Value);
 
         // Write the resumed value to the yield completion registers if necessary
-        if let Some((completion_value_index, completion_type_index)) =
-            generator.completion_indices()
+        if let Some((completion_value_register, completion_type_register)) =
+            generator.completion_registers()
         {
-            self.write_register(
-                Register::<ExtraWide>::local(completion_value_index as usize),
-                *completion_value,
-            );
-            self.write_register(
-                Register::<ExtraWide>::local(completion_type_index as usize),
-                completion_type.to_value(),
-            )
+            self.write_register(completion_value_register, *completion_value);
+            self.write_register(completion_type_register, completion_type.to_value());
         }
 
         // Restore the PC, which was stored as an offset into the BytecodeFunction
@@ -522,8 +516,8 @@ impl VM {
 
                     let generator_object = self.read_register(instr.generator()).as_object();
                     let yield_value = self.read_register(instr.yield_value());
-                    let completion_value_index = instr.completion_value_dest().local_index() as u32;
-                    let completion_type_index = instr.completion_type_dest().local_index() as u32;
+                    let completion_value_register = instr.completion_value_dest().to_extra_wide();
+                    let completion_type_register = instr.completion_type_dest().to_extra_wide();
 
                     // Set the PC to the next instruction to execute
                     self.set_pc_after(instr);
@@ -535,7 +529,7 @@ impl VM {
                         // Save the stack frame and PC to resume in the generator object
                         generator.suspend(
                             pc_to_resume_offset,
-                            (completion_value_index, completion_type_index),
+                            (completion_value_register, completion_type_register),
                             self.stack_frame().as_slice(),
                         );
 
@@ -560,11 +554,11 @@ impl VM {
                             // If there is a pending request then immediately continue with the
                             // completion contained inside it.
                             self.write_register(
-                                Register::<ExtraWide>::local(completion_value_index as usize),
+                                completion_value_register,
                                 request.completion_value(),
                             );
                             self.write_register(
-                                Register::<ExtraWide>::local(completion_type_index as usize),
+                                completion_type_register,
                                 request.completion_type().to_value(),
                             )
                         } else {
@@ -572,7 +566,7 @@ impl VM {
                             // Generator will be resumed with the completion set.
                             async_generator.suspend_yield(
                                 pc_to_resume_offset,
-                                (completion_value_index, completion_type_index),
+                                (completion_value_register, completion_type_register),
                                 self.stack_frame().as_slice(),
                             );
 
@@ -592,8 +586,8 @@ impl VM {
                     let return_promise_or_generator =
                         self.read_register_to_handle(instr.return_promise_or_generator());
                     let argument_promise = self.read_register_to_handle(instr.argument_promise());
-                    let completion_value_index = instr.completion_value_dest().local_index() as u32;
-                    let completion_type_index = instr.completion_type_dest().local_index() as u32;
+                    let completion_value_register = instr.completion_value_dest().to_extra_wide();
+                    let completion_type_register = instr.completion_type_dest().to_extra_wide();
 
                     // Set the PC to the next instruction to execute
                     self.set_pc_after(instr);
@@ -612,7 +606,7 @@ impl VM {
                             self.cx(),
                             pc_to_resume_offset,
                             fp_index,
-                            (completion_value_index, completion_type_index),
+                            (completion_value_register, completion_type_register),
                             self.stack_frame().as_slice(),
                         ))
                         .to_handle();
@@ -631,7 +625,7 @@ impl VM {
                         // Save the stack frame's state in the async generator object
                         async_generator.suspend_await(
                             pc_to_resume_offset,
-                            (completion_value_index, completion_type_index),
+                            (completion_value_register, completion_type_register),
                             self.stack_frame().as_slice(),
                         );
                         maybe_throw_a!(

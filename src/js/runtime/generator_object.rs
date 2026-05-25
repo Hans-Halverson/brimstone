@@ -18,11 +18,16 @@ use super::{
     bytecode::{
         function::Closure,
         stack_frame::{StackFrame, StackSlotValue},
+        ExtraWide, Register,
     },
     collections::InlineArray,
     error::type_error,
     Value,
 };
+
+/// A register within a suspended generator's stack frame. Stored as an ExtraWide register so
+/// that all sizes of registers can be handled.
+pub type GeneratorRegister = Register<ExtraWide>;
 
 // A generator object represents the state of a generator function. It holds the saved stack frame
 // of the generator function, which is restored when the generator is resumed.
@@ -35,13 +40,13 @@ extend_object! {
         pc_to_resume_offset: usize,
         // Index of the frame pointer in the stack frame.
         fp_index: usize,
-        // Indices of registers for the completion operands to return when the generator is resumed.
-        // The value is written to the first register and the completion type is written to the
-        // second register.
+        // Registers for the completion operands to return when the generator is resumed. The value
+        // is written to the first register and the completion type is written to the second
+        // register.
         //
         // For a generator the value is from Generator.prototype.{next, return, throw}.
         // For an async function the value is from resolve or reject.
-        completion_indices: Option<(u32, u32)>,
+        completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
         // The stack frame of the generator, containing all args, locals, and fixed slots in
         // between.
         stack_frame: InlineArray<StackSlotValue>,
@@ -96,7 +101,7 @@ pub trait TGeneratorObject {
 
     fn fp_index(&self) -> usize;
 
-    fn completion_indices(&self) -> Option<(u32, u32)>;
+    fn completion_registers(&self) -> Option<(GeneratorRegister, GeneratorRegister)>;
 
     fn stack_frame(&self) -> &[StackSlotValue];
 }
@@ -107,7 +112,7 @@ impl GeneratorObject {
         prototype: Option<Handle<ObjectValue>>,
         pc_to_resume_offset: usize,
         fp_index: usize,
-        completion_indices: Option<(u32, u32)>,
+        completion_registers: Option<(GeneratorRegister, GeneratorRegister)>,
         stack_frame: &[StackSlotValue],
     ) -> AllocResult<HeapPtr<GeneratorObject>> {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
@@ -119,7 +124,7 @@ impl GeneratorObject {
         set_uninit!(generator.state, GeneratorState::SuspendedStart);
         set_uninit!(generator.pc_to_resume_offset, pc_to_resume_offset);
         set_uninit!(generator.fp_index, fp_index);
-        set_uninit!(generator.completion_indices, completion_indices);
+        set_uninit!(generator.completion_registers, completion_registers);
         generator.stack_frame.init_from_slice(stack_frame);
 
         Ok(generator)
@@ -142,10 +147,10 @@ impl GeneratorObject {
         cx: Context,
         pc_to_resume_offset: usize,
         fp_index: usize,
-        completion_indices: (u32, u32),
+        completion_registers: (GeneratorRegister, GeneratorRegister),
         stack_frame: &[StackSlotValue],
     ) -> AllocResult<HeapPtr<GeneratorObject>> {
-        Self::new(cx, None, pc_to_resume_offset, fp_index, Some(completion_indices), stack_frame)
+        Self::new(cx, None, pc_to_resume_offset, fp_index, Some(completion_registers), stack_frame)
     }
 
     const STACK_FRAME_OFFSET: usize = field_offset!(GeneratorObject, stack_frame);
@@ -162,12 +167,12 @@ impl GeneratorObject {
     pub fn suspend(
         &mut self,
         pc_to_resume_offset: usize,
-        completion_indices: (u32, u32),
+        completion_registers: (GeneratorRegister, GeneratorRegister),
         stack_frame: &[StackSlotValue],
     ) {
         self.state = GeneratorState::SuspendedYield;
         self.pc_to_resume_offset = pc_to_resume_offset;
-        self.completion_indices = Some(completion_indices);
+        self.completion_registers = Some(completion_registers);
         self.stack_frame.as_mut_slice().copy_from_slice(stack_frame);
     }
 
@@ -194,8 +199,8 @@ impl TGeneratorObject for Handle<GeneratorObject> {
         self.fp_index
     }
 
-    fn completion_indices(&self) -> Option<(u32, u32)> {
-        self.completion_indices
+    fn completion_registers(&self) -> Option<(GeneratorRegister, GeneratorRegister)> {
+        self.completion_registers
     }
 
     fn stack_frame(&self) -> &[StackSlotValue] {

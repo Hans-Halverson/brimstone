@@ -76,7 +76,7 @@ impl NumberPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let number_value = this_number_value(cx, this_value)?;
+        let number_value = this_number_value(cx, this_value, "toExponential")?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
@@ -87,7 +87,10 @@ impl NumberPrototype {
         }
 
         if !(0.0..=100.0).contains(&num_fraction_digits) {
-            return range_error(cx, "number of fraction digits must between 0 and 100");
+            return range_error(
+                cx,
+                "Number.prototype.toExponential fraction digits must be between 0 and 100",
+            );
         }
 
         // If number of fraction digits is not specified then we need to use the minimum number of
@@ -155,13 +158,16 @@ impl NumberPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let number_value = this_number_value(cx, this_value)?;
+        let number_value = this_number_value(cx, this_value, "toFixed")?;
         let mut number = number_value.as_number();
 
         let fraction_digits_arg = get_argument(cx, arguments, 0);
         let num_fraction_digits = to_integer_or_infinity(cx, fraction_digits_arg)?;
         if !num_fraction_digits.is_finite() || !(0.0..=100.0).contains(&num_fraction_digits) {
-            return range_error(cx, "number of fraction digits must between 0 and 100");
+            return range_error(
+                cx,
+                "Number.prototype.toFixed fraction digits must be between 0 and 100",
+            );
         }
 
         let num_fraction_digits = num_fraction_digits as u8;
@@ -200,7 +206,7 @@ impl NumberPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        Self::to_string(cx, this_value, &[])
+        Self::to_string_impl(cx, this_value, &[], "toLocaleString")
     }
 
     /// Number.prototype.toPrecision (https://tc39.es/ecma262/#sec-number.prototype.toprecision)
@@ -209,7 +215,7 @@ impl NumberPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let number_value = this_number_value(cx, this_value)?;
+        let number_value = this_number_value(cx, this_value, "toPrecision")?;
 
         let precision_arg = get_argument(cx, arguments, 0);
         if precision_arg.is_undefined() {
@@ -225,7 +231,7 @@ impl NumberPrototype {
         if !(1..=100).contains(&precision) {
             return range_error(
                 cx,
-                "Number.prototype.toPrecision requires precision between 1 and 100",
+                "Number.prototype.toPrecision precision must be between 1 and 100",
             );
         }
         let precision = precision as i32;
@@ -289,11 +295,20 @@ impl NumberPrototype {
 
     /// Number.prototype.toString (https://tc39.es/ecma262/#sec-number.prototype.tostring)
     pub fn to_string(
-        mut cx: Context,
+        cx: Context,
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let number_value = this_number_value(cx, this_value)?;
+        Self::to_string_impl(cx, this_value, arguments, "toString")
+    }
+
+    fn to_string_impl(
+        mut cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let number_value = this_number_value(cx, this_value, method_name)?;
 
         let radix = get_argument(cx, arguments, 0);
 
@@ -304,7 +319,10 @@ impl NumberPrototype {
                 let radix = radix.as_smi();
 
                 if !(2..=36).contains(&radix) {
-                    return range_error(cx, "radix must be between 2 and 36");
+                    return range_error(
+                        cx,
+                        &format!("Number.prototype.{} radix must be between 2 and 36", method_name),
+                    );
                 }
 
                 radix
@@ -312,7 +330,10 @@ impl NumberPrototype {
                 let radix = to_integer_or_infinity(cx, radix)?;
 
                 if !(2.0..=36.0).contains(&radix) {
-                    return range_error(cx, "radix must be between 2 and 36");
+                    return range_error(
+                        cx,
+                        &format!("Number.prototype.{} radix must be between 2 and 36", method_name),
+                    );
                 }
 
                 radix as i32
@@ -398,7 +419,7 @@ impl NumberPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let number_value = this_number_value(cx, this_value)?;
+        let number_value = this_number_value(cx, this_value, "valueOf")?;
         Ok(number_value.to_handle(cx))
     }
 }
@@ -412,7 +433,11 @@ const RADIX_TO_PRECISION: [u8; 37] = [
     11, 11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 ];
 
-fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Value> {
+fn this_number_value(
+    cx: Context,
+    value_handle: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Value> {
     let value = *value_handle;
     if value.is_number() {
         return Ok(value);
@@ -426,7 +451,7 @@ fn this_number_value(cx: Context, value_handle: Handle<Value>) -> EvalResult<Val
         }
     }
 
-    type_error(cx, "value cannot be converted to number")
+    type_error(cx, &format!("Number.prototype.{method_name} must be called on a number"))
 }
 
 /// Decompose an f64 to its exponent and mantissa, where the mantissa is rounded to exactly the

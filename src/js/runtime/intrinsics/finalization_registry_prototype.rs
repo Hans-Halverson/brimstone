@@ -53,25 +53,23 @@ impl FinalizationRegistryPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let Some(registry_object) = this_finalization_registry_value(this_value) else {
-            return type_error(
-                cx,
-                "FinalizationRegistry.prototype.register must be called on a FinalizationRegistry",
-            );
-        };
+        let registry_object = this_finalization_registry_value(cx, this_value, "register")?;
 
         let target = get_argument(cx, arguments, 0);
         let held_value = get_argument(cx, arguments, 1);
         let unregister_token = get_argument(cx, arguments, 2);
 
         if !can_be_held_weakly(cx, *target) {
-            return type_error(cx, "FinalizationRegistry targets must be objects or symbols");
+            return type_error(
+                cx,
+                "FinalizationRegistry.prototype.register target must be an object or symbol",
+            );
         }
 
         if same_value(target, held_value)? {
             return type_error(
                 cx,
-                "the target and held value arguments to register cannot be the same value",
+                "FinalizationRegistry.prototype.register target and held value cannot be the same",
             );
         }
 
@@ -82,7 +80,7 @@ impl FinalizationRegistryPrototype {
         } else {
             return type_error(
                 cx,
-                "FinalizationRegistry unregister tokens must be objects or symbols",
+                "FinalizationRegistry.prototype.register unregister token must be an object or symbol",
             );
         };
 
@@ -102,19 +100,14 @@ impl FinalizationRegistryPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let Some(registry_object) = this_finalization_registry_value(this_value) else {
-            return type_error(
-                cx,
-                "FinalizationRegistry.prototype.unregister must be called on a FinalizationRegistry",
-            );
-        };
+        let registry_object = this_finalization_registry_value(cx, this_value, "unregister")?;
 
         let unregister_token = get_argument(cx, arguments, 0);
 
         if !can_be_held_weakly(cx, *unregister_token) {
             return type_error(
                 cx,
-                "FinalizationRegistry unregister tokens must be objects or symbols",
+                "FinalizationRegistry.prototype.unregister token must be an object or symbol",
             );
         }
 
@@ -125,11 +118,21 @@ impl FinalizationRegistryPrototype {
 }
 
 fn this_finalization_registry_value(
+    cx: Context,
     value: Handle<Value>,
-) -> Option<Handle<FinalizationRegistryObject>> {
-    if !value.is_object() {
-        return None;
+    method_name: &str,
+) -> EvalResult<Handle<FinalizationRegistryObject>> {
+    if value.is_object() {
+        if let Some(registry_object) = value.as_object().as_finalization_registry_object() {
+            return Ok(registry_object);
+        }
     }
 
-    value.as_object().as_finalization_registry_object()
+    type_error(
+        cx,
+        &format!(
+            "FinalizationRegistry.prototype.{} must be called on a FinalizationRegistry",
+            method_name
+        ),
+    )
 }

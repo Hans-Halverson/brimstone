@@ -104,7 +104,10 @@ impl WeakRefConstructor {
 
         let target_value = get_argument(cx, arguments, 0);
         if !can_be_held_weakly(cx, *target_value) {
-            return type_error(cx, "WeakRef only holds objects and symbols");
+            return type_error(
+                cx,
+                "WeakRef constructor argument must be an object or an unregistered symbol",
+            );
         }
 
         Ok(WeakRefObject::new_from_constructor(cx, new_target, target_value)?.as_value())

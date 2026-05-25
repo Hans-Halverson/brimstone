@@ -122,8 +122,12 @@ impl TypedArrayConstructor {
             let length = values.len();
 
             let length_value = Value::from(length).to_handle(cx);
-            let target_object =
-                typed_array_create_from_constructor_object(cx, this_constructor, &[length_value])?;
+            let target_object = typed_array_create_from_constructor_object(
+                cx,
+                this_constructor,
+                &[length_value],
+                "TypedArray.from",
+            )?;
 
             // Shared between iterations
             let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -150,8 +154,12 @@ impl TypedArrayConstructor {
         let length = length_of_array_like(cx, array_like)? as usize;
 
         let length_value = Value::from(length).to_handle(cx);
-        let target_object =
-            typed_array_create_from_constructor_object(cx, this_constructor, &[length_value])?;
+        let target_object = typed_array_create_from_constructor_object(
+            cx,
+            this_constructor,
+            &[length_value],
+            "TypedArray.from",
+        )?;
 
         // Shared between iterations
         let mut index_key = PropertyKey::uninit().to_handle(cx);
@@ -189,8 +197,12 @@ impl TypedArrayConstructor {
         let length = arguments.len();
         let length_value = Value::from(length).to_handle(cx);
 
-        let typed_array =
-            typed_array_create_from_constructor(cx, this_constructor, &[length_value])?;
+        let typed_array = typed_array_create_from_constructor(
+            cx,
+            this_constructor,
+            &[length_value],
+            "TypedArray.of",
+        )?;
         let object = typed_array.into_object_value();
 
         // Shared between iterations
@@ -739,7 +751,13 @@ macro_rules! create_typed_array_constructor {
 
                 let source_record = make_typed_array_with_buffer_witness_record(source_typed_array);
                 if is_typed_array_out_of_bounds(&source_record) {
-                    return type_error(cx, "typed array is out of bounds");
+                    return type_error(
+                        cx,
+                        &format!(
+                            "{} constructor source array is out of bounds",
+                            cx.names.$rust_name().format()?
+                        ),
+                    );
                 }
 
                 let source_array_length = typed_array_length(&source_record);
@@ -775,7 +793,11 @@ macro_rules! create_typed_array_constructor {
                     if source_typed_array.content_type() != $content_type {
                         return type_error(
                             cx,
-                            "typed arrays must both contain either numbers or BigInts",
+                            &format!(
+                                "{} constructor source array must contain {}",
+                                cx.names.$rust_name().format()?,
+                                $content_type.format()
+                            ),
                         );
                     }
 
@@ -826,7 +848,8 @@ macro_rules! create_typed_array_constructor {
                     return range_error(
                         cx,
                         &format!(
-                            "byte offset must be a multiple of {} but found {}",
+                            "{} constructor byte offset must be a multiple of {} but found {}",
+                            cx.names.$rust_name().format()?,
                             element_size!(),
                             offset
                         ),
@@ -841,7 +864,13 @@ macro_rules! create_typed_array_constructor {
                 }
 
                 if array_buffer.is_detached() {
-                    return type_error(cx, "cannot create typed array from detached array buffer");
+                    return type_error(
+                        cx,
+                        &format!(
+                            "{} constructor source cannot be a detached array buffer",
+                            cx.names.$rust_name().format()?,
+                        ),
+                    );
                 }
 
                 let byte_length = array_buffer.byte_length();
@@ -850,7 +879,13 @@ macro_rules! create_typed_array_constructor {
 
                 if length.is_undefined() && !buffer_is_fixed_length {
                     if offset > byte_length {
-                        return range_error(cx, "byte offset larger than array buffer length");
+                        return range_error(
+                            cx,
+                            &format!(
+                                "{} constructor byte offset must not be larger than array buffer length",
+                                cx.names.$rust_name().format()?
+                            ),
+                        );
                     }
 
                     result_new_byte_length = None;
@@ -860,7 +895,8 @@ macro_rules! create_typed_array_constructor {
                         return range_error(
                             cx,
                             &format!(
-                                "array buffer length must be a multiple of {} but found {}",
+                                "{} constructor source length must be a multiple of {} but found {}",
+                                cx.names.$rust_name().format()?,
                                 element_size!(),
                                 byte_length
                             ),
@@ -870,7 +906,13 @@ macro_rules! create_typed_array_constructor {
                     let maybe_negative_new_byte_length = byte_length as i64 - offset as i64;
 
                     if maybe_negative_new_byte_length < 0 {
-                        return range_error(cx, "byte offset larger than array buffer length");
+                        return range_error(
+                            cx,
+                            &format!(
+                                "{} constructor byte offset must not be larger than array buffer length",
+                                cx.names.$rust_name().format()?
+                            ),
+                        );
                     }
 
                     let new_byte_length = maybe_negative_new_byte_length as usize;
@@ -881,7 +923,13 @@ macro_rules! create_typed_array_constructor {
                     let new_byte_length = new_length * element_size!();
 
                     if offset + new_byte_length as usize > byte_length {
-                        return range_error(cx, "byte offset larger than array buffer length");
+                        return range_error(
+                            cx,
+                            &format!(
+                                "{} constructor byte offset must not be larger than array buffer length",
+                                cx.names.$rust_name().format()?
+                            ),
+                        );
                     }
 
                     result_new_byte_length = Some(new_byte_length);

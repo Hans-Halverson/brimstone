@@ -124,14 +124,20 @@ impl StringConstructor {
                 if !code_point.is_smi() {
                     return range_error(
                         cx,
-                        &format!("invalid code point {}", code_point.as_number()),
+                        &format!(
+                            "String.fromCodePoint invalid code point {}",
+                            code_point.as_number()
+                        ),
                     );
                 }
 
                 let code_point = code_point.as_smi();
 
                 if !(0..=0x10FFFF).contains(&code_point) {
-                    return range_error(cx, &format!("invalid code point {}", code_point));
+                    return range_error(
+                        cx,
+                        &format!("String.fromCodePoint invalid code point {}", code_point),
+                    );
                 }
 
                 code_point as CodePoint

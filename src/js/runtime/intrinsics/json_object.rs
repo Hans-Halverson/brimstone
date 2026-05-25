@@ -73,7 +73,7 @@ impl JSONObject {
         let json_value = if let Some(json_value) = parse_json(&mut lexer) {
             json_value
         } else {
-            return syntax_error(cx, "JSON.parse: Invalid JSON");
+            return syntax_error(cx, "JSON.parse parsed invalid JSON");
         };
 
         // Then convert to a JS value, which may allocate

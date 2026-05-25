@@ -158,11 +158,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.add must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "add")?;
 
         // Convert negative zero to positive zero in set
         let value = get_argument(cx, arguments, 0);
@@ -179,11 +175,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.clear must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "clear")?;
 
         set.set_data_ptr().clear();
 
@@ -196,11 +188,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.delete must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "delete")?;
 
         let key = get_argument(cx, arguments, 0);
 
@@ -218,14 +206,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.difference must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "difference")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "difference")?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
@@ -287,11 +271,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.entries must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "entries")?;
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::KeyAndValue)?.as_value())
     }
@@ -302,11 +282,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.forEach must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "forEach")?;
 
         let callback_function = get_argument(cx, arguments, 0);
         if !is_callable(callback_function) {
@@ -337,11 +313,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.has must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "has")?;
 
         let value = get_argument(cx, arguments, 0);
 
@@ -357,14 +329,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.intersection must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "intersection")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "intersection")?;
 
         // Create an empty set
         let new_set_data = SetObjectSetField::new(cx, ValueSet::MIN_CAPACITY)?.to_handle();
@@ -429,14 +397,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.isDisjointFrom must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "isDisjointFrom")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "isDisjointFrom")?;
 
         if this_set.set_data_ptr().num_entries_occupied() as f64 <= other_set_record.size {
             // If this set is smaller or equal to the other set, iterate through this set's keys and
@@ -494,14 +458,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.isSubsetOf must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "isSubsetOf")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "isSubsetOf")?;
 
         // We can return early if this set is larger than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) > other_set_record.size {
@@ -538,14 +498,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.isSupersetOf must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "isSupersetOf")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "isSupersetOf")?;
 
         // We can return early if this set is smaller than the other set
         if (this_set.set_data_ptr().num_entries_occupied() as f64) < other_set_record.size {
@@ -584,11 +540,7 @@ impl SetPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.size must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "size")?;
 
         Ok(Value::from(set.set_data_ptr().num_entries_occupied()).to_handle(cx))
     }
@@ -599,14 +551,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.symmetricDifference must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "symmetricDifference")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "symmetricDifference")?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
@@ -651,14 +599,10 @@ impl SetPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let this_set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.union must be called on a Set");
-        };
+        let this_set = this_set_value(cx, this_value, "union")?;
 
         let other = get_argument(cx, arguments, 0);
-        let other_set_record = get_set_record(cx, other)?;
+        let other_set_record = get_set_record(cx, other, "union")?;
 
         // Create a copy of this set
         let new_set_data = ValueSet::new_from_set(cx, this_set.set_data())?.to_handle();
@@ -689,22 +633,24 @@ impl SetPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let set = if let Some(set) = this_set_value(this_value) {
-            set
-        } else {
-            return type_error(cx, "Set.prototype.values must be called on a Set");
-        };
+        let set = this_set_value(cx, this_value, "values")?;
 
         Ok(SetIterator::new(cx, set, SetIteratorKind::Value)?.as_value())
     }
 }
 
-fn this_set_value(value: Handle<Value>) -> Option<Handle<SetObject>> {
-    if !value.is_object() {
-        return None;
+fn this_set_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<SetObject>> {
+    if value.is_object() {
+        if let Some(set_object) = value.as_object().as_set_object() {
+            return Ok(set_object);
+        }
     }
 
-    value.as_object().as_set_object()
+    type_error(cx, &format!("Set.prototype.{method_name} must be called on a Set"))
 }
 
 struct SetRecord {
@@ -715,9 +661,9 @@ struct SetRecord {
 }
 
 /// GetSetRecord (https://tc39.es/ecma262/#sec-getsetrecord)
-fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
+fn get_set_record(cx: Context, value: Handle<Value>, method_name: &str) -> EvalResult<SetRecord> {
     if !value.is_object() {
-        return type_error(cx, "expected an object");
+        return type_error(cx, &format!("Set.prototype.{method_name} argument must be an object"));
     }
 
     let object = value.as_object();
@@ -725,22 +671,34 @@ fn get_set_record(cx: Context, value: Handle<Value>) -> EvalResult<SetRecord> {
     let raw_size = get(cx, object, cx.names.size())?;
     let num_size = to_number(cx, raw_size)?;
     if num_size.is_nan() {
-        return type_error(cx, "`size` property must be a number");
+        return type_error(
+            cx,
+            &format!("Set.prototype.{method_name} `size` property must be a number"),
+        );
     }
 
     let int_size = must!(to_integer_or_infinity(cx, num_size));
     if int_size < 0.0 {
-        return type_error(cx, "`size` property must not be negative");
+        return type_error(
+            cx,
+            &format!("Set.prototype.{method_name} `size` property must not be negative"),
+        );
     }
 
     let has_method = get(cx, object, cx.names.has())?;
     if !is_callable(has_method) {
-        return type_error(cx, "`has` method must be a function");
+        return type_error(
+            cx,
+            &format!("Set.prototype.{method_name} `has` method must be a function"),
+        );
     }
 
     let keys_method = get(cx, object, cx.names.keys())?;
     if !is_callable(keys_method) {
-        return type_error(cx, "`keys` method must be a function");
+        return type_error(
+            cx,
+            &format!("Set.prototype.{method_name} `keys` method must be a function"),
+        );
     }
 
     Ok(SetRecord {

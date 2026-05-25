@@ -126,18 +126,16 @@ impl FunctionPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !is_callable(this_value) {
-            return type_error(cx, "expected a function");
-        }
+        let this_function = this_function_value(cx, this_value, "apply")?;
 
         let this_arg = get_argument(cx, arguments, 0);
         let arg_array = get_argument(cx, arguments, 1);
 
         if arg_array.is_nullish() {
-            call_object(cx, this_value.as_object(), this_arg, &[])
+            call_object(cx, this_function, this_arg, &[])
         } else {
             let arg_list = create_list_from_array_like(cx, arg_array)?;
-            call_object(cx, this_value.as_object(), this_arg, &arg_list)
+            call_object(cx, this_function, this_arg, &arg_list)
         }
     }
 
@@ -147,11 +145,7 @@ impl FunctionPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !is_callable(this_value) {
-            return type_error(cx, "expected a function");
-        }
-
-        let target = this_value.as_object();
+        let target = this_function_value(cx, this_value, "bind")?;
 
         let this_arg = get_argument(cx, arguments, 0);
         let bound_args = if arguments.is_empty() {
@@ -203,15 +197,13 @@ impl FunctionPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if !is_callable(this_value) {
-            return type_error(cx, "expected a function");
-        }
+        let this_function = this_function_value(cx, this_value, "call")?;
 
         if arguments.is_empty() {
-            call_object(cx, this_value.as_object(), cx.undefined(), &[])
+            call_object(cx, this_function, cx.undefined(), &[])
         } else {
             let argument = get_argument(cx, arguments, 0);
-            call_object(cx, this_value.as_object(), argument, &arguments[1..])
+            call_object(cx, this_function, argument, &arguments[1..])
         }
     }
 
@@ -222,7 +214,7 @@ impl FunctionPrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if !this_value.is_object() {
-            return type_error(cx, "Function.prototype.toString expected a function");
+            return type_error(cx, "Function.prototype.toString must be called on a function");
         }
 
         let this_object = this_value.as_object();
@@ -269,7 +261,7 @@ impl FunctionPrototype {
                 .as_value());
         }
 
-        type_error(cx, "Function.prototype.toString expected a function")
+        type_error(cx, "Function.prototype.toString must be called on a function")
     }
 
     /// Function.prototype [ @@hasInstance ] (https://tc39.es/ecma262/#sec-function.prototype-%symbol.hasinstance%)
@@ -282,4 +274,19 @@ impl FunctionPrototype {
         let has_instance = ordinary_has_instance(cx, this_value, argument)?;
         Ok(cx.bool(has_instance))
     }
+}
+
+fn this_function_value(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<ObjectValue>> {
+    if !is_callable(value) {
+        return type_error(
+            cx,
+            &format!("Function.prototype.{} must be called on a function", method_name),
+        );
+    }
+
+    Ok(value.as_object())
 }

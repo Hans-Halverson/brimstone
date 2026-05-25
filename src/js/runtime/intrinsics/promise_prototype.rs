@@ -80,11 +80,11 @@ impl PromisePrototype {
         if !this_value.is_object() {
             return type_error(cx, "Promise.prototype.finally must be called on an object");
         }
-        let promise = this_value.as_object().cast::<PromiseObject>();
+        let promise = this_value.as_object();
 
         let on_finally = get_argument(cx, arguments, 0);
 
-        let constructor = species_constructor(cx, promise.into(), Intrinsic::PromiseConstructor)?;
+        let constructor = species_constructor(cx, promise, Intrinsic::PromiseConstructor)?;
 
         let then_finally;
         let catch_finally;

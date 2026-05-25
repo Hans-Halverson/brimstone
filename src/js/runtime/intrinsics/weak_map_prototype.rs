@@ -62,11 +62,7 @@ impl WeakMapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
-            weak_map_object
-        } else {
-            return type_error(cx, "WeakMap.prototype.delete must be called on a WeakMap");
-        };
+        let weak_map_object = this_weak_map_object(cx, this_value, "delete")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let value = get_argument(cx, arguments, 0);
@@ -85,11 +81,7 @@ impl WeakMapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
-            weak_map_object
-        } else {
-            return type_error(cx, "WeakMap.prototype.get must be called on a WeakMap");
-        };
+        let weak_map_object = this_weak_map_object(cx, this_value, "get")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let key = get_argument(cx, arguments, 0);
@@ -112,11 +104,7 @@ impl WeakMapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
-            weak_map_object
-        } else {
-            return type_error(cx, "WeakMap.prototype.has must be called on a WeakMap");
-        };
+        let weak_map_object = this_weak_map_object(cx, this_value, "has")?;
 
         // Do not need to call can_be_held_weakly, instead look up directly in the value map
         let key = get_argument(cx, arguments, 0);
@@ -135,17 +123,13 @@ impl WeakMapPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let weak_map_object = if let Some(weak_map_object) = this_weak_map_value(this_value) {
-            weak_map_object
-        } else {
-            return type_error(cx, "WeakMap.prototype.set must be called on a WeakMap");
-        };
+        let weak_map_object = this_weak_map_object(cx, this_value, "set")?;
 
         let key = get_argument(cx, arguments, 0);
         let value = get_argument(cx, arguments, 1);
 
         if !can_be_held_weakly(cx, *key) {
-            return type_error(cx, "WeakMap keys must be objects or symbols");
+            return type_error(cx, "WeakMap.prototype.set key must be an object or symbol");
         }
 
         weak_map_object.insert(cx, key, value)?;
@@ -154,10 +138,16 @@ impl WeakMapPrototype {
     }
 }
 
-fn this_weak_map_value(value: Handle<Value>) -> Option<Handle<WeakMapObject>> {
-    if !value.is_object() {
-        return None;
+fn this_weak_map_object(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Handle<WeakMapObject>> {
+    if value.is_object() {
+        if let Some(weak_map_object) = value.as_object().as_weak_map_object() {
+            return Ok(weak_map_object);
+        }
     }
 
-    value.as_object().as_weak_map_object()
+    type_error(cx, &format!("WeakMap.prototype.{method_name} must be called on a WeakMap"))
 }

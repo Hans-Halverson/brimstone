@@ -284,7 +284,7 @@ impl ObjectConstructor {
         } else if proto.is_null() {
             None
         } else {
-            return type_error(cx, "prototype must be an object or null");
+            return type_error(cx, "Object.create prototype must be an object or null");
         };
 
         let object = object_create_with_optional_proto::<ObjectValue>(
@@ -310,7 +310,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return type_error(cx, "expected an object");
+            return type_error(cx, "Object.defineProperties target must be an object");
         }
 
         let properties_arg = get_argument(cx, arguments, 1);
@@ -357,7 +357,7 @@ impl ObjectConstructor {
     ) -> EvalResult<Handle<Value>> {
         let object = get_argument(cx, arguments, 0);
         if !object.is_object() {
-            return type_error(cx, "can only define property on an object");
+            return type_error(cx, "Object.defineProperty target must be an object");
         }
 
         let property_arg = get_argument(cx, arguments, 1);
@@ -395,7 +395,7 @@ impl ObjectConstructor {
         }
 
         if !set_integrity_level(cx, object.as_object(), IntegrityLevel::Frozen)? {
-            return type_error(cx, "failed to freeze object");
+            return type_error(cx, "Object.freeze failed to freeze object");
         }
 
         Ok(object)
@@ -648,7 +648,10 @@ impl ObjectConstructor {
         }
 
         if !value.as_object().prevent_extensions(cx)? {
-            return type_error(cx, "failed to prevent extensions on object");
+            return type_error(
+                cx,
+                "Object.preventExtensions failed to prevent extensions on object",
+            );
         }
 
         Ok(value)
@@ -666,7 +669,7 @@ impl ObjectConstructor {
         }
 
         if !set_integrity_level(cx, object.as_object(), IntegrityLevel::Sealed)? {
-            return type_error(cx, "failed to seal object");
+            return type_error(cx, "Object.seal failed to seal object");
         }
 
         Ok(object)
@@ -687,7 +690,7 @@ impl ObjectConstructor {
         } else if proto.is_null() {
             None
         } else {
-            return type_error(cx, "prototype must be an object or null");
+            return type_error(cx, "Object.setPrototypeOf prototype must be an object or null");
         };
 
         if !object.is_object() {
@@ -696,7 +699,7 @@ impl ObjectConstructor {
         let mut object = object.as_object();
 
         if !object.set_prototype_of(cx, proto)? {
-            return type_error(cx, "failed to set object prototype");
+            return type_error(cx, "Object.setPrototypeOf failed to set object prototype");
         }
 
         Ok(object.as_value())

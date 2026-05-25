@@ -142,7 +142,7 @@ impl SymbolConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_some() {
-            return type_error(cx, "Symbol is not a constructor");
+            return type_error(cx, "Symbol constructor must be called with new");
         }
 
         let description_arg = get_argument(cx, arguments, 0);
@@ -184,7 +184,7 @@ impl SymbolConstructor {
     ) -> EvalResult<Handle<Value>> {
         let symbol_value = get_argument(cx, arguments, 0);
         if !symbol_value.is_symbol() {
-            return type_error(cx, "expected a Symbol");
+            return type_error(cx, "Symbol.keyFor argument must be a symbol");
         }
         let symbol_value = *symbol_value.as_symbol();
 

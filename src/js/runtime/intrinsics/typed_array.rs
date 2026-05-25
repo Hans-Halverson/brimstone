@@ -55,6 +55,15 @@ pub enum ContentType {
     BigInt,
 }
 
+impl ContentType {
+    pub fn format(&self) -> &'static str {
+        match self {
+            ContentType::Number => "numbers",
+            ContentType::BigInt => "BigInts",
+        }
+    }
+}
+
 /// Abstraction over typed arrays, allowing for generic access of properties.
 pub trait TypedArray {
     /// Length of the array. None represents a value of AUTO.

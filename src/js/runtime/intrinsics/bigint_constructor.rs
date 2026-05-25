@@ -102,7 +102,7 @@ impl BigIntConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         if cx.current_new_target().is_some() {
-            return type_error(cx, "BigInt is not a constructor");
+            return type_error(cx, "BigInt constructor cannot be used with new");
         }
 
         let value = get_argument(cx, arguments, 0);
@@ -110,7 +110,7 @@ impl BigIntConstructor {
 
         if primitive.is_number() {
             if !is_integral_number(*primitive) {
-                return range_error(cx, "number is not an integer");
+                return range_error(cx, "BigInt constructor argument is not an integer");
             }
 
             if primitive.is_smi() {

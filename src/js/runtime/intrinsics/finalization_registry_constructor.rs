@@ -45,7 +45,7 @@ impl FinalizationRegistryConstructor {
 
         let cleanup_callback = get_argument(cx, arguments, 0);
         if !is_callable(cleanup_callback) {
-            return type_error(cx, "FinalizationRegistry cleanup callback must be a function");
+            return type_error(cx, "FinalizationRegistry constructor argument must be a function");
         }
 
         Ok(FinalizationRegistryObject::new_from_constructor(

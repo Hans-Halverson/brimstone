@@ -39,7 +39,7 @@ impl BooleanPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = this_boolean_value(cx, this_value)?;
+        let bool_value = this_boolean_value(cx, this_value, "toString")?;
         let string_value = if bool_value { "true" } else { "false" };
 
         Ok(cx.alloc_string(string_value)?.as_value())
@@ -51,12 +51,12 @@ impl BooleanPrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let bool_value = this_boolean_value(cx, this_value)?;
+        let bool_value = this_boolean_value(cx, this_value, "valueOf")?;
         Ok(cx.bool(bool_value))
     }
 }
 
-fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
+fn this_boolean_value(cx: Context, value: Handle<Value>, method_name: &str) -> EvalResult<bool> {
     if value.is_bool() {
         return Ok(value.as_bool());
     }
@@ -68,5 +68,5 @@ fn this_boolean_value(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
         }
     }
 
-    type_error(cx, "value cannot be converted to boolean")
+    type_error(cx, &format!("Boolean.prototype.{method_name} must be called on a boolean"))
 }

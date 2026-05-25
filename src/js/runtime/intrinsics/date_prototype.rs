@@ -7,8 +7,10 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
-        intrinsics::date_object::{day, make_date, make_full_year, make_time, time_clip},
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            date_object::{day, make_date, make_full_year, make_time, time_clip},
+            rust_runtime::RuntimeFunction,
+        },
         object_value::ObjectValue,
         property::Property,
         string_value::StringValue,
@@ -401,11 +403,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getDate must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getDate")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -422,11 +420,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getDay must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getDay")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -443,11 +437,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getFullYear must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getFullYear")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -464,11 +454,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getHours must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getHours")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -485,11 +471,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getMilliseconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getMilliseconds")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -506,11 +488,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getMinutes must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getMinutes")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -527,11 +505,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getMonth must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getMonth")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -548,11 +522,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getSeconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getSeconds")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -569,11 +539,9 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if let Some(date_value) = this_date_value(this_value) {
-            Ok(Value::from(date_value).to_handle(cx))
-        } else {
-            type_error(cx, "Date.prototype.getTime must be called on a Date")
-        }
+        let date_value = this_date_value(cx, this_value, "getTime")?;
+
+        Ok(Value::from(date_value).to_handle(cx))
     }
 
     /// Date.prototype.getTimezoneOffset (https://tc39.es/ecma262/#sec-date.prototype.gettimezoneoffset)
@@ -582,11 +550,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getTimezoneOffset must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getTimezoneOffset")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -603,11 +567,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCDate must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCDate")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -624,11 +584,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCDay must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCDay")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -645,11 +601,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCFullYear must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCFullYear")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -666,11 +618,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCHours must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCHours")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -687,11 +635,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCMilliseconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCMilliseconds")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -708,11 +652,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCMinutes must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCMinutes")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -729,11 +669,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCMonth must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCMonth")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -750,11 +686,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getUTCSeconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getUTCSeconds")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -771,11 +703,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setDate must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setDate")?;
 
         let date_arg = get_argument(cx, arguments, 0);
         let date = to_number(cx, date_arg)?.as_number();
@@ -802,11 +730,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let mut date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setFullYear must be called on a Date");
-        };
+        let mut date_value = this_date_value(cx, this_value, "setFullYear")?;
 
         let year_arg = get_argument(cx, arguments, 0);
         let year = to_number(cx, year_arg)?.as_number();
@@ -845,11 +769,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setHours must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setHours")?;
 
         let hours_arg = get_argument(cx, arguments, 0);
         let hours = to_number(cx, hours_arg)?.as_number();
@@ -912,11 +832,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setMilliseconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setMilliseconds")?;
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
@@ -948,11 +864,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setMinutes must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setMinutes")?;
 
         let minutes_arg = get_argument(cx, arguments, 0);
         let minutes = to_number(cx, minutes_arg)?.as_number();
@@ -1003,11 +915,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setMonth must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setMonth")?;
 
         let month_arg = get_argument(cx, arguments, 0);
         let month = to_number(cx, month_arg)?.as_number();
@@ -1046,11 +954,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setSeconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setSeconds")?;
 
         let seconds_arg = get_argument(cx, arguments, 0);
         let seconds = to_number(cx, seconds_arg)?.as_number();
@@ -1094,9 +998,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        if this_date_value(this_value).is_none() {
-            return type_error(cx, "Date.prototype.setTime must be called on a Date");
-        };
+        let _ = this_date_value(cx, this_value, "setTime")?;
 
         let time_arg = get_argument(cx, arguments, 0);
         let time_num = time_clip(to_number(cx, time_arg)?.as_number());
@@ -1112,11 +1014,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCDate must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCDate")?;
 
         let date_arg = get_argument(cx, arguments, 0);
         let date = to_number(cx, date_arg)?.as_number();
@@ -1141,11 +1039,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let mut date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCFullYear must be called on a Date");
-        };
+        let mut date_value = this_date_value(cx, this_value, "setUTCFullYear")?;
 
         if date_value.is_nan() {
             date_value = 0.0;
@@ -1182,11 +1076,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCHours must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCHours")?;
 
         let hours_arg = get_argument(cx, arguments, 0);
         let hours = to_number(cx, hours_arg)?.as_number();
@@ -1245,11 +1135,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCMilliseconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCMilliseconds")?;
 
         let milliseconds_arg = get_argument(cx, arguments, 0);
         let milliseconds = to_number(cx, milliseconds_arg)?.as_number();
@@ -1279,11 +1165,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCMinutes must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCMinutes")?;
 
         let minutes_arg = get_argument(cx, arguments, 0);
         let minutes = to_number(cx, minutes_arg)?.as_number();
@@ -1332,11 +1214,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCMonth must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCMonth")?;
 
         let month_arg = get_argument(cx, arguments, 0);
         let month = to_number(cx, month_arg)?.as_number();
@@ -1373,11 +1251,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setUTCSeconds must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setUTCSeconds")?;
 
         let seconds_arg = get_argument(cx, arguments, 0);
         let seconds = to_number(cx, seconds_arg)?.as_number();
@@ -1419,11 +1293,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toDateString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toDateString")?;
 
         Self::to_date_string_shared(cx, date_value)
     }
@@ -1447,14 +1317,10 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toISOString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toISOString")?;
 
         if !date_value.is_finite() {
-            return range_error(cx, "Date value is not finite");
+            return range_error(cx, "Date.prototype.toISOString date value is not finite");
         }
 
         let year = year_from_time(date_value) as i64;
@@ -1503,11 +1369,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toLocaleDateString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toLocaleDateString")?;
 
         Self::to_date_string_shared(cx, date_value)
     }
@@ -1518,11 +1380,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toLocaleString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toLocaleString")?;
 
         Ok(to_date_string(cx, date_value)?.as_value())
     }
@@ -1533,11 +1391,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toLocaleTimeString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toLocaleTimeString")?;
 
         Self::to_time_string_shared(cx, date_value)
     }
@@ -1548,11 +1402,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toString")?;
 
         Ok(to_date_string(cx, date_value)?.as_value())
     }
@@ -1563,11 +1413,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toTimeString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toTimeString")?;
 
         Self::to_time_string_shared(cx, date_value)
     }
@@ -1593,11 +1439,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.toUTCString must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "toUTCString")?;
 
         if date_value.is_nan() {
             return Ok(cx.alloc_static_string("Invalid Date")?.as_value());
@@ -1626,11 +1468,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.valueOf must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "valueOf")?;
 
         Ok(Value::from(date_value).to_handle(cx))
     }
@@ -1665,7 +1503,10 @@ impl DatePrototype {
             }
         }
 
-        type_error(cx, "invalid hint to Date.prototype[@@toPrimitive]")
+        type_error(
+            cx,
+            "Date.prototype[@@toPrimitive] hint argument must be `default`, `string`, or `number`",
+        )
     }
 
     /// Date.prototype.getYear (https://tc39.es/ecma262/#sec-date.prototype.getyear)
@@ -1674,11 +1515,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.getYear must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "getYear")?;
 
         if date_value.is_nan() {
             return Ok(cx.nan());
@@ -1695,11 +1532,7 @@ impl DatePrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let date_value = if let Some(date_value) = this_date_value(this_value) {
-            date_value
-        } else {
-            return type_error(cx, "Date.prototype.setYear must be called on a Date");
-        };
+        let date_value = this_date_value(cx, this_value, "setYear")?;
 
         let year_arg = get_argument(cx, arguments, 0);
         let short_year = to_number(cx, year_arg)?;
@@ -1812,15 +1645,23 @@ pub fn to_date_string(mut cx: Context, time_value: f64) -> EvalResult<Handle<Str
 }
 
 #[inline]
-pub fn this_date_value(value: Handle<Value>) -> Option<f64> {
-    if !value.is_object() {
-        return None;
+pub fn validate_date_value(value: Handle<Value>) -> Option<f64> {
+    if value.is_object() {
+        if let Some(date_object) = value.as_object().as_date_object() {
+            return Some(date_object.date_value());
+        }
     }
 
-    value
-        .as_object()
-        .as_date_object()
-        .map(|date| date.date_value())
+    None
+}
+
+#[inline]
+fn this_date_value(cx: Context, value: Handle<Value>, method_name: &str) -> EvalResult<f64> {
+    if let Some(date_value) = validate_date_value(value) {
+        return Ok(date_value);
+    }
+
+    type_error(cx, &format!("Date.prototype.{} must be called on a Date", method_name))
 }
 
 #[inline]

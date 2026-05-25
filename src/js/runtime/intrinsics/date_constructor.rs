@@ -10,7 +10,7 @@ use crate::{
             date_object::{
                 make_date, make_day, make_full_year, make_time, time_clip, utc, DateObject,
             },
-            date_prototype::{this_date_value, to_date_string},
+            date_prototype::{to_date_string, validate_date_value},
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
@@ -75,7 +75,7 @@ impl DateConstructor {
             get_current_unix_time()
         } else if number_of_args == 1 {
             let date_value =
-                if let Some(date_value_arg) = this_date_value(get_argument(cx, arguments, 0)) {
+                if let Some(date_value_arg) = validate_date_value(get_argument(cx, arguments, 0)) {
                     date_value_arg
                 } else {
                     let arg = get_argument(cx, arguments, 0);

@@ -345,7 +345,8 @@ macro_rules! create_typed_array_constructor {
                         // May allocate and invoke arbitrary user code
                         let element_value = $to_element(cx, value)?;
 
-                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                        let mut index = index;
+                        let mut array_buffer_ptr = self.viewed_array_buffer_ptr();
 
                         // Fast path - if typed array has known size and underlying ArrayBuffer is
                         // fixed then the bounds checks in `canonical_numeric_index_string` could
@@ -353,21 +354,25 @@ macro_rules! create_typed_array_constructor {
                         //
                         // The only additional case we need to check is if the ArrayBuffer was
                         // detached by the call to `$to_element`.
-                        let index = if array_buffer_ptr.is_fixed_length()
+                        if array_buffer_ptr.is_fixed_length()
                             && self.array_length().is_some()
                         {
                             if array_buffer_ptr.is_detached() {
                                 return Ok(true);
                             }
-
-                            index
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
-                                CanonicalIndexType::Valid(index) => index,
-                                _ => return Ok(true),
+                            // This can allocate so be sure to refetch array buffer in case it has
+                            // moved.
+                            if let CanonicalIndexType::Valid(new_index) =
+                                canonical_numeric_index_string(cx, key, self.as_typed_array())?
+                            {
+                                index = new_index;
+                                array_buffer_ptr = self.viewed_array_buffer_ptr();
+                            } else {
+                                return Ok(true);
                             }
-                        };
+                        }
 
                         let byte_index = index * element_size!() + self.byte_offset;
 
@@ -426,7 +431,8 @@ macro_rules! create_typed_array_constructor {
                         // May allocate and invoke arbitrary user code
                         let element_value = $to_element(cx, value)?;
 
-                        let array_buffer_ptr = self.viewed_array_buffer_ptr();
+                        let index;
+                        let mut array_buffer_ptr = self.viewed_array_buffer_ptr();
 
                         // Fast path - if typed array has known size and underlying ArrayBuffer is
                         // fixed then the bounds checks in `canonical_numeric_index_string` could
@@ -434,24 +440,31 @@ macro_rules! create_typed_array_constructor {
                         //
                         // The only additional case we need to check is if the ArrayBuffer was
                         // detached by the call to `$to_element`.
-                        let index = if array_buffer_ptr.is_fixed_length()
+                        if array_buffer_ptr.is_fixed_length()
                             && self.array_length().is_some()
                         {
                             if array_buffer_ptr.is_detached() {
                                 return Ok(true);
                             }
 
-                            match result {
-                                CanonicalIndexType::Valid(index) => index,
-                                _ => return Ok(true),
+                            if let CanonicalIndexType::Valid(new_index) = result {
+                                index = new_index;
+                            } else {
+                                return Ok(true);
                             }
                         } else {
                             // Slow path - all bets are off and we must redo all bounds checks.
-                            match canonical_numeric_index_string(cx, key, self.as_typed_array())? {
-                                CanonicalIndexType::Valid(index) => index,
-                                _ => return Ok(true),
+                            // This can allocate so be sure to refetch array buffer in case it has
+                            // moved.
+                            if let CanonicalIndexType::Valid(new_index) =
+                                canonical_numeric_index_string(cx, key, self.as_typed_array())?
+                            {
+                                index = new_index;
+                                array_buffer_ptr = self.viewed_array_buffer_ptr();
+                            } else {
+                                return Ok(true);
                             }
-                        };
+                        }
 
                         let byte_index = index * element_size!() + self.byte_offset;
 

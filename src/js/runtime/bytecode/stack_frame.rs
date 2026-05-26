@@ -1,29 +1,29 @@
 use crate::{
     common::constants::MEGABYTE_BYTES,
     runtime::{
-    bytecode::{
-        operand::{
-            AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex, DivICSlotIndex,
-            ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex, LooseNeqICSlotIndex,
-            LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex, ShiftLeftICSlotIndex,
-            ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex, StrictEqICSlotIndex,
-            StrictNeqICSlotIndex, SubICSlotIndex,
+        bytecode::{
+            operand::{
+                AddICSlotIndex, BitAndICSlotIndex, BitOrICSlotIndex, BitXorICSlotIndex,
+                DivICSlotIndex, ExpICSlotIndex, GtICSlotIndex, GteICSlotIndex, LooseEqICSlotIndex,
+                LooseNeqICSlotIndex, LtICSlotIndex, LteICSlotIndex, MulICSlotIndex, RemICSlotIndex,
+                ShiftLeftICSlotIndex, ShiftRightArithICSlotIndex, ShiftRightLogicalICSlotIndex,
+                StrictEqICSlotIndex, StrictNeqICSlotIndex, SubICSlotIndex,
+            },
+            width::{UnsignedWidthRepr, Width},
         },
-        width::{UnsignedWidthRepr, Width},
-    },
-    gc::HeapVisitor,
-    ic::{
-        stubs::binary_arith::{
-            AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
-            GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub, RemICStub,
-            ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub, StrictEqICStub,
-            StrictNeqICStub, SubICStub,
+        gc::HeapVisitor,
+        ic::{
+            stubs::binary_arith::{
+                AddICStub, BitAndICStub, BitOrICStub, BitXorICStub, DivICStub, ExpICStub, GtICStub,
+                GteICStub, LooseEqICStub, LooseNeqICStub, LtICStub, LteICStub, MulICStub,
+                RemICStub, ShiftLeftICStub, ShiftRightArithICStub, ShiftRightLogicalICStub,
+                StrictEqICStub, StrictNeqICStub, SubICStub,
+            },
+            vector::{ICEntry, ICVector},
         },
-        vector::{ICEntry, ICVector},
+        scope::Scope,
+        Handle, HeapPtr, Value,
     },
-    scope::Scope,
-    Handle, HeapPtr, Value,
-},
 };
 
 use super::{constant_table::ConstantTable, function::Closure};

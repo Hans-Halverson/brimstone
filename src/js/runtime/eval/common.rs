@@ -797,6 +797,6 @@ pub fn greater_than_or_equal_string_fast(
     left: Handle<Value>,
     right: Handle<Value>,
 ) -> EvalResult<Handle<Value>> {
-    let res = less_than_bigint_fast(cx, left, right)?;
+    let res = less_than_string_fast(cx, left, right)?;
     Ok(cx.bool(res.is_false()))
 }

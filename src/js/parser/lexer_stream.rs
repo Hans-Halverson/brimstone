@@ -709,19 +709,6 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
         } else {
             self.advance_backwards_n(1);
         }
-
-        let prev_code_unit = self.buf[self.pos - 1];
-        if is_low_surrogate_code_unit(prev_code_unit) && self.pos >= 2 {
-            let prev_prev_code_unit = self.buf[self.pos - 2];
-            if is_high_surrogate_code_unit(prev_prev_code_unit) {
-                self.pos -= 2;
-                self.current = code_point_from_surrogate_pair(prev_prev_code_unit, prev_code_unit);
-                return;
-            }
-        }
-
-        self.pos -= 1;
-        self.current = prev_code_unit as u32;
     }
 
     #[inline]

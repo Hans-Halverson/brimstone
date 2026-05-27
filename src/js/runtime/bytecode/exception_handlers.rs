@@ -207,7 +207,7 @@ impl Iterator for ExceptionHandlersIterator {
             let entry_size = match self.width {
                 WidthEnum::Narrow => 1,
                 WidthEnum::Wide => 2,
-                WidthEnum::ExtraWide => 4,
+                WidthEnum::ExtraWide => 8,
             };
             self.current = unsafe { self.current.add(entry_size * 4) };
 

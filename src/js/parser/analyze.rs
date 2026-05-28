@@ -93,6 +93,8 @@ struct FunctionStackEntry {
     is_derived_constructor: bool,
     is_static_initializer: bool,
     is_class_field_initializer: bool,
+    /// Whether this function represents the top level of an eval script.
+    is_eval_toplevel: bool,
 }
 
 enum AllowSuperStackEntry {
@@ -1051,6 +1053,7 @@ impl<'a> Analyzer<'a> {
             is_derived_constructor,
             is_static_initializer,
             is_class_field_initializer: false,
+            is_eval_toplevel: false,
         });
 
         // Return is not allowed in static initializers, but is allowed in all other functions
@@ -1445,6 +1448,7 @@ impl<'a> Analyzer<'a> {
             is_derived_constructor: false,
             is_static_initializer: false,
             is_class_field_initializer: true,
+            is_eval_toplevel: false,
         });
 
         visit_opt!(self, prop.value, visit_outer_expression);
@@ -1659,11 +1663,26 @@ impl<'a> Analyzer<'a> {
         let (def_scope, is_capture) = self.scope_tree.resolve_use(current_scope, &THIS_NAME, loc);
 
         // Only set scope if this is a capture of a `this` binding or if `this` is for a derived
-        // constructor.
+        // constructor. Otherwise `this` does not need to resolve to a materialized binding.
+        let enclosing_non_arrow_function = self.enclosing_non_arrow_function();
         let is_derived_constructor_this = matches!(
-            self.enclosing_non_arrow_function(),
+            enclosing_non_arrow_function,
             Some(FunctionStackEntry { is_derived_constructor: true, .. })
         );
+
+        if is_derived_constructor_this {
+            let scope = def_scope.unwrap_resolved();
+            let binding = scope.get_binding(&THIS_NAME);
+            let implicit_this = binding.kind().as_implicit_this().unwrap();
+
+            implicit_this.set_in_derived_constructor(true);
+
+            let is_eval_toplevel = matches!(
+                enclosing_non_arrow_function,
+                Some(FunctionStackEntry { is_eval_toplevel: true, .. })
+            );
+            implicit_this.set_in_derived_constructor_eval_toplevel(is_eval_toplevel);
+        }
 
         if is_capture || is_derived_constructor_this {
             set_scope(AstPtr::from_ref(def_scope.unwrap_resolved()));
@@ -1725,6 +1744,7 @@ pub fn analyze_for_eval<'a>(
     // If in function add a synthetic function entry
     if in_function {
         analyzer.function_stack.push(FunctionStackEntry {
+            is_eval_toplevel: true,
             is_arrow_function: false,
             is_method: in_method,
             is_static: in_static,

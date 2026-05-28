@@ -50,7 +50,7 @@ impl<'a> ScopeTree<'a> {
 
         // All root scopes start with an implicit `this` binding
         scope_tree
-            .add_binding(&THIS_NAME, BindingKind::ImplicitThis { in_derived_constructor: false })
+            .add_binding(&THIS_NAME, BindingKind::new_implicit_this())
             .unwrap();
 
         scope_tree
@@ -1037,10 +1037,7 @@ pub enum BindingKind<'a> {
         is_namespace: bool,
     },
     /// An implicit `this` binding introduced in a function or root scope.
-    ImplicitThis {
-        /// Whether this is the `this` value for a derived constructor.
-        in_derived_constructor: bool,
-    },
+    ImplicitThis(ImplicitThisBinding),
     /// An implicit `arguments` binding introduced in a function. Note that any var or var function
     /// is treated as an "explicit" `arguments` binding and will require an arguments object.
     ImplicitArguments,
@@ -1060,6 +1057,10 @@ pub enum BindingKind<'a> {
 impl<'a> BindingKind<'a> {
     pub fn new_function_parameter(index: u32) -> BindingKind<'a> {
         BindingKind::FunctionParameter { init_pos: Cell::new(0), index }
+    }
+
+    pub fn new_implicit_this() -> BindingKind<'a> {
+        BindingKind::ImplicitThis(ImplicitThisBinding::new())
     }
 
     /// Whether this is a LexicallyScopedDeclaration from the spec.
@@ -1124,6 +1125,14 @@ impl<'a> BindingKind<'a> {
         matches!(self, BindingKind::Import { is_namespace: true })
     }
 
+    pub fn as_implicit_this(&self) -> Option<&ImplicitThisBinding> {
+        if let BindingKind::ImplicitThis(binding) = self {
+            Some(binding)
+        } else {
+            None
+        }
+    }
+
     fn has_tdz(&self) -> bool {
         matches!(
             self,
@@ -1148,6 +1157,44 @@ impl<'a> BindingKind<'a> {
                 | BindingKind::Function { is_lexical: false, .. }
                 | BindingKind::ImplicitArguments
         )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ImplicitThisBinding {
+    /// Whether this is the `this` value for a derived constructor.
+    ///
+    /// Note that this is set during analysis not parsing.
+    in_derived_constructor: Cell<bool>,
+    /// Whether this is the `this` value for a derived constructor at the root scope of an eval.
+    ///
+    /// Note that this is set during analysis not parsing.
+    in_derived_constructor_eval_toplevel: Cell<bool>,
+}
+
+impl ImplicitThisBinding {
+    fn new() -> Self {
+        // Flags are set later during analysis
+        Self {
+            in_derived_constructor: Cell::new(false),
+            in_derived_constructor_eval_toplevel: Cell::new(false),
+        }
+    }
+
+    pub fn in_derived_constructor(&self) -> bool {
+        self.in_derived_constructor.get()
+    }
+
+    pub fn in_derived_constructor_eval_toplevel(&self) -> bool {
+        self.in_derived_constructor_eval_toplevel.get()
+    }
+
+    pub fn set_in_derived_constructor(&self, value: bool) {
+        self.in_derived_constructor.set(value);
+    }
+
+    pub fn set_in_derived_constructor_eval_toplevel(&self, value: bool) {
+        self.in_derived_constructor_eval_toplevel.set(value);
     }
 }
 

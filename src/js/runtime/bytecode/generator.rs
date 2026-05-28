@@ -2992,7 +2992,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         expr: &ast::ThisExpression,
         dest: ExprDest,
     ) -> EmitResult<GenRegister> {
-        self.gen_load_this(expr.scope, expr.loc.start, dest)
+        self.gen_load_this(expr.scope, expr.loc.start, dest, /* skip_init_check */ false)
     }
 
     fn gen_load_this(
@@ -3000,6 +3000,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         scope: Option<AstPtr<AstScopeNode>>,
         pos: Pos,
         dest: ExprDest,
+        skip_init_check: bool,
     ) -> EmitResult<GenRegister> {
         let mut needs_init_check = false;
 
@@ -3007,37 +3008,69 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // the dest.
         let this_value = if let Some(scope) = scope.as_ref() {
             let binding = scope.as_ref().get_binding(&THIS_NAME);
+            let implicit_this = binding.kind().as_implicit_this().unwrap();
 
-            if let BindingKind::ImplicitThis { in_derived_constructor: true } = binding.kind() {
+            if implicit_this.in_derived_constructor()
+                || implicit_this.in_derived_constructor_eval_toplevel()
+            {
                 needs_init_check = true;
             }
 
             match binding.vm_location() {
+                // Captured `this`
                 Some(VMLocation::Scope { scope_id, index }) => {
                     self.gen_load_scope_binding(scope_id, index, dest)?
                 }
-                _ => {
-                    // A scope may be resolved but `this` is not captured in some cases, e.g. for
-                    // `this` in a derived constructor.
-                    self.gen_mov_reg_to_dest(Register::this(), dest)?
+                // In derived constructor eval `this` is stored in a captured scope outside the
+                // eval. Must be loaded/stored dynamically to support `this` initialization.
+                _ if implicit_this.in_derived_constructor_eval_toplevel() => {
+                    self.gen_load_dynamic_identifier(&THIS_NAME, pos, dest)?
                 }
+                _ => self.gen_mov_reg_to_dest(Register::this(), dest)?,
             }
         } else {
             // Otherwise `this` is for the current function
-            if self.is_derived_constructor() {
-                needs_init_check = true;
-            }
-
             self.gen_mov_reg_to_dest(Register::this(), dest)?
         };
 
         // Check if this was initialized
-        if needs_init_check {
+        if needs_init_check && !skip_init_check {
             self.writer
                 .check_this_initialized_instruction(this_value, pos);
         }
 
         Ok(this_value)
+    }
+
+    fn gen_store_this(
+        &mut self,
+        scope: AstPtr<AstScopeNode>,
+        pos: Pos,
+        value: GenRegister,
+    ) -> EmitResult<()> {
+        let binding = scope.as_ref().get_binding(&THIS_NAME);
+
+        let in_derived_constructor_eval_toplevel = binding
+            .kind()
+            .as_implicit_this()
+            .unwrap()
+            .in_derived_constructor_eval_toplevel();
+
+        match binding.vm_location() {
+            // Captured `this`
+            Some(VMLocation::Scope { scope_id, index }) => {
+                self.gen_store_scope_binding(scope_id, index, value)
+            }
+            // In derived constructor eval `this` is stored in a captured scope outside the
+            // eval. Must be loaded/stored dynamically to support `this` initialization.
+            _ if in_derived_constructor_eval_toplevel => {
+                self.gen_store_dynamic_identifier(&THIS_NAME, value, pos)
+            }
+            _ => {
+                self.write_mov_instruction(Register::this(), value);
+                Ok(())
+            }
+        }
     }
 
     fn gen_unary_minus_expression(
@@ -4570,8 +4603,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // Emit the property itself, which may be a computed expression or literal name
                 let property = if let ast::Pattern::SuperMember(member) = member {
                     let super_pos = member.loc.start;
-                    let this_value =
-                        self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
+                    let this_value = self.gen_load_this(
+                        member.this_scope,
+                        super_pos,
+                        ExprDest::Any,
+                        /* skip_init_check */ false,
+                    )?;
 
                     if member.is_computed {
                         let key = self.gen_expression(&member.property)?;
@@ -4854,7 +4891,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             let property = if let ast::Expression::SuperMember(member) = member {
                 let super_pos = member.loc.start;
-                let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
+                let this_value = self.gen_load_this(
+                    member.this_scope,
+                    super_pos,
+                    ExprDest::Any,
+                    /* skip_init_check */ false,
+                )?;
 
                 if member.is_computed {
                     let key = self.gen_expression(&member.property)?;
@@ -5639,7 +5681,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let super_pos = expr.loc.start;
 
         // Load `this` value and home object
-        let this_value = self.gen_load_this(expr.this_scope, super_pos, ExprDest::Any)?;
+        let this_value = self.gen_load_this(
+            expr.this_scope,
+            super_pos,
+            ExprDest::Any,
+            /* skip_init_check */ false,
+        )?;
         let home_object = self.gen_load_home_object(expr, ExprDest::Any)?;
 
         // Store `this` value in the CallReceiver if one is provided
@@ -5778,19 +5825,14 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        // Load `this` value to a register if `this` was captured
-        let mut captured_this = None;
-        let this_value = if let Some(VMLocation::Scope { scope_id, index }) = super_call
-            .this_scope
-            .as_ref()
-            .get_binding(&THIS_NAME)
-            .vm_location()
-        {
-            captured_this = Some((scope_id, index));
-            self.gen_load_scope_binding(scope_id, index, ExprDest::Any)?
-        } else {
-            Register::this()
-        };
+        // Load `this` value without init check, since initialization is checked by the following
+        // CheckSuperAlreadyCalled instruction.
+        let this_value = self.gen_load_this(
+            Some(super_call.this_scope),
+            super_pos,
+            ExprDest::Any,
+            /* skip_init_check */ true,
+        )?;
 
         // Check if super was already called and initialized `this` value, erroring if so
         self.writer
@@ -5799,11 +5841,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.register_allocator.release(this_value);
 
         // Always store the result of the super call as the value of `this`
-        if let Some((scope_id, index)) = captured_this {
-            self.gen_store_scope_binding(scope_id, index, call_result)?;
-        } else {
-            self.write_mov_instruction(Register::this(), call_result);
-        }
+        self.gen_store_this(super_call.this_scope, super_pos, call_result)?;
 
         // Derived constructors initialize fields after the super call
         if self.is_derived_constructor() {
@@ -6183,7 +6221,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let super_pos = member.loc.start;
 
         let home_object = self.gen_load_home_object(member, ExprDest::Any)?;
-        let this_value = self.gen_load_this(member.this_scope, super_pos, ExprDest::Any)?;
+        let this_value = self.gen_load_this(
+            member.this_scope,
+            super_pos,
+            ExprDest::Any,
+            /* skip_init_check */ false,
+        )?;
 
         let property = if member.is_computed {
             self.gen_expression(&member.property)?

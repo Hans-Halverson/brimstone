@@ -44,7 +44,7 @@ impl ObjectPrototype {
     ) -> AllocResult<()> {
         let mut object = object.as_object();
 
-        let descriptor = cx.base_descriptors.get(HeapItemKind::ObjectPrototype);
+        let descriptor = cx.descriptors.get(HeapItemKind::ObjectPrototype);
         object_ordinary_init(cx, *object, descriptor, None);
 
         // Constructor property is added once ObjectConstructor has been created

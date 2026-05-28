@@ -70,7 +70,7 @@ impl CompiledRegExpObject {
         let size = Self::calculate_size_in_bytes(instructions.len(), num_capture_groups);
         let mut object = cx.alloc_uninit_with_size::<CompiledRegExpObject>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::CompiledRegExpObject));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::CompiledRegExpObject));
         set_uninit!(object.escaped_pattern_source, *escaped_pattern_source);
         set_uninit!(object.flags, regexp.flags);
         set_uninit!(object.has_named_capture_groups, has_named_capture_groups);

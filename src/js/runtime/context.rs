@@ -19,8 +19,8 @@ use crate::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
     runtime::{
-        alloc_error::AllocResult, annex_b::init_annex_b_methods, gc::GarbageCollector,
-        string_value::StringValue,
+        alloc_error::AllocResult, annex_b::init_annex_b_methods,
+        descriptor_registry::DescriptorRegistry, gc::GarbageCollector, string_value::StringValue,
     },
 };
 
@@ -34,7 +34,7 @@ use super::{
     collections::{BsHashMap, BsHashMapField},
     error::BsResult,
     gc::{Heap, HeapRootsDeserializer, HeapVisitor},
-    heap_item_descriptor::{BaseDescriptors, HeapItemKind},
+    heap_item_descriptor::HeapItemKind,
     interned_strings::InternedStrings,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
     module::{
@@ -74,7 +74,7 @@ pub struct ContextCell {
     global_symbol_registry: HeapPtr<GlobalSymbolRegistry>,
     pub names: BuiltinNames,
     pub well_known_symbols: BuiltinSymbols,
-    pub base_descriptors: BaseDescriptors,
+    pub descriptors: DescriptorRegistry,
     pub rust_runtime_functions: RustRuntimeFunctionRegistry,
 
     /// The virtual machine used to execute bytecode.
@@ -132,7 +132,7 @@ impl Context {
             global_symbol_registry: HeapPtr::uninit(),
             names: BuiltinNames::uninit(),
             well_known_symbols: BuiltinSymbols::uninit(),
-            base_descriptors: BaseDescriptors::uninit_empty(),
+            descriptors: DescriptorRegistry::uninit_empty(),
             rust_runtime_functions: RustRuntimeFunctionRegistry::new(),
             vm: None,
             initial_realm: HeapPtr::uninit(),
@@ -186,7 +186,7 @@ impl Context {
 
         handle_scope!(cx, {
             // Initialize all uninitialized fields
-            cx.base_descriptors = BaseDescriptors::new(cx)?;
+            cx.descriptors = DescriptorRegistry::new(cx)?;
             InternedStrings::init(cx)?;
 
             cx.init_builtin_names()?;
@@ -219,7 +219,7 @@ impl Context {
         let mut cx = *self;
 
         // Initialize all uninitialized fields
-        cx.base_descriptors = BaseDescriptors::uninit();
+        cx.descriptors = DescriptorRegistry::uninit();
 
         // Deserialize the heap roots
         HeapRootsDeserializer::deserialize(cx, serialized);
@@ -596,7 +596,7 @@ impl Context {
     fn visit_permanent_roots(&mut self, visitor: &mut impl HeapVisitor) {
         self.names.visit_roots(visitor);
         self.well_known_symbols.visit_roots(visitor);
-        self.base_descriptors.visit_roots(visitor);
+        self.descriptors.visit_roots(visitor);
         visitor.visit_pointer(&mut self.initial_realm);
 
         visitor.visit_pointer(&mut self.default_named_properties);

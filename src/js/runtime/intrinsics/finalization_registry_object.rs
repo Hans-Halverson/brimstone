@@ -100,11 +100,7 @@ impl FinalizationRegistryCells {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut cells = cx.alloc_uninit_with_size::<FinalizationRegistryCells>(size)?;
 
-        set_uninit!(
-            cells.descriptor,
-            cx.base_descriptors
-                .get(HeapItemKind::FinalizationRegistryCells)
-        );
+        set_uninit!(cells.descriptor, cx.descriptors.get(HeapItemKind::FinalizationRegistryCells));
         set_uninit!(cells.num_occupied, 0);
         set_uninit!(cells.num_deleted, 0);
 

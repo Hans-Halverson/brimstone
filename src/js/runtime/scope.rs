@@ -59,7 +59,7 @@ impl Scope {
         let size = Self::calculate_size_in_bytes(num_slots);
         let mut scope = cx.alloc_uninit_with_size::<Scope>(size)?;
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::Scope));
+        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::Scope));
         set_uninit!(scope.kind, kind);
         set_uninit!(scope.parent, parent.map(|p| *p));
         set_uninit!(scope.scope_names, *scope_names);

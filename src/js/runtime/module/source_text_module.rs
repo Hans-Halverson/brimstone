@@ -144,7 +144,7 @@ impl SourceTextModule {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<SourceTextModule>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::SourceTextModule));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::SourceTextModule));
         set_uninit!(object.id, next_module_id());
         set_uninit!(object.state, ModuleState::New);
         set_uninit!(object.has_top_level_await, has_top_level_await);

@@ -181,7 +181,7 @@ impl ObjectValue {
     ) -> AllocResult<Handle<ObjectValue>> {
         let mut object = cx.alloc_uninit::<ObjectValue>()?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::OrdinaryObject));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::OrdinaryObject));
         set_uninit!(object.prototype, prototype.map(|p| *p));
         set_uninit!(object.named_properties, cx.default_named_properties);
         set_uninit!(object.array_properties, cx.default_array_properties);

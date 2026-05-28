@@ -60,7 +60,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
     }
 
     pub fn init(&mut self, cx: Context, kind: HeapItemKind, capacity: usize) {
-        set_uninit!(self.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(self.descriptor, cx.descriptors.get(kind));
         set_uninit!(self.len, 0);
 
         // Initialize entries array to empty

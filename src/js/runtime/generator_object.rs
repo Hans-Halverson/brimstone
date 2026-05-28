@@ -118,7 +118,7 @@ impl GeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<GeneratorObject>(size)?;
 
-        let descriptor = cx.base_descriptors.get(HeapItemKind::Generator);
+        let descriptor = cx.descriptors.get(HeapItemKind::Generator);
         object_ordinary_init(cx, generator.into(), descriptor, prototype.map(|p| *p));
 
         set_uninit!(generator.state, GeneratorState::SuspendedStart);

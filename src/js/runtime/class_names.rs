@@ -78,7 +78,7 @@ impl ClassNames {
         let size = Self::calculate_size_in_bytes(num_methods);
         let mut class_names = cx.alloc_uninit_with_size::<ClassNames>(size)?;
 
-        set_uninit!(class_names.descriptor, cx.base_descriptors.get(HeapItemKind::ClassNames));
+        set_uninit!(class_names.descriptor, cx.descriptors.get(HeapItemKind::ClassNames));
         set_uninit!(class_names.home_object, home_object);
         set_uninit!(class_names.static_home_object, static_home_object);
 

@@ -72,7 +72,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut hash_map = cx.alloc_uninit_with_size::<BsIndexMap<K, V>>(size)?;
 
-        set_uninit!(hash_map.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(hash_map.descriptor, cx.descriptors.get(kind));
         set_uninit!(hash_map.is_tombstone, false);
         set_uninit!(hash_map.num_occupied, 0);
         set_uninit!(hash_map.num_deleted, 0);

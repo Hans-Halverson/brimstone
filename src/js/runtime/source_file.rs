@@ -43,7 +43,7 @@ impl SourceFile {
         let size = Self::calculate_size_in_bytes(source.contents.len());
         let mut scope = cx.alloc_uninit_with_size::<SourceFile>(size)?;
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::SourceFile));
+        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::SourceFile));
         set_uninit!(scope.line_offsets, None);
         set_uninit!(scope.path, *path);
         set_uninit!(scope.display_name, display_name.map(|n| *n));

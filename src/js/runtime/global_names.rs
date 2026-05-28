@@ -46,7 +46,7 @@ impl GlobalNames {
         let size = Self::calculate_size_in_bytes(num_names);
         let mut global_names = cx.alloc_uninit_with_size::<GlobalNames>(size)?;
 
-        set_uninit!(global_names.descriptor, cx.base_descriptors.get(HeapItemKind::GlobalNames));
+        set_uninit!(global_names.descriptor, cx.descriptors.get(HeapItemKind::GlobalNames));
         set_uninit!(global_names.scope_names, *scope_names);
         global_names.num_functions = funcs.len();
 

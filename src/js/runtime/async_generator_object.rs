@@ -116,7 +116,7 @@ impl AsyncGeneratorObject {
         let size = Self::calculate_size_in_bytes(stack_frame.len());
         let mut generator = cx.alloc_uninit_with_size::<AsyncGeneratorObject>(size)?;
 
-        let descriptor = cx.base_descriptors.get(HeapItemKind::AsyncGenerator);
+        let descriptor = cx.descriptors.get(HeapItemKind::AsyncGenerator);
         object_ordinary_init(cx, generator.into(), descriptor, Some(*prototype));
 
         set_uninit!(generator.state, AsyncGeneratorState::SuspendedStart);
@@ -264,10 +264,7 @@ impl AsyncGeneratorRequest {
     ) -> AllocResult<HeapPtr<AsyncGeneratorRequest>> {
         let mut request = cx.alloc_uninit::<AsyncGeneratorRequest>()?;
 
-        set_uninit!(
-            request.descriptor,
-            cx.base_descriptors.get(HeapItemKind::AsyncGeneratorRequest)
-        );
+        set_uninit!(request.descriptor, cx.descriptors.get(HeapItemKind::AsyncGeneratorRequest));
         set_uninit!(request.capability, *capability);
         set_uninit!(request.completion_value, *completion_value);
         set_uninit!(request.completion_type, completion_type);

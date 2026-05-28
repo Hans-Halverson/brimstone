@@ -30,7 +30,7 @@ impl<T: Clone> BsArray<T> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(array.descriptor, cx.descriptors.get(kind));
         array.array.init_with(length, initial);
 
         Ok(array)
@@ -44,7 +44,7 @@ impl<T: Clone> BsArray<T> {
         let size = Self::calculate_size_in_bytes(slice.len());
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(array.descriptor, cx.descriptors.get(kind));
         array.array.init_from_slice(slice);
 
         Ok(array)
@@ -60,7 +60,7 @@ impl<T> BsArray<T> {
         let size = Self::calculate_size_in_bytes(length);
         let mut array = cx.alloc_uninit_with_size::<BsArray<T>>(size)?;
 
-        set_uninit!(array.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(array.descriptor, cx.descriptors.get(kind));
         array.array.init_with_uninit(length);
 
         Ok(array)

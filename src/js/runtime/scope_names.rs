@@ -66,7 +66,7 @@ impl ScopeNames {
         let size = Self::calculate_size_in_bytes(names.len());
         let mut scope_names = cx.alloc_uninit_with_size::<ScopeNames>(size)?;
 
-        set_uninit!(scope_names.descriptor, cx.base_descriptors.get(HeapItemKind::ScopeNames));
+        set_uninit!(scope_names.descriptor, cx.descriptors.get(HeapItemKind::ScopeNames));
         set_uninit!(scope_names.flags, flags);
 
         // Copy names into inline names array

@@ -30,7 +30,7 @@ impl ConstantTable {
         let size = Self::calculate_size_in_bytes(constants.len());
         let mut object = cx.alloc_uninit_with_size::<ConstantTable>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ConstantTable));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ConstantTable));
 
         // Copy constants into inline constants array
         object.constants.init_with_uninit(constants.len());

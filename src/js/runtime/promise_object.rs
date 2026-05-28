@@ -435,7 +435,7 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
+        set_uninit!(reaction.descriptor, cx.descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::AwaitResume { suspended_generator: *suspended_generator }
@@ -454,7 +454,7 @@ impl PromiseReaction {
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;
 
-        set_uninit!(reaction.descriptor, cx.base_descriptors.get(HeapItemKind::PromiseReaction));
+        set_uninit!(reaction.descriptor, cx.descriptors.get(HeapItemKind::PromiseReaction));
         set_uninit!(
             reaction.handler,
             ReactionHandler::Then {
@@ -492,10 +492,7 @@ impl PromiseCapability {
         // Create an empty capability object whose fields will be set later
         let mut capability = cx.alloc_uninit::<PromiseCapability>()?;
 
-        set_uninit!(
-            capability.descriptor,
-            cx.base_descriptors.get(HeapItemKind::PromiseCapability)
-        );
+        set_uninit!(capability.descriptor, cx.descriptors.get(HeapItemKind::PromiseCapability));
         set_uninit!(capability.promise, None);
         set_uninit!(capability.resolve, Value::undefined());
         set_uninit!(capability.reject, Value::undefined());

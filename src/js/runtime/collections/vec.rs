@@ -27,7 +27,7 @@ impl<T: Clone + Copy> BsVec<T> {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsVec<T>>(size)?;
 
-        set_uninit!(vec.descriptor, cx.base_descriptors.get(kind));
+        set_uninit!(vec.descriptor, cx.descriptors.get(kind));
         set_uninit!(vec.length, 0);
         vec.array.init_with_uninit(capacity);
 

@@ -26,7 +26,7 @@ impl Accessor {
     ) -> AllocResult<Handle<Accessor>> {
         let mut accessor = cx.alloc_uninit::<Accessor>()?;
 
-        set_uninit!(accessor.descriptor, cx.base_descriptors.get(HeapItemKind::Accessor));
+        set_uninit!(accessor.descriptor, cx.descriptors.get(HeapItemKind::Accessor));
         set_uninit!(accessor.get, get.map(|v| *v));
         set_uninit!(accessor.set, set.map(|v| *v));
 

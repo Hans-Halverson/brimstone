@@ -868,7 +868,6 @@ impl<'a> Parser<'a> {
         // Function scope node must contain the params and body, but not function name.
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ false, /* is_expression */ !is_decl,
-            /* is_derived_constructor */ false,
         )?;
 
         // Named function expressions bind name within function scope
@@ -914,7 +913,6 @@ impl<'a> Parser<'a> {
         start_pos: Pos,
         is_arrow: bool,
         is_expression: bool,
-        is_derived_constructor: bool,
     ) -> ParseResult<AstPtr<AstScopeNode<'a>>> {
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Function {
             id: start_pos,
@@ -925,7 +923,7 @@ impl<'a> Parser<'a> {
         // All non-arrow functions have a `this`, which should be treated as a var-scoped binding
         // when determining if it is captured by an arrow function.
         if !is_arrow {
-            let kind = BindingKind::ImplicitThis { in_derived_constructor: is_derived_constructor };
+            let kind = BindingKind::new_implicit_this();
             self.scope_builder.add_binding(&THIS_NAME, kind).unwrap();
         }
 
@@ -1739,7 +1737,6 @@ impl<'a> Parser<'a> {
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
             start_pos, /* is_arrow */ true, /* is_expression */ false,
-            /* is_derived_constructor */ false,
         )?;
 
         let is_async = self.token == Token::Async;
@@ -3475,14 +3472,10 @@ impl<'a> Parser<'a> {
 
         match self.token {
             Token::LeftParen => {
-                let is_derived_constructor = if in_class_with_super
+                let is_derived_constructor = in_class_with_super
                     && !property_name.is_computed
                     && !property_name.is_private
-                {
-                    Self::is_constructor_key(&property_name.key)
-                } else {
-                    false
-                };
+                    && Self::is_constructor_key(&property_name.key);
 
                 self.parse_method_property(
                     property_name.key,
@@ -3686,10 +3679,7 @@ impl<'a> Parser<'a> {
 
         // Function scope node must contain params and body
         let scope = self.enter_function_scope(
-            start_pos,
-            /* is_arrow */ false,
-            /* is_expression */ false,
-            is_derived_constructor,
+            start_pos, /* is_arrow */ false, /* is_expression */ false,
         )?;
 
         // Derived constructors add self as a fake binding, since they will need to be looked up
@@ -4030,7 +4020,6 @@ impl<'a> Parser<'a> {
 
         let init_scope = self.enter_function_scope(
             start_pos, /* is_arrow */ false, /* is_expression */ false,
-            /* is_derived_constructor */ false,
         )?;
         *scope = Some(init_scope);
 

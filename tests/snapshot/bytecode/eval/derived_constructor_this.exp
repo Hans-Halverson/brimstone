@@ -1,0 +1,242 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 2
+      0: LoadEmpty r1
+      2: NewClass r0, c1, c0, r1, r0
+      8: StoreToScope r0, 1, 0
+     12: PushLexicalScope c2
+     14: LoadEmpty r1
+     16: StoreToScope r1, 0, 0
+     20: LoadFromScope r1, 1, 1
+     24: CheckTdz r1, c3
+     27: NewClass r0, c5, c4, r1, r0
+     33: StoreToScope r0, 0, 0
+     37: PopScope 
+     38: StoreToScope r0, 2, 0
+     42: PushLexicalScope c6
+     44: LoadEmpty r1
+     46: StoreToScope r1, 0, 0
+     50: LoadFromScope r1, 1, 1
+     54: CheckTdz r1, c3
+     57: NewClass r0, c8, c7, r1, r0
+     63: StoreToScope r0, 0, 0
+     67: PopScope 
+     68: StoreToScope r0, 3, 0
+     72: PushLexicalScope c9
+     74: LoadEmpty r1
+     76: StoreToScope r1, 0, 0
+     80: LoadFromScope r1, 1, 1
+     84: CheckTdz r1, c3
+     87: NewClass r0, c11, c10, r1, r0
+     93: StoreToScope r0, 0, 0
+     97: PopScope 
+     98: StoreToScope r0, 4, 0
+    102: PushLexicalScope c12
+    104: LoadEmpty r1
+    106: StoreToScope r1, 0, 0
+    110: LoadFromScope r1, 1, 1
+    114: CheckTdz r1, c3
+    117: NewClass r0, c14, c13, r1, r0
+    123: StoreToScope r0, 0, 0
+    127: PopScope 
+    128: StoreToScope r0, 5, 0
+    132: Mov r0, <scope>
+    135: LoadFromScope r1, 2, 0
+    139: CheckTdz r1, c15
+    142: Construct r1, r1, r1, r1, 0
+    148: Jump 5 (.L0)
+    150: Mov <scope>, r0
+  .L0:
+    153: Mov r0, <scope>
+    156: LoadFromScope r1, 3, 0
+    160: CheckTdz r1, c16
+    163: Construct r1, r1, r1, r1, 0
+    169: Jump 5 (.L1)
+    171: Mov <scope>, r0
+  .L1:
+    174: Mov r0, <scope>
+    177: LoadFromScope r1, 4, 0
+    181: CheckTdz r1, c17
+    184: Construct r1, r1, r1, r1, 0
+    190: Jump 5 (.L2)
+    192: Mov <scope>, r0
+  .L2:
+    195: Mov r0, <scope>
+    198: LoadFromScope r1, 5, 0
+    202: CheckTdz r1, c18
+    205: Construct r1, r1, r1, r1, 0
+    211: Jump 5 (.L3)
+    213: Mov <scope>, r0
+  .L3:
+    216: LoadUndefined r0
+    218: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: Base]
+    1: [ClassNames]
+    2: [ScopeNames]
+    3: [String: Base]
+    4: [BytecodeFunction: C1]
+    5: [ClassNames]
+    6: [ScopeNames]
+    7: [BytecodeFunction: C2]
+    8: [ClassNames]
+    9: [ScopeNames]
+    10: [BytecodeFunction: C3]
+    11: [ClassNames]
+    12: [ScopeNames]
+    13: [BytecodeFunction: C4]
+    14: [ClassNames]
+    15: [String: C1]
+    16: [String: C2]
+    17: [String: C3]
+    18: [String: C4]
+  Exception Handlers:
+    135-148 -> 150
+    156-169 -> 171
+    177-190 -> 192
+    198-211 -> 213
+}
+
+[BytecodeFunction: Base] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: C1] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 3, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 11
+    34: LoadFromScope r0, 0, 0
+    38: CheckThisInitialized r0
+    40: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: this]
+}
+
+[BytecodeFunction: C2] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 3, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 11
+    34: LoadFromScope r0, 0, 0
+    38: CheckThisInitialized r0
+    40: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: this.fromEval = this.method();]
+}
+
+[BytecodeFunction: C3] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 3, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 11
+    34: LoadFromScope r0, 0, 0
+    38: CheckThisInitialized r0
+    40: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: super()]
+}
+
+[BytecodeFunction: C4] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 3, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 2, 0
+    22: LoadGlobal r0, c1
+    25: LoadConstant r1, c2
+    28: CallMaybeEval r0, r0, r1, 1, 11
+    34: LoadFromScope r0, 0, 0
+    38: CheckThisInitialized r0
+    40: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: super.method()]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: LoadDynamic r0, c0
+    3: CheckThisInitialized r0
+    5: Ret r0
+  Constant Table:
+    0: [String: this]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 4
+     0: LoadDynamic r1, c0
+     3: CheckThisInitialized r1
+     5: LoadDynamic r2, c0
+     8: CheckThisInitialized r2
+    10: GetNamedProperty r3, r2, c2
+    14: CallWithReceiver r0, r3, r2, r3, 0
+    20: SetNamedProperty r1, c1, r0
+    24: Ret r0
+  Constant Table:
+    0: [String: this]
+    1: [String: fromEval]
+    2: [String: method]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: LoadDynamic r1, c0
+     3: GetSuperConstructor r1, r1
+     6: LoadDynamic r2, c1
+     9: Construct r0, r1, r2, r2, 0
+    15: LoadDynamic r1, c2
+    18: CheckSuperAlreadyCalled r1
+    20: StoreDynamic r0, c2
+    23: Ret r0
+  Constant Table:
+    0: [String: %constructor]
+    1: [String: %new.target]
+    2: [String: this]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: LoadDynamic r1, c0
+     3: CheckThisInitialized r1
+     5: LoadDynamic r2, c1
+     8: GetNamedSuperProperty r2, r2, r1, c2
+    13: CallWithReceiver r0, r2, r1, r2, 0
+    19: Ret r0
+  Constant Table:
+    0: [String: this]
+    1: [String: %homeObject]
+    2: [String: method]
+}

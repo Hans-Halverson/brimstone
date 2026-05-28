@@ -574,7 +574,7 @@ impl SymbolValue {
         let description = description.map(|d| d.flatten()).transpose()?;
         let mut symbol = cx.alloc_uninit::<SymbolValue>()?;
 
-        set_uninit!(symbol.descriptor, cx.base_descriptors.get(HeapItemKind::Symbol));
+        set_uninit!(symbol.descriptor, cx.descriptors.get(HeapItemKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| *desc));
         set_uninit!(symbol.hash_code, cx.rand.gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
@@ -689,7 +689,7 @@ impl BigIntValue {
         let mut bigint = cx.alloc_uninit_with_size::<BigIntValue>(size)?;
 
         // Copy raw parts of BigInt into BigIntValue
-        set_uninit!(bigint.descriptor, cx.base_descriptors.get(HeapItemKind::BigInt));
+        set_uninit!(bigint.descriptor, cx.descriptors.get(HeapItemKind::BigInt));
         set_uninit!(bigint.len, digits.len());
         set_uninit!(bigint.sign, sign);
 

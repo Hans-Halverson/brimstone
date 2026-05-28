@@ -42,10 +42,7 @@ impl AsyncFromSyncIterator {
             Intrinsic::AsyncFromSyncIteratorPrototype,
         )?;
 
-        set_uninit!(
-            object.descriptor,
-            cx.base_descriptors.get(HeapItemKind::AsyncFromSyncIterator)
-        );
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::AsyncFromSyncIterator));
         set_uninit!(object.iterator, *iterator.iterator);
         set_uninit!(object.next_method, *iterator.next_method);
 

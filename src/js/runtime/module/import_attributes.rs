@@ -32,7 +32,7 @@ impl ImportAttributes {
         let size = Self::calculate_size_in_bytes(num_entries);
         let mut object = cx.alloc_uninit_with_size::<ImportAttributes>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ImportAttributes));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ImportAttributes));
 
         object.attribute_pairs.init_with_uninit(num_entries);
         for (i, (key, value)) in attribute_pairs.iter().enumerate() {

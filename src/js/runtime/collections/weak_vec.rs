@@ -34,7 +34,7 @@ impl BsWeakVec {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut vec = cx.alloc_uninit_with_size::<BsWeakVec>(size)?;
 
-        set_uninit!(vec.descriptor, cx.base_descriptors.get(HeapItemKind::WeakVec));
+        set_uninit!(vec.descriptor, cx.descriptors.get(HeapItemKind::WeakVec));
         set_uninit!(vec.length, 0);
         set_uninit!(vec.next_weak_vec, None);
         vec.array.init_with_uninit(capacity);

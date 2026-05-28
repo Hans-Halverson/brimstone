@@ -52,7 +52,7 @@ impl FunctionPrototype {
         let mut object = function_prototype.as_object();
 
         // Initialize all fields of the prototype objec
-        let descriptor_ptr = cx.base_descriptors.get(HeapItemKind::Closure);
+        let descriptor_ptr = cx.descriptors.get(HeapItemKind::Closure);
         object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
 
         // The prototype object is a function which accepts any arguments and returns undefined

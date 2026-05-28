@@ -45,7 +45,7 @@ impl ForInIterator {
         let size = Self::calculate_size_in_bytes(keys.len());
         let mut iterator = cx.alloc_uninit_with_size::<ForInIterator>(size)?;
 
-        set_uninit!(iterator.descriptor, cx.base_descriptors.get(HeapItemKind::ForInIterator));
+        set_uninit!(iterator.descriptor, cx.descriptors.get(HeapItemKind::ForInIterator));
         set_uninit!(iterator.object, *object);
         set_uninit!(iterator.index, 0);
 

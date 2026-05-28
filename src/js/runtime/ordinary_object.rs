@@ -578,7 +578,7 @@ pub fn ordinary_own_string_symbol_property_keys(
 pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
     let object = cx.alloc_uninit::<ObjectValue>()?;
 
-    let descriptor = cx.base_descriptors.get(HeapItemKind::OrdinaryObject);
+    let descriptor = cx.descriptors.get(HeapItemKind::OrdinaryObject);
     let proto = cx.get_intrinsic_ptr(Intrinsic::ObjectPrototype);
     object_ordinary_init(cx, object, descriptor, Some(proto));
 
@@ -595,7 +595,7 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let descriptor = cx.descriptors.get(descriptor_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto));
 
@@ -613,7 +613,7 @@ where
 {
     let object = cx.alloc_uninit_with_size::<T>(size)?;
 
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let descriptor = cx.descriptors.get(descriptor_kind);
     let proto = cx.get_intrinsic_ptr(intrinsic_proto);
     object_ordinary_init(cx, object.into(), descriptor, Some(proto));
 
@@ -630,7 +630,7 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let descriptor = cx.descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
 
     Ok(object)
@@ -646,7 +646,7 @@ where
 {
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let descriptor = cx.descriptors.get(descriptor_kind);
     let proto = proto.map(|p| *p);
     object_ordinary_init(cx, object.into(), descriptor, proto);
 
@@ -683,7 +683,7 @@ where
 
     let object = cx.alloc_uninit::<T>()?;
 
-    let descriptor = cx.base_descriptors.get(descriptor_kind);
+    let descriptor = cx.descriptors.get(descriptor_kind);
     object_ordinary_init(cx, object.into(), descriptor, Some(*proto));
 
     Ok(object)

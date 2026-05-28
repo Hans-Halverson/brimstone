@@ -357,7 +357,7 @@ impl DenseArrayProperties {
         let size = Self::calculate_size_in_bytes(capacity as usize);
         let mut object = cx.alloc_uninit_with_size::<DenseArrayProperties>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::DenseArrayProperties));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::DenseArrayProperties));
         set_uninit!(object.len, 0);
         object.array.init_with_uninit(capacity as usize);
 

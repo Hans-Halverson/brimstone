@@ -117,7 +117,7 @@ impl ExceptionHandlers {
         let size = Self::calculate_size_in_bytes(handlers.len());
         let mut object = cx.alloc_uninit_with_size::<ExceptionHandlers>(size)?;
 
-        set_uninit!(object.descriptor, cx.base_descriptors.get(HeapItemKind::ExceptionHandlers));
+        set_uninit!(object.descriptor, cx.descriptors.get(HeapItemKind::ExceptionHandlers));
         set_uninit!(object.width, width);
         object.handlers.init_from_slice(&handlers);
 

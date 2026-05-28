@@ -72,7 +72,7 @@ impl SyntheticModule {
         let mut module = cx.alloc_uninit::<SyntheticModule>()?;
 
         // Note that kind is not initialized here, as it is initialized by the caller
-        set_uninit!(module.descriptor, cx.base_descriptors.get(HeapItemKind::SyntheticModule));
+        set_uninit!(module.descriptor, cx.descriptors.get(HeapItemKind::SyntheticModule));
         set_uninit!(module.id, next_module_id());
         set_uninit!(module.module_scope, *module_scope);
         set_uninit!(module.namespace_object, None);

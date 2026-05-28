@@ -20,7 +20,7 @@ impl BoxedValue {
     pub fn new(cx: Context, value: Handle<Value>) -> AllocResult<HeapPtr<BoxedValue>> {
         let mut scope = cx.alloc_uninit::<BoxedValue>()?;
 
-        set_uninit!(scope.descriptor, cx.base_descriptors.get(HeapItemKind::BoxedValue));
+        set_uninit!(scope.descriptor, cx.descriptors.get(HeapItemKind::BoxedValue));
         set_uninit!(scope.value, *value);
 
         Ok(scope)

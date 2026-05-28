@@ -16,6 +16,7 @@ mod collections;
 pub mod console;
 mod context;
 pub mod debug_print;
+mod descriptor_registry;
 pub mod error;
 pub mod eval;
 pub mod eval_result;

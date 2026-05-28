@@ -63,7 +63,7 @@ impl Realm {
             let size = Self::calculate_size_in_bytes();
             let mut realm = cx.alloc_uninit_with_size::<Realm>(size)?;
 
-            set_uninit!(realm.descriptor, cx.base_descriptors.get(HeapItemKind::Realm));
+            set_uninit!(realm.descriptor, cx.descriptors.get(HeapItemKind::Realm));
             set_uninit!(realm.global_object, HeapPtr::uninit());
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
@@ -322,7 +322,7 @@ impl GlobalScopes {
         let size = Self::calculate_size_in_bytes(capacity);
         let mut global_scopes = cx.alloc_uninit_with_size::<GlobalScopes>(size)?;
 
-        set_uninit!(global_scopes.descriptor, cx.base_descriptors.get(HeapItemKind::GlobalScopes));
+        set_uninit!(global_scopes.descriptor, cx.descriptors.get(HeapItemKind::GlobalScopes));
         set_uninit!(global_scopes.len, 0);
 
         // Leave scopes array uninitialized

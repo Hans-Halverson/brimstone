@@ -246,6 +246,8 @@ builtin_names!(
     (get_milliseconds, "getMilliseconds"),
     (get_minutes, "getMinutes"),
     (get_month, "getMonth"),
+    (get_or_insert, "getOrInsert"),
+    (get_or_insert_computed, "getOrInsertComputed"),
     (get_own_property_descriptor, "getOwnPropertyDescriptor"),
     (get_own_property_descriptors, "getOwnPropertyDescriptors"),
     (get_own_property_names, "getOwnPropertyNames"),

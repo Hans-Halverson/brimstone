@@ -405,6 +405,8 @@ rust_runtime_functions!(
     (MapPrototype_entries, MapPrototype::entries),
     (MapPrototype_for_each, MapPrototype::for_each),
     (MapPrototype_get, MapPrototype::get),
+    (MapPrototype_get_or_insert, MapPrototype::get_or_insert),
+    (MapPrototype_get_or_insert_computed, MapPrototype::get_or_insert_computed),
     (MapPrototype_has, MapPrototype::has),
     (MapPrototype_keys, MapPrototype::keys),
     (MapPrototype_set, MapPrototype::set),
@@ -732,6 +734,11 @@ rust_runtime_functions!(
     (WeakMapConstructor_construct, WeakMapConstructor::construct),
     (WeakMapPrototype_delete, WeakMapPrototype::delete),
     (WeakMapPrototype_get, WeakMapPrototype::get),
+    (WeakMapPrototype_get_or_insert, WeakMapPrototype::get_or_insert),
+    (
+        WeakMapPrototype_get_or_insert_computed,
+        WeakMapPrototype::get_or_insert_computed
+    ),
     (WeakMapPrototype_has, WeakMapPrototype::has),
     (WeakMapPrototype_set, WeakMapPrototype::set),
     (WeakRefConstructor_construct, WeakRefConstructor::construct),

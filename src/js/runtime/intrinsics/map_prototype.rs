@@ -1,5 +1,5 @@
 use crate::runtime::{
-    abstract_operations::call_object,
+    abstract_operations::{call, call_object},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
@@ -63,6 +63,20 @@ impl MapPrototype {
             realm,
         )?;
         object.intrinsic_func(cx, cx.names.get(), RuntimeFunction::MapPrototype_get, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_or_insert(),
+            RuntimeFunction::MapPrototype_get_or_insert,
+            2,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_or_insert_computed(),
+            RuntimeFunction::MapPrototype_get_or_insert_computed,
+            2,
+            realm,
+        )?;
         object.intrinsic_func(cx, cx.names.has(), RuntimeFunction::MapPrototype_has, 1, realm)?;
         object.intrinsic_func(cx, cx.names.keys(), RuntimeFunction::MapPrototype_keys, 0, realm)?;
         object.intrinsic_func(cx, cx.names.set_(), RuntimeFunction::MapPrototype_set, 2, realm)?;
@@ -188,6 +202,65 @@ impl MapPrototype {
         }
     }
 
+    /// Map.prototype.getOrInsert (https://tc39.es/ecma262/#sec-map.prototype.getorinsert)
+    pub fn get_or_insert(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let map = this_map_value(cx, this_value, "getOrInsert")?;
+
+        let key = get_argument(cx, arguments, 0);
+        let value = get_argument(cx, arguments, 1);
+
+        // May allocate
+        let map_key = ValueCollectionKey::from(key)?;
+
+        if let Some(existing_value) = map.map_data().get(&map_key) {
+            Ok(existing_value.to_handle(cx))
+        } else {
+            map.insert(cx, key, value)?;
+            Ok(value)
+        }
+    }
+
+    /// Map.prototype.getOrInsertComputed (https://tc39.es/ecma262/#sec-map.prototype.getorinsertcomputed)
+    pub fn get_or_insert_computed(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let map = this_map_value(cx, this_value, "getOrInsertComputed")?;
+
+        let key = get_argument(cx, arguments, 0);
+        let callback = get_argument(cx, arguments, 1);
+
+        if !is_callable(callback) {
+            return type_error(
+                cx,
+                "Map.prototype.getOrInsertComputed second argument must be a function",
+            );
+        }
+
+        // May allocate
+        let map_key = ValueCollectionKey::from(key)?;
+
+        if let Some(existing_value) = map.map_data().get(&map_key) {
+            return Ok(existing_value.to_handle(cx));
+        }
+
+        // We don't actually perform key canonicalization when inserting into the map. The only
+        // place where canonicalization is observable is the key passed to the callback.
+        let canonicalized_key = canonicalize_map_key(cx, key);
+
+        let value = call(cx, callback, cx.undefined(), &[canonicalized_key])?;
+
+        // Write the (key, value) pair, even if the callback already inserted a value for the key
+        map.insert(cx, key, value)?;
+
+        Ok(value.to_handle(cx))
+    }
+
     /// Map.prototype.has (https://tc39.es/ecma262/#sec-map.prototype.has)
     pub fn has(
         cx: Context,
@@ -271,4 +344,14 @@ fn this_map_value(
     }
 
     type_error(cx, &format!("Map.prototype.{} must be called on a Map", method_name))
+}
+
+/// Canonicalized form of each map key. Not actually stored in the map but still observable in
+/// some cases.
+fn canonicalize_map_key(cx: Context, key: Handle<Value>) -> Handle<Value> {
+    if key.is_negative_zero() {
+        cx.zero()
+    } else {
+        key
+    }
 }

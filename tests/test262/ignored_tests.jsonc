@@ -172,7 +172,6 @@
       "joint-iteration",
       "json-parse-with-source",
       "uint8array-base64",
-      "upsert",
       "Array.fromAsync",
       "Atomics.pause",
       "Math.sumPrecise",

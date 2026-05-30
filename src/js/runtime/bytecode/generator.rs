@@ -469,12 +469,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                         // Local name is guaranteed to be an id since there is no `from` clause
                         let local_id = specifier.local.to_id();
 
-                        if matches!(
-                            local_id.get_binding().kind(),
-                            BindingKind::Import { is_namespace: false }
-                        ) {
-                            // If we are exporting a non-namespace import then this is actually a
-                            // named re-export. Find the corresponding import entry.
+                        if matches!(local_id.get_binding().kind(), BindingKind::Import { .. }) {
+                            // An export of an imported binding is treated as a named re-export
                             let import_entry = imports
                                 .iter()
                                 .find(|entry| entry.local_name == local_name)

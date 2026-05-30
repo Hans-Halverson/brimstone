@@ -8,10 +8,6 @@
       //
       ////////////////////////////////////////
 
-      // Incorrectly treating as ambiguous binding when resolving
-      "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js",
-      "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from-and-import-star-as-and-export.js",
-
       // Different rejection order for promises when evaluating modules with top-level await
       "language/module-code/top-level-await/rejection-order.js",
 
@@ -173,13 +169,13 @@
       "json-parse-with-source",
       "uint8array-base64",
       "Array.fromAsync",
-      "Atomics.pause",
       "Math.sumPrecise",
       "Temporal",
 
       // Other unimplemented features
       "SharedArrayBuffer",
-      "Atomics"
+      "Atomics",
+      "Atomics.pause"
     ]
   },
   // Tests for features that are not part of the standard. These tests are always ignored, and do

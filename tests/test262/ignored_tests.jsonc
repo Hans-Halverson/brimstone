@@ -7,6 +7,11 @@
       // Bugs (We intend to fix these)
       //
       ////////////////////////////////////////
+
+      // Incorrectly treating as ambiguous binding when resolving
+      "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js",
+      "language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from-and-import-star-as-and-export.js",
+
       // Different rejection order for promises when evaluating modules with top-level await
       "language/module-code/top-level-await/rejection-order.js",
 
@@ -162,9 +167,16 @@
   "unimplemented": {
     "features": [
       // Stage 4 proposals which need to be implemented
+      "explicit-resource-management",
       "iterator-sequencing",
+      "joint-iteration",
+      "json-parse-with-source",
       "uint8array-base64",
+      "upsert",
+      "Array.fromAsync",
+      "Atomics.pause",
       "Math.sumPrecise",
+      "Temporal",
 
       // Other unimplemented features
       "SharedArrayBuffer",
@@ -192,23 +204,19 @@
       "caller",
 
       // Stage < 4 proposals
+      "await-dictionary",
       "decorators",
-      "explicit-resource-management",
-      "import-assertions",
+      "error-stack-accessor",
       "import-defer",
+      "import-text",
       "immutable-arraybuffer",
-      "json-parse-with-source",
       "legacy-regexp",
       "nonextensible-applies-to-private",
       "source-phase-imports",
-      "upsert",
-      "Array.fromAsync",
-      "Atomics.pause",
       "FinalizationRegistry.prototype.cleanupSome",
       "Intl.DurationFormat",
       "Intl.Locale-info",
       "Intl.NumberFormat-v3",
-      "Temporal",
       "ShadowRealm"
     ]
   },

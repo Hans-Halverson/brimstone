@@ -6,8 +6,8 @@ CURRENT_DIR=$(cd "$(dirname "$0")" && pwd)
 TEST262_REPO_DIR="$CURRENT_DIR/test262"
 
 # Pinned commit hash of test262 repo that we test off of. Be sure to also update README.md.
-# Last updated on 2025-11-18
-TEST262_COMMIT_SHA="cff568602848f8d083074c45a72b1503c1e00bad"
+# Last updated on 2026-05-30
+TEST262_COMMIT_SHA="227d905513f790dec90858d04ddf8cf81326706f"
 
 # Clone the test262 repo if it is not already present
 if [ ! -d "$TEST262_REPO_DIR" ]; then

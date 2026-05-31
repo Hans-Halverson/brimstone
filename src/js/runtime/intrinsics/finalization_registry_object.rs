@@ -152,7 +152,7 @@ impl FinalizationRegistryCells {
             new_capacity *= 2;
         }
 
-        // Save old cells pointer behind handle across allcation
+        // Save old cells pointer behind handle across allocation
         let old_cells = old_cells.to_handle();
         let mut new_cells = FinalizationRegistryCells::new(cx, new_capacity)?;
         let old_cells = *old_cells;

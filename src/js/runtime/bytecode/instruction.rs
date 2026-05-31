@@ -408,7 +408,7 @@ define_instructions!(
         }
     }
 
-    /// Load a variable with the given name into dest, loading undefiend if the name could not be
+    /// Load a variable with the given name into dest, loading undefined if the name could not be
     /// resolved. Dynamically look up the variable by name in the scope chain. The name is stored in
     /// the constant table.
     LoadDynamicOrUnresolved {

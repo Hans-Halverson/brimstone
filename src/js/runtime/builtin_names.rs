@@ -541,7 +541,7 @@ builtin_symbols!(
     (bound_arguments, ""),
     // Symbols used for private properties of revocable proxy closures
     (revocable_proxy, ""),
-    // Symbols used for private proprties of module functions
+    // Symbols used for private properties of module functions
     (module, ""),
     // Symbols used for private properties of resolve/reject functions
     (promise, ""),

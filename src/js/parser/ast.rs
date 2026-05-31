@@ -1287,7 +1287,7 @@ pub struct CallExpression<'a> {
     pub arguments: AstSlice<'a, CallArgument<'a>>,
     pub is_optional: bool,
 
-    // The reamining fields are only set if the call expression is potentially a direct eval.
+    // The remaining fields are only set if the call expression is potentially a direct eval.
     // These fields are set during analysis.
     /// Whether the function is potentially a direct eval and inside a non-arrow function, meaning a
     /// new.target expression is allowed.

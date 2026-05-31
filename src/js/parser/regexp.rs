@@ -100,7 +100,7 @@ pub enum Term<'a> {
     Literal(AstStr<'a>),
     /// The wildcard which matches any single character: `.`
     Wildcard,
-    /// A repition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.
+    /// A repetition of a pattern: `a*`, `a+`, `a?`, `a{x,y}`, etc.
     Quantifier(Quantifier<'a>),
     /// Assert a property e.g. `^` or `\b`
     Assertion(Assertion),

@@ -25,7 +25,7 @@ function testAbruptCatchAndBody() {
     return;
   }
 
-  // No implicit retun
+  // No implicit return
 }
 
 function testAbruptFinallyInFinallyOnly() {

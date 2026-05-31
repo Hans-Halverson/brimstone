@@ -79,7 +79,7 @@ impl Heap {
             Heap {
                 heap_start,
                 heap_end,
-                // Permament region is empty to start
+                // Permanent region is empty to start
                 permanent_start: NonNull::dangling().as_ptr(),
                 permanent_end: NonNull::dangling().as_ptr(),
                 start,

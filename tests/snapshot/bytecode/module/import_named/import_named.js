@@ -10,7 +10,7 @@ function testAccess() {
     const c = 0;
     function capturing() { named1 + c }
 
-    // Acces from nested scope
+    // Access from nested scope
     capturing(named1);
   }
 }

@@ -1349,7 +1349,7 @@ impl TypedArrayPrototype {
                     to_byte_index += target_element_size;
                 }
             } else {
-                // Otherwse copy bytes directly instead of performing any conversions
+                // Otherwise copy bytes directly instead of performing any conversions
                 while to_ptr < limit_ptr {
                     let byte = from_ptr.read();
                     to_ptr.write(byte);
@@ -1474,7 +1474,7 @@ impl TypedArrayPrototype {
                 current_index += 1;
             }
         } else {
-            // Otherwse copy bytes directly instead of performing any conversions
+            // Otherwise copy bytes directly instead of performing any conversions
             let mut source_buffer = typed_array.viewed_array_buffer();
             let mut target_buffer = new_typed_array.viewed_array_buffer();
             let element_size = typed_array.element_size();
@@ -2000,7 +2000,7 @@ fn typed_array_create_same_type(
     length: u64,
     method_name: &str,
 ) -> EvalResult<Handle<ObjectValue>> {
-    let constructor_instrinsic = match exemplar.kind() {
+    let constructor_intrinsic = match exemplar.kind() {
         TypedArrayKind::Int8Array => Intrinsic::Int8ArrayConstructor,
         TypedArrayKind::UInt8Array => Intrinsic::UInt8ArrayConstructor,
         TypedArrayKind::UInt8ClampedArray => Intrinsic::UInt8ClampedArrayConstructor,
@@ -2015,7 +2015,7 @@ fn typed_array_create_same_type(
         TypedArrayKind::Float64Array => Intrinsic::Float64ArrayConstructor,
     };
 
-    let constructor = cx.get_intrinsic(constructor_instrinsic);
+    let constructor = cx.get_intrinsic(constructor_intrinsic);
     let length_value = Value::from(length).to_handle(cx);
 
     typed_array_create_from_constructor_object(
@@ -2172,7 +2172,7 @@ pub fn compare_typed_array_elements(
         let result_number = to_number(cx, result_value)?;
         let result_number = result_number.as_number();
 
-        // Covert from positive/negative/equal number result to Ordering
+        // Convert from positive/negative/equal number result to Ordering
         return if result_number == 0.0 {
             Ok(Ordering::Equal)
         } else if result_number < 0.0 {

@@ -2130,7 +2130,7 @@ fn compare_array_elements(
         let result_number = to_number(cx, result_value)?;
         let result_number = result_number.as_number();
 
-        // Covert from positive/negative/equal number result to Ordering
+        // Convert from positive/negative/equal number result to Ordering
         return if result_number == 0.0 {
             Ok(Ordering::Equal)
         } else if result_number < 0.0 {

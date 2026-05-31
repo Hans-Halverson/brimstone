@@ -249,7 +249,7 @@ impl Handle<StringValue> {
         Ok(None)
     }
 
-    /// Return the index of the last ocurrence of the search string in this string, starting before
+    /// Return the index of the last occurrence of the search string in this string, starting before
     /// a given index (inclusive), which may be equal to the length of the string.
     pub fn rfind(
         &self,

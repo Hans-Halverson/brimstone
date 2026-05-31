@@ -1796,7 +1796,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             }
         }
 
-        // In derived constructors `this` starts unintialized, here represented by the empty value
+        // In derived constructors `this` starts uninitialized, here represented by the empty value
         if self.is_derived_constructor() {
             self.writer.load_empty_instruction(Register::this());
         }
@@ -2319,7 +2319,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             ast::Expression::Chain(expr) => self.gen_chain_expression(expr, dest, None),
             ast::Expression::Conditional(expr) => self.gen_conditional_expression(expr, dest),
             ast::Expression::Call(expr) => self.gen_call_expression(expr, dest, None),
-            ast::Expression::New(expr) => self.gen_new_expresssion(expr, dest),
+            ast::Expression::New(expr) => self.gen_new_expression(expr, dest),
             ast::Expression::Sequence(expr) => self.gen_sequence_expression(expr, dest),
             ast::Expression::Array(expr) => self.gen_array_literal(expr, dest),
             ast::Expression::Object(expr) => self.gen_object_literal(expr, dest),
@@ -3527,7 +3527,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         let (callee, this_value) =
             self.gen_callee_and_this_value(&expr.callee, optional_nullish_block)?;
 
-        // If in an optional chain, jump to the nullish block if the calle is nullish
+        // If in an optional chain, jump to the nullish block if the callee is nullish
         if expr.is_optional {
             self.write_jump_nullish_instruction(callee, optional_nullish_block.unwrap())?;
         }
@@ -3866,7 +3866,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
     }
 
-    fn gen_new_expresssion(
+    fn gen_new_expression(
         &mut self,
         expr: &'a ast::NewExpression<'a>,
         dest: ExprDest,
@@ -4302,7 +4302,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Save the object register in the CallReceiver if one is provided
         if let Some(call_receiver) = call_receiver.as_deref_mut() {
             // A chain expression could have short circuited and will have undefined written to the
-            // reciever register. Make sure that the receiver is a temporary register to avoid
+            // receiver register. Make sure that the receiver is a temporary register to avoid
             // overwriting a fixed register.
             if call_receiver.is_chain {
                 object = self.gen_ensure_reg_is_temporary(object)?;
@@ -4759,9 +4759,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 self.gen_store_to_pattern(pattern, stored_value, store_flags)?;
                 self.gen_mov_reg_to_dest(stored_value, dest)
             }
-            ast::Pattern::InvalidCall(call) => self.gen_invalid_call_assigment(call, dest),
+            ast::Pattern::InvalidCall(call) => self.gen_invalid_call_assignment(call, dest),
             ast::Pattern::Assign(_) => {
-                unreachable!("invalid assigment left hand side")
+                unreachable!("invalid assignment left hand side")
             }
         }
     }
@@ -4834,7 +4834,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Call expressions can be parsed as an assignment target in sloppy Annex B mode. They
     /// first evaluate the call expression then throw a `ReferenceError`.
-    fn gen_invalid_call_assigment(
+    fn gen_invalid_call_assignment(
         &mut self,
         call: &'a ast::CallExpression<'a>,
         dest: ExprDest,
@@ -4948,12 +4948,12 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 }
             };
 
-            // Perform the converstion and inc/dec operation in place on the temporary register
+            // Perform the conversion and inc/dec operation in place on the temporary register
             self.writer.to_numeric_instruction(temp, temp, pos);
 
             // Get a register to hold the new, modified value.
             //
-            // Prefix upates return the modified value so we can perform the operation in place.
+            // Prefix updates return the modified value so we can perform the operation in place.
             // Postfix updates return the old value, so move it to another temporary.
             let modified_temp = if expr.is_prefix {
                 temp
@@ -5011,7 +5011,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             self.gen_mov_reg_to_dest(temp, dest)
         } else if let ast::Expression::Call(call) = &expr.argument {
-            self.gen_invalid_call_assigment(call, dest)
+            self.gen_invalid_call_assignment(call, dest)
         } else {
             // Otherwise must be an id assignment
             let id = expr.argument.to_id();
@@ -8306,7 +8306,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
     ) -> EmitResult<()> {
         // Annex B allows call expressions in for-each initializers
         if let ast::Pattern::InvalidCall(call) = init.pattern() {
-            let call_result = self.gen_invalid_call_assigment(call, ExprDest::Any)?;
+            let call_result = self.gen_invalid_call_assignment(call, ExprDest::Any)?;
             self.register_allocator.release(call_result);
 
             return Ok(());

@@ -277,7 +277,7 @@ fn parse_script_or_module<'a>(
 
 /// Run snapshot tests for all js files under the given directory.
 ///
-/// Individual tests implemeneted as a function takes in a path and returns the output of the test.
+/// Individual tests implemented as a function takes in a path and returns the output of the test.
 fn run_snapshot_tests(
     root_path: &Path,
     test_fn: &mut impl FnMut(&str) -> GenericResult<String>,
@@ -315,7 +315,7 @@ fn visit_directory(
     Ok(())
 }
 
-/// Compare acutal vs expected output for the test file with the given path.
+/// Compare actual vs expected output for the test file with the given path.
 fn process_snapshot_test_file(
     env: &mut TestEnv,
     path: &Path,

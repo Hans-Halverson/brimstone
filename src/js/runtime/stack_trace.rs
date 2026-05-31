@@ -112,7 +112,7 @@ pub fn create_current_stack_frame_info(
     Ok(array)
 }
 
-/// Create the string representation of a strack trace for an error, given the stack frame info
+/// Create the string representation of a stack trace for an error, given the stack frame info
 /// cached from the time that the error was created.
 pub fn create_stack_trace(
     mut cx: Context,

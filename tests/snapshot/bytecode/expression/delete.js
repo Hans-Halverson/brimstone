@@ -49,7 +49,7 @@ function deleteIdParams(a) {
   }
 }
 
-function deleteIdArgments() {
+function deleteIdArguments() {
   delete arguments;
 }
 

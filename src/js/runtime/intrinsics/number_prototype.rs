@@ -140,7 +140,7 @@ impl NumberPrototype {
             result.push_str(&mantissa);
         }
 
-        // Add exponent, with explicity '+' or '-' sign
+        // Add exponent, with explicitly '+' or '-' sign
         result.push('e');
 
         if exponent >= 0 {

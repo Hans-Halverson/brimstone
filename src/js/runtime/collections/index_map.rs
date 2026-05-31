@@ -159,7 +159,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         // Clear indices array
         self.indices.init_with(self.capacity(), EMPTY_INDEX);
 
-        // Entries array does not need to be changed, updating number of entires is sufficient
+        // Entries array does not need to be changed, updating number of entries is sufficient
         self.num_occupied = 0;
         self.num_deleted = 0;
     }

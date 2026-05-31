@@ -1510,7 +1510,7 @@ impl<'a> Parser<'a> {
                 None
             } else {
                 // Handler optionally has a single pattern as the parameter. Pattern binding must
-                // track the ending position of the pattern, but this is only known afer parsing.
+                // track the ending position of the pattern, but this is only known after parsing.
                 self.expect(Token::LeftParen)?;
 
                 let start_pos = self.current_start_pos();
@@ -2786,7 +2786,7 @@ impl<'a> Parser<'a> {
                 // Non-tagged template literals error on malformed escape sequences
                 let cooked = match cooked {
                     Ok(cooked) => Some(*cooked),
-                    Err(loc) => return self.error(*loc, ParseError::MalformedEscapeSeqence),
+                    Err(loc) => return self.error(*loc, ParseError::MalformedEscapeSequence),
                 };
 
                 let template_literal =
@@ -3178,7 +3178,7 @@ impl<'a> Parser<'a> {
                             if is_tagged {
                                 None
                             } else {
-                                return self.error(*loc, ParseError::MalformedEscapeSeqence);
+                                return self.error(*loc, ParseError::MalformedEscapeSequence);
                             }
                         }
                     };
@@ -3746,7 +3746,7 @@ impl<'a> Parser<'a> {
         let old_in_strict_mode = self.in_strict_mode;
         self.set_in_strict_mode(true);
 
-        // Id is optional only for class expresssions and anonymous default exports.
+        // Id is optional only for class expressions and anonymous default exports.
         let id = if (is_decl && !is_export)
             || (self.token != Token::LeftBrace && self.token != Token::Extends)
         {

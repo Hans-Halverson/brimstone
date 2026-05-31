@@ -5,7 +5,7 @@ mod wrap_ordinary_object;
 
 /// A macro that allows a match expression on a u32 value to match against char literal patterns.
 /// This is useful for matching a generic u32 code point value against u32's represented as char
-/// literals. Normally there is no way to match a non-char value againt char literal patterns.
+/// literals. Normally there is no way to match a non-char value against char literal patterns.
 ///
 /// Example:
 ///   match_u32!(match (code_point as u32) {

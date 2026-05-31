@@ -50,7 +50,7 @@ impl Escapable for EvalError {
     }
 }
 
-/// EvalResult is for functions which are either sucessful or throw a value.
+/// EvalResult is for functions which are either successful or throw a value.
 pub type EvalResult<T> = Result<T, EvalError>;
 
 /// Unwrap an EvalResult that must never throw

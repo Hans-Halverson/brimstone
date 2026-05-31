@@ -374,7 +374,7 @@ impl Value {
 
     /// Convert any heap item into a Value. Note that only object subtypes, strings, symbols, and
     /// bigints are allowed to be treated as values in normal circumstances. Other heap items are
-    /// converted to values for compatiblity in some scenarios (e.g. storing in a scope).
+    /// converted to values for compatibility in some scenarios (e.g. storing in a scope).
     #[inline]
     pub fn heap_item(value: HeapPtr<AnyHeapItem>) -> Value {
         Value::from_raw_bits(value.as_ptr() as u64)
@@ -805,7 +805,7 @@ impl hash::Hash for ValueCollectionKey {
             };
         }
 
-        // Non-pointer values can be hashed direclty off their bit representation
+        // Non-pointer values can be hashed directly off their bit representation
         self.0.as_raw_bits().hash(state);
     }
 }

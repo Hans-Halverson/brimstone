@@ -1181,7 +1181,7 @@ fn advance_string_index(
     Ok(prev_index + num_code_units)
 }
 
-/// Saem as AdvanceStringIndex, but index is expanded to the u64 range and is not guarnateed to be
+/// Same as AdvanceStringIndex, but index is expanded to the u64 range and is not guaranteed to be
 /// in bounds for the string.
 pub fn advance_u64_string_index(
     string_value: Handle<StringValue>,

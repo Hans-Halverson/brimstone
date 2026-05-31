@@ -23,7 +23,7 @@ function prefixIdFixedDest(param) {
 function prefixIdNewTemporaryDest(param) {
   var local = 1;
 
-  // Desination is NewTemporary
+  // Destination is NewTemporary
   use(++param);
   use(++local);
   use(++global);
@@ -50,7 +50,7 @@ function postfixIdFixedDest(param) {
 function postfixIdNewTemporaryDest(param) {
   var local = 1;
 
-  // Desination is NewTemporary
+  // Destination is NewTemporary
   use(param++);
   use(local++);
   use(global++);

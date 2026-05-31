@@ -171,8 +171,8 @@ fn build_overrides_set() -> CodePointInversionList<'static> {
   let mut builder = CodePointInversionListBuilder::new();
 ");
 
-    for overriden_char in overrides.keys() {
-        file.push_str(&format!("  builder.add_char('{overriden_char}');\n"));
+    for overridden_char in overrides.keys() {
+        file.push_str(&format!("  builder.add_char('{overridden_char}');\n"));
     }
 
     file.push_str(
@@ -185,14 +185,14 @@ fn build_overrides_map() -> HashMap<char, CodePointInversionList<'static>> {
 ",
     );
 
-    for (overriden_char, closure) in overrides.iter() {
+    for (overridden_char, closure) in overrides.iter() {
         file.push_str("  let mut builder = CodePointInversionListBuilder::new();\n");
 
         for closure_char in closure.iter() {
             file.push_str(&format!("  builder.add_char('{closure_char}');\n"));
         }
 
-        file.push_str(&format!("  map.insert('{overriden_char}', builder.build());\n\n"));
+        file.push_str(&format!("  map.insert('{overridden_char}', builder.build());\n\n"));
     }
 
     file.push_str(

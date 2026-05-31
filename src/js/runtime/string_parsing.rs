@@ -12,6 +12,7 @@ use crate::{
             CodeUnit,
         },
     },
+    parser::loc::{Loc, Pos},
     runtime::alloc_error::AllocResult,
 };
 
@@ -26,8 +27,10 @@ use super::{
 
 pub struct StringLexer {
     iter: UnsafeCodeUnitIterator,
-    // Pointer to start of the previously read character (aka the character in the current field)
+    /// Pointer to start of the previously read character (aka the character in the current field)
     prev_ptr: *const u8,
+    /// Pointer to the start of the string being lexed
+    start_ptr: *const u8,
     current: Option<CodeUnit>,
 }
 
@@ -37,7 +40,8 @@ impl StringLexer {
     pub fn new(string: Handle<StringValue>) -> AllocResult<StringLexer> {
         let iter = string.iter_code_units()?;
         let prev_ptr = iter.ptr();
-        let mut lexer = StringLexer { iter, prev_ptr, current: None };
+        let start_ptr = prev_ptr;
+        let mut lexer = StringLexer { iter, prev_ptr, start_ptr, current: None };
 
         // Prime the lexer
         lexer.advance();
@@ -97,6 +101,16 @@ impl StringLexer {
     /// Return the pointer to the start of the code unit at lexer.current
     pub fn current_ptr(&self) -> *const u8 {
         self.prev_ptr
+    }
+
+    /// Return the position of the current code unit at lexer.current
+    pub fn pos(&self) -> Pos {
+        self.prev_ptr as usize - self.start_ptr as usize
+    }
+
+    /// Mark the source location from the given start position to the current position of the lexer
+    pub fn mark_loc(&self, start_pos: Pos) -> Loc {
+        Loc { start: start_pos, end: self.pos() }
     }
 
     pub fn current_is_decimal_digit(&self) -> bool {

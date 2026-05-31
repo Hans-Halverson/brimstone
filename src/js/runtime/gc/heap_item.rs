@@ -41,6 +41,7 @@ use crate::runtime::{
         map_object::{MapObject, MapObjectMapField},
         number_constructor::NumberObject,
         object_prototype::ObjectPrototype,
+        raw_json_object::RawJSONObject,
         regexp_constructor::RegExpObject,
         regexp_string_iterator::RegExpStringIterator,
         set_iterator::SetIterator,
@@ -133,6 +134,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::FinalizationRegistryObject => {
                 self.cast::<FinalizationRegistryObject>().byte_size()
             }
+            HeapItemKind::RawJSONObject => self.cast::<RawJSONObject>().byte_size(),
             HeapItemKind::MappedArgumentsObject => self.cast::<MappedArgumentsObject>().byte_size(),
             HeapItemKind::UnmappedArgumentsObject => {
                 self.cast::<UnmappedArgumentsObject>().byte_size()
@@ -245,6 +247,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::FinalizationRegistryObject => self
                 .cast::<FinalizationRegistryObject>()
                 .visit_pointers(visitor),
+            HeapItemKind::RawJSONObject => self.cast::<RawJSONObject>().visit_pointers(visitor),
             HeapItemKind::MappedArgumentsObject => {
                 self.cast::<MappedArgumentsObject>().visit_pointers(visitor)
             }

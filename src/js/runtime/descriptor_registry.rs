@@ -83,6 +83,7 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::WeakSetObject);
         ordinary_object_descriptor!(HeapItemKind::WeakMapObject);
         ordinary_object_descriptor!(HeapItemKind::FinalizationRegistryObject);
+        ordinary_object_descriptor!(HeapItemKind::RawJSONObject);
 
         register_descriptor!(
             HeapItemKind::MappedArgumentsObject,

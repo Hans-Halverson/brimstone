@@ -38,32 +38,54 @@ extend_object! {
 }
 
 enum IteratorHelperState {
-    /// Iterator helper for the drop method. Contains the number of values to drop, which is either
-    /// positive infinity or a non-negative integer.
-    Drop(f64),
-    /// Iterator helper for the take method. Contains the number of remaining values to drop, which
-    /// is either positive infinity or a non-negative integer.
-    Take(f64),
-    /// Iterator helper for the filter method. Contains the predicate function and a counter.
-    Filter { predicate: HeapPtr<ObjectValue>, counter: u64 },
-    /// Iterator helper for the map method. Contains the mapper function and a counter.
-    Map { mapper: HeapPtr<ObjectValue>, counter: u64 },
-    /// Iterator helper for the flatMap method. Contains the mapper function, a counter, and the
-    /// (iterator object, next method) pair of the inner iterator. Inner iterator is None before
-    /// the first iteration, and Some after that.
-    FlatMap {
-        mapper: HeapPtr<ObjectValue>,
-        inner_iterator: Option<(HeapPtr<ObjectValue>, Value)>,
-        counter: u64,
-    },
-    /// Iterator helper for the `Iterator.concat` method. Contains an array of iterable objects as
-    /// well as an array of their corresponding iterator methods. Arrays must be the same size.
-    Concat {
-        iterables: HeapPtr<ValueArray>,
-        iterator_methods: HeapPtr<ValueArray>,
-        /// Index of the next iterable/iterator to iterate over.
-        next_index: u64,
-    },
+    Drop(DropHelper),
+    Take(TakeHelper),
+    Filter(FilterHelper),
+    Map(MapHelper),
+    FlatMap(FlatMapHelper),
+    Concat(ConcatHelper),
+}
+
+/// Iterator helper for the drop method. Contains the number of values to drop, which is either
+/// positive infinity or a non-negative integer.
+struct DropHelper {
+    limit: f64,
+}
+
+/// Iterator helper for the take method. Contains the number of remaining values to take, which is
+/// either positive infinity or a non-negative integer.
+struct TakeHelper {
+    remaining: f64,
+}
+
+/// Iterator helper for the filter method. Contains the predicate function and a counter.
+struct FilterHelper {
+    predicate: HeapPtr<ObjectValue>,
+    counter: u64,
+}
+
+/// Iterator helper for the map method. Contains the mapper function and a counter.
+struct MapHelper {
+    mapper: HeapPtr<ObjectValue>,
+    counter: u64,
+}
+
+/// Iterator helper for the flatMap method. Contains the mapper function, a counter, and the
+/// (iterator object, next method) pair of the inner iterator. Inner iterator is None before
+/// the first iteration, and Some after that.
+struct FlatMapHelper {
+    mapper: HeapPtr<ObjectValue>,
+    inner_iterator: Option<(HeapPtr<ObjectValue>, Value)>,
+    counter: u64,
+}
+
+/// Iterator helper for the `Iterator.concat` method. Contains an array of iterable objects as well
+/// as an array of their corresponding iterator methods. Arrays must be the same size.
+struct ConcatHelper {
+    iterables: HeapPtr<ValueArray>,
+    iterator_methods: HeapPtr<ValueArray>,
+    /// Index of the next iterable/iterator to iterate over.
+    next_index: u64,
 }
 
 impl IteratorHelperObject {
@@ -89,7 +111,7 @@ impl IteratorHelperObject {
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(object.state, IteratorHelperState::Drop(limit));
+        set_uninit!(object.state, IteratorHelperState::Drop(DropHelper { limit }));
         Ok(object)
     }
 
@@ -99,7 +121,7 @@ impl IteratorHelperObject {
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(object.state, IteratorHelperState::Take(limit));
+        set_uninit!(object.state, IteratorHelperState::Take(TakeHelper { remaining: limit }));
         Ok(object)
     }
 
@@ -111,7 +133,7 @@ impl IteratorHelperObject {
         let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(
             object.state,
-            IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
+            IteratorHelperState::Filter(FilterHelper { predicate: *predicate, counter: 0 })
         );
         Ok(object)
     }
@@ -122,7 +144,10 @@ impl IteratorHelperObject {
         mapper: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
         let mut object = Self::new(cx, Some(iterator))?;
-        set_uninit!(object.state, IteratorHelperState::Map { mapper: *mapper, counter: 0 });
+        set_uninit!(
+            object.state,
+            IteratorHelperState::Map(MapHelper { mapper: *mapper, counter: 0 })
+        );
         Ok(object)
     }
 
@@ -134,7 +159,11 @@ impl IteratorHelperObject {
         let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(
             object.state,
-            IteratorHelperState::FlatMap { mapper: *mapper, inner_iterator: None, counter: 0 }
+            IteratorHelperState::FlatMap(FlatMapHelper {
+                mapper: *mapper,
+                inner_iterator: None,
+                counter: 0,
+            })
         );
         Ok(object)
     }
@@ -147,11 +176,11 @@ impl IteratorHelperObject {
         let mut object = Self::new(cx, None)?;
         set_uninit!(
             object.state,
-            IteratorHelperState::Concat {
+            IteratorHelperState::Concat(ConcatHelper {
                 iterables: *iterables,
                 iterator_methods: *iterator_methods,
                 next_index: 0,
-            }
+            })
         );
         Ok(object)
     }
@@ -168,8 +197,76 @@ impl IteratorHelperObject {
         &self.state
     }
 
-    fn state_mut(&mut self) -> &mut IteratorHelperState {
-        &mut self.state
+    fn as_drop_helper(&self) -> Option<&DropHelper> {
+        if let IteratorHelperState::Drop(helper) = &self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_take_helper_mut(&mut self) -> Option<&mut TakeHelper> {
+        if let IteratorHelperState::Take(helper) = &mut self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_filter_helper(&self) -> Option<&FilterHelper> {
+        if let IteratorHelperState::Filter(helper) = &self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_filter_helper_mut(&mut self) -> Option<&mut FilterHelper> {
+        if let IteratorHelperState::Filter(helper) = &mut self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_map_helper_mut(&mut self) -> Option<&mut MapHelper> {
+        if let IteratorHelperState::Map(helper) = &mut self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_flat_map_helper(&self) -> Option<&FlatMapHelper> {
+        if let IteratorHelperState::FlatMap(helper) = &self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_flat_map_helper_mut(&mut self) -> Option<&mut FlatMapHelper> {
+        if let IteratorHelperState::FlatMap(helper) = &mut self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_concat_helper(&self) -> Option<&ConcatHelper> {
+        if let IteratorHelperState::Concat(helper) = &self.state {
+            Some(helper)
+        } else {
+            None
+        }
+    }
+
+    fn as_concat_helper_mut(&mut self) -> Option<&mut ConcatHelper> {
+        if let IteratorHelperState::Concat(helper) = &mut self.state {
+            Some(helper)
+        } else {
+            None
+        }
     }
 
     /// The underlying iterator record for this helper.
@@ -201,10 +298,10 @@ impl Handle<IteratorHelperObject> {
         match self.state() {
             IteratorHelperState::Drop(_) => self.next_drop(cx, is_start),
             IteratorHelperState::Take(_) => self.next_take(cx),
-            IteratorHelperState::Filter { .. } => self.next_filter(cx, is_start),
-            IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
-            IteratorHelperState::FlatMap { .. } => self.next_flat_map(cx),
-            IteratorHelperState::Concat { .. } => self.next_concat(cx),
+            IteratorHelperState::Filter(_) => self.next_filter(cx, is_start),
+            IteratorHelperState::Map(_) => self.next_map(cx, is_start),
+            IteratorHelperState::FlatMap(_) => self.next_flat_map(cx),
+            IteratorHelperState::Concat(_) => self.next_concat(cx),
         }
     }
 
@@ -215,8 +312,8 @@ impl Handle<IteratorHelperObject> {
             // the yield when yielding an abnormal completion.
             //
             // First close the inner iterator, then close the outer iterator.
-            IteratorHelperState::FlatMap { inner_iterator, .. } => {
-                let inner_iterator = inner_iterator.as_ref().unwrap().0.to_handle();
+            IteratorHelperState::FlatMap(helper) => {
+                let inner_iterator = helper.inner_iterator.as_ref().unwrap().0.to_handle();
                 let backup_completion = iterator_close(cx, inner_iterator, Ok(cx.undefined()));
                 let iterator_object = self.iterator_object().unwrap();
 
@@ -226,7 +323,7 @@ impl Handle<IteratorHelperObject> {
                 }
             }
             // Concat may not have an underlying iterator to close
-            IteratorHelperState::Concat { .. } => {
+            IteratorHelperState::Concat(_) => {
                 if let Some(iterator_object) = self.iterator_object() {
                     iterator_close(cx, iterator_object, Ok(cx.undefined()))
                 } else {
@@ -271,11 +368,7 @@ impl Handle<IteratorHelperObject> {
         cx: Context,
         is_start: bool,
     ) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let limit = if let IteratorHelperState::Drop(limit) = self.state() {
-            *limit
-        } else {
-            unreachable!()
-        };
+        let limit = self.as_drop_helper().unwrap().limit;
 
         let mut iterator = self.iterator(cx).unwrap();
 
@@ -307,11 +400,7 @@ impl Handle<IteratorHelperObject> {
     }
 
     fn next_take(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let remaining = if let IteratorHelperState::Take(remaining) = self.state_mut() {
-            remaining
-        } else {
-            unreachable!()
-        };
+        let remaining = &mut self.as_take_helper_mut().unwrap().remaining;
 
         // Close the iterator if we have taken all the values
         if *remaining == 0.0 {
@@ -336,16 +425,15 @@ impl Handle<IteratorHelperObject> {
         cx: Context,
         is_start: bool,
     ) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let predicate = if let IteratorHelperState::Filter { predicate, counter } = self.state_mut()
-        {
+        let predicate = {
+            let helper = self.as_filter_helper_mut().unwrap();
+
             // Counter is initialized to 0 on start, increment it after the first iteration
             if !is_start {
-                *counter += 1;
+                helper.counter += 1;
             }
 
-            predicate.to_handle()
-        } else {
-            unreachable!()
+            helper.predicate.to_handle()
         };
 
         let mut iterator = self.iterator(cx).unwrap();
@@ -361,11 +449,8 @@ impl Handle<IteratorHelperObject> {
             };
 
             // Convert the counter to a value
-            if let IteratorHelperState::Filter { counter, .. } = self.state() {
-                counter_value.replace(Value::from(*counter));
-            } else {
-                unreachable!()
-            };
+            let counter_number = self.as_filter_helper().unwrap().counter;
+            counter_value.replace(Value::from(counter_number));
 
             // Run the predicate function on the value, closing the iterator on error
             let is_selected =
@@ -383,28 +468,20 @@ impl Handle<IteratorHelperObject> {
             }
 
             // Increment the counter for the next iteration
-            if let IteratorHelperState::Filter { counter, .. } = self.state_mut() {
-                *counter += 1;
-            } else {
-                unreachable!()
-            };
+            self.as_filter_helper_mut().unwrap().counter += 1;
         }
     }
 
     fn next_map(&mut self, cx: Context, is_start: bool) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let (mapper, counter) =
-            if let IteratorHelperState::Map { mapper, counter } = self.state_mut() {
-                (mapper.to_handle(), counter)
-            } else {
-                unreachable!()
-            };
+        let helper = self.as_map_helper_mut().unwrap();
+        let mapper = helper.mapper.to_handle();
 
         // Counter is initialized to 0 on start, increment it after the first iteration
         if !is_start {
-            *counter += 1;
+            helper.counter += 1;
         }
 
-        let counter_value = Value::from(*counter).to_handle(cx);
+        let counter_value = Value::from(helper.counter).to_handle(cx);
 
         // Get the next value from the underlying iterator
         let value = match self.iterator_step_value(cx, &mut self.iterator(cx).unwrap())? {
@@ -425,21 +502,20 @@ impl Handle<IteratorHelperObject> {
     fn next_flat_map(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
         let mut inner_iterator_opt: Option<Iterator> = None;
 
-        let mapper =
-            if let IteratorHelperState::FlatMap { mapper, inner_iterator, .. } = self.state_mut() {
-                // Set the initial inner iterator, if one exists
-                if let Some((iterator, next_method)) = inner_iterator {
-                    inner_iterator_opt = Some(Iterator {
-                        iterator: iterator.to_handle(),
-                        next_method: next_method.to_handle(cx),
-                        is_done: false,
-                    });
-                }
+        let mapper = {
+            let helper = self.as_flat_map_helper_mut().unwrap();
 
-                mapper.to_handle()
-            } else {
-                unreachable!()
-            };
+            // Set the initial inner iterator, if one exists
+            if let Some((iterator, next_method)) = &helper.inner_iterator {
+                inner_iterator_opt = Some(Iterator {
+                    iterator: iterator.to_handle(),
+                    next_method: next_method.to_handle(cx),
+                    is_done: false,
+                });
+            }
+
+            helper.mapper.to_handle()
+        };
 
         let mut iterator = self.iterator(cx).unwrap();
         let mut counter_value: Handle<Value> = Handle::empty(cx);
@@ -456,11 +532,7 @@ impl Handle<IteratorHelperObject> {
                 };
 
                 // Convert the counter to a value
-                if let IteratorHelperState::FlatMap { counter, .. } = self.state() {
-                    counter_value.replace(Value::from(*counter));
-                } else {
-                    unreachable!()
-                };
+                counter_value.replace(Value::from(self.as_flat_map_helper().unwrap().counter));
 
                 // Run the mapper function on the value, closing the iterator on error
                 let mapped = match call_object(cx, mapper, cx.undefined(), &[value, counter_value])
@@ -485,13 +557,8 @@ impl Handle<IteratorHelperObject> {
                         let next_method = inner_iterator_result.next_method;
                         inner_iterator_opt = Some(inner_iterator_result);
 
-                        if let IteratorHelperState::FlatMap { inner_iterator, .. } =
-                            self.state_mut()
-                        {
-                            *inner_iterator = Some((*iterator, *next_method));
-                        } else {
-                            unreachable!()
-                        };
+                        self.as_flat_map_helper_mut().unwrap().inner_iterator =
+                            Some((*iterator, *next_method));
                     }
                 }
             }
@@ -515,21 +582,15 @@ impl Handle<IteratorHelperObject> {
             }
 
             // Increment the counter for the next iteration of the outer loop
-            if let IteratorHelperState::FlatMap { counter, .. } = self.state_mut() {
-                *counter += 1;
-            } else {
-                unreachable!()
-            };
+            self.as_flat_map_helper_mut().unwrap().counter += 1;
         }
     }
 
     fn next_concat(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
-        let (iterables, iterator_methods) =
-            if let IteratorHelperState::Concat { iterables, iterator_methods, .. } = self.state() {
-                (iterables.to_handle(), iterator_methods.to_handle())
-            } else {
-                unreachable!()
-            };
+        let (iterables, iterator_methods) = {
+            let helper = self.as_concat_helper().unwrap();
+            (helper.iterables.to_handle(), helper.iterator_methods.to_handle())
+        };
 
         loop {
             // Proceed to the next iterator when we have exhausted the current one, or if this is
@@ -540,12 +601,7 @@ impl Handle<IteratorHelperObject> {
             };
 
             if use_next_iterable {
-                let next_index =
-                    if let IteratorHelperState::Concat { next_index, .. } = self.state() {
-                        *next_index as usize
-                    } else {
-                        unreachable!()
-                    };
+                let next_index = self.as_concat_helper().unwrap().next_index as usize;
 
                 // Concat helper is complete since we have exhausted all iterables
                 if next_index >= iterables.len() {
@@ -565,11 +621,7 @@ impl Handle<IteratorHelperObject> {
                 let iterator = get_iterator_direct(cx, iterator_object.as_object())?;
                 self.set_iterator(iterator);
 
-                if let IteratorHelperState::Concat { next_index, .. } = self.state_mut() {
-                    *next_index += 1;
-                } else {
-                    unreachable!()
-                }
+                self.as_concat_helper_mut().unwrap().next_index += 1;
             }
 
             // Underlying iterator has been initialized so it is guaranteed to exist now
@@ -597,19 +649,19 @@ impl HeapItem for HeapPtr<IteratorHelperObject> {
         }
 
         match &mut self.state {
-            IteratorHelperState::Filter { predicate, .. } => visitor.visit_pointer(predicate),
-            IteratorHelperState::Map { mapper, .. } => visitor.visit_pointer(mapper),
-            IteratorHelperState::FlatMap { mapper, inner_iterator, .. } => {
-                visitor.visit_pointer(mapper);
+            IteratorHelperState::Filter(helper) => visitor.visit_pointer(&mut helper.predicate),
+            IteratorHelperState::Map(helper) => visitor.visit_pointer(&mut helper.mapper),
+            IteratorHelperState::FlatMap(helper) => {
+                visitor.visit_pointer(&mut helper.mapper);
 
-                if let Some((iterator_object, next_method)) = inner_iterator {
+                if let Some((iterator_object, next_method)) = &mut helper.inner_iterator {
                     visitor.visit_pointer(iterator_object);
                     visitor.visit_value(next_method);
                 }
             }
-            IteratorHelperState::Concat { iterables, iterator_methods, .. } => {
-                visitor.visit_pointer(iterables);
-                visitor.visit_pointer(iterator_methods);
+            IteratorHelperState::Concat(helper) => {
+                visitor.visit_pointer(&mut helper.iterables);
+                visitor.visit_pointer(&mut helper.iterator_methods);
             }
             IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }

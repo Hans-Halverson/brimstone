@@ -39,6 +39,8 @@ pub mod iterator_helper_object;
 mod iterator_helper_prototype;
 mod iterator_prototype;
 pub mod json_object;
+mod json_parser;
+mod json_serializer;
 pub mod map_constructor;
 pub mod map_iterator;
 pub mod map_object;

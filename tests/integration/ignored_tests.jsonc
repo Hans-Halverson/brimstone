@@ -1,3 +1,9 @@
 {
-  // No tests are ignored in this suite
+  // Slow tests which are ignored in GC stress test runs. Aim to ignore all tests over 5 seconds.
+  "gc_stress_test": {
+    "tests": [
+      "regression/000016.js",
+      "regression/000019.js"
+    ]
+  }
 }

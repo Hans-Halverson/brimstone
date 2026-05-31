@@ -4,7 +4,7 @@ use crate::{
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        Context, HeapPtr, Value,
+        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };
@@ -100,6 +100,19 @@ impl<T> HeapItem for HeapPtr<BsArray<T>> {
 
 /// A generic array of values. Corresponds to HeapItemKind::ValueArray.
 pub type ValueArray = BsArray<Value>;
+
+pub fn value_array_from_slice(
+    cx: Context,
+    slice: &[Handle<Value>],
+) -> AllocResult<HeapPtr<ValueArray>> {
+    let mut array = ValueArray::new_uninit(cx, HeapItemKind::ValueArray, slice.len())?;
+
+    for (i, value) in slice.iter().enumerate() {
+        array.as_mut_slice()[i] = **value;
+    }
+
+    Ok(array)
+}
 
 pub fn value_array_byte_size(value_array: HeapPtr<ValueArray>) -> usize {
     ValueArray::calculate_size_in_bytes(value_array.len())

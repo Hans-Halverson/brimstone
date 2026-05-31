@@ -4,8 +4,10 @@ use crate::{
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         error::type_error,
+        gc::HeapVisitor,
         get,
         intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
+        HeapPtr,
     },
 };
 
@@ -22,6 +24,38 @@ pub struct Iterator {
     pub iterator: Handle<ObjectValue>,
     pub next_method: Handle<Value>,
     pub is_done: bool,
+}
+
+#[repr(C)]
+pub struct HeapIterator {
+    pub iterator: HeapPtr<ObjectValue>,
+    pub next_method: Value,
+    pub is_done: bool,
+}
+
+impl Iterator {
+    pub fn from_heap(cx: Context, heap_iterator: &HeapIterator) -> Self {
+        Self {
+            iterator: heap_iterator.iterator.to_handle(),
+            next_method: heap_iterator.next_method.to_handle(cx),
+            is_done: heap_iterator.is_done,
+        }
+    }
+
+    pub fn to_heap(&self) -> HeapIterator {
+        HeapIterator {
+            iterator: *self.iterator,
+            next_method: *self.next_method,
+            is_done: self.is_done,
+        }
+    }
+}
+
+impl HeapIterator {
+    pub fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer(&mut self.iterator);
+        visitor.visit_value(&mut self.next_method);
+    }
 }
 
 #[derive(PartialEq)]

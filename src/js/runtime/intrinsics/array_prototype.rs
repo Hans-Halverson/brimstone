@@ -24,8 +24,9 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{
-            is_array, is_callable, is_less_than, is_strictly_equal, same_value_zero, to_boolean,
-            to_integer_or_infinity, to_number, to_object,
+            is_array, is_callable, is_less_than, is_strictly_equal,
+            resolve_relative_index_argument, same_value_zero, to_boolean, to_integer_or_infinity,
+            to_number, to_object,
         },
         Context, EvalResult, Handle, Value,
     },
@@ -437,42 +438,14 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         let target_arg = get_argument(cx, arguments, 0);
-        let relative_target = to_integer_or_infinity(cx, target_arg)?;
-        let mut to_index = if relative_target < 0.0 {
-            if relative_target == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_target as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_target as u64, length)
-        };
+        let mut to_index = resolve_relative_index_argument(cx, target_arg, length)?;
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let mut from_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let mut from_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -593,30 +566,11 @@ impl ArrayPrototype {
         let value = get_argument(cx, arguments, 0);
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -978,18 +932,7 @@ impl ArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = to_integer_or_infinity(cx, n_arg)?;
-        if n == f64::INFINITY {
-            return Ok(cx.bool(false));
-        } else if n == f64::NEG_INFINITY {
-            n = 0.0;
-        }
-
-        let start_index = if n >= 0.0 {
-            n as u64
-        } else {
-            i64::max(length as i64 + n as i64, 0) as u64
-        };
+        let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Property key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -1022,18 +965,7 @@ impl ArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = to_integer_or_infinity(cx, n_arg)?;
-        if n == f64::INFINITY {
-            return Ok(cx.negative_one());
-        } else if n == f64::NEG_INFINITY {
-            n = 0.0;
-        }
-
-        let start_index = if n >= 0.0 {
-            n as u64
-        } else {
-            i64::max(length as i64 + n as i64, 0) as u64
-        };
+        let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Property key is shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -1479,30 +1411,11 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -1624,16 +1537,7 @@ impl ArrayPrototype {
         let length = length_of_array_like(cx, object)?;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
 
@@ -1821,16 +1725,7 @@ impl ArrayPrototype {
 
         // Determine absolute start index from the relative index argument
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let actual_start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let actual_start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let insert_count = (arguments.len() as u64).saturating_sub(2);
 

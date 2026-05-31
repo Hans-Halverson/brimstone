@@ -219,6 +219,29 @@ pub fn to_integer_or_infinity_f64(number_f64: f64) -> f64 {
     integer_f64
 }
 
+/// Resolve a relative index argument to an absolute index, clamping to the range [0, length].
+/// Negative indices are offsets from the end of the collection.
+///
+/// Expects to be run on a runtime method's argument value and performs its own ToIntegerOrInfinity
+/// conversion.
+pub fn resolve_relative_index_argument(
+    cx: Context,
+    argument: Handle<Value>,
+    length: u64,
+) -> EvalResult<u64> {
+    let relative_index = to_integer_or_infinity(cx, argument)?;
+
+    if relative_index < 0.0 {
+        if relative_index == f64::NEG_INFINITY {
+            Ok(0)
+        } else {
+            Ok(i64::max(length as i64 + relative_index as i64, 0) as u64)
+        }
+    } else {
+        Ok(u64::min(relative_index as u64, length))
+    }
+}
+
 /// ToInt32 (https://tc39.es/ecma262/#sec-toint32)
 pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
     // Fast pass if the value is a smi

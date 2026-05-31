@@ -115,7 +115,12 @@ impl IteratorHelperPrototype {
             // If "generator" has not yet started then close the underlying iterator and return done
             GeneratorState::SuspendedStart => {
                 object.set_generator_state(GeneratorState::Completed);
-                iterator_close(cx, object.iterator_object(), Ok(cx.undefined()))?;
+
+                // There may not be an underlying iterator object yet, e.g. in `Iterator.concat`
+                // before `next` has been called the first time.
+                if let Some(iterator_object) = object.iterator_object() {
+                    iterator_close(cx, iterator_object, Ok(cx.undefined()))?;
+                }
 
                 return Ok(create_iter_result_object(cx, cx.undefined(), true)?);
             }

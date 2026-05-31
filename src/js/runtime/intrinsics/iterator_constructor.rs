@@ -4,12 +4,13 @@ use crate::{
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
+        collections::array::value_array_from_slice,
         error::type_error,
         eval_result::EvalResult,
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{iterator_helper_object::IteratorHelperObject, rust_runtime::RuntimeFunction},
         iterator::{create_iter_result_object, get_iterator_flattenable},
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
@@ -41,6 +42,13 @@ impl IteratorConstructor {
             realm.get_intrinsic(Intrinsic::IteratorPrototype).into(),
         )?;
 
+        func.intrinsic_func(
+            cx,
+            cx.names.concat(),
+            RuntimeFunction::IteratorConstructor_concat,
+            0,
+            realm,
+        )?;
         func.intrinsic_func(
             cx,
             cx.names.from(),
@@ -78,6 +86,34 @@ impl IteratorConstructor {
         Ok(object.to_handle().as_value())
     }
 
+    /// Iterator.concat (https://tc39.es/ecma262/#sec-iterator.concat)
+    pub fn concat(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let mut iterator_methods = vec![];
+
+        for argument in arguments {
+            if !argument.is_object() {
+                return type_error(cx, "Iterator.concat argument is not an object");
+            }
+
+            if let Some(method) = get_method(cx, *argument, cx.well_known_symbols.iterator())? {
+                iterator_methods.push(method.as_value());
+            } else {
+                return type_error(cx, "Iterator.concat argument is not iterable");
+            }
+        }
+
+        let iterables_array = value_array_from_slice(cx, arguments)?.to_handle();
+        let iterator_methods_array = value_array_from_slice(cx, &iterator_methods)?.to_handle();
+
+        Ok(IteratorHelperObject::new_concat(cx, iterables_array, iterator_methods_array)?
+            .as_value())
+    }
+
+    /// Iterator.from (https://tc39.es/ecma262/#sec-iterator.from)
     pub fn from(
         cx: Context,
         _: Handle<Value>,

@@ -3,14 +3,16 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
-        abstract_operations::call_object,
+        abstract_operations::{call, call_object},
         alloc_error::AllocResult,
+        collections::array::ValueArray,
+        error::type_error,
         gc::{HeapItem, HeapVisitor},
         generator_object::GeneratorState,
         heap_item_descriptor::HeapItemKind,
         iterator::{
-            create_iter_result_object, get_iterator_flattenable, iterator_close, iterator_step,
-            iterator_step_value, Iterator,
+            create_iter_result_object, get_iterator_direct, get_iterator_flattenable,
+            iterator_close, iterator_step, iterator_step_value, HeapIterator, Iterator,
         },
         object_value::ObjectValue,
         ordinary_object::object_create_with_proto,
@@ -25,12 +27,9 @@ use super::intrinsics::Intrinsic;
 // Iterator Helper Objects (https://tc39.es/ecma262/#sec-iterator-helper-objects)
 extend_object! {
     pub struct IteratorHelperObject {
-        // The iterator object part of [[UnderlyingIterator]]
-        iterator: HeapPtr<ObjectValue>,
-        // The next method part of [[UnderlyingIterator]]
-        next_method: Value,
-        // The done part of [[UnderlyingIterator]]
-        is_done: bool,
+        // The [[UnderlyingIterator]] internal slot. This is always non-empty except for in `concat`
+        // helpers before `next` has been called the first time.
+        iterator: Option<HeapIterator>,
         // The current state of the iterator, when treated as a generator.
         generator_state: GeneratorState,
         // The type and captured values of the iterator helpe.
@@ -57,12 +56,20 @@ enum IteratorHelperState {
         inner_iterator: Option<(HeapPtr<ObjectValue>, Value)>,
         counter: u64,
     },
+    /// Iterator helper for the `Iterator.concat` method. Contains an array of iterable objects as
+    /// well as an array of their corresponding iterator methods. Arrays must be the same size.
+    Concat {
+        iterables: HeapPtr<ValueArray>,
+        iterator_methods: HeapPtr<ValueArray>,
+        /// Index of the next iterable/iterator to iterate over.
+        next_index: u64,
+    },
 }
 
 impl IteratorHelperObject {
     /// Creates and initializes a new IteratorHelperObject. Does not set the iterator helper's
     /// state, which must be done by the caller.
-    fn new(cx: Context, iterator: &Iterator) -> AllocResult<Handle<IteratorHelperObject>> {
+    fn new(cx: Context, iterator: Option<&Iterator>) -> AllocResult<Handle<IteratorHelperObject>> {
         let prototype = cx.get_intrinsic(Intrinsic::IteratorHelperPrototype);
         let mut object = object_create_with_proto::<IteratorHelperObject>(
             cx,
@@ -70,9 +77,7 @@ impl IteratorHelperObject {
             prototype,
         )?;
 
-        set_uninit!(object.iterator, *iterator.iterator);
-        set_uninit!(object.next_method, *iterator.next_method);
-        set_uninit!(object.is_done, iterator.is_done);
+        set_uninit!(object.iterator, iterator.map(Iterator::to_heap));
         set_uninit!(object.generator_state, GeneratorState::SuspendedStart);
 
         Ok(object.to_handle())
@@ -83,7 +88,7 @@ impl IteratorHelperObject {
         iterator: &Iterator,
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
-        let mut object = Self::new(cx, iterator)?;
+        let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(object.state, IteratorHelperState::Drop(limit));
         Ok(object)
     }
@@ -93,7 +98,7 @@ impl IteratorHelperObject {
         iterator: &Iterator,
         limit: f64,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
-        let mut object = Self::new(cx, iterator)?;
+        let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(object.state, IteratorHelperState::Take(limit));
         Ok(object)
     }
@@ -103,7 +108,7 @@ impl IteratorHelperObject {
         iterator: &Iterator,
         predicate: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
-        let mut object = Self::new(cx, iterator)?;
+        let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(
             object.state,
             IteratorHelperState::Filter { predicate: *predicate, counter: 0 }
@@ -116,7 +121,7 @@ impl IteratorHelperObject {
         iterator: &Iterator,
         mapper: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
-        let mut object = Self::new(cx, iterator)?;
+        let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(object.state, IteratorHelperState::Map { mapper: *mapper, counter: 0 });
         Ok(object)
     }
@@ -126,10 +131,27 @@ impl IteratorHelperObject {
         iterator: &Iterator,
         mapper: Handle<ObjectValue>,
     ) -> AllocResult<Handle<IteratorHelperObject>> {
-        let mut object = Self::new(cx, iterator)?;
+        let mut object = Self::new(cx, Some(iterator))?;
         set_uninit!(
             object.state,
             IteratorHelperState::FlatMap { mapper: *mapper, inner_iterator: None, counter: 0 }
+        );
+        Ok(object)
+    }
+
+    pub fn new_concat(
+        cx: Context,
+        iterables: Handle<ValueArray>,
+        iterator_methods: Handle<ValueArray>,
+    ) -> AllocResult<Handle<IteratorHelperObject>> {
+        let mut object = Self::new(cx, None)?;
+        set_uninit!(
+            object.state,
+            IteratorHelperState::Concat {
+                iterables: *iterables,
+                iterator_methods: *iterator_methods,
+                next_index: 0,
+            }
         );
         Ok(object)
     }
@@ -150,16 +172,22 @@ impl IteratorHelperObject {
         &mut self.state
     }
 
-    fn iterator(&self, cx: Context) -> Iterator {
-        Iterator {
-            iterator: self.iterator_object(),
-            next_method: self.next_method.to_handle(cx),
-            is_done: self.is_done,
-        }
+    /// The underlying iterator record for this helper.
+    ///
+    /// Only None for the `concat` helper.
+    fn iterator(&self, cx: Context) -> Option<Iterator> {
+        self.iterator.as_ref().map(|it| Iterator::from_heap(cx, it))
     }
 
-    pub fn iterator_object(&self) -> Handle<ObjectValue> {
-        self.iterator.to_handle()
+    /// The underlying iterator object for this helper.
+    ///
+    /// Only None for the `concat` helper.
+    pub fn iterator_object(&self) -> Option<Handle<ObjectValue>> {
+        self.iterator.as_ref().map(|it| it.iterator.to_handle())
+    }
+
+    fn set_iterator(&mut self, iterator: Iterator) {
+        self.iterator = Some(iterator.to_heap());
     }
 }
 
@@ -176,24 +204,37 @@ impl Handle<IteratorHelperObject> {
             IteratorHelperState::Filter { .. } => self.next_filter(cx, is_start),
             IteratorHelperState::Map { .. } => self.next_map(cx, is_start),
             IteratorHelperState::FlatMap { .. } => self.next_flat_map(cx),
+            IteratorHelperState::Concat { .. } => self.next_concat(cx),
         }
     }
 
     /// Returns either the return value or an error.
     pub fn return_(&mut self, cx: Context) -> EvalResult<Handle<Value>> {
-        if let IteratorHelperState::FlatMap { inner_iterator, .. } = self.state() {
+        match self.state() {
             // Handle more complex return logic within flatMap. Implement logic directly following
             // the yield when yielding an abnormal completion.
             //
             // First close the inner iterator, then close the outer iterator.
-            let inner_iterator = inner_iterator.as_ref().unwrap().0.to_handle();
-            let backup_completion = iterator_close(cx, inner_iterator, Ok(cx.undefined()));
-            match backup_completion {
-                Err(error) => iterator_close(cx, self.iterator_object(), Err(error)),
-                Ok(_) => iterator_close(cx, self.iterator_object(), Ok(cx.undefined())),
+            IteratorHelperState::FlatMap { inner_iterator, .. } => {
+                let inner_iterator = inner_iterator.as_ref().unwrap().0.to_handle();
+                let backup_completion = iterator_close(cx, inner_iterator, Ok(cx.undefined()));
+                let iterator_object = self.iterator_object().unwrap();
+
+                match backup_completion {
+                    Err(error) => iterator_close(cx, iterator_object, Err(error)),
+                    Ok(_) => iterator_close(cx, iterator_object, Ok(cx.undefined())),
+                }
             }
-        } else {
-            iterator_close(cx, self.iterator_object(), Ok(cx.undefined()))
+            // Concat may not have an underlying iterator to close
+            IteratorHelperState::Concat { .. } => {
+                if let Some(iterator_object) = self.iterator_object() {
+                    iterator_close(cx, iterator_object, Ok(cx.undefined()))
+                } else {
+                    Ok(cx.undefined())
+                }
+            }
+            // All other iterators have a single underlying iterator to close
+            _ => iterator_close(cx, self.iterator_object().unwrap(), Ok(cx.undefined())),
         }
     }
 
@@ -203,7 +244,11 @@ impl Handle<IteratorHelperObject> {
         iterator: &mut Iterator,
     ) -> EvalResult<Option<Handle<ObjectValue>>> {
         let result = iterator_step(cx, iterator);
-        self.is_done = iterator.is_done;
+
+        if let Some(heap_iterator) = self.iterator.as_mut() {
+            heap_iterator.is_done = iterator.is_done;
+        }
+
         result
     }
 
@@ -213,7 +258,11 @@ impl Handle<IteratorHelperObject> {
         iterator: &mut Iterator,
     ) -> EvalResult<Option<Handle<Value>>> {
         let result = iterator_step_value(cx, iterator);
-        self.is_done = iterator.is_done;
+
+        if let Some(heap_iterator) = self.iterator.as_mut() {
+            heap_iterator.is_done = iterator.is_done;
+        }
+
         result
     }
 
@@ -228,7 +277,7 @@ impl Handle<IteratorHelperObject> {
             unreachable!()
         };
 
-        let mut iterator = self.iterator(cx);
+        let mut iterator = self.iterator(cx).unwrap();
 
         // On first run step over the first `limit` number of values
         if is_start {
@@ -266,7 +315,7 @@ impl Handle<IteratorHelperObject> {
 
         // Close the iterator if we have taken all the values
         if *remaining == 0.0 {
-            iterator_close(cx, self.iterator_object(), Ok(cx.undefined()))?;
+            iterator_close(cx, self.iterator_object().unwrap(), Ok(cx.undefined()))?;
             return Ok(None);
         }
 
@@ -275,7 +324,7 @@ impl Handle<IteratorHelperObject> {
             *remaining -= 1.0;
         }
 
-        let mut iterator = self.iterator(cx);
+        let mut iterator = self.iterator(cx).unwrap();
         let value_opt = self.iterator_step_value(cx, &mut iterator)?;
         value_opt
             .map(|value| Ok(create_iter_result_object(cx, value, false)?.as_object()))
@@ -299,7 +348,7 @@ impl Handle<IteratorHelperObject> {
             unreachable!()
         };
 
-        let mut iterator = self.iterator(cx);
+        let mut iterator = self.iterator(cx).unwrap();
         let mut counter_value: Handle<Value> = Handle::empty(cx);
 
         // Keep looping until we find a value fron the underlying iterator which passes the
@@ -322,7 +371,7 @@ impl Handle<IteratorHelperObject> {
             let is_selected =
                 match call_object(cx, predicate, cx.undefined(), &[value, counter_value]) {
                     Err(error) => {
-                        iterator_close(cx, self.iterator_object(), Err(error))?;
+                        iterator_close(cx, self.iterator_object().unwrap(), Err(error))?;
                         return Ok(None);
                     }
                     Ok(is_selected) => to_boolean(*is_selected),
@@ -358,7 +407,7 @@ impl Handle<IteratorHelperObject> {
         let counter_value = Value::from(*counter).to_handle(cx);
 
         // Get the next value from the underlying iterator
-        let value = match self.iterator_step_value(cx, &mut self.iterator(cx))? {
+        let value = match self.iterator_step_value(cx, &mut self.iterator(cx).unwrap())? {
             None => return Ok(None),
             Some(value) => value,
         };
@@ -366,7 +415,7 @@ impl Handle<IteratorHelperObject> {
         // Run the mapper function, returning the result and closing the iterator on error
         match call_object(cx, mapper, cx.undefined(), &[value, counter_value]) {
             Err(error) => {
-                iterator_close(cx, self.iterator_object(), Err(error))?;
+                iterator_close(cx, self.iterator_object().unwrap(), Err(error))?;
                 Ok(None)
             }
             Ok(value) => Ok(Some(create_iter_result_object(cx, value, false)?.as_object())),
@@ -392,7 +441,7 @@ impl Handle<IteratorHelperObject> {
                 unreachable!()
             };
 
-        let mut iterator = self.iterator(cx);
+        let mut iterator = self.iterator(cx).unwrap();
         let mut counter_value: Handle<Value> = Handle::empty(cx);
 
         // Outer loop iterates through the values of the underlying iterator
@@ -473,6 +522,66 @@ impl Handle<IteratorHelperObject> {
             };
         }
     }
+
+    fn next_concat(&mut self, cx: Context) -> EvalResult<Option<Handle<ObjectValue>>> {
+        let (iterables, iterator_methods) =
+            if let IteratorHelperState::Concat { iterables, iterator_methods, .. } = self.state() {
+                (iterables.to_handle(), iterator_methods.to_handle())
+            } else {
+                unreachable!()
+            };
+
+        loop {
+            // Proceed to the next iterator when we have exhausted the current one, or if this is
+            // the first call to `next` which must set up the initial iterator.
+            let use_next_iterable = match self.iterator(cx) {
+                None => true,
+                Some(iterator) => iterator.is_done,
+            };
+
+            if use_next_iterable {
+                let next_index =
+                    if let IteratorHelperState::Concat { next_index, .. } = self.state() {
+                        *next_index as usize
+                    } else {
+                        unreachable!()
+                    };
+
+                // Concat helper is complete since we have exhausted all iterables
+                if next_index >= iterables.len() {
+                    return Ok(None);
+                }
+
+                // Call the next iterable's iterator method to get the next iterator object, which
+                // is stored as the underlying iterator for the helper.
+                let iterable = iterables.as_slice()[next_index].to_handle(cx);
+                let next_method = iterator_methods.as_slice()[next_index].to_handle(cx);
+
+                let iterator_object = call(cx, next_method, iterable, &[])?;
+                if !iterator_object.is_object() {
+                    return type_error(cx, "iterator method did not return an object");
+                }
+
+                let iterator = get_iterator_direct(cx, iterator_object.as_object())?;
+                self.set_iterator(iterator);
+
+                if let IteratorHelperState::Concat { next_index, .. } = self.state_mut() {
+                    *next_index += 1;
+                } else {
+                    unreachable!()
+                }
+            }
+
+            // Underlying iterator has been initialized so it is guaranteed to exist now
+            let mut iterator = self.iterator(cx).unwrap();
+
+            // Return the next value from the iterator, continuing to the next iterable in next loop
+            // when the current one is exhausted.
+            if let Some(value) = self.iterator_step_value(cx, &mut iterator)? {
+                return Ok(Some(create_iter_result_object(cx, value, false)?.as_object()));
+            }
+        }
+    }
 }
 
 impl HeapItem for HeapPtr<IteratorHelperObject> {
@@ -482,8 +591,10 @@ impl HeapItem for HeapPtr<IteratorHelperObject> {
 
     fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
         self.visit_object_pointers(visitor);
-        visitor.visit_pointer(&mut self.iterator);
-        visitor.visit_value(&mut self.next_method);
+
+        if let Some(iterator) = &mut self.iterator {
+            iterator.visit_pointers(visitor);
+        }
 
         match &mut self.state {
             IteratorHelperState::Filter { predicate, .. } => visitor.visit_pointer(predicate),
@@ -495,6 +606,10 @@ impl HeapItem for HeapPtr<IteratorHelperObject> {
                     visitor.visit_pointer(iterator_object);
                     visitor.visit_value(next_method);
                 }
+            }
+            IteratorHelperState::Concat { iterables, iterator_methods, .. } => {
+                visitor.visit_pointer(iterables);
+                visitor.visit_pointer(iterator_methods);
             }
             IteratorHelperState::Drop(_) | IteratorHelperState::Take(_) => {}
         }

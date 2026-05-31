@@ -373,6 +373,7 @@ rust_runtime_functions!(
     (Int16ArrayConstructor_construct, Int16ArrayConstructor::construct),
     (Int32ArrayConstructor_construct, Int32ArrayConstructor::construct),
     (intrinsics_throw_type_error, intrinsics::throw_type_error),
+    (IteratorConstructor_concat, IteratorConstructor::concat),
     (IteratorConstructor_construct, IteratorConstructor::construct),
     (IteratorConstructor_from, IteratorConstructor::from),
     (IteratorHelperPrototype_next, IteratorHelperPrototype::next),

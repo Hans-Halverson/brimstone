@@ -80,6 +80,7 @@ dependencies = [
  "ryu-js",
  "supports-color",
  "tikv-jemallocator",
+ "xsum",
  "zerotrie",
  "zerovec",
 ]
@@ -1388,6 +1389,12 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "xsum"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0637d3a5566a82fa5214bae89087bc8c9fb94cd8e8a3c07feb691bb8d9c632db"
 
 [[package]]
 name = "yaml-rust"

@@ -419,6 +419,7 @@ builtin_names!(
     (stringify, "stringify"),
     (subarray, "subarray"),
     (substring, "substring"),
+    (sum_precise, "sumPrecise"),
     (symmetric_difference, "symmetricDifference"),
     (take, "take"),
     (tan, "tan"),

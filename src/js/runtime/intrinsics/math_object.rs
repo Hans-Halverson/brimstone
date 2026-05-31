@@ -1,13 +1,16 @@
 use rand::Rng;
+use xsum::{Xsum, XsumAuto};
 
 use crate::{
-    common::math::f64_to_f16,
+    common::math::{f64_to_f16, is_negative_zero},
     runtime::{
         alloc_error::AllocResult,
+        error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
         intrinsics::rust_runtime::RuntimeFunction,
-        numeric_constants::MAX_I32_PLUS_ONE_AS_F64,
+        iterator::{get_iterator, iterator_close, iterator_step_value, IteratorHint},
+        numeric_constants::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
         property::Property,
@@ -113,6 +116,13 @@ impl MathObject {
         object.intrinsic_func(cx, cx.names.sin(), RuntimeFunction::MathObject_sin, 1, realm)?;
         object.intrinsic_func(cx, cx.names.sinh(), RuntimeFunction::MathObject_sinh, 1, realm)?;
         object.intrinsic_func(cx, cx.names.sqrt(), RuntimeFunction::MathObject_sqrt, 1, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.sum_precise(),
+            RuntimeFunction::MathObject_sum_precise,
+            1,
+            realm,
+        )?;
         object.intrinsic_func(cx, cx.names.tan(), RuntimeFunction::MathObject_tan, 1, realm)?;
         object.intrinsic_func(cx, cx.names.tanh(), RuntimeFunction::MathObject_tanh, 1, realm)?;
         object.intrinsic_func(cx, cx.names.trunc(), RuntimeFunction::MathObject_trunc, 1, realm)?;
@@ -634,6 +644,75 @@ impl MathObject {
         Ok(cx.number(f64::sqrt(n.as_number())))
     }
 
+    /// Math.sumPrecise (https://tc39.es/proposal-math-sum/)
+    pub fn sum_precise(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let items_arg = get_argument(cx, arguments, 0);
+
+        if !items_arg.is_object() {
+            return type_error(cx, "Math.sumPrecise argument must be an object");
+        }
+
+        let mut iterator = get_iterator(cx, items_arg, IteratorHint::Sync, None)?;
+
+        let mut sum = XsumAuto::new();
+        let mut count: u64 = 0;
+        let mut state = SumPreciseState::NegativeZero;
+
+        while let Some(next_value) = iterator_step_value(cx, &mut iterator)? {
+            if count >= MAX_SAFE_INTEGER_U64 {
+                let error =
+                    range_error(cx, "Math.sumPrecise iterator exceeded maximum safe integer");
+                return iterator_close(cx, iterator.iterator, error);
+            }
+
+            count += 1;
+
+            if !next_value.is_number() {
+                let error = type_error(cx, "Math.sumPrecise iterator value must be a number");
+                return iterator_close(cx, iterator.iterator, error);
+            }
+
+            let next_number = next_value.as_number();
+
+            if state == SumPreciseState::NaN {
+                continue;
+            }
+
+            if next_number.is_nan() {
+                state = SumPreciseState::NaN;
+            } else if next_number == f64::INFINITY {
+                if state == SumPreciseState::NegativeInfinity {
+                    state = SumPreciseState::NaN;
+                } else {
+                    state = SumPreciseState::PositiveInfinity;
+                }
+            } else if next_number == f64::NEG_INFINITY {
+                if state == SumPreciseState::PositiveInfinity {
+                    state = SumPreciseState::NaN;
+                } else {
+                    state = SumPreciseState::NegativeInfinity;
+                }
+            } else if !is_negative_zero(next_number)
+                && (state == SumPreciseState::NegativeZero || state == SumPreciseState::Finite)
+            {
+                state = SumPreciseState::Finite;
+                sum.add(next_number);
+            }
+        }
+
+        match state {
+            SumPreciseState::Finite => Ok(cx.number(sum.sum())),
+            SumPreciseState::PositiveInfinity => Ok(cx.number(f64::INFINITY)),
+            SumPreciseState::NegativeInfinity => Ok(cx.number(f64::NEG_INFINITY)),
+            SumPreciseState::NegativeZero => Ok(cx.number(-0.0)),
+            SumPreciseState::NaN => Ok(cx.nan()),
+        }
+    }
+
     /// Math.tan (https://tc39.es/ecma262/#sec-math.tan)
     pub fn tan(
         cx: Context,
@@ -671,4 +750,13 @@ impl MathObject {
             Ok(cx.number(f64::trunc(n.as_double())))
         }
     }
+}
+
+#[derive(PartialEq)]
+enum SumPreciseState {
+    Finite,
+    PositiveInfinity,
+    NegativeInfinity,
+    NegativeZero,
+    NaN,
 }

@@ -69,3 +69,7 @@ pub fn f64_to_f16(value: f64) -> f16 {
     let f16_sign = (f64_sign >> 48) as u16;
     f16::from_bits(result | f16_sign)
 }
+
+pub const fn is_negative_zero(value: f64) -> bool {
+    value.to_bits() == (-0.0f64).to_bits()
+}

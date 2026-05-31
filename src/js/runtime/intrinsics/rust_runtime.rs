@@ -446,6 +446,7 @@ rust_runtime_functions!(
     (MathObject_sin, MathObject::sin),
     (MathObject_sinh, MathObject::sinh),
     (MathObject_sqrt, MathObject::sqrt),
+    (MathObject_sum_precise, MathObject::sum_precise),
     (MathObject_tan, MathObject::tan),
     (MathObject_tanh, MathObject::tanh),
     (MathObject_trunc, MathObject::trunc),

@@ -118,7 +118,7 @@ impl StackFrame {
         Self::encode_return_address_slot(return_address, true)
     }
 
-    /// Encode the return addres slot for a call from the JS VM.
+    /// Encode the return address slot for a call from the JS VM.
     #[inline]
     pub fn return_address_from_vm(return_address: *const u8) -> usize {
         Self::encode_return_address_slot(return_address, false)

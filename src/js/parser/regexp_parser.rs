@@ -1489,7 +1489,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                             self.advance();
                             Ok(code_point)
                         }
-                        _ => self.error(start_pos, ParseError::MalformedEscapeSeqence),
+                        _ => self.error(start_pos, ParseError::MalformedEscapeSequence),
                     })
                 } else {
                     let save_state = self.save();
@@ -1721,7 +1721,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             // Cannot be empty
             if self.eat('}') {
-                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSequence);
             }
 
             // collect all hex digits until closing brace
@@ -1732,12 +1732,12 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     value <<= 4;
                     value += hex_value;
                 } else {
-                    return self.error(start_pos, ParseError::MalformedEscapeSeqence);
+                    return self.error(start_pos, ParseError::MalformedEscapeSequence);
                 }
 
                 // Check if number is out of range
                 if value > 0x10FFFF {
-                    return self.error(start_pos, ParseError::MalformedEscapeSeqence);
+                    return self.error(start_pos, ParseError::MalformedEscapeSequence);
                 }
             }
 
@@ -1782,7 +1782,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 value <<= 4;
                 value += hex_value;
             } else {
-                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSequence);
             }
         }
 
@@ -1797,7 +1797,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 value <<= 4;
                 value += hex_value as u16;
             } else {
-                return self.error(start_pos, ParseError::MalformedEscapeSeqence);
+                return self.error(start_pos, ParseError::MalformedEscapeSequence);
             }
         }
 

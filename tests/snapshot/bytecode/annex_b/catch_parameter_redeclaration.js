@@ -7,7 +7,7 @@ function test() {
   } catch (foo) {
     3;
     
-    // Store to catch paramter
+    // Store to catch parameter
     var foo = 4;
 
     // Load catch parameter

@@ -1128,7 +1128,7 @@ impl<'a> Analyzer<'a> {
             };
 
             // If this is a top level id pattern then the binding's VM location is the argument
-            // directly by index. This may be overriden later if captured.
+            // directly by index. This may be overridden later if captured.
             if let Some(id) = toplevel_id {
                 let scope = id.scope.unwrap_resolved_mut();
                 let binding = scope.get_binding_mut(id.name);
@@ -1492,7 +1492,7 @@ impl<'a> Analyzer<'a> {
         &mut self,
         stmt: &'b mut LabeledStatement<'a>,
     ) -> (&'b mut Statement<'a>, Vec<(&'a Wtf8Str, bool)>) {
-        // Always use 1 more than the current lable depth, so that a label id of 0 marks the
+        // Always use 1 more than the current label depth, so that a label id of 0 marks the
         // empty label.
         let label_id = self.label_depth + 1;
         self.label_depth += 1;

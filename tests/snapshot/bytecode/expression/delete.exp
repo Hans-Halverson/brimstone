@@ -49,8 +49,8 @@
     11: [String: deleteIdLexical]
     12: [BytecodeFunction: deleteIdParams]
     13: [String: deleteIdParams]
-    14: [BytecodeFunction: deleteIdArgments]
-    15: [String: deleteIdArgments]
+    14: [BytecodeFunction: deleteIdArguments]
+    15: [String: deleteIdArguments]
     16: [BytecodeFunction: deleteThis]
     17: [String: deleteThis]
     18: [BytecodeFunction: deleteUnresolvedGlobal]
@@ -178,7 +178,7 @@
     5-8 -> 10 (r0)
 }
 
-[BytecodeFunction: deleteIdArgments] {
+[BytecodeFunction: deleteIdArguments] {
   Parameters: 0, Registers: 2
     0: NewMappedArguments r0
     2: LoadFalse r1

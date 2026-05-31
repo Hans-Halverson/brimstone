@@ -449,10 +449,10 @@ fn escape_pattern_string(
     }
 
     // Only need to escape line terminators and forward slash
-    let neeeds_escape = pattern_string
+    let needs_escape = pattern_string
         .iter_code_units()?
         .any(|code_unit| code_unit == '/' as u16 || is_newline(code_unit as u32));
-    if !neeeds_escape {
+    if !needs_escape {
         return Ok(pattern_string);
     }
 

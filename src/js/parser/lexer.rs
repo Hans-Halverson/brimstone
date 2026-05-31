@@ -1046,11 +1046,11 @@ impl<'a> Lexer<'a> {
                             } else {
                                 let loc = self.mark_loc(self.pos);
                                 self.advance();
-                                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                                return self.error(loc, ParseError::MalformedEscapeSequence);
                             }
                         } else {
                             let loc = self.mark_loc(self.pos);
-                            return self.error(loc, ParseError::MalformedEscapeSeqence);
+                            return self.error(loc, ParseError::MalformedEscapeSequence);
                         }
                     }
                     // Unicode escape sequence
@@ -1524,7 +1524,7 @@ impl<'a> Lexer<'a> {
         if self.eat('{') {
             if self.eat('}') {
                 let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(loc, ParseError::MalformedEscapeSequence);
             }
 
             let mut value = 0;
@@ -1537,13 +1537,13 @@ impl<'a> Lexer<'a> {
                     break;
                 } else {
                     let loc = self.mark_loc(start_pos);
-                    return self.error(loc, ParseError::MalformedEscapeSeqence);
+                    return self.error(loc, ParseError::MalformedEscapeSequence);
                 }
             }
 
             if self.current != '}' as u32 {
                 let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(loc, ParseError::MalformedEscapeSequence);
             }
 
             self.advance();
@@ -1553,7 +1553,7 @@ impl<'a> Lexer<'a> {
                 return Ok(value);
             } else {
                 let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(loc, ParseError::MalformedEscapeSequence);
             }
         }
 
@@ -1566,7 +1566,7 @@ impl<'a> Lexer<'a> {
                 value += hex_value;
             } else {
                 let loc = self.mark_loc(start_pos);
-                return self.error(loc, ParseError::MalformedEscapeSeqence);
+                return self.error(loc, ParseError::MalformedEscapeSequence);
             }
         }
 
@@ -1687,7 +1687,7 @@ impl<'a> Lexer<'a> {
             Ok(code_point)
         } else {
             let loc = self.mark_loc(escape_start_pos);
-            self.error(loc, ParseError::MalformedEscapeSeqence)
+            self.error(loc, ParseError::MalformedEscapeSequence)
         }
     }
 

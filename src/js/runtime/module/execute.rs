@@ -615,7 +615,7 @@ pub fn dynamic_import(
             let entries = if_abrupt_reject_promise!(cx, entries_completion, capability);
 
             for entry in entries {
-                // Entry is gaurenteed to be an array with two elements
+                // Entry is guaranteed to be an array with two elements
                 let entry = entry.as_object();
                 let key = must!(get(cx, entry, PropertyKey::from_u8(0).to_handle(cx)));
                 let value = must!(get(cx, entry, PropertyKey::from_u8(1).to_handle(cx)));

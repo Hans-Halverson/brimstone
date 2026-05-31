@@ -37,7 +37,7 @@ impl ExceptionHandlerBuilder {
 }
 
 pub struct ExceptionHandlersBuilder {
-    /// Collection fo all handlers generated so far in the function.
+    /// Collection of all handlers generated so far in the function.
     handlers: Vec<ExceptionHandlerBuilder>,
     /// The minimum width that fits all numbers in the handlers generated so far.
     width: WidthEnum,

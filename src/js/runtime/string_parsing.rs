@@ -578,7 +578,7 @@ pub fn parse_string_to_u32(mut lexer: StringLexer) -> Option<u32> {
         return None;
     }
 
-    // Consume remaining digits, checking for overlow as they are added to the result number
+    // Consume remaining digits, checking for overflow as they are added to the result number
     while !lexer.is_end() {
         if let Some(digit) = lexer.current_decimal_value() {
             result = result.checked_mul(10)?;

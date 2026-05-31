@@ -51,7 +51,7 @@ impl FunctionPrototype {
 
         let mut object = function_prototype.as_object();
 
-        // Initialize all fields of the prototype objec
+        // Initialize all fields of the prototype object
         let descriptor_ptr = cx.descriptors.get(HeapItemKind::Closure);
         object_ordinary_init(cx, *object, descriptor_ptr, Some(object_proto_ptr));
 
@@ -70,7 +70,7 @@ impl FunctionPrototype {
             .cast::<Closure>()
             .init_extra_fields(*function, *scope);
 
-        object.instrinsic_length_prop(cx, 0)?;
+        object.intrinsic_length_prop(cx, 0)?;
         object.intrinsic_name_prop(cx, "")?;
 
         object.intrinsic_func(

@@ -18,7 +18,7 @@ function test1() {
 }
 
 {
-  // Block scope can be greated in global scope
+  // Block scope can be created in global scope
   const c1 = 1;
   function inner() {
     return c1;

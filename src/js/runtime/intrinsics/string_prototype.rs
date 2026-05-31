@@ -828,11 +828,11 @@ impl StringPrototype {
         }
 
         // Find the number of whole pad strings we can fit into the padding length
-        let num_whole_repitions = fill_length / fill_string_length;
-        let mut pad_string = fill_string.repeat(cx, num_whole_repitions)?.as_string();
+        let num_whole_repetitions = fill_length / fill_string_length;
+        let mut pad_string = fill_string.repeat(cx, num_whole_repetitions)?.as_string();
 
         // Add a partial pad string if the pad strings did not evenly divide the padding length
-        let partial_length = fill_length - (num_whole_repitions * fill_string_length);
+        let partial_length = fill_length - (num_whole_repetitions * fill_string_length);
         if partial_length != 0 {
             let partial_string = fill_string.substring(cx, 0, partial_length)?.as_string();
             pad_string = StringValue::concat(cx, pad_string, partial_string)?;

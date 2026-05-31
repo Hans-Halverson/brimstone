@@ -60,7 +60,7 @@ impl ModuleNamespaceObject {
 
         let object = object.to_handle();
 
-        // Module Namepace Objects [ %Symbol.toStringTag% ] (https://tc39.es/ecma262/#sec-%symbol.tostringtag%)
+        // Module Namespace Objects [ %Symbol.toStringTag% ] (https://tc39.es/ecma262/#sec-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.as_object().set_property(
             cx,

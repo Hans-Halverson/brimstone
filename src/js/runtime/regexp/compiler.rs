@@ -61,9 +61,9 @@ struct CompiledRegExpBuilder {
     /// by lookaround. The top of the stack is the current direction.
     direction_stack: Vec<Direction>,
     /// Incremented every time we enter the body of a quantifier that may have at least 2
-    /// repititions and decremented when we leave. Used to detect if we are within the body of a
+    /// repetitions and decremented when we leave. Used to detect if we are within the body of a
     /// quantifier that may be repeated 2+ times, which require special consideration.
-    repitition_depth: u64,
+    repetition_depth: u64,
 }
 
 #[derive(PartialEq)]
@@ -92,7 +92,7 @@ impl SubExpressionInfo {
 
 /// Maximum number of repititons within a quantifier that will have their terms inlined, vs using
 /// loop instructions.
-const MAX_INLINED_REPITITIONS: u64 = 10;
+const MAX_INLINED_REPETITIONS: u64 = 10;
 
 impl CompiledRegExpBuilder {
     fn new(regexp: &RegExp, source: Handle<StringValue>) -> Self {
@@ -104,7 +104,7 @@ impl CompiledRegExpBuilder {
             num_progress_points: 0,
             num_loop_registers: 0,
             direction_stack: vec![Direction::Forward],
-            repitition_depth: 0,
+            repetition_depth: 0,
         }
     }
 
@@ -130,16 +130,16 @@ impl CompiledRegExpBuilder {
         *self.direction_stack.last().unwrap() == Direction::Forward
     }
 
-    fn enter_repitition_context(&mut self) {
-        self.repitition_depth += 1;
+    fn enter_repetition_context(&mut self) {
+        self.repetition_depth += 1;
     }
 
-    fn exit_repitition_context(&mut self) {
-        self.repitition_depth -= 1;
+    fn exit_repetition_context(&mut self) {
+        self.repetition_depth -= 1;
     }
 
-    fn is_in_repitition(&self) -> bool {
-        self.repitition_depth > 0
+    fn is_in_repetition(&self) -> bool {
+        self.repetition_depth > 0
     }
 
     fn current_block_buf(&mut self) -> &mut Vec<u32> {
@@ -379,9 +379,9 @@ impl CompiledRegExpBuilder {
                 captures.extend(info.captures);
             }
 
-            // If this disjunction is in a repitition we must clear the captures for all
+            // If this disjunction is in a repetition we must clear the captures for all
             // alternatives not taken in case they were previously matched.
-            if self.is_in_repitition() {
+            if self.is_in_repetition() {
                 // All alternatives but the last two have their captures cleared at the start of the
                 // next branch block, since all successful paths that don't match the previous
                 // alternative will necessarily pass through the next branch block.
@@ -416,12 +416,12 @@ impl CompiledRegExpBuilder {
             // always jumps to the final join block.
             let mut join_blocks_rev = vec![join_block_id];
 
-            // If in a repitition, create a chain of a chain of clear blocks that clear all captures
+            // If in a repetition, create a chain of a chain of clear blocks that clear all captures
             // from the first alternative to the last alternative. Each alternative jumps to the
             // clear block that clears the captures for all later alternatives.
             for i in (1..alternative_blocks.len()).rev() {
                 let alternative_captures = &alternative_blocks[i].captures;
-                if self.is_in_repitition() && !alternative_captures.is_empty() {
+                if self.is_in_repetition() && !alternative_captures.is_empty() {
                     let clear_capture_block_id = self.new_block();
 
                     // Emit this clear block and set it as the current one
@@ -649,16 +649,16 @@ impl CompiledRegExpBuilder {
     }
 
     fn emit_quantifier(&mut self, quantifier: &Quantifier) -> SubExpressionInfo {
-        let is_inside_repitition = self.is_in_repitition();
+        let is_inside_repetition = self.is_in_repetition();
 
-        // A repitition is any quantifier that can be run at least twice
-        let is_repitition = match quantifier.max {
+        // A repetition is any quantifier that can be run at least twice
+        let is_repetition = match quantifier.max {
             None => true,
             Some(max) => max > 1,
         };
 
-        if is_repitition {
-            self.enter_repitition_context();
+        if is_repetition {
+            self.enter_repetition_context();
         }
 
         // Start a new block, saving a reference to the block before the quantifier so we can
@@ -669,23 +669,23 @@ impl CompiledRegExpBuilder {
         self.set_current_block(quantifier_start_block);
 
         // Quantifier always has the same captures as its wrapped term. But quantifier only has the
-        // same always consume status as its wrapped term when there are minimum repititions.
+        // same always consume status as its wrapped term when there are minimum repetitions.
         // Otherwise the quantifier is never guaranteed to consume.
         let mut quantifier_info = SubExpressionInfo::no_captures(false);
 
-        // Can inline a small number of repititions otherwise use a loop
-        if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPITITIONS {
-            // Emit term min times for repititions that must be present
+        // Can inline a small number of repetitions otherwise use a loop
+        if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
+            // Emit term min times for repetitions that must be present
             for _ in 0..quantifier.min {
                 quantifier_info = self.emit_term(&quantifier.term);
             }
         } else if quantifier.min > u32::MAX as u64 {
-            // The minimum number of repititions is greater than the max possible string length.
-            // Each repitition must consume at least one character, so we know this quantifier will
+            // The minimum number of repetitions is greater than the max possible string length.
+            // Each repetition must consume at least one character, so we know this quantifier will
             // fail to match.
             self.emit_fail_instruction();
         } else if quantifier.min != 0 {
-            // Jump to a new loop block for the minimum repititions
+            // Jump to a new loop block for the minimum repetitions
             let loop_block_id = self.new_block();
             let loop_end_block_id = self.new_block();
 
@@ -710,13 +710,13 @@ impl CompiledRegExpBuilder {
         }
 
         if let Some(max) = quantifier.max {
-            let num_remaining_repititions = max - quantifier.min;
+            let num_remaining_repetitions = max - quantifier.min;
 
-            // Exact number of repititions
-            if num_remaining_repititions == 0 {
+            // Exact number of repetitions
+            if num_remaining_repetitions == 0 {
                 // Clean up any necessary contexts
-                if is_repitition {
-                    self.exit_repitition_context();
+                if is_repetition {
+                    self.exit_repetition_context();
                 }
 
                 return quantifier_info;
@@ -724,8 +724,8 @@ impl CompiledRegExpBuilder {
 
             let join_block_id = self.new_block();
 
-            // Can inline a small number of optional repititions otherwise use a loop
-            if num_remaining_repititions <= MAX_INLINED_REPITITIONS {
+            // Can inline a small number of optional repetitions otherwise use a loop
+            if num_remaining_repetitions <= MAX_INLINED_REPETITIONS {
                 let mut progress_index = None;
 
                 // Emit term blocks max - min times, each is optional and is preceded by a branch to
@@ -751,9 +751,9 @@ impl CompiledRegExpBuilder {
 
                     // Emit branch between term block and join block in predecessor
                     self.in_block(pred_block_id, |this| {
-                        // If we are in a repitition but never enter a term block with captures even
+                        // If we are in a repetition but never enter a term block with captures even
                         // once, we must clear those captures in case they were previously matched.
-                        if i == 0 && is_inside_repitition && !info.captures.is_empty() {
+                        if i == 0 && is_inside_repetition && !info.captures.is_empty() {
                             this.emit_quantifier_clear_captures_branch(
                                 quantifier,
                                 &info,
@@ -770,9 +770,9 @@ impl CompiledRegExpBuilder {
 
                 // Last term block always proceeds to the join block
                 self.emit_jump_instruction(join_block_id);
-            } else if num_remaining_repititions > u32::MAX as u64 {
-                // The minimum number of repititions is greater than the max possible string length.
-                // Each repitition must consume at least one character, so we know this quantifier
+            } else if num_remaining_repetitions > u32::MAX as u64 {
+                // The minimum number of repetitions is greater than the max possible string length.
+                // Each repetition must consume at least one character, so we know this quantifier
                 // will fail to match.
                 self.emit_fail_instruction();
             } else {
@@ -786,7 +786,7 @@ impl CompiledRegExpBuilder {
                     let loop_register_index = this.next_loop_register();
                     this.emit_loop_instruction(
                         loop_register_index,
-                        num_remaining_repititions as u32,
+                        num_remaining_repetitions as u32,
                         join_block_id as u32,
                     );
 
@@ -808,9 +808,9 @@ impl CompiledRegExpBuilder {
                 // Emit the branch to the loop block from predecessor
                 self.set_current_block(predecessor_block_id);
 
-                // If we are in a repitition but never enter a term block with captures even once,
+                // If we are in a repetition but never enter a term block with captures even once,
                 // we must clear those captures in case they were previously matched.
-                if quantifier.min == 0 && is_inside_repitition && !info.captures.is_empty() {
+                if quantifier.min == 0 && is_inside_repetition && !info.captures.is_empty() {
                     self.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -827,7 +827,7 @@ impl CompiledRegExpBuilder {
             // Quantifier ends at start of join block
             self.set_current_block(join_block_id);
         } else {
-            // Any number of future repititions
+            // Any number of future repetitions
             let term_block_id = self.new_block();
             let join_block_id = self.new_block();
 
@@ -839,9 +839,9 @@ impl CompiledRegExpBuilder {
 
             // Optionally enter term block from predecessor block
             self.in_block(pred_block_id, |this| {
-                // If we are in a repitition but never enter a term block with captures, we must
+                // If we are in a repetition but never enter a term block with captures, we must
                 // clear those captures in case they were previously matched.
-                if is_inside_repitition && !info.captures.is_empty() {
+                if is_inside_repetition && !info.captures.is_empty() {
                     this.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -870,11 +870,11 @@ impl CompiledRegExpBuilder {
             self.set_current_block(join_block_id);
         }
 
-        if is_repitition {
-            self.exit_repitition_context();
+        if is_repetition {
+            self.exit_repetition_context();
         }
 
-        // If we are in a quantifier with a minimum of 0 repititions, then 0-length matches of that
+        // If we are in a quantifier with a minimum of 0 repetitions, then 0-length matches of that
         // quantifier should not set captures. This is implemented by detecting this case with a
         // progress instruction to make sure the quantifier consumed, and if not clearing all
         // captures in the subexpression.
@@ -903,7 +903,7 @@ impl CompiledRegExpBuilder {
                 this.emit_jump_instruction(join_block);
             });
 
-            // If checking progress failed then we will end up in this path and shold clear all
+            // If checking progress failed then we will end up in this path and should clear all
             // captures before proceeding.
             self.in_block(clear_captures_block, |this| {
                 for capture_index in &quantifier_info.captures {
@@ -1051,7 +1051,7 @@ impl CompiledRegExpBuilder {
                 set_builder.add_set(&first_set);
                 strings = first_strings;
 
-                // Only retain code points and srings that are in all operands
+                // Only retain code points and strings that are in all operands
                 for class_range in &character_class.operands[1..] {
                     let (other_set, other_strings) = self.character_class_range_to_set(class_range);
                     set_builder.retain_set(&other_set);
@@ -1159,7 +1159,7 @@ impl CompiledRegExpBuilder {
             }
             // Use the precomputed word set. This is valid in case insensitive `u` mode because
             // the case closure will be created by the caller. This is valid in case sensitive `v`
-            // mode becase MaybeSimpleCaseFolding will be applied by the caller.
+            // mode because MaybeSimpleCaseFolding will be applied by the caller.
             ClassRange::Word => set_builder.add_set(&WORD_SET),
             // Use the precomputed not word set if possible. In case insensitive `v` mode we must
             // construct the complement ourselves.

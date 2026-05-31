@@ -4818,7 +4818,7 @@ impl VM {
     /// the heap. Also rewrite a pointer into the function's instructions with this move, since this
     /// is an internal pointer into a moved heap item.
     ///
-    /// The pointer to rewrite may be either the current PC or the return adress
+    /// The pointer to rewrite may be either the current PC or the return address
     fn rewrite_bytecode_function_and_address(
         visitor: &mut impl HeapVisitor,
         stack_frame: StackFrame,

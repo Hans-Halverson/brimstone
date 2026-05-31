@@ -32,7 +32,7 @@ extend_object! {
         iterator: Option<HeapIterator>,
         // The current state of the iterator, when treated as a generator.
         generator_state: GeneratorState,
-        // The type and captured values of the iterator helpe.
+        // The type and captured values of the iterator helper.
         state: IteratorHelperState,
     }
 }
@@ -439,7 +439,7 @@ impl Handle<IteratorHelperObject> {
         let mut iterator = self.iterator(cx).unwrap();
         let mut counter_value: Handle<Value> = Handle::empty(cx);
 
-        // Keep looping until we find a value fron the underlying iterator which passes the
+        // Keep looping until we find a value from the underlying iterator which passes the
         // predicate function.
         loop {
             // Get the next value from the underlying iterator

@@ -452,7 +452,7 @@ impl Handle<ObjectValue> {
         self.set_property(cx, key, Property::data(value, true, false, true))
     }
 
-    pub fn instrinsic_length_prop(&mut self, cx: Context, length: i32) -> AllocResult<()> {
+    pub fn intrinsic_length_prop(&mut self, cx: Context, length: i32) -> AllocResult<()> {
         handle_scope_guard!(cx);
 
         let length_value = cx.smi(length);

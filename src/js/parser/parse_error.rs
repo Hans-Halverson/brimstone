@@ -27,7 +27,7 @@ pub enum ParseError {
     UnterminatedStringLiteral,
     UnterminatedRegExpLiteral,
     UnterminatedTemplateLiteral,
-    MalformedEscapeSeqence,
+    MalformedEscapeSequence,
     MalformedNumericLiteral,
     BigIntLeadingZero,
     InvalidNumericLiteralNextChar,
@@ -200,7 +200,7 @@ impl fmt::Display for ParseError {
             ParseError::UnterminatedTemplateLiteral => {
                 write!(f, "Unterminated template literal")
             }
-            ParseError::MalformedEscapeSeqence => write!(f, "Malformed escape sequence"),
+            ParseError::MalformedEscapeSequence => write!(f, "Malformed escape sequence"),
             ParseError::MalformedNumericLiteral => write!(f, "Malformed numeric literal"),
             ParseError::BigIntLeadingZero => write!(f, "BigInt cannot have a leading zero"),
             ParseError::InvalidNumericLiteralNextChar => {

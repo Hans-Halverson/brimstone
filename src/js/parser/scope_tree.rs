@@ -161,7 +161,7 @@ impl<'a> ScopeTree<'a> {
         // scope (to check for conflicts against lexical declarations).
         if kind == ScopeNodeKind::FunctionBody {
             let func_scope = self.get_ast_node(parent.unwrap());
-            // All bindings in function scope are gauranteed to be function parameters if a
+            // All bindings in function scope are guaranteed to be function parameters if a
             // function body scope is created.
             for (name, _) in func_scope.iter_bindings() {
                 extra_var_names.insert(*name);
@@ -610,7 +610,7 @@ impl ScopeTree<'_> {
             // in order.
 
             // Bindings start out with unresolvable "%private" for each argument name, which will be
-            // overriden by the actual binding name for accessible arguments. Some arguments cannot
+            // overridden by the actual binding name for accessible arguments. Some arguments cannot
             // be accessed by name (since they are shadowed by another binding) and will remain
             // unresolvable.
             for _ in 0..num_extra_slots.unwrap() {
@@ -947,7 +947,7 @@ impl<'a> AstScopeNode<'a> {
         self.bindings.get_mut(name).unwrap()
     }
 
-    /// Iterator over all bindings in this scope, including funtion parameters and catch parameters.
+    /// Iterator over all bindings in this scope, including function parameters and catch parameters.
     pub fn iter_bindings(&self) -> impl DoubleEndedIterator<Item = (&AstStr<'a>, &Binding<'a>)> {
         self.bindings.iter()
     }
@@ -970,7 +970,7 @@ impl<'a> AstScopeNode<'a> {
         // guaranteed to detect conflicting lexically scoped bindings and var scoped bindings
         // declared in this scope.
         if let Some(binding) = self.bindings.get(name) {
-            // Function expression name bindings can always be overriden
+            // Function expression name bindings can always be overridden
             if !binding.kind().is_function_expression_name() {
                 return Some(ParseError::new_name_redeclaration(
                     name.to_owned_in(Global),

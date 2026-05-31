@@ -24,8 +24,8 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{
-            is_callable, is_strictly_equal, same_object_value, same_value_zero, to_bigint,
-            to_boolean, to_integer_or_infinity, to_number, to_object,
+            is_callable, is_strictly_equal, resolve_relative_index_argument, same_object_value,
+            same_value_zero, to_bigint, to_boolean, to_integer_or_infinity, to_number, to_object,
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
@@ -404,42 +404,14 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         let target_arg = get_argument(cx, arguments, 0);
-        let relative_target = to_integer_or_infinity(cx, target_arg)?;
-        let to_index = if relative_target < 0.0 {
-            if relative_target == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_target as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_target as u64, length)
-        };
+        let to_index = resolve_relative_index_argument(cx, target_arg, length)?;
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let from_start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let from_start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 2);
         let from_end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -594,30 +566,11 @@ impl TypedArrayPrototype {
         };
 
         let start_arg = get_argument(cx, arguments, 1);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 2);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -871,18 +824,7 @@ impl TypedArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = to_integer_or_infinity(cx, n_arg)?;
-        if n == f64::INFINITY {
-            return Ok(cx.bool(false));
-        } else if n == f64::NEG_INFINITY {
-            n = 0.0;
-        }
-
-        let start_index = if n >= 0.0 {
-            n as u64
-        } else {
-            i64::max(length as i64 + n as i64, 0) as u64
-        };
+        let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -918,18 +860,7 @@ impl TypedArrayPrototype {
         let search_element = get_argument(cx, arguments, 0);
 
         let n_arg = get_argument(cx, arguments, 1);
-        let mut n = to_integer_or_infinity(cx, n_arg)?;
-        if n == f64::INFINITY {
-            return Ok(cx.negative_one());
-        } else if n == f64::NEG_INFINITY {
-            n = 0.0;
-        }
-
-        let start_index = if n >= 0.0 {
-            n as u64
-        } else {
-            i64::max(length as i64 + n as i64, 0) as u64
-        };
+        let start_index = resolve_relative_index_argument(cx, n_arg, length)?;
 
         // Shared between iterations
         let mut key = PropertyKey::uninit().to_handle(cx);
@@ -1412,30 +1343,11 @@ impl TypedArrayPrototype {
         let length = typed_array_length(&typed_array_record) as u64;
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };
@@ -1593,30 +1505,11 @@ impl TypedArrayPrototype {
         };
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(source_length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, source_length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, source_length)?;
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(source_length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, source_length)
-            }
+            resolve_relative_index_argument(cx, end_argument, source_length)?
         } else {
             source_length
         };

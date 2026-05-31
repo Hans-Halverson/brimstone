@@ -35,8 +35,8 @@ use crate::{
         },
         to_string,
         type_utilities::{
-            is_callable, is_regexp, require_object_coercible, to_integer_or_infinity, to_length,
-            to_number, to_uint32,
+            is_callable, is_regexp, require_object_coercible, resolve_relative_index_argument,
+            to_integer_or_infinity, to_length, to_number, to_uint32,
         },
         value::Value,
         Context, Handle, HeapPtr, PropertyKey,
@@ -1107,30 +1107,11 @@ impl StringPrototype {
         let length = string.len();
 
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u32
-            }
-        } else {
-            u32::min(relative_start as u32, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length as u64)? as u32;
 
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u32
-                }
-            } else {
-                u32::min(relative_end as u32, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length as u64)? as u32
         } else {
             length
         };
@@ -1420,21 +1401,8 @@ impl StringPrototype {
 
         // Convert the start argument to an integer
         let start_arg = get_argument(cx, arguments, 0);
-        let start = to_integer_or_infinity(cx, start_arg)?;
-
-        // Find the starting index, treating negative numbers as ofsets from the end of the string
-        // and handling infinities.
-        let start_index = if start.is_infinite() {
-            if start == f64::INFINITY {
-                string_length
-            } else {
-                0
-            }
-        } else if start < 0.0 {
-            i32::max(string_length as i32 + (start as i32), 0) as u32
-        } else {
-            u32::min(start as u32, string_length)
-        };
+        let start_index =
+            resolve_relative_index_argument(cx, start_arg, string_length as u64)? as u32;
 
         // Second argument is the length
         let length_arg = get_argument(cx, arguments, 1);

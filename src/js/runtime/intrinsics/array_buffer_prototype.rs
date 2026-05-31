@@ -10,7 +10,7 @@ use crate::runtime::{
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
-    type_utilities::{to_index, to_integer_or_infinity},
+    type_utilities::{resolve_relative_index_argument, to_index},
     Context, EvalResult, Handle, Value,
 };
 
@@ -212,31 +212,12 @@ impl ArrayBufferPrototype {
 
         // Calculate the start index of the slice
         let start_arg = get_argument(cx, arguments, 0);
-        let relative_start = to_integer_or_infinity(cx, start_arg)?;
-        let start_index = if relative_start < 0.0 {
-            if relative_start == f64::NEG_INFINITY {
-                0
-            } else {
-                i64::max(length as i64 + relative_start as i64, 0) as u64
-            }
-        } else {
-            u64::min(relative_start as u64, length)
-        };
+        let start_index = resolve_relative_index_argument(cx, start_arg, length)?;
 
         // Calculate the end index of the slice
         let end_argument = get_argument(cx, arguments, 1);
         let end_index = if !end_argument.is_undefined() {
-            let relative_end = to_integer_or_infinity(cx, end_argument)?;
-
-            if relative_end < 0.0 {
-                if relative_end == f64::NEG_INFINITY {
-                    0
-                } else {
-                    i64::max(length as i64 + relative_end as i64, 0) as u64
-                }
-            } else {
-                u64::min(relative_end as u64, length)
-            }
+            resolve_relative_index_argument(cx, end_argument, length)?
         } else {
             length
         };

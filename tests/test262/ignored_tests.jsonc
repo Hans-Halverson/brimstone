@@ -168,7 +168,6 @@
       "json-parse-with-source",
       "uint8array-base64",
       "Array.fromAsync",
-      "Math.sumPrecise",
       "Temporal",
 
       // Other unimplemented features

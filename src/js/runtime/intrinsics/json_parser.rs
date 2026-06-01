@@ -7,7 +7,7 @@ use crate::{
         array_object::array_create,
         ordinary_object::ordinary_object_create,
         property::Property,
-        string_parsing::{parse_signed_decimal_literal, StringLexer},
+        string_parsing::{parse_between_ptrs_to_f64, skip_decimal_digits, StringLexer},
         string_value::StringValue,
         Context, EvalResult, Handle, PropertyKey, Value,
     },
@@ -95,19 +95,8 @@ fn parse_json_value(lexer: &mut StringLexer) -> Option<JSONValue> {
         let loc = lexer.mark_loc(start_pos);
 
         Some(JSONValue::Null { loc })
-    } else if lexer.current_is_decimal_digit()
-        || lexer.current_equals('-')
-        || lexer.current_equals('+')
-    {
-        // JSON numbers do not allow leading zeros
-        if lexer.current_equals('0') && lexer.peek_ascii_char() == Some('0') {
-            return None;
-        }
-
-        let number = parse_signed_decimal_literal(lexer)?;
-        let loc = lexer.mark_loc(start_pos);
-
-        Some(JSONValue::Number { value: number, loc })
+    } else if lexer.current_is_decimal_digit() || lexer.current_equals('-') {
+        parse_json_number(lexer, start_pos)
     } else {
         None
     }
@@ -264,6 +253,59 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
     lexer.expect('"')?;
 
     Some(string)
+}
+
+/// Parse a JSON number following the syntax specified in ECMA-404
+fn parse_json_number(lexer: &mut StringLexer, start_pos: Pos) -> Option<JSONValue> {
+    let start_ptr = lexer.current_ptr();
+
+    // ECMA-404 allows a single leading minus but no leading plus
+    let has_sign = lexer.eat('-');
+
+    // Sign must be followed by a digit
+    if has_sign && !lexer.current_is_decimal_digit() {
+        return None;
+    }
+
+    // ECMA-404 disallows leading zeros
+    if lexer.current_equals('0') && matches!(lexer.peek_ascii_char(), Some('0'..='9')) {
+        return None;
+    }
+
+    // Parse digits around optional dot
+    let has_digits_before_dot = skip_decimal_digits(lexer);
+    let has_dot = lexer.eat('.');
+    let has_digits_after_dot = skip_decimal_digits(lexer);
+
+    // ECMA-404 requires that there be a digit on both sides of the dot
+    if has_dot && !(has_digits_before_dot && has_digits_after_dot) {
+        return None;
+    }
+
+    // Parse optional exponent if the exponent starts with a valid exponent character.
+    if (lexer.current_equals('e') || lexer.current_equals('E'))
+        && matches!(lexer.peek_ascii_char(), Some('+' | '-' | '0'..='9'))
+    {
+        lexer.advance();
+
+        // Optional sign in exponent
+        if lexer.current_equals('-') || lexer.current_equals('+') {
+            lexer.advance();
+        }
+
+        // Exponent must have some digits
+        let has_digits_in_exponent = skip_decimal_digits(lexer);
+        if !has_digits_in_exponent {
+            return None;
+        }
+    }
+
+    let end_ptr = lexer.current_ptr();
+    let number = parse_between_ptrs_to_f64(lexer, start_ptr, end_ptr);
+
+    let loc = lexer.mark_loc(start_pos);
+
+    Some(JSONValue::Number { value: number, loc })
 }
 
 impl JSONValue {

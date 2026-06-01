@@ -318,7 +318,7 @@ pub fn skip_string_whitespace(lexer: &mut StringLexer) {
     }
 }
 
-fn skip_decimal_digits(lexer: &mut StringLexer) -> bool {
+pub fn skip_decimal_digits(lexer: &mut StringLexer) -> bool {
     let mut has_digit = false;
 
     while lexer.current_is_decimal_digit() {

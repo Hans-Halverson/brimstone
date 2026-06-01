@@ -31,9 +31,10 @@ use super::{
         finalization_registry_object::FinalizationRegistryObject,
         iterator_constructor::WrappedValidIterator, iterator_helper_object::IteratorHelperObject,
         map_object::MapObject, number_constructor::NumberObject, object_prototype::ObjectPrototype,
-        regexp_constructor::RegExpObject, set_object::SetObject, symbol_constructor::SymbolObject,
-        typed_array::DynTypedArray, weak_map_object::WeakMapObject,
-        weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+        raw_json_object::RawJSONObject, regexp_constructor::RegExpObject, set_object::SetObject,
+        symbol_constructor::SymbolObject, typed_array::DynTypedArray,
+        weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+        weak_set_object::WeakSetObject,
     },
     promise_object::PromiseObject,
     property::{HeapProperty, Property},
@@ -876,6 +877,12 @@ impl_subtype_casts!(
     HeapItemKind::FinalizationRegistryObject,
     is_finalization_registry_object,
     as_finalization_registry_object
+);
+impl_subtype_casts!(
+    RawJSONObject,
+    HeapItemKind::RawJSONObject,
+    is_raw_json_object,
+    as_raw_json_object
 );
 impl_subtype_casts!(
     WrappedValidIterator,

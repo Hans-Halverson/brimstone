@@ -1,5 +1,6 @@
 use crate::{
     common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
+    must,
     runtime::{
         abstract_operations::{
             call, call_object, enumerable_own_property_names, get_v, length_of_array_like,
@@ -77,7 +78,20 @@ impl JSONSerializer {
         // Convert primitive wrapper objects to their underlying primitive value
         if value.is_object() {
             let value_object = value.as_object();
-            if value_object.is_number_object() {
+            if let Some(raw_json_object) = value_object.as_raw_json_object() {
+                // Raw JSON objects have the stored `rawJSON` property used as-is. Object is frozen
+                // so we know that the `rawJSON` property will be a string, but assert it anyways
+                // for safety.
+                let raw_json = must!(get(cx, raw_json_object.as_object(), cx.names.raw_json()));
+
+                assert!(raw_json.is_string());
+                let raw_string = raw_json.as_string();
+
+                self.builder.push_wtf8_str(&raw_string.to_wtf8_string()?);
+
+                // We know the exact raw JSON for this entire subtree, so immediately return it
+                return Ok(true);
+            } else if value_object.is_number_object() {
                 value = to_number(cx, value)?;
             } else if value_object.is_string_object() {
                 value = to_string(cx, value)?.into();

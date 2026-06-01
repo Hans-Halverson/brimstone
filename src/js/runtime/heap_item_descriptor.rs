@@ -55,6 +55,7 @@ pub enum HeapItemKind {
     WeakSetObject,
     WeakMapObject,
     FinalizationRegistryObject,
+    RawJSONObject,
 
     MappedArgumentsObject,
     UnmappedArgumentsObject,

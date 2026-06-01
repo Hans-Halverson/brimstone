@@ -54,6 +54,7 @@ pub mod object_prototype;
 pub mod promise_constructor;
 pub mod promise_prototype;
 pub mod proxy_constructor;
+pub mod raw_json_object;
 mod reflect_object;
 pub mod regexp_constructor;
 pub mod regexp_prototype;

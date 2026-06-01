@@ -170,6 +170,14 @@ pub fn is_ascii_alphabetic(code_point: CodePoint) -> bool {
     })
 }
 
+#[inline]
+pub fn is_ascii_lowercase_alphabetic(code_point: CodePoint) -> bool {
+    match_u32!(match code_point {
+        'a'..='z' => true,
+        _ => false,
+    })
+}
+
 pub fn get_binary_value(code_point: CodePoint) -> Option<u32> {
     match_u32!(match code_point {
         '0' => Some(0),

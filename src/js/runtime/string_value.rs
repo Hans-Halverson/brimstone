@@ -984,6 +984,34 @@ impl FlatString {
         self.as_two_byte_slice()[string_index_to_usize(index)]
     }
 
+    /// Return a substring of this string between two *byte* indices as a new FlatString.
+    ///
+    /// Note that indices are byte indices not code unit indices, regardless of width.
+    #[inline]
+    pub fn substring_by_byte_index(
+        &self,
+        cx: Context,
+        start: usize,
+        end: usize,
+    ) -> EvalResult<HeapPtr<FlatString>> {
+        // Note that we copy substring to an owned vec before creating the FlatString instead of
+        // passing a slice directly. Passing the slice would be GC-unsafe since it is read after
+        // the new FlatString is allocated.
+        //
+        // TODO: Can avoid unnecessary copying here by allocating an uninitialized FlatString first
+        // and then copying the slice data from a preserved Handle.
+        match self.width() {
+            StringWidth::OneByte => {
+                let substring = self.as_one_byte_slice()[start..end].to_vec();
+                FlatString::new_one_byte(cx, &substring)
+            }
+            StringWidth::TwoByte => {
+                let substring = self.as_two_byte_slice()[(start / 2)..(end / 2)].to_vec();
+                FlatString::new_two_byte(cx, &substring)
+            }
+        }
+    }
+
     /// Whether this is a one byte string containing all ASCII characters
     fn is_one_byte_ascii(&self) -> bool {
         // TODO: Optimize by checking multiple bytes at a time using multi-byte mask

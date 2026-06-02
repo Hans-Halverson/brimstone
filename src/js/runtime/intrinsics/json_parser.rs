@@ -227,11 +227,6 @@ fn parse_json_string(lexer: &mut StringLexer) -> Option<Wtf8String> {
                     lexer.advance();
                 }
 
-                // Control characters are not allowed
-                if code_point <= 0x1F {
-                    return None;
-                }
-
                 string.push(code_point)
             } else {
                 return None;

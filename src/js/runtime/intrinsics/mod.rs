@@ -21,6 +21,7 @@ mod data_view_prototype;
 mod date_constructor;
 pub mod date_object;
 pub mod date_prototype;
+mod encodings;
 pub mod error_constructor;
 pub mod error_prototype;
 mod finalization_registry_constructor;

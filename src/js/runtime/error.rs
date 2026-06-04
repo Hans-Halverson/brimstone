@@ -83,7 +83,7 @@ impl BsError {
 /// Generic result type from the JS engine.
 pub type BsResult<T> = Result<T, BsError>;
 
-fn syntax_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
+pub fn syntax_error_value(cx: Context, message: &str) -> EvalResult<Handle<Value>> {
     Ok(SyntaxError::new_with_message(cx, message.to_owned())?.into())
 }
 

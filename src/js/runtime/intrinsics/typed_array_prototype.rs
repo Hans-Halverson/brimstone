@@ -1382,15 +1382,20 @@ impl TypedArrayPrototype {
 
         let string_arg = get_argument(cx, arguments, 0);
         if !string_arg.is_string() {
-            return type_error(cx, "Uint8Array.setFromBase64 argument must be a string");
+            return type_error(cx, "Uint8Array.prototype.setFromBase64 argument must be a string");
         }
 
         let options_arg = get_argument(cx, arguments, 1);
-        let options = get_base64_options_argument(cx, options_arg, "Uint8Array.setFromBase64")?;
+        let options =
+            get_base64_options_argument(cx, options_arg, "Uint8Array.prototype.setFromBase64")?;
 
-        let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.setFromBase64")?;
-        let last_chunk_handling =
-            get_base64_last_chunk_handling_option(cx, options, "Uint8Array.setFromBase64")?;
+        let alphabet =
+            get_base64_alphabet_option(cx, options, "Uint8Array.prototype.setFromBase64")?;
+        let last_chunk_handling = get_base64_last_chunk_handling_option(
+            cx,
+            options,
+            "Uint8Array.prototype.setFromBase64",
+        )?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -1408,7 +1413,7 @@ impl TypedArrayPrototype {
             alphabet,
             last_chunk_handling,
             Some(byte_length as u64),
-            "Uint8Array.setFromBase64",
+            "Uint8Array.prototype.setFromBase64",
         )?;
 
         Self::set_from_decode_result(cx, typed_array, decode_result)
@@ -1424,7 +1429,7 @@ impl TypedArrayPrototype {
 
         let string_arg = get_argument(cx, arguments, 0);
         if !string_arg.is_string() {
-            return type_error(cx, "Uint8Array.setFromHex argument must be a string");
+            return type_error(cx, "Uint8Array.prototype.setFromHex argument must be a string");
         }
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);

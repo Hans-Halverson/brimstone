@@ -11,9 +11,7 @@ description: Uint8Array base64 conversion method behavior not covered by test262
   assert.sameValue(new Uint8Array(buffer, 1).toBase64(), "AgMEBQY=");
 
   // Fixed slice in the middle of the buffer
-  const view = new Uint8Array(buffer, 2, 3);
   assert.sameValue(new Uint8Array(buffer, 2, 3).toBase64(), "AwQF");
-
 }
 
 // Verify behavior of all JS whitespace characters
@@ -26,8 +24,8 @@ description: Uint8Array base64 conversion method behavior not covered by test262
   assert.compareArray(Uint8Array.fromBase64("Zm9 v"), [0x66, 0x6f, 0x6f]);
 
   // Other whitespace characters are disallowed
+  assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u000Bv"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u00A0v"));
-  assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u00B0"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u1680v"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u2000v"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u2001v"));
@@ -44,5 +42,4 @@ description: Uint8Array base64 conversion method behavior not covered by test262
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u205Fv"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\u3000v"));
   assert.throws(SyntaxError, () => Uint8Array.fromBase64("Zm9v\uFEFFv"));
-
 }

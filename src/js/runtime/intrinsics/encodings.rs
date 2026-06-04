@@ -295,10 +295,10 @@ pub fn decode_base64(
                 return Ok(DecodeResult { bytes, read, error: Some(error) });
             }
 
-            let throw_on_extra_bites = last_chunk_handling == LastChunkHandling::Strict;
+            let throw_on_extra_bits = last_chunk_handling == LastChunkHandling::Strict;
 
             let decode_chunk_result =
-                decode_final_base64_chunk(cx, &chunk, throw_on_extra_bites, full_method_name)?;
+                decode_final_base64_chunk(cx, &chunk, throw_on_extra_bits, full_method_name)?;
             let mut decoded = match decode_chunk_result {
                 DecodeChunkResult::Ok(decoded) => decoded,
                 DecodeChunkResult::DecodeError(error) => {

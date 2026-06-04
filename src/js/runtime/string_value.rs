@@ -1227,13 +1227,17 @@ impl HeapPtr<FlatString> {
         let mut iter1 = self.iter_code_points();
         let mut iter2 = other.chars();
 
-        while let (Some(code_point_1), Some(code_point_2)) = (iter1.next(), iter2.next()) {
-            if code_point_1 != code_point_2 as CodePoint {
-                return false;
+        loop {
+            match (iter1.next(), iter2.next()) {
+                (None, None) => return true,
+                (None, Some(_)) | (Some(_), None) => return false,
+                (Some(code_point_1), Some(code_point_2)) => {
+                    if code_point_1 != code_point_2 as CodePoint {
+                        return false;
+                    }
+                }
             }
         }
-
-        iter1.next().is_none() && iter2.next().is_none()
     }
 }
 

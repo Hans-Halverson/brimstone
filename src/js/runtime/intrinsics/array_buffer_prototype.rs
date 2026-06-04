@@ -204,7 +204,7 @@ impl ArrayBufferPrototype {
         this_value: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let mut array_buffer = require_array_buffer(cx, this_value, "slice")?;
+        let array_buffer = require_array_buffer(cx, this_value, "slice")?;
 
         throw_if_detached(cx, *array_buffer)?;
 
@@ -267,7 +267,7 @@ impl ArrayBufferPrototype {
             // Copy data from original array buffer to new array buffer
             unsafe {
                 let source = array_buffer.data().as_ptr().add(start_index as usize);
-                let target = new_array_buffer.data().as_mut_ptr();
+                let target = new_array_buffer.data_mut().as_mut_ptr();
 
                 std::ptr::copy_nonoverlapping(source, target, copied_length as usize);
             }

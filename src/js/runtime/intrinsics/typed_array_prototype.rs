@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use num_bigint::{BigUint, Sign};
 
 use crate::{
-    must,
+    eval_err, must,
     runtime::{
         abstract_operations::{
-            call_object, construct, has_property, invoke, length_of_array_like, set,
-            species_constructor,
+            call_object, construct, create_data_property_or_throw, has_property, invoke,
+            length_of_array_like, set, species_constructor,
         },
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,11 +17,22 @@ use crate::{
         intrinsics::{
             array_buffer_constructor::clone_array_buffer,
             array_iterator::{ArrayIterator, ArrayIteratorKind},
+            array_prototype::{
+                find_via_predicate, sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY,
+            },
+            encodings::{
+                decode_base64, decode_hex, encode_base64, encode_hex, get_base64_alphabet_option,
+                get_base64_last_chunk_handling_option, get_base64_omit_padding_option,
+                get_base64_options_argument, DecodeResult,
+            },
+            intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
+            typed_array::{ContentType, DynTypedArray, TypedArrayKind},
         },
         object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
         property::Property,
-        string_value::StringValue,
+        string_value::{FlatString, StringValue},
         to_string,
         type_utilities::{
             is_callable, is_strictly_equal, resolve_relative_index_argument, same_object_value,
@@ -29,12 +40,6 @@ use crate::{
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-};
-
-use super::{
-    array_prototype::{find_via_predicate, sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY},
-    intrinsics::Intrinsic,
-    typed_array::{ContentType, DynTypedArray, TypedArrayKind},
 };
 
 pub struct TypedArrayPrototype;
@@ -315,6 +320,40 @@ impl TypedArrayPrototype {
         Ok(object)
     }
 
+    pub fn install_uint8_array_methods(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
+        let mut prototype = realm.get_intrinsic(Intrinsic::UInt8ArrayPrototype);
+        prototype.intrinsic_func(
+            cx,
+            cx.names.to_base64(),
+            RuntimeFunction::TypedArrayPrototype_to_base64,
+            0,
+            realm,
+        )?;
+        prototype.intrinsic_func(
+            cx,
+            cx.names.to_hex(),
+            RuntimeFunction::TypedArrayPrototype_to_hex,
+            0,
+            realm,
+        )?;
+        prototype.intrinsic_func(
+            cx,
+            cx.names.set_from_base64(),
+            RuntimeFunction::TypedArrayPrototype_set_from_base64,
+            1,
+            realm,
+        )?;
+        prototype.intrinsic_func(
+            cx,
+            cx.names.set_from_hex(),
+            RuntimeFunction::TypedArrayPrototype_set_from_hex,
+            1,
+            realm,
+        )?;
+
+        Ok(())
+    }
+
     /// %TypedArray%.prototype.at (https://tc39.es/ecma262/#sec-%typedarray%.prototype.at)
     pub fn at(
         cx: Context,
@@ -429,7 +468,7 @@ impl TypedArrayPrototype {
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
-            return type_error(cx, "typed array is out of bounds");
+            return type_error(cx, "TypedArray.prototype.copyWithin typed array is out of bounds");
         }
 
         let length = typed_array_length(&typed_array_record) as u64;
@@ -443,7 +482,10 @@ impl TypedArrayPrototype {
         let from_byte_index = from_start_index * element_size + byte_offset;
         let mut count_bytes = count as u64 * element_size;
 
-        let data_ptr = typed_array.viewed_array_buffer_ptr().data().as_mut_ptr();
+        let data_ptr = typed_array
+            .viewed_array_buffer_ptr()
+            .data_mut()
+            .as_mut_ptr();
 
         // Copy bytes one at a time from from_ptr to to_ptr
         unsafe {
@@ -1260,9 +1302,9 @@ impl TypedArrayPrototype {
         let limit = target_byte_index + (target_element_size * source_length);
 
         unsafe {
-            let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
-            let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
-            let limit_ptr = target_buffer.data().as_mut_ptr().add(limit);
+            let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
+            let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
+            let limit_ptr = target_buffer.data_mut().as_mut_ptr().add(limit);
 
             let mut from_byte_index = source_byte_index;
             let mut to_byte_index = target_byte_index;
@@ -1330,6 +1372,118 @@ impl TypedArrayPrototype {
         Ok(())
     }
 
+    /// Uint8Array.prototype.setFromBase64 (https://tc39.es/ecma262/#sec-uint8array.prototype.setfrombase64)
+    pub fn set_from_base64(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = validate_uint8_array(cx, this_value, "setFromBase64")?;
+
+        let string_arg = get_argument(cx, arguments, 0);
+        if !string_arg.is_string() {
+            return type_error(cx, "Uint8Array.prototype.setFromBase64 argument must be a string");
+        }
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options =
+            get_base64_options_argument(cx, options_arg, "Uint8Array.prototype.setFromBase64")?;
+
+        let alphabet =
+            get_base64_alphabet_option(cx, options, "Uint8Array.prototype.setFromBase64")?;
+        let last_chunk_handling = get_base64_last_chunk_handling_option(
+            cx,
+            options,
+            "Uint8Array.prototype.setFromBase64",
+        )?;
+
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return type_error(
+                cx,
+                "Uint8Array.prototype.setFromBase64 typed array is out of bounds",
+            );
+        }
+
+        let byte_length = typed_array_length(&typed_array_record);
+
+        let decode_result = decode_base64(
+            cx,
+            string_arg.as_string(),
+            alphabet,
+            last_chunk_handling,
+            Some(byte_length as u64),
+            "Uint8Array.prototype.setFromBase64",
+        )?;
+
+        Self::set_from_decode_result(cx, typed_array, decode_result)
+    }
+
+    /// Uint8Array.prototype.setFromHex (https://tc39.es/ecma262/#sec-uint8array.prototype.setfromhex)
+    pub fn set_from_hex(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = validate_uint8_array(cx, this_value, "setFromHex")?;
+
+        let string_arg = get_argument(cx, arguments, 0);
+        if !string_arg.is_string() {
+            return type_error(cx, "Uint8Array.prototype.setFromHex argument must be a string");
+        }
+
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return type_error(cx, "Uint8Array.prototype.setFromHex typed array is out of bounds");
+        }
+
+        let byte_length = typed_array_length(&typed_array_record);
+
+        let decode_result = decode_hex(
+            cx,
+            string_arg.as_string(),
+            Some(byte_length as u64),
+            "Uint8Array.prototype.setFromHex",
+        )?;
+
+        Self::set_from_decode_result(cx, typed_array, decode_result)
+    }
+
+    fn set_from_decode_result(
+        cx: Context,
+        mut typed_array: DynTypedArray,
+        decode_result: DecodeResult,
+    ) -> EvalResult<Handle<Value>> {
+        let num_bytes_read = Value::from(decode_result.read).to_handle(cx);
+        let num_bytes_written = Value::from(decode_result.bytes.len()).to_handle(cx);
+
+        // Write the encoded bytes into the backing slice of the ArrayBuffer. If there was a
+        // decoding error then still write all successfully decoded bytes until the error.
+        let data = &mut typed_array.data_mut()[0..decode_result.bytes.len()];
+        data.copy_from_slice(&decode_result.bytes);
+
+        if let Some(error) = decode_result.error {
+            return eval_err!(error);
+        }
+
+        // Output object with number of bytes read and written
+        let result_object = ordinary_object_create(cx)?;
+        must!(create_data_property_or_throw(
+            cx,
+            result_object,
+            cx.names.read(),
+            num_bytes_read
+        ));
+        must!(create_data_property_or_throw(
+            cx,
+            result_object,
+            cx.names.written(),
+            num_bytes_written
+        ));
+
+        Ok(result_object.as_value())
+    }
+
     /// %TypedArray%.prototype.slice (https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice)
     pub fn slice(
         cx: Context,
@@ -1387,7 +1541,7 @@ impl TypedArrayPrototype {
             }
         } else {
             // Otherwise copy bytes directly instead of performing any conversions
-            let mut source_buffer = typed_array.viewed_array_buffer();
+            let source_buffer = typed_array.viewed_array_buffer();
             let mut target_buffer = new_typed_array.viewed_array_buffer();
             let element_size = typed_array.element_size();
 
@@ -1396,8 +1550,8 @@ impl TypedArrayPrototype {
             let target_byte_index = new_typed_array.byte_offset();
 
             unsafe {
-                let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
-                let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
+                let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
+                let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
 
                 for _ in 0..(count as usize * element_size) {
                     let byte = from_ptr.read();
@@ -1539,6 +1693,61 @@ impl TypedArrayPrototype {
         };
 
         Ok(subarray.as_value())
+    }
+
+    /// Uint8Array.prototype.toBase64 (https://tc39.es/ecma262/#sec-uint8array.prototype.tobase64)
+    pub fn to_base64(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = validate_uint8_array(cx, this_value, "toBase64")?;
+
+        let options_arg = get_argument(cx, arguments, 0);
+        let options =
+            get_base64_options_argument(cx, options_arg, "Uint8Array.prototype.toBase64")?;
+
+        let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.prototype.toBase64")?;
+        let omit_padding = get_base64_omit_padding_option(cx, options)?;
+
+        // Inlined validation from GetUint8ArrayBytes
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return type_error(cx, "Uint8Array.prototype.toBase64 typed array is out of bounds");
+        }
+
+        // Encode the slice of the backing ArrayBuffer that corresponds to this typed array
+        let length = typed_array_length(&typed_array_record);
+        let data = &typed_array.data()[0..length];
+
+        let base64_code_points = encode_base64(data, alphabet, omit_padding);
+        let base64_string = FlatString::from_one_byte_slice(cx, &base64_code_points)?.to_handle();
+
+        Ok(base64_string.as_string().as_value())
+    }
+
+    /// Uint8Array.prototype.toHex (https://tc39.es/ecma262/#sec-uint8array.prototype.tohex)
+    pub fn to_hex(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let typed_array = validate_uint8_array(cx, this_value, "toHex")?;
+
+        // Inlined validation from GetUint8ArrayBytes
+        let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
+        if is_typed_array_out_of_bounds(&typed_array_record) {
+            return type_error(cx, "Uint8Array.prototype.toHex typed array is out of bounds");
+        }
+
+        // Get the slice of the backing ArrayBuffer that corresponds to this typed array
+        let length = typed_array_length(&typed_array_record);
+        let data = &typed_array.data()[0..length];
+
+        let hex_code_points = encode_hex(data);
+        let hex_string = FlatString::from_one_byte_slice(cx, &hex_code_points)?.to_handle();
+
+        Ok(hex_string.as_string().as_value())
     }
 
     /// %TypedArray%.prototype.toLocaleString (https://tc39.es/ecma262/#sec-%typedarray%.prototype.tolocalestring)
@@ -1937,6 +2146,24 @@ fn this_typed_array_record(
     }
 
     Ok(typed_array_record)
+}
+
+/// ValidateUint8Array (https://tc39.es/ecma262/#sec-validateuint8array)
+fn validate_uint8_array(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<DynTypedArray> {
+    let typed_array = this_typed_array(cx, value, method_name)?;
+
+    if typed_array.kind() != TypedArrayKind::UInt8Array {
+        return type_error(
+            cx,
+            &format!("Uint8Array.prototype.{method_name} must be called on a Uint8Array"),
+        );
+    }
+
+    Ok(typed_array)
 }
 
 fn species_constructor_result_typed_array_record(

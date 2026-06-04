@@ -1,5 +1,5 @@
 use crate::{
-    must, must_a,
+    eval_err, must, must_a,
     runtime::{
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
@@ -8,7 +8,20 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            encodings::{
+                decode_base64, decode_hex, get_base64_alphabet_option,
+                get_base64_last_chunk_handling_option, get_base64_options_argument,
+            },
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            typed_array::{DynTypedArray, UInt8ArrayConstructor},
+            typed_array_prototype::{
+                is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+                typed_array_create_from_constructor, typed_array_create_from_constructor_object,
+                typed_array_length,
+            },
+        },
         iterator::iter_iterator_method_values,
         object_value::ObjectValue,
         to_string,
@@ -17,16 +30,6 @@ use crate::{
         },
         value::Value,
         Context, Handle, PropertyKey, Realm,
-    },
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    typed_array::DynTypedArray,
-    typed_array_prototype::{
-        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
-        typed_array_create_from_constructor, typed_array_create_from_constructor_object,
-        typed_array_length,
     },
 };
 
@@ -70,6 +73,26 @@ impl TypedArrayConstructor {
         func.intrinsic_getter(cx, species_key, RuntimeFunction::ReturnThis, realm)?;
 
         Ok(func)
+    }
+
+    pub fn install_uint8_array_methods(cx: Context, realm: Handle<Realm>) -> AllocResult<()> {
+        let mut constructor = realm.get_intrinsic(Intrinsic::UInt8ArrayConstructor);
+        constructor.intrinsic_func(
+            cx,
+            cx.names.from_base64(),
+            RuntimeFunction::TypedArrayConstructor_from_base64,
+            1,
+            realm,
+        )?;
+        constructor.intrinsic_func(
+            cx,
+            cx.names.from_hex(),
+            RuntimeFunction::TypedArrayConstructor_from_hex,
+            1,
+            realm,
+        )?;
+
+        Ok(())
     }
 
     /// %TypedArray% (https://tc39.es/ecma262/#sec-%typedarray%)
@@ -183,6 +206,77 @@ impl TypedArrayConstructor {
         Ok(target_object.as_value())
     }
 
+    /// Uint8Array.fromBase64 (https://tc39.es/ecma262/#sec-uint8array.frombase64)
+    pub fn from_base64(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let string_arg = get_argument(cx, arguments, 0);
+        if !string_arg.is_string() {
+            return type_error(cx, "Uint8Array.fromBase64 argument must be a string");
+        }
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = get_base64_options_argument(cx, options_arg, "Uint8Array.fromBase64")?;
+
+        let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.fromBase64")?;
+        let last_chunk_handling =
+            get_base64_last_chunk_handling_option(cx, options, "Uint8Array.fromBase64")?;
+
+        let decode_result = decode_base64(
+            cx,
+            string_arg.as_string(),
+            alphabet,
+            last_chunk_handling,
+            None,
+            "Uint8Array.fromBase64",
+        )?;
+        if let Some(error) = decode_result.error {
+            return eval_err!(error);
+        }
+
+        Self::new_uint8_array_from_bytes(cx, &decode_result.bytes)
+    }
+
+    /// Uint8Array.fromHex (https://tc39.es/ecma262/#sec-uint8array.fromhex)
+    pub fn from_hex(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let string_arg = get_argument(cx, arguments, 0);
+        if !string_arg.is_string() {
+            return type_error(cx, "Uint8Array.fromHex argument must be a string");
+        }
+
+        let decode_result = decode_hex(cx, string_arg.as_string(), None, "Uint8Array.fromHex")?;
+        if let Some(error) = decode_result.error {
+            return eval_err!(error);
+        }
+
+        Self::new_uint8_array_from_bytes(cx, &decode_result.bytes)
+    }
+
+    fn new_uint8_array_from_bytes(cx: Context, bytes: &[u8]) -> EvalResult<Handle<Value>> {
+        // Create an uninitialized Uint8Array to hold the bytes
+        let uint8_array_constructor = cx.get_intrinsic(Intrinsic::UInt8ArrayConstructor);
+        let array_value =
+            UInt8ArrayConstructor::allocate_with_length(cx, uint8_array_constructor, bytes.len())?;
+
+        // Guaranteed to be a Uint8Array
+        debug_assert!(array_value.is_object() && array_value.as_object().is_typed_array());
+        let array = array_value.as_object().as_typed_array();
+
+        // Write the encoded bytes into the backing ArrayBuffer
+        array
+            .viewed_array_buffer_ptr()
+            .data_mut()
+            .copy_from_slice(bytes);
+
+        Ok(array_value)
+    }
+
     /// %TypedArray%.of (https://tc39.es/ecma262/#sec-%typedarray%.of)
     pub fn of(
         cx: Context,
@@ -268,7 +362,7 @@ macro_rules! create_typed_array_constructor {
                 value: $element_type,
             ) {
                 unsafe {
-                    let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
+                    let byte_ptr = array_buffer.data_mut().as_mut_ptr().add(byte_index);
                     let element_ptr = byte_ptr.cast::<$element_type>();
 
                     element_ptr.write(value)
@@ -530,6 +624,16 @@ macro_rules! create_typed_array_constructor {
                 self.viewed_array_buffer.to_handle()
             }
 
+            fn data(&self) -> &[u8] {
+                let byte_offset = self.byte_offset();
+                self.viewed_array_buffer.data()[byte_offset..].as_ref()
+            }
+
+            fn data_mut(&mut self) -> &mut [u8] {
+                let byte_offset = self.byte_offset();
+                self.viewed_array_buffer.data_mut()[byte_offset..].as_mut()
+            }
+
             fn name(&self, cx: Context) -> Handle<StringValue> {
                 cx.names.$rust_name().as_string()
             }
@@ -550,7 +654,7 @@ macro_rules! create_typed_array_constructor {
             fn read_element_value(
                 &self,
                 cx: Context,
-                mut array_buffer: HeapPtr<ArrayBufferObject>,
+                array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
             ) -> AllocResult<Handle<Value>> {
                 let element = unsafe {
@@ -575,7 +679,7 @@ macro_rules! create_typed_array_constructor {
                 unsafe {
                     let byte_ptr = self
                         .viewed_array_buffer_ptr()
-                        .data()
+                        .data_mut()
                         .as_mut_ptr()
                         .add(byte_index);
                     let element_ptr = byte_ptr.cast::<$element_type>();
@@ -711,7 +815,7 @@ macro_rules! create_typed_array_constructor {
 
             /// AllocateTypedArray (https://tc39.es/ecma262/#sec-allocatetypedarray)
             /// AllocateTypedArrayBuffer (https://tc39.es/ecma262/#sec-allocatetypedarraybuffer)
-            fn allocate_with_length(
+            pub fn allocate_with_length(
                 cx: Context,
                 new_target: Handle<ObjectValue>,
                 length: usize,

@@ -396,6 +396,11 @@ impl Intrinsics {
         register_intrinsic_pair!(Float32ArrayPrototype, Float32ArrayConstructor);
         register_intrinsic_pair!(Float64ArrayPrototype, Float64ArrayConstructor);
 
+        handle_scope!(cx, {
+            TypedArrayConstructor::install_uint8_array_methods(cx, realm)?;
+            TypedArrayPrototype::install_uint8_array_methods(cx, realm)
+        })?;
+
         // Iterators
         register_intrinsic!(IteratorPrototype, IteratorPrototype);
         register_intrinsic!(IteratorConstructor, IteratorConstructor);

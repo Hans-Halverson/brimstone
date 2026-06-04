@@ -482,7 +482,10 @@ impl TypedArrayPrototype {
         let from_byte_index = from_start_index * element_size + byte_offset;
         let mut count_bytes = count as u64 * element_size;
 
-        let data_ptr = typed_array.viewed_array_buffer_ptr().data().as_mut_ptr();
+        let data_ptr = typed_array
+            .viewed_array_buffer_ptr()
+            .data_mut()
+            .as_mut_ptr();
 
         // Copy bytes one at a time from from_ptr to to_ptr
         unsafe {
@@ -1299,9 +1302,9 @@ impl TypedArrayPrototype {
         let limit = target_byte_index + (target_element_size * source_length);
 
         unsafe {
-            let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
-            let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
-            let limit_ptr = target_buffer.data().as_mut_ptr().add(limit);
+            let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
+            let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
+            let limit_ptr = target_buffer.data_mut().as_mut_ptr().add(limit);
 
             let mut from_byte_index = source_byte_index;
             let mut to_byte_index = target_byte_index;
@@ -1383,11 +1386,11 @@ impl TypedArrayPrototype {
         }
 
         let options_arg = get_argument(cx, arguments, 1);
-        let options = get_base64_options_argument(cx, options_arg, "Uint8Array.fromBase64")?;
+        let options = get_base64_options_argument(cx, options_arg, "Uint8Array.setFromBase64")?;
 
-        let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.fromBase64")?;
+        let alphabet = get_base64_alphabet_option(cx, options, "Uint8Array.setFromBase64")?;
         let last_chunk_handling =
-            get_base64_last_chunk_handling_option(cx, options, "Uint8Array.fromBase64")?;
+            get_base64_last_chunk_handling_option(cx, options, "Uint8Array.setFromBase64")?;
 
         let typed_array_record = make_typed_array_with_buffer_witness_record(typed_array);
         if is_typed_array_out_of_bounds(&typed_array_record) {
@@ -1443,19 +1446,16 @@ impl TypedArrayPrototype {
 
     fn set_from_decode_result(
         cx: Context,
-        typed_array: DynTypedArray,
+        mut typed_array: DynTypedArray,
         decode_result: DecodeResult,
     ) -> EvalResult<Handle<Value>> {
         let num_bytes_read = Value::from(decode_result.read).to_handle(cx);
         let num_bytes_written = Value::from(decode_result.bytes.len()).to_handle(cx);
 
-        // Get the slice of the backing ArrayBuffer that corresponds to this typed array
-        let mut viewed_array_buffer = typed_array.viewed_array_buffer_ptr();
-        let data = viewed_array_buffer.data()[typed_array.byte_offset()..].as_mut();
-
-        // Write the encoded bytes into the backing ArrayBuffer. If there was a decoding error then
-        // still write all successfully decoded bytes until the error.
-        data[0..decode_result.bytes.len()].copy_from_slice(&decode_result.bytes);
+        // Write the encoded bytes into the backing slice of the ArrayBuffer. If there was a
+        // decoding error then still write all successfully decoded bytes until the error.
+        let data = &mut typed_array.data_mut()[0..decode_result.bytes.len()];
+        data.copy_from_slice(&decode_result.bytes);
 
         if let Some(error) = decode_result.error {
             return eval_err!(error);
@@ -1536,7 +1536,7 @@ impl TypedArrayPrototype {
             }
         } else {
             // Otherwise copy bytes directly instead of performing any conversions
-            let mut source_buffer = typed_array.viewed_array_buffer();
+            let source_buffer = typed_array.viewed_array_buffer();
             let mut target_buffer = new_typed_array.viewed_array_buffer();
             let element_size = typed_array.element_size();
 
@@ -1545,8 +1545,8 @@ impl TypedArrayPrototype {
             let target_byte_index = new_typed_array.byte_offset();
 
             unsafe {
-                let mut from_ptr = source_buffer.data().as_mut_ptr().add(source_byte_index);
-                let mut to_ptr = target_buffer.data().as_mut_ptr().add(target_byte_index);
+                let mut from_ptr = source_buffer.data().as_ptr().add(source_byte_index);
+                let mut to_ptr = target_buffer.data_mut().as_mut_ptr().add(target_byte_index);
 
                 for _ in 0..(count as usize * element_size) {
                     let byte = from_ptr.read();
@@ -1711,9 +1711,11 @@ impl TypedArrayPrototype {
             return type_error(cx, "Uint8Array.prototype.toBase64 typed array is out of bounds");
         }
 
-        let mut array_buffer = typed_array.viewed_array_buffer();
+        // Encode the slice of the backing ArrayBuffer that corresponds to this typed array
+        let length = typed_array_length(&typed_array_record);
+        let data = &typed_array.data()[0..length];
 
-        let base64_code_points = encode_base64(array_buffer.data(), alphabet, omit_padding);
+        let base64_code_points = encode_base64(data, alphabet, omit_padding);
         let base64_string = FlatString::from_one_byte_slice(cx, &base64_code_points)?.to_handle();
 
         Ok(base64_string.as_string().as_value())
@@ -1733,12 +1735,11 @@ impl TypedArrayPrototype {
             return type_error(cx, "Uint8Array.prototype.toHex typed array is out of bounds");
         }
 
+        // Get the slice of the backing ArrayBuffer that corresponds to this typed array
         let length = typed_array_length(&typed_array_record);
+        let data = &typed_array.data()[0..length];
 
-        let mut array_buffer = typed_array.viewed_array_buffer();
-        let raw_bytes = array_buffer.data();
-
-        let hex_code_points = encode_hex(&raw_bytes[0..length]);
+        let hex_code_points = encode_hex(data);
         let hex_string = FlatString::from_one_byte_slice(cx, &hex_code_points)?.to_handle();
 
         Ok(hex_string.as_string().as_value())

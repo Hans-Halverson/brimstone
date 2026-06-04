@@ -363,7 +363,7 @@ fn skip_ascii_whitespace(string: Handle<FlatString>, index: u32) -> u32 {
     let mut index = index;
     while index < string.len() {
         let code_unit = string.code_unit_at(index);
-        if !matches!(code_unit, 0x09 | 0x0A | 0x0B | 0x0C | 0x0D | 0x20) {
+        if !matches!(code_unit, 0x09 | 0x0A | 0x0C | 0x0D | 0x20) {
             break;
         }
 

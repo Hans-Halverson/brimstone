@@ -78,6 +78,12 @@ pub trait TypedArray {
 
     fn viewed_array_buffer(&self) -> Handle<ArrayBufferObject>;
 
+    // Slice of the backing ArrayBuffer where this TypedArray's data is held.
+    fn data(&self) -> &[u8];
+
+    // Mutable slice of the backing ArrayBuffer where this TypedArray's data is held.
+    fn data_mut(&mut self) -> &mut [u8];
+
     fn name(&self, cx: Context) -> Handle<StringValue>;
 
     fn content_type(&self) -> ContentType;

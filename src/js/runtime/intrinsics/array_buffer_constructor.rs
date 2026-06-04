@@ -123,7 +123,11 @@ impl ArrayBufferObject {
         self.max_byte_length.is_none()
     }
 
-    pub fn data(&mut self) -> &mut [u8] {
+    pub fn data(&self) -> &[u8] {
+        self.data.as_ref().unwrap().as_slice()
+    }
+
+    pub fn data_mut(&mut self) -> &mut [u8] {
         self.data.as_mut().unwrap().as_mut_slice()
     }
 
@@ -274,7 +278,7 @@ pub fn array_buffer_copy_and_detach(
 /// CloneArrayBuffer (https://tc39.es/ecma262/#sec-clonearraybuffer)
 pub fn clone_array_buffer(
     cx: Context,
-    mut source_buffer: Handle<ArrayBufferObject>,
+    source_buffer: Handle<ArrayBufferObject>,
     source_byte_offset: usize,
     source_length: usize,
 ) -> EvalResult<Handle<ArrayBufferObject>> {
@@ -291,7 +295,7 @@ pub fn clone_array_buffer(
     let source_buffer_view =
         &source_buffer.data()[source_byte_offset..(source_byte_offset + source_length)];
 
-    target_buffer.data().copy_from_slice(source_buffer_view);
+    target_buffer.data_mut().copy_from_slice(source_buffer_view);
 
     Ok(target_buffer)
 }

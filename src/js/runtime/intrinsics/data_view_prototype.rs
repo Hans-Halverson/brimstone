@@ -644,7 +644,7 @@ fn get_view_value<T>(
     let buffer_index = get_index + view_offset;
 
     // Read element bytes with correct endianness
-    let mut buffer = data_view.viewed_array_buffer_ptr();
+    let buffer = data_view.viewed_array_buffer_ptr();
     let element_bytes = unsafe { buffer.data().as_ptr().add(buffer_index).cast::<T>().read() };
 
     let element = if cfg!(target_endian = "little") {
@@ -729,7 +729,7 @@ fn set_view_value<T>(
     let mut buffer = data_view.viewed_array_buffer_ptr();
 
     unsafe {
-        let element_ptr = buffer.data().as_mut_ptr().add(buffer_index).cast::<T>();
+        let element_ptr = buffer.data_mut().as_mut_ptr().add(buffer_index).cast::<T>();
         element_ptr.write(element_bytes)
     }
 

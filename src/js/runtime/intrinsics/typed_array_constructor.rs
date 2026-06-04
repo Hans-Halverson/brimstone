@@ -271,7 +271,7 @@ impl TypedArrayConstructor {
         // Write the encoded bytes into the backing ArrayBuffer
         array
             .viewed_array_buffer_ptr()
-            .data()
+            .data_mut()
             .copy_from_slice(bytes);
 
         Ok(array_value)
@@ -362,7 +362,7 @@ macro_rules! create_typed_array_constructor {
                 value: $element_type,
             ) {
                 unsafe {
-                    let byte_ptr = array_buffer.data().as_mut_ptr().add(byte_index);
+                    let byte_ptr = array_buffer.data_mut().as_mut_ptr().add(byte_index);
                     let element_ptr = byte_ptr.cast::<$element_type>();
 
                     element_ptr.write(value)
@@ -624,6 +624,16 @@ macro_rules! create_typed_array_constructor {
                 self.viewed_array_buffer.to_handle()
             }
 
+            fn data(&self) -> &[u8] {
+                let byte_offset = self.byte_offset();
+                self.viewed_array_buffer.data()[byte_offset..].as_ref()
+            }
+
+            fn data_mut(&mut self) -> &mut [u8] {
+                let byte_offset = self.byte_offset();
+                self.viewed_array_buffer.data_mut()[byte_offset..].as_mut()
+            }
+
             fn name(&self, cx: Context) -> Handle<StringValue> {
                 cx.names.$rust_name().as_string()
             }
@@ -644,7 +654,7 @@ macro_rules! create_typed_array_constructor {
             fn read_element_value(
                 &self,
                 cx: Context,
-                mut array_buffer: HeapPtr<ArrayBufferObject>,
+                array_buffer: HeapPtr<ArrayBufferObject>,
                 byte_index: usize,
             ) -> AllocResult<Handle<Value>> {
                 let element = unsafe {
@@ -669,7 +679,7 @@ macro_rules! create_typed_array_constructor {
                 unsafe {
                     let byte_ptr = self
                         .viewed_array_buffer_ptr()
-                        .data()
+                        .data_mut()
                         .as_mut_ptr()
                         .add(byte_index);
                     let element_ptr = byte_ptr.cast::<$element_type>();

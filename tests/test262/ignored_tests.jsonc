@@ -8,9 +8,6 @@
       //
       ////////////////////////////////////////
 
-      // Different rejection order for promises when evaluating modules with top-level await
-      "language/module-code/top-level-await/rejection-order.js",
-
       // A variety of failures in introduced SpiderMonkey tests
       "staging/sm/*",
 

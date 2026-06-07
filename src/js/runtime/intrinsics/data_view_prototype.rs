@@ -4,25 +4,24 @@ use crate::runtime::{
     alloc_error::AllocResult,
     error::{range_error, type_error},
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        data_view_constructor::DataViewObject,
+        intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
+        typed_array::{
+            from_big_int64_element, from_big_uint64_element, from_float16_element,
+            from_float32_element, from_float64_element, from_int16_element, from_int32_element,
+            from_int8_element, from_uint16_element, from_uint32_element, from_uint8_element,
+            to_big_int64_element, to_big_uint64_element, to_float16_element, to_float32_element,
+            to_float64_element, to_int16_element, to_int32_element, to_int8_element,
+            to_uint16_element, to_uint32_element, to_uint8_element, ContentType,
+        },
+    },
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
     type_utilities::{to_bigint, to_boolean, to_index, to_number},
     Context, EvalResult, Handle, Value,
-};
-
-use super::{
-    data_view_constructor::DataViewObject,
-    intrinsics::Intrinsic,
-    typed_array::{
-        from_big_int64_element, from_big_uint64_element, from_float16_element,
-        from_float32_element, from_float64_element, from_int16_element, from_int32_element,
-        from_int8_element, from_uint16_element, from_uint32_element, from_uint8_element,
-        to_big_int64_element, to_big_uint64_element, to_float16_element, to_float32_element,
-        to_float64_element, to_int16_element, to_int32_element, to_int8_element, to_uint16_element,
-        to_uint32_element, to_uint8_element, ContentType,
-    },
 };
 
 pub struct DataViewPrototype;

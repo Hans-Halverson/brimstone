@@ -10,8 +10,11 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::regexp_prototype::{advance_u64_string_index, regexp_exec},
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            regexp_prototype::{advance_u64_string_index, regexp_exec},
+            rust_runtime::RuntimeFunction,
+        },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -24,8 +27,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // RegExp String Iterator Objects (https://tc39.es/ecma262/#sec-regexp-string-iterator-objects)
 extend_object! {

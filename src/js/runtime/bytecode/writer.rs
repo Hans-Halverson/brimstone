@@ -3,15 +3,14 @@ use std::ops::Range;
 use crate::{
     common::varint::encode_varint,
     parser::loc::{Pos, NO_POS},
-};
-
-use super::{
-    instruction::{
-        decode_width_and_opcode_at_index, extra_wide_prefix_index_to_opcode_index,
-        wide_prefix_index_to_opcode_index, DecodeInfo, OpCode,
+    runtime::bytecode::{
+        instruction::{
+            decode_width_and_opcode_at_index, extra_wide_prefix_index_to_opcode_index,
+            wide_prefix_index_to_opcode_index, DecodeInfo, OpCode,
+        },
+        operand::Operand,
+        width::{Width, WidthEnum},
     },
-    operand::Operand,
-    width::{Width, WidthEnum},
 };
 
 pub struct BytecodeWriter {

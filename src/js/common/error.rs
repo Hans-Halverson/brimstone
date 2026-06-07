@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use crate::parser::{
-    loc::{find_line_col_for_pos, Pos},
-    source::Source,
+use crate::{
+    common::terminal::{BOLD, DEFAULT_COLOR, DIM, RED, RESET},
+    parser::{
+        loc::{find_line_col_for_pos, Pos},
+        source::Source,
+    },
 };
-
-use super::terminal::{BOLD, DEFAULT_COLOR, DIM, RED, RESET};
 
 pub fn print_error_message_and_exit(message: &str) -> ! {
     eprintln!("{message}");

@@ -2,17 +2,16 @@ use std::collections::HashSet;
 
 use crate::{
     field_offset,
-    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    runtime::{
+        alloc_error::AllocResult,
+        collections::InlineArray,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        object_value::ObjectValue,
+        string_value::StringValue,
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
+    },
     set_uninit,
-};
-
-use super::{
-    collections::InlineArray,
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
-    object_value::ObjectValue,
-    string_value::StringValue,
-    Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
 };
 
 /// An iterator over the keys of an object, used in for-in loops.

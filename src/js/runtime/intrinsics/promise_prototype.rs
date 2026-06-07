@@ -6,7 +6,7 @@ use crate::{
         builtin_function::BuiltinFunction,
         error::type_error,
         function::get_argument,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
         property::Property,
@@ -15,8 +15,6 @@ use crate::{
         Context, EvalResult, Handle, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct PromisePrototype;
 

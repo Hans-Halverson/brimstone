@@ -1,24 +1,23 @@
 use crate::{
     field_offset,
-    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    runtime::{
+        abstract_operations::has_property,
+        alloc_error::AllocResult,
+        boxed_value::BoxedValue,
+        collections::InlineArray,
+        error::{err_assign_constant, err_cannot_set_property, err_not_defined},
+        gc::{AnyHeapItem, HeapItem, HeapVisitor},
+        get,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        module::source_text_module::SourceTextModule,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
+        scope_names::ScopeNames,
+        string_value::StringValue,
+        type_utilities::to_boolean,
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
+    },
     set_uninit,
-};
-
-use super::{
-    abstract_operations::has_property,
-    boxed_value::BoxedValue,
-    collections::InlineArray,
-    error::{err_assign_constant, err_cannot_set_property, err_not_defined},
-    gc::{AnyHeapItem, HeapItem, HeapVisitor},
-    get,
-    heap_item_descriptor::HeapItemDescriptor,
-    module::source_text_module::SourceTextModule,
-    object_value::ObjectValue,
-    ordinary_object::ordinary_object_create,
-    scope_names::ScopeNames,
-    string_value::StringValue,
-    type_utilities::to_boolean,
-    Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
 };
 
 #[repr(C)]

@@ -9,22 +9,23 @@ use crate::{
         LexerStream, SavedLexerStreamState,
     },
     runtime::{
-        alloc_error::AllocResult, regexp::instruction::OpCode, string_value::StringValue, Handle,
-        HeapPtr,
-    },
-};
-
-use super::{
-    compiled_regexp::CompiledRegExpObject,
-    instruction::{
-        AssertEndInstruction, AssertEndOrNewlineInstruction, AssertNotWordBoundaryInstruction,
-        AssertStartInstruction, AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-        BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-        CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-        ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
-        LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, ProgressInstruction,
-        TInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-        WordBoundaryMoveToPreviousInstruction,
+        alloc_error::AllocResult,
+        regexp::{
+            compiled_regexp::CompiledRegExpObject,
+            instruction::{
+                AssertEndInstruction, AssertEndOrNewlineInstruction,
+                AssertNotWordBoundaryInstruction, AssertStartInstruction,
+                AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
+                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
+                ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
+                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
+                ProgressInstruction, TInstruction, WildcardInstruction,
+                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+            },
+        },
+        string_value::StringValue,
+        Handle, HeapPtr,
     },
 };
 

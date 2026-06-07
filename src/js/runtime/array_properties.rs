@@ -1,14 +1,17 @@
 use std::mem::size_of;
 
-use crate::{field_offset, runtime::alloc_error::AllocResult, set_uninit};
-
-use super::{
-    collections::{BsHashMap, BsHashMapField, InlineArray},
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    object_value::ObjectValue,
-    property::{HeapProperty, Property},
-    Context, Handle, HeapPtr, Value,
+use crate::{
+    field_offset,
+    runtime::{
+        alloc_error::AllocResult,
+        collections::{BsHashMap, BsHashMapField, InlineArray},
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        object_value::ObjectValue,
+        property::{HeapProperty, Property},
+        Context, Handle, HeapPtr, Value,
+    },
+    set_uninit,
 };
 
 // Properties keyed by array index. Back by dense array when possible, otherwise transition to

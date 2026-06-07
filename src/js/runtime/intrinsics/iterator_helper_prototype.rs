@@ -2,14 +2,15 @@ use crate::runtime::{
     alloc_error::AllocResult,
     error::type_error,
     generator_object::GeneratorState,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
+        rust_runtime::RuntimeFunction,
+    },
     iterator::{create_iter_result_object, iterator_close},
     object_value::ObjectValue,
     property::Property,
     Context, EvalResult, Handle, Realm, Value,
 };
-
-use super::{intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject};
 
 /// The Iterator Helper Prototype Object (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-object)
 pub struct IteratorHelperPrototype;

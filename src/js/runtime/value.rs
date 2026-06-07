@@ -3,16 +3,21 @@ use std::{hash, mem::size_of, num::NonZeroU64, ptr::copy_nonoverlapping};
 use num_bigint::{BigInt, Sign};
 use rand::Rng;
 
-use crate::{field_offset, runtime::alloc_error::AllocResult, set_uninit};
-
-use super::{
-    context::Context,
-    debug_print::{DebugPrint, DebugPrinter},
-    gc::{AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents},
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    object_value::ObjectValue,
-    string_value::{FlatString, StringValue},
-    type_utilities::same_value_zero_non_allocating,
+use crate::{
+    field_offset,
+    runtime::{
+        alloc_error::AllocResult,
+        context::Context,
+        debug_print::{DebugPrint, DebugPrinter},
+        gc::{
+            AnyHeapItem, Handle, HandleContents, HeapItem, HeapPtr, HeapVisitor, ToHandleContents,
+        },
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        object_value::ObjectValue,
+        string_value::{FlatString, StringValue},
+        type_utilities::same_value_zero_non_allocating,
+    },
+    set_uninit,
 };
 
 /// Values implemented with NaN boxing on 64-bit IEEE-754 floating point numbers. Inspired by NaN

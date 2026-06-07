@@ -1,14 +1,21 @@
 use crate::{
     common::error::FormatOptions,
     runtime::{
-        abstract_operations::get, alloc_error::AllocResult, error::type_error,
-        eval_result::EvalResult, intrinsics::rust_runtime::RuntimeFunction,
-        object_value::ObjectValue, realm::Realm, string_value::StringValue, to_console_string,
-        type_utilities::to_string, Context, Handle, Value,
+        abstract_operations::get,
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        intrinsics::{
+            error_constructor::ErrorObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        string_value::StringValue,
+        to_console_string,
+        type_utilities::to_string,
+        Context, Handle, Value,
     },
 };
-
-use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 
 pub struct ErrorPrototype;
 

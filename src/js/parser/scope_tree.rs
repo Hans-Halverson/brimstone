@@ -2,15 +2,16 @@ use std::{cell::Cell, rc::Rc, sync::LazyLock};
 
 use allocator_api2::alloc::Global;
 
-use crate::common::{alloc, options::Options, wtf_8::Wtf8String};
-
-use super::{
-    ast::{
-        self, ArenaVec, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice,
-        AstSliceBuilder, AstStr, FunctionId, TaggedResolvedScope,
+use crate::{
+    common::{alloc, options::Options, wtf_8::Wtf8String},
+    parser::{
+        ast::{
+            self, ArenaVec, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice,
+            AstSliceBuilder, AstStr, FunctionId, TaggedResolvedScope,
+        },
+        loc::{Loc, Pos},
+        ParseError,
     },
-    loc::{Loc, Pos},
-    ParseError,
 };
 
 pub struct ScopeTree<'a> {

@@ -1,22 +1,23 @@
 use crate::{
     field_offset, must,
     runtime::{
-        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
-        bytecode::function::Closure, error::type_error, function::build_function_name, get,
-        heap_item_descriptor::HeapItemKind, intrinsics::intrinsics::Intrinsic,
-        object_value::ObjectValue, ordinary_object::object_create_with_optional_proto,
-        type_utilities::is_constructor_value, PropertyDescriptor, PropertyKey,
+        abstract_operations::define_property_or_throw,
+        alloc_error::AllocResult,
+        bytecode::function::{BytecodeFunction, Closure},
+        collections::InlineArray,
+        error::type_error,
+        function::build_function_name,
+        gc::{HeapItem, HeapVisitor},
+        get,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        intrinsics::intrinsics::Intrinsic,
+        object_value::ObjectValue,
+        ordinary_object::object_create_with_optional_proto,
+        string_value::FlatString,
+        type_utilities::is_constructor_value,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     set_uninit,
-};
-
-use super::{
-    bytecode::function::BytecodeFunction,
-    collections::InlineArray,
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
-    string_value::FlatString,
-    Context, EvalResult, Handle, HeapPtr, Value,
 };
 
 /// A collection of information about a class that is used in a NewClass instruction.

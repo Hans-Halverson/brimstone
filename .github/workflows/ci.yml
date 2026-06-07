@@ -18,8 +18,11 @@ jobs:
       - name: Install toolchain components
         run: rustup component add rustfmt clippy
 
+      - name: Install nightly rustfmt
+        run: rustup toolchain install nightly-2026-06-02 --profile minimal --component rustfmt
+
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: cargo +nightly-2026-06-02 fmt -- --check --config group_imports=StdExternalCrate
 
       - name: Run clippy
         run: cargo clippy -- -D warnings

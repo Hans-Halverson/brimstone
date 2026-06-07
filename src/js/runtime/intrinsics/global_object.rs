@@ -15,7 +15,7 @@ use crate::{
         error::uri_error,
         eval::eval::perform_eval,
         function::get_argument,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property_descriptor::PropertyDescriptor,
         string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
         string_value::{FlatString, StringValue},
@@ -24,8 +24,6 @@ use crate::{
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 /// SetDefaultGlobalBindings (https://tc39.es/ecma262/#sec-setdefaultglobalbindings)
 pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalResult<()> {

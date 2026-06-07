@@ -7,7 +7,7 @@ use crate::{
     runtime::{
         alloc_error::AllocResult,
         eval_result::EvalResult,
-        gc::{Handle, HeapPtr},
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::{ObjectValue, VirtualObject},
@@ -17,20 +17,15 @@ use crate::{
             ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
             ordinary_own_string_symbol_property_keys,
         },
+        property::Property,
         property_descriptor::PropertyDescriptor,
-        string_value::StringValue,
+        rust_vtables::extract_virtual_object_vtable,
+        string_value::{FlatString, StringValue},
         type_utilities::canonical_numeric_string_index_string,
         value::Value,
         Context, PropertyKey,
     },
     set_uninit,
-};
-
-use super::{
-    gc::{HeapItem, HeapVisitor},
-    property::Property,
-    rust_vtables::extract_virtual_object_vtable,
-    string_value::FlatString,
 };
 
 // String Exotic Objects (https://tc39.es/ecma262/#sec-string-exotic-objects)

@@ -2,14 +2,13 @@ use crate::{
     field_offset,
     runtime::{
         alloc_error::AllocResult,
+        collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };
-
-use super::InlineArray;
 
 /// A fixed size array of values.
 #[repr(C)]

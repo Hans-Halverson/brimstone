@@ -3,7 +3,9 @@ use crate::runtime::{
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        bigint_constructor::BigIntObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+    },
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -11,8 +13,6 @@ use crate::runtime::{
     value::BigIntValue,
     Context, Handle, Value,
 };
-
-use super::{bigint_constructor::BigIntObject, intrinsics::Intrinsic};
 
 pub struct BigIntPrototype;
 

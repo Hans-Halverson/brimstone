@@ -3,33 +3,30 @@ use crate::{
     runtime::{
         abstract_operations::call_object,
         alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        bytecode::{
+            function::Closure,
+            stack_frame::{StackFrame, StackSlotValue},
+        },
+        collections::InlineArray,
+        error::type_error,
         eval_result::EvalResult,
+        function::get_argument,
         gc::{HeapItem, HeapVisitor},
+        generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        intrinsics::{
+            intrinsics::Intrinsic, promise_prototype::perform_promise_then,
+            rust_runtime::RuntimeFunction,
+        },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
-        promise_object::PromiseCapability,
+        promise_object::{coerce_to_ordinary_promise, PromiseCapability},
         realm::Realm,
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
-};
-
-use super::{
-    builtin_function::BuiltinFunction,
-    bytecode::{
-        function::Closure,
-        stack_frame::{StackFrame, StackSlotValue},
-    },
-    collections::InlineArray,
-    error::type_error,
-    function::get_argument,
-    generator_object::{GeneratorCompletionType, GeneratorRegister, TGeneratorObject},
-    intrinsics::promise_prototype::perform_promise_then,
-    promise_object::coerce_to_ordinary_promise,
-    Value,
 };
 
 // An async generator object represents the state of an async generator function. It holds the

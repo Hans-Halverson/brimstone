@@ -2,6 +2,11 @@ use crate::{
     field_offset,
     runtime::{
         alloc_error::AllocResult,
+        bytecode::{
+            generator::GenRegister,
+            operand::{min_width_for_unsigned, Operand, Register},
+            width::{ExtraWide, WidthEnum},
+        },
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
@@ -9,12 +14,6 @@ use crate::{
         Context, Handle, HeapPtr,
     },
     set_uninit,
-};
-
-use super::{
-    generator::GenRegister,
-    operand::{min_width_for_unsigned, Operand, Register},
-    width::{ExtraWide, WidthEnum},
 };
 
 pub struct ExceptionHandlerBuilder {

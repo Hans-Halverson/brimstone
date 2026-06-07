@@ -2,19 +2,17 @@ use crate::{
     must_a,
     runtime::{
         alloc_error::AllocResult,
-        bytecode::function::Closure,
-        intrinsics::rust_runtime::{RuntimeFunction, RuntimeFunctionId},
+        bytecode::function::{BytecodeFunction, Closure},
+        function::{build_function_name, set_function_length, set_function_name},
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::{RuntimeFunction, RuntimeFunctionId},
+        },
+        object_value::ObjectValue,
+        property_key::PropertyKey,
+        realm::Realm,
+        Context, Handle,
     },
-};
-
-use super::{
-    bytecode::function::BytecodeFunction,
-    function::{build_function_name, set_function_length, set_function_name},
-    intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue,
-    property_key::PropertyKey,
-    realm::Realm,
-    Context, Handle,
 };
 
 /// Built-in Function Object (https://tc39.es/ecma262/#sec-built-in-function-objects)

@@ -9,8 +9,12 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        intrinsics::rust_runtime::RuntimeFunction,
-        intrinsics::set_object::ValueSet,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            set_iterator::{SetIterator, SetIteratorKind},
+            set_object::{SetObject, SetObjectSetField, ValueSet},
+        },
         iterator::{
             get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
             iterator_value, IteratorHint,
@@ -22,12 +26,6 @@ use crate::{
         value::{Value, ValueCollectionKey},
         Context, Handle,
     },
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    set_iterator::{SetIterator, SetIteratorKind},
-    set_object::{SetObject, SetObjectSetField},
 };
 
 pub struct SetPrototype;

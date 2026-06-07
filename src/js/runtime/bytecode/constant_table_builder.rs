@@ -1,14 +1,16 @@
 use std::{collections::HashMap, hash};
 
 use crate::runtime::{
-    alloc_error::AllocResult, gc::AnyHeapItem, string_value::FlatString, Context, Handle, Value,
-};
-
-use super::{
-    constant_table::ConstantTable,
-    generator::{EmitError, EmitResult},
-    operand::min_width_for_unsigned,
-    width::{ExtraWide, Narrow, Wide, Width, WidthEnum},
+    alloc_error::AllocResult,
+    bytecode::{
+        constant_table::ConstantTable,
+        generator::{EmitError, EmitResult},
+        operand::min_width_for_unsigned,
+        width::{ExtraWide, Narrow, Wide, Width, WidthEnum},
+    },
+    gc::AnyHeapItem,
+    string_value::FlatString,
+    Context, Handle, Value,
 };
 
 #[derive(Clone, Copy)]

@@ -3,22 +3,20 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
-        alloc_error::AllocResult, error::type_error, heap_item_descriptor::HeapItemKind,
+        abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        collections::InlineArray,
+        error::type_error,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::rust_runtime::RuntimeFunction,
+        object_value::ObjectValue,
+        scope_names::ScopeNames,
+        string_value::FlatString,
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
     set_uninit,
-};
-
-use super::{
-    abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
-    builtin_function::BuiltinFunction,
-    collections::InlineArray,
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
-    object_value::ObjectValue,
-    scope_names::ScopeNames,
-    string_value::FlatString,
-    Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
 };
 
 #[repr(C)]

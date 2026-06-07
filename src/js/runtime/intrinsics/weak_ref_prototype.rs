@@ -1,10 +1,15 @@
 use crate::runtime::{
-    alloc_error::AllocResult, error::type_error, eval_result::EvalResult,
-    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, property::Property,
-    realm::Realm, Context, Handle, Value,
+    alloc_error::AllocResult,
+    error::type_error,
+    eval_result::EvalResult,
+    intrinsics::{
+        intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_ref_constructor::WeakRefObject,
+    },
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    Context, Handle, Value,
 };
-
-use super::{intrinsics::Intrinsic, weak_ref_constructor::WeakRefObject};
 
 pub struct WeakRefPrototype;
 

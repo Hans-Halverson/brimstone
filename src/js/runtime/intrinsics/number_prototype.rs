@@ -3,7 +3,9 @@ use crate::runtime::{
     error::{range_error, type_error},
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
+    },
     object_value::ObjectValue,
     realm::Realm,
     string_value::FlatString,
@@ -12,8 +14,6 @@ use crate::runtime::{
     value::Value,
     Context, Handle,
 };
-
-use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
 
 pub struct NumberPrototype;
 

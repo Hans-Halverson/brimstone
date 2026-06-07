@@ -8,7 +8,7 @@ use crate::{
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::{get_iterator, iterator_close, iterator_step_value, IteratorHint},
         numeric_constants::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
         numeric_operations::number_exponentiate,
@@ -20,8 +20,6 @@ use crate::{
         Context, Handle,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 /// The Math Object (https://tc39.es/ecma262/#sec-math-object)
 pub struct MathObject;

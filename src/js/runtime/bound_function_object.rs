@@ -1,12 +1,12 @@
-use crate::runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction};
-
-use super::{
+use crate::runtime::{
     abstract_operations::{call_object, construct, length_of_array_like},
+    alloc_error::AllocResult,
     array_object::{create_array_from_list, ArrayObject},
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
     gc::HeapPtr,
     get,
+    intrinsics::rust_runtime::RuntimeFunction,
     object_value::ObjectValue,
     property_key::PropertyKey,
     type_utilities::{is_constructor_object_value, same_object_value_handles},

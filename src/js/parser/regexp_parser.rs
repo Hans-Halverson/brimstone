@@ -21,18 +21,17 @@ use crate::{
         },
     },
     p,
-};
-
-use super::{
-    ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
-    lexer_stream::{LexerStream, SavedLexerStreamState},
-    loc::Pos,
-    regexp::{
-        Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
-        CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
-        RegExp, RegExpFlags, StringDisjunction, Term,
+    parser::{
+        ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
+        lexer_stream::{LexerStream, SavedLexerStreamState},
+        loc::Pos,
+        regexp::{
+            Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
+            CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
+            RegExp, RegExpFlags, StringDisjunction, Term,
+        },
+        ParseError, ParseResult,
     },
-    ParseError, ParseResult,
 };
 
 /// Parser of the full RegExp grammar and static semantics

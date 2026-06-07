@@ -11,23 +11,19 @@ use crate::{
         wtf_8::{Wtf8Cow, Wtf8Str},
     },
     parser::{
+        ast::*,
+        ast_visitor::*,
+        loc::Loc,
         parse_error::InvalidDuplicateParametersReason,
-        scope_tree::{VMLocation, ARGUMENTS_NAME},
+        parser::{ParseFunctionResult, ParseProgramResult},
+        scope_tree::{
+            AstScopeNode, ScopeNodeId, ScopeTree, VMLocation, ARGUMENTS_NAME,
+            DERIVED_CONSTRUCTOR_BINDING_NAME, NEW_TARGET_BINDING_NAME, THIS_NAME,
+        },
+        source::Source,
+        LocalizedParseError, LocalizedParseErrors, ParseContext, ParseError,
     },
     visit_opt, visit_vec,
-};
-
-use super::{
-    ast::*,
-    ast_visitor::*,
-    loc::Loc,
-    parser::{ParseFunctionResult, ParseProgramResult},
-    scope_tree::{
-        AstScopeNode, ScopeNodeId, ScopeTree, DERIVED_CONSTRUCTOR_BINDING_NAME,
-        NEW_TARGET_BINDING_NAME, THIS_NAME,
-    },
-    source::Source,
-    LocalizedParseError, LocalizedParseErrors, ParseContext, ParseError,
 };
 
 pub struct Analyzer<'a> {

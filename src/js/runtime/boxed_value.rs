@@ -1,12 +1,11 @@
 use crate::{
-    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    runtime::{
+        alloc_error::AllocResult,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        Context, Handle, HeapPtr, Value,
+    },
     set_uninit,
-};
-
-use super::{
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
-    Context, Handle, HeapPtr, Value,
 };
 
 /// A value that is allocated on the heap.

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use bumpalo::Bump;
 
-use super::source::Source;
+use crate::parser::source::Source;
 
 /// Context for a single invocation of the parser. Owns the entire AST.
 pub struct ParseContext {

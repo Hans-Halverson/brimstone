@@ -1,8 +1,9 @@
-use crate::handle_scope_guard;
-
-use super::{
-    alloc_error::AllocResult, context::Context, gc::HeapVisitor, property_key::PropertyKey,
-    value::SymbolValue, Handle,
+use crate::{
+    handle_scope_guard,
+    runtime::{
+        alloc_error::AllocResult, context::Context, gc::HeapVisitor, property_key::PropertyKey,
+        value::SymbolValue, Handle,
+    },
 };
 
 // All built-in string property keys referenced in the spec

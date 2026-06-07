@@ -1,9 +1,12 @@
 use crate::{
     common::constants::MEGABYTE_BYTES,
-    runtime::{gc::HeapVisitor, scope::Scope, HeapPtr, Value},
+    runtime::{
+        bytecode::{constant_table::ConstantTable, function::Closure},
+        gc::HeapVisitor,
+        scope::Scope,
+        HeapPtr, Value,
+    },
 };
-
-use super::{constant_table::ConstantTable, function::Closure};
 
 /// Stack frame layout:
 ///

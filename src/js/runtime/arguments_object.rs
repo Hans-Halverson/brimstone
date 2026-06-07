@@ -6,30 +6,27 @@ use crate::{
     extend_object, field_offset, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
-        alloc_error::AllocResult, interned_strings::InternedStrings,
-        ordinary_object::object_create_with_size,
+        abstract_operations::{create_data_property_or_throw, define_property_or_throw},
+        alloc_error::AllocResult,
+        bytecode::function::Closure,
+        collections::InlineArray,
+        gc::{Handle, HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
+        interned_strings::InternedStrings,
+        intrinsics::intrinsics::Intrinsic,
+        object_value::{ObjectValue, VirtualObject},
+        ordinary_object::{
+            object_create, object_create_with_size, ordinary_define_own_property, ordinary_delete,
+            ordinary_get, ordinary_get_own_property, ordinary_set,
+        },
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        rust_vtables::extract_virtual_object_vtable,
+        scope::Scope,
+        type_utilities::same_object_value_handles,
+        Context, EvalResult, HeapPtr, Value,
     },
     set_uninit,
-};
-
-use super::{
-    abstract_operations::{create_data_property_or_throw, define_property_or_throw},
-    bytecode::function::Closure,
-    collections::InlineArray,
-    gc::{Handle, HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::intrinsics::Intrinsic,
-    object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{
-        object_create, ordinary_define_own_property, ordinary_delete, ordinary_get,
-        ordinary_get_own_property, ordinary_set,
-    },
-    property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
-    rust_vtables::extract_virtual_object_vtable,
-    scope::Scope,
-    type_utilities::same_object_value_handles,
-    Context, EvalResult, HeapPtr, Value,
 };
 
 // An unmapped arguments that is identical to an ordinary object, but has an arguments object

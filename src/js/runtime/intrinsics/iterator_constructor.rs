@@ -10,7 +10,10 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::{iterator_helper_object::IteratorHelperObject, rust_runtime::RuntimeFunction},
+        intrinsics::{
+            intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
+            rust_runtime::RuntimeFunction,
+        },
         iterator::{create_iter_result_object, get_iterator_flattenable},
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
@@ -19,8 +22,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct IteratorConstructor;
 

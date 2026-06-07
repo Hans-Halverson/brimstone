@@ -11,13 +11,12 @@ use crate::{
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        regexp::instruction::InstructionIterator,
         string_value::{FlatString, StringValue},
         Context, Handle, HeapPtr,
     },
     set_uninit,
 };
-
-use super::instruction::InstructionIterator;
 
 #[repr(C)]
 pub struct CompiledRegExpObject {

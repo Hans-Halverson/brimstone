@@ -1,20 +1,22 @@
-use crate::{extend_object_without_conversions, must, must_a, runtime::alloc_error::AllocResult};
-
-use super::{
-    abstract_operations::{call_object, create_data_property, get, get_function_realm},
-    accessor::Accessor,
-    eval_result::EvalResult,
-    gc::{Handle, HeapPtr},
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    intrinsics::intrinsics::Intrinsic,
-    object_value::{ObjectValue, VirtualObject},
-    property::Property,
-    property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
-    rust_vtables::extract_virtual_object_vtable,
-    type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
-    value::Value,
-    Context,
+use crate::{
+    extend_object_without_conversions, must, must_a,
+    runtime::{
+        abstract_operations::{call_object, create_data_property, get, get_function_realm},
+        accessor::Accessor,
+        alloc_error::AllocResult,
+        eval_result::EvalResult,
+        gc::{Handle, HeapPtr},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        intrinsics::intrinsics::Intrinsic,
+        object_value::{ObjectValue, VirtualObject},
+        property::Property,
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        rust_vtables::extract_virtual_object_vtable,
+        type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
+        value::Value,
+        Context,
+    },
 };
 
 // An ordinary object is used to create the vtable for a generic object. Must be a separate type

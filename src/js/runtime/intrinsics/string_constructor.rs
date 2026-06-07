@@ -8,7 +8,10 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+            symbol_prototype::symbol_descriptive_string,
+        },
         object_value::ObjectValue,
         realm::Realm,
         string_object::StringObject,
@@ -17,8 +20,6 @@ use crate::{
         Context, Handle, PropertyKey, Value,
     },
 };
-
-use super::{intrinsics::Intrinsic, symbol_prototype::symbol_descriptive_string};
 
 pub struct StringConstructor;
 

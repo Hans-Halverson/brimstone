@@ -1,9 +1,8 @@
 use bitflags::bitflags;
 
-use crate::runtime::alloc_error::AllocResult;
-
-use super::{
+use crate::runtime::{
     accessor::Accessor,
+    alloc_error::AllocResult,
     gc::{Handle, HeapVisitor},
     object_value::ObjectValue,
     value::Value,

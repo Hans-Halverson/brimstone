@@ -1,10 +1,14 @@
 use crate::runtime::{
-    alloc_error::AllocResult, error::type_error, eval_result::EvalResult,
-    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, realm::Realm, Context,
-    Handle, Value,
+    alloc_error::AllocResult,
+    error::type_error,
+    eval_result::EvalResult,
+    intrinsics::{
+        boolean_constructor::BooleanObject, intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+    },
+    object_value::ObjectValue,
+    realm::Realm,
+    Context, Handle, Value,
 };
-
-use super::{boolean_constructor::BooleanObject, intrinsics::Intrinsic};
 
 pub struct BooleanPrototype;
 

@@ -1,17 +1,16 @@
 use crate::{
     must_a,
-    runtime::{abstract_operations::create_data_property_or_throw, alloc_error::AllocResult},
-};
-
-use super::{
-    abstract_operations::{get, has_property},
-    error::type_error,
-    eval_result::EvalResult,
-    gc::Handle,
-    object_value::ObjectValue,
-    ordinary_object::ordinary_object_create,
-    type_utilities::{is_callable, to_boolean},
-    Context, Value,
+    runtime::{
+        abstract_operations::{create_data_property_or_throw, get, has_property},
+        alloc_error::AllocResult,
+        error::type_error,
+        eval_result::EvalResult,
+        gc::Handle,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
+        type_utilities::{is_callable, to_boolean},
+        Context, Value,
+    },
 };
 
 /// Property Descriptor (https://tc39.es/ecma262/#sec-property-descriptor-specification-type)

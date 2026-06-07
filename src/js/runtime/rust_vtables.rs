@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use super::{
+use crate::runtime::{
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
     intrinsics::typed_array::{

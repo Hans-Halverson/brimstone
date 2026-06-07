@@ -2,12 +2,11 @@ use std::hash::Hash;
 
 use crate::runtime::{
     alloc_error::AllocResult,
+    collections::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField},
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
     Context, HeapPtr,
 };
-
-use super::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField};
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.
 #[repr(C)]

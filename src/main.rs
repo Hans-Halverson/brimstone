@@ -1,5 +1,3 @@
-use clap::Parser;
-
 use std::rc::Rc;
 
 use brimstone_core::{
@@ -14,6 +12,7 @@ use brimstone_core::{
         Context, ContextBuilder,
     },
 };
+use clap::Parser;
 
 fn parse_options(args: &Args) -> Rc<Options> {
     match Options::new_from_args(args) {

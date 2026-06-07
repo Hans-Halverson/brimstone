@@ -14,16 +14,17 @@ use hashbrown::{DefaultHashBuilder, HashSet};
 use indexmap_allocator_api::IndexMap;
 use num_bigint::{BigInt, Sign};
 
-use crate::common::{
-    alloc::{self, slice_to_alloc_vec},
-    wtf_8::{Wtf8Str, Wtf8String},
-};
-
-use super::{
-    loc::{Loc, Pos, EMPTY_LOC},
-    regexp::RegExp,
-    scope_tree::{
-        AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+use crate::{
+    common::{
+        alloc::{self, slice_to_alloc_vec},
+        wtf_8::{Wtf8Str, Wtf8String},
+    },
+    parser::{
+        loc::{Loc, Pos, EMPTY_LOC},
+        regexp::RegExp,
+        scope_tree::{
+            AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,
+        },
     },
 };
 

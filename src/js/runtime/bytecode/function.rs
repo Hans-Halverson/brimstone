@@ -6,6 +6,10 @@ use crate::{
     runtime::{
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
+        bytecode::{
+            constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
+            instruction::debug_format_instructions, source_map::BytecodeSourceMap,
+        },
         collections::{array::ByteArray, InlineArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
@@ -23,11 +27,6 @@ use crate::{
         Context, Handle, HeapPtr, PropertyDescriptor, Realm,
     },
     set_uninit,
-};
-
-use super::{
-    constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
-    instruction::debug_format_instructions, source_map::BytecodeSourceMap,
 };
 
 // A closure is a pair of a function and its scope. Represents the instantiation of a function's

@@ -5,10 +5,11 @@ use std::{
 
 use clap::Parser;
 
-use crate::common::constants::{GIGABYTE_BYTES, MAX_HEAP_SIZE, MEGABYTE_BYTES, MIN_HEAP_SIZE};
-
-use super::{
-    constants::{DEFAULT_MAX_HEAP_SIZE, DEFAULT_MIN_HEAP_SIZE},
+use crate::common::{
+    constants::{
+        DEFAULT_MAX_HEAP_SIZE, DEFAULT_MIN_HEAP_SIZE, GIGABYTE_BYTES, MAX_HEAP_SIZE,
+        MEGABYTE_BYTES, MIN_HEAP_SIZE,
+    },
     serialized_heap::{get_default_serialized_heap, SerializedHeap},
 };
 

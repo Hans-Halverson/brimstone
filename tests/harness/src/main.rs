@@ -1,5 +1,3 @@
-use clap::Parser;
-
 use std::{collections::HashMap, path::PathBuf};
 
 use brimstone_integration_test_harness::{
@@ -9,6 +7,7 @@ use brimstone_integration_test_harness::{
     runner::TestRunner,
     utils::GenericResult,
 };
+use clap::Parser;
 
 #[derive(Parser)]
 #[command(about)]

@@ -2,6 +2,13 @@ use crate::{
     eval_err, extend_object, field_offset,
     runtime::{
         alloc_error::AllocResult,
+        bytecode::{
+            function::Closure,
+            stack_frame::{StackFrame, StackSlotValue},
+            ExtraWide, Register,
+        },
+        collections::InlineArray,
+        error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
@@ -9,20 +16,9 @@ use crate::{
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
-        Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
-};
-
-use super::{
-    bytecode::{
-        function::Closure,
-        stack_frame::{StackFrame, StackSlotValue},
-        ExtraWide, Register,
-    },
-    collections::InlineArray,
-    error::type_error,
-    Value,
 };
 
 /// A register within a suspended generator's stack frame. Stored as an ExtraWide register so

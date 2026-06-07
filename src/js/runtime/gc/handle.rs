@@ -6,13 +6,12 @@ use std::{
 };
 
 use crate::runtime::{
+    gc::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapItem},
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
     Context, Value,
 };
-
-use super::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapItem};
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.
 pub type HandleContents = usize;

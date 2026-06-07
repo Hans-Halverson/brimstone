@@ -9,7 +9,7 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{
             object_create, object_create_from_constructor, object_create_with_proto,
@@ -20,8 +20,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // Boolean Objects (https://tc39.es/ecma262/#sec-boolean-objects)
 extend_object! {

@@ -5,18 +5,18 @@ use crate::runtime::{
     error::{range_error, type_error},
     function::get_argument,
     heap_item_descriptor::HeapItemKind,
-    intrinsics::array_buffer_constructor::throw_if_detached,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        array_buffer_constructor::{
+            array_buffer_copy_and_detach, throw_if_detached, ArrayBufferObject,
+        },
+        intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
+    },
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
     type_utilities::{resolve_relative_index_argument, to_index},
     Context, EvalResult, Handle, Value,
-};
-
-use super::{
-    array_buffer_constructor::{array_buffer_copy_and_detach, ArrayBufferObject},
-    intrinsics::Intrinsic,
 };
 
 pub struct ArrayBufferPrototype;

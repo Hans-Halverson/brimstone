@@ -1,10 +1,10 @@
-use icu_casemap::{CaseMapper, CaseMapperBorrowed};
-use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::Path;
+
+use icu_casemap::{CaseMapper, CaseMapperBorrowed};
+use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
 
 /// Generate the `brimstone_icu_collections` module, which exposes the public interface:
 ///

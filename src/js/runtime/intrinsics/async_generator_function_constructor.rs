@@ -1,11 +1,13 @@
 use crate::runtime::{
-    alloc_error::AllocResult, builtin_function::BuiltinFunction,
-    eval::create_dynamic_function::create_dynamic_function, eval_result::EvalResult,
-    intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue, realm::Realm, Context,
-    Handle, Value,
+    alloc_error::AllocResult,
+    builtin_function::BuiltinFunction,
+    eval::create_dynamic_function::create_dynamic_function,
+    eval_result::EvalResult,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+    object_value::ObjectValue,
+    realm::Realm,
+    Context, Handle, Value,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct AsyncGeneratorFunctionConstructor;
 

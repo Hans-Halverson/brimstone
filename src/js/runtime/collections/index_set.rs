@@ -2,14 +2,13 @@ use std::hash::Hash;
 
 use crate::runtime::{
     alloc_error::AllocResult,
+    collections::{
+        index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut},
+        BsIndexMap, BsIndexMapField,
+    },
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
     Context, Handle, HeapPtr,
-};
-
-use super::{
-    index_map::{GcSafeEntriesIter, GcUnsafeKeysIterMut},
-    BsIndexMap, BsIndexMapField,
 };
 
 /// Generic flat IndexSet implementation which is a simple wrapper over a IndexMap with unit values.

@@ -21,7 +21,7 @@ use crate::{
         get,
         intrinsics::{
             intrinsics::Intrinsic,
-            regexp_constructor::{regexp_create, RegExpSource},
+            regexp_constructor::{regexp_create, FlagsSource, RegExpSource},
             regexp_prototype::flags_string_contains,
             rust_runtime::RuntimeFunction,
             string_iterator::StringIterator,
@@ -42,8 +42,6 @@ use crate::{
         Context, Handle, HeapPtr, PropertyKey,
     },
 };
-
-use super::regexp_constructor::FlagsSource;
 
 pub struct StringPrototype;
 

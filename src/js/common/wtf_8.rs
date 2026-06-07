@@ -10,7 +10,7 @@ use allocator_api2::{
     SliceExt,
 };
 
-use super::{
+use crate::common::{
     alloc,
     unicode::{
         decode_wtf8_codepoint, encode_utf8_codepoint, is_ascii, is_high_surrogate_code_point,

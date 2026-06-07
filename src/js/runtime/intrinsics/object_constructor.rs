@@ -13,7 +13,10 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
+            rust_runtime::RuntimeFunction,
+        },
         object_value::ObjectValue,
         ordinary_object::{
             object_create_from_constructor, object_create_with_optional_proto,
@@ -26,8 +29,6 @@ use crate::{
         Context, Handle, Value,
     },
 };
-
-use super::{intrinsics::Intrinsic, map_constructor::add_entries_from_iterable};
 
 pub struct ObjectConstructor;
 

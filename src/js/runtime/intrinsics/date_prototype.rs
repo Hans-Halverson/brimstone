@@ -8,7 +8,13 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::{
-            date_object::{day, make_date, make_full_year, make_time, time_clip},
+            date_object::{
+                date_from_time, day, hour_from_time, local_time, make_date, make_day,
+                make_full_year, make_time, millisecond_from_time, minute_from_time,
+                month_from_time, second_from_time, time_clip, time_within_day, utc, week_day,
+                year_from_time, DateObject, MS_PER_MINUTE,
+            },
+            intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
@@ -19,15 +25,6 @@ use crate::{
         },
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-};
-
-use super::{
-    date_object::{
-        date_from_time, hour_from_time, local_time, make_day, millisecond_from_time,
-        minute_from_time, month_from_time, second_from_time, time_within_day, utc, week_day,
-        year_from_time, DateObject, MS_PER_MINUTE,
-    },
-    intrinsics::Intrinsic,
 };
 
 pub struct DatePrototype;

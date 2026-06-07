@@ -32,9 +32,18 @@ use crate::{
         alloc_error::{AllocError, AllocResult},
         boxed_value::BoxedValue,
         bytecode::{
-            function::{dump_bytecode_function, BytecodeFunction},
-            instruction::DefinePropertyFlags,
+            constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
+            exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
+            function::{dump_bytecode_function, BytecodeFunction, Closure},
+            instruction::{
+                DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,
+                ThrowNewErrorKind,
+            },
+            operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
+            register_allocator::TemporaryRegisterAllocator,
             source_map::BytecodeSourceMap,
+            width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
+            writer::BytecodeWriter,
         },
         class_names::{ClassNames, HomeObjectLocation, Method},
         collections::{BsVec, BsVecField},
@@ -58,17 +67,6 @@ use crate::{
         value::BigIntValue,
         Context, Handle, HeapPtr, Realm, Value,
     },
-};
-
-use super::{
-    constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
-    exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-    function::Closure,
-    instruction::{DecodeInfo, DefinePrivatePropertyFlags, EvalFlags, OpCode, ThrowNewErrorKind},
-    operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
-    register_allocator::TemporaryRegisterAllocator,
-    width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
-    writer::BytecodeWriter,
 };
 
 /// Bytecode generator for an entire program. Handles generating the global function as well as all

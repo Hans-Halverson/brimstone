@@ -11,6 +11,7 @@ use crate::{
                 make_date, make_day, make_full_year, make_time, time_clip, utc, DateObject,
             },
             date_prototype::{to_date_string, validate_date_value},
+            intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
         },
         object_value::ObjectValue,
@@ -21,8 +22,6 @@ use crate::{
         Context, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct DateConstructor;
 

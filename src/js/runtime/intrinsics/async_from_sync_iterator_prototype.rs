@@ -9,8 +9,10 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::promise_prototype::perform_promise_then,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic, promise_prototype::perform_promise_then,
+            rust_runtime::RuntimeFunction,
+        },
         iterator::{
             create_iter_result_object, iterator_close, iterator_complete, iterator_next,
             iterator_value, Iterator,
@@ -23,8 +25,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // Async-from-Sync Iterator Objects (https://tc39.es/ecma262/#sec-async-from-sync-iterator-objects)
 extend_object! {

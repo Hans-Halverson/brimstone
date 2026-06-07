@@ -12,7 +12,8 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::{
-            array_from_async_generator::ArrayFromAsyncGenerator, rust_runtime::RuntimeFunction,
+            array_from_async_generator::ArrayFromAsyncGenerator, intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
         },
         iterator::iter_iterator_method_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
@@ -23,8 +24,6 @@ use crate::{
         Context, EvalResult, Handle, Realm, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct ArrayConstructor;
 

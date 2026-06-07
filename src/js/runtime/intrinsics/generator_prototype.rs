@@ -6,7 +6,7 @@ use crate::runtime::{
     function::get_argument,
     generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
     heap_item_descriptor::HeapItemKind,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
     object_value::ObjectValue,
     ordinary_object::object_create,
     property::Property,
@@ -14,8 +14,6 @@ use crate::runtime::{
     value::Value,
     Context, Handle, PropertyDescriptor,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct GeneratorPrototype;
 

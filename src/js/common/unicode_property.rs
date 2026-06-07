@@ -7,7 +7,7 @@ use icu_properties::{
     CodePointSetDataBorrowed,
 };
 
-use super::{icu::ICU, unicode::MAX_CODE_POINT};
+use crate::common::{icu::ICU, unicode::MAX_CODE_POINT};
 
 #[derive(Clone, Copy, Debug)]
 pub enum UnicodeProperty {

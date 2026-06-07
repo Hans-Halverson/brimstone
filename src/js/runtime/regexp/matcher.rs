@@ -16,12 +16,13 @@ use crate::{
                 AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-                ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
-                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
-                ProgressInstruction, TInstruction, WildcardInstruction,
-                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureIfNoProgressInstruction,
+                ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
+                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction, JumpInstruction,
+                LiteralInstruction, LookaroundInstruction, LoopInstruction,
+                MarkCapturePointInstruction, OpCode, ProgressInstruction, TInstruction,
+                WildcardInstruction, WildcardNoNewlineInstruction,
+                WordBoundaryMoveToPreviousInstruction,
             },
         },
         string_value::StringValue,
@@ -298,23 +299,29 @@ impl<T: LexerStream> MatchEngine<T> {
                 }
                 OpCode::ClearCapture => {
                     let instr = instr.cast::<ClearCaptureInstruction>();
+                    self.clear_capture_at_index(instr.capture_group_index());
 
-                    // Clearing just the ending capture point for the group is enough
-                    let capture_point_index = instr.capture_group_index() * 2 + 1;
-                    self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX);
                     self.advance_instruction::<ClearCaptureInstruction>();
                 }
                 OpCode::Progress => {
                     let instr = instr.cast::<ProgressInstruction>();
                     let progress_index = instr.progress_index();
 
-                    let string_index = self.string_lexer.pos() as u32;
-                    if self.get_progress_point(progress_index) != string_index {
-                        self.push_progress_point(progress_index, string_index);
+                    if self.has_made_progress(progress_index) {
+                        self.mark_progress_point(progress_index);
                         self.advance_instruction::<ProgressInstruction>();
                     } else {
                         self.backtrack()?;
                     }
+                }
+                OpCode::ClearCaptureIfNoProgress => {
+                    let instr = instr.cast::<ClearCaptureIfNoProgressInstruction>();
+
+                    if !self.has_made_progress(instr.progress_index()) {
+                        self.clear_capture_at_index(instr.capture_group_index());
+                    }
+
+                    self.advance_instruction::<ClearCaptureIfNoProgressInstruction>();
                 }
                 OpCode::Loop => {
                     let instr = instr.cast::<LoopInstruction>();
@@ -561,13 +568,22 @@ impl<T: LexerStream> MatchEngine<T> {
         self.set_capture_point(capture_point_index, string_index);
     }
 
-    fn push_progress_point(&mut self, progress_point_index: u32, string_index: u32) {
+    /// Whether the engine is further in the source since the last time a given progress point was
+    /// marked.
+    fn has_made_progress(&self, progress_index: u32) -> bool {
+        let string_index = self.string_lexer.pos() as u32;
+        self.get_progress_point(progress_index) != string_index
+    }
+
+    /// Mark the current position in the source at the given progress point.
+    fn mark_progress_point(&mut self, progress_point_index: u32) {
         // Save old progress point on backtrack stack
+        let current_string_index = self.string_lexer.pos() as u32;
         let old_string_index = self.get_progress_point(progress_point_index);
         self.backtrack_stack
             .push(BacktrackEntry::ProgressPoint(progress_point_index, old_string_index));
 
-        self.set_progress_point(progress_point_index, string_index);
+        self.set_progress_point(progress_point_index, current_string_index);
     }
 
     fn push_loop_register(&mut self, loop_register_index: u32, value: usize) {
@@ -577,6 +593,14 @@ impl<T: LexerStream> MatchEngine<T> {
             .push(BacktrackEntry::LoopRegister(loop_register_index, old_value));
 
         self.set_loop_register(loop_register_index, value);
+    }
+
+    /// Clear the capture group with the given index.
+    ///
+    /// Clearing just the ending capture point for the group is enough.
+    fn clear_capture_at_index(&mut self, capture_group_index: u32) {
+        let capture_point_index = capture_group_index * 2 + 1;
+        self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX);
     }
 
     fn execute_backreference<const DIRECTION: bool>(

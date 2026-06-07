@@ -33,12 +33,12 @@ use crate::{
                 AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
-                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-                ConsumeIfTrueInstruction, FailInstruction, Instruction, InstructionIterator,
-                InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
-                LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
-                WildcardInstruction, WildcardNoNewlineInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureIfNoProgressInstruction,
+                ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
+                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction, Instruction,
+                InstructionIterator, InstructionIteratorMut, JumpInstruction, LiteralInstruction,
+                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
+                ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
                 WordBoundaryMoveToPreviousInstruction,
             },
         },
@@ -204,6 +204,18 @@ impl CompiledRegExpBuilder {
 
     fn emit_progress_instruction(&mut self, progress_index: u32) {
         ProgressInstruction::write(self.current_block_buf(), progress_index);
+    }
+
+    fn emit_clear_capture_if_no_progress_instruction(
+        &mut self,
+        capture_group_index: u32,
+        progress_index: u32,
+    ) {
+        ClearCaptureIfNoProgressInstruction::write(
+            self.current_block_buf(),
+            capture_group_index,
+            progress_index,
+        )
     }
 
     fn emit_loop_instruction(
@@ -876,9 +888,8 @@ impl CompiledRegExpBuilder {
         }
 
         // If we are in a quantifier with a minimum of 0 repetitions, then 0-length matches of that
-        // quantifier should not set captures. This is implemented by detecting this case with a
-        // progress instruction to make sure the quantifier consumed, and if not clearing all
-        // captures in the subexpression.
+        // quantifier should not set captures. This is implemented with an instruction that clears
+        // each capture if no progress is detected.
         //
         // Note that the progress instruction must be patched before the start of the quantifier.
         if quantifier.min == 0
@@ -891,29 +902,9 @@ impl CompiledRegExpBuilder {
                 this.emit_progress_instruction(progress_index);
             });
 
-            // Then after the quantifier completes
-            let check_progress_and_continue_block = self.new_block();
-            let clear_captures_block = self.new_block();
-            let join_block = self.new_block();
-            self.emit_branch_instruction(check_progress_and_continue_block, clear_captures_block);
-
-            // Start by checking progress, and if we pass then proceed to the join block with
-            // captures intact.
-            self.in_block(check_progress_and_continue_block, |this| {
-                this.emit_progress_instruction(progress_index);
-                this.emit_jump_instruction(join_block);
-            });
-
-            // If checking progress failed then we will end up in this path and should clear all
-            // captures before proceeding.
-            self.in_block(clear_captures_block, |this| {
-                for capture_index in &quantifier_info.captures {
-                    this.emit_clear_capture_instruction(*capture_index);
-                }
-                this.emit_jump_instruction(join_block);
-            });
-
-            self.set_current_block(join_block);
+            for capture_index in &quantifier_info.captures {
+                self.emit_clear_capture_if_no_progress_instruction(*capture_index, progress_index);
+            }
         }
 
         quantifier_info

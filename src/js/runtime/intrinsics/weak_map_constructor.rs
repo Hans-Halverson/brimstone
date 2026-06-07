@@ -5,16 +5,14 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
+        rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+    },
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
     Context, Handle, Value,
-};
-
-use super::{
-    intrinsics::Intrinsic, map_constructor::add_entries_from_iterable,
-    weak_map_object::WeakMapObject,
 };
 
 pub struct WeakMapConstructor;

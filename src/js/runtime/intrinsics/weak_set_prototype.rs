@@ -1,11 +1,18 @@
 use crate::runtime::{
-    alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
-    intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
-    property::Property, realm::Realm, value::ValueCollectionKey, Context, Handle, Value,
+    alloc_error::AllocResult,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    intrinsics::{
+        intrinsics::Intrinsic, rust_runtime::RuntimeFunction,
+        weak_ref_constructor::can_be_held_weakly, weak_set_object::WeakSetObject,
+    },
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    value::ValueCollectionKey,
+    Context, Handle, Value,
 };
-
-use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
 
 pub struct WeakSetPrototype;
 

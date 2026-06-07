@@ -1,8 +1,8 @@
 use core::panic;
 
-use super::icu::ICU;
-
 use brimstone_macros::match_u32;
+
+use crate::common::icu::ICU;
 
 /// A single unicode code unit. Value may be in the surrogate pair range.
 pub type CodeUnit = u16;

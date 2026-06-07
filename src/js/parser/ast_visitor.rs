@@ -1,4 +1,4 @@
-use super::{ast::*, loc::Loc};
+use crate::parser::{ast::*, loc::Loc};
 
 pub trait AstVisitor<'a>: Sized {
     fn visit_program(&mut self, program: &mut Program<'a>) {

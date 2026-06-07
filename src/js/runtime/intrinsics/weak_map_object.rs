@@ -8,6 +8,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
@@ -15,8 +16,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // WeakMap Objects (https://tc39.es/ecma262/#sec-weakmap-objects)
 extend_object! {

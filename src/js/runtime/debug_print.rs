@@ -1,4 +1,4 @@
-use super::{
+use crate::runtime::{
     bytecode::{
         constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
         function::BytecodeFunction,

@@ -5,15 +5,15 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_set_object::WeakSetObject,
+    },
     iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
     Context, Handle, Value,
 };
-
-use super::{intrinsics::Intrinsic, weak_set_object::WeakSetObject};
 
 pub struct WeakSetConstructor;
 

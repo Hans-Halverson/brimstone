@@ -1,8 +1,9 @@
 use std::mem::transmute;
 
-use crate::runtime::{PropertyKey, Value};
-
-use super::{AnyHeapItem, HeapPtr};
+use crate::runtime::{
+    gc::{AnyHeapItem, HeapPtr},
+    PropertyKey, Value,
+};
 
 pub trait HeapVisitor {
     /// Visit a strongly held pointer.

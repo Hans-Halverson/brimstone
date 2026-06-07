@@ -11,16 +11,15 @@ use crate::{
         error::{syntax_error, syntax_parse_error},
         eval_result::EvalResult,
         intrinsics::{intrinsics::Intrinsic, json_object::JSONObject},
+        module::{
+            module::{DynModule, ModuleId},
+            source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
+            synthetic_module::SyntheticModule,
+        },
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
         Context, Handle, Realm, Value,
     },
-};
-
-use super::{
-    module::{DynModule, ModuleId},
-    source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
-    synthetic_module::SyntheticModule,
 };
 
 /// GraphLoadingStateRecord (https://tc39.es/ecma262/#graphloadingstate-record)

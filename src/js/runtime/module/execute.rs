@@ -17,7 +17,10 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         module::{
-            module::{DynModule, ModuleEnum},
+            import_attributes::ImportAttributes,
+            loader::host_load_imported_module,
+            module::{DynModule, Module, ModuleEnum, ModuleId},
+            source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
             synthetic_module::SyntheticModule,
         },
         object_value::ObjectValue,
@@ -25,13 +28,6 @@ use crate::{
         string_value::FlatString,
         to_string, Context, EvalResult, Handle, PropertyKey, Value,
     },
-};
-
-use super::{
-    import_attributes::ImportAttributes,
-    loader::host_load_imported_module,
-    module::{Module, ModuleId},
-    source_text_module::{ModuleRequest, ModuleState, SourceTextModule},
 };
 
 /// Execute a module - loading, linking, and evaluating it and its dependencies.

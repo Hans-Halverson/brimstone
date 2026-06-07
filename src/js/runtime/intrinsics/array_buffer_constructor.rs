@@ -12,7 +12,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         get,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -21,8 +21,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // 4GB max array buffer size
 const MAX_ARRAY_BUFFER_SIZE: usize = 1 << 32;

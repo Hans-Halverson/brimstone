@@ -4,16 +4,15 @@ use hashbrown::HashMap;
 use crate::{
     common::wtf_8::{Wtf8Str, Wtf8String},
     must_a,
-    runtime::{alloc_error::AllocResult, EvalResult},
+    runtime::{
+        alloc_error::AllocResult,
+        collections::{BsHashSet, BsHashSetField},
+        gc::HeapVisitor,
+        heap_item_descriptor::HeapItemKind,
+        string_value::{FlatString, StringValue},
+        Context, EvalResult, Handle, HeapPtr,
+    },
     set_uninit,
-};
-
-use super::{
-    collections::{BsHashSet, BsHashSetField},
-    gc::HeapVisitor,
-    heap_item_descriptor::HeapItemKind,
-    string_value::{FlatString, StringValue},
-    Context, Handle, HeapPtr,
 };
 
 pub struct InternedStrings {

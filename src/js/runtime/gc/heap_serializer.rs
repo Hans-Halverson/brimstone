@@ -16,13 +16,12 @@
 use crate::{
     common::serialized_heap::{SerializedHeap, SerializedSemispace},
     runtime::{
+        gc::{AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor},
         heap_item_descriptor::HeapItemDescriptor,
         rust_vtables::{get_vtable, lookup_vtable_enum, RustVtable},
         Context, Value,
     },
 };
-
-use super::{AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor};
 
 pub struct HeapSerializer {
     cx: Context,

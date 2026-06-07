@@ -10,7 +10,14 @@ use crate::{
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         interned_strings::InternedStrings,
         intrinsics::intrinsics::Intrinsic,
-        module::module::next_module_id,
+        module::{
+            module::{
+                next_module_id, DynModule, Module, ModuleEnum, ModuleId, ResolveExportName,
+                ResolveExportResult,
+            },
+            module_namespace_object::ModuleNamespaceObject,
+            source_text_module::SourceTextModule,
+        },
         promise_object::{coerce_to_ordinary_promise, PromiseCapability, PromiseObject},
         rust_vtables::extract_module_vtable,
         scope::Scope,
@@ -19,12 +26,6 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
     set_uninit,
-};
-
-use super::{
-    module::{DynModule, Module, ModuleEnum, ModuleId, ResolveExportName, ResolveExportResult},
-    module_namespace_object::ModuleNamespaceObject,
-    source_text_module::SourceTextModule,
 };
 
 #[repr(C)]

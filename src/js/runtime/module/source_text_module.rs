@@ -11,7 +11,14 @@ use crate::{
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         module::{
-            execute::module_evaluate, import_attributes::ImportAttributes, module::next_module_id,
+            execute::module_evaluate,
+            import_attributes::ImportAttributes,
+            linker::link,
+            loader::load_requested_modules,
+            module::{
+                next_module_id, DynModule, HeapDynModule, Module, ModuleEnum, ModuleId,
+                ResolveExportName, ResolveExportResult,
+            },
             module_namespace_object::ModuleNamespaceObject,
         },
         object_value::ObjectValue,
@@ -23,15 +30,6 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
-};
-
-use super::{
-    linker::link,
-    loader::load_requested_modules,
-    module::{
-        DynModule, HeapDynModule, Module, ModuleEnum, ModuleId, ResolveExportName,
-        ResolveExportResult,
-    },
 };
 
 /// Abstract Module Records (https://tc39.es/ecma262/#sec-abstract-module-records)

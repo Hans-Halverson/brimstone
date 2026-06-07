@@ -5,20 +5,25 @@ use brimstone_macros::match_u32;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::common::unicode::{
-    as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
-    decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
-    is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start, is_id_start_ascii,
-    is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
-    is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
+use crate::{
+    common::{
+        unicode::{
+            as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start, as_id_start_unicode,
+            decode_wtf8_codepoint, get_binary_value, get_hex_value, get_octal_value, is_ascii,
+            is_decimal_digit, is_id_part_ascii, is_id_part_unicode, is_id_start, is_id_start_ascii,
+            is_id_start_unicode, is_in_unicode_range, is_newline, is_unicode_newline,
+            is_unicode_whitespace, to_string_or_unicode_escape_sequence, CodePoint,
+        },
+        wtf_8::Wtf8Str,
+    },
+    parser::{
+        ast::{AstAlloc, AstString},
+        loc::{Loc, Pos},
+        parse_error::{LocalizedParseError, ParseError, ParseResult},
+        source::Source,
+        token::{RegExpToken, TemplatePartToken, Token},
+    },
 };
-use crate::common::wtf_8::Wtf8Str;
-
-use super::ast::{AstAlloc, AstString};
-use super::loc::{Loc, Pos};
-use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
-use super::source::Source;
-use super::token::{RegExpToken, TemplatePartToken, Token};
 
 pub struct Lexer<'a> {
     pub source: &'a Rc<Source>,

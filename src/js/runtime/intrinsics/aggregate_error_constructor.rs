@@ -10,8 +10,11 @@ use crate::{
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
         function::get_argument,
-        intrinsics::error_constructor::install_error_cause,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            error_constructor::{install_error_cause, ErrorObject},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
         iterator::iter_iterator_values,
         object_value::ObjectValue,
         property_descriptor::PropertyDescriptor,
@@ -20,8 +23,6 @@ use crate::{
         Context, Handle, Value,
     },
 };
-
-use super::{error_constructor::ErrorObject, intrinsics::Intrinsic};
 
 /// AggregateError Objects (https://tc39.es/ecma262/#sec-aggregate-error-objects)
 pub struct AggregateErrorObject;

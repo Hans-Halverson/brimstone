@@ -1,9 +1,10 @@
 use crate::runtime::{
-    alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction, object_value::ObjectValue,
-    realm::Realm, Context, Handle,
+    alloc_error::AllocResult,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+    object_value::ObjectValue,
+    realm::Realm,
+    Context, Handle,
 };
-
-use super::intrinsics::Intrinsic;
 
 /// The %AsyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-asynciteratorprototype)
 pub struct AsyncIteratorPrototype;

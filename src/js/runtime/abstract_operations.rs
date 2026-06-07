@@ -3,36 +3,31 @@ use std::collections::HashSet;
 use crate::{
     must, must_a,
     runtime::{
+        accessor::Accessor,
         alloc_error::AllocResult,
-        error::range_error,
+        array_object::create_array_from_list,
+        bound_function_object::BoundFunctionObject,
+        bytecode::function::Closure,
+        error::{err_cannot_set_property, range_error, type_error},
+        eval::expression::eval_instanceof_expression,
+        eval_result::EvalResult,
+        gc::{Handle, HeapPtr},
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
         iterator::iter_iterator_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
-        type_utilities::{same_value_zero, to_property_key},
+        object_value::ObjectValue,
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        proxy_object::ProxyObject,
+        realm::Realm,
+        type_utilities::{
+            is_callable, is_constructor_value, require_object_coercible, same_object_value_handles,
+            same_value_zero, to_length, to_object, to_property_key,
+        },
+        value::SymbolValue,
+        Context, Value,
     },
-};
-
-use super::{
-    accessor::Accessor,
-    array_object::create_array_from_list,
-    bound_function_object::BoundFunctionObject,
-    bytecode::function::Closure,
-    error::{err_cannot_set_property, type_error},
-    eval::expression::eval_instanceof_expression,
-    eval_result::EvalResult,
-    gc::{Handle, HeapPtr},
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
-    proxy_object::ProxyObject,
-    realm::Realm,
-    type_utilities::{
-        is_callable, is_constructor_value, require_object_coercible, same_object_value_handles,
-        to_length, to_object,
-    },
-    value::SymbolValue,
-    Context, Value,
 };
 
 /// IsExtensible (https://tc39.es/ecma262/#sec-isextensible-o)

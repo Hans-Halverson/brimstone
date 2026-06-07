@@ -1,6 +1,8 @@
-use crate::runtime::bytecode::{generator::EmitError, operand::Register, width::ExtraWide};
-
-use super::generator::{EmitResult, GenRegister};
+use crate::runtime::bytecode::{
+    generator::{EmitError, EmitResult, GenRegister},
+    operand::Register,
+    width::ExtraWide,
+};
 
 /// Allocates a stack of temporary registers during bytecode generation.
 pub struct TemporaryRegisterAllocator {

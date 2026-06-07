@@ -1,12 +1,18 @@
 use crate::runtime::{
-    abstract_operations::call_object, alloc_error::AllocResult, builtin_function::BuiltinFunction,
-    error::type_error, eval_result::EvalResult, function::get_argument, get,
-    intrinsics::rust_runtime::RuntimeFunction, intrinsics::set_object::SetObject,
-    iterator::iter_iterator_values, object_value::ObjectValue, realm::Realm,
-    type_utilities::is_callable, Context, Handle, Value,
+    abstract_operations::call_object,
+    alloc_error::AllocResult,
+    builtin_function::BuiltinFunction,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    get,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction, set_object::SetObject},
+    iterator::iter_iterator_values,
+    object_value::ObjectValue,
+    realm::Realm,
+    type_utilities::is_callable,
+    Context, Handle, Value,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct SetConstructor;
 

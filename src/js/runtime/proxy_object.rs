@@ -2,30 +2,32 @@ use std::{collections::HashSet, mem::size_of};
 
 use crate::{
     extend_object, must,
-    runtime::{alloc_error::AllocResult, error::range_error},
+    runtime::{
+        abstract_operations::{
+            call_object, construct, get_method, is_extensible as is_extensible_,
+            length_of_array_like,
+        },
+        alloc_error::AllocResult,
+        array_object::create_array_from_list,
+        error::{range_error, type_error},
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
+        get,
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
+        object_value::{ObjectValue, VirtualObject},
+        ordinary_object::{is_compatible_property_descriptor, object_create},
+        property_descriptor::{
+            from_property_descriptor, to_property_descriptor, PropertyDescriptor,
+        },
+        property_key::PropertyKey,
+        rust_vtables::extract_virtual_object_vtable,
+        type_utilities::{
+            is_callable_object, is_constructor_object_value, same_opt_object_value_handles,
+            same_value, to_boolean,
+        },
+        Context, EvalResult, Realm, Value,
+    },
     set_uninit,
-};
-
-use super::{
-    abstract_operations::{
-        call_object, construct, get_method, is_extensible as is_extensible_, length_of_array_like,
-    },
-    array_object::create_array_from_list,
-    error::type_error,
-    gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
-    get,
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::intrinsics::Intrinsic,
-    object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{is_compatible_property_descriptor, object_create},
-    property_descriptor::{from_property_descriptor, to_property_descriptor, PropertyDescriptor},
-    property_key::PropertyKey,
-    rust_vtables::extract_virtual_object_vtable,
-    type_utilities::{
-        is_callable_object, is_constructor_object_value, same_opt_object_value_handles, same_value,
-        to_boolean,
-    },
-    Context, EvalResult, Realm, Value,
 };
 
 // Proxy Object (https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots)

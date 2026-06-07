@@ -1,17 +1,16 @@
 use crate::{
     handle_scope_guard, must_a,
     parser::loc::find_line_col_for_pos,
-    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
-};
-
-use super::{
-    bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
-    collections::BsArray,
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::error_constructor::CachedStackTraceInfo,
-    source_file::SourceFile,
-    Context, Handle, HeapPtr,
+    runtime::{
+        alloc_error::AllocResult,
+        bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
+        collections::BsArray,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
+        source_file::SourceFile,
+        Context, Handle, HeapPtr,
+    },
 };
 
 /// An array of stack frame entries which contain the information necessary to construct a full

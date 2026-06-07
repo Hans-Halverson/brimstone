@@ -1,14 +1,17 @@
-use crate::common::unicode::to_string_or_unicode_escape_sequence;
-
-use super::ast::*;
-use super::loc::{find_line_col_for_pos, Loc};
-use super::parser::ParseProgramResult;
-use super::regexp::{
-    Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
-    ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp, RegExpFlags,
-    StringDisjunction, Term,
+use crate::{
+    common::unicode::to_string_or_unicode_escape_sequence,
+    parser::{
+        ast::*,
+        loc::{find_line_col_for_pos, Loc},
+        parser::ParseProgramResult,
+        regexp::{
+            Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,
+            ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier, RegExp,
+            RegExpFlags, StringDisjunction, Term,
+        },
+        source::Source,
+    },
 };
-use super::source::Source;
 
 struct Printer<'a> {
     buf: String,

@@ -16,7 +16,9 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::{
-            json_parser::{JSONParseRecord, JSONParseRecordChildren},
+            intrinsics::Intrinsic,
+            json_parser::{parse_json, JSONParseRecord, JSONParseRecordChildren},
+            json_serializer::JSONSerializer,
             raw_json_object::RawJSONObject,
             rust_runtime::RuntimeFunction,
         },
@@ -29,8 +31,6 @@ use crate::{
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
-
-use super::{intrinsics::Intrinsic, json_parser::parse_json, json_serializer::JSONSerializer};
 
 /// The JSON Object (https://tc39.es/ecma262/#sec-json-object)
 pub struct JSONObject;

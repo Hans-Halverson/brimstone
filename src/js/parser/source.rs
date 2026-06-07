@@ -2,11 +2,12 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use crate::common::{constants::MAX_STRING_LENGTH, wtf_8::Wtf8String};
-
-use super::loc::calculate_line_offsets;
-use super::parse_error::ParseResult;
-use super::{LocalizedParseError, ParseError};
+use crate::{
+    common::{constants::MAX_STRING_LENGTH, wtf_8::Wtf8String},
+    parser::{
+        loc::calculate_line_offsets, parse_error::ParseResult, LocalizedParseError, ParseError,
+    },
+};
 
 pub struct Source {
     /// Path to the source file on disk.

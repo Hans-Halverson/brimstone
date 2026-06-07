@@ -14,7 +14,12 @@ use crate::{
         function::get_argument,
         get,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            array_iterator::{ArrayIterator, ArrayIteratorKind},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            typed_array_prototype::compare_typed_array_elements,
+        },
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
@@ -30,12 +35,6 @@ use crate::{
         },
         Context, EvalResult, Handle, Value,
     },
-};
-
-use super::{
-    array_iterator::{ArrayIterator, ArrayIteratorKind},
-    intrinsics::Intrinsic,
-    typed_array_prototype::compare_typed_array_elements,
 };
 
 pub struct ArrayPrototype;

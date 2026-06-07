@@ -11,7 +11,7 @@ use crate::{
         get,
         intrinsics::{
             aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
-            rust_runtime::RuntimeFunction,
+            intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
         },
         iterator::{get_iterator, iterator_close, iterator_step_value, Iterator, IteratorHint},
         object_value::ObjectValue,
@@ -22,8 +22,6 @@ use crate::{
         Context, Handle, PropertyKey, Value,
     },
 };
-
-use super::{intrinsics::Intrinsic, number_constructor::NumberObject};
 
 /// IfAbruptRejectPromise (https://tc39.es/ecma262/#sec-ifabruptrejectpromise)
 #[macro_export]

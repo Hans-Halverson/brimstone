@@ -13,16 +13,15 @@ use crate::{
         },
     },
     parser::loc::{Loc, Pos},
-    runtime::alloc_error::AllocResult,
-};
-
-use super::{
-    intrinsics::date_object::{
-        year_month_day_to_days_since_unix_epoch, MAX_TIME_VALUE, MS_PER_DAY, MS_PER_HOUR,
-        MS_PER_MINUTE, MS_PER_SECOND,
+    runtime::{
+        alloc_error::AllocResult,
+        intrinsics::date_object::{
+            year_month_day_to_days_since_unix_epoch, MAX_TIME_VALUE, MS_PER_DAY, MS_PER_HOUR,
+            MS_PER_MINUTE, MS_PER_SECOND,
+        },
+        string_value::{StringValue, UnsafeCodeUnitIterator},
+        Handle,
     },
-    string_value::{StringValue, UnsafeCodeUnitIterator},
-    Handle,
 };
 
 pub struct StringLexer {

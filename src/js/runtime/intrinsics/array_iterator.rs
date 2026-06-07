@@ -10,7 +10,14 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            typed_array_prototype::{
+                is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+                typed_array_length,
+            },
+        },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -21,14 +28,6 @@ use crate::{
         Context, Handle, HeapPtr,
     },
     set_uninit,
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    typed_array_prototype::{
-        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
-        typed_array_length,
-    },
 };
 
 // Array Iterator Objects (https://tc39.es/ecma262/#sec-array-iterator-objects)

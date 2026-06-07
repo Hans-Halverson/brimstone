@@ -6,15 +6,18 @@ use std::{
 use crate::{
     heap_trait_object,
     runtime::{
-        alloc_error::AllocResult, boxed_value::BoxedValue, gc::AnyHeapItem,
-        promise_object::PromiseObject, rust_vtables::extract_module_vtable,
-        string_value::FlatString, Context, EvalResult, Handle, HeapPtr,
+        alloc_error::AllocResult,
+        boxed_value::BoxedValue,
+        gc::AnyHeapItem,
+        module::{
+            module_namespace_object::ModuleNamespaceObject, source_text_module::SourceTextModule,
+            synthetic_module::SyntheticModule,
+        },
+        promise_object::PromiseObject,
+        rust_vtables::extract_module_vtable,
+        string_value::FlatString,
+        Context, EvalResult, Handle, HeapPtr,
     },
-};
-
-use super::{
-    module_namespace_object::ModuleNamespaceObject, source_text_module::SourceTextModule,
-    synthetic_module::SyntheticModule,
 };
 
 /// A generic module. May be a SourceTextModule or a SyntheticModule.

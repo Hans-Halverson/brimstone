@@ -1,15 +1,21 @@
 use crate::runtime::{
-    alloc_error::AllocResult, error::type_error, eval_result::EvalResult, function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
-    intrinsics::weak_ref_constructor::can_be_held_weakly, object_value::ObjectValue,
-    property::Property, realm::Realm, type_utilities::same_value, Context, Handle, Value,
-};
-
-use super::{
-    finalization_registry_object::{
-        FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
+    alloc_error::AllocResult,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    intrinsics::{
+        finalization_registry_object::{
+            FinalizationRegistryCell, FinalizationRegistryCells, FinalizationRegistryObject,
+        },
+        intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
+        weak_ref_constructor::can_be_held_weakly,
     },
-    intrinsics::Intrinsic,
+    object_value::ObjectValue,
+    property::Property,
+    realm::Realm,
+    type_utilities::same_value,
+    Context, Handle, Value,
 };
 
 pub struct FinalizationRegistryPrototype;

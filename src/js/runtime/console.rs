@@ -3,22 +3,22 @@ use crate::{
         error::{ErrorFormatter, FormatOptions, SourceInfo},
         terminal::stdout_should_use_colors,
     },
-    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
-};
-
-use super::{
-    eval_result::EvalResult,
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::{
-        error_constructor::{CachedStackTraceInfo, ErrorObject},
-        error_prototype::{error_message, error_name},
-        intrinsics::Intrinsic,
+    runtime::{
+        alloc_error::AllocResult,
+        eval_result::EvalResult,
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::{
+            error_constructor::{CachedStackTraceInfo, ErrorObject},
+            error_prototype::{error_message, error_name},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        realm::Realm,
+        type_utilities::number_to_string,
+        value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
+        Context, Handle, Value,
     },
-    object_value::ObjectValue,
-    realm::Realm,
-    type_utilities::number_to_string,
-    value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-    Context, Handle, Value,
 };
 
 pub struct ConsoleObject;

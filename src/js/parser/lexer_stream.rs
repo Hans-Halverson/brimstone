@@ -1,17 +1,19 @@
 use std::rc::Rc;
 
-use crate::common::{
-    string_iterators::{CodePointIterator, CodeUnitIterator},
-    unicode::{
-        code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
-        is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair, CodeUnit,
+use crate::{
+    common::{
+        string_iterators::{CodePointIterator, CodeUnitIterator},
+        unicode::{
+            code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
+            is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair,
+            CodeUnit,
+        },
     },
-};
-
-use super::{
-    loc::{Loc, Pos},
-    source::Source,
-    LocalizedParseError, ParseError, ParseResult,
+    parser::{
+        loc::{Loc, Pos},
+        source::Source,
+        LocalizedParseError, ParseError, ParseResult,
+    },
 };
 
 /// Character that marks an EOF. Not a valid unicode character.

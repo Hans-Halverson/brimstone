@@ -3,29 +3,22 @@ use std::mem::size_of;
 use crate::{
     completion_value, extend_object,
     runtime::{
-        abstract_operations::{call_object, construct},
+        abstract_operations::{call_object, construct, get_function_realm_no_error},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
+        function::get_argument,
         gc::{AnyHeapItem, HeapItem, HeapVisitor},
-        heap_item_descriptor::HeapItemKind,
+        get,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
-        type_utilities::{is_callable, is_constructor_value},
+        type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
-        Context, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr,
     },
     set_uninit,
-};
-
-use super::{
-    abstract_operations::get_function_realm_no_error,
-    function::get_argument,
-    get,
-    heap_item_descriptor::HeapItemDescriptor,
-    type_utilities::{same_object_value, same_value},
-    EvalResult, Handle,
 };
 
 // Properties of Promise Instances (https://tc39.es/ecma262/#sec-properties-of-promise-instances)

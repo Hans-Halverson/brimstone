@@ -5,7 +5,7 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
     object_value::ObjectValue,
     property::Property,
     property_descriptor::{from_property_descriptor, to_property_descriptor},
@@ -13,8 +13,6 @@ use crate::runtime::{
     type_utilities::{is_callable, is_constructor_value, to_property_key},
     Context, Handle, Value,
 };
-
-use super::intrinsics::Intrinsic;
 
 /// The Reflect Object (https://tc39.es/ecma262/#sec-reflect-object)
 pub struct ReflectObject;

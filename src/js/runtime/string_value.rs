@@ -25,16 +25,16 @@ use crate::{
         wtf_8::{Wtf8CodePointsIterator, Wtf8String},
     },
     field_offset, must_a,
-    runtime::{alloc_error::AllocResult, error::range_error, EvalResult},
+    runtime::{
+        alloc_error::AllocResult,
+        debug_print::{DebugPrint, DebugPrinter},
+        error::range_error,
+        gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        object_value::ObjectValue,
+        Context, EvalResult, Value,
+    },
     set_uninit, static_assert,
-};
-
-use super::{
-    debug_print::{DebugPrint, DebugPrinter},
-    gc::{Handle, HeapInfo, HeapItem, HeapPtr, HeapVisitor},
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    object_value::ObjectValue,
-    Context, Value,
 };
 
 #[derive(PartialEq)]

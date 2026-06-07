@@ -1,8 +1,9 @@
 use bitflags::bitflags;
 
-use crate::common::unicode_property::UnicodeProperty;
-
-use super::ast::{AstSlice, AstStr, P};
+use crate::{
+    common::unicode_property::UnicodeProperty,
+    parser::ast::{AstSlice, AstStr, P},
+};
 
 pub struct RegExp<'a> {
     pub disjunction: Disjunction<'a>,

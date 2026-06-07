@@ -1,18 +1,20 @@
 use std::{alloc::Layout, mem::size_of, ops::Range, ptr::NonNull};
 
-use crate::{
-    common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
-    runtime::{alloc_error::AllocResult, gc::garbage_collector::GarbageCollector, Context},
-};
-
-use super::{
-    handle::HandleContext,
-    heap_serializer::{calculate_extra_offset, HeapSpaceDeserializer},
-    GcType, HeapPtr, HeapVisitor,
-};
-
 #[cfg(feature = "alloc_error")]
 use crate::runtime::alloc_error::AllocError;
+use crate::{
+    common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
+    runtime::{
+        alloc_error::AllocResult,
+        gc::{
+            garbage_collector::GarbageCollector,
+            handle::HandleContext,
+            heap_serializer::{calculate_extra_offset, HeapSpaceDeserializer},
+            GcType, HeapPtr, HeapVisitor,
+        },
+        Context,
+    },
+};
 
 /// Heap Layout:
 ///

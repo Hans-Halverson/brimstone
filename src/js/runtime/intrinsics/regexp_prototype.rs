@@ -17,10 +17,13 @@ use crate::{
         get,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
-            regexp_constructor::{regexp_init, FlagsSource, RegExpSource},
+            intrinsics::Intrinsic,
+            regexp_constructor::{
+                as_regexp_object, regexp_init, FlagsSource, RegExpObject, RegExpSource,
+            },
             regexp_string_iterator::RegExpStringIterator,
             rust_runtime::RuntimeFunction,
-            string_prototype::SubstitutionTemplateParser,
+            string_prototype::{ReplaceValue, SubstitutionTemplateParser},
         },
         object_value::ObjectValue,
         ordinary_object::object_create_with_optional_proto,
@@ -34,12 +37,6 @@ use crate::{
         },
         Context, Handle, PropertyKey, Value,
     },
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    regexp_constructor::{as_regexp_object, RegExpObject},
-    string_prototype::ReplaceValue,
 };
 
 pub struct RegExpPrototype;

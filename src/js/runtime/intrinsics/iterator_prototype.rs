@@ -6,7 +6,10 @@ use crate::{
         array_object::create_array_from_list,
         error::{range_error_value, type_error, type_error_value},
         function::get_argument,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject,
+            rust_runtime::RuntimeFunction,
+        },
         iterator::{get_iterator_direct, iterator_close, iterator_step_value},
         object_value::ObjectValue,
         realm::Realm,
@@ -14,8 +17,6 @@ use crate::{
         Context, EvalResult, Handle, Value,
     },
 };
-
-use super::{intrinsics::Intrinsic, iterator_helper_object::IteratorHelperObject};
 
 /// The %IteratorPrototype% Object (https://tc39.es/ecma262/#sec-%iteratorprototype%-object)
 pub struct IteratorPrototype;

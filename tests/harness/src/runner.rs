@@ -1,6 +1,3 @@
-use serde_json::{self, json};
-use threadpool::ThreadPool;
-
 use std::{
     collections::HashMap,
     fs,
@@ -9,14 +6,6 @@ use std::{
     rc::Rc,
     sync::{mpsc::channel, LazyLock, RwLock},
     time::{Duration, SystemTime},
-};
-
-use crate::{
-    ignored::IgnoredIndex,
-    index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
-    manifest::{Suite, SuiteFilter, TestManifest},
-    table::{CellAlignment, TableCell, TableFormatter, TableRow},
-    utils::GenericResult,
 };
 
 use brimstone_core::{
@@ -33,6 +22,16 @@ use brimstone_core::{
         test_262_object::Test262Object, to_console_string, to_string, Context, ContextBuilder,
         EvalResult, Handle, Value,
     },
+};
+use serde_json::{self, json};
+use threadpool::ThreadPool;
+
+use crate::{
+    ignored::IgnoredIndex,
+    index::{ExpectedResult, Test, TestIndex, TestMode, TestPhase},
+    manifest::{Suite, SuiteFilter, TestManifest},
+    table::{CellAlignment, TableCell, TableFormatter, TableRow},
+    utils::GenericResult,
 };
 
 pub struct TestRunner {

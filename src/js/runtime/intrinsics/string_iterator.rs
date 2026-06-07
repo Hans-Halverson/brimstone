@@ -8,7 +8,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -19,8 +19,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // String Iterator Objects (https://tc39.es/ecma262/#sec-string-iterator-objects)
 extend_object! {

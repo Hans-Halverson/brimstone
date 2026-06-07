@@ -10,7 +10,11 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            map_object::{MapObject, ValueMap},
+            rust_runtime::RuntimeFunction,
+        },
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -20,11 +24,6 @@ use crate::{
         Context, Handle, HeapPtr,
     },
     set_uninit,
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    map_object::{MapObject, ValueMap},
 };
 
 // Map Iterator Objects (https://tc39.es/ecma262/#sec-map-iterator-objects)

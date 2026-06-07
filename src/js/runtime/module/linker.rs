@@ -3,14 +3,12 @@ use crate::{
     runtime::{
         boxed_value::BoxedValue,
         error::syntax_error,
-        module::{module::ModuleEnum, source_text_module::ModuleState},
+        module::{
+            module::{DynModule, Module, ModuleEnum, ResolveExportName, ResolveExportResult},
+            source_text_module::{ImportEntry, ModuleEntry, ModuleState, SourceTextModule},
+        },
         Context, EvalResult, Handle,
     },
-};
-
-use super::{
-    module::{DynModule, Module, ResolveExportName, ResolveExportResult},
-    source_text_module::{ImportEntry, ModuleEntry, SourceTextModule},
 };
 
 struct GraphLinker {

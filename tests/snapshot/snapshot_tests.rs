@@ -1,3 +1,11 @@
+use std::{
+    cmp::min,
+    env, error, fs, iter,
+    path::{Path, PathBuf},
+    rc::Rc,
+    sync::{LazyLock, Mutex},
+};
+
 use brimstone_core::{
     common::{
         error::FormatOptions,
@@ -10,15 +18,6 @@ use brimstone_core::{
         Context, ContextBuilder, Handle,
     },
 };
-
-use std::{
-    cmp::min,
-    env, error, fs, iter,
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::{LazyLock, Mutex},
-};
-
 use clap::Parser;
 
 type GenericResult<T> = Result<T, Box<dyn error::Error>>;

@@ -1,12 +1,11 @@
 use crate::{
     must, must_a,
-    runtime::{alloc_error::AllocResult, EvalResult},
-};
-
-use super::{
-    abstract_operations::define_property_or_throw, object_value::ObjectValue,
-    property_descriptor::PropertyDescriptor, property_key::PropertyKey, string_value::StringValue,
-    value::Value, Context, Handle,
+    runtime::{
+        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
+        object_value::ObjectValue, property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey, string_value::StringValue, value::Value, Context, EvalResult,
+        Handle,
+    },
 };
 
 pub fn set_simple_function_name(

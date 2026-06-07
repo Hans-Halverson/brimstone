@@ -4,16 +4,12 @@ use crate::{
     parser::{LocalizedParseError, LocalizedParseErrors},
     runtime::{
         alloc_error::{format_oom_error_message, AllocError},
-        eval_result::EvalError,
+        bytecode::generator::EmitError,
+        eval_result::{EvalError, EvalResult},
+        intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
+        string_value::{FlatString, StringValue},
+        to_console_string, Context, Handle, HeapPtr, Value,
     },
-};
-
-use super::{
-    bytecode::generator::EmitError,
-    eval_result::EvalResult,
-    intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
-    string_value::{FlatString, StringValue},
-    to_console_string, Context, Handle, HeapPtr, Value,
 };
 
 /// Top level error type for the JS engine. Encapsulates all possible errors types that can occur

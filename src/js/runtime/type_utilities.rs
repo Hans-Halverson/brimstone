@@ -5,29 +5,28 @@ use num_bigint::{BigInt, ToBigInt};
 use crate::{
     common::math::modulo,
     must_a,
-    runtime::{alloc_error::AllocResult, string_parsing::StringLexer},
-};
-
-use super::{
-    abstract_operations::{call_object, get, get_method},
-    bytecode::function::Closure,
-    error::{range_error, syntax_error, type_error},
-    eval_result::EvalResult,
-    gc::{Handle, HeapPtr},
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::{
-        bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
-        number_constructor::NumberObject, symbol_constructor::SymbolObject,
+    runtime::{
+        abstract_operations::{call_object, get, get_method},
+        alloc_error::AllocResult,
+        bytecode::function::Closure,
+        error::{range_error, syntax_error, type_error},
+        eval_result::EvalResult,
+        gc::{Handle, HeapPtr},
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::{
+            bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
+            number_constructor::NumberObject, symbol_constructor::SymbolObject,
+        },
+        numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
+        object_value::ObjectValue,
+        property_key::PropertyKey,
+        proxy_object::ProxyObject,
+        string_object::StringObject,
+        string_parsing::{parse_string_to_bigint, parse_string_to_number, StringLexer},
+        string_value::StringValue,
+        value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, POINTER_TAG, SMI_TAG, UNDEFINED_TAG},
+        Context,
     },
-    numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
-    object_value::ObjectValue,
-    property_key::PropertyKey,
-    proxy_object::ProxyObject,
-    string_object::StringObject,
-    string_parsing::{parse_string_to_bigint, parse_string_to_number},
-    string_value::StringValue,
-    value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, POINTER_TAG, SMI_TAG, UNDEFINED_TAG},
-    Context,
 };
 
 #[derive(PartialEq)]

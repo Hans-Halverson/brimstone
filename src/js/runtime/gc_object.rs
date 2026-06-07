@@ -1,18 +1,15 @@
 use crate::{
     handle_scope, must_a,
     runtime::{
-        abstract_operations::define_property_or_throw, alloc_error::AllocResult,
-        intrinsics::rust_runtime::RuntimeFunction, PropertyDescriptor,
+        abstract_operations::define_property_or_throw,
+        alloc_error::AllocResult,
+        eval_result::EvalResult,
+        gc::{GcType, Heap},
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
+        object_value::ObjectValue,
+        realm::Realm,
+        Context, Handle, PropertyDescriptor, Value,
     },
-};
-
-use super::{
-    eval_result::EvalResult,
-    gc::{GcType, Heap},
-    intrinsics::intrinsics::Intrinsic,
-    object_value::ObjectValue,
-    realm::Realm,
-    Context, Handle, Value,
 };
 
 pub struct GcObject;

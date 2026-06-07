@@ -1,22 +1,17 @@
 use crate::{
     must_a,
     runtime::{
-        abstract_operations::{call_object, get_method},
+        abstract_operations::{call, call_object, create_data_property_or_throw, get_method},
         alloc_error::AllocResult,
         error::type_error,
         gc::HeapVisitor,
         get,
         intrinsics::async_from_sync_iterator_prototype::AsyncFromSyncIterator,
-        HeapPtr,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create,
+        type_utilities::to_boolean,
+        Context, EvalResult, Handle, HeapPtr, Value,
     },
-};
-
-use super::{
-    abstract_operations::{call, create_data_property_or_throw},
-    object_value::ObjectValue,
-    ordinary_object::ordinary_object_create,
-    type_utilities::to_boolean,
-    Context, EvalResult, Handle, Value,
 };
 
 /// Iterator Records (https://tc39.es/ecma262/#sec-iterator-records)

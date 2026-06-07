@@ -27,22 +27,22 @@ use crate::{
     runtime::{
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrintMode},
+        regexp::{
+            compiled_regexp::CompiledRegExpObject,
+            instruction::{
+                AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
+                AssertNotWordBoundaryInstruction, AssertStartInstruction,
+                AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
+                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
+                ConsumeIfTrueInstruction, FailInstruction, InstructionIteratorMut, JumpInstruction,
+                LiteralInstruction, LookaroundInstruction, LoopInstruction,
+                MarkCapturePointInstruction, OpCode, ProgressInstruction, WildcardInstruction,
+                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+            },
+        },
         string_value::StringValue,
         Context, Handle,
-    },
-};
-
-use super::{
-    compiled_regexp::CompiledRegExpObject,
-    instruction::{
-        AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
-        AssertNotWordBoundaryInstruction, AssertStartInstruction, AssertStartOrNewlineInstruction,
-        AssertWordBoundaryInstruction, BackreferenceInstruction, BranchInstruction,
-        ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-        ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction,
-        InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
-        LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
-        WildcardInstruction, WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
     },
 };
 

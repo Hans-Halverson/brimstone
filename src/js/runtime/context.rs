@@ -19,36 +19,34 @@ use crate::{
         analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
     },
     runtime::{
-        alloc_error::AllocResult, annex_b::init_annex_b_methods,
-        descriptor_registry::DescriptorRegistry, gc::GarbageCollector, string_value::StringValue,
+        alloc_error::AllocResult,
+        annex_b::init_annex_b_methods,
+        array_properties::{ArrayProperties, DenseArrayProperties},
+        builtin_names::{BuiltinNames, BuiltinSymbols},
+        bytecode::{
+            generator::{BytecodeProgramGenerator, BytecodeScript},
+            vm::VM,
+        },
+        collections::{BsHashMap, BsHashMapField},
+        descriptor_registry::DescriptorRegistry,
+        error::BsResult,
+        gc::{GarbageCollector, Heap, HeapRootsDeserializer, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
+        interned_strings::InternedStrings,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
+        module::{
+            execute::execute_module,
+            import_attributes::ImportAttributes,
+            module::{DynModule, HeapDynModule},
+            source_text_module::SourceTextModule,
+        },
+        object_value::{NamedPropertiesMap, ObjectValue},
+        realm::Realm,
+        string_value::{FlatString, StringValue},
+        tasks::TaskQueue,
+        value::SymbolValue,
+        EvalResult, Handle, HeapPtr, Value,
     },
-};
-
-use super::{
-    array_properties::{ArrayProperties, DenseArrayProperties},
-    builtin_names::{BuiltinNames, BuiltinSymbols},
-    bytecode::{
-        generator::{BytecodeProgramGenerator, BytecodeScript},
-        vm::VM,
-    },
-    collections::{BsHashMap, BsHashMapField},
-    error::BsResult,
-    gc::{Heap, HeapRootsDeserializer, HeapVisitor},
-    heap_item_descriptor::HeapItemKind,
-    interned_strings::InternedStrings,
-    intrinsics::{intrinsics::Intrinsic, rust_runtime::RustRuntimeFunctionRegistry},
-    module::{
-        execute::execute_module,
-        import_attributes::ImportAttributes,
-        module::{DynModule, HeapDynModule},
-        source_text_module::SourceTextModule,
-    },
-    object_value::{NamedPropertiesMap, ObjectValue},
-    realm::Realm,
-    string_value::FlatString,
-    tasks::TaskQueue,
-    value::SymbolValue,
-    EvalResult, Handle, HeapPtr, Value,
 };
 
 /// Top level context for the JS runtime. Contains the heap, execution contexts, etc.

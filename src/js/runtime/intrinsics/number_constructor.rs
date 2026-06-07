@@ -11,7 +11,7 @@ use crate::{
         function::get_argument,
         gc::{Handle, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         numeric_constants::{
             MAX_SAFE_INTEGER_F64, MIN_POSITIVE_SUBNORMAL_F64, MIN_SAFE_INTEGER_F64,
         },
@@ -26,8 +26,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // Number Objects (https://tc39.es/ecma262/#sec-number-objects)
 extend_object! {

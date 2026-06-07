@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt};
 
-use super::{ast::AstStr, loc::Loc};
+use crate::parser::{ast::AstStr, loc::Loc};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'a> {

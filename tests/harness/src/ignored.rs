@@ -1,7 +1,7 @@
+use std::{collections::HashSet, fs, path::Path};
+
 use regex::Regex;
 use serde_json;
-
-use std::{collections::HashSet, fs, path::Path};
 
 use crate::{index::Test, utils::GenericError};
 

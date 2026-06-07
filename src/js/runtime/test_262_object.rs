@@ -4,19 +4,20 @@ use crate::{
     handle_scope, must_a,
     parser::{analyze::analyze, parse_script, source::Source, ParseContext},
     runtime::{
-        alloc_error::AllocResult, bytecode::generator::BytecodeProgramGenerator, get,
-        intrinsics::rust_runtime::RuntimeFunction,
+        abstract_operations::set,
+        alloc_error::AllocResult,
+        bytecode::generator::BytecodeProgramGenerator,
+        error::{syntax_error, syntax_parse_error, type_error},
+        function::get_argument,
+        get,
+        intrinsics::{
+            array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        string_value::StringValue,
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
-};
-
-use super::{
-    abstract_operations::set,
-    error::{syntax_error, syntax_parse_error, type_error},
-    function::get_argument,
-    intrinsics::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic},
-    object_value::ObjectValue,
-    string_value::StringValue,
-    Context, EvalResult, Handle, PropertyKey, Realm, Value,
 };
 
 /// Utility functions used in test262 tests. Must be included in the main library for now so that

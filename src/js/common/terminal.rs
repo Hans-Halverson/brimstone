@@ -1,4 +1,4 @@
-use super::options::Options;
+use crate::common::options::Options;
 
 /// Detect if the terminal supports colors on stdout.
 fn detect_stdout_supports_colors() -> bool {

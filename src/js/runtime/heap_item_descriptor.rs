@@ -4,16 +4,14 @@ use bitflags::bitflags;
 
 use crate::{
     runtime::{
-        alloc_error::AllocResult, ordinary_object::OrdinaryObject,
-        rust_vtables::extract_virtual_object_vtable, Value,
+        alloc_error::AllocResult,
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
+        object_value::{VirtualObject, VirtualObjectVtable},
+        ordinary_object::OrdinaryObject,
+        rust_vtables::extract_virtual_object_vtable,
+        Context, Value,
     },
     set_uninit,
-};
-
-use super::{
-    gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
-    object_value::{VirtualObject, VirtualObjectVtable},
-    Context,
 };
 
 #[repr(C)]

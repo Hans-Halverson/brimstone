@@ -2,15 +2,17 @@ use std::error::Error;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use crate::common::error::{ErrorFormatter, FormatOptions, SourceInfo};
-use crate::common::wtf_8::Wtf8String;
-use crate::parser::scope_tree::ANONYMOUS_DEFAULT_EXPORT_NAME;
-
-use super::scope_tree::BindingKind;
-use super::{
-    loc::{find_line_col_for_pos, Loc},
-    source::Source,
-    token::Token,
+use crate::{
+    common::{
+        error::{ErrorFormatter, FormatOptions, SourceInfo},
+        wtf_8::Wtf8String,
+    },
+    parser::{
+        loc::{find_line_col_for_pos, Loc},
+        scope_tree::{BindingKind, ANONYMOUS_DEFAULT_EXPORT_NAME},
+        source::Source,
+        token::Token,
+    },
 };
 
 #[derive(Debug)]

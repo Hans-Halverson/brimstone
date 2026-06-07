@@ -1,8 +1,8 @@
+use std::{collections::HashMap, fmt, fs, path::Path};
+
 use serde::{Deserialize, Serialize};
 use serde_json;
 use yaml_rust::YamlLoader;
-
-use std::{collections::HashMap, fmt, fs, path::Path};
 
 use crate::{
     manifest::{Suite, TestManifest},

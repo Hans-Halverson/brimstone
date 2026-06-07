@@ -1,9 +1,7 @@
 use crate::runtime::{
-    alloc_error::AllocResult, object_value::ObjectValue, property::Property, realm::Realm, Context,
-    Handle,
+    alloc_error::AllocResult, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
+    property::Property, realm::Realm, Context, Handle,
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct AsyncGeneratorFunctionPrototype;
 

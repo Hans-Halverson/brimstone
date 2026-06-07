@@ -8,7 +8,11 @@ use crate::{
         error::reference_error,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        module::module::Module,
+        module::{
+            module::{DynModule, HeapDynModule, Module, ModuleEnum},
+            source_text_module::SourceTextModule,
+            synthetic_module::SyntheticModule,
+        },
         object_value::VirtualObject,
         ordinary_object::{
             object_create_with_optional_proto, ordinary_define_own_property, ordinary_delete,
@@ -21,12 +25,6 @@ use crate::{
         Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     set_uninit,
-};
-
-use super::{
-    module::{DynModule, HeapDynModule, ModuleEnum},
-    source_text_module::SourceTextModule,
-    synthetic_module::SyntheticModule,
 };
 
 // Module Namespace Exotic Objects (https://tc39.es/ecma262/#sec-module-namespace-exotic-objects)

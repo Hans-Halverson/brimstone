@@ -4,7 +4,10 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::{rust_runtime::RuntimeFunction, weak_ref_constructor::can_be_held_weakly},
+    intrinsics::{
+        intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_map_object::WeakMapObject,
+        weak_ref_constructor::can_be_held_weakly,
+    },
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
@@ -12,8 +15,6 @@ use crate::runtime::{
     value::ValueCollectionKey,
     Context, Handle, Value,
 };
-
-use super::{intrinsics::Intrinsic, weak_map_object::WeakMapObject};
 
 pub struct WeakMapPrototype;
 

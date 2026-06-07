@@ -1,28 +1,28 @@
 use crate::{
     field_offset, handle_scope, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
-    runtime::{alloc_error::AllocResult, intrinsics::rust_runtime::RuntimeFunction},
-    set_uninit,
-};
-
-use super::{
-    builtin_function::BuiltinFunction,
-    bytecode::function::Closure,
-    collections::{BsHashMap, BsHashMapField, InlineArray},
-    error::{err_assign_constant, syntax_error},
-    gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
-    global_names::has_restricted_global_property,
-    heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-    interned_strings::InternedStrings,
-    intrinsics::{
-        global_object::set_default_global_bindings,
-        intrinsics::{Intrinsic, Intrinsics},
+    runtime::{
+        alloc_error::AllocResult,
+        builtin_function::BuiltinFunction,
+        bytecode::function::Closure,
+        collections::{BsHashMap, BsHashMapField, InlineArray},
+        error::{err_assign_constant, syntax_error},
+        gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
+        global_names::has_restricted_global_property,
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        interned_strings::InternedStrings,
+        intrinsics::{
+            global_object::set_default_global_bindings,
+            intrinsics::{Intrinsic, Intrinsics},
+            rust_runtime::RuntimeFunction,
+        },
+        object_value::ObjectValue,
+        scope::Scope,
+        scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
+        string_value::FlatString,
+        Context, EvalResult, PropertyKey, Value,
     },
-    object_value::ObjectValue,
-    scope::Scope,
-    scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
-    string_value::FlatString,
-    Context, EvalResult, PropertyKey, Value,
+    set_uninit,
 };
 
 /// Realms (https://tc39.es/ecma262/#sec-code-realms)

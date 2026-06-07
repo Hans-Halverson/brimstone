@@ -10,8 +10,11 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::array_buffer_constructor::throw_if_detached,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            array_buffer_constructor::{throw_if_detached, ArrayBufferObject},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+        },
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
@@ -19,8 +22,6 @@ use crate::{
         Context, Handle, HeapPtr, Value,
     },
 };
-
-use super::{array_buffer_constructor::ArrayBufferObject, intrinsics::Intrinsic};
 
 // DataView Objects (https://tc39.es/ecma262/#sec-dataview-objects)
 extend_object! {

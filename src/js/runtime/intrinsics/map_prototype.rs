@@ -5,19 +5,18 @@ use crate::runtime::{
     error::type_error,
     eval_result::EvalResult,
     function::get_argument,
-    intrinsics::rust_runtime::RuntimeFunction,
+    intrinsics::{
+        intrinsics::Intrinsic,
+        map_iterator::{MapIterator, MapIteratorKind},
+        map_object::MapObject,
+        rust_runtime::RuntimeFunction,
+    },
     object_value::ObjectValue,
     property::Property,
     realm::Realm,
     type_utilities::is_callable,
     value::{Value, ValueCollectionKey},
     Context, Handle,
-};
-
-use super::{
-    intrinsics::Intrinsic,
-    map_iterator::{MapIterator, MapIteratorKind},
-    map_object::MapObject,
 };
 
 pub struct MapPrototype;

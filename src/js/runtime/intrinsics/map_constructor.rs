@@ -9,7 +9,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         get,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, map_object::MapObject, rust_runtime::RuntimeFunction},
         iterator::iter_iterator_values,
         object_value::ObjectValue,
         property_key::PropertyKey,
@@ -19,8 +19,6 @@ use crate::{
         Context, Handle,
     },
 };
-
-use super::{intrinsics::Intrinsic, map_object::MapObject};
 
 pub struct MapConstructor;
 

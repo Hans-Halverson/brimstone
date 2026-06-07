@@ -1,9 +1,6 @@
-use crate::runtime::{gc::Escapable, Context};
-
-use super::{value::Value, Handle};
-
 #[cfg(feature = "alloc_error")]
-use super::alloc_error::AllocError;
+use crate::runtime::alloc_error::AllocError;
+use crate::runtime::{gc::Escapable, value::Value, Context, Handle};
 
 /// Any JS value can be thrown as an evaluation error.
 ///

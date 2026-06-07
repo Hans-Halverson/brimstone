@@ -6,25 +6,30 @@ use std::rc::Rc;
 use bitflags::bitflags;
 use num_bigint::BigInt;
 
-use crate::common::options::Options;
-use crate::common::unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count};
-use crate::common::wtf_8::Wtf8Str;
-use crate::p;
-
-use super::ast::*;
-use super::context::ParseContext;
-use super::lexer::{Lexer, SavedLexerState};
-use super::lexer_stream::{HeapTwoByteCodeUnitLexerStream, Utf8LexerStream};
-use super::loc::{Loc, Pos, EMPTY_LOC};
-use super::parse_error::{LocalizedParseError, ParseError, ParseResult};
-use super::regexp_parser::RegExpParser;
-use super::scope_tree::{
-    AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
-    ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
-    STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
+use crate::{
+    common::{
+        options::Options,
+        unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count},
+        wtf_8::Wtf8Str,
+    },
+    p,
+    parser::{
+        ast::*,
+        context::ParseContext,
+        lexer::{Lexer, SavedLexerState},
+        lexer_stream::{HeapTwoByteCodeUnitLexerStream, Utf8LexerStream},
+        loc::{Loc, Pos, EMPTY_LOC},
+        parse_error::{LocalizedParseError, ParseError, ParseResult},
+        regexp_parser::RegExpParser,
+        scope_tree::{
+            AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
+            ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME,
+            HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
+        },
+        source::Source,
+        token::{RegExpToken, TemplatePartToken, Token},
+    },
 };
-use super::source::Source;
-use super::token::{RegExpToken, TemplatePartToken, Token};
 
 // Arbitrary error used to fail try parse
 const FAIL_TRY_PARSED_ERROR: ParseError = ParseError::MalformedNumericLiteral;

@@ -1,10 +1,18 @@
 use crate::runtime::{
-    alloc_error::AllocResult, builtin_function::BuiltinFunction, error::type_error,
-    eval_result::EvalResult, function::get_argument, intrinsics::rust_runtime::RuntimeFunction,
-    object_value::ObjectValue, realm::Realm, type_utilities::is_callable, Context, Handle, Value,
+    alloc_error::AllocResult,
+    builtin_function::BuiltinFunction,
+    error::type_error,
+    eval_result::EvalResult,
+    function::get_argument,
+    intrinsics::{
+        finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
+    },
+    object_value::ObjectValue,
+    realm::Realm,
+    type_utilities::is_callable,
+    Context, Handle, Value,
 };
-
-use super::{finalization_registry_object::FinalizationRegistryObject, intrinsics::Intrinsic};
 
 pub struct FinalizationRegistryConstructor;
 

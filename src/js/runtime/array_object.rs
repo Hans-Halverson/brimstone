@@ -4,28 +4,27 @@ use brimstone_macros::wrap_ordinary_object;
 
 use crate::{
     extend_object, must, must_a,
-    runtime::{alloc_error::AllocResult, type_utilities::is_array},
-    set_uninit,
-};
-
-use super::{
-    abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
-    error::{range_error, type_error},
-    gc::{HeapItem, HeapVisitor},
-    get,
-    heap_item_descriptor::HeapItemKind,
-    intrinsics::intrinsics::Intrinsic,
-    object_value::{ObjectValue, VirtualObject},
-    ordinary_object::{
-        object_create_with_proto, ordinary_define_own_property, ordinary_delete,
-        ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
-        ordinary_own_string_symbol_property_keys,
+    runtime::{
+        abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
+        alloc_error::AllocResult,
+        error::{range_error, type_error},
+        gc::{HeapItem, HeapVisitor},
+        get,
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
+        object_value::{ObjectValue, VirtualObject},
+        ordinary_object::{
+            object_create_with_proto, ordinary_define_own_property, ordinary_delete,
+            ordinary_filtered_own_indexed_property_keys, ordinary_get_own_property,
+            ordinary_own_string_symbol_property_keys,
+        },
+        property_descriptor::PropertyDescriptor,
+        property_key::PropertyKey,
+        rust_vtables::extract_virtual_object_vtable,
+        type_utilities::{is_array, is_constructor_value, same_object_value, to_number, to_uint32},
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
-    property_descriptor::PropertyDescriptor,
-    property_key::PropertyKey,
-    rust_vtables::extract_virtual_object_vtable,
-    type_utilities::{is_constructor_value, same_object_value, to_number, to_uint32},
-    Context, EvalResult, Handle, HeapPtr, Realm, Value,
+    set_uninit,
 };
 
 // Array Exotic Objects (https://tc39.es/ecma262/#sec-array-exotic-objects)

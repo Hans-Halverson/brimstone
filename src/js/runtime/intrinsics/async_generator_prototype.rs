@@ -12,7 +12,7 @@ use crate::{
         function::get_argument,
         generator_object::GeneratorCompletionType,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::object_create,
@@ -23,8 +23,6 @@ use crate::{
         Context, Handle, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct AsyncGeneratorPrototype;
 

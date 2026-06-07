@@ -1,13 +1,12 @@
 use crate::{
-    runtime::{alloc_error::AllocResult, heap_item_descriptor::HeapItemKind},
+    runtime::{
+        alloc_error::AllocResult,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        object_value::ObjectValue,
+        Context, Handle, HeapPtr, Value,
+    },
     set_uninit,
-};
-
-use super::{
-    gc::{HeapItem, HeapVisitor},
-    heap_item_descriptor::HeapItemDescriptor,
-    object_value::ObjectValue,
-    Context, Handle, HeapPtr, Value,
 };
 
 /// The value of an accessor property. May contain a getter and/or a setter.

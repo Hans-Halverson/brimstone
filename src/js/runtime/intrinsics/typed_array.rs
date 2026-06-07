@@ -16,7 +16,16 @@ use crate::{
         function::get_argument,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            typed_array_constructor::{canonical_numeric_index_string, CanonicalIndexType},
+            typed_array_prototype::{
+                is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
+                typed_array_length,
+            },
+        },
         iterator::iter_iterator_method_values,
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{
@@ -37,16 +46,6 @@ use crate::{
         Context, Handle, HeapPtr,
     },
     set_uninit,
-};
-
-use super::{
-    array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
-    intrinsics::Intrinsic,
-    typed_array_constructor::{canonical_numeric_index_string, CanonicalIndexType},
-    typed_array_prototype::{
-        is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
-        typed_array_length,
-    },
 };
 
 #[derive(PartialEq)]

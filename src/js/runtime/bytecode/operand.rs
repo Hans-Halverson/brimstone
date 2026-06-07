@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{
+use crate::runtime::bytecode::{
     stack_frame::{
         CLOSURE_SLOT_INDEX, FIRST_ARGUMENT_SLOT_INDEX, RECEIVER_SLOT_INDEX, SCOPE_SLOT_INDEX,
     },

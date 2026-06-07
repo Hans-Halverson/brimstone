@@ -1,17 +1,23 @@
-use bitflags::bitflags;
-
 use std::{
     collections::{HashMap, HashSet},
     fmt,
 };
 
-use super::{
-    operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
-    width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum},
-    writer::BytecodeWriter,
-};
+use bitflags::bitflags;
 
-use crate::{count, replace_expr, runtime::debug_print::DebugPrinter};
+use crate::{
+    count, replace_expr,
+    runtime::{
+        bytecode::{
+            operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
+            width::{
+                ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum,
+            },
+            writer::BytecodeWriter,
+        },
+        debug_print::DebugPrinter,
+    },
+};
 
 /// Generic properties of instructions.
 #[allow(dead_code)]

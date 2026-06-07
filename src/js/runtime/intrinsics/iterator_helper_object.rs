@@ -10,6 +10,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         generator_object::GeneratorState,
         heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
         iterator::{
             create_iter_result_object, get_iterator_direct, get_iterator_flattenable,
             iterator_close, iterator_step, iterator_step_value, HeapIterator, Iterator,
@@ -21,8 +22,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // Iterator Helper Objects (https://tc39.es/ecma262/#sec-iterator-helper-objects)
 extend_object! {

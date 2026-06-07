@@ -22,6 +22,7 @@ use crate::runtime::{
     },
     context::{GlobalSymbolRegistryField, ModuleCacheField},
     for_in_iterator::ForInIterator,
+    gc::{HeapPtr, HeapVisitor},
     generator_object::GeneratorObject,
     global_names::GlobalNames,
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -81,8 +82,6 @@ use crate::runtime::{
     value::{BigIntValue, SymbolValue},
     Realm,
 };
-
-use super::{HeapPtr, HeapVisitor};
 
 /// Trait implemented by all items stored on the heap. This includes both JS objects and non-object
 /// items like strings and descriptors.

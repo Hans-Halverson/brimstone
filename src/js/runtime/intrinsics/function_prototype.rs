@@ -14,7 +14,7 @@ use crate::{
         function::{get_argument, set_function_length_maybe_infinity, set_function_name},
         get,
         heap_item_descriptor::HeapItemKind,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::{object_create_with_optional_proto, object_ordinary_init},
         property_key::PropertyKey,
@@ -24,8 +24,6 @@ use crate::{
         Context, Handle, HeapPtr, Value,
     },
 };
-
-use super::intrinsics::Intrinsic;
 
 pub struct FunctionPrototype {}
 

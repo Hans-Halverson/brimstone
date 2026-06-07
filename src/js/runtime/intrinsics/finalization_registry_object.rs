@@ -8,6 +8,7 @@ use crate::{
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
+        intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         type_utilities::same_value_non_numeric_non_allocating,
@@ -15,8 +16,6 @@ use crate::{
     },
     set_uninit,
 };
-
-use super::intrinsics::Intrinsic;
 
 // FinalizationRegistry Objects (https://tc39.es/ecma262/#sec-finalization-registry-objects)
 extend_object! {

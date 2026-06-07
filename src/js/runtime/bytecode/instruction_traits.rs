@@ -1,19 +1,20 @@
-use crate::runtime::Value;
-
-use super::{
-    instruction::{
-        CallInstruction, CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction,
-        CallVarargsInstruction, CallWithReceiverInstruction, ConstructInstruction,
-        ConstructVarargsInstruction, Instruction, JumpFalseConstantInstruction,
-        JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
-        JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
-        JumpNullishConstantInstruction, JumpNullishInstruction,
-        JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
-        JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
-        JumpTrueConstantInstruction, JumpTrueInstruction,
+use crate::runtime::{
+    bytecode::{
+        instruction::{
+            CallInstruction, CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction,
+            CallVarargsInstruction, CallWithReceiverInstruction, ConstructInstruction,
+            ConstructVarargsInstruction, Instruction, JumpFalseConstantInstruction,
+            JumpFalseInstruction, JumpNotNullishConstantInstruction, JumpNotNullishInstruction,
+            JumpNotUndefinedConstantInstruction, JumpNotUndefinedInstruction,
+            JumpNullishConstantInstruction, JumpNullishInstruction,
+            JumpToBooleanFalseConstantInstruction, JumpToBooleanFalseInstruction,
+            JumpToBooleanTrueConstantInstruction, JumpToBooleanTrueInstruction,
+            JumpTrueConstantInstruction, JumpTrueInstruction,
+        },
+        operand::{ConstantIndex, Register, SInt, UInt},
+        width::Width,
     },
-    operand::{ConstantIndex, Register, SInt, UInt},
-    width::Width,
+    Value,
 };
 
 pub enum GenericCallArgs<W: Width> {

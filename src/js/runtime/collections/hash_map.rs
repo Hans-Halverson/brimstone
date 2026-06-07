@@ -9,14 +9,13 @@ use crate::{
     field_offset,
     runtime::{
         alloc_error::AllocResult,
+        collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         Context, HeapPtr,
     },
     set_uninit,
 };
-
-use super::InlineArray;
 
 /// Generic flat HashMap implementation using quadratic probing.
 #[repr(C)]

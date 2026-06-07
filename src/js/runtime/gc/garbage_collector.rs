@@ -2,7 +2,7 @@ use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
     collections::BsWeakVec,
-    gc::Heap,
+    gc::{AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor},
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
     interned_strings::InternedStrings,
     intrinsics::{
@@ -12,8 +12,6 @@ use crate::runtime::{
     string_value::FlatString,
     Context, Value,
 };
-
-use super::{AnyHeapItem, HeapItem, HeapPtr, HeapVisitor};
 
 /// A Cheney-style semispace garbage collector. Partitions heap into from-space and to-space, and
 /// copies from one partition to the other on each GC.

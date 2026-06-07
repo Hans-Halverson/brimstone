@@ -145,7 +145,7 @@ impl BinaryUnicodeProperty {
             "Unified_Ideograph" | "UIdeo" => BinaryUnicodeProperty::UnifiedIdeograph,
             "Uppercase" | "Upper" => BinaryUnicodeProperty::Uppercase,
             "Variation_Selector" | "VS" => BinaryUnicodeProperty::VariationSelector,
-            "White_Space" | "space" => BinaryUnicodeProperty::WhiteSpace,
+            "White_Space" | "WSpace" | "space" => BinaryUnicodeProperty::WhiteSpace,
             "XID_Continue" | "XIDC" => BinaryUnicodeProperty::XIDContinue,
             "XID_Start" | "XIDS" => BinaryUnicodeProperty::XIDStart,
             _ => return None,

@@ -7,7 +7,7 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{type_error, type_error_value},
-        gc::{HeapItem, HeapVisitor},
+        gc::{AnyHeapItem, HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
@@ -67,8 +67,9 @@ pub struct PromiseReaction {
 enum ReactionHandler {
     AwaitResume {
         /// An async function suspended at an await expression. Is a regular generator object for
-        /// async functions and an async generator object for async generators.
-        suspended_generator: HeapPtr<ObjectValue>,
+        /// async functions, an async generator object for async generators, or a builtin generator
+        /// state.
+        suspended_generator: HeapPtr<AnyHeapItem>,
     },
     Then {
         /// A function to be called when the promise is fulfilled, if one exists.
@@ -266,7 +267,7 @@ impl Handle<PromiseObject> {
     pub fn add_await_reaction(
         &mut self,
         mut cx: Context,
-        suspended_generator: Handle<ObjectValue>,
+        suspended_generator: Handle<AnyHeapItem>,
     ) -> AllocResult<()> {
         match &mut self.state {
             // Prepend reaction onto the current linked list of reactions.
@@ -430,7 +431,7 @@ fn enqueue_promise_then_reaction_task(
 impl PromiseReaction {
     fn new_await_resume(
         cx: Context,
-        suspended_generator: Handle<ObjectValue>,
+        suspended_generator: Handle<AnyHeapItem>,
         next: Option<Handle<PromiseReaction>>,
     ) -> AllocResult<HeapPtr<PromiseReaction>> {
         let mut reaction = cx.alloc_uninit::<PromiseReaction>()?;

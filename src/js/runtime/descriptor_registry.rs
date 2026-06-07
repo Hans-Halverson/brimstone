@@ -158,6 +158,7 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::Generator);
         ordinary_object_descriptor!(HeapItemKind::AsyncGenerator);
         other_heap_item_descriptor!(HeapItemKind::AsyncGeneratorRequest);
+        other_heap_item_descriptor!(HeapItemKind::BuiltinGenerator);
 
         other_heap_item_descriptor!(HeapItemKind::DenseArrayProperties);
         other_heap_item_descriptor!(HeapItemKind::SparseArrayProperties);

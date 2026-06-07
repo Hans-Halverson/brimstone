@@ -47,7 +47,7 @@ For more information on testing see the [testing README](./tests/README.md).
 
 ## Missing features
 
-All features up to ES2024 have been implemented, as well as all stage 4 proposals as of the Feb. 2025 TC39 meeting, except for the following features:
+All features up to ES2026 have been implemented except for the following:
 
 - SharedArrayBuffer
 - Atomics

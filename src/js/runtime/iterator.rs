@@ -327,7 +327,10 @@ pub fn iter_iterator_method_values<
 }
 
 /// CreateAsyncFromSyncIterator (https://tc39.es/ecma262/#sec-createasyncfromsynciterator)
-fn create_async_from_sync_iterator(cx: Context, sync_iterator: Iterator) -> AllocResult<Iterator> {
+pub fn create_async_from_sync_iterator(
+    cx: Context,
+    sync_iterator: Iterator,
+) -> AllocResult<Iterator> {
     let async_iterator = AsyncFromSyncIterator::new(cx, sync_iterator)?.into();
     let next_method = must_a!(get(cx, async_iterator, cx.names.next()));
 

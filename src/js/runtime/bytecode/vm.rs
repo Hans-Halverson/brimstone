@@ -37,7 +37,7 @@ use crate::{
         eval_result::EvalError,
         for_in_iterator::ForInIterator,
         function::build_function_name,
-        gc::HeapVisitor,
+        gc::{AnyHeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorObject, TGeneratorObject},
         get,
         heap_item_descriptor::HeapItemKind,
@@ -611,8 +611,9 @@ impl VM {
                         ))
                         .to_handle();
 
+                        let any_generator = generator.cast::<AnyHeapItem>();
                         maybe_throw_a!(
-                            argument_promise.add_await_reaction(self.cx(), generator.into())
+                            argument_promise.add_await_reaction(self.cx(), any_generator)
                         );
 
                         // Return the promise to the caller
@@ -628,8 +629,10 @@ impl VM {
                             (completion_value_register, completion_type_register),
                             self.stack_frame().as_slice(),
                         );
+
+                        let any_generator = async_generator.cast::<AnyHeapItem>();
                         maybe_throw_a!(
-                            argument_promise.add_await_reaction(self.cx(), async_generator.into())
+                            argument_promise.add_await_reaction(self.cx(), any_generator)
                         );
 
                         // Return empty value to signal that the async generator has suspended

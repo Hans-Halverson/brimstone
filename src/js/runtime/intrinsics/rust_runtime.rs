@@ -168,6 +168,7 @@ rust_runtime_functions!(
     ),
     (ArrayConstructor_construct, ArrayConstructor::construct),
     (ArrayConstructor_from, ArrayConstructor::from),
+    (ArrayConstructor_from_async, ArrayConstructor::from_async),
     (ArrayConstructor_is_array, ArrayConstructor::is_array),
     (ArrayConstructor_of, ArrayConstructor::of),
     (ArrayIteratorPrototype_next, ArrayIteratorPrototype::next),

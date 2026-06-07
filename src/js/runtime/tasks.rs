@@ -4,6 +4,11 @@ use crate::{
     completion_value, eval_err, handle_scope,
     runtime::{
         abstract_operations::{call, call_object},
+        async_generator_object::AsyncGeneratorObject,
+        builtin_generator::BuiltinGenerator,
+        gc::AnyHeapItem,
+        generator_object::GeneratorObject,
+        heap_item_descriptor::HeapItemKind,
         intrinsics::promise_constructor::execute_then,
     },
 };
@@ -44,7 +49,7 @@ impl TaskQueue {
     pub fn enqueue_await_resume_task(
         &mut self,
         kind: PromiseReactionKind,
-        generator: HeapPtr<ObjectValue>,
+        generator: HeapPtr<AnyHeapItem>,
         result: Value,
     ) {
         self.enqueue(Task::AwaitResume(AwaitResumeTask::new(kind, generator, result)));
@@ -165,16 +170,17 @@ impl Callback1Task {
 pub struct AwaitResumeTask {
     /// Whether the awaited promise was resolved or rejected.
     kind: PromiseReactionKind,
-    /// The suspended async function that should be resumed with the provided completion. For
-    /// regular async functions this is a GeneratorObject, for async generators this is an
-    /// AsyncGeneratorObject.
-    generator: HeapPtr<ObjectValue>,
+    /// The suspended async function that should be resumed with the provided completion.
+    /// - For regular async functions this is a GeneratorObject
+    /// - For async generators this is an AsyncGeneratorObject
+    /// - For builtin functions this is a BuiltinGenerator
+    generator: HeapPtr<AnyHeapItem>,
     /// The value the await expression completes to, whether a normal value or thrown error.
     result: Value,
 }
 
 impl AwaitResumeTask {
-    fn new(kind: PromiseReactionKind, generator: HeapPtr<ObjectValue>, result: Value) -> Self {
+    fn new(kind: PromiseReactionKind, generator: HeapPtr<AnyHeapItem>, result: Value) -> Self {
         Self { kind, generator, result }
     }
 
@@ -186,22 +192,40 @@ impl AwaitResumeTask {
             PromiseReactionKind::Reject => GeneratorCompletionType::Throw,
         };
 
-        if let Some(generator) = generator.as_generator() {
-            let realm = generator.closure_ptr().function_ptr().realm_ptr();
-            cx.with_initial_realm_stack_frame(realm, |mut cx| {
-                cx.vm()
-                    .resume_generator(generator, completion_value, completion_type)?;
-                Ok(())
-            })
-        } else {
-            let async_generator = generator.as_async_generator().unwrap();
+        match generator.descriptor().kind() {
+            HeapItemKind::Generator => {
+                let generator = generator.cast::<GeneratorObject>();
+                let realm = generator.closure_ptr().function_ptr().realm_ptr();
+                cx.with_initial_realm_stack_frame(realm, |mut cx| {
+                    cx.vm()
+                        .resume_generator(generator, completion_value, completion_type)?;
+                    Ok(())
+                })
+            }
+            HeapItemKind::AsyncGenerator => {
+                let async_generator = generator.cast::<AsyncGeneratorObject>();
 
-            // Must execute in the realm of the async generator since AsyncGeneratorResume may need
-            // to drain the async queue when the VM stack is empty.
-            cx.with_initial_realm_stack_frame(async_generator.realm_ptr(), |cx| {
-                async_generator_resume(cx, async_generator, completion_value, completion_type)?;
-                Ok(())
-            })
+                // Must execute in the realm of the async generator since AsyncGeneratorResume may need
+                // to drain the async queue when the VM stack is empty.
+                cx.with_initial_realm_stack_frame(async_generator.realm_ptr(), |cx| {
+                    async_generator_resume(cx, async_generator, completion_value, completion_type)?;
+                    Ok(())
+                })
+            }
+            HeapItemKind::BuiltinGenerator => {
+                let builtin_generator = generator.cast::<BuiltinGenerator>();
+
+                let completion_result = match self.kind {
+                    PromiseReactionKind::Fulfill => Ok(completion_value),
+                    PromiseReactionKind::Reject => eval_err!(completion_value),
+                };
+
+                cx.with_initial_realm_stack_frame(builtin_generator.realm_ptr(), |cx| {
+                    builtin_generator.resume(cx, completion_result)?;
+                    Ok(())
+                })
+            }
+            _ => panic!("Unexpected generator type"),
         }
     }
 }

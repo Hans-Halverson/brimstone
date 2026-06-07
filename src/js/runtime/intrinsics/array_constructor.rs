@@ -11,7 +11,9 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
-        intrinsics::rust_runtime::RuntimeFunction,
+        intrinsics::{
+            array_from_async_generator::ArrayFromAsyncGenerator, rust_runtime::RuntimeFunction,
+        },
         iterator::iter_iterator_method_values,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
@@ -45,6 +47,13 @@ impl ArrayConstructor {
         )?;
 
         func.intrinsic_func(cx, cx.names.from(), RuntimeFunction::ArrayConstructor_from, 1, realm)?;
+        func.intrinsic_func(
+            cx,
+            cx.names.from_async(),
+            RuntimeFunction::ArrayConstructor_from_async,
+            1,
+            realm,
+        )?;
         func.intrinsic_func(
             cx,
             cx.names.is_array(),
@@ -222,6 +231,15 @@ impl ArrayConstructor {
         set(cx, array, cx.names.length(), length_value, true)?;
 
         Ok(array.as_value())
+    }
+
+    /// Array.fromAsync (https://tc39.es/proposal-array-from-async/#sec-array.fromasync)
+    pub fn from_async(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        ArrayFromAsyncGenerator::start(cx, this_value, arguments)
     }
 
     /// Array.isArray (https://tc39.es/ecma262/#sec-array.isarray)

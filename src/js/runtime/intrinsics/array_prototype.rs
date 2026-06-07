@@ -13,7 +13,6 @@ use crate::{
         error::{range_error, type_error},
         function::get_argument,
         get,
-        heap_item_descriptor::HeapItemKind,
         intrinsics::{
             array_iterator::{ArrayIterator, ArrayIteratorKind},
             intrinsics::Intrinsic,
@@ -22,7 +21,7 @@ use crate::{
         },
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto,
+        ordinary_object::ordinary_object_create_without_proto,
         property::Property,
         property_key::PropertyKey,
         realm::Realm,
@@ -1899,12 +1898,7 @@ impl ArrayPrototype {
 
     /// Array.prototype [ @@unscopables ] (https://tc39.es/ecma262/#sec-array.prototype-%symbol.unscopables%)
     fn create_unscopables(cx: Context) -> AllocResult<Handle<ObjectValue>> {
-        let list = object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            None,
-        )?
-        .to_handle();
+        let list = ordinary_object_create_without_proto(cx)?;
 
         let true_value = cx.bool(true);
 

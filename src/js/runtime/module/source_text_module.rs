@@ -22,7 +22,7 @@ use crate::{
             module_namespace_object::ModuleNamespaceObject,
         },
         object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto,
+        ordinary_object::ordinary_object_create_without_proto,
         promise_object::{PromiseCapability, PromiseObject},
         rust_vtables::extract_module_vtable,
         scope::Scope,
@@ -451,11 +451,7 @@ impl Handle<SourceTextModule> {
         }
 
         // No properties are added to the `import.meta` object - this is up to the implementation
-        let object = object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            None,
-        )?;
+        let object = *ordinary_object_create_without_proto(cx)?;
 
         self.import_meta = Some(object);
 

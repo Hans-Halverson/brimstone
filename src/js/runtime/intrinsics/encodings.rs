@@ -4,10 +4,9 @@ use crate::{
     runtime::{
         error::{syntax_error_value, type_error},
         get,
-        heap_item_descriptor::HeapItemKind,
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
-        ordinary_object::object_create_with_optional_proto,
+        ordinary_object::ordinary_object_create_without_proto,
         string_value::{FlatString, StringValue},
         type_utilities::to_boolean,
         Context, EvalResult, Handle, Value,
@@ -447,12 +446,7 @@ pub fn get_base64_options_argument(
 ) -> EvalResult<Handle<ObjectValue>> {
     if argument.is_undefined() {
         // Simple object with no prototype
-        return Ok(object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            None,
-        )?
-        .to_handle());
+        return Ok(ordinary_object_create_without_proto(cx)?.to_handle());
     }
 
     if !argument.is_object() {

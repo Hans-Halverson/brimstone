@@ -20,7 +20,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{
             object_create_from_constructor, object_create_with_optional_proto,
-            ordinary_object_create,
+            ordinary_object_create, ordinary_object_create_without_proto,
         },
         property_descriptor::{from_property_descriptor, to_property_descriptor},
         property_key::PropertyKey,
@@ -538,12 +538,7 @@ impl ObjectConstructor {
 
         let groups = group_by(cx, items, callback, GroupByKeyCoercion::Property)?;
 
-        let object = object_create_with_optional_proto::<ObjectValue>(
-            cx,
-            HeapItemKind::OrdinaryObject,
-            None,
-        )?
-        .to_handle();
+        let object = ordinary_object_create_without_proto(cx)?;
 
         for group in groups {
             let property_key = group.key.cast::<PropertyKey>();

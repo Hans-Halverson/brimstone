@@ -30,7 +30,7 @@ use crate::{
             CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
             RegExp, RegExpFlags, StringDisjunction, Term,
         },
-        ParseError, ParseResult,
+        LocalizedParseError, ParseError, ParseResult,
     },
 };
 
@@ -74,6 +74,8 @@ pub struct RegExpParser<'a, T: LexerStream> {
     already_parsed_num_capture_groups: Option<u64>,
     /// Number of parenthesized groups the parser is currently inside
     group_depth: usize,
+    /// Error encountered while parsing with named capture groups disabled.
+    deferred_named_capture_groups_error: Option<LocalizedParseError>,
     /// Allocator used for allocating AST nodes
     alloc: AstAlloc<'a>,
 }
@@ -102,6 +104,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             annex_b_maybe_backreferences: HashMap::new(),
             already_parsed_num_capture_groups: None,
             group_depth: 0,
+            deferred_named_capture_groups_error: None,
             alloc,
         }
     }
@@ -212,6 +215,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         self.error(start_pos, ParseError::UnexpectedRegExpToken)
     }
 
+    fn set_deferred_named_capture_groups_error(&mut self, error: LocalizedParseError) {
+        // Preserve only the first deferred error
+        if self.deferred_named_capture_groups_error.is_none() {
+            self.deferred_named_capture_groups_error = Some(error);
+        }
+    }
+
     fn next_capture_group_index(&mut self, error_pos: Pos) -> ParseResult<u32> {
         // Capture group indices are 1-indexed
         let index = self.num_capture_groups + 1;
@@ -259,7 +269,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             );
 
             let mut disjunction = match parser.parse_disjunction() {
-                Ok(disjunction) => disjunction,
+                Ok(disjunction) => {
+                    // When named capture groups are disallowed we may have saved an error and
+                    // continued parsing in case we encountered a named capture group reference.
+                    //
+                    // Parsing was successful so a named capture group was not encountered. Throw
+                    // the saved error.
+                    if let Some(deferred_error) = parser.deferred_named_capture_groups_error {
+                        return Err(deferred_error);
+                    }
+
+                    disjunction
+                }
                 // If we encountered a named capture group then reparse with named capture groups
                 Err(error) if matches!(error.error, ParseError::NamedCaptureGroupEncountered) => {
                     let lexer_stream = create_lexer_stream();
@@ -548,7 +569,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     }
                     // Named backreferences. Can only parse when we are in parse named capture
                     // groups mode.
-                    'k' if self.parse_named_capture_groups => {
+                    'k' if self.parse_named_capture_groups || self.is_unicode_aware() => {
+                        // Still allow parsing when named capture groups are disabled but save the
+                        // error to be thrown later if necessary. This allows us to keep parsing and
+                        // potentially throw a ParseError::NamedCaptureGroupEncountered later which
+                        // would make us reparse instead of erroring. Otherwise throw saved error.
+                        if !self.parse_named_capture_groups && self.is_unicode_aware() {
+                            self.set_deferred_named_capture_groups_error(
+                                self.error::<()>(start_pos, ParseError::MalformedEscapeSequence)
+                                    .unwrap_err(),
+                            );
+                        }
+
                         self.advance2();
 
                         self.expect('<')?;

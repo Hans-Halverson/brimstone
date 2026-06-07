@@ -1127,23 +1127,16 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     Ok(ClassRange::Single('-' as u32))
                 }
                 // Annex B supports `\cX` escapes in character classes
-                'c' if self.in_annex_b_mode => {
-                    match_u32!(match self.peek2() {
-                        // For valid control characters the value is the lower 5 bits
-                        '0'..='9' | '_' if !self.is_unicode_aware() => {
-                            self.advance2();
-                            let escaped_value = self.current() % 32;
-                            self.advance();
+                'c' if self.in_annex_b_mode
+                    && !self.is_unicode_aware()
+                    && Self::is_numeric_or_underscore(self.peek2()) =>
+                {
+                    // For valid control characters the value is the lower 5 bits
+                    self.advance2();
+                    let escaped_value = self.current() % 32;
+                    self.advance();
 
-                            Ok(ClassRange::Single(escaped_value))
-                        }
-                        // If `\c` is not followed by a valid control character then it instead is
-                        // parsed as a literal `\` character followed by a `c` character.
-                        _ => {
-                            self.advance();
-                            Ok(ClassRange::Single('\\' as u32))
-                        }
-                    })
+                    Ok(ClassRange::Single(escaped_value))
                 }
                 // Unicode properties
                 'p' if self.is_unicode_aware() => {
@@ -1181,6 +1174,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         let code_point = self.parse_unicode_codepoint()?;
 
         Ok(ClassRange::Single(code_point))
+    }
+
+    fn is_numeric_or_underscore(code_point: u32) -> bool {
+        match_u32!(match code_point {
+            '0'..='9' | '_' => true,
+            _ => false,
+        })
     }
 
     /// Parse a character class when in `v` mode.

@@ -535,6 +535,12 @@ fn async_module_execution_rejected(
     module.set_state(ModuleState::Evaluated);
     module.set_async_evaluation(cx, false);
 
+    // If entire cycle has been completed, reject the top-level capability for the cycle
+    if let Some(capability) = module.top_level_capability_ptr() {
+        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module));
+        must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
+    }
+
     // Reject execution of all async parent modules as well
     if let Some(async_parent_modules) = module.async_parent_modules() {
         // Reuse handle between iterations
@@ -544,12 +550,6 @@ fn async_module_execution_rejected(
             parent_module_handle.replace(async_parent_modules.as_slice()[i]);
             async_module_execution_rejected(cx, parent_module_handle, error)?;
         }
-    }
-
-    // If entire cycle has been completed, reject the top-level capability for the cycle
-    if let Some(capability) = module.top_level_capability_ptr() {
-        debug_assert!(module.cycle_root_ptr().unwrap().ptr_eq(&module));
-        must_a!(call_object(cx, capability.reject(), cx.undefined(), &[error]));
     }
 
     Ok(())

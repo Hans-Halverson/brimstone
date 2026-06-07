@@ -35,10 +35,11 @@ use crate::{
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
                 BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
                 CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
-                ConsumeIfTrueInstruction, FailInstruction, InstructionIteratorMut, JumpInstruction,
-                LiteralInstruction, LookaroundInstruction, LoopInstruction,
-                MarkCapturePointInstruction, OpCode, ProgressInstruction, WildcardInstruction,
-                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+                ConsumeIfTrueInstruction, FailInstruction, Instruction, InstructionIterator,
+                InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
+                LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
+                WildcardInstruction, WildcardNoNewlineInstruction,
+                WordBoundaryMoveToPreviousInstruction,
             },
         },
         string_value::StringValue,
@@ -1431,8 +1432,19 @@ impl CompiledRegExpBuilder {
         let mut id_map = Vec::with_capacity(self.blocks.len());
 
         // Flatten blocks into instruction array
-        for block in &self.blocks {
+        for (i, block) in self.blocks.iter().enumerate() {
             id_map.push(instructions.len() as u32);
+
+            // If a block ends with an unconditional jump to the immediately following block, omit
+            // the jump and let execution continue directly into the next block.
+            if let Some(last) = InstructionIterator::new(block).last() {
+                if Self::is_jump_to_block_id(last, i + 1) {
+                    let num_u32_before_last_jump = block.len() - last.size();
+                    instructions.extend(&block[..num_u32_before_last_jump]);
+                    continue;
+                }
+            }
+
             instructions.extend(block.iter());
         }
 
@@ -1461,6 +1473,11 @@ impl CompiledRegExpBuilder {
         }
 
         instructions
+    }
+
+    fn is_jump_to_block_id(instruction: &Instruction, block_id: BlockId) -> bool {
+        matches!(instruction.opcode(), OpCode::Jump)
+            && instruction.cast::<JumpInstruction>().target() == block_id as u32
     }
 }
 

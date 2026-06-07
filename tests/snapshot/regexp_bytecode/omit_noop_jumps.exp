@@ -1,0 +1,11 @@
+[CompiledRegExpObject: /x?/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Branch(15, 12)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: Literal(x)
+    16: Jump(12)
+}

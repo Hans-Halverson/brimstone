@@ -587,6 +587,15 @@ pub fn ordinary_object_create(cx: Context) -> AllocResult<Handle<ObjectValue>> {
     Ok(object.to_handle())
 }
 
+pub fn ordinary_object_create_without_proto(cx: Context) -> AllocResult<Handle<ObjectValue>> {
+    let object = cx.alloc_uninit::<ObjectValue>()?;
+
+    let descriptor = cx.descriptors.get(HeapItemKind::OrdinaryObject);
+    object_ordinary_init(cx, object, descriptor, None);
+
+    Ok(object.to_handle())
+}
+
 pub fn object_create<T>(
     cx: Context,
     descriptor_kind: HeapItemKind,

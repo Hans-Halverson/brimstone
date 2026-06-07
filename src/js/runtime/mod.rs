@@ -9,6 +9,7 @@ mod async_generator_object;
 mod bound_function_object;
 mod boxed_value;
 pub mod builtin_function;
+mod builtin_generator;
 mod builtin_names;
 pub mod bytecode;
 mod class_names;

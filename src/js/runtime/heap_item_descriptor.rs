@@ -119,6 +119,7 @@ pub enum HeapItemKind {
     Generator,
     AsyncGenerator,
     AsyncGeneratorRequest,
+    BuiltinGenerator,
 
     DenseArrayProperties,
     SparseArrayProperties,

@@ -229,6 +229,7 @@ builtin_names!(
     (for_each, "forEach"),
     (freeze, "freeze"),
     (from, "from"),
+    (from_async, "fromAsync"),
     (from_char_code, "fromCharCode"),
     (from_code_point, "fromCodePoint"),
     (from_entries, "fromEntries"),

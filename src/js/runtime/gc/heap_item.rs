@@ -5,6 +5,7 @@ use crate::runtime::{
     array_properties::{DenseArrayProperties, SparseArrayProperties},
     async_generator_object::{AsyncGeneratorObject, AsyncGeneratorRequest},
     boxed_value::BoxedValue,
+    builtin_generator::BuiltinGenerator,
     bytecode::{
         constant_table::ConstantTable,
         exception_handlers::ExceptionHandlers,
@@ -187,6 +188,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::Generator => self.cast::<GeneratorObject>().byte_size(),
             HeapItemKind::AsyncGenerator => self.cast::<AsyncGeneratorObject>().byte_size(),
             HeapItemKind::AsyncGeneratorRequest => self.cast::<AsyncGeneratorRequest>().byte_size(),
+            HeapItemKind::BuiltinGenerator => self.cast::<BuiltinGenerator>().byte_size(),
             HeapItemKind::DenseArrayProperties => self.cast::<DenseArrayProperties>().byte_size(),
             HeapItemKind::SparseArrayProperties => self.cast::<SparseArrayProperties>().byte_size(),
             HeapItemKind::CompiledRegExpObject => self.cast::<CompiledRegExpObject>().byte_size(),
@@ -329,6 +331,9 @@ impl HeapPtr<AnyHeapItem> {
             }
             HeapItemKind::AsyncGeneratorRequest => {
                 self.cast::<AsyncGeneratorRequest>().visit_pointers(visitor)
+            }
+            HeapItemKind::BuiltinGenerator => {
+                self.cast::<BuiltinGenerator>().visit_pointers(visitor)
             }
             HeapItemKind::DenseArrayProperties => {
                 self.cast::<DenseArrayProperties>().visit_pointers(visitor)

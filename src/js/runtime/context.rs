@@ -10,6 +10,7 @@ use rand::{rngs::StdRng, SeedableRng};
 
 use crate::{
     common::{
+        filesystem::FileNameReserver,
         options::Options,
         serialized_heap::SerializedHeap,
         wtf_8::{Wtf8Str, Wtf8String},
@@ -111,6 +112,9 @@ pub struct ContextCell {
     /// Options passed to this program.
     pub options: Rc<Options>,
 
+    /// Reserves unique file paths for any debug files written during this session.
+    pub debug_file_name_reserver: FileNameReserver,
+
     /// Set once module resolution has been completed.
     pub has_finished_module_resolution: bool,
 
@@ -149,6 +153,7 @@ impl Context {
             default_named_properties: HeapPtr::uninit(),
             default_array_properties: HeapPtr::uninit(),
             options: options.clone(),
+            debug_file_name_reserver: FileNameReserver::new(),
             has_finished_module_resolution: false,
             async_evaluation_counter: NonZeroUsize::MIN,
             // We want the initial heap generation to be deterministic so use seeded PRNG. After

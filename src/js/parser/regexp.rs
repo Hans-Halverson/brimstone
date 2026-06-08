@@ -1,3 +1,5 @@
+use std::fmt;
+
 use bitflags::bitflags;
 
 use crate::{
@@ -82,6 +84,44 @@ impl RegExpFlags {
     /// The `y` flag is set
     pub fn is_sticky(&self) -> bool {
         self.contains(Self::STICKY)
+    }
+}
+
+impl fmt::Display for RegExpFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.has_indices() {
+            f.write_str("d")?;
+        }
+
+        if self.is_global() {
+            f.write_str("g")?;
+        }
+
+        if self.is_case_insensitive() {
+            f.write_str("i")?;
+        }
+
+        if self.is_multiline() {
+            f.write_str("m")?;
+        }
+
+        if self.is_dot_all() {
+            f.write_str("s")?;
+        }
+
+        if self.has_simple_unicode_flag() {
+            f.write_str("u")?;
+        }
+
+        if self.has_unicode_sets_flag() {
+            f.write_str("v")?;
+        }
+
+        if self.is_sticky() {
+            f.write_str("y")?;
+        }
+
+        Ok(())
     }
 }
 

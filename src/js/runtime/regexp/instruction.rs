@@ -749,13 +749,17 @@ impl<'a> InstructionIterator<'a> {
 
         Self { ptr, end, _marker: PhantomData }
     }
+
+    pub fn is_end(&self) -> bool {
+        self.ptr >= self.end
+    }
 }
 
 impl<'a> Iterator for InstructionIterator<'a> {
     type Item = &'a Instruction;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.ptr >= self.end {
+        if self.is_end() {
             return None;
         }
 

@@ -154,7 +154,7 @@ impl OptionsBuilder {
         let regexp_dotfile_directory = args
             .save_regexp_bytecode_dotfiles
             .as_ref()
-            .map(|dir| PathBuf::from(dir));
+            .map(PathBuf::from);
 
         OptionsBuilder::new()
             .annex_b(args.annex_b)

@@ -39,8 +39,13 @@ impl DotGraphBuilder {
 
     /// Add and return a node with the given id.
     pub fn add_node(&mut self, id: &str) -> &mut DotNode {
-        self.nodes
-            .insert(id.to_owned(), DotNode { id: id.to_owned(), attributes: vec![] });
+        let had_entry = self
+            .nodes
+            .insert(id.to_owned(), DotNode { id: id.to_owned(), attributes: vec![] })
+            .is_some();
+
+        assert!(!had_entry, "Duplicate graphviz node id");
+
         self.nodes.get_mut(id).unwrap()
     }
 
@@ -114,7 +119,11 @@ impl fmt::Display for DotGraphBuilder {
             writeln!(f, ";")?;
         }
 
-        for node in self.nodes.values() {
+        // Iterate over nodes sorted by their keys for deterministic ordering
+        let mut node_entries = self.nodes.iter().collect::<Vec<_>>();
+        node_entries.sort_by_key(|(key, _)| *key);
+
+        for (_, node) in node_entries {
             write!(f, "  {}", quote(&node.id))?;
             write_attributes(f, &node.attributes)?;
             writeln!(f, ";")?;

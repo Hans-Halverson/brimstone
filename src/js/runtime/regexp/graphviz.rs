@@ -1,4 +1,4 @@
-use std::{fs, ops::Range};
+use std::{collections::HashSet, fs, ops::Range};
 
 use crate::{
     common::graphviz::{DotGraphBuilder, DOTFILE_EXTENSION},
@@ -20,7 +20,7 @@ pub fn save_regexp_dotfile_if_needed(
     compiled_regexp: HeapPtr<CompiledRegExpObject>,
 ) {
     let output_directory = match context.options.regexp_dotfile_directory.clone() {
-        Some(dir) => dir,
+        Some(directory) => directory,
         None => return,
     };
 
@@ -82,66 +82,90 @@ fn add_default_attributes(graph: &mut DotGraphBuilder) {
     graph.set_edge_default_attribute("fontname", "monospace");
 }
 
-fn is_basic_block_end(instr: &Instruction) -> bool {
-    matches!(
-        instr.opcode(),
-        OpCode::Jump
-            | OpCode::Branch
-            | OpCode::Loop
-            | OpCode::Lookaround
-            | OpCode::Accept
-            | OpCode::Fail
-    )
+/// Determine boundaries of all basic blocks in the bytecode.
+///
+/// Must reconstruct these boundaries by detecting terminator instructions and their branches.
+/// Return a vec containing the offsets of the [start, end) of every basic block in the bytecode.
+fn build_basic_block_bounds(bytecode: &[u32]) -> Vec<usize> {
+    let mut block_bounds = HashSet::new();
+    block_bounds.insert(0);
+
+    let mut offset = 0;
+    for instr in InstructionIterator::new(bytecode) {
+        offset += instr.size();
+
+        let is_basic_block_end = match instr.opcode() {
+            OpCode::Fail | OpCode::Accept => true,
+            OpCode::Jump => {
+                block_bounds.insert(instr.cast::<JumpInstruction>().target() as usize);
+                true
+            }
+            OpCode::Branch => {
+                let instr = instr.cast::<BranchInstruction>();
+                block_bounds.insert(instr.first_branch() as usize);
+                block_bounds.insert(instr.second_branch() as usize);
+                true
+            }
+            OpCode::Loop => {
+                block_bounds.insert(instr.cast::<LoopInstruction>().end_branch() as usize);
+                true
+            }
+            OpCode::Lookaround => {
+                block_bounds.insert(instr.cast::<LookaroundInstruction>().body_branch() as usize);
+                true
+            }
+            _ => false,
+        };
+
+        if is_basic_block_end {
+            block_bounds.insert(offset);
+        }
+    }
+
+    // Sort deduped block boundaries to construct the final list
+    let mut sorted_block_bounds = block_bounds.into_iter().collect::<Vec<_>>();
+    sorted_block_bounds.sort();
+
+    sorted_block_bounds
 }
 
 /// Iterate over all basic blocks in the compiled instructions.
 ///
 /// Call `f` for each basic block, passing the block's offset range and an iterator over the
 /// instructions in the block.
-fn iter_basic_blocks(instructions: &[u32], mut f: impl FnMut(Range<usize>, InstructionIterator)) {
-    // Determine boundaries of all basic blocks in the program
-    let mut block_bounds = vec![];
-    block_bounds.push(0);
-
-    let mut offset = 0;
-    for instruction in InstructionIterator::new(instructions) {
-        offset += instruction.size();
-
-        if is_basic_block_end(instruction) {
-            block_bounds.push(offset);
-        }
-    }
+fn iter_basic_blocks(bytecode: &[u32], mut f: impl FnMut(Range<usize>, InstructionIterator)) {
+    let block_bounds = build_basic_block_bounds(bytecode);
 
     for bounds in block_bounds.windows(2) {
         let bounds = bounds[0]..bounds[1];
-        let basic_block = &instructions[bounds.clone()];
-        let iter = InstructionIterator::new(basic_block);
+        let basic_block_bytecode = &bytecode[bounds.clone()];
+        let iter = InstructionIterator::new(basic_block_bytecode);
 
         f(bounds, iter);
     }
 }
 
 fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegExpObject>) {
-    let mut offset = 0;
-
     iter_basic_blocks(regexp.instructions(), |block_bounds, mut instructions| {
         let mut node_label = String::new();
 
         let node_id = block_to_node_id(block_bounds.start);
         graph.add_node(&node_id);
 
-        while let Some(instruction) = instructions.next() {
-            let next_offset = offset + instruction.size();
+        let mut offset = block_bounds.start;
+
+        while let Some(instr) = instructions.next() {
+            let next_offset = offset + instr.size();
 
             // Accumulate text for all instructions in the block for the node label
-            node_label.push_str(&format!("{offset}: {}\n", instruction.debug_print()));
+            node_label.push_str(&format!("{offset}: {}\n", instr.debug_print()));
 
             // Last instruction determines all control flow edges out of the block
             if instructions.is_end() {
                 let next_node_id = block_to_node_id(next_offset);
 
-                add_node_color(graph, instruction, &node_id);
-                add_node_edges(graph, instruction, &node_id, &next_node_id);
+                add_node_color(graph, instr, &node_id);
+                add_node_edges(graph, instr, &node_id, &next_node_id);
             }
 
             offset = next_offset;

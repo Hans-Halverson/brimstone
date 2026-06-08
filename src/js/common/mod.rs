@@ -1,6 +1,8 @@
 pub mod alloc;
 pub mod constants;
 pub mod error;
+pub mod filesystem;
+pub mod graphviz;
 pub mod icu;
 mod icu_data;
 pub mod macros;

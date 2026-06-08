@@ -1,5 +1,6 @@
 use std::{
     fmt,
+    path::PathBuf,
     sync::{Mutex, MutexGuard},
 };
 
@@ -28,6 +29,11 @@ pub struct Args {
     /// Print the bytecode for all RegExps to the console
     #[arg(long, default_value_t = false)]
     pub print_regexp_bytecode: bool,
+
+    /// Save a Graphviz DOT file of the bytecode for all RegExps into the given directory. Defaults
+    /// to the "dotfiles" directory.
+    #[arg(long, num_args = 0..=1, require_equals = true, default_missing_value = DEFAULT_REGEXP_DOTFILE_DIRECTORY)]
+    pub save_regexp_bytecode_dotfiles: Option<String>,
 
     /// Parse as module instead of script
     #[arg(short, long, default_value_t = false)]
@@ -81,6 +87,9 @@ pub struct Options {
     /// Print the bytecode for all RegExps to the console
     pub print_regexp_bytecode: bool,
 
+    /// Output directory for Graphviz RegExp bytecode dotfiles, if any.
+    pub regexp_dotfile_directory: Option<PathBuf>,
+
     /// Buffer to write all dumped output into instead of stdout
     pub dump_buffer: Option<Mutex<String>>,
 
@@ -130,6 +139,7 @@ impl OptionsBuilder {
             print_ast: false,
             print_bytecode: false,
             print_regexp_bytecode: false,
+            regexp_dotfile_directory: None,
             dump_buffer: None,
             min_heap_size: DEFAULT_MIN_HEAP_SIZE,
             max_heap_size: DEFAULT_MAX_HEAP_SIZE,
@@ -141,11 +151,17 @@ impl OptionsBuilder {
 
     /// Create new options from command line arguments.
     pub fn new_from_args(args: &Args) -> Self {
+        let regexp_dotfile_directory = args
+            .save_regexp_bytecode_dotfiles
+            .as_ref()
+            .map(|dir| PathBuf::from(dir));
+
         OptionsBuilder::new()
             .annex_b(args.annex_b)
             .print_ast(args.print_ast)
             .print_bytecode(args.print_bytecode)
             .print_regexp_bytecode(args.print_regexp_bytecode)
+            .regexp_dotfile_directory(regexp_dotfile_directory)
             .min_heap_size(args.min_heap_size.unwrap_or(DEFAULT_MIN_HEAP_SIZE))
             .max_heap_size(args.max_heap_size.unwrap_or(DEFAULT_MAX_HEAP_SIZE))
             .no_color(args.no_color)
@@ -194,6 +210,11 @@ impl OptionsBuilder {
         self
     }
 
+    pub fn regexp_dotfile_directory(mut self, directory: Option<PathBuf>) -> Self {
+        self.0.regexp_dotfile_directory = directory;
+        self
+    }
+
     pub fn min_heap_size(mut self, min_heap_size: usize) -> Self {
         self.0.min_heap_size = min_heap_size;
         self
@@ -227,6 +248,8 @@ impl OptionsBuilder {
         self
     }
 }
+
+const DEFAULT_REGEXP_DOTFILE_DIRECTORY: &str = "dotfiles";
 
 fn parse_min_heap_size_arg(size_arg: &str) -> Result<usize, String> {
     let size = parse_heap_size_arg(size_arg)

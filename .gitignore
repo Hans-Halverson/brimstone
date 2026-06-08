@@ -1,6 +1,7 @@
 .agents
 .claude
 
+dotfiles
 target
 node_modules
 tests/test262/test262

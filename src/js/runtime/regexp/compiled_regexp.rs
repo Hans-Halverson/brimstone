@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
-    common::math::round_to_power_of_two,
+    common::{graphviz::DotGraphBuilder, math::round_to_power_of_two},
     field_offset,
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
@@ -11,7 +11,7 @@ use crate::{
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        regexp::instruction::InstructionIterator,
+        regexp::{graphviz::compiled_regexp_to_dot_graph, instruction::InstructionIterator},
         string_value::{FlatString, StringValue},
         Context, Handle, HeapPtr,
     },
@@ -146,6 +146,12 @@ impl CompiledRegExpObject {
                 self.num_capture_groups as usize,
             )
         }
+    }
+}
+
+impl HeapPtr<CompiledRegExpObject> {
+    pub fn to_dot_graph(&self) -> DotGraphBuilder {
+        compiled_regexp_to_dot_graph(*self)
     }
 }
 

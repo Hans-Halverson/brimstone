@@ -29,6 +29,7 @@ use crate::{
         debug_print::{DebugPrint, DebugPrintMode},
         regexp::{
             compiled_regexp::CompiledRegExpObject,
+            graphviz::save_regexp_dotfile_if_needed,
             instruction::{
                 AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
@@ -1564,6 +1565,8 @@ pub fn compile_regexp(
         let bytecode_string = compiled_regexp.debug_print(DebugPrintMode::Verbose);
         cx.print_or_add_to_dump_buffer(&bytecode_string);
     }
+
+    save_regexp_dotfile_if_needed(cx, *compiled_regexp);
 
     Ok(compiled_regexp)
 }

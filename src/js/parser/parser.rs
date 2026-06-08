@@ -451,7 +451,7 @@ impl<'a> Parser<'a> {
         let mut has_use_strict_directive = false;
 
         while let Token::StringLiteral(str) = &self.token {
-            // Use strict directive cannot have any escape characters in it, so check length
+            // Use strict directive cannot have any escape sequences in it, so check length
             let is_unscaped_use_strict =
                 *str == "use strict" && self.loc.end - self.loc.start == 12;
 
@@ -2916,7 +2916,7 @@ impl<'a> Parser<'a> {
         allow_yield: bool,
     ) -> bool {
         match token {
-            // Identifier's value cannot be a reserved word (e.g. due to escape characters)
+            // Identifier's value cannot be a reserved word (e.g. due to escape sequences)
             Token::Identifier(name) => {
                 !Self::is_reserved_word(name.as_bytes(), in_strict_mode, allow_await, allow_yield)
             }
@@ -3061,7 +3061,7 @@ impl<'a> Parser<'a> {
             // Start position of pattern is offset by one to account for the leading `/`
             let pattern_start_pos = start_pos + 1;
 
-            // Start position of flags is offset by two `/` characters and the entire pattern
+            // Start position of flags is offset by two `/` code points and the entire pattern
             let flags_start_pos = start_pos + 2 + pattern.len();
             let lexer_stream =
                 Utf8LexerStream::new(flags_start_pos, source.clone(), flags_string.as_bytes());

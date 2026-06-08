@@ -44,14 +44,14 @@ pub struct SavedLexerState {
 
 type LexResult<'a> = ParseResult<(Token<'a>, Loc)>;
 
-/// Character that marks an EOF. Not a valid unicode character.
-const EOF_CHAR: u32 = 0x110000;
+/// Code point that marks an EOF. Not a valid unicode code point.
+const EOF_CODE_POINT: u32 = 0x110000;
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a Rc<Source>, alloc: AstAlloc<'a>) -> Lexer<'a> {
         let buf = source.contents.as_bytes();
         let current = if buf.is_empty() {
-            EOF_CHAR
+            EOF_CODE_POINT
         } else {
             buf[0].into()
         };
@@ -92,7 +92,7 @@ impl<'a> Lexer<'a> {
         if self.pos < self.buf.len() {
             self.current = self.code_point_at(self.pos);
         } else {
-            self.current = EOF_CHAR;
+            self.current = EOF_CODE_POINT;
             self.pos = self.buf.len();
         }
     }
@@ -119,7 +119,7 @@ impl<'a> Lexer<'a> {
         if next_pos < self.buf.len() {
             self.code_point_at(next_pos)
         } else {
-            EOF_CHAR
+            EOF_CODE_POINT
         }
     }
 
@@ -162,7 +162,7 @@ impl<'a> Lexer<'a> {
         Err(self.localized_parse_error(loc, error))
     }
 
-    /// Lookup table for ASCII whitespace and newline characters.
+    /// Lookup table for ASCII whitespace and newline code points.
     /// - 0 means other
     /// - 1 means whitespace
     /// - 2 means newline
@@ -463,11 +463,11 @@ impl<'a> Lexer<'a> {
                     self.emit(Token::Comma, start_pos)
                 }
                 '.' => {
-                    let next_char = self.peek();
-                    if next_char == '.' as u32 && self.peek2() == '.' as u32 {
+                    let next_code_point = self.peek();
+                    if next_code_point == '.' as u32 && self.peek2() == '.' as u32 {
                         self.advance3();
                         self.emit(Token::Spread, start_pos)
-                    } else if is_decimal_digit(next_char) {
+                    } else if is_decimal_digit(next_code_point) {
                         let token = self.lex_decimal_literal()?;
                         self.error_if_cannot_follow_numeric_literal()?;
                         Ok(token)
@@ -526,8 +526,8 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.lex_template_literal(start_pos, true)
                 }
-                EOF_CHAR => self.emit(Token::Eof, start_pos),
-                char if is_id_start_ascii(char) => self.lex_identifier_ascii(start_pos),
+                EOF_CODE_POINT => self.emit(Token::Eof, start_pos),
+                code_point if is_id_start_ascii(code_point) => self.lex_identifier_ascii(start_pos),
                 // Escape sequence at the start of an identifier
                 '\\' => {
                     let code_point = self.lex_identifier_unicode_escape_sequence()?;
@@ -579,7 +579,7 @@ impl<'a> Lexer<'a> {
                     self.is_new_line_before_current = true;
                     return Ok(());
                 }
-                EOF_CHAR => return Ok(()),
+                EOF_CODE_POINT => return Ok(()),
                 other => {
                     if is_ascii(other) {
                         self.advance()
@@ -603,7 +603,7 @@ impl<'a> Lexer<'a> {
                         self.advance2();
                         break;
                     }
-                    EOF_CHAR => {
+                    EOF_CODE_POINT => {
                         let loc = self.mark_loc(self.pos + 1);
                         return self
                             .error(loc, ParseError::new_expected_token(Token::Eof, Token::Divide));
@@ -614,7 +614,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     self.is_new_line_before_current = true;
                 }
-                EOF_CHAR => {
+                EOF_CODE_POINT => {
                     let loc = self.mark_loc(self.pos);
                     return self
                         .error(loc, ParseError::new_expected_token(Token::Eof, Token::Multiply));
@@ -649,13 +649,13 @@ impl<'a> Lexer<'a> {
 
         // Middle digits may be decimal numbers or numeric separators
         let mut has_numeric_separator = false;
-        let mut is_last_char_numeric_separator = false;
+        let mut is_last_code_point_numeric_separator = false;
 
         loop {
-            is_last_char_numeric_separator = if is_decimal_digit(self.current) {
+            is_last_code_point_numeric_separator = if is_decimal_digit(self.current) {
                 false
             } else if self.current == '_' as u32 && allow_numeric_separator {
-                if is_last_char_numeric_separator {
+                if is_last_code_point_numeric_separator {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::AdjacentNumericSeparators);
                 }
@@ -671,7 +671,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Last digit cannot be a separator
-        if is_last_char_numeric_separator {
+        if is_last_code_point_numeric_separator {
             let loc = self.mark_loc(self.pos - 1);
             return self.error(loc, ParseError::TrailingNumericSeparator);
         }
@@ -728,7 +728,7 @@ impl<'a> Lexer<'a> {
 
         // Parse float using rust stdlib. Rust stdlib cannot handle numeric separators, so if there
         // were numeric separators then first generate string with numeric separators removed. It is
-        // safe to treat this slice as valid UTF-8 as it only contains ASCII characters.
+        // safe to treat this slice as valid UTF-8 as it only contains ASCII code points.
         let end_pos = self.pos;
         let string = unsafe { std::str::from_utf8_unchecked(&self.buf[start_pos..end_pos]) };
 
@@ -745,7 +745,7 @@ impl<'a> Lexer<'a> {
     fn lex_literal_with_base(
         &mut self,
         base: u8,
-        char_to_digit: fn(u32) -> Option<u32>,
+        code_point_to_digit: fn(u32) -> Option<u32>,
     ) -> LexResult<'a> {
         let start_pos = self.pos;
         self.advance2();
@@ -754,7 +754,7 @@ impl<'a> Lexer<'a> {
         let mut overflows_u64 = false;
 
         // First digit must be a binary digit
-        if let Some(digit) = char_to_digit(self.current) {
+        if let Some(digit) = code_point_to_digit(self.current) {
             value = digit as u64;
             self.advance()
         } else {
@@ -763,40 +763,41 @@ impl<'a> Lexer<'a> {
         }
 
         // Middle digits may be binary numbers or numeric separators
-        let mut is_last_char_numeric_separator = false;
+        let mut is_last_code_point_numeric_separator = false;
         loop {
-            is_last_char_numeric_separator = if let Some(digit) = char_to_digit(self.current) {
-                // Try to apply multiplication by base, marking if it overflows
-                if let Some(new_value) = value.checked_mul(base as u64) {
-                    value = new_value;
+            is_last_code_point_numeric_separator =
+                if let Some(digit) = code_point_to_digit(self.current) {
+                    // Try to apply multiplication by base, marking if it overflows
+                    if let Some(new_value) = value.checked_mul(base as u64) {
+                        value = new_value;
+                    } else {
+                        overflows_u64 = true;
+                    };
+
+                    // Try to apply addition of digit, marking if it overflows
+                    if let Some(new_value) = value.checked_add(digit as u64) {
+                        value = new_value;
+                    } else {
+                        overflows_u64 = true;
+                    };
+
+                    false
+                } else if self.current == '_' as u32 {
+                    if is_last_code_point_numeric_separator {
+                        let loc = self.mark_loc(self.pos);
+                        return self.error(loc, ParseError::AdjacentNumericSeparators);
+                    }
+
+                    true
                 } else {
-                    overflows_u64 = true;
+                    break;
                 };
-
-                // Try to apply addition of digit, marking if it overflows
-                if let Some(new_value) = value.checked_add(digit as u64) {
-                    value = new_value;
-                } else {
-                    overflows_u64 = true;
-                };
-
-                false
-            } else if self.current == '_' as u32 {
-                if is_last_char_numeric_separator {
-                    let loc = self.mark_loc(self.pos);
-                    return self.error(loc, ParseError::AdjacentNumericSeparators);
-                }
-
-                true
-            } else {
-                break;
-            };
 
             self.advance()
         }
 
         // Last digit cannot be a separator
-        if is_last_char_numeric_separator {
+        if is_last_code_point_numeric_separator {
             let loc = self.mark_loc(self.pos - 1);
             return self.error(loc, ParseError::TrailingNumericSeparator);
         }
@@ -888,7 +889,7 @@ impl<'a> Lexer<'a> {
             cannot_follow_numeric_literal =
                 is_id_start_ascii(self.current) || is_decimal_digit(self.current);
             end_pos = self.pos + 1;
-        } else if self.current == EOF_CHAR {
+        } else if self.current == EOF_CODE_POINT {
             cannot_follow_numeric_literal = false;
             end_pos = self.pos;
         } else {
@@ -911,7 +912,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lex_string_literal(&mut self) -> LexResult<'a> {
-        let quote_char = self.current;
+        let quote_code_point = self.current;
         let quote_start_pos = self.pos;
         self.advance();
 
@@ -922,7 +923,7 @@ impl<'a> Lexer<'a> {
             match_u32!(match self.current {
                 // If we find the end of the string then directly return a slice of the underlying
                 // buffer.
-                quote if quote == quote_char => {
+                quote if quote == quote_code_point => {
                     let value =
                         Wtf8Str::from_bytes_unchecked(&self.buf[content_start_pos..self.pos]);
 
@@ -933,18 +934,18 @@ impl<'a> Lexer<'a> {
                 // Break out to slow path if an escape sequence is encountered
                 '\\' => break,
                 // Check for unterminated string literals
-                '\n' | '\r' | EOF_CHAR => {
+                '\n' | '\r' | EOF_CODE_POINT => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
-                // Otherwise skip the next character, performing UTF-8 validation
+                // Otherwise skip the next code point, performing UTF-8 validation
                 _ => {
-                    let _ = self.lex_ascii_or_unicode_character()?;
+                    let _ = self.lex_ascii_or_unicode_code_point()?;
                 }
             })
         }
 
-        // Must build our own string since escaped characters exist. Can copy in the slice of the
+        // Must build our own string since escaped code points exist. Can copy in the slice of the
         // string up to the first escape sequence.
         let mut value =
             AstString::from_bytes_unchecked_in(&self.buf[content_start_pos..self.pos], self.alloc);
@@ -953,7 +954,7 @@ impl<'a> Lexer<'a> {
             match_u32!(match self.current {
                 // Escape sequences
                 '\\' => match_u32!(match self.peek() {
-                    // Single character escapes
+                    // Single code point escapes
                     'n' => {
                         value.push_char('\n');
                         self.advance2()
@@ -990,7 +991,7 @@ impl<'a> Lexer<'a> {
                         value.push_char('\x0C');
                         self.advance2()
                     }
-                    // Null character escape
+                    // Null code point escape
                     '0' if !is_decimal_digit(self.peek2()) => {
                         value.push_char('\x00');
                         self.advance2()
@@ -1073,11 +1074,11 @@ impl<'a> Lexer<'a> {
                         self.eat('\n');
                     }
                     // EOF directly after backslash
-                    EOF_CHAR => {
+                    EOF_CODE_POINT => {
                         let loc = self.mark_loc(self.pos);
                         return self.error(loc, ParseError::UnterminatedStringLiteral);
                     }
-                    // Non-escape character, use character directly
+                    // Non-escape code point, use code point directly
                     other => {
                         if is_ascii(other) {
                             self.advance2();
@@ -1094,18 +1095,18 @@ impl<'a> Lexer<'a> {
                     }
                 }),
                 // If we find the end of the string then return the newly allocated string
-                quote if quote == quote_char => {
+                quote if quote == quote_code_point => {
                     self.advance();
                     return self
                         .emit(Token::StringLiteral(value.into_arena_str()), quote_start_pos);
                 }
                 // Unterminated string literal
-                '\n' | '\r' | EOF_CHAR => {
+                '\n' | '\r' | EOF_CODE_POINT => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
                 // Otherwise add
-                _ => value.push(self.lex_ascii_or_unicode_character()?),
+                _ => value.push(self.lex_ascii_or_unicode_code_point()?),
             })
         }
     }
@@ -1116,11 +1117,11 @@ impl<'a> Lexer<'a> {
             let start_pos = self.pos - 1;
 
             // RegularExpressionFirstChar
-            self.lex_regex_character(false)?;
+            self.lex_regex_code_point(false)?;
 
             start_pos
         } else {
-            // First pattern character is a '='
+            // First pattern code point is a '='
             self.pos - 2
         };
 
@@ -1128,7 +1129,7 @@ impl<'a> Lexer<'a> {
 
         // RegularExpressionChars
         while self.current != '/' as u32 {
-            self.lex_regex_character(false)?;
+            self.lex_regex_code_point(false)?;
         }
 
         let pattern_end_pos = self.pos;
@@ -1140,7 +1141,7 @@ impl<'a> Lexer<'a> {
 
         loop {
             // EOF signals the end of the flags
-            if self.current == EOF_CHAR {
+            if self.current == EOF_CODE_POINT {
                 break;
             }
 
@@ -1173,13 +1174,13 @@ impl<'a> Lexer<'a> {
         self.emit(Token::RegExpLiteral(regexp_token), start_pos)
     }
 
-    fn lex_regex_character(&mut self, in_class: bool) -> ParseResult<()> {
+    fn lex_regex_code_point(&mut self, in_class: bool) -> ParseResult<()> {
         match_u32!(match self.current {
             '\\' => {
                 self.advance();
-                self.lex_regexp_character_non_line_terminator()?;
+                self.lex_regexp_code_point_non_line_terminator()?;
             }
-            EOF_CHAR => {
+            EOF_CODE_POINT => {
                 let loc = self.mark_loc(self.pos);
                 return self.error(loc, ParseError::UnterminatedRegExpLiteral);
             }
@@ -1187,23 +1188,23 @@ impl<'a> Lexer<'a> {
                 self.advance();
 
                 while self.current != ']' as u32 {
-                    self.lex_regex_character(true)?;
+                    self.lex_regex_code_point(true)?;
                 }
 
                 self.advance();
             }
             _ => {
-                self.lex_regexp_character_non_line_terminator()?;
+                self.lex_regexp_code_point_non_line_terminator()?;
             }
         });
 
         Ok(())
     }
 
-    fn lex_regexp_character_non_line_terminator(&mut self) -> ParseResult<()> {
-        let char = self.lex_ascii_or_unicode_character()?;
+    fn lex_regexp_code_point_non_line_terminator(&mut self) -> ParseResult<()> {
+        let code_point = self.lex_ascii_or_unicode_code_point()?;
 
-        if is_newline(char) {
+        if is_newline(code_point) {
             let loc = self.mark_loc(self.pos);
             self.error(loc, ParseError::UnterminatedRegExpLiteral)
         } else {
@@ -1264,13 +1265,13 @@ impl<'a> Lexer<'a> {
                         value,
                     );
                 }
-                EOF_CHAR => {
+                EOF_CODE_POINT => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedTemplateLiteral);
                 }
-                // Otherwise skip the next character, performing UTF-8 validation
+                // Otherwise skip the next code point, performing UTF-8 validation
                 _ => {
-                    let _ = self.lex_ascii_or_unicode_character()?;
+                    let _ = self.lex_ascii_or_unicode_code_point()?;
                 }
             })
         }
@@ -1301,7 +1302,7 @@ impl<'a> Lexer<'a> {
             match_u32!(match self.current {
                 // Escape sequences
                 '\\' => match_u32!(match self.peek() {
-                    // Single character escapes
+                    // Single code point escapes
                     'n' => {
                         value.push_char('\n');
                         self.advance2()
@@ -1362,8 +1363,8 @@ impl<'a> Lexer<'a> {
 
                         if let Some(x1) = get_hex_value(self.current) {
                             if let Some(x2) = get_hex_value(self.peek()) {
-                                let escaped_char = x1 * 16 + x2;
-                                value.push(escaped_char);
+                                let escaped_code_point = x1 * 16 + x2;
+                                value.push(escaped_code_point);
                                 self.advance2();
                             } else {
                                 let loc = self.mark_loc(self.pos);
@@ -1394,11 +1395,11 @@ impl<'a> Lexer<'a> {
                         self.eat('\n');
                     }
                     // EOF directly after backslash
-                    EOF_CHAR => {
+                    EOF_CODE_POINT => {
                         let loc = self.mark_loc(self.pos);
                         return self.error(loc, ParseError::UnterminatedTemplateLiteral);
                     }
-                    // Non-escape character, use character directly
+                    // Non-escape code point, use code point directly
                     other => {
                         if is_ascii(other) {
                             self.advance2();
@@ -1448,11 +1449,11 @@ impl<'a> Lexer<'a> {
 
                     self.eat('\n');
                 }
-                EOF_CHAR => {
+                EOF_CODE_POINT => {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedTemplateLiteral);
                 }
-                _ => value.push(self.lex_ascii_or_unicode_character()?),
+                _ => value.push(self.lex_ascii_or_unicode_code_point()?),
             })
         }
 
@@ -1496,11 +1497,11 @@ impl<'a> Lexer<'a> {
 
     /// Lex any valid codepoint whether it is ASCII or unicode
     #[inline]
-    fn lex_ascii_or_unicode_character(&mut self) -> ParseResult<CodePoint> {
+    fn lex_ascii_or_unicode_code_point(&mut self) -> ParseResult<CodePoint> {
         if is_ascii(self.current) {
-            let ascii_char = self.current;
+            let ascii_code_point = self.current;
             self.advance();
-            Ok(ascii_char)
+            Ok(ascii_code_point)
         } else {
             let code_point = self.lex_utf8_codepoint()?;
             Ok(code_point)
@@ -1581,7 +1582,7 @@ impl<'a> Lexer<'a> {
 
     // Fast path for lexing a purely ASCII identifier
     fn lex_identifier_ascii(&mut self, start_pos: Pos) -> LexResult<'a> {
-        // Consume the id start ASCII character
+        // Consume the id start ASCII code point
         self.advance();
 
         loop {
@@ -1589,13 +1590,13 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 continue;
             } else if is_ascii(self.current) && self.current != '\\' as u32 {
-                // The only remaining allowed ASCII character is the start of an escape sequence,
+                // The only remaining allowed ASCII code point is the start of an escape sequence,
                 // handled below.
                 break;
-            } else if self.current == EOF_CHAR {
+            } else if self.current == EOF_CODE_POINT {
                 break;
             } else {
-                // Peek at the next code point, which is either a unicode character or an escape
+                // Peek at the next code point, which is either a unicode code point or an escape
                 // sequence. This may be part of the identifier.
                 let save_state = self.save();
                 let ascii_end_pos = self.pos;
@@ -1607,7 +1608,7 @@ impl<'a> Lexer<'a> {
                 };
 
                 if let Some(char) = as_id_part(code_point) {
-                    // Non-ASCII character is part of the identifier so bail to slow path, copying
+                    // Non-ASCII code point is part of the identifier so bail to slow path, copying
                     // over ASCII string and code point that has been created so far. Safe since
                     // string is ASCII only so far and therefore valid UTF-8.
                     let mut string_builder = AstString::from_bytes_unchecked_in(
@@ -1635,7 +1636,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // Slow path for lexing an identifier with at least one unicode character or escape sequence.
+    // Slow path for lexing an identifier with at least one unicode code point or escape sequence.
     // Input the string that has been created so far before falling back to this slow path.
     fn lex_identifier_non_ascii(
         &mut self,
@@ -1661,7 +1662,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     break;
                 }
-            } else if self.current == EOF_CHAR {
+            } else if self.current == EOF_CODE_POINT {
                 break;
             } else {
                 // Otherwise must be a utf-8 encoded codepoint
@@ -1703,7 +1704,7 @@ impl<'a> Lexer<'a> {
         // Must start with an identifier start code point. Fast path for ASCII-only identifiers.
         let (token, loc) = if is_id_start_ascii(self.current) {
             self.lex_identifier_ascii(start_pos)?
-        } else if self.current != EOF_CHAR {
+        } else if self.current != EOF_CODE_POINT {
             // Otherwise starts with either a unicode code point or an escape sequence
             let start_code_point = if self.current == '\\' as u32 {
                 self.lex_identifier_unicode_escape_sequence()?

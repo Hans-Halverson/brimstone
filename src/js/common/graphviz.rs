@@ -10,12 +10,14 @@ pub struct DotGraphBuilder {
     graph_attributes: Vec<(String, String)>,
     node_default_attributes: Vec<(String, String)>,
     edge_default_attributes: Vec<(String, String)>,
+    graph_label_text_align: DotTextAlign,
 }
 
 /// A node in a DotGraphBuilder. Nodes are identified by their `id` field.
 pub struct DotNode {
     id: String,
     attributes: Vec<(String, String)>,
+    text_align: DotTextAlign,
 }
 
 /// A directed edge in a DotGraphBuilder.
@@ -23,6 +25,12 @@ pub struct DotEdge {
     from: String,
     to: String,
     attributes: Vec<(String, String)>,
+}
+
+#[derive(Clone, Copy)]
+pub enum DotTextAlign {
+    Left,
+    Center,
 }
 
 impl DotGraphBuilder {
@@ -34,16 +42,19 @@ impl DotGraphBuilder {
             graph_attributes: vec![],
             node_default_attributes: vec![],
             edge_default_attributes: vec![],
+            graph_label_text_align: DotTextAlign::Center,
         }
     }
 
     /// Add and return a node with the given id.
     pub fn add_node(&mut self, id: &str) -> &mut DotNode {
-        let had_entry = self
-            .nodes
-            .insert(id.to_owned(), DotNode { id: id.to_owned(), attributes: vec![] })
-            .is_some();
+        let node = DotNode {
+            id: id.to_owned(),
+            attributes: vec![],
+            text_align: DotTextAlign::Center,
+        };
 
+        let had_entry = self.nodes.insert(id.to_owned(), node).is_some();
         assert!(!had_entry, "Duplicate graphviz node id");
 
         self.nodes.get_mut(id).unwrap()
@@ -81,12 +92,24 @@ impl DotGraphBuilder {
             .push((key.to_owned(), value.to_owned()));
         self
     }
+
+    /// Set the text alignment of the graph's label.
+    pub fn set_graph_label_text_align(&mut self, text_align: DotTextAlign) -> &mut Self {
+        self.graph_label_text_align = text_align;
+        self
+    }
 }
 
 impl DotNode {
     /// Attach an attribute to this node.
     pub fn attribute(&mut self, key: &str, value: &str) -> &mut Self {
         self.attributes.push((key.to_owned(), value.to_owned()));
+        self
+    }
+
+    /// Set text alignment for this node's label.
+    pub fn text_align(&mut self, text_align: DotTextAlign) -> &mut Self {
+        self.text_align = text_align;
         self
     }
 }
@@ -104,7 +127,13 @@ impl fmt::Display for DotGraphBuilder {
         writeln!(f, "digraph {} {{", quote(&self.name))?;
 
         for (key, value) in &self.graph_attributes {
-            writeln!(f, "  {key}={};", quote(value))?;
+            let text_align = if key == "label" {
+                self.graph_label_text_align
+            } else {
+                DotTextAlign::Center
+            };
+
+            writeln!(f, "  {key}={};", quote_with_text_align(value, text_align))?;
         }
 
         if !self.node_default_attributes.is_empty() {
@@ -125,7 +154,7 @@ impl fmt::Display for DotGraphBuilder {
 
         for (_, node) in node_entries {
             write!(f, "  {}", quote(&node.id))?;
-            write_attributes(f, &node.attributes)?;
+            write_node_attributes(f, node)?;
             writeln!(f, ";")?;
         }
 
@@ -154,16 +183,46 @@ fn write_attributes(f: &mut fmt::Formatter<'_>, attributes: &[(String, String)])
     write!(f, "]")
 }
 
+fn write_node_attributes(f: &mut fmt::Formatter<'_>, node: &DotNode) -> fmt::Result {
+    if node.attributes.is_empty() {
+        return Ok(());
+    }
+
+    write!(f, " [")?;
+    for (i, (key, value)) in node.attributes.iter().enumerate() {
+        if i > 0 {
+            write!(f, ", ")?;
+        }
+
+        // Node text alignment applies only to label attribute
+        let text_align = if key == "label" {
+            node.text_align
+        } else {
+            DotTextAlign::Center
+        };
+
+        write!(f, "{key}={}", quote_with_text_align(value, text_align))?;
+    }
+    write!(f, "]")
+}
+
 /// Wrap a string in double quotes and escape the necessary characters for the DOT language.
-fn quote(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
+fn quote(str: &str) -> String {
+    quote_with_text_align(str, DotTextAlign::Center)
+}
+
+fn quote_with_text_align(str: &str, text_align: DotTextAlign) -> String {
+    let mut out = String::with_capacity(str.len() + 2);
     out.push('"');
 
-    for c in s.chars() {
+    for c in str.chars() {
         match c {
             '"' => out.push_str("\\\""),
             '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
+            '\n' => match text_align {
+                DotTextAlign::Left => out.push_str("\\l"),
+                DotTextAlign::Center => out.push_str("\\n"),
+            },
             _ => out.push(c),
         }
     }

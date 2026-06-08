@@ -1,6 +1,7 @@
 use std::{mem::size_of, ops::Range};
 
 use crate::{
+    common::graphviz::DotGraphBuilder,
     extend_object, field_offset, must_a,
     parser::loc::Pos,
     runtime::{
@@ -8,7 +9,8 @@ use crate::{
         alloc_error::AllocResult,
         bytecode::{
             constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
-            instruction::debug_format_instructions, source_map::BytecodeSourceMap,
+            graphviz::bytecode_function_to_dot_graph, instruction::debug_format_instructions,
+            source_map::BytecodeSourceMap,
         },
         collections::{array::ByteArray, InlineArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
@@ -443,6 +445,12 @@ impl BytecodeFunction {
     #[inline]
     pub fn runtime_function_id(&self) -> Option<RuntimeFunctionId> {
         self.runtime_function_id
+    }
+}
+
+impl HeapPtr<BytecodeFunction> {
+    pub fn to_dot_graph(&self) -> DotGraphBuilder {
+        bytecode_function_to_dot_graph(*self)
     }
 }
 

@@ -35,6 +35,7 @@ use crate::{
             constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
             exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
             function::{dump_bytecode_function, BytecodeFunction, Closure},
+            graphviz::save_bytecode_dotfile_if_needed,
             instruction::{
                 DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,
                 ThrowNewErrorKind,
@@ -149,6 +150,8 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 .maybe_grow_for_push(self.cx)?
                 .push_without_growing(*function);
         }
+
+        save_bytecode_dotfile_if_needed(self.cx, *function);
 
         Ok(())
     }

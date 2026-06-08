@@ -3,6 +3,7 @@ mod constant_table_builder;
 pub mod exception_handlers;
 pub mod function;
 pub mod generator;
+pub mod graphviz;
 pub mod instruction;
 mod instruction_traits;
 mod operand;

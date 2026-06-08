@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fs, ops::Range};
 
 use crate::{
-    common::graphviz::{DotGraphBuilder, DOTFILE_EXTENSION},
+    common::graphviz::{DotGraphBuilder, DotTextAlign, DOTFILE_EXTENSION},
     runtime::{
         regexp::{
             compiled_regexp::CompiledRegExpObject,
@@ -171,7 +171,10 @@ fn add_nodes_and_edges(graph: &mut DotGraphBuilder, regexp: HeapPtr<CompiledRegE
             offset = next_offset;
         }
 
-        graph.get_node(&node_id).attribute("label", &node_label);
+        graph
+            .get_node(&node_id)
+            .attribute("label", &node_label)
+            .text_align(DotTextAlign::Left);
     });
 }
 

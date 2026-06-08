@@ -2042,7 +2042,7 @@ pub struct InstructionIterator<'a> {
 }
 
 impl<'a> InstructionIterator<'a> {
-    fn new(bytecode: &'a [u8]) -> Self {
+    pub fn new(bytecode: &'a [u8]) -> Self {
         Self { pos: 0, bytecode }
     }
 }
@@ -2165,12 +2165,15 @@ pub fn debug_format_instructions(function: HeapPtr<BytecodeFunction>, printer: &
     }
 }
 
-fn get_jump_offset(function: HeapPtr<BytecodeFunction>, instr: &dyn Instruction) -> Option<isize> {
+pub fn get_jump_offset(
+    function: HeapPtr<BytecodeFunction>,
+    instr: &dyn Instruction,
+) -> Option<isize> {
     let opcode = instr.opcode();
 
-    let offset_operand_index = if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
+    let offset_operand_index = if opcode.is_unconditional_jump() {
         0
-    } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpNotNullishConstant {
+    } else if opcode.is_conditional_jump() {
         1
     } else {
         return None;
@@ -2182,5 +2185,18 @@ fn get_jump_offset(function: HeapPtr<BytecodeFunction>, instr: &dyn Instruction)
         constant_table.map(|constant_table| constant_table.get_constant_offset(constant_index))
     } else {
         Some(instr.get_raw_operand_signed(offset_operand_index))
+    }
+}
+
+impl OpCode {
+    /// Whether the opcode is an unconditional jump, whose jump offset is its first operand.
+    pub fn is_unconditional_jump(&self) -> bool {
+        *self == OpCode::Jump || *self == OpCode::JumpConstant
+    }
+
+    /// Whether the opcode is a conditional jump, whose jump offset is its second operand. A conditional
+    /// jump either jumps to its target or falls through to the next instruction.
+    pub fn is_conditional_jump(&self) -> bool {
+        *self >= OpCode::JumpTrue && *self <= OpCode::JumpNotNullishConstant
     }
 }

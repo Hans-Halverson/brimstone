@@ -9,6 +9,7 @@ use crate::{
     count, replace_expr,
     runtime::{
         bytecode::{
+            function::BytecodeFunction,
             operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
             width::{
                 ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width, WidthEnum,
@@ -16,6 +17,7 @@ use crate::{
             writer::BytecodeWriter,
         },
         debug_print::DebugPrinter,
+        HeapPtr,
     },
 };
 
@@ -27,8 +29,10 @@ pub trait Instruction: fmt::Display {
     fn operand_types(&self) -> &[OperandType];
     fn width(&self) -> WidthEnum;
 
-    /// Return a raw operand at the given index. The operand is extended to a usize, though may
-    /// actually represent a smaller or unsigned integer.
+    /// Return a raw operand at the given index, interpreted as unsigned and extended to a usize.
+    fn get_raw_operand_unsigned(&self, index: usize) -> usize;
+
+    /// Return a raw operand at the given index, interpreted as signed and extended to an isize.
     fn get_raw_operand_signed(&self, index: usize) -> isize;
 
     /// Total length in bytes of this instruction's operands. Does not include the opcode or width
@@ -150,6 +154,11 @@ macro_rules! define_instructions {
                 #[inline]
                 fn width(&self) -> WidthEnum {
                     W::ENUM
+                }
+
+                #[inline]
+                fn get_raw_operand_unsigned(&self, index: usize) -> usize {
+                    self.0[index].to_usize()
                 }
 
                 #[inline]
@@ -2076,7 +2085,9 @@ impl<'a> Iterator for InstructionIterator<'a> {
     }
 }
 
-pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
+pub fn debug_format_instructions(function: HeapPtr<BytecodeFunction>, printer: &mut DebugPrinter) {
+    let bytecode = function.bytecode();
+
     // Initial pass to find the max instruction length and max offset in the bytecode to calculate
     // padding. Also determine the jump targets so that they can be labeled.
     let mut prev_offset = 0;
@@ -2089,7 +2100,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
         prev_offset = offset;
         offsets.push(offset);
 
-        if let Some(jump_offset) = get_jump_offset(instr) {
+        if let Some(jump_offset) = get_jump_offset(function, instr) {
             jump_targets.insert((offset as isize + jump_offset) as usize);
         }
     }
@@ -2143,7 +2154,7 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
         printer.write(&instr.to_string());
 
         // If this is a jump instruction, print the target label following the jump offset
-        if let Some(jump_offset) = get_jump_offset(instr) {
+        if let Some(jump_offset) = get_jump_offset(function, instr) {
             let target_offset = (offset as isize + jump_offset) as usize;
             let target_label = jump_targets[&target_offset];
 
@@ -2154,14 +2165,22 @@ pub fn debug_format_instructions(bytecode: &[u8], printer: &mut DebugPrinter) {
     }
 }
 
-fn get_jump_offset(instr: &dyn Instruction) -> Option<isize> {
+fn get_jump_offset(function: HeapPtr<BytecodeFunction>, instr: &dyn Instruction) -> Option<isize> {
     let opcode = instr.opcode();
 
-    if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
-        Some(instr.get_raw_operand_signed(0))
+    let offset_operand_index = if opcode == OpCode::Jump || opcode == OpCode::JumpConstant {
+        0
     } else if opcode >= OpCode::JumpTrue && opcode <= OpCode::JumpNotNullishConstant {
-        Some(instr.get_raw_operand_signed(1))
+        1
     } else {
-        None
+        return None;
+    };
+
+    if instr.operand_types()[offset_operand_index] == OperandType::ConstantIndex {
+        let constant_index = instr.get_raw_operand_unsigned(offset_operand_index);
+        let constant_table = function.constant_table_ptr();
+        constant_table.map(|constant_table| constant_table.get_constant_offset(constant_index))
+    } else {
+        Some(instr.get_raw_operand_signed(offset_operand_index))
     }
 }

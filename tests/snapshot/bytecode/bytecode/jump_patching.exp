@@ -130,6 +130,7 @@
     264: Call r0, r0, r1, 10
     269: LoadImmediate r0, 1
     272: Ret r0
+  .L0:
     274: LoadImmediate r0, 2
     277: Ret r0
   Constant Table:
@@ -151,10 +152,10 @@
 
 [BytecodeFunction: testShortPatchJump2] {
   Parameters: 1, Registers: 11
-      0: JumpToBooleanFalse a0, 8 (.L1)
+      0: JumpToBooleanFalse a0, 8 (.L0)
       3: LoadImmediate r0, 1
-      6: JumpConstant c1 (.L0)
-  .L1:
+      6: JumpConstant c1 (.L1)
+  .L0:
       8: LoadGlobal r0, c0
      11: LoadImmediate r1, 1
      14: LoadImmediate r2, 2
@@ -239,6 +240,7 @@
     263: LoadImmediate r9, 9
     266: LoadImmediate r10, 10
     269: Call r0, r0, r1, 10
+  .L1:
     274: LoadImmediate r0, 2
     277: Ret r0
   Constant Table:

@@ -68,6 +68,11 @@ impl ConstantTable {
         self.constants.as_mut_slice()[index] = value;
     }
 
+    /// Get a raw signed offset stored in the constant table.
+    pub fn get_constant_offset(&self, index: usize) -> isize {
+        self.get_constant(index).as_raw_bits() as isize
+    }
+
     fn get_metadata_ptr(&self) -> *const u8 {
         let ptr = self as *const ConstantTable as *const u8;
         unsafe { ptr.add(Self::metadata_offset(self.constants.len())) }

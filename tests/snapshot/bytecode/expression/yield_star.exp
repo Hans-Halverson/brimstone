@@ -86,59 +86,58 @@
      29: CheckIteratorResultObject r6
      31: GetNamedProperty r7, r6, c0
      35: JumpTrue r7, 5 (.L2)
-     38: Jump 125 (.L15)
+     38: Jump 125 (.L14)
   .L2:
      40: GetNamedProperty r1, r6, c1
-     44: JumpConstant c5 (.L4)
+     44: JumpConstant c5 (.L15)
   .L3:
-     46: JumpNotUndefined r5, 55 (.L9)
-  .L4:
+     46: JumpNotUndefined r5, 55 (.L8)
      49: GetMethod r8, r2, c3
-     53: JumpNotUndefined r8, 15 (.L6)
+     53: JumpNotUndefined r8, 15 (.L5)
      56: Await r4, r9, r0, r4
-     61: JumpTrue r9, 5 (.L5)
+     61: JumpTrue r9, 5 (.L4)
      64: Throw r4
-  .L5:
+  .L4:
      66: Ret r4
-  .L6:
+  .L5:
      68: CallWithReceiver r6, r8, r2, r4, 1
      74: Await r6, r8, r0, r6
-     79: JumpTrue r8, 5 (.L7)
+     79: JumpTrue r8, 5 (.L6)
      82: Throw r6
-  .L7:
+  .L6:
      84: CheckIteratorResultObject r6
      86: GetNamedProperty r7, r6, c0
-     90: JumpTrue r7, 5 (.L8)
-     93: Jump 70 (.L15)
-  .L8:
+     90: JumpTrue r7, 5 (.L7)
+     93: Jump 70 (.L14)
+  .L7:
      95: GetNamedProperty r8, r6, c1
      99: Ret r8
-  .L9:
+  .L8:
     101: GetMethod r8, r2, c2
-    105: JumpNotUndefined r8, 25 (.L12)
+    105: JumpNotUndefined r8, 25 (.L11)
     108: AsyncIteratorCloseStart r10, r9, r2
-    112: JumpFalse r9, 15 (.L11)
+    112: JumpFalse r9, 15 (.L10)
     115: Await r10, r11, r0, r10
-    120: JumpTrue r11, 5 (.L10)
+    120: JumpTrue r11, 5 (.L9)
     123: Throw r10
-  .L10:
+  .L9:
     125: AsyncIteratorCloseFinish r10
-  .L11:
+  .L10:
     127: ThrowNewError 1, c4
-  .L12:
+  .L11:
     130: CallWithReceiver r6, r8, r2, r4, 1
     136: Await r6, r8, r0, r6
-    141: JumpTrue r8, 5 (.L13)
+    141: JumpTrue r8, 5 (.L12)
     144: Throw r6
-  .L13:
+  .L12:
     146: CheckIteratorResultObject r6
     148: GetNamedProperty r7, r6, c0
-    152: JumpTrue r7, 5 (.L14)
-    155: Jump 8 (.L15)
-  .L14:
+    152: JumpTrue r7, 5 (.L13)
+    155: Jump 8 (.L14)
+  .L13:
     157: GetNamedProperty r1, r6, c1
-    161: Jump 35 (.L16)
-  .L15:
+    161: Jump 35 (.L15)
+  .L14:
     163: GetNamedProperty r8, r6, c1
     167: Yield r4, r5, r0, r8
     172: JumpNotUndefined (Wide) r5, -162 (.L0)
@@ -146,11 +145,11 @@
     183: JumpNullish (Wide) r5, -173 (.L0)
     190: LoadUndefined r5
     192: Jump (Wide) -182 (.L0)
-  .L16:
+  .L15:
     196: Await r1, r2, r0, r1
-    201: JumpTrue r2, 5 (.L17)
+    201: JumpTrue r2, 5 (.L16)
     204: Throw r1
-  .L17:
+  .L16:
     206: Ret r1
   Constant Table:
     0: [String: done]

@@ -1425,8 +1425,8 @@ impl VM {
 
     #[inline]
     fn get_constant_offset<W: Width>(&self, constant_index: ConstantIndex<W>) -> isize {
-        // Constant offsets are encoded as a raw isize, not a value
-        self.get_constant(constant_index).as_raw_bits() as isize
+        self.constant_table()
+            .get_constant_offset(constant_index.value().to_usize())
     }
 
     /// Set the PC to the jump target, specified as a relative offset immediate.

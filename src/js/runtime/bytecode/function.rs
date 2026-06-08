@@ -476,7 +476,7 @@ impl DebugPrint for HeapPtr<BytecodeFunction> {
 
         // Followed by instructions which are further indented
         printer.inc_indent();
-        debug_format_instructions(self.bytecode(), printer);
+        debug_format_instructions(*self, printer);
         printer.dec_indent();
 
         // Followed by the constant table if present

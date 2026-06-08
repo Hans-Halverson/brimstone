@@ -123,6 +123,7 @@ operand_type!(SInt, SIGNED);
 // An index into the constant table
 operand_type!(ConstantIndex, UNSIGNED);
 
+#[derive(PartialEq)]
 pub enum OperandType {
     Register,
     UInt,

@@ -1105,7 +1105,7 @@ impl<'a> Lexer<'a> {
                     let loc = self.mark_loc(self.pos);
                     return self.error(loc, ParseError::UnterminatedStringLiteral);
                 }
-                // Otherwise add
+                // Otherwise add single literal code point
                 _ => value.push(self.lex_ascii_or_unicode_code_point()?),
             })
         }
@@ -1534,7 +1534,7 @@ impl<'a> Lexer<'a> {
             }
 
             let mut value = 0;
-            for _ in 0..6 {
+            while is_in_unicode_range(value) {
                 if let Some(hex_value) = get_hex_value(self.current) {
                     self.advance();
                     value <<= 4;

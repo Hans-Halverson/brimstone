@@ -1,0 +1,5 @@
+SyntaxError: Duplicate capture group name in regular expression
+  ┌ regexp/duplicate_named_capture_group_in_nested_group.js:1:16
+  |
+1 | /(?:(?<x>a))(?<x>b)/;
+  |                ^

@@ -378,6 +378,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn parse_disjunction(&mut self) -> ParseResult<Disjunction<'a>> {
         let mut alternatives = self.alloc_vec();
 
+        // Union of all capture group names defined in any alternative
+        let mut all_capture_group_names = vec![];
+
         // There is always at least one alternative, even if the alternative is empty
         loop {
             // Set up new empty capture group name scope. Old scope is saved on the stack, forming
@@ -388,10 +391,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Parse the alternative inside the scope
             alternatives.push(self.parse_alternative()?);
 
-            // Tear down capture group scope by removing all names added in the current scope then
-            // restoring the previous scope.
+            // Tear down capture group scope by removing all names added in the current scope so
+            // that sibling alternatives may reuse them, then restore the previous scope.
             for name in &self.current_capture_group_name_scope {
                 self.current_capture_group_names.remove(name);
+                all_capture_group_names.push(*name);
             }
             self.current_capture_group_name_scope = previous_scope;
 
@@ -403,6 +407,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             if self.is_end() {
                 alternatives.push(Alternative { terms: AstSlice::new_empty() });
                 break;
+            }
+        }
+
+        // Names that appear in any alternative are added to the current scope
+        for name in all_capture_group_names {
+            if self.current_capture_group_names.insert(name) {
+                self.current_capture_group_name_scope.push(name);
             }
         }
 

@@ -735,7 +735,7 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
     fn peek_n(&self, n: usize) -> u32 {
         let next_pos = self.pos + n;
         if next_pos < self.buf.len() {
-            let (code_point, _) = self.code_point_at(self.pos);
+            let (code_point, _) = self.code_point_at(next_pos);
             code_point
         } else {
             EOF_CHAR

@@ -689,9 +689,14 @@ impl CompiledRegExpBuilder {
 
         // Can inline a small number of repetitions otherwise use a loop
         if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
-            // Emit term min times for repetitions that must be present
-            for _ in 0..quantifier.min {
-                quantifier_info = self.emit_term(&quantifier.term);
+            // Emit term min times for repetitions that must be present. Clear captures from the
+            // previous iteration (if any).
+            for i in 0..quantifier.min {
+                quantifier_info = if i == 0 {
+                    self.emit_term(&quantifier.term)
+                } else {
+                    self.emit_term_with_cleared_captures(&quantifier.term)
+                };
             }
         } else if quantifier.min > u32::MAX as u64 {
             // The minimum number of repetitions is greater than the max possible string length.
@@ -714,7 +719,7 @@ impl CompiledRegExpBuilder {
                     loop_end_block_id as u32,
                 );
 
-                quantifier_info = this.emit_term(&quantifier.term);
+                quantifier_info = this.emit_term_with_cleared_captures(&quantifier.term);
 
                 this.emit_jump_instruction(loop_block_id);
             });
@@ -747,10 +752,15 @@ impl CompiledRegExpBuilder {
                 for i in quantifier.min..max {
                     let pred_block_id = self.current_block_id;
 
-                    // Emit term block
+                    // Emit term block clearing captures from the previous iteration (if any)
                     let term_block_id = self.new_block();
                     self.set_current_block(term_block_id);
-                    let info = self.emit_term(&quantifier.term);
+
+                    let info = if i == 0 {
+                        self.emit_term(&quantifier.term)
+                    } else {
+                        self.emit_term_with_cleared_captures(&quantifier.term)
+                    };
 
                     // Each optional iteration of quantifier must consume at least one character.
                     // We can ensure this by emitting a progress instruction which checks that
@@ -804,7 +814,7 @@ impl CompiledRegExpBuilder {
                         join_block_id as u32,
                     );
 
-                    let info = this.emit_term(&quantifier.term);
+                    let info = this.emit_term_with_cleared_captures(&quantifier.term);
 
                     // Each optional iteration of quantifier must consume at least one character.
                     // We can ensure this by emitting a progress instruction which checks that
@@ -849,7 +859,7 @@ impl CompiledRegExpBuilder {
 
             // Emit term block
             self.set_current_block(term_block_id);
-            let info = self.emit_term(&quantifier.term);
+            let info = self.emit_term_with_cleared_captures(&quantifier.term);
 
             // Optionally enter term block from predecessor block
             self.in_block(pred_block_id, |this| {
@@ -944,6 +954,27 @@ impl CompiledRegExpBuilder {
         }
 
         self.emit_jump_instruction(join_block_id);
+    }
+
+    /// Emit a term with a prefix that clears all captures in the term.
+    ///
+    /// Used for terms in quantifiers, since all captures are cleared at the start of each
+    /// repetition.
+    fn emit_term_with_cleared_captures(&mut self, term: &Term) -> SubExpressionInfo {
+        let clear_captures_block = self.new_block();
+        let term_block = self.new_block();
+        self.emit_jump_instruction(clear_captures_block);
+        self.set_current_block(term_block);
+
+        let info = self.emit_term(term);
+
+        self.in_block(clear_captures_block, |this| {
+            for capture_index in &info.captures {
+                this.emit_clear_capture_instruction(*capture_index);
+            }
+        });
+
+        info
     }
 
     fn emit_capture_group(&mut self, group: &CaptureGroup) -> SubExpressionInfo {

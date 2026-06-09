@@ -76,19 +76,17 @@ enum Direction {
 
 /// Information gathered about a compiled subexpression that is needed in compilation of the parent.
 struct SubExpressionInfo {
-    /// Whether a character is guaranteed to be consumed on all paths
-    always_consumes: bool,
     /// All capture groups in the subexpression
     captures: Vec<CaptureGroupIndex>,
 }
 
 impl SubExpressionInfo {
-    fn no_captures(always_consumes: bool) -> Self {
-        Self { always_consumes, captures: vec![] }
+    fn no_captures() -> Self {
+        Self { captures: vec![] }
     }
 
-    fn with_captures(always_consumes: bool, captures: Vec<CaptureGroupIndex>) -> Self {
-        Self { always_consumes, captures }
+    fn with_captures(captures: Vec<CaptureGroupIndex>) -> Self {
+        Self { captures }
     }
 }
 
@@ -363,9 +361,6 @@ impl CompiledRegExpBuilder {
             // Block that all alternatives join to at the end
             let join_block_id = self.new_block();
 
-            // Disjunction always consumes if all alternatives always consume
-            let mut always_consumes = true;
-
             // Combine captures from all alternatives
             let mut captures = vec![];
 
@@ -389,7 +384,6 @@ impl CompiledRegExpBuilder {
                     captures: info.captures.clone(),
                 });
 
-                always_consumes &= info.always_consumes;
                 captures.extend(info.captures);
             }
 
@@ -483,7 +477,7 @@ impl CompiledRegExpBuilder {
             // Disjunction ends at start of join block
             self.set_current_block(join_block_id);
 
-            SubExpressionInfo::with_captures(always_consumes, captures)
+            SubExpressionInfo::with_captures(captures)
         }
     }
 
@@ -500,19 +494,15 @@ impl CompiledRegExpBuilder {
         &mut self,
         iter: impl Iterator<Item = &'a Term<'b>>,
     ) -> SubExpressionInfo {
-        // If any term always consumes then the alternative always consumes
-        let mut always_consumes = false;
-
         // Accumulate all captures from terms
         let mut captures = vec![];
 
         for term in iter {
             let info = self.emit_term(term);
-            always_consumes |= info.always_consumes;
             captures.extend(info.captures);
         }
 
-        SubExpressionInfo::with_captures(always_consumes, captures)
+        SubExpressionInfo::with_captures(captures)
     }
 
     fn emit_term(&mut self, term: &Term) -> SubExpressionInfo {
@@ -521,20 +511,20 @@ impl CompiledRegExpBuilder {
                 self.emit_literal(string);
 
                 // Literals are non-empty so they always consume a character
-                SubExpressionInfo::no_captures(true)
+                SubExpressionInfo::no_captures()
             }
             Term::Wildcard => {
                 self.emit_wildcard();
 
                 // The wildcard always consumes a character
-                SubExpressionInfo::no_captures(true)
+                SubExpressionInfo::no_captures()
             }
             Term::Quantifier(quantifier) => self.emit_quantifier(quantifier),
             Term::Assertion(assertion) => {
                 self.emit_assertion(assertion);
 
                 // Assertions never consume a character
-                SubExpressionInfo::no_captures(false)
+                SubExpressionInfo::no_captures()
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
@@ -542,7 +532,7 @@ impl CompiledRegExpBuilder {
                 self.emit_character_class(character_class);
 
                 // Character classes always consume a character
-                SubExpressionInfo::no_captures(true)
+                SubExpressionInfo::no_captures()
             }
             Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
@@ -552,7 +542,7 @@ impl CompiledRegExpBuilder {
                 );
 
                 // Backreferences may be empty depending on what was captured
-                SubExpressionInfo::no_captures(false)
+                SubExpressionInfo::no_captures()
             }
         }
     }
@@ -682,10 +672,8 @@ impl CompiledRegExpBuilder {
         self.emit_jump_instruction(quantifier_patch_block);
         self.set_current_block(quantifier_start_block);
 
-        // Quantifier always has the same captures as its wrapped term. But quantifier only has the
-        // same always consume status as its wrapped term when there are minimum repetitions.
-        // Otherwise the quantifier is never guaranteed to consume.
-        let mut quantifier_info = SubExpressionInfo::no_captures(false);
+        // Quantifier always has the same captures as its wrapped term.
+        let mut quantifier_info = SubExpressionInfo::no_captures();
 
         // Can inline a small number of repetitions otherwise use a loop
         if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
@@ -765,7 +753,7 @@ impl CompiledRegExpBuilder {
                     // Each optional iteration of quantifier must consume at least one character.
                     // We can ensure this by emitting a progress instruction which checks that
                     // progress has been made since the last execution of the progress instruction.
-                    if !info.always_consumes {
+                    if !quantifier.always_consumes {
                         // Lazily create the shared progress point, shared between the inlined
                         // term blocks.
                         let progress_index =
@@ -777,7 +765,7 @@ impl CompiledRegExpBuilder {
                     self.in_block(pred_block_id, |this| {
                         // If we are in a repetition but never enter a term block with captures even
                         // once, we must clear those captures in case they were previously matched.
-                        if i == 0 && is_inside_repetition && !info.captures.is_empty() {
+                        if i == 0 && is_inside_repetition && quantifier.has_captures {
                             this.emit_quantifier_clear_captures_branch(
                                 quantifier,
                                 &info,
@@ -819,7 +807,7 @@ impl CompiledRegExpBuilder {
                     // Each optional iteration of quantifier must consume at least one character.
                     // We can ensure this by emitting a progress instruction which checks that
                     // progress has been made since the last execution of the progress instruction.
-                    if !info.always_consumes {
+                    if !quantifier.always_consumes {
                         let progress_index = this.new_progress_point();
                         this.emit_progress_instruction(progress_index);
                     }
@@ -834,7 +822,7 @@ impl CompiledRegExpBuilder {
 
                 // If we are in a repetition but never enter a term block with captures even once,
                 // we must clear those captures in case they were previously matched.
-                if quantifier.min == 0 && is_inside_repetition && !info.captures.is_empty() {
+                if quantifier.min == 0 && is_inside_repetition && quantifier.has_captures {
                     self.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -865,7 +853,7 @@ impl CompiledRegExpBuilder {
             self.in_block(pred_block_id, |this| {
                 // If we are in a repetition but never enter a term block with captures, we must
                 // clear those captures in case they were previously matched.
-                if is_inside_repetition && !info.captures.is_empty() {
+                if is_inside_repetition && quantifier.has_captures {
                     this.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -882,7 +870,7 @@ impl CompiledRegExpBuilder {
             // Each optional iteration of quantifier must consume at least one character. We can
             // ensure this by emitting a progress instruction which checks that progress has been
             // made since the last execution of the progress instruction.
-            if !info.always_consumes {
+            if !quantifier.always_consumes {
                 let progress_index = self.new_progress_point();
                 self.emit_progress_instruction(progress_index);
             }
@@ -903,10 +891,7 @@ impl CompiledRegExpBuilder {
         // each capture if no progress is detected.
         //
         // Note that the progress instruction must be patched before the start of the quantifier.
-        if quantifier.min == 0
-            && !quantifier_info.always_consumes
-            && !quantifier_info.captures.is_empty()
-        {
+        if quantifier.min == 0 && quantifier.has_captures {
             // Emit a progress instruction before the quantifier starts
             let progress_index = self.new_progress_point();
             self.in_block(quantifier_patch_block, |this| {
@@ -1431,15 +1416,12 @@ impl CompiledRegExpBuilder {
         self.set_current_block(body_block_id);
 
         // Emit the body of the lookaround, keeping track of captures
-        let mut info = self.emit_disjunction(&lookaround.disjunction);
+        let info = self.emit_disjunction(&lookaround.disjunction);
         self.emit_accept_instruction();
 
         self.exit_direction_context();
 
         self.set_current_block(current_block_id);
-
-        // Lookaround never consumes any characters
-        info.always_consumes = false;
 
         info
     }

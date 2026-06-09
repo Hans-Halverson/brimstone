@@ -3,13 +3,13 @@ use crate::{
     must_a,
     parser::loc::{Loc, Pos},
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Value,
         abstract_operations::create_data_property_or_throw,
         array_object::array_create,
         ordinary_object::ordinary_object_create,
         property::Property,
-        string_parsing::{parse_between_ptrs_to_f64, skip_decimal_digits, StringLexer},
+        string_parsing::{StringLexer, parse_between_ptrs_to_f64, skip_decimal_digits},
         string_value::StringValue,
-        Context, EvalResult, Handle, PropertyKey, Value,
     },
 };
 

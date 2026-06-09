@@ -1,6 +1,7 @@
 use crate::{
     extend_object_without_conversions, must, must_a,
     runtime::{
+        Context,
         abstract_operations::{call_object, create_data_property, get, get_function_realm},
         accessor::Accessor,
         alloc_error::AllocResult,
@@ -15,7 +16,6 @@ use crate::{
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::{same_object_value_handles, same_opt_object_value, same_value},
         value::Value,
-        Context,
     },
 };
 
@@ -278,7 +278,7 @@ pub fn validate_and_apply_property_descriptor(
 
         match desc.is_enumerable {
             Some(is_enumerable) if is_enumerable != current_desc.is_enumerable() => {
-                return Ok(false)
+                return Ok(false);
             }
             _ => {}
         }
@@ -317,7 +317,7 @@ pub fn validate_and_apply_property_descriptor(
 
             match desc.value {
                 Some(value) if !same_value(value, current_desc.value.unwrap())? => {
-                    return Ok(false)
+                    return Ok(false);
                 }
                 _ => {}
             }
@@ -332,7 +332,7 @@ pub fn validate_and_apply_property_descriptor(
                     (Some(get), Some(current_get))
                         if !same_object_value_handles(get, current_get) =>
                     {
-                        return Ok(false)
+                        return Ok(false);
                     }
                     (Some(_), None) | (None, Some(_)) => return Ok(false),
                     _ => {}
@@ -345,7 +345,7 @@ pub fn validate_and_apply_property_descriptor(
                     (Some(set), Some(current_set))
                         if !same_object_value_handles(set, current_set) =>
                     {
-                        return Ok(false)
+                        return Ok(false);
                     }
                     (Some(_), None) | (None, Some(_)) => return Ok(false),
                     _ => {}

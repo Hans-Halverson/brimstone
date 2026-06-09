@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
@@ -7,7 +8,6 @@ use crate::runtime::{
     },
     object_value::ObjectValue,
     realm::Realm,
-    Context, Handle, Value,
 };
 
 pub struct BooleanPrototype;

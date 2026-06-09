@@ -1,6 +1,6 @@
 use crate::runtime::{
-    alloc_error::AllocResult, intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
-    realm::Realm, Context, Handle,
+    Context, Handle, alloc_error::AllocResult, intrinsics::intrinsics::Intrinsic,
+    object_value::ObjectValue, realm::Realm,
 };
 
 pub struct AggregateErrorPrototype;

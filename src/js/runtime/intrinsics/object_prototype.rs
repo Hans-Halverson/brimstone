@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{define_property_or_throw, get, has_own_property, invoke},
         alloc_error::AllocResult,
         error::type_error,
@@ -20,7 +21,6 @@ use crate::{
             is_array, is_callable, require_object_coercible, same_object_value_handles, to_object,
             to_property_key,
         },
-        Context, Handle, HeapPtr, Value,
     },
 };
 
@@ -369,7 +369,7 @@ impl ObjectPrototype {
                         }
                     } else {
                         Ok(cx.undefined())
-                    }
+                    };
                 }
                 None => match current_object.get_prototype_of(cx)? {
                     Some(proto) => current_object = proto,
@@ -401,7 +401,7 @@ impl ObjectPrototype {
                         }
                     } else {
                         Ok(cx.undefined())
-                    }
+                    };
                 }
                 None => match current_object.get_prototype_of(cx)? {
                     Some(proto) => current_object = proto,

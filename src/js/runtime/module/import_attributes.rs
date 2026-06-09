@@ -1,12 +1,12 @@
 use crate::{
     field_offset,
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         string_value::FlatString,
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

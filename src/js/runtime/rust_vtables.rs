@@ -4,8 +4,9 @@ use crate::runtime::{
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
     intrinsics::typed_array::{
-        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
-        Int32Array, Int8Array, TypedArray, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
+        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
+        Int16Array, Int32Array, TypedArray, UInt8Array, UInt8ClampedArray, UInt16Array,
+        UInt32Array,
     },
     module::{
         module::Module, module_namespace_object::ModuleNamespaceObject,

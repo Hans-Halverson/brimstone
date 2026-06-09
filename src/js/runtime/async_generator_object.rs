@@ -1,6 +1,7 @@
 use crate::{
     completion_value, eval_err, extend_object, field_offset, must_a,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -22,9 +23,8 @@ use crate::{
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
-        promise_object::{coerce_to_ordinary_promise, PromiseCapability},
+        promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

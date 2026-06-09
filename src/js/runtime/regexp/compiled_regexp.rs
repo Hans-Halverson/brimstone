@@ -5,6 +5,7 @@ use crate::{
     field_offset,
     parser::regexp::{RegExp, RegExpFlags},
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         bytecode::generator::alloc_wtf8_str_from_source,
         collections::InlineArray,
@@ -13,7 +14,6 @@ use crate::{
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         regexp::{graphviz::compiled_regexp_to_dot_graph, instruction::InstructionIterator},
         string_value::{FlatString, StringValue},
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

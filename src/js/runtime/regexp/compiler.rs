@@ -12,7 +12,7 @@ use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversi
 use crate::{
     common::{
         icu::ICU,
-        unicode::{is_surrogate_code_point, CodePoint, MAX_CODE_POINT},
+        unicode::{CodePoint, MAX_CODE_POINT, is_surrogate_code_point},
         unicode_property::UnicodeProperty,
         wtf_8::Wtf8Str,
     },
@@ -25,6 +25,7 @@ use crate::{
         },
     },
     runtime::{
+        Context, Handle,
         alloc_error::AllocResult,
         debug_print::{DebugPrint, DebugPrintMode},
         regexp::{
@@ -44,7 +45,6 @@ use crate::{
             },
         },
         string_value::StringValue,
-        Context, Handle,
     },
 };
 

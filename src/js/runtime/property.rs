@@ -1,12 +1,12 @@
 use bitflags::bitflags;
 
 use crate::runtime::{
+    Context,
     accessor::Accessor,
     alloc_error::AllocResult,
     gc::{Handle, HeapVisitor},
     object_value::ObjectValue,
     value::Value,
-    Context,
 };
 
 /// A property value. If a data property then the value is the value itself. If an accessor property

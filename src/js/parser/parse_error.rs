@@ -8,8 +8,8 @@ use crate::{
         wtf_8::Wtf8String,
     },
     parser::{
-        loc::{find_line_col_for_pos, Loc},
-        scope_tree::{BindingKind, ANONYMOUS_DEFAULT_EXPORT_NAME},
+        loc::{Loc, find_line_col_for_pos},
+        scope_tree::{ANONYMOUS_DEFAULT_EXPORT_NAME, BindingKind},
         source::Source,
         token::Token,
     },
@@ -267,7 +267,10 @@ impl fmt::Display for ParseError {
                 write!(f, "Expected `#` to be immediately followed by an identifier")
             }
             ParseError::ForEachInitInvalidVarDecl => {
-                write!(f, "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer")
+                write!(
+                    f,
+                    "Variable declarations in the left hand side of a for each loop must contain a single declaration with no initializer"
+                )
             }
             ParseError::NameRedeclaration(payload) => {
                 let (name, kind) = payload.as_ref();
@@ -360,7 +363,10 @@ impl fmt::Display for ParseError {
                 write!(f, "Private name not allowed to be `#constructor`")
             }
             ParseError::ArgumentsInClassInitializer => {
-                write!(f, "`arguments` is not allowed in class field initializer or static initialization block")
+                write!(
+                    f,
+                    "`arguments` is not allowed in class field initializer or static initialization block"
+                )
             }
             ParseError::NewTargetOutsideFunction => {
                 write!(f, "`new.target` only allowed in functions")
@@ -477,7 +483,10 @@ impl fmt::Display for ParseError {
                 write!(f, "\\P character class cannot be used when class contains strings")
             }
             ParseError::UnicodePropertyOfStringsDisallowedInMode => {
-                write!(f, "Unicode character classes which contain strings are only allowed with `v` flag")
+                write!(
+                    f,
+                    "Unicode character classes which contain strings are only allowed with `v` flag"
+                )
             }
             ParseError::NamedCaptureGroupEncountered => {
                 panic!("Marker error should have been caught")

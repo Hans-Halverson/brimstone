@@ -5,6 +5,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object, must, must_a,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::{construct, create_data_property_or_throw, get_function_realm},
         alloc_error::AllocResult,
         error::{range_error, type_error},
@@ -22,7 +23,6 @@ use crate::{
         property_key::PropertyKey,
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::{is_array, is_constructor_value, same_object_value, to_number, to_uint32},
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
     set_uninit,
 };

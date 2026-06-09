@@ -1,11 +1,11 @@
 use std::hash::Hash;
 
 use crate::runtime::{
+    Context, HeapPtr,
     alloc_error::AllocResult,
-    collections::{hash_map::GcUnsafeKeysIterMut, BsHashMap, BsHashMapField},
+    collections::{BsHashMap, BsHashMapField, hash_map::GcUnsafeKeysIterMut},
     gc::{HeapItem, HeapVisitor},
     heap_item_descriptor::HeapItemKind,
-    Context, HeapPtr,
 };
 
 /// Generic flat HashSet implementation which is a simple wrapper over a HashMap with unit values.

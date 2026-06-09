@@ -1,6 +1,7 @@
 use crate::{
     field_offset, must,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::function::{BytecodeFunction, Closure},
@@ -15,7 +16,6 @@ use crate::{
         ordinary_object::object_create_with_optional_proto,
         string_value::FlatString,
         type_utilities::is_constructor_value,
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     set_uninit,
 };

@@ -6,7 +6,7 @@ use std::{
     rc::Rc,
 };
 
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 
 use crate::{
     common::{
@@ -17,9 +17,10 @@ use crate::{
     },
     eval_err, handle_scope, must_a,
     parser::{
-        analyze::analyze, parse_module, parse_script, print_program, source::Source, ParseContext,
+        ParseContext, analyze::analyze, parse_module, parse_script, print_program, source::Source,
     },
     runtime::{
+        EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         annex_b::init_annex_b_methods,
         array_properties::{ArrayProperties, DenseArrayProperties},
@@ -46,7 +47,6 @@ use crate::{
         string_value::{FlatString, StringValue},
         tasks::TaskQueue,
         value::SymbolValue,
-        EvalResult, Handle, HeapPtr, Value,
     },
 };
 

@@ -5,6 +5,7 @@ use crate::{
     extend_object, field_offset, must_a,
     parser::loc::Pos,
     runtime::{
+        Context, Handle, HeapPtr, PropertyDescriptor, Realm,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         bytecode::{
@@ -12,7 +13,7 @@ use crate::{
             graphviz::bytecode_function_to_dot_graph, instruction::debug_format_instructions,
             source_map::BytecodeSourceMap,
         },
-        collections::{array::ByteArray, InlineArray},
+        collections::{InlineArray, array::ByteArray},
         debug_print::{DebugPrint, DebugPrintMode, DebugPrinter},
         function::{set_function_length, set_simple_function_name},
         gc::{HeapItem, HeapVisitor},
@@ -26,7 +27,6 @@ use crate::{
         scope::Scope,
         source_file::SourceFile,
         string_value::StringValue,
-        Context, Handle, HeapPtr, PropertyDescriptor, Realm,
     },
     set_uninit,
 };

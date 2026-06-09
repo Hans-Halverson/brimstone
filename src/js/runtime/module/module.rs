@@ -6,6 +6,7 @@ use std::{
 use crate::{
     heap_trait_object,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         gc::AnyHeapItem,
@@ -16,7 +17,6 @@ use crate::{
         promise_object::PromiseObject,
         rust_vtables::extract_module_vtable,
         string_value::FlatString,
-        Context, EvalResult, Handle, HeapPtr,
     },
 };
 

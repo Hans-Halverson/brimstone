@@ -4,15 +4,14 @@ use crate::{
     common::{
         string_iterators::{CodePointIterator, CodeUnitIterator},
         unicode::{
-            code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
+            CodeUnit, code_point_from_surrogate_pair, decode_wtf8_codepoint, is_ascii,
             is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair,
-            CodeUnit,
         },
     },
     parser::{
+        LocalizedParseError, ParseError, ParseResult,
         loc::{Loc, Pos},
         source::Source,
-        LocalizedParseError, ParseError, ParseResult,
     },
 };
 

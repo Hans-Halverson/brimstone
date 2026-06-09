@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         error::type_error,
         eval_result::EvalResult,
@@ -15,7 +16,6 @@ use crate::{
         property::Property,
         realm::Realm,
         string_value::{FlatString, SafeCodePointIterator},
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

@@ -3,12 +3,12 @@ use bitflags::bitflags;
 use crate::{
     field_offset,
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         string_value::{FlatString, StringValue},
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

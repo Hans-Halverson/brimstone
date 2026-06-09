@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
 use crate::{
-    common::unicode::{needs_surrogate_pair, CodePoint},
+    common::unicode::{CodePoint, needs_surrogate_pair},
     must,
     parser::regexp::RegExpFlags,
     runtime::{
+        Context, Handle, PropertyKey, Value,
         abstract_operations::{
             call, call_object, construct, create_data_property_or_throw, length_of_array_like, set,
             species_constructor,
@@ -18,7 +19,7 @@ use crate::{
         intrinsics::{
             intrinsics::Intrinsic,
             regexp_constructor::{
-                as_regexp_object, regexp_init, FlagsSource, RegExpObject, RegExpSource,
+                FlagsSource, RegExpObject, RegExpSource, as_regexp_object, regexp_init,
             },
             regexp_string_iterator::RegExpStringIterator,
             rust_runtime::RuntimeFunction,
@@ -34,7 +35,6 @@ use crate::{
             is_callable, same_object_value, same_value, to_boolean, to_integer_or_infinity,
             to_length, to_object, to_uint32,
         },
-        Context, Handle, PropertyKey, Value,
     },
 };
 

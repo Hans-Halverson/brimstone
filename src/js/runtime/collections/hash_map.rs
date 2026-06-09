@@ -8,11 +8,11 @@ use std::{
 use crate::{
     field_offset,
     runtime::{
+        Context, HeapPtr,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        Context, HeapPtr,
     },
     set_uninit,
 };

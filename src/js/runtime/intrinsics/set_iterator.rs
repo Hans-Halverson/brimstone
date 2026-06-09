@@ -3,9 +3,10 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         array_object::create_array_from_list,
-        collections::{index_map::GcSafeEntriesIter, BsIndexMap},
+        collections::{BsIndexMap, index_map::GcSafeEntriesIter},
         error::type_error,
         eval_result::EvalResult,
         gc::{HeapItem, HeapVisitor},
@@ -17,7 +18,6 @@ use crate::{
         property::Property,
         realm::Realm,
         value::ValueCollectionKey,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

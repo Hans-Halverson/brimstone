@@ -7,6 +7,7 @@ use crate::{
     },
     handle_scope, handle_scope_guard,
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,11 +18,10 @@ use crate::{
         function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property_descriptor::PropertyDescriptor,
-        string_parsing::{parse_signed_decimal_literal, skip_string_whitespace, StringLexer},
+        string_parsing::{StringLexer, parse_signed_decimal_literal, skip_string_whitespace},
         string_value::{FlatString, StringValue},
         to_string,
         type_utilities::{to_int32, to_number},
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 

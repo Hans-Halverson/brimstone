@@ -6,6 +6,3 @@ fn_call_width = 80
 attr_fn_like_width = 80
 struct_lit_width = 60
 struct_variant_width = 60
-
-# TODO: Format with 2024 style
-style_edition = "2021"

@@ -3,12 +3,13 @@ use crate::{
     eval_err,
     parser::{LocalizedParseError, LocalizedParseErrors},
     runtime::{
-        alloc_error::{format_oom_error_message, AllocError},
+        Context, Handle, HeapPtr, Value,
+        alloc_error::{AllocError, format_oom_error_message},
         bytecode::generator::EmitError,
         eval_result::{EvalError, EvalResult},
         intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
         string_value::{FlatString, StringValue},
-        to_console_string, Context, Handle, HeapPtr, Value,
+        to_console_string,
     },
 };
 

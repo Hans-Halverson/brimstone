@@ -2,12 +2,12 @@ use crate::{
     field_offset, must_a,
     parser::{loc::calculate_line_offsets, source::Source},
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         collections::{BsArray, InlineArray},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         string_value::FlatString,
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

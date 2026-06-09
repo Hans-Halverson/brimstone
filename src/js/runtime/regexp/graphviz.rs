@@ -1,8 +1,9 @@
 use std::{collections::HashSet, fs, ops::Range};
 
 use crate::{
-    common::graphviz::{DotGraphBuilder, DotTextAlign, DOTFILE_EXTENSION},
+    common::graphviz::{DOTFILE_EXTENSION, DotGraphBuilder, DotTextAlign},
     runtime::{
+        Context, HeapPtr,
         regexp::{
             compiled_regexp::CompiledRegExpObject,
             instruction::{
@@ -10,7 +11,6 @@ use crate::{
                 LookaroundInstruction, LoopInstruction, OpCode,
             },
         },
-        Context, HeapPtr,
     },
 };
 

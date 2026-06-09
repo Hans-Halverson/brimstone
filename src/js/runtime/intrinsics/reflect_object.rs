@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     abstract_operations::{call_object, construct, create_list_from_array_like_arguments},
     alloc_error::AllocResult,
     array_object::create_array_from_list,
@@ -11,7 +12,6 @@ use crate::runtime::{
     property_descriptor::{from_property_descriptor, to_property_descriptor},
     realm::Realm,
     type_utilities::{is_callable, is_constructor_value, to_property_key},
-    Context, Handle, Value,
 };
 
 /// The Reflect Object (https://tc39.es/ecma262/#sec-reflect-object)

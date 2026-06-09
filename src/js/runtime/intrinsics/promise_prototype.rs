@@ -1,6 +1,7 @@
 use crate::{
     eval_err,
     runtime::{
+        Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, invoke, species_constructor},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -8,11 +9,10 @@ use crate::{
         function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
-        promise_object::{is_promise, promise_resolve, PromiseCapability, PromiseObject},
+        promise_object::{PromiseCapability, PromiseObject, is_promise, promise_resolve},
         property::Property,
         realm::Realm,
         type_utilities::is_callable,
-        Context, EvalResult, Handle, Value,
     },
 };
 

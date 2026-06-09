@@ -3,6 +3,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
         error::reference_error,
@@ -22,7 +23,6 @@ use crate::{
         property::Property,
         rust_vtables::extract_virtual_object_vtable,
         type_utilities::same_value,
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Value,
     },
     set_uninit,
 };

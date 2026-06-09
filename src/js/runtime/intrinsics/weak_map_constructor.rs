@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     abstract_operations::{call_object, get},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
@@ -12,7 +13,6 @@ use crate::runtime::{
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
-    Context, Handle, Value,
 };
 
 pub struct WeakMapConstructor;

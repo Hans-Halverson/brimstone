@@ -1,6 +1,7 @@
 use crate::{
     must,
     runtime::{
+        Context, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -11,9 +12,8 @@ use crate::{
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
-        proxy_object::{proxy_create, ProxyObject},
+        proxy_object::{ProxyObject, proxy_create},
         realm::Realm,
-        Context, Value,
     },
 };
 

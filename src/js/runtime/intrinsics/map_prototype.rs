@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle,
     abstract_operations::{call, call_object},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
@@ -16,7 +17,6 @@ use crate::runtime::{
     realm::Realm,
     type_utilities::is_callable,
     value::{Value, ValueCollectionKey},
-    Context, Handle,
 };
 
 pub struct MapPrototype;

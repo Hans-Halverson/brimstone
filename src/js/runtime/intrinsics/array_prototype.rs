@@ -3,12 +3,13 @@ use std::cmp::Ordering;
 use crate::{
     must, must_a,
     runtime::{
+        Context, EvalResult, Handle, Value,
         abstract_operations::{
             call, call_object, create_data_property_or_throw, delete_property_or_throw,
             has_property, invoke, length_of_array_like, set,
         },
         alloc_error::AllocResult,
-        array_object::{array_create, array_species_create, ArrayObject},
+        array_object::{ArrayObject, array_create, array_species_create},
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
         function::get_argument,
@@ -32,7 +33,6 @@ use crate::{
             resolve_relative_index_argument, same_value_zero, to_boolean, to_integer_or_infinity,
             to_number, to_object,
         },
-        Context, EvalResult, Handle, Value,
     },
 };
 

@@ -1,7 +1,8 @@
 use crate::{
     must,
     runtime::{
-        abstract_operations::{call_object, construct, group_by, GroupByKeyCoercion},
+        Context, Handle,
+        abstract_operations::{GroupByKeyCoercion, call_object, construct, group_by},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
         builtin_function::BuiltinFunction,
@@ -16,7 +17,6 @@ use crate::{
         realm::Realm,
         type_utilities::is_callable,
         value::Value,
-        Context, Handle,
     },
 };
 

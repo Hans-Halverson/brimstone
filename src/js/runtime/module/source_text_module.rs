@@ -5,6 +5,7 @@ use indexmap_allocator_api::IndexSet;
 use crate::{
     field_offset, handle_scope,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
         bytecode::function::BytecodeFunction,
         collections::{BsArray, BsHashMap, BsHashMapField, BsVec, BsVecField, InlineArray},
@@ -16,8 +17,8 @@ use crate::{
             linker::link,
             loader::load_requested_modules,
             module::{
-                next_module_id, DynModule, HeapDynModule, Module, ModuleEnum, ModuleId,
-                ResolveExportName, ResolveExportResult,
+                DynModule, HeapDynModule, Module, ModuleEnum, ModuleId, ResolveExportName,
+                ResolveExportResult, next_module_id,
             },
             module_namespace_object::ModuleNamespaceObject,
         },
@@ -27,7 +28,6 @@ use crate::{
         rust_vtables::extract_module_vtable,
         scope::Scope,
         string_value::FlatString,
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
 };

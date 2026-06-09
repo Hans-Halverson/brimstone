@@ -2,6 +2,7 @@ use crate::{
     field_offset, handle_scope, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
     runtime::{
+        Context, EvalResult, PropertyKey, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         bytecode::function::Closure,
@@ -20,7 +21,6 @@ use crate::{
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         string_value::FlatString,
-        Context, EvalResult, PropertyKey, Value,
     },
     set_uninit,
 };

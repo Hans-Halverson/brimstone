@@ -3,14 +3,15 @@ use std::{collections::HashMap, rc::Rc};
 use crate::{
     common::wtf_8::{Wtf8Cow, Wtf8String},
     parser::{
-        analyze::{analyze_for_eval, PrivateNameUsage},
+        ParseContext,
+        analyze::{PrivateNameUsage, analyze_for_eval},
         ast::{self},
         parse_script_for_eval,
         scope_tree::BindingKind,
         source::Source,
-        ParseContext,
     },
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Value,
         abstract_operations::call_object,
         bytecode::{
             function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
@@ -24,7 +25,6 @@ use crate::{
         property::Property,
         scope::{Scope, ScopeKind},
         string_value::FlatString,
-        Context, EvalResult, Handle, HeapPtr, Value,
     },
 };
 

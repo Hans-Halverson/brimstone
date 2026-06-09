@@ -2,14 +2,14 @@ use std::rc::Rc;
 
 use brimstone_core::{
     common::{
-        error::{print_error_message_and_exit, FormatOptions},
+        error::{FormatOptions, print_error_message_and_exit},
         options::{Args, Options},
         terminal::stderr_should_use_colors,
     },
     parser::source::Source,
     runtime::{
-        alloc_error::AllocResult, gc_object::GcObject, test_262_object::Test262Object, BsResult,
-        Context, ContextBuilder,
+        BsResult, Context, ContextBuilder, alloc_error::AllocResult, gc_object::GcObject,
+        test_262_object::Test262Object,
     },
 };
 use clap::Parser;

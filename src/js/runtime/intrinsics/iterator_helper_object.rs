@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Value,
         abstract_operations::{call, call_object},
         alloc_error::AllocResult,
         collections::array::ValueArray,
@@ -12,13 +13,12 @@ use crate::{
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         iterator::{
-            create_iter_result_object, get_iterator_direct, get_iterator_flattenable,
-            iterator_close, iterator_step, iterator_step_value, HeapIterator, Iterator,
+            HeapIterator, Iterator, create_iter_result_object, get_iterator_direct,
+            get_iterator_flattenable, iterator_close, iterator_step, iterator_step_value,
         },
         object_value::ObjectValue,
         ordinary_object::object_create_with_proto,
         type_utilities::to_boolean,
-        Context, EvalResult, Handle, HeapPtr, Value,
     },
     set_uninit,
 };
@@ -576,7 +576,7 @@ impl Handle<IteratorHelperObject> {
                 }
                 // If the inner iterator returns a value then return it as an iterator result
                 Ok(Some(value)) => {
-                    return Ok(Some(create_iter_result_object(cx, value, false)?.as_object()))
+                    return Ok(Some(create_iter_result_object(cx, value, false)?.as_object()));
                 }
             }
 

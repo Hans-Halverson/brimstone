@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{stderr, stdout, Read, Write},
+    io::{Read, Write, stderr, stdout},
     mem::forget,
     os::fd::{FromRawFd, RawFd},
     panic,
@@ -13,10 +13,10 @@ use brimstone_core::{
     handle_scope, must_a,
     parser::source::Source,
     runtime::{
+        Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor, PropertyKey, Value,
         abstract_operations::define_property_or_throw, alloc_error::AllocResult,
         builtin_function::BuiltinFunction, error::type_error, function::get_argument,
-        gc_object::GcObject, Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor,
-        PropertyKey, Value,
+        gc_object::GcObject,
     },
 };
 

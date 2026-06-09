@@ -16,10 +16,10 @@
 use crate::{
     common::serialized_heap::{SerializedHeap, SerializedSemispace},
     runtime::{
+        Context, Value,
         gc::{AnyHeapItem, GcType, Heap, HeapInfo, HeapPtr, HeapVisitor},
         heap_item_descriptor::HeapItemDescriptor,
-        rust_vtables::{get_vtable, lookup_vtable_enum, RustVtable},
-        Context, Value,
+        rust_vtables::{RustVtable, get_vtable, lookup_vtable_enum},
     },
 };
 

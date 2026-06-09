@@ -10,18 +10,18 @@ use brimstone_core::{
         serialized_heap::get_default_serialized_heap,
     },
     parser::{
-        analyze::{analyze, AnalyzedProgramResult},
+        ParseContext,
+        analyze::{AnalyzedProgramResult, analyze},
         parse_module, parse_script,
         parser::ParseProgramResult,
         source::Source,
-        ParseContext,
     },
     runtime::{
-        bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         Context, ContextBuilder, EvalResult,
+        bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
     },
 };
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 /// A test with a setup, routine, and cleanup phase. Only the routine phase is measured.
 pub fn isolated_test<I, O, S, R, C>(

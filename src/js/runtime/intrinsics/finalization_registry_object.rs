@@ -3,6 +3,7 @@ use std::{mem::size_of, slice};
 use crate::{
     extend_object, field_offset,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         eval_result::EvalResult,
@@ -12,7 +13,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         type_utilities::same_value_non_numeric_non_allocating,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

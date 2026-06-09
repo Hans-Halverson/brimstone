@@ -1,13 +1,13 @@
 use crate::{
     if_abrupt_reject_promise,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         intrinsics::array_from_async_generator::{ArrayFromAsyncGenerator, ArrayFromAsyncState},
-        promise_object::{resolve, PromiseCapability},
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
+        promise_object::{PromiseCapability, resolve},
     },
     set_uninit,
 };

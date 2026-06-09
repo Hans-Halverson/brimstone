@@ -1,10 +1,10 @@
 use crate::{
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

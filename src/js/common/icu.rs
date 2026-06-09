@@ -1,18 +1,18 @@
 use std::sync::LazyLock;
 
 use icu_casemap::{CaseMapper, CaseMapperBorrowed};
-use icu_collator::{options::CollatorOptions, Collator};
+use icu_collator::{Collator, options::CollatorOptions};
 use icu_collections::codepointinvliststringlist::CodePointInversionListAndStringList;
-use icu_locale::{locale, Locale};
+use icu_locale::{Locale, locale};
 use icu_normalizer::{
     ComposingNormalizer, ComposingNormalizerBorrowed, DecomposingNormalizer,
     DecomposingNormalizerBorrowed,
 };
 use icu_properties::{
-    props::*,
-    script::{ScriptWithExtensions, ScriptWithExtensionsBorrowed},
     CodePointMapData, CodePointMapDataBorrowed, CodePointSetData, CodePointSetDataBorrowed,
     EmojiSetData, PropertyParser, PropertyParserBorrowed,
+    props::*,
+    script::{ScriptWithExtensions, ScriptWithExtensionsBorrowed},
 };
 
 use crate::common::icu_data::{

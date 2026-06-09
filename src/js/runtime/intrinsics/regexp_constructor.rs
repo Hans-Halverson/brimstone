@@ -23,6 +23,7 @@ use crate::{
         regexp_parser::RegExpParser,
     },
     runtime::{
+        Context, HeapPtr, PropertyDescriptor, Value,
         abstract_operations::{define_property_or_throw, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -40,7 +41,6 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{is_regexp, same_value},
-        Context, HeapPtr, PropertyDescriptor, Value,
     },
     set_uninit,
 };

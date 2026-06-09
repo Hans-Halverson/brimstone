@@ -1,6 +1,7 @@
 use crate::{
     must_a,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Value,
         abstract_operations::{call, call_object, create_data_property_or_throw, get_method},
         alloc_error::AllocResult,
         error::type_error,
@@ -10,7 +11,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         type_utilities::to_boolean,
-        Context, EvalResult, Handle, HeapPtr, Value,
     },
 };
 

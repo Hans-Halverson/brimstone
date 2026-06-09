@@ -1,6 +1,7 @@
 use std::{ops::Range, ptr::NonNull};
 
 use crate::runtime::{
+    Context, Value,
     collections::BsWeakVec,
     gc::{AnyHeapItem, Heap, HeapItem, HeapPtr, HeapVisitor},
     heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
@@ -10,7 +11,6 @@ use crate::runtime::{
         weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
     },
     string_value::FlatString,
-    Context, Value,
 };
 
 /// A Cheney-style semispace garbage collector. Partitions heap into from-space and to-space, and

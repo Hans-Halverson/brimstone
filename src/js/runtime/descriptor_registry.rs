@@ -1,18 +1,18 @@
 use crate::runtime::{
+    Context,
     alloc_error::AllocResult,
     arguments_object::MappedArgumentsObject,
     array_object::ArrayObject,
     gc::{HeapPtr, HeapVisitor},
     heap_item_descriptor::{DescFlags, HeapItemDescriptor, HeapItemKind},
     intrinsics::typed_array::{
-        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
-        Int32Array, Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
+        BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
+        Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
     },
     module::module_namespace_object::ModuleNamespaceObject,
     ordinary_object::OrdinaryObject,
     proxy_object::ProxyObject,
     string_object::StringObject,
-    Context,
 };
 
 /// Central registry for all descriptors in a context.

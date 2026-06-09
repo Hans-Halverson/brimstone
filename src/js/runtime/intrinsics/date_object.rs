@@ -4,9 +4,10 @@ use crate::{
     common::math::modulo,
     extend_object,
     runtime::{
-        gc::HeapItem, heap_item_descriptor::HeapItemKind, intrinsics::intrinsics::Intrinsic,
-        object_value::ObjectValue, ordinary_object::object_create_from_constructor,
-        type_utilities::to_integer_or_infinity_f64, Context, EvalResult, Handle, HeapPtr,
+        Context, EvalResult, Handle, HeapPtr, gc::HeapItem, heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic, object_value::ObjectValue,
+        ordinary_object::object_create_from_constructor,
+        type_utilities::to_integer_or_infinity_f64,
     },
     set_uninit,
 };
@@ -70,11 +71,7 @@ pub fn time_within_day(time: f64) -> f64 {
 
 /// DaysInYear (https://tc39.es/ecma262/#sec-daysinyear)
 fn days_in_year(year: i64) -> f64 {
-    if is_leap_year(year) {
-        366.0
-    } else {
-        365.0
-    }
+    if is_leap_year(year) { 366.0 } else { 365.0 }
 }
 
 fn day_from_year(year: f64) -> f64 {

@@ -1,6 +1,7 @@
 use crate::{
     common::unicode::CodePoint,
     runtime::{
+        Context, Handle, PropertyKey, Value,
         abstract_operations::length_of_array_like,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,7 +18,6 @@ use crate::{
         string_object::StringObject,
         string_value::{FlatString, StringValue},
         type_utilities::{to_number, to_object, to_string, to_uint16},
-        Context, Handle, PropertyKey, Value,
     },
 };
 

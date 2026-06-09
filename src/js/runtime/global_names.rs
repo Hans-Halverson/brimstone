@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{define_property_or_throw, has_own_property, is_extensible},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -14,7 +15,6 @@ use crate::{
         object_value::ObjectValue,
         scope_names::ScopeNames,
         string_value::FlatString,
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
     set_uninit,
 };

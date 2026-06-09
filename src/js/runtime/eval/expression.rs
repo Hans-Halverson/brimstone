@@ -6,9 +6,10 @@ use crate::{
     must, must_a,
     parser::ast,
     runtime::{
+        Context, Handle, Realm,
         abstract_operations::{
-            call_object, define_property_or_throw, get_method, has_property, ordinary_has_instance,
-            set_integrity_level, IntegrityLevel,
+            IntegrityLevel, call_object, define_property_or_throw, get_method, has_property,
+            ordinary_has_instance, set_integrity_level,
         },
         alloc_error::AllocResult,
         array_object::array_create_in_realm,
@@ -22,11 +23,10 @@ use crate::{
         property_key::PropertyKey,
         string_value::StringValue,
         type_utilities::{
-            is_less_than, to_boolean, to_int32, to_numeric, to_object, to_primitive,
-            to_property_key, to_string, to_uint32, ToPrimitivePreferredType,
+            ToPrimitivePreferredType, is_less_than, to_boolean, to_int32, to_numeric, to_object,
+            to_primitive, to_property_key, to_string, to_uint32,
         },
-        value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-        Context, Handle, Realm,
+        value::{BOOL_TAG, BigIntValue, NULL_TAG, UNDEFINED_TAG, Value},
     },
 };
 

@@ -1,7 +1,8 @@
 use crate::{
-    common::unicode::{get_hex_value, CodePoint},
+    common::unicode::{CodePoint, get_hex_value},
     must,
     runtime::{
+        Context, EvalResult, Handle, Value,
         error::{syntax_error_value, type_error},
         get,
         numeric_constants::MAX_SAFE_INTEGER_U64,
@@ -9,7 +10,6 @@ use crate::{
         ordinary_object::ordinary_object_create_without_proto,
         string_value::{FlatString, StringValue},
         type_utilities::to_boolean,
-        Context, EvalResult, Handle, Value,
     },
 };
 
@@ -216,7 +216,7 @@ pub fn decode_base64(
             if !chunk.is_empty() {
                 match last_chunk_handling {
                     LastChunkHandling::StopBeforePartial => {
-                        return Ok(DecodeResult { bytes, read, error: None })
+                        return Ok(DecodeResult { bytes, read, error: None });
                     }
                     LastChunkHandling::Loose => {
                         if chunk.len() == 1 {

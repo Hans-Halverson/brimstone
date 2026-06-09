@@ -19,28 +19,29 @@ use crate::{
     parser::{
         analyze::{AnalyzedFunctionResult, AnalyzedProgramResult},
         ast::{self, AstPtr, AstStr, LabelId, ProgramKind, ResolvedScope, TaggedResolvedScope},
-        loc::{Pos, NO_POS},
+        loc::{NO_POS, Pos},
         scope_tree::{
-            AstScopeNode, Binding, BindingKind, ScopeNodeId, ScopeNodeKind, ScopeTree, VMLocation,
-            VMScopeNode, ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME, DEFAULT_EXPORT_NAME,
-            DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME, NEW_TARGET_BINDING_NAME,
-            STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
+            ANONYMOUS_DEFAULT_EXPORT_NAME, ARGUMENTS_NAME, AstScopeNode, Binding, BindingKind,
+            DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+            NEW_TARGET_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME, ScopeNodeId, ScopeNodeKind,
+            ScopeTree, THIS_NAME, VMLocation, VMScopeNode,
         },
         source::Source,
     },
     runtime::{
+        Context, Handle, HeapPtr, Realm, Value,
         alloc_error::{AllocError, AllocResult},
         boxed_value::BoxedValue,
         bytecode::{
             constant_table_builder::{ConstantTableBuilder, ConstantTableIndex},
             exception_handlers::{ExceptionHandlerBuilder, ExceptionHandlersBuilder},
-            function::{dump_bytecode_function, BytecodeFunction, Closure},
+            function::{BytecodeFunction, Closure, dump_bytecode_function},
             graphviz::save_bytecode_dotfile_if_needed,
             instruction::{
                 DecodeInfo, DefinePrivatePropertyFlags, DefinePropertyFlags, EvalFlags, OpCode,
                 ThrowNewErrorKind,
             },
-            operand::{min_width_for_signed, ConstantIndex, Operand, Register, SInt, UInt},
+            operand::{ConstantIndex, Operand, Register, SInt, UInt, min_width_for_signed},
             register_allocator::TemporaryRegisterAllocator,
             source_map::BytecodeSourceMap,
             width::{ExtraWide, Narrow, UnsignedWidthRepr, Wide, Width, WidthEnum},
@@ -66,7 +67,6 @@ use crate::{
         source_file::SourceFile,
         string_value::{FlatString, StringValue},
         value::BigIntValue,
-        Context, Handle, HeapPtr, Realm, Value,
     },
 };
 

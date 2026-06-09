@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     completion_value, must_a,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
@@ -12,18 +13,17 @@ use crate::{
         intrinsics::intrinsics::Intrinsic,
         module::{
             module::{
-                next_module_id, DynModule, Module, ModuleEnum, ModuleId, ResolveExportName,
-                ResolveExportResult,
+                DynModule, Module, ModuleEnum, ModuleId, ResolveExportName, ResolveExportResult,
+                next_module_id,
             },
             module_namespace_object::ModuleNamespaceObject,
             source_text_module::SourceTextModule,
         },
-        promise_object::{coerce_to_ordinary_promise, PromiseCapability, PromiseObject},
+        promise_object::{PromiseCapability, PromiseObject, coerce_to_ordinary_promise},
         rust_vtables::extract_module_vtable,
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         string_value::FlatString,
-        Context, EvalResult, Handle, HeapPtr, Realm, Value,
     },
     set_uninit,
 };

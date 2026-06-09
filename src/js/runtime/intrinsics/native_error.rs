@@ -1,11 +1,12 @@
 use crate::runtime::{
+    Context, Handle, HeapPtr, Value,
     abstract_operations::{construct, create_non_enumerable_data_property_or_throw},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
     function::get_argument,
     intrinsics::{
-        error_constructor::{install_error_cause, ErrorObject},
+        error_constructor::{ErrorObject, install_error_cause},
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
     },
@@ -13,7 +14,6 @@ use crate::runtime::{
     realm::Realm,
     string_value::StringValue,
     type_utilities::to_string,
-    Context, Handle, HeapPtr, Value,
 };
 
 macro_rules! create_native_error {

@@ -2,11 +2,11 @@ use std::ops::Range;
 
 use crate::{
     common::varint::encode_varint,
-    parser::loc::{Pos, NO_POS},
+    parser::loc::{NO_POS, Pos},
     runtime::bytecode::{
         instruction::{
-            decode_width_and_opcode_at_index, extra_wide_prefix_index_to_opcode_index,
-            wide_prefix_index_to_opcode_index, DecodeInfo, OpCode,
+            DecodeInfo, OpCode, decode_width_and_opcode_at_index,
+            extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
         },
         operand::Operand,
         width::{Width, WidthEnum},

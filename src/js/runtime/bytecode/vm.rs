@@ -1,12 +1,13 @@
 use std::{
     collections::HashSet,
-    mem::{transmute, MaybeUninit},
+    mem::{MaybeUninit, transmute},
     ops::Deref,
 };
 
 use crate::{
     eval_err, handle_scope, handle_scope_guard, must,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
         abstract_operations::{
             call, call_object, copy_data_properties, create_data_property_or_throw,
             define_property_or_throw, get_method, get_v, has_property, private_get, private_set,
@@ -14,16 +15,15 @@ use crate::{
         },
         accessor::Accessor,
         alloc_error::AllocResult,
-        arguments_object::{create_unmapped_arguments_object, MappedArgumentsObject},
-        array_object::{array_create, ArrayObject},
-        async_generator_object::{async_generator_complete_step, AsyncGeneratorObject},
+        arguments_object::{MappedArgumentsObject, create_unmapped_arguments_object},
+        array_object::{ArrayObject, array_create},
+        async_generator_object::{AsyncGeneratorObject, async_generator_complete_step},
         boxed_value::BoxedValue,
         bytecode::{
             constant_table::ConstantTable,
             function::{BytecodeFunction, Closure},
             generator::BytecodeScript,
             instruction::{
-                extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
                 AddInstruction, AsyncIteratorCloseFinishInstruction,
                 AsyncIteratorCloseStartInstruction, AwaitInstruction, BitAndInstruction,
                 BitNotInstruction, BitOrInstruction, BitXorInstruction, CallInstruction,
@@ -74,6 +74,7 @@ use crate::{
                 ThrowNewErrorInstruction, ThrowNewErrorKind, ToNumberInstruction,
                 ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
                 ToStringInstruction, TypeOfInstruction, YieldInstruction,
+                extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
             },
             instruction_traits::{
                 GenericCallArgs, GenericCallInstruction, GenericConstructInstruction,
@@ -83,10 +84,10 @@ use crate::{
                 GenericJumpUndefinedConstantInstruction, GenericJumpUndefinedInstruction,
             },
             operand::{ConstantIndex, Register, SInt, UInt},
-            stack_frame::{StackFrame, StackSlotValue, FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS},
+            stack_frame::{FIRST_ARGUMENT_SLOT_INDEX, NUM_STACK_SLOTS, StackFrame, StackSlotValue},
             width::{ExtraWide, Narrow, SignedWidthRepr, UnsignedWidthRepr, Wide, Width},
         },
-        class_names::{new_class, ClassNames},
+        class_names::{ClassNames, new_class},
         error::{
             err_assign_constant, err_cannot_set_property, err_not_defined, reference_error,
             stack_overflow_error, type_error, type_error_value,
@@ -117,11 +118,11 @@ use crate::{
             regexp_constructor::RegExpObject,
             rust_runtime::RuntimeFunctionId,
         },
-        iterator::{get_iterator, iterator_complete, iterator_value, IteratorHint},
+        iterator::{IteratorHint, get_iterator, iterator_complete, iterator_value},
         module::{execute::dynamic_import, source_text_module::SourceTextModule},
         object_value::{ObjectValue, VirtualObject},
         ordinary_object::{object_create_from_constructor, ordinary_object_create},
-        promise_object::{coerce_to_ordinary_promise, is_promise, resolve, PromiseObject},
+        promise_object::{PromiseObject, coerce_to_ordinary_promise, is_promise, resolve},
         property::Property,
         proxy_object::ProxyObject,
         regexp::compiled_regexp::CompiledRegExpObject,
@@ -134,7 +135,6 @@ use crate::{
             same_object_value, to_boolean, to_number, to_numeric, to_object, to_property_key,
         },
         value::{BigIntValue, SymbolValue},
-        Context, EvalResult, Handle, HeapPtr, PropertyDescriptor, PropertyKey, Realm, Value,
     },
 };
 
@@ -2443,11 +2443,12 @@ impl VM {
         _: &DefaultSuperCallInstruction<W>,
     ) -> EvalResult<()> {
         handle_scope!(self.cx(), {
-            let super_constructor = must!(self
-                .closure()
-                .to_handle()
-                .as_object()
-                .get_prototype_of(self.cx()));
+            let super_constructor = must!(
+                self.closure()
+                    .to_handle()
+                    .as_object()
+                    .get_prototype_of(self.cx())
+            );
 
             if super_constructor.is_none() || !is_callable_object(super_constructor.unwrap()) {
                 return type_error(self.cx(), "super must be a constructor");

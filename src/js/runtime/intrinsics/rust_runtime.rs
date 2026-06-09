@@ -1,6 +1,6 @@
 use crate::{
     runtime::{
-        async_generator_object,
+        Context, EvalResult, Handle, Value, async_generator_object,
         bound_function_object::BoundFunctionObject,
         console::ConsoleObject,
         gc_object::GcObject,
@@ -66,9 +66,9 @@ use crate::{
             symbol_prototype::SymbolPrototype,
             typed_array::{
                 BigInt64ArrayConstructor, BigUInt64ArrayConstructor, Float16ArrayConstructor,
-                Float32ArrayConstructor, Float64ArrayConstructor, Int16ArrayConstructor,
-                Int32ArrayConstructor, Int8ArrayConstructor, UInt16ArrayConstructor,
-                UInt32ArrayConstructor, UInt8ArrayConstructor, UInt8ClampedArrayConstructor,
+                Float32ArrayConstructor, Float64ArrayConstructor, Int8ArrayConstructor,
+                Int16ArrayConstructor, Int32ArrayConstructor, UInt8ArrayConstructor,
+                UInt8ClampedArrayConstructor, UInt16ArrayConstructor, UInt32ArrayConstructor,
             },
             typed_array_constructor::TypedArrayConstructor,
             typed_array_prototype::TypedArrayPrototype,
@@ -82,7 +82,6 @@ use crate::{
         module,
         promise_object::PromiseCapability,
         test_262_object::Test262Object,
-        Context, EvalResult, Handle, Value,
     },
     static_assert,
 };

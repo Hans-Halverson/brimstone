@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::runtime::{type_utilities::is_integral_number, Value};
+use crate::runtime::{Value, type_utilities::is_integral_number};
 
 /// Number::exponentiate (https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate)
 pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
@@ -14,11 +14,7 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
         return f64::NAN;
     } else if base.is_infinite() {
         return if base == f64::INFINITY {
-            if exponent > 0.0 {
-                f64::INFINITY
-            } else {
-                0.0
-            }
+            if exponent > 0.0 { f64::INFINITY } else { 0.0 }
         } else {
             let is_exponent_integral_value = is_integral_number(Value::number(exponent));
             let is_exponent_odd = exponent % 2.0 != 0.0;
@@ -40,11 +36,7 @@ pub fn number_exponentiate(base: f64, exponent: f64) -> f64 {
         };
     } else if base == 0.0 {
         return if base.is_sign_positive() {
-            if exponent > 0.0 {
-                0.0
-            } else {
-                f64::INFINITY
-            }
+            if exponent > 0.0 { 0.0 } else { f64::INFINITY }
         } else {
             let is_exponent_integral_value = is_integral_number(Value::number(exponent));
             let is_exponent_odd = exponent % 2.0 != 0.0;

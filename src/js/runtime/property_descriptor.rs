@@ -1,6 +1,7 @@
 use crate::{
     must_a,
     runtime::{
+        Context, Value,
         abstract_operations::{create_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         error::type_error,
@@ -9,7 +10,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
         type_utilities::{is_callable, to_boolean},
-        Context, Value,
     },
 };
 

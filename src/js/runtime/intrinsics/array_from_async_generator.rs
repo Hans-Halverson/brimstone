@@ -1,6 +1,7 @@
 use crate::{
     completion_value, eval_err, must,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::{
             call, call_object, construct, create_data_property_or_throw, get_method,
             length_of_array_like, set,
@@ -13,14 +14,13 @@ use crate::{
         get,
         intrinsics::intrinsics::Intrinsic,
         iterator::{
-            create_async_from_sync_iterator, get_iterator, iterator_complete, iterator_value,
-            IteratorHint,
+            IteratorHint, create_async_from_sync_iterator, get_iterator, iterator_complete,
+            iterator_value,
         },
         numeric_constants::MAX_SAFE_INTEGER_U64,
         object_value::ObjectValue,
-        promise_object::{coerce_to_ordinary_promise, PromiseCapability},
+        promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         type_utilities::{is_callable, is_constructor_value, to_object},
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
 };
 
@@ -295,7 +295,7 @@ impl ArrayFromAsyncGenerator {
                 let mapped_value = match completion_value!(mapped_completion) {
                     Ok(value) => value,
                     Err(error_value) => {
-                        return Self::async_iterator_close(cx, capability, iterator, error_value)
+                        return Self::async_iterator_close(cx, capability, iterator, error_value);
                     }
                 };
 
@@ -325,7 +325,7 @@ impl ArrayFromAsyncGenerator {
             match completion_value!(await_completion) {
                 Ok(awaited_mapped_value) => awaited_mapped_value,
                 Err(error_value) => {
-                    return Self::async_iterator_close(cx, capability, iterator, error_value)
+                    return Self::async_iterator_close(cx, capability, iterator, error_value);
                 }
             }
         };

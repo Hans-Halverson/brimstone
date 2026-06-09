@@ -1,10 +1,10 @@
 use crate::{
     common::constants::MEGABYTE_BYTES,
     runtime::{
+        HeapPtr, Value,
         bytecode::{constant_table::ConstantTable, function::Closure},
         gc::HeapVisitor,
         scope::Scope,
-        HeapPtr, Value,
     },
 };
 

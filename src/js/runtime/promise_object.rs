@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     completion_value, extend_object,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr,
         abstract_operations::{call_object, construct, get_function_realm_no_error},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -16,7 +17,6 @@ use crate::{
         ordinary_object::{object_create, object_create_from_constructor},
         type_utilities::{is_callable, is_constructor_value, same_object_value, same_value},
         value::Value,
-        Context, EvalResult, Handle, HeapPtr,
     },
     set_uninit,
 };

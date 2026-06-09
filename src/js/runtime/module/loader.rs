@@ -2,8 +2,9 @@ use std::{collections::HashSet, path::Path, rc::Rc};
 
 use crate::{
     completion_value, must_a,
-    parser::{analyze::analyze, parse_module, print_program, source::Source, ParseContext},
+    parser::{ParseContext, analyze::analyze, parse_module, print_program, source::Source},
     runtime::{
+        Context, Handle, Realm, Value,
         abstract_operations::call_object,
         alloc_error::AllocResult,
         bytecode::generator::BytecodeProgramGenerator,
@@ -18,7 +19,6 @@ use crate::{
         },
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
-        Context, Handle, Realm, Value,
     },
 };
 

@@ -1,11 +1,11 @@
 use crate::{
     field_offset,
     runtime::{
+        Context, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        Context, HeapPtr, Value,
     },
     set_uninit,
 };

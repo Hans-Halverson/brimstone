@@ -2,7 +2,7 @@ use crate::{
     common::unicode::to_string_or_unicode_escape_sequence,
     parser::{
         ast::*,
-        loc::{find_line_col_for_pos, Loc},
+        loc::{Loc, find_line_col_for_pos},
         parser::ParseProgramResult,
         regexp::{
             Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CharacterClass,

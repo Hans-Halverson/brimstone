@@ -1,4 +1,5 @@
 use crate::runtime::{
+    HeapPtr,
     bytecode::{
         constant_table::ConstantTable, exception_handlers::ExceptionHandlers,
         function::BytecodeFunction,
@@ -8,7 +9,6 @@ use crate::runtime::{
     regexp::compiled_regexp::CompiledRegExpObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
-    HeapPtr,
 };
 
 #[derive(Clone, Copy, PartialEq)]

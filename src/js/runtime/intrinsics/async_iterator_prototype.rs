@@ -1,9 +1,9 @@
 use crate::runtime::{
+    Context, Handle,
     alloc_error::AllocResult,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
     object_value::ObjectValue,
     realm::Realm,
-    Context, Handle,
 };
 
 /// The %AsyncIteratorPrototype% Object (https://tc39.es/ecma262/#sec-asynciteratorprototype)

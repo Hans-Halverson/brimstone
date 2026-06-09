@@ -5,7 +5,7 @@ use std::io::{BufReader, Read};
 use crate::{
     common::{constants::MAX_STRING_LENGTH, wtf_8::Wtf8String},
     parser::{
-        loc::calculate_line_offsets, parse_error::ParseResult, LocalizedParseError, ParseError,
+        LocalizedParseError, ParseError, loc::calculate_line_offsets, parse_error::ParseResult,
     },
 };
 

@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Value,
     bytecode::{
         instruction::{
             CallInstruction, CallMaybeEvalInstruction, CallMaybeEvalVarargsInstruction,
@@ -14,7 +15,6 @@ use crate::runtime::{
         operand::{ConstantIndex, Register, SInt, UInt},
         width::Width,
     },
-    Value,
 };
 
 pub enum GenericCallArgs<W: Width> {

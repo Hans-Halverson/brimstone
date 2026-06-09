@@ -1,8 +1,8 @@
 use std::mem::transmute;
 
 use crate::runtime::{
-    gc::{AnyHeapItem, HeapPtr},
     PropertyKey, Value,
+    gc::{AnyHeapItem, HeapPtr},
 };
 
 pub trait HeapVisitor {

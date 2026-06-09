@@ -3,13 +3,13 @@ use std::mem::size_of;
 use crate::{
     field_offset,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsHashMap, BsHashMapField, InlineArray},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
         property::{HeapProperty, Property},
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

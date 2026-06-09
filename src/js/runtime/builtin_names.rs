@@ -1,8 +1,8 @@
 use crate::{
     handle_scope_guard,
     runtime::{
-        alloc_error::AllocResult, context::Context, gc::HeapVisitor, property_key::PropertyKey,
-        value::SymbolValue, Handle,
+        Handle, alloc_error::AllocResult, context::Context, gc::HeapVisitor,
+        property_key::PropertyKey, value::SymbolValue,
     },
 };
 

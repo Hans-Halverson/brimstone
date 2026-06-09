@@ -4,8 +4,8 @@ use crate::{
     common::varint::decode_varint,
     parser::loc::Pos,
     runtime::{
-        alloc_error::AllocResult, collections::array::ByteArray,
-        heap_item_descriptor::HeapItemKind, Context, Handle, HeapPtr,
+        Context, Handle, HeapPtr, alloc_error::AllocResult, collections::array::ByteArray,
+        heap_item_descriptor::HeapItemKind,
     },
 };
 

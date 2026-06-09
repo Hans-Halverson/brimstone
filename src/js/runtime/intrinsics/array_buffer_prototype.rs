@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, EvalResult, Handle, Value,
     abstract_operations::{construct, species_constructor},
     alloc_error::AllocResult,
     collections::BsArray,
@@ -7,7 +8,7 @@ use crate::runtime::{
     heap_item_descriptor::HeapItemKind,
     intrinsics::{
         array_buffer_constructor::{
-            array_buffer_copy_and_detach, throw_if_detached, ArrayBufferObject,
+            ArrayBufferObject, array_buffer_copy_and_detach, throw_if_detached,
         },
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
@@ -16,7 +17,6 @@ use crate::runtime::{
     property::Property,
     realm::Realm,
     type_utilities::{resolve_relative_index_argument, to_index},
-    Context, EvalResult, Handle, Value,
 };
 
 pub struct ArrayBufferPrototype;

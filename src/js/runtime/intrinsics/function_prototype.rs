@@ -1,6 +1,7 @@
 use crate::{
     must,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{
             call_object, create_list_from_array_like_arguments, has_own_property,
             ordinary_has_instance,
@@ -21,7 +22,6 @@ use crate::{
         realm::Realm,
         string_value::{FlatString, StringValue},
         type_utilities::{is_callable, is_callable_object, to_integer_or_infinity},
-        Context, Handle, HeapPtr, Value,
     },
 };
 

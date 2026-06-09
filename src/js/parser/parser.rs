@@ -9,7 +9,7 @@ use num_bigint::BigInt;
 use crate::{
     common::{
         options::Options,
-        unicode::{encode_utf16_codepoint, utf16_code_unit_count, utf8_byte_count},
+        unicode::{encode_utf16_codepoint, utf8_byte_count, utf16_code_unit_count},
         wtf_8::Wtf8Str,
     },
     p,
@@ -18,13 +18,14 @@ use crate::{
         context::ParseContext,
         lexer::{Lexer, SavedLexerState},
         lexer_stream::{HeapTwoByteCodeUnitLexerStream, Utf8LexerStream},
-        loc::{Loc, Pos, EMPTY_LOC},
+        loc::{EMPTY_LOC, Loc, Pos},
         parse_error::{LocalizedParseError, ParseError, ParseResult},
         regexp_parser::RegExpParser,
         scope_tree::{
-            AstScopeNode, BindingKind, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
-            ANONYMOUS_DEFAULT_EXPORT_NAME, DERIVED_CONSTRUCTOR_BINDING_NAME,
-            HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME, THIS_NAME,
+            ANONYMOUS_DEFAULT_EXPORT_NAME, AstScopeNode, BindingKind,
+            DERIVED_CONSTRUCTOR_BINDING_NAME, HOME_OBJECT_BINDING_NAME,
+            STATIC_HOME_OBJECT_BINDING_NAME, SavedScopeTreeState, ScopeNodeKind, ScopeTree,
+            THIS_NAME,
         },
         source::Source,
         token::{RegExpToken, TemplatePartToken, Token},

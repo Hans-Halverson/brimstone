@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     error::type_error,
     eval_result::EvalResult,
@@ -15,7 +16,6 @@ use crate::runtime::{
     property::Property,
     realm::Realm,
     type_utilities::same_value,
-    Context, Handle, Value,
 };
 
 pub struct FinalizationRegistryPrototype;

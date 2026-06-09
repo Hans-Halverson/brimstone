@@ -581,7 +581,7 @@ impl SymbolValue {
 
         set_uninit!(symbol.descriptor, cx.descriptors.get(HeapItemKind::Symbol));
         set_uninit!(symbol.description, description.map(|desc| *desc));
-        set_uninit!(symbol.hash_code, cx.rand.gen::<u32>());
+        set_uninit!(symbol.hash_code, cx.rand.r#gen::<u32>());
         set_uninit!(symbol.is_private, is_private);
 
         Ok(symbol.to_handle())

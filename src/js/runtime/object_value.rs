@@ -327,7 +327,7 @@ impl HeapPtr<ObjectValue> {
             Some(hash_code) => hash_code,
             None => {
                 // May be called from std::hash::Hash so cannot pass in Context
-                let hash_code = self.cx().rand.gen::<NonZeroU32>();
+                let hash_code = self.cx().rand.r#gen::<NonZeroU32>();
                 self.hash_code = Some(hash_code);
                 hash_code
             }

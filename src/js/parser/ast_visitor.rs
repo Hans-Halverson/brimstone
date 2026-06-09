@@ -480,8 +480,8 @@ pub fn default_visit_function_param<'a, V: AstVisitor<'a>>(
     param: &mut FunctionParam<'a>,
 ) {
     match param {
-        FunctionParam::Pattern { ref mut pattern, .. } => visitor.visit_pattern(pattern),
-        FunctionParam::Rest { ref mut rest, .. } => visitor.visit_rest_element(rest),
+        FunctionParam::Pattern { pattern, .. } => visitor.visit_pattern(pattern),
+        FunctionParam::Rest { rest, .. } => visitor.visit_rest_element(rest),
     }
 }
 
@@ -490,8 +490,8 @@ pub fn default_visit_function_body<'a, V: AstVisitor<'a>>(
     body: &mut FunctionBody<'a>,
 ) {
     match body {
-        FunctionBody::Block(ref mut block_body) => visitor.visit_function_block_body(block_body),
-        FunctionBody::Expression(ref mut expr) => visitor.visit_outer_expression(expr),
+        FunctionBody::Block(block_body) => visitor.visit_function_block_body(block_body),
+        FunctionBody::Expression(expr) => visitor.visit_outer_expression(expr),
     }
 }
 

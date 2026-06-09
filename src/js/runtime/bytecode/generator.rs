@@ -896,7 +896,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
                 }
 
                 let class_fields = match &mut func_node {
-                    PendingFunctionNode::Constructor { ref mut fields, .. } => {
+                    PendingFunctionNode::Constructor { fields, .. } => {
                         std::mem::replace(fields, ClassFieldsInitializer::none())
                     }
                     _ => ClassFieldsInitializer::none(),

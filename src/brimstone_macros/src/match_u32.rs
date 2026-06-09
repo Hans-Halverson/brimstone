@@ -36,34 +36,34 @@ impl CharRewriter {
 
 impl VisitMut for CharRewriter {
     fn visit_pat_mut(&mut self, pat: &mut Pat) {
-        if let Pat::Lit(lit) = pat {
-            if let syn::Lit::Char(lit_char) = &lit.lit {
-                let const_ident = self.add_char_constant(lit_char);
+        if let Pat::Lit(lit) = pat
+            && let syn::Lit::Char(lit_char) = &lit.lit
+        {
+            let const_ident = self.add_char_constant(lit_char);
 
-                // Replace the char lit pattern with a reference to the constant
-                let pat_ident = PatIdent {
-                    attrs: vec![],
-                    by_ref: None,
-                    mutability: None,
-                    ident: const_ident,
-                    subpat: None,
-                };
+            // Replace the char lit pattern with a reference to the constant
+            let pat_ident = PatIdent {
+                attrs: vec![],
+                by_ref: None,
+                mutability: None,
+                ident: const_ident,
+                subpat: None,
+            };
 
-                *pat = Pat::Ident(pat_ident);
-            }
+            *pat = Pat::Ident(pat_ident);
         }
 
         visit_mut::visit_pat_mut(self, pat);
     }
 
     fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
-        if let syn::Expr::Lit(expr_lit) = expr {
-            if let syn::Lit::Char(lit_char) = &expr_lit.lit {
-                let const_ident = self.add_char_constant(lit_char);
+        if let syn::Expr::Lit(expr_lit) = expr
+            && let syn::Lit::Char(lit_char) = &expr_lit.lit
+        {
+            let const_ident = self.add_char_constant(lit_char);
 
-                // Replace the char lit expression with a reference to the constant
-                *expr = syn::parse2(quote! { #const_ident }).unwrap();
-            }
+            // Replace the char lit expression with a reference to the constant
+            *expr = syn::parse2(quote! { #const_ident }).unwrap();
         }
 
         visit_mut::visit_expr_mut(self, expr);

@@ -698,7 +698,7 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         match &mut expr.kind {
             // new.target is treated as a binding that is implicitly created on a parent function
             // scope. Store the scope node of the function that contains this new.target expression.
-            MetaPropertyKind::NewTarget { ref mut scope } => {
+            MetaPropertyKind::NewTarget { scope } => {
                 if self.is_in_non_arrow_function() {
                     self.resolve_new_target_use(scope, expr.loc);
                 } else {

@@ -466,7 +466,7 @@ impl IteratorPrototype {
     }
 
     /// get Iterator.prototype [ @@toStringTag ] (https://tc39.es/ecma262/#sec-get-iterator.prototype-%symbol.tostringtag%)
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn iterator_prototype_get_to_string_tag(
         cx: Context,
         _: Handle<Value>,

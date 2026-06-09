@@ -30,8 +30,8 @@ struct Args {
     #[arg(long, default_value_t = false)]
     ignore_unimplemented: bool,
 
-    /// Reindex the test262 test suite
-    #[arg(long, default_value_t = false)]
+    /// Reindex the test suite before running
+    #[arg(short, long, default_value_t = false)]
     reindex: bool,
 
     /// Number of threads to use in test runner
@@ -80,17 +80,17 @@ fn main_impl() -> GenericResult {
     let index_path = manifest.index_path();
     let test262_root = manifest.test262_repo_path();
 
-    if args.reindex {
+    let index = if args.reindex {
         println!("Indexing test suite...");
         let index = TestIndex::new(&manifest)?;
 
         println!("Finished indexing. Writing index to file.");
         index.write_to_file(&index_path)?;
 
-        return Ok(());
-    }
-
-    let index = TestIndex::load_from_file(&index_path)?;
+        index
+    } else {
+        TestIndex::load_from_file(&index_path)?
+    };
 
     // `--report-test262-progress` should only run the test262 suite
     let suite_filter = if args.report_test262_progress {

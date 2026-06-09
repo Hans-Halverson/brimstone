@@ -166,6 +166,10 @@ pub struct Quantifier<'a> {
     pub max: Option<u64>,
     /// Whether the quantifier is greedy or not. Greedy by default, postfixed with `?` to be lazy.
     pub is_greedy: bool,
+    /// Whether the wrapped term is guaranteed to consume a character on all paths.
+    pub always_consumes: bool,
+    /// Whether the wrapped term contains any capture groups.
+    pub has_captures: bool,
 }
 
 pub enum Assertion {

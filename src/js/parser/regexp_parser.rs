@@ -80,6 +80,30 @@ pub struct RegExpParser<'a, T: LexerStream> {
     alloc: AstAlloc<'a>,
 }
 
+/// Properties of a parsed expression, accumulated bottom-up while parsing.
+#[derive(Clone, Copy)]
+struct ExpressionInfo {
+    /// Whether a character is guaranteed to be consumed on all paths.
+    always_consumes: bool,
+    /// Whether the expression contains any capture groups.
+    has_captures: bool,
+}
+
+struct ParsedDisjunction<'a> {
+    node: Disjunction<'a>,
+    info: ExpressionInfo,
+}
+
+struct ParsedAlternative<'a> {
+    node: Alternative<'a>,
+    info: ExpressionInfo,
+}
+
+struct ParsedTerm<'a> {
+    node: Term<'a>,
+    info: ExpressionInfo,
+}
+
 impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn new(
         lexer_stream: T,
@@ -256,7 +280,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 /* parse_named_capture_groups */ true,
                 options.annex_b,
             );
-            parser.parse_disjunction()?
+            parser.parse_disjunction()?.node
         } else {
             // If Annex B is enabled then first try to parse without named capture groups. Only
             // reparse if a named capture group was encountered.
@@ -269,7 +293,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             );
 
             let mut disjunction = match parser.parse_disjunction() {
-                Ok(disjunction) => {
+                Ok(ParsedDisjunction { node, .. }) => {
                     // When named capture groups are disallowed we may have saved an error and
                     // continued parsing in case we encountered a named capture group reference.
                     //
@@ -279,7 +303,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         return Err(deferred_error);
                     }
 
-                    disjunction
+                    node
                 }
                 // If we encountered a named capture group then reparse with named capture groups
                 Err(error) if matches!(error.error, ParseError::NamedCaptureGroupEncountered) => {
@@ -291,7 +315,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         /* parse_named_capture_groups */ true,
                         options.annex_b,
                     );
-                    parser.parse_disjunction()?
+                    parser.parse_disjunction()?.node
                 }
                 Err(error) => return Err(error),
             };
@@ -320,7 +344,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 parser.already_parsed_num_capture_groups = Some(num_capture_groups);
                 parser.annex_b_maybe_backreferences = annex_b_maybe_backreferences;
 
-                disjunction = parser.parse_disjunction()?;
+                disjunction = parser.parse_disjunction()?.node;
             }
 
             disjunction
@@ -375,11 +399,15 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok(flags)
     }
 
-    fn parse_disjunction(&mut self) -> ParseResult<Disjunction<'a>> {
+    fn parse_disjunction(&mut self) -> ParseResult<ParsedDisjunction<'a>> {
         let mut alternatives = self.alloc_vec();
 
         // Union of all capture group names defined in any alternative
         let mut all_capture_group_names = vec![];
+
+        // A disjunction always consumes a character only if every alternative always consumes one
+        let mut always_consumes = true;
+        let mut has_captures = false;
 
         // There is always at least one alternative, even if the alternative is empty
         loop {
@@ -389,7 +417,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             std::mem::swap(&mut self.current_capture_group_name_scope, &mut previous_scope);
 
             // Parse the alternative inside the scope
-            alternatives.push(self.parse_alternative()?);
+            let alternative = self.parse_alternative()?;
+            alternatives.push(alternative.node);
+
+            always_consumes &= alternative.info.always_consumes;
+            has_captures |= alternative.info.has_captures;
 
             // Tear down capture group scope by removing all names added in the current scope so
             // that sibling alternatives may reuse them, then restore the previous scope.
@@ -403,9 +435,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 break;
             }
 
-            // A trailing `|` means there is a final empty alternative
+            // A trailing `|` means there is a final empty alternative, which never consumes
             if self.is_end() {
                 alternatives.push(Alternative { terms: AstSlice::new_empty() });
+                always_consumes = false;
                 break;
             }
         }
@@ -417,12 +450,20 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         }
 
-        Ok(Disjunction { alternatives: alternatives.build() })
+        let node = Disjunction { alternatives: alternatives.build() };
+        let info = ExpressionInfo { always_consumes, has_captures };
+
+        Ok(ParsedDisjunction { node, info })
     }
 
-    fn parse_alternative(&mut self) -> ParseResult<Alternative<'a>> {
+    fn parse_alternative(&mut self) -> ParseResult<ParsedAlternative<'a>> {
         let mut terms = self.alloc_vec();
         let mut current_literal = AstString::new_in(self.alloc);
+
+        // An alternative is a sequence of terms, so it always consumes iff one of its terms always
+        // consumes.
+        let mut always_consumes = false;
+        let mut has_captures = false;
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
@@ -451,19 +492,21 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             });
 
             let term = self.parse_term()?;
+            always_consumes |= term.info.always_consumes;
+            has_captures |= term.info.has_captures;
 
-            if let Term::Literal(next_string) = &term {
+            if let Term::Literal(next_string) = &term.node {
                 // Accumulate adjacent literals into a single literal term
                 current_literal.push_wtf8_str(next_string);
             } else if !current_literal.is_empty() {
                 // Write the accumulated literal term once a non-literal term is encountered
                 terms.push(Term::Literal(current_literal.into_arena_str()));
-                terms.push(term);
+                terms.push(term.node);
 
                 // Start a new literal accumulator
                 current_literal = AstString::new_in(self.alloc);
             } else {
-                terms.push(term);
+                terms.push(term.node);
             }
         }
 
@@ -472,12 +515,15 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             terms.push(Term::Literal(current_literal.into_arena_str()));
         }
 
-        Ok(Alternative { terms: terms.build() })
+        let node = Alternative { terms: terms.build() };
+        let info = ExpressionInfo { always_consumes, has_captures };
+
+        Ok(ParsedAlternative { node, info })
     }
 
-    fn parse_term(&mut self) -> ParseResult<Term<'a>> {
+    fn parse_term(&mut self) -> ParseResult<ParsedTerm<'a>> {
         // Parse a single atomic term
-        let atom: Term<'a> = match_u32!(match self.current() {
+        let term = match_u32!(match self.current() {
             '.' => {
                 self.advance();
                 Term::Wildcard
@@ -487,7 +533,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 let group = self.parse_group()?;
                 self.group_depth -= 1;
 
-                group
+                // Group may be postfixed with a quantifier
+                return self.parse_quantifier(group);
             }
             '[' => {
                 if self.flags.has_unicode_sets_flag() {
@@ -661,8 +708,21 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
         });
 
+        let info = match &term {
+            Term::Literal(_) | Term::Wildcard | Term::CharacterClass(_) => {
+                ExpressionInfo { always_consumes: true, has_captures: false }
+            }
+            Term::Assertion(_) | Term::Backreference(_) => {
+                ExpressionInfo { always_consumes: false, has_captures: false }
+            }
+            Term::Quantifier(_)
+            | Term::Lookaround(_)
+            | Term::CaptureGroup(_)
+            | Term::AnonymousGroup(_) => unreachable!("not produced by parse_term"),
+        };
+
         // Term may be postfixed with a quantifier
-        self.parse_quantifier(atom)
+        self.parse_quantifier(ParsedTerm { node: term, info })
     }
 
     fn character_class_from_shorthand(&self, shorthand: ClassRange<'a>) -> CharacterClass<'a> {
@@ -690,7 +750,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         false
     }
 
-    fn parse_quantifier(&mut self, term: Term<'a>) -> ParseResult<Term<'a>> {
+    fn parse_quantifier(&mut self, term: ParsedTerm<'a>) -> ParseResult<ParsedTerm<'a>> {
         let quantifier_pos = self.pos();
 
         let bounds_opt = match_u32!(match self.current() {
@@ -740,7 +800,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             // Check if term is a a non-quantifiable assertion. Lookaheads are allowed as
             // quantifiable assertions in Annex B.
-            match term {
+            match term.node {
                 Term::Lookaround(Lookaround { is_ahead: true, .. }) if !self.is_unicode_aware() => {
                 }
                 Term::Assertion(_) | Term::Lookaround(_) => {
@@ -749,7 +809,22 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 _ => {}
             }
 
-            Ok(Term::Quantifier(Quantifier { term: p!(self, term), min, max, is_greedy }))
+            let quantifier = Term::Quantifier(Quantifier {
+                term: p!(self, term.node),
+                min,
+                max,
+                is_greedy,
+                always_consumes: term.info.always_consumes,
+                has_captures: term.info.has_captures,
+            });
+
+            // A quantifier always consumes iff it has at least one repetition that always consumes
+            let info = ExpressionInfo {
+                always_consumes: min > 0 && term.info.always_consumes,
+                has_captures: term.info.has_captures,
+            };
+
+            Ok(ParsedTerm { node: quantifier, info })
         } else {
             Ok(term)
         }
@@ -824,7 +899,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok(Some(value))
     }
 
-    fn parse_group(&mut self) -> ParseResult<Term<'a>> {
+    fn parse_group(&mut self) -> ParseResult<ParsedTerm<'a>> {
         self.advance();
 
         let left_paren_pos = self.pos();
@@ -836,33 +911,43 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     let disjunction = self.parse_disjunction()?;
                     self.expect(')')?;
 
-                    Ok(Term::AnonymousGroup(AnonymousGroup {
-                        disjunction,
+                    let group = Term::AnonymousGroup(AnonymousGroup {
+                        disjunction: disjunction.node,
                         positive_modifiers: RegExpFlags::empty(),
                         negative_modifiers: RegExpFlags::empty(),
-                    }))
+                    });
+
+                    Ok(ParsedTerm { node: group, info: disjunction.info })
                 }
                 '=' => {
                     self.advance();
                     let disjunction = self.parse_disjunction()?;
                     self.expect(')')?;
 
-                    Ok(Term::Lookaround(Lookaround {
-                        disjunction,
+                    let lookaround = Term::Lookaround(Lookaround {
+                        disjunction: disjunction.node,
                         is_ahead: true,
                         is_positive: true,
-                    }))
+                    });
+
+                    let info = Self::lookaround_info(disjunction.info);
+
+                    Ok(ParsedTerm { node: lookaround, info })
                 }
                 '!' => {
                     self.advance();
                     let disjunction = self.parse_disjunction()?;
                     self.expect(')')?;
 
-                    Ok(Term::Lookaround(Lookaround {
-                        disjunction,
+                    let lookaround = Term::Lookaround(Lookaround {
+                        disjunction: disjunction.node,
                         is_ahead: true,
                         is_positive: false,
-                    }))
+                    });
+
+                    let info = Self::lookaround_info(disjunction.info);
+
+                    Ok(ParsedTerm { node: lookaround, info })
                 }
                 '<' => {
                     self.advance();
@@ -873,22 +958,30 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
 
-                            Ok(Term::Lookaround(Lookaround {
-                                disjunction,
+                            let lookaround = Term::Lookaround(Lookaround {
+                                disjunction: disjunction.node,
                                 is_ahead: false,
                                 is_positive: true,
-                            }))
+                            });
+
+                            let info = Self::lookaround_info(disjunction.info);
+
+                            Ok(ParsedTerm { node: lookaround, info })
                         }
                         '!' => {
                             self.advance();
                             let disjunction = self.parse_disjunction()?;
                             self.expect(')')?;
 
-                            Ok(Term::Lookaround(Lookaround {
-                                disjunction,
+                            let lookaround = Term::Lookaround(Lookaround {
+                                disjunction: disjunction.node,
                                 is_ahead: false,
                                 is_positive: false,
-                            }))
+                            });
+
+                            let info = Self::lookaround_info(disjunction.info);
+
+                            Ok(ParsedTerm { node: lookaround, info })
                         }
                         _ => {
                             // First parse the name
@@ -927,11 +1020,15 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                                     .error(self.pos(), ParseError::NamedCaptureGroupEncountered);
                             }
 
-                            Ok(Term::CaptureGroup(CaptureGroup {
+                            let group = Term::CaptureGroup(CaptureGroup {
                                 name: Some(name),
                                 index,
-                                disjunction,
-                            }))
+                                disjunction: disjunction.node,
+                            });
+
+                            let info = Self::capture_group_info(disjunction.info);
+
+                            Ok(ParsedTerm { node: group, info })
                         }
                     })
                 }
@@ -963,11 +1060,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     let disjunction = self.parse_disjunction()?;
                     self.expect(')')?;
 
-                    Ok(Term::AnonymousGroup(AnonymousGroup {
-                        disjunction,
+                    let group = Term::AnonymousGroup(AnonymousGroup {
+                        disjunction: disjunction.node,
                         positive_modifiers,
                         negative_modifiers,
-                    }))
+                    });
+
+                    Ok(ParsedTerm { node: group, info: disjunction.info })
                 }
                 _ => self.error_unexpected_token(self.pos()),
             })
@@ -979,7 +1078,26 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             let disjunction = self.parse_disjunction()?;
             self.expect(')')?;
 
-            Ok(Term::CaptureGroup(CaptureGroup { name: None, index, disjunction }))
+            let group = Term::CaptureGroup(CaptureGroup {
+                name: None,
+                index,
+                disjunction: disjunction.node,
+            });
+
+            let info = Self::capture_group_info(disjunction.info);
+
+            Ok(ParsedTerm { node: group, info })
+        }
+    }
+
+    fn lookaround_info(body_info: ExpressionInfo) -> ExpressionInfo {
+        ExpressionInfo { always_consumes: false, has_captures: body_info.has_captures }
+    }
+
+    fn capture_group_info(body_info: ExpressionInfo) -> ExpressionInfo {
+        ExpressionInfo {
+            always_consumes: body_info.always_consumes,
+            has_captures: true,
         }
     }
 

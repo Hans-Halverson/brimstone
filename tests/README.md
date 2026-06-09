@@ -38,20 +38,19 @@ Install the test262 repo at the pinned commit by running the following script:
 
 The test runner is run with `cargo brimstone-test` anywhere in the `brimstone` workspace. Run `cargo brimstone-test -- --help` to see the full set of options for the test runner.
 
-Before running any tests, the test runner must first create an index of the all test suites for fast consumption later on. This only needs to be run when the set of tests has changed, e.g. after you pull in a new version of the test262 repo.
+Before running any tests, the test runner must first create an index of the all test suites for fast consumption later on. This only needs to be run when the set of tests has changed, e.g. after you add new tests or pull in a new version of the test262 repo. Pass the `--reindex` option to reindex and then immediately run the specified tests.
 
-```
-cargo brimstone-test -- --reindex
-```
-
-Then the all integration test suites can be run with:
+The integration test suites can be run with:
 
 ```
 # Run all integration test suites
 cargo brimstone-test
 
+# Reindex all tests then run the specified tests
+cargo brimstone-test -- --reindex
+
 # Run only the tests that match a filter string
-cargo run -- language/expressions
+cargo brimstone-test -- language/expressions
 ```
 
 Other important options include:

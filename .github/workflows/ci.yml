@@ -51,9 +51,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests
-        run: |
-          cargo brimstone-test -- --reindex
-          cargo brimstone-test -- --ignore-unimplemented
+        run: cargo brimstone-test -- --reindex --ignore-unimplemented
 
   # Run all integration tests for implemented features with release build.
   integration-tests-release:
@@ -68,9 +66,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests
-        run: |
-          cargo brimstone-test -- --reindex
-          cargo brimstone-test --release -- --ignore-unimplemented
+        run: cargo brimstone-test --release -- --reindex --ignore-unimplemented
 
   # Run all integration tests for implemented features with GC stress test mode on.
   integration-tests-gc-stress-test:
@@ -85,9 +81,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests
-        run: |
-          cargo brimstone-test -- --reindex
-          cargo brimstone-test --release --features gc_stress_test -- --ignore-unimplemented
+        run: cargo brimstone-test --release --features gc_stress_test -- --reindex --ignore-unimplemented
 
   # Run all integration tests for implemented features with handle tracking mode on.
   integration-tests-handle-tracking:
@@ -102,9 +96,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests
-        run: |
-          cargo brimstone-test -- --reindex
-          cargo brimstone-test --release --features handle_stats -- --ignore-unimplemented
+        run: cargo brimstone-test --release --features handle_stats -- --reindex --ignore-unimplemented
 
   integration-tests-panic-on-oom-nightly:
     runs-on: ubuntu-latest
@@ -124,9 +116,7 @@ jobs:
         run: ./tests/test262/install_test262.sh
 
       - name: Run integration tests on nightly without alloc_error feature enabled
-        run: |
-          cargo brimstone-test -- --reindex
-          cargo brimstone-test --release --no-default-features --features nightly -- --ignore-unimplemented
+        run: cargo brimstone-test --release --no-default-features --features nightly -- --reindex --ignore-unimplemented
     
   build-benchmarks:
     runs-on: ubuntu-latest

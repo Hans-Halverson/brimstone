@@ -1,0 +1,8 @@
+RangeError: Stack overflow while matching RegExp
+  ┌ regexp/stack_overflow.js:1:1
+  |
+1 | /a(?:x|){1000000000,1000000001}b/.exec("axxb");
+  | ^
+Stack trace:
+  at exec (<native>)
+  at <global> (regexp/stack_overflow.js:1:1)

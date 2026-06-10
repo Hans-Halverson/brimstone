@@ -1,5 +1,6 @@
 use crate::{
     common::{
+        constants::MEGABYTE_BYTES,
         icu::ICU,
         string::StringWidth,
         unicode::{CodePoint, is_newline},
@@ -9,8 +10,8 @@ use crate::{
         LexerStream, SavedLexerStreamState,
     },
     runtime::{
-        Handle, HeapPtr,
-        alloc_error::AllocResult,
+        Context, EvalResult, Handle, HeapPtr,
+        error::range_error,
         regexp::{
             compiled_regexp::CompiledRegExpObject,
             instruction::{
@@ -75,6 +76,10 @@ struct BacktrackRestoreState {
     saved_string_state: SavedLexerStreamState,
 }
 
+/// Cap backtrack stack size
+const MAX_BACKTRACK_STACK_SIZE: usize = 4 * MEGABYTE_BYTES;
+const MAX_BACKTRACK_ENTRIES: usize = MAX_BACKTRACK_STACK_SIZE / size_of::<BacktrackEntry>();
+
 const EMPTY_STRING_INDEX: u32 = u32::MAX;
 
 struct CapturePoint {
@@ -100,6 +105,14 @@ pub struct Capture {
 const FORWARD: bool = true;
 const BACKWARD: bool = false;
 
+/// Distinguish between a lack of match versus a fatal error (e.g. a stack overflow).
+enum MatchError {
+    NoMatch,
+    StackOverflow,
+}
+
+type MatchResult = Result<(), MatchError>;
+
 impl<T: LexerStream> MatchEngine<T> {
     fn new(regexp: HeapPtr<CompiledRegExpObject>, string_lexer: T) -> Self {
         let num_capture_points = (regexp.num_capture_groups as usize + 1) * 2;
@@ -118,15 +131,24 @@ impl<T: LexerStream> MatchEngine<T> {
         }
     }
 
-    fn push_backtrack_restore_state(&mut self, instruction_index: usize) {
+    fn push_backtrack_entry(&mut self, entry: BacktrackEntry) -> MatchResult {
+        if self.backtrack_stack.len() >= MAX_BACKTRACK_ENTRIES {
+            return Err(MatchError::StackOverflow);
+        }
+
+        self.backtrack_stack.push(entry);
+
+        Ok(())
+    }
+
+    fn push_backtrack_restore_state(&mut self, instruction_index: usize) -> MatchResult {
         let saved_string_state = self.string_lexer.save();
         let restore_state = BacktrackRestoreState { instruction_index, saved_string_state };
 
-        self.backtrack_stack
-            .push(BacktrackEntry::RestoreState(restore_state));
+        self.push_backtrack_entry(BacktrackEntry::RestoreState(restore_state))
     }
 
-    fn backtrack(&mut self) -> Result<(), ()> {
+    fn backtrack(&mut self) -> MatchResult {
         while self.backtrack_stack.len() > self.backtrack_stack_base {
             let backtrack_entry = self.backtrack_stack.pop().unwrap();
             match backtrack_entry {
@@ -162,7 +184,7 @@ impl<T: LexerStream> MatchEngine<T> {
             }
         }
 
-        Err(())
+        Err(MatchError::NoMatch)
     }
 
     /// Restore the backtrack stack to a particular size, restoring all registers that were set
@@ -240,14 +262,12 @@ impl<T: LexerStream> MatchEngine<T> {
         self.loop_registers[loop_register_index as usize] = value;
     }
 
-    fn run(&mut self) -> Option<Match> {
-        match self.execute_bytecode::<FORWARD>() {
-            Err(_) => None,
-            Ok(_) => Some(self.build_match()),
-        }
+    fn run(&mut self) -> Result<Match, MatchError> {
+        self.execute_bytecode::<FORWARD>()?;
+        Ok(self.build_match())
     }
 
-    fn execute_bytecode<const DIRECTION: bool>(&mut self) -> Result<(), ()> {
+    fn execute_bytecode<const DIRECTION: bool>(&mut self) -> MatchResult {
         loop {
             let instr = self.current_instruction();
             match instr.opcode() {
@@ -288,18 +308,18 @@ impl<T: LexerStream> MatchEngine<T> {
                     let first_branch = instr.first_branch();
                     let second_branch = instr.second_branch();
 
-                    self.push_backtrack_restore_state(second_branch as usize);
+                    self.push_backtrack_restore_state(second_branch as usize)?;
                     self.set_next_instruction(first_branch);
                 }
                 OpCode::MarkCapturePoint => {
                     let instr = instr.cast::<MarkCapturePointInstruction>();
                     let string_index = self.string_lexer.pos() as u32;
-                    self.push_capture_point(instr.capture_point_index(), string_index);
+                    self.push_capture_point(instr.capture_point_index(), string_index)?;
                     self.advance_instruction::<MarkCapturePointInstruction>();
                 }
                 OpCode::ClearCapture => {
                     let instr = instr.cast::<ClearCaptureInstruction>();
-                    self.clear_capture_at_index(instr.capture_group_index());
+                    self.clear_capture_at_index(instr.capture_group_index())?;
 
                     self.advance_instruction::<ClearCaptureInstruction>();
                 }
@@ -308,7 +328,7 @@ impl<T: LexerStream> MatchEngine<T> {
                     let progress_index = instr.progress_index();
 
                     if self.has_made_progress(progress_index) {
-                        self.mark_progress_point(progress_index);
+                        self.mark_progress_point(progress_index)?;
                         self.advance_instruction::<ProgressInstruction>();
                     } else {
                         self.backtrack()?;
@@ -318,14 +338,14 @@ impl<T: LexerStream> MatchEngine<T> {
                     let instr = instr.cast::<SetProgressInstruction>();
                     let progress_index = instr.progress_index();
 
-                    self.mark_progress_point(progress_index);
+                    self.mark_progress_point(progress_index)?;
                     self.advance_instruction::<SetProgressInstruction>();
                 }
                 OpCode::ClearCaptureIfNoProgress => {
                     let instr = instr.cast::<ClearCaptureIfNoProgressInstruction>();
 
                     if !self.has_made_progress(instr.progress_index()) {
-                        self.clear_capture_at_index(instr.capture_group_index());
+                        self.clear_capture_at_index(instr.capture_group_index())?;
                     }
 
                     self.advance_instruction::<ClearCaptureIfNoProgressInstruction>();
@@ -337,10 +357,10 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     let loop_register_value = self.get_loop_register(loop_register_index);
                     if loop_register_value < instr.loop_max_value() as usize {
-                        self.push_loop_register(loop_register_index, loop_register_value + 1);
+                        self.push_loop_register(loop_register_index, loop_register_value + 1)?;
                         self.advance_instruction::<LoopInstruction>();
                     } else {
-                        self.push_loop_register(loop_register_index, 0);
+                        self.push_loop_register(loop_register_index, 0)?;
                         self.set_next_instruction(end_branch);
                     }
                 }
@@ -477,21 +497,31 @@ impl<T: LexerStream> MatchEngine<T> {
                     // Execute the lookaround as a sub-execution within engine
                     self.set_next_instruction(body_branch);
 
-                    let is_match = if is_ahead {
+                    let match_result = if is_ahead {
                         // Prime lexer for forwards traversal
                         self.string_lexer.advance_n(0);
-                        self.execute_bytecode::<FORWARD>().is_ok()
+                        self.execute_bytecode::<FORWARD>()
                     } else {
                         // Prime lexer for backwards traversal
                         self.string_lexer.advance_backwards_n(0);
-                        self.execute_bytecode::<BACKWARD>().is_ok()
+                        self.execute_bytecode::<BACKWARD>()
+                    };
+
+                    // Propagate fatal errors
+                    let is_match = match match_result {
+                        Ok(()) => true,
+                        Err(MatchError::NoMatch) => false,
+                        Err(MatchError::StackOverflow) => {
+                            return Err(MatchError::StackOverflow);
+                        }
                     };
 
                     // Successfully matched - we want to keep the captures for now, but must allow
                     // undoing the captures in the future when backtracking.
                     if is_match {
-                        self.backtrack_stack
-                            .push(BacktrackEntry::RestoreBacktrackStack(old_backtrack_stack_size))
+                        self.push_backtrack_entry(BacktrackEntry::RestoreBacktrackStack(
+                            old_backtrack_stack_size,
+                        ))?
                     } else {
                         // If did not match then backtrack stack must have been popped back to
                         // the old size.
@@ -563,16 +593,17 @@ impl<T: LexerStream> MatchEngine<T> {
         self.compare_register = false;
     }
 
-    fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) {
+    fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) -> MatchResult {
         // Save old capture point on backtrack stack
         let old_string_index = self.get_capture_point(capture_point_index);
-        self.backtrack_stack
-            .push(BacktrackEntry::CapturePoint(CapturePoint {
-                capture_point_index,
-                string_index: old_string_index,
-            }));
+        self.push_backtrack_entry(BacktrackEntry::CapturePoint(CapturePoint {
+            capture_point_index,
+            string_index: old_string_index,
+        }))?;
 
         self.set_capture_point(capture_point_index, string_index);
+
+        Ok(())
     }
 
     /// Whether the engine is further in the source since the last time a given progress point was
@@ -583,38 +614,43 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 
     /// Mark the current position in the source at the given progress point.
-    fn mark_progress_point(&mut self, progress_point_index: u32) {
+    fn mark_progress_point(&mut self, progress_point_index: u32) -> MatchResult {
         // Save old progress point on backtrack stack
         let current_string_index = self.string_lexer.pos() as u32;
         let old_string_index = self.get_progress_point(progress_point_index);
-        self.backtrack_stack
-            .push(BacktrackEntry::ProgressPoint(progress_point_index, old_string_index));
+        self.push_backtrack_entry(BacktrackEntry::ProgressPoint(
+            progress_point_index,
+            old_string_index,
+        ))?;
 
         self.set_progress_point(progress_point_index, current_string_index);
+
+        Ok(())
     }
 
-    fn push_loop_register(&mut self, loop_register_index: u32, value: usize) {
+    fn push_loop_register(&mut self, loop_register_index: u32, value: usize) -> MatchResult {
         // Save old loop register on backtrack stack
         let old_value = self.get_loop_register(loop_register_index);
-        self.backtrack_stack
-            .push(BacktrackEntry::LoopRegister(loop_register_index, old_value));
+        self.push_backtrack_entry(BacktrackEntry::LoopRegister(loop_register_index, old_value))?;
 
         self.set_loop_register(loop_register_index, value);
+
+        Ok(())
     }
 
     /// Clear the capture group with the given index.
     ///
     /// Clearing just the ending capture point for the group is enough.
-    fn clear_capture_at_index(&mut self, capture_group_index: u32) {
+    fn clear_capture_at_index(&mut self, capture_group_index: u32) -> MatchResult {
         let capture_point_index = capture_group_index * 2 + 1;
-        self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX);
+        self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX)
     }
 
     fn execute_backreference<const DIRECTION: bool>(
         &mut self,
         is_case_insensitive: bool,
         mut capture_group_index: u32,
-    ) -> Result<(), ()> {
+    ) -> MatchResult {
         if self.regexp.has_duplicate_named_capture_groups {
             // If this could be a named capture group with duplicates we want to find the most
             // recent non-empty capture group with the given name.
@@ -751,17 +787,18 @@ fn match_lexer_stream(
     mut lexer_stream: impl LexerStream,
     regexp: HeapPtr<CompiledRegExpObject>,
     start_index: u32,
-) -> Option<Match> {
+) -> Result<Match, MatchError> {
     lexer_stream.advance_n(start_index as usize);
     let mut match_engine = MatchEngine::new(regexp, lexer_stream);
     match_engine.run()
 }
 
 pub fn run_matcher(
+    cx: Context,
     regexp: Handle<CompiledRegExpObject>,
     target_string: Handle<StringValue>,
     start_index: u32,
-) -> AllocResult<Option<Match>> {
+) -> EvalResult<Option<Match>> {
     // May allocate, after this point no more allocations can occur
     let flat_string = target_string.flatten()?;
 
@@ -785,7 +822,11 @@ pub fn run_matcher(
         }
     };
 
-    Ok(result)
+    match result {
+        Ok(matched_result) => Ok(Some(matched_result)),
+        Err(MatchError::NoMatch) => Ok(None),
+        Err(MatchError::StackOverflow) => range_error(cx, "Stack overflow while matching RegExp"),
+    }
 }
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)

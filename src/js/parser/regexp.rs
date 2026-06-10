@@ -134,6 +134,8 @@ pub struct Disjunction<'a> {
 pub struct Alternative<'a> {
     /// Sequence of terms that make up this alternative. May be empty in which case it always matches.
     pub terms: AstSlice<'a, Term<'a>>,
+    /// All capture groups within this alternative's sequence of terms.
+    pub captures: Option<CaptureGroupRange>,
 }
 
 pub enum Term<'a> {
@@ -168,8 +170,14 @@ pub struct Quantifier<'a> {
     pub is_greedy: bool,
     /// Whether the wrapped term is guaranteed to consume a character on all paths.
     pub always_consumes: bool,
-    /// Whether the wrapped term contains any capture groups.
-    pub has_captures: bool,
+    /// All capture groups within this quantifier
+    pub captures: Option<CaptureGroupRange>,
+}
+
+impl Quantifier<'_> {
+    pub fn has_captures(&self) -> bool {
+        self.captures.is_some()
+    }
 }
 
 pub enum Assertion {
@@ -185,6 +193,32 @@ pub enum Assertion {
 
 /// Capture group indices are 1-indexed to match their syntax in RegExp literals.
 pub type CaptureGroupIndex = u32;
+
+/// A contiguous range of capture groups, inclusive of both bounds.
+#[derive(Clone, Copy)]
+pub struct CaptureGroupRange {
+    start: CaptureGroupIndex,
+    end: CaptureGroupIndex,
+}
+
+impl CaptureGroupRange {
+    pub fn single(index: CaptureGroupIndex) -> Self {
+        Self { start: index, end: index }
+    }
+
+    pub fn merge(
+        a: Option<CaptureGroupRange>,
+        b: Option<CaptureGroupRange>,
+    ) -> Option<CaptureGroupRange> {
+        match (a, b) {
+            (None, None) => None,
+            (None, single) | (single, None) => single,
+            (Some(a), Some(b)) => {
+                Some(CaptureGroupRange { start: a.start.min(b.start), end: a.end.max(b.end) })
+            }
+        }
+    }
+}
 
 pub struct CaptureGroup<'a> {
     /// Optional capture group name

@@ -220,6 +220,15 @@ impl CaptureGroupRange {
     }
 }
 
+impl IntoIterator for CaptureGroupRange {
+    type Item = CaptureGroupIndex;
+    type IntoIter = std::ops::RangeInclusive<CaptureGroupIndex>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.start..=self.end
+    }
+}
+
 pub struct CaptureGroup<'a> {
     /// Optional capture group name
     pub name: Option<AstStr<'a>>,

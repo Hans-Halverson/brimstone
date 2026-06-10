@@ -1,0 +1,221 @@
+[CompiledRegExpObject: /a(x)?b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Progress(0)
+    12: Branch(22, 15)
+    15: ClearCaptureIfNoProgress(1, 0)
+    18: Literal(b)
+    19: MarkCapturePoint(1)
+    21: Accept
+    22: MarkCapturePoint(2)
+    24: Literal(x)
+    25: MarkCapturePoint(3)
+    27: Jump(15)
+}
+
+[CompiledRegExpObject: /a(x)+b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: Branch(18, 28)
+    18: ClearCapture(1)
+    20: MarkCapturePoint(2)
+    22: Literal(x)
+    23: MarkCapturePoint(3)
+    25: Branch(18, 28)
+    28: Literal(b)
+    29: MarkCapturePoint(1)
+    31: Accept
+}
+
+[CompiledRegExpObject: /a(x)*b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Progress(0)
+    12: Branch(15, 25)
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: Literal(x)
+    20: MarkCapturePoint(3)
+    22: Branch(15, 25)
+    25: ClearCaptureIfNoProgress(1, 0)
+    28: Literal(b)
+    29: MarkCapturePoint(1)
+    31: Accept
+}
+
+[CompiledRegExpObject: /a(x){3,4}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: Literal(x)
+    20: MarkCapturePoint(3)
+    22: ClearCapture(1)
+    24: MarkCapturePoint(2)
+    26: Literal(x)
+    27: MarkCapturePoint(3)
+    29: Branch(36, 32)
+    32: Literal(b)
+    33: MarkCapturePoint(1)
+    35: Accept
+    36: ClearCapture(1)
+    38: MarkCapturePoint(2)
+    40: Literal(x)
+    41: MarkCapturePoint(3)
+    43: Jump(32)
+}
+
+[CompiledRegExpObject: /a(x){100,101}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Loop(0, 100, 23)
+    14: ClearCapture(1)
+    16: MarkCapturePoint(2)
+    18: Literal(x)
+    19: MarkCapturePoint(3)
+    21: Jump(10)
+    23: Branch(30, 26)
+    26: Literal(b)
+    27: MarkCapturePoint(1)
+    29: Accept
+    30: ClearCapture(1)
+    32: MarkCapturePoint(2)
+    34: Literal(x)
+    35: MarkCapturePoint(3)
+    37: Jump(26)
+}
+
+[CompiledRegExpObject: /a(x){1,4}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: Branch(22, 18)
+    18: Literal(b)
+    19: MarkCapturePoint(1)
+    21: Accept
+    22: ClearCapture(1)
+    24: MarkCapturePoint(2)
+    26: Literal(x)
+    27: MarkCapturePoint(3)
+    29: Branch(32, 18)
+    32: ClearCapture(1)
+    34: MarkCapturePoint(2)
+    36: Literal(x)
+    37: MarkCapturePoint(3)
+    39: Branch(42, 18)
+    42: ClearCapture(1)
+    44: MarkCapturePoint(2)
+    46: Literal(x)
+    47: MarkCapturePoint(3)
+    49: Jump(18)
+}
+
+[CompiledRegExpObject: /a(x){1,100}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: Branch(22, 18)
+    18: Literal(b)
+    19: MarkCapturePoint(1)
+    21: Accept
+    22: Loop(0, 99, 18)
+    26: ClearCapture(1)
+    28: MarkCapturePoint(2)
+    30: Literal(x)
+    31: MarkCapturePoint(3)
+    33: Branch(22, 18)
+}
+
+[CompiledRegExpObject: /a(x){2,}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: Literal(x)
+    20: MarkCapturePoint(3)
+    22: Branch(25, 35)
+    25: ClearCapture(1)
+    27: MarkCapturePoint(2)
+    29: Literal(x)
+    30: MarkCapturePoint(3)
+    32: Branch(25, 35)
+    35: Literal(b)
+    36: MarkCapturePoint(1)
+    38: Accept
+}
+
+[CompiledRegExpObject: /a(x){3}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: MarkCapturePoint(2)
+    12: Literal(x)
+    13: MarkCapturePoint(3)
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: Literal(x)
+    20: MarkCapturePoint(3)
+    22: ClearCapture(1)
+    24: MarkCapturePoint(2)
+    26: Literal(x)
+    27: MarkCapturePoint(3)
+    29: Literal(b)
+    30: MarkCapturePoint(1)
+    32: Accept
+}
+
+[CompiledRegExpObject: /a(x){100}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Loop(0, 100, 23)
+    14: ClearCapture(1)
+    16: MarkCapturePoint(2)
+    18: Literal(x)
+    19: MarkCapturePoint(3)
+    21: Jump(10)
+    23: Literal(b)
+    24: MarkCapturePoint(1)
+    26: Accept
+}

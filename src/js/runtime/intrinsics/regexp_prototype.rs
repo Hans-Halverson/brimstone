@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    common::unicode::{CodePoint, needs_surrogate_pair},
+    common::unicode::{
+        CodePoint, is_high_surrogate_code_unit, is_low_surrogate_code_unit, needs_surrogate_pair,
+    },
     must,
     parser::regexp::RegExpFlags,
     runtime::{
@@ -987,8 +989,15 @@ fn regexp_builtin_exec(
     }
     let last_index = last_index as u32;
 
+    // Matcher starts at the beginning of a code point in unicode mode
+    let matcher_start_index = if flags.has_any_unicode_flag() {
+        snap_index_to_code_point(string_value, last_index)?
+    } else {
+        last_index
+    };
+
     // Run the matching engine on the regexp and input string
-    let match_ = run_matcher(cx, compiled_regexp, string_value, last_index)?;
+    let match_ = run_matcher(cx, compiled_regexp, string_value, matcher_start_index)?;
 
     // Handle match failure, resetting last index under sticky flag
     if match_.is_none() {
@@ -1182,4 +1191,26 @@ pub fn advance_u64_string_index(
     }
 
     Ok(advance_string_index(string_value, prev_index as u32, is_unicode)? as u64)
+}
+
+/// If the index points to the middle of a valid surrogate pair in the given string return the start
+/// of the code point. Otherwise return the original index.
+fn snap_index_to_code_point(string_value: Handle<StringValue>, index: u32) -> AllocResult<u32> {
+    let string_length = string_value.len();
+    if index >= string_length || index == 0 {
+        return Ok(index);
+    }
+
+    let code_unit = string_value.code_unit_at(index)?;
+    if !is_low_surrogate_code_unit(code_unit) {
+        return Ok(index);
+    }
+
+    let prev_index = index - 1;
+    let prev_code_unit = string_value.code_unit_at(prev_index)?;
+    if !is_high_surrogate_code_unit(prev_code_unit) {
+        return Ok(index);
+    }
+
+    Ok(prev_index)
 }

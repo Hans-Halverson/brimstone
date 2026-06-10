@@ -23,7 +23,7 @@ use crate::{
     p,
     parser::{
         LocalizedParseError, ParseError, ParseResult,
-        ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
+        ast::{AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString, AstVec},
         lexer_stream::{LexerStream, SavedLexerStreamState},
         loc::Pos,
         regexp::{
@@ -45,7 +45,7 @@ pub struct RegExpParser<'a, T: LexerStream> {
     /// Number of capture groups seen so far
     num_capture_groups: usize,
     /// All capture groups seen so far, with name if a name was specified
-    capture_groups: ArenaVec<'a, Option<AstStr<'a>>>,
+    capture_groups: AstVec<'a, Option<AstStr<'a>>>,
     /// Map of capture group names that have been encountered so far to the index of their last
     /// occurrence in the RegExp.
     capture_group_names: HashMap<AstStr<'a>, CaptureGroupIndex>,

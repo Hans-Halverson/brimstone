@@ -293,11 +293,11 @@ impl<'a> Parser<'a> {
     }
 
     fn alloc_vec<U>(&self) -> AstSliceBuilder<'a, U> {
-        AstSliceBuilder::new(ArenaVec::new_in(self.alloc))
+        AstSliceBuilder::new(AstVec::new_in(self.alloc))
     }
 
     fn alloc_vec_with_element<U>(&self, element: U) -> AstSliceBuilder<'a, U> {
-        let mut vec = ArenaVec::new_in(self.alloc);
+        let mut vec = AstVec::new_in(self.alloc);
         vec.push(element);
         AstSliceBuilder::new(vec)
     }

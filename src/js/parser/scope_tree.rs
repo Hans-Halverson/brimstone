@@ -7,8 +7,8 @@ use crate::{
     parser::{
         ParseError,
         ast::{
-            self, ArenaVec, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice,
-            AstSliceBuilder, AstStr, FunctionId, TaggedResolvedScope,
+            self, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice, AstSliceBuilder,
+            AstStr, AstVec, FunctionId, TaggedResolvedScope,
         },
         loc::{Loc, Pos},
     },
@@ -16,8 +16,8 @@ use crate::{
 
 pub struct ScopeTree<'a> {
     #[allow(clippy::vec_box)]
-    ast_nodes: ArenaVec<'a, AstBox<'a, AstScopeNode<'a>>>,
-    vm_nodes: ArenaVec<'a, VMScopeNode<'a>>,
+    ast_nodes: AstVec<'a, AstBox<'a, AstScopeNode<'a>>>,
+    vm_nodes: AstVec<'a, VMScopeNode<'a>>,
     current_node_id: ScopeNodeId,
     alloc: AstAlloc<'a>,
     options: Rc<Options>,
@@ -874,7 +874,7 @@ pub struct AstScopeNode<'a> {
     enclosing_scope: ScopeNodeId,
     /// The set of all descendant AST scope nodes that are enclosed by this AST scope node. Meaning
     /// the set of all scope nodes directly owned by each global and function node. Includes self.
-    enclosed_scopes: ArenaVec<'a, ScopeNodeId>,
+    enclosed_scopes: AstVec<'a, ScopeNodeId>,
     /// If this is global or function AST scope node, the total number of local registers needed for
     /// the locals in all enclosed scopes.
     num_local_registers: usize,

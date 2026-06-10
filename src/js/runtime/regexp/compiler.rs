@@ -373,7 +373,7 @@ impl CompiledRegExpBuilder {
                 // next branch block, since all successful paths that don't match the previous
                 // alternative will necessarily pass through the next branch block.
                 for i in 1..alternative_blocks.len() - 1 {
-                    if !alternative_blocks[i - 1].captures.is_none() {
+                    if alternative_blocks[i - 1].captures.is_some() {
                         let prev_alternative_captures = &alternative_blocks[i - 1].captures;
                         self.set_current_block(branch_block_ids[i]);
                         for capture_index in (*prev_alternative_captures).into_iter().flatten() {

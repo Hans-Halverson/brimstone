@@ -26,3 +26,10 @@ assert.compareArray(/(x?|c){15,30}/.exec('c'.repeat(30)), ['ccccccccccccccc', 'c
 
 // Required loop repetitions followed by unbounded optional repetitions
 assert.compareArray(/(x?|c){2,}/.exec('c'.repeat(10)), ['cccccccccc', 'c']);
+
+// Last non-empty repetition's captures are kept, even if followed by empty repetition
+assert.compareArray(/(?:(a)+)*/.exec('a'), ['a', 'a']);
+assert.compareArray(/(?:(a)+){2}/.exec('aa'), ['aa', 'a']);
+assert.compareArray(/(?:b(a)+)*/.exec('ba'), ['ba', 'a']);
+assert.compareArray(/(?:a?(?:(b*)|c)+)*/.exec('b'), ['b', 'b']);
+assert.compareArray(/(?:(a)+)*\1/.exec('aa'), ['aa', 'a']);

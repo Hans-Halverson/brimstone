@@ -765,7 +765,7 @@ impl CompiledRegExpBuilder {
                     self.in_block(pred_block_id, |this| {
                         // If we are in a repetition but never enter a term block with captures even
                         // once, we must clear those captures in case they were previously matched.
-                        if i == 0 && is_inside_repetition && quantifier.has_captures {
+                        if i == 0 && is_inside_repetition && quantifier.has_captures() {
                             this.emit_quantifier_clear_captures_branch(
                                 quantifier,
                                 &info,
@@ -822,7 +822,7 @@ impl CompiledRegExpBuilder {
 
                 // If we are in a repetition but never enter a term block with captures even once,
                 // we must clear those captures in case they were previously matched.
-                if quantifier.min == 0 && is_inside_repetition && quantifier.has_captures {
+                if quantifier.min == 0 && is_inside_repetition && quantifier.has_captures() {
                     self.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -853,7 +853,7 @@ impl CompiledRegExpBuilder {
             self.in_block(pred_block_id, |this| {
                 // If we are in a repetition but never enter a term block with captures, we must
                 // clear those captures in case they were previously matched.
-                if is_inside_repetition && quantifier.has_captures {
+                if is_inside_repetition && quantifier.has_captures() {
                     this.emit_quantifier_clear_captures_branch(
                         quantifier,
                         &info,
@@ -891,7 +891,7 @@ impl CompiledRegExpBuilder {
         // each capture if no progress is detected.
         //
         // Note that the progress instruction must be patched before the start of the quantifier.
-        if quantifier.min == 0 && quantifier.has_captures {
+        if quantifier.min == 0 && quantifier.has_captures() {
             // Emit a progress instruction before the quantifier starts
             let progress_index = self.new_progress_point();
             self.in_block(quantifier_patch_block, |this| {

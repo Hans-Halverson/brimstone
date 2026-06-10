@@ -28,8 +28,8 @@ use crate::{
         loc::Pos,
         regexp::{
             Alternative, AnonymousGroup, Assertion, Backreference, CaptureGroup, CaptureGroupIndex,
-            CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
-            RegExp, RegExpFlags, StringDisjunction, Term,
+            CaptureGroupRange, CharacterClass, ClassExpressionType, ClassRange, Disjunction,
+            Lookaround, Quantifier, RegExp, RegExpFlags, StringDisjunction, Term,
         },
     },
 };
@@ -85,8 +85,8 @@ pub struct RegExpParser<'a, T: LexerStream> {
 struct ExpressionInfo {
     /// Whether a character is guaranteed to be consumed on all paths.
     always_consumes: bool,
-    /// Whether the expression contains any capture groups.
-    has_captures: bool,
+    /// Capture groups contained in this expression
+    captures: Option<CaptureGroupRange>,
 }
 
 struct ParsedDisjunction<'a> {
@@ -407,7 +407,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // A disjunction always consumes a character only if every alternative always consumes one
         let mut always_consumes = true;
-        let mut has_captures = false;
+        let mut captures = None;
 
         // There is always at least one alternative, even if the alternative is empty
         loop {
@@ -421,7 +421,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             alternatives.push(alternative.node);
 
             always_consumes &= alternative.info.always_consumes;
-            has_captures |= alternative.info.has_captures;
+            captures = CaptureGroupRange::merge(captures, alternative.info.captures);
 
             // Tear down capture group scope by removing all names added in the current scope so
             // that sibling alternatives may reuse them, then restore the previous scope.
@@ -437,7 +437,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             // A trailing `|` means there is a final empty alternative, which never consumes
             if self.is_end() {
-                alternatives.push(Alternative { terms: AstSlice::new_empty() });
+                alternatives.push(Alternative { terms: AstSlice::new_empty(), captures: None });
                 always_consumes = false;
                 break;
             }
@@ -451,7 +451,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         }
 
         let node = Disjunction { alternatives: alternatives.build() };
-        let info = ExpressionInfo { always_consumes, has_captures };
+        let info = ExpressionInfo { always_consumes, captures };
 
         Ok(ParsedDisjunction { node, info })
     }
@@ -463,7 +463,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         // An alternative is a sequence of terms, so it always consumes iff one of its terms always
         // consumes.
         let mut always_consumes = false;
-        let mut has_captures = false;
+        let mut captures = None;
 
         while !self.is_end() {
             // Punctuation that does not mark the start of a term
@@ -493,7 +493,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
             let term = self.parse_term()?;
             always_consumes |= term.info.always_consumes;
-            has_captures |= term.info.has_captures;
+            captures = CaptureGroupRange::merge(captures, term.info.captures);
 
             if let Term::Literal(next_string) = &term.node {
                 // Accumulate adjacent literals into a single literal term
@@ -515,8 +515,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             terms.push(Term::Literal(current_literal.into_arena_str()));
         }
 
-        let node = Alternative { terms: terms.build() };
-        let info = ExpressionInfo { always_consumes, has_captures };
+        let node = Alternative { terms: terms.build(), captures };
+        let info = ExpressionInfo { always_consumes, captures };
 
         Ok(ParsedAlternative { node, info })
     }
@@ -710,10 +710,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         let info = match &term {
             Term::Literal(_) | Term::Wildcard | Term::CharacterClass(_) => {
-                ExpressionInfo { always_consumes: true, has_captures: false }
+                ExpressionInfo { always_consumes: true, captures: None }
             }
             Term::Assertion(_) | Term::Backreference(_) => {
-                ExpressionInfo { always_consumes: false, has_captures: false }
+                ExpressionInfo { always_consumes: false, captures: None }
             }
             Term::Quantifier(_)
             | Term::Lookaround(_)
@@ -815,13 +815,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 max,
                 is_greedy,
                 always_consumes: term.info.always_consumes,
-                has_captures: term.info.has_captures,
+                captures: term.info.captures,
             });
 
             // A quantifier always consumes iff it has at least one repetition that always consumes
             let info = ExpressionInfo {
                 always_consumes: min > 0 && term.info.always_consumes,
-                has_captures: term.info.has_captures,
+                captures: term.info.captures,
             };
 
             Ok(ParsedTerm { node: quantifier, info })
@@ -1026,7 +1026,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                                 disjunction: disjunction.node,
                             });
 
-                            let info = Self::capture_group_info(disjunction.info);
+                            let info = Self::capture_group_info(disjunction.info, index);
 
                             Ok(ParsedTerm { node: group, info })
                         }
@@ -1084,20 +1084,24 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 disjunction: disjunction.node,
             });
 
-            let info = Self::capture_group_info(disjunction.info);
+            let info = Self::capture_group_info(disjunction.info, index);
 
             Ok(ParsedTerm { node: group, info })
         }
     }
 
     fn lookaround_info(body_info: ExpressionInfo) -> ExpressionInfo {
-        ExpressionInfo { always_consumes: false, has_captures: body_info.has_captures }
+        ExpressionInfo { always_consumes: false, captures: body_info.captures }
     }
 
-    fn capture_group_info(body_info: ExpressionInfo) -> ExpressionInfo {
+    fn capture_group_info(body_info: ExpressionInfo, index: CaptureGroupIndex) -> ExpressionInfo {
+        // Add this capture group to the set of capture groups in the wrapped term
+        let new_capture = CaptureGroupRange::single(index);
+        let all_captures = CaptureGroupRange::merge(Some(new_capture), body_info.captures);
+
         ExpressionInfo {
             always_consumes: body_info.always_consumes,
-            has_captures: true,
+            captures: all_captures,
         }
     }
 

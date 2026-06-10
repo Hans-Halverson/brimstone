@@ -783,7 +783,6 @@ impl RuntimeFunction {
 }
 
 /// Rust runtime function that simply returns the `this` argument.
-#[unsafe(no_mangle)]
 pub fn return_this(
     _: Context,
     this_value: Handle<Value>,
@@ -793,7 +792,6 @@ pub fn return_this(
 }
 
 /// Rust runtime function that simply returns `undefined`.
-#[unsafe(no_mangle)]
 pub fn return_undefined(
     cx: Context,
     _: Handle<Value>,

@@ -30,7 +30,7 @@ use crate::{
 
 pub type AstAlloc<'a> = &'a Bump;
 
-pub type ArenaVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
+pub type AstVec<'a, T> = alloc::Vec<T, AstAlloc<'a>>;
 
 pub type AstStr<'a> = &'a Wtf8Str;
 
@@ -137,10 +137,10 @@ impl<T> DerefMut for AstSlice<'_, T> {
     }
 }
 
-pub struct AstSliceBuilder<'a, T>(ArenaVec<'a, T>);
+pub struct AstSliceBuilder<'a, T>(AstVec<'a, T>);
 
 impl<'a, T> AstSliceBuilder<'a, T> {
-    pub fn new(vec: ArenaVec<'a, T>) -> Self {
+    pub fn new(vec: AstVec<'a, T>) -> Self {
         AstSliceBuilder(vec)
     }
 
@@ -155,7 +155,7 @@ impl<'a, T> AstSliceBuilder<'a, T> {
 }
 
 impl<'a, T> Deref for AstSliceBuilder<'a, T> {
-    type Target = ArenaVec<'a, T>;
+    type Target = AstVec<'a, T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

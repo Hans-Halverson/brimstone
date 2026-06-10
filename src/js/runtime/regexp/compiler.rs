@@ -8,6 +8,7 @@ use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
 };
 use icu_collections::codepointinvlist::{CodePointInversionList, CodePointInversionListBuilder};
+use num_traits::ToPrimitive;
 
 use crate::{
     common::{
@@ -633,7 +634,7 @@ impl CompiledRegExpBuilder {
                     self.emit_quantified_term_with_cleared_captures(quantifier)
                 }
             }
-        } else if quantifier.min > u32::MAX as u64 {
+        } else if quantifier.min > u32::MAX as u64 && quantifier.always_consumes {
             // The minimum number of repetitions is greater than the max possible string length.
             // Each repetition must consume at least one character, so we know this quantifier will
             // fail to match.
@@ -646,13 +647,12 @@ impl CompiledRegExpBuilder {
             self.emit_jump_instruction(loop_block_id);
             self.set_current_block(loop_block_id);
 
+            // If min is out of range clamp to the largest allowed number of repetitions
+            let clamped_min = quantifier.min.to_u32().unwrap_or(u32::MAX);
+
             // Loop block consists of loop instruction, term, then loops back to start of block
             let loop_register_index = self.next_loop_register();
-            self.emit_loop_instruction(
-                loop_register_index,
-                quantifier.min as u32,
-                loop_end_block_id as u32,
-            );
+            self.emit_loop_instruction(loop_register_index, clamped_min, loop_end_block_id as u32);
 
             self.emit_quantified_term_with_cleared_captures(quantifier);
             self.emit_jump_instruction(loop_block_id);
@@ -704,11 +704,6 @@ impl CompiledRegExpBuilder {
 
                 // Last term block always proceeds to the join block
                 self.emit_jump_instruction(join_block_id);
-            } else if num_remaining_repetitions > u32::MAX as u64 {
-                // The minimum number of repetitions is greater than the max possible string length.
-                // Each repetition must consume at least one character, so we know this quantifier
-                // will fail to match.
-                self.emit_fail_instruction();
             } else {
                 let loop_block_id = self.new_block();
 
@@ -717,12 +712,15 @@ impl CompiledRegExpBuilder {
 
                 self.emit_quantifier_optional_branch(quantifier, loop_block_id, join_block_id);
 
+                // If min is out of range clamp to the largest allowed number of repetitions
+                let clamped_repetitions = num_remaining_repetitions.to_u32().unwrap_or(u32::MAX);
+
                 // Loop block consists of loop instruction, term, then branches back to start of block
                 self.set_current_block(loop_block_id);
                 let loop_register_index = self.next_loop_register();
                 self.emit_loop_instruction(
                     loop_register_index,
-                    num_remaining_repetitions as u32,
+                    clamped_repetitions,
                     join_block_id as u32,
                 );
 

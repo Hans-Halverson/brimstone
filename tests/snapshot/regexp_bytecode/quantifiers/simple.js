@@ -23,6 +23,8 @@
 // Loop exact repetitions
 /ax{100}b/;
 
-// TODO: Fix bytecode for too many repetitions
+// Too many repetitions
 /ax{0,1000000000000}b/;
+/a(?:x|){0,1000000000000}b/;
 /ax{1000000000000,1000000000001}b/;
+/a(?:x|){1000000000000,1000000000001}b/;

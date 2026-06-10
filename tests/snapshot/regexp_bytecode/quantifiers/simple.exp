@@ -160,10 +160,33 @@
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
      9: Literal(a)
-    10: Fail
-    11: Literal(b)
-    12: MarkCapturePoint(1)
-    14: Accept
+    10: Branch(17, 13)
+    13: Literal(b)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Loop(0, 4294967295, 13)
+    21: Literal(x)
+    22: Branch(17, 13)
+}
+
+[CompiledRegExpObject: /a(?:x|){0,1000000000000}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: SetProgress(0)
+    12: Branch(19, 15)
+    15: Literal(b)
+    16: MarkCapturePoint(1)
+    18: Accept
+    19: Loop(0, 4294967295, 15)
+    23: Branch(31, 34)
+    26: Progress(0)
+    28: Branch(19, 15)
+    31: Literal(x)
+    32: Jump(26)
+    34: Jump(26)
 }
 
 [CompiledRegExpObject: /ax{1000000000000,1000000000001}b/] {
@@ -179,4 +202,29 @@
     17: Accept
     18: Literal(x)
     19: Jump(14)
+}
+
+[CompiledRegExpObject: /a(?:x|){1000000000000,1000000000001}b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Loop(0, 4294967295, 17)
+    14: Branch(24, 27)
+    17: SetProgress(0)
+    19: Branch(33, 29)
+    22: Jump(10)
+    24: Literal(x)
+    25: Jump(22)
+    27: Jump(22)
+    29: Literal(b)
+    30: MarkCapturePoint(1)
+    32: Accept
+    33: Branch(40, 43)
+    36: Progress(0)
+    38: Jump(29)
+    40: Literal(x)
+    41: Jump(36)
+    43: Jump(36)
 }

@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     cast_from_value_fn, extend_object,
     runtime::{
+        Context, Handle, HeapPtr, PropertyKey, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         error::type_error,
@@ -23,7 +24,6 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::to_length,
-        Context, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
 };

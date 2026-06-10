@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use crate::{
     handle_scope, must_a,
-    parser::{analyze::analyze, parse_script, source::Source, ParseContext},
+    parser::{ParseContext, analyze::analyze, parse_script, source::Source},
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
         bytecode::generator::BytecodeProgramGenerator,
@@ -16,7 +17,6 @@ use crate::{
         },
         object_value::ObjectValue,
         string_value::StringValue,
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 

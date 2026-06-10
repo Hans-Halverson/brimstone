@@ -5,14 +5,14 @@ use crate::runtime::alloc_error::AllocError;
 use crate::{
     common::{constants::GIGABYTE_BYTES, serialized_heap::SerializedHeap},
     runtime::{
+        Context,
         alloc_error::AllocResult,
         gc::{
+            GcType, HeapPtr, HeapVisitor,
             garbage_collector::GarbageCollector,
             handle::HandleContext,
-            heap_serializer::{calculate_extra_offset, HeapSpaceDeserializer},
-            GcType, HeapPtr, HeapVisitor,
+            heap_serializer::{HeapSpaceDeserializer, calculate_extra_offset},
         },
-        Context,
     },
 };
 

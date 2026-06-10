@@ -1,6 +1,7 @@
 use crate::{
     must,
     runtime::{
+        Context, Handle,
         abstract_operations::{call_object, canonicalize_keyed_collection_key},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -16,15 +17,14 @@ use crate::{
             set_object::{SetObject, SetObjectSetField, ValueSet},
         },
         iterator::{
-            get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
-            iterator_value, IteratorHint,
+            IteratorHint, get_iterator, iter_iterator_method_values, iterator_close, iterator_step,
+            iterator_value,
         },
         object_value::ObjectValue,
         property::Property,
         realm::Realm,
         type_utilities::{is_callable, to_integer_or_infinity, to_number},
         value::{Value, ValueCollectionKey},
-        Context, Handle,
     },
 };
 

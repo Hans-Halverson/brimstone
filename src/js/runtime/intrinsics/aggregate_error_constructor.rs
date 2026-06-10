@@ -1,6 +1,7 @@
 use crate::{
     must, must_a,
     runtime::{
+        Context, Handle, Value,
         abstract_operations::{
             create_data_property_or_throw, create_non_enumerable_data_property_or_throw,
             define_property_or_throw,
@@ -11,7 +12,7 @@ use crate::{
         eval_result::EvalResult,
         function::get_argument,
         intrinsics::{
-            error_constructor::{install_error_cause, ErrorObject},
+            error_constructor::{ErrorObject, install_error_cause},
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
         },
@@ -20,7 +21,6 @@ use crate::{
         property_descriptor::PropertyDescriptor,
         realm::Realm,
         type_utilities::to_string,
-        Context, Handle, Value,
     },
 };
 

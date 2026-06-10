@@ -1,6 +1,6 @@
 #[cfg(feature = "alloc_error")]
 use crate::runtime::alloc_error::AllocError;
-use crate::runtime::{gc::Escapable, value::Value, Context, Handle};
+use crate::runtime::{Context, Handle, gc::Escapable, value::Value};
 
 /// Any JS value can be thrown as an evaluation error.
 ///

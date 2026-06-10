@@ -1,9 +1,10 @@
 use crate::{
     completion_value, must,
     runtime::{
+        Context, Handle, PropertyKey, Value,
         abstract_operations::{call, call_object, create_data_property_or_throw, invoke},
         alloc_error::AllocResult,
-        array_object::{array_create, ArrayObject},
+        array_object::{ArrayObject, array_create},
         builtin_function::BuiltinFunction,
         error::type_error,
         eval_result::EvalResult,
@@ -13,13 +14,12 @@ use crate::{
             aggregate_error_constructor::AggregateErrorObject, boolean_constructor::BooleanObject,
             intrinsics::Intrinsic, number_constructor::NumberObject, rust_runtime::RuntimeFunction,
         },
-        iterator::{get_iterator, iterator_close, iterator_step_value, Iterator, IteratorHint},
+        iterator::{Iterator, IteratorHint, get_iterator, iterator_close, iterator_step_value},
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create,
-        promise_object::{promise_resolve, resolve, PromiseCapability, PromiseObject},
+        promise_object::{PromiseCapability, PromiseObject, promise_resolve, resolve},
         realm::Realm,
         type_utilities::is_callable,
-        Context, Handle, PropertyKey, Value,
     },
 };
 

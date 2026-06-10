@@ -1,17 +1,17 @@
 use crate::{
     field_offset,
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         bytecode::{
             generator::GenRegister,
-            operand::{min_width_for_unsigned, Operand, Register},
+            operand::{Operand, Register, min_width_for_unsigned},
             width::{ExtraWide, WidthEnum},
         },
         collections::InlineArray,
         debug_print::{DebugPrint, DebugPrinter},
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

@@ -4,6 +4,7 @@ use crate::{
         terminal::stdout_should_use_colors,
     },
     runtime::{
+        Context, Handle, Value,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
@@ -17,7 +18,6 @@ use crate::{
         realm::Realm,
         type_utilities::number_to_string,
         value::{BOOL_TAG, NULL_TAG, UNDEFINED_TAG},
-        Context, Handle, Value,
     },
 };
 

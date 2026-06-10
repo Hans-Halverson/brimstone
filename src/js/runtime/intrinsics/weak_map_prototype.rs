@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     abstract_operations::call,
     alloc_error::AllocResult,
     error::type_error,
@@ -13,7 +14,6 @@ use crate::runtime::{
     realm::Realm,
     type_utilities::is_callable,
     value::ValueCollectionKey,
-    Context, Handle, Value,
 };
 
 pub struct WeakMapPrototype;

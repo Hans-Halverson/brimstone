@@ -3,8 +3,8 @@ use icu_collections::{
     codepointinvliststringlist::CodePointInversionListAndStringList,
 };
 use icu_properties::{
-    props::{GeneralCategoryGroup, Script},
     CodePointSetDataBorrowed,
+    props::{GeneralCategoryGroup, Script},
 };
 
 use crate::common::{icu::ICU, unicode::MAX_CODE_POINT};

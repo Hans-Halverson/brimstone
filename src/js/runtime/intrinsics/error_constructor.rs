@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{create_non_enumerable_data_property_or_throw, get, has_property},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -15,10 +16,9 @@ use crate::{
         ordinary_object::{object_create, object_create_from_constructor},
         realm::Realm,
         source_file::SourceFile,
-        stack_trace::{create_current_stack_frame_info, create_stack_trace, StackFrameInfoArray},
+        stack_trace::{StackFrameInfoArray, create_current_stack_frame_info, create_stack_trace},
         string_value::FlatString,
         type_utilities::to_string,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

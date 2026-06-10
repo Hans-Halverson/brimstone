@@ -4,12 +4,13 @@ use xsum::{Xsum, XsumAuto};
 use crate::{
     common::math::{f64_to_f16, is_negative_zero},
     runtime::{
+        Context, Handle,
         alloc_error::AllocResult,
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
-        iterator::{get_iterator, iterator_close, iterator_step_value, IteratorHint},
+        iterator::{IteratorHint, get_iterator, iterator_close, iterator_step_value},
         numeric_constants::{MAX_I32_PLUS_ONE_AS_F64, MAX_SAFE_INTEGER_U64},
         numeric_operations::number_exponentiate,
         object_value::ObjectValue,
@@ -17,7 +18,6 @@ use crate::{
         realm::Realm,
         type_utilities::{to_number, to_uint32},
         value::Value,
-        Context, Handle,
     },
 };
 

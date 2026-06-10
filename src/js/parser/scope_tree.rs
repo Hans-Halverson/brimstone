@@ -5,12 +5,12 @@ use allocator_api2::alloc::Global;
 use crate::{
     common::{alloc, options::Options, wtf_8::Wtf8String},
     parser::{
+        ParseError,
         ast::{
             self, ArenaVec, AstAlloc, AstBox, AstHashSet, AstIndexMap, AstPtr, AstSlice,
             AstSliceBuilder, AstStr, FunctionId, TaggedResolvedScope,
         },
         loc::{Loc, Pos},
-        ParseError,
     },
 };
 

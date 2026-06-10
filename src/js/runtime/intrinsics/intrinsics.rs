@@ -1,6 +1,7 @@
 use crate::{
     handle_scope, handle_scope_guard, must_a,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -77,11 +78,11 @@ use crate::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
                 BigUInt64ArrayPrototype, Float16ArrayConstructor, Float16ArrayPrototype,
                 Float32ArrayConstructor, Float32ArrayPrototype, Float64ArrayConstructor,
-                Float64ArrayPrototype, Int16ArrayConstructor, Int16ArrayPrototype,
-                Int32ArrayConstructor, Int32ArrayPrototype, Int8ArrayConstructor,
-                Int8ArrayPrototype, UInt16ArrayConstructor, UInt16ArrayPrototype,
-                UInt32ArrayConstructor, UInt32ArrayPrototype, UInt8ArrayConstructor,
-                UInt8ArrayPrototype, UInt8ClampedArrayConstructor, UInt8ClampedArrayPrototype,
+                Float64ArrayPrototype, Int8ArrayConstructor, Int8ArrayPrototype,
+                Int16ArrayConstructor, Int16ArrayPrototype, Int32ArrayConstructor,
+                Int32ArrayPrototype, UInt8ArrayConstructor, UInt8ArrayPrototype,
+                UInt8ClampedArrayConstructor, UInt8ClampedArrayPrototype, UInt16ArrayConstructor,
+                UInt16ArrayPrototype, UInt32ArrayConstructor, UInt32ArrayPrototype,
             },
             typed_array_constructor::TypedArrayConstructor,
             typed_array_prototype::TypedArrayPrototype,
@@ -96,7 +97,6 @@ use crate::{
         ordinary_object::object_create_with_proto,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        Context, Handle, HeapPtr, Value,
     },
 };
 
@@ -538,7 +538,10 @@ pub fn throw_type_error(
     _: Handle<Value>,
     _: &[Handle<Value>],
 ) -> EvalResult<Handle<Value>> {
-    type_error(cx, "`caller`, `callee`, and `arguments` properties may not be accessed on strict mode functions or the arguments objects for calls to them")
+    type_error(
+        cx,
+        "`caller`, `callee`, and `arguments` properties may not be accessed on strict mode functions or the arguments objects for calls to them",
+    )
 }
 
 /// %ThrowTypeError% (https://tc39.es/ecma262/#sec-%throwtypeerror%)

@@ -1,10 +1,11 @@
 use crate::runtime::{
+    Context, Handle, PropertyDescriptor,
     abstract_operations::define_property_or_throw,
     alloc_error::AllocResult,
     bytecode::function::Closure,
     eval_result::EvalResult,
     function::get_argument,
-    generator_object::{generator_resume, generator_resume_abrupt, GeneratorCompletionType},
+    generator_object::{GeneratorCompletionType, generator_resume, generator_resume_abrupt},
     heap_item_descriptor::HeapItemKind,
     intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
     object_value::ObjectValue,
@@ -12,7 +13,6 @@ use crate::runtime::{
     property::Property,
     realm::Realm,
     value::Value,
-    Context, Handle, PropertyDescriptor,
 };
 
 pub struct GeneratorPrototype;

@@ -6,8 +6,8 @@ use std::{
 };
 
 use allocator_api2::{
-    alloc::{Allocator, Global},
     SliceExt,
+    alloc::{Allocator, Global},
 };
 
 use crate::common::{

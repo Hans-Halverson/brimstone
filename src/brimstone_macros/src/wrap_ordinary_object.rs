@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 
 pub fn wrap_ordinary_object(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut impl_ast: syn::ItemImpl = syn::parse(item).unwrap();

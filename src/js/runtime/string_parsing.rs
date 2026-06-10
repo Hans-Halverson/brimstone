@@ -8,19 +8,19 @@ use crate::{
         string::StringWidth,
         string_iterators::GenericCodeUnitIterator,
         unicode::{
-            is_ascii_newline, is_ascii_whitespace, is_unicode_newline, is_unicode_whitespace,
-            CodeUnit,
+            CodeUnit, is_ascii_newline, is_ascii_whitespace, is_unicode_newline,
+            is_unicode_whitespace,
         },
     },
     parser::loc::{Loc, Pos},
     runtime::{
+        Handle,
         alloc_error::AllocResult,
         intrinsics::date_object::{
-            year_month_day_to_days_since_unix_epoch, MAX_TIME_VALUE, MS_PER_DAY, MS_PER_HOUR,
-            MS_PER_MINUTE, MS_PER_SECOND,
+            MAX_TIME_VALUE, MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE, MS_PER_SECOND,
+            year_month_day_to_days_since_unix_epoch,
         },
         string_value::{StringValue, UnsafeCodeUnitIterator},
-        Handle,
     },
 };
 

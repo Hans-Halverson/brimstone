@@ -2,14 +2,15 @@ use std::collections::HashSet;
 
 use crate::{
     common::{
-        unicode::{is_ascii_lowercase_alphabetic, is_decimal_digit, CodePoint, CodeUnit},
+        unicode::{CodePoint, CodeUnit, is_ascii_lowercase_alphabetic, is_decimal_digit},
         wtf_8::Wtf8String,
     },
     must,
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
-            call_object, create_data_property, create_data_property_or_throw,
-            enumerable_own_property_names, length_of_array_like, KeyOrValue,
+            KeyOrValue, call_object, create_data_property, create_data_property_or_throw,
+            enumerable_own_property_names, length_of_array_like,
         },
         alloc_error::AllocResult,
         error::syntax_error,
@@ -17,7 +18,7 @@ use crate::{
         get,
         intrinsics::{
             intrinsics::Intrinsic,
-            json_parser::{parse_json, JSONParseRecord, JSONParseRecordChildren},
+            json_parser::{JSONParseRecord, JSONParseRecordChildren, parse_json},
             json_serializer::JSONSerializer,
             raw_json_object::RawJSONObject,
             rust_runtime::RuntimeFunction,
@@ -28,7 +29,6 @@ use crate::{
         string_value::FlatString,
         to_string,
         type_utilities::{is_array, is_callable, same_value, to_integer_or_infinity, to_number},
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 

@@ -6,7 +6,7 @@ use std::{
 
 use brimstone_core::{
     common::{constants::MEGABYTE_BYTES, options::OptionsBuilder},
-    runtime::{gc::HeapSerializer, ContextBuilder},
+    runtime::{ContextBuilder, gc::HeapSerializer},
 };
 
 /// Generate the default serialized heap and embed into the binary.

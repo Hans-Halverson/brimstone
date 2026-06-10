@@ -1,6 +1,7 @@
 use crate::{
     field_offset,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
         abstract_operations::has_property,
         alloc_error::AllocResult,
         boxed_value::BoxedValue,
@@ -15,7 +16,6 @@ use crate::{
         scope_names::ScopeNames,
         string_value::StringValue,
         type_utilities::to_boolean,
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Realm, Value,
     },
     set_uninit,
 };

@@ -5,6 +5,7 @@ use num_bigint::{BigUint, Sign};
 use crate::{
     eval_err, must,
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::{
             call_object, construct, create_data_property_or_throw, has_property, invoke,
             length_of_array_like, set, species_constructor,
@@ -18,12 +19,12 @@ use crate::{
             array_buffer_constructor::clone_array_buffer,
             array_iterator::{ArrayIterator, ArrayIteratorKind},
             array_prototype::{
-                find_via_predicate, sort_indexed_properties, INCLUDE_HOLES, TYPED_ARRAY,
+                INCLUDE_HOLES, TYPED_ARRAY, find_via_predicate, sort_indexed_properties,
             },
             encodings::{
-                decode_base64, decode_hex, encode_base64, encode_hex, get_base64_alphabet_option,
-                get_base64_last_chunk_handling_option, get_base64_omit_padding_option,
-                get_base64_options_argument, DecodeResult,
+                DecodeResult, decode_base64, decode_hex, encode_base64, encode_hex,
+                get_base64_alphabet_option, get_base64_last_chunk_handling_option,
+                get_base64_omit_padding_option, get_base64_options_argument,
             },
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -38,7 +39,6 @@ use crate::{
             is_callable, is_strictly_equal, resolve_relative_index_argument, same_object_value,
             same_value_zero, to_bigint, to_boolean, to_integer_or_infinity, to_number, to_object,
         },
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 
@@ -2045,7 +2045,10 @@ fn typed_array_species_create(
     if result.content_type() != exemplar.content_type() {
         return type_error(
             cx,
-            &format!("TypedArray.prototype.{method_name} species constructor must return a typed array that contains {}", exemplar.content_type().format()),
+            &format!(
+                "TypedArray.prototype.{method_name} species constructor must return a typed array that contains {}",
+                exemplar.content_type().format()
+            ),
         );
     }
 
@@ -2079,7 +2082,12 @@ pub fn typed_array_create_from_constructor(
 
     if arguments.len() == 1 && arguments[0].is_number() {
         if is_typed_array_out_of_bounds(&new_typed_array_record) {
-            return type_error(cx, &format!("{full_method_name} species constructor returned a typed array that is out of bounds"));
+            return type_error(
+                cx,
+                &format!(
+                    "{full_method_name} species constructor returned a typed array that is out of bounds"
+                ),
+            );
         }
 
         let new_typed_array_length = typed_array_length(&new_typed_array_record);
@@ -2087,7 +2095,9 @@ pub fn typed_array_create_from_constructor(
         if (new_typed_array_length as f64) < arguments[0].as_number() {
             return type_error(
                 cx,
-                &format!("{full_method_name} species constructor returned a typed array that does not have the expected length"),
+                &format!(
+                    "{full_method_name} species constructor returned a typed array that does not have the expected length"
+                ),
             );
         }
     }

@@ -1,6 +1,7 @@
 use crate::{
     handle_scope, must_a,
     runtime::{
+        Context, Handle, PropertyDescriptor, Value,
         abstract_operations::define_property_or_throw,
         alloc_error::AllocResult,
         eval_result::EvalResult,
@@ -8,7 +9,6 @@ use crate::{
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         object_value::ObjectValue,
         realm::Realm,
-        Context, Handle, PropertyDescriptor, Value,
     },
 };
 

@@ -11,7 +11,7 @@ use crate::common::{
         DEFAULT_MAX_HEAP_SIZE, DEFAULT_MIN_HEAP_SIZE, GIGABYTE_BYTES, MAX_HEAP_SIZE,
         MEGABYTE_BYTES, MIN_HEAP_SIZE,
     },
-    serialized_heap::{get_default_serialized_heap, SerializedHeap},
+    serialized_heap::{SerializedHeap, get_default_serialized_heap},
 };
 
 /// Raw command line arguments.

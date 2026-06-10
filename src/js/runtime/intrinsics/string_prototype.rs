@@ -5,13 +5,14 @@ use crate::{
         icu::ICU,
         string::StringWidth,
         unicode::{
-            is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit, CodePoint,
+            CodePoint, is_decimal_digit, is_high_surrogate_code_unit, is_low_surrogate_code_unit,
         },
         wtf_8::Wtf8String,
     },
     must, must_a,
     parser::regexp::RegExpFlags,
     runtime::{
+        Context, Handle, HeapPtr, PropertyKey,
         abstract_operations::{call_object, get_method, invoke},
         alloc_error::AllocResult,
         array_object::{array_create, create_array_from_list},
@@ -21,7 +22,7 @@ use crate::{
         get,
         intrinsics::{
             intrinsics::Intrinsic,
-            regexp_constructor::{regexp_create, FlagsSource, RegExpSource},
+            regexp_constructor::{FlagsSource, RegExpSource, regexp_create},
             regexp_prototype::flags_string_contains,
             rust_runtime::RuntimeFunction,
             string_iterator::StringIterator,
@@ -31,7 +32,7 @@ use crate::{
         realm::Realm,
         string_object::StringObject,
         string_value::{
-            string_exceeds_max_length_error, FlatString, StringValue, UnsafeCodePointIterator,
+            FlatString, StringValue, UnsafeCodePointIterator, string_exceeds_max_length_error,
         },
         to_string,
         type_utilities::{
@@ -39,7 +40,6 @@ use crate::{
             to_integer_or_infinity, to_length, to_number, to_uint32,
         },
         value::Value,
-        Context, Handle, HeapPtr, PropertyKey,
     },
 };
 

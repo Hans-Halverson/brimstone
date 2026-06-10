@@ -11,11 +11,11 @@ use brimstone_core::{
         error::FormatOptions,
         options::{Args, Options, OptionsBuilder},
     },
-    parser::{self, ast, source::Source, ParseContext},
+    parser::{self, ParseContext, ast, source::Source},
     runtime::{
+        Context, ContextBuilder, Handle,
         bytecode::generator::{BytecodeProgramGenerator, BytecodeScript},
         module::source_text_module::SourceTextModule,
-        Context, ContextBuilder, Handle,
     },
 };
 use clap::Parser;

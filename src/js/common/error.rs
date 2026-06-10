@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::{
     common::terminal::{BOLD, DEFAULT_COLOR, DIM, RED, RESET},
     parser::{
-        loc::{find_line_col_for_pos, Pos},
+        loc::{Pos, find_line_col_for_pos},
         source::Source,
     },
 };

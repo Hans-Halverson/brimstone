@@ -1,6 +1,7 @@
 use crate::{
     must_a,
     runtime::{
+        Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::invoke,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -9,10 +10,10 @@ use crate::{
         get,
         intrinsics::{
             date_object::{
-                date_from_time, day, hour_from_time, local_time, make_date, make_day,
-                make_full_year, make_time, millisecond_from_time, minute_from_time,
-                month_from_time, second_from_time, time_clip, time_within_day, utc, week_day,
-                year_from_time, DateObject, MS_PER_MINUTE,
+                DateObject, MS_PER_MINUTE, date_from_time, day, hour_from_time, local_time,
+                make_date, make_day, make_full_year, make_time, millisecond_from_time,
+                minute_from_time, month_from_time, second_from_time, time_clip, time_within_day,
+                utc, week_day, year_from_time,
             },
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -21,9 +22,8 @@ use crate::{
         property::Property,
         string_value::StringValue,
         type_utilities::{
-            ordinary_to_primitive, to_number, to_object, to_primitive, ToPrimitivePreferredType,
+            ToPrimitivePreferredType, ordinary_to_primitive, to_number, to_object, to_primitive,
         },
-        Context, EvalResult, Handle, PropertyKey, Realm, Value,
     },
 };
 

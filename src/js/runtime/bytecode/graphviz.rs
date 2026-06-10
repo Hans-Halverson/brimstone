@@ -1,14 +1,14 @@
 use std::{collections::HashSet, fs, ops::Range};
 
 use crate::{
-    common::graphviz::{DotGraphBuilder, DotTextAlign, DOTFILE_EXTENSION},
+    common::graphviz::{DOTFILE_EXTENSION, DotGraphBuilder, DotTextAlign},
     runtime::{
+        Context, HeapPtr,
         bytecode::{
             function::BytecodeFunction,
-            instruction::{get_jump_offset, Instruction, InstructionIterator},
+            instruction::{Instruction, InstructionIterator, get_jump_offset},
         },
         debug_print::{DebugPrint, DebugPrintMode},
-        Context, HeapPtr,
     },
 };
 

@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     common::error::{ErrorFormatter, FormatOptions},
-    runtime::{bytecode::generator::EmitError, eval_result::EvalError, gc::Escapable, Context},
+    runtime::{Context, bytecode::generator::EmitError, eval_result::EvalError, gc::Escapable},
 };
 
 pub type AllocResult<T> = Result<T, AllocError>;

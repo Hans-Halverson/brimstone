@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle,
     alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
@@ -12,7 +13,6 @@ use crate::runtime::{
     to_string,
     type_utilities::{number_to_string, to_integer_or_infinity},
     value::Value,
-    Context, Handle,
 };
 
 pub struct NumberPrototype;

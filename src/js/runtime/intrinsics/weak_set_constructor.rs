@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     abstract_operations::{call_object, get},
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
@@ -8,11 +9,10 @@ use crate::runtime::{
     intrinsics::{
         intrinsics::Intrinsic, rust_runtime::RuntimeFunction, weak_set_object::WeakSetObject,
     },
-    iterator::{get_iterator, iterator_close, iterator_step, iterator_value, IteratorHint},
+    iterator::{IteratorHint, get_iterator, iterator_close, iterator_step, iterator_value},
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
-    Context, Handle, Value,
 };
 
 pub struct WeakSetConstructor;

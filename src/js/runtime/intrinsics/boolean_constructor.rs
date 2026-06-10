@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
@@ -16,7 +17,6 @@ use crate::{
         },
         realm::Realm,
         type_utilities::to_boolean,
-        Context, HeapPtr, Value,
     },
     set_uninit,
 };

@@ -3,17 +3,17 @@ use std::hash;
 use crate::{
     must_a,
     runtime::{
+        Context, EvalResult, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{Handle, HandleContents, ToHandleContents},
         heap_item_descriptor::HeapItemKind,
         interned_strings::InternedStrings,
         numeric_constants::MAX_U32_AS_F64,
-        string_parsing::{parse_string_to_u32, StringLexer},
+        string_parsing::{StringLexer, parse_string_to_u32},
         string_value::StringValue,
         to_string,
         type_utilities::is_integral_number,
         value::SymbolValue,
-        Context, EvalResult, HeapPtr, Value,
     },
 };
 

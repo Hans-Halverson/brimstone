@@ -4,7 +4,7 @@ use std::{
     panic::{self, AssertUnwindSafe},
     path::Path,
     rc::Rc,
-    sync::{mpsc::channel, LazyLock, RwLock},
+    sync::{LazyLock, RwLock, mpsc::channel},
     time::{Duration, SystemTime},
 };
 
@@ -16,11 +16,11 @@ use brimstone_core::{
         wtf_8::Wtf8String,
     },
     eval_err,
-    parser::{self, source::Source, ParseContext},
+    parser::{self, ParseContext, source::Source},
     runtime::{
+        Context, ContextBuilder, EvalResult, Handle, Value,
         bytecode::generator::BytecodeProgramGenerator, eval_result::EvalError, get,
-        test_262_object::Test262Object, to_console_string, to_string, Context, ContextBuilder,
-        EvalResult, Handle, Value,
+        test_262_object::Test262Object, to_console_string, to_string,
     },
 };
 use serde_json::{self, json};
@@ -497,7 +497,9 @@ fn check_expected_completion(
                     if !print_log.contains("Test262:AsyncTestComplete") {
                         return TestResult::failure(
                             test,
-                            format!("print log does not contain Test262:AsyncTestComplete, instead contains:\n{print_log}"),
+                            format!(
+                                "print log does not contain Test262:AsyncTestComplete, instead contains:\n{print_log}"
+                            ),
                             duration,
                         );
                     }

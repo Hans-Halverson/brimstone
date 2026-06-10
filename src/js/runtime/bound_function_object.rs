@@ -1,7 +1,8 @@
 use crate::runtime::{
+    Context, Handle,
     abstract_operations::{call_object, construct, length_of_array_like},
     alloc_error::AllocResult,
-    array_object::{create_array_from_list, ArrayObject},
+    array_object::{ArrayObject, create_array_from_list},
     builtin_function::BuiltinFunction,
     eval_result::EvalResult,
     gc::HeapPtr,
@@ -11,7 +12,6 @@ use crate::runtime::{
     property_key::PropertyKey,
     type_utilities::{is_constructor_object_value, same_object_value_handles},
     value::Value,
-    Context, Handle,
 };
 
 pub struct BoundFunctionObject;

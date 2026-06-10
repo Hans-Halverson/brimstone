@@ -8,6 +8,7 @@ use crate::{
     common::math::f64_to_f16,
     create_typed_array_constructor, create_typed_array_prototype, extend_object, heap_trait_object,
     runtime::{
+        Context, Handle, HeapPtr,
         abstract_operations::{get, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -17,10 +18,10 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
-            array_buffer_constructor::{clone_array_buffer, ArrayBufferObject},
+            array_buffer_constructor::{ArrayBufferObject, clone_array_buffer},
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
-            typed_array_constructor::{canonical_numeric_index_string, CanonicalIndexType},
+            typed_array_constructor::{CanonicalIndexType, canonical_numeric_index_string},
             typed_array_prototype::{
                 is_typed_array_out_of_bounds, make_typed_array_with_buffer_witness_record,
                 typed_array_length,
@@ -39,11 +40,10 @@ use crate::{
         rust_vtables::{extract_typed_array_vtable, extract_virtual_object_vtable},
         string_value::StringValue,
         type_utilities::{
-            to_big_int64, to_big_uint64, to_index, to_int16, to_int32, to_int8, to_number,
-            to_uint16, to_uint32, to_uint8, to_uint8_clamp,
+            to_big_int64, to_big_uint64, to_index, to_int8, to_int16, to_int32, to_number,
+            to_uint8, to_uint8_clamp, to_uint16, to_uint32,
         },
         value::{BigIntValue, Value},
-        Context, Handle, HeapPtr,
     },
     set_uninit,
 };

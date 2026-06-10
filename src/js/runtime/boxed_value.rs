@@ -1,9 +1,9 @@
 use crate::{
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

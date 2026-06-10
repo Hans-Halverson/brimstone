@@ -6,6 +6,7 @@ use crate::{
     common::math::modulo,
     must_a,
     runtime::{
+        Context,
         abstract_operations::{call_object, get, get_method},
         alloc_error::AllocResult,
         bytecode::function::Closure,
@@ -22,10 +23,9 @@ use crate::{
         property_key::PropertyKey,
         proxy_object::ProxyObject,
         string_object::StringObject,
-        string_parsing::{parse_string_to_bigint, parse_string_to_number, StringLexer},
+        string_parsing::{StringLexer, parse_string_to_bigint, parse_string_to_number},
         string_value::StringValue,
-        value::{BigIntValue, Value, BOOL_TAG, NULL_TAG, POINTER_TAG, SMI_TAG, UNDEFINED_TAG},
-        Context,
+        value::{BOOL_TAG, BigIntValue, NULL_TAG, POINTER_TAG, SMI_TAG, UNDEFINED_TAG, Value},
     },
 };
 
@@ -905,7 +905,7 @@ fn same_value_non_numeric(v1_handle: Handle<Value>, v2_handle: Handle<Value>) ->
                     return v1_handle.as_string().equals(&v2_handle.as_string());
                 }
                 HeapItemKind::BigInt => {
-                    return Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()))
+                    return Ok(v1.as_bigint().bigint().eq(&v2.as_bigint().bigint()));
                 }
                 _ => {}
             }
@@ -942,7 +942,7 @@ pub fn same_value_non_numeric_non_allocating(v1: Value, v2: Value) -> bool {
                     return v1_string.as_flat() == v2_string.as_flat();
                 }
                 HeapItemKind::BigInt => {
-                    return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint())
+                    return v1.as_bigint().bigint().eq(&v2.as_bigint().bigint());
                 }
                 _ => {}
             }

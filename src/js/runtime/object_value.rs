@@ -8,6 +8,7 @@ use rand::Rng;
 use crate::{
     handle_scope_guard,
     runtime::{
+        Context, Realm,
         accessor::Accessor,
         alloc_error::AllocResult,
         array_object::ArrayObject,
@@ -42,7 +43,6 @@ use crate::{
         string_object::StringObject,
         type_utilities::is_callable_object,
         value::{SymbolValue, Value},
-        Context, Realm,
     },
     set_uninit,
 };

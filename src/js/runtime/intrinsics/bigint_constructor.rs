@@ -6,6 +6,7 @@ use num_traits::FromPrimitive;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -18,10 +19,9 @@ use crate::{
         ordinary_object::object_create,
         realm::Realm,
         type_utilities::{
-            is_integral_number, to_bigint, to_index, to_primitive, ToPrimitivePreferredType,
+            ToPrimitivePreferredType, is_integral_number, to_bigint, to_index, to_primitive,
         },
         value::BigIntValue,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

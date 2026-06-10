@@ -1,6 +1,7 @@
 use crate::{
     extend_object,
     runtime::{
+        Context, HeapPtr, Value,
         abstract_operations::{call, call_object, get_method, ordinary_has_instance},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -18,7 +19,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{object_create_from_constructor, object_create_with_proto},
         realm::Realm,
-        Context, HeapPtr, Value,
     },
     set_uninit,
 };

@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, EvalResult, Handle, Realm, Value,
     alloc_error::AllocResult,
     error::type_error,
     generator_object::GeneratorState,
@@ -9,7 +10,6 @@ use crate::runtime::{
     iterator::{create_iter_result_object, iterator_close},
     object_value::ObjectValue,
     property::Property,
-    Context, EvalResult, Handle, Realm, Value,
 };
 
 /// The Iterator Helper Prototype Object (https://tc39.es/ecma262/#sec-%iteratorhelperprototype%-object)

@@ -1,11 +1,12 @@
 use crate::{
     if_abrupt_reject_promise, must,
     runtime::{
+        Context, Handle, Value,
         abstract_operations::{call_object, define_property_or_throw},
         alloc_error::AllocResult,
         async_generator_object::{
-            async_generator_await_return, async_generator_resume, async_generator_validate,
-            AsyncGeneratorState,
+            AsyncGeneratorState, async_generator_await_return, async_generator_resume,
+            async_generator_validate,
         },
         bytecode::function::Closure,
         eval_result::EvalResult,
@@ -20,7 +21,6 @@ use crate::{
         property::Property,
         property_descriptor::PropertyDescriptor,
         realm::Realm,
-        Context, Handle, Value,
     },
 };
 

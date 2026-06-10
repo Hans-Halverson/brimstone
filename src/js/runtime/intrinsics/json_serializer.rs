@@ -2,9 +2,10 @@ use crate::{
     common::{unicode::is_surrogate_code_point, wtf_8::Wtf8String},
     must,
     runtime::{
+        Context, EvalResult, Handle, PropertyKey,
         abstract_operations::{
-            call, call_object, enumerable_own_property_names, get_v, length_of_array_like,
-            KeyOrValue,
+            KeyOrValue, call, call_object, enumerable_own_property_names, get_v,
+            length_of_array_like,
         },
         alloc_error::AllocResult,
         error::type_error,
@@ -13,7 +14,6 @@ use crate::{
         string_value::StringValue,
         to_string,
         type_utilities::{is_array, is_callable, number_to_string, to_number},
-        Context, EvalResult, Handle, PropertyKey,
     },
 };
 

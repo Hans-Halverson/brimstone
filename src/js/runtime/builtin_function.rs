@@ -1,6 +1,7 @@
 use crate::{
     must_a,
     runtime::{
+        Context, Handle,
         alloc_error::AllocResult,
         bytecode::function::{BytecodeFunction, Closure},
         function::{build_function_name, set_function_length, set_function_name},
@@ -11,7 +12,6 @@ use crate::{
         object_value::ObjectValue,
         property_key::PropertyKey,
         realm::Realm,
-        Context, Handle,
     },
 };
 

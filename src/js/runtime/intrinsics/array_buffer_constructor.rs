@@ -3,9 +3,10 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
-        collections::{array::ByteArray, BsArray},
+        collections::{BsArray, array::ByteArray},
         error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
@@ -17,7 +18,6 @@ use crate::{
         ordinary_object::object_create_from_constructor,
         realm::Realm,
         type_utilities::to_index,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

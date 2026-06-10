@@ -2,13 +2,14 @@ use crate::{
     common::{
         icu::ICU,
         string::StringWidth,
-        unicode::{is_newline, CodePoint},
+        unicode::{CodePoint, is_newline},
     },
     parser::lexer_stream::{
         HeapOneByteLexerStream, HeapTwoByteCodePointLexerStream, HeapTwoByteCodeUnitLexerStream,
         LexerStream, SavedLexerStreamState,
     },
     runtime::{
+        Handle, HeapPtr,
         alloc_error::AllocResult,
         regexp::{
             compiled_regexp::CompiledRegExpObject,
@@ -26,7 +27,6 @@ use crate::{
             },
         },
         string_value::StringValue,
-        Handle, HeapPtr,
     },
 };
 

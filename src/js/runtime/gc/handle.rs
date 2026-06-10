@@ -6,11 +6,11 @@ use std::{
 };
 
 use crate::runtime::{
+    Context, Value,
     gc::{Heap, HeapInfo, HeapPtr, HeapVisitor, IsHeapItem},
     object_value::ObjectValue,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
-    Context, Value,
 };
 
 /// Handles store a pointer-sized unit of data. This may be either a value or a heap pointer.

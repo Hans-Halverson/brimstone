@@ -5,6 +5,7 @@ use num_traits::ToPrimitive;
 use crate::{
     extend_object,
     runtime::{
+        Context, HeapPtr,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         eval_result::EvalResult,
@@ -22,7 +23,6 @@ use crate::{
         realm::Realm,
         type_utilities::{is_integral_number, to_numeric},
         value::Value,
-        Context, HeapPtr,
     },
     set_uninit,
 };

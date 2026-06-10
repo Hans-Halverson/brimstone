@@ -460,11 +460,7 @@ pub fn encode_utf16_codepoint(buf: &mut [CodeUnit], code_point: CodePoint) -> us
 
 /// Return the number of ode units needed to encode the given code point in UTF-16.
 pub fn utf16_code_unit_count(code_point: CodePoint) -> usize {
-    if is_in_bmp_range(code_point) {
-        1
-    } else {
-        2
-    }
+    if is_in_bmp_range(code_point) { 1 } else { 2 }
 }
 
 pub fn to_string_or_unicode_escape_sequence(code_point: CodePoint) -> String {

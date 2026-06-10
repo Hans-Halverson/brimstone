@@ -1,6 +1,7 @@
 use std::{collections::HashMap, hash};
 
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     bytecode::{
         constant_table::ConstantTable,
@@ -10,7 +11,6 @@ use crate::runtime::{
     },
     gc::AnyHeapItem,
     string_value::FlatString,
-    Context, Handle, Value,
 };
 
 #[derive(Clone, Copy)]

@@ -6,6 +6,7 @@ use crate::{
     extend_object, field_offset, must,
     parser::scope_tree::SHADOWED_SCOPE_SLOT_NAME,
     runtime::{
+        Context, EvalResult, HeapPtr, Value,
         abstract_operations::{create_data_property_or_throw, define_property_or_throw},
         alloc_error::AllocResult,
         bytecode::function::Closure,
@@ -24,7 +25,6 @@ use crate::{
         rust_vtables::extract_virtual_object_vtable,
         scope::Scope,
         type_utilities::same_object_value_handles,
-        Context, EvalResult, HeapPtr, Value,
     },
     set_uninit,
 };

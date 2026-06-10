@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         collections::{BsIndexSet, BsIndexSetField},
         gc::{HeapItem, HeapVisitor},
@@ -11,7 +12,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::{object_create, object_create_from_constructor},
         value::{ValueCollectionKey, ValueCollectionKeyHandle},
-        Context, EvalResult, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

@@ -22,6 +22,7 @@ use crate::{
     },
     p,
     parser::{
+        LocalizedParseError, ParseError, ParseResult,
         ast::{ArenaVec, AstAlloc, AstPtr, AstSlice, AstSliceBuilder, AstStr, AstString},
         lexer_stream::{LexerStream, SavedLexerStreamState},
         loc::Pos,
@@ -30,7 +31,6 @@ use crate::{
             CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
             RegExp, RegExpFlags, StringDisjunction, Term,
         },
-        LocalizedParseError, ParseError, ParseResult,
     },
 };
 

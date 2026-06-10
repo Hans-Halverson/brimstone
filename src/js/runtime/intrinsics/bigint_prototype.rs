@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     error::{range_error, type_error},
     eval_result::EvalResult,
@@ -11,7 +12,6 @@ use crate::runtime::{
     realm::Realm,
     type_utilities::to_integer_or_infinity,
     value::BigIntValue,
-    Context, Handle, Value,
 };
 
 pub struct BigIntPrototype;

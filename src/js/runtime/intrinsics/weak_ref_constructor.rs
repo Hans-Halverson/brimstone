@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::type_error,
@@ -14,7 +15,6 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::object_create_from_constructor,
         realm::Realm,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

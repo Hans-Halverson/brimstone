@@ -3,13 +3,13 @@ use std::collections::HashSet;
 use crate::{
     field_offset,
     runtime::{
+        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
         alloc_error::AllocResult,
         collections::InlineArray,
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         object_value::ObjectValue,
         string_value::StringValue,
-        Context, EvalResult, Handle, HeapPtr, PropertyKey, Value,
     },
     set_uninit,
 };

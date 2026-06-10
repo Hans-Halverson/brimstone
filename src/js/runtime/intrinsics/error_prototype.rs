@@ -1,6 +1,7 @@
 use crate::{
     common::error::FormatOptions,
     runtime::{
+        Context, Handle, Value,
         abstract_operations::get,
         alloc_error::AllocResult,
         error::type_error,
@@ -13,7 +14,6 @@ use crate::{
         string_value::StringValue,
         to_console_string,
         type_utilities::to_string,
-        Context, Handle, Value,
     },
 };
 

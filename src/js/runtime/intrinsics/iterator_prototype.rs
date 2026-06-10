@@ -1,6 +1,7 @@
 use crate::{
     eval_err, must,
     runtime::{
+        Context, EvalResult, Handle, Value,
         abstract_operations::{call_object, setter_that_ignores_prototype_properties},
         alloc_error::AllocResult,
         array_object::create_array_from_list,
@@ -14,7 +15,6 @@ use crate::{
         object_value::ObjectValue,
         realm::Realm,
         type_utilities::{is_callable, to_boolean, to_integer_or_infinity, to_number},
-        Context, EvalResult, Handle, Value,
     },
 };
 
@@ -205,7 +205,7 @@ impl IteratorPrototype {
             match result {
                 Err(_) => return iterator_close(cx, iterated.iterator, result),
                 Ok(result) if !to_boolean(*result) => {
-                    return iterator_close(cx, iterated.iterator, Ok(cx.bool(false)))
+                    return iterator_close(cx, iterated.iterator, Ok(cx.bool(false)));
                 }
                 Ok(_) => counter += 1,
             }
@@ -260,7 +260,7 @@ impl IteratorPrototype {
             match result {
                 Err(_) => return iterator_close(cx, iterated.iterator, result),
                 Ok(result) if to_boolean(*result) => {
-                    return iterator_close(cx, iterated.iterator, Ok(value))
+                    return iterator_close(cx, iterated.iterator, Ok(value));
                 }
                 Ok(_) => counter += 1,
             }
@@ -354,7 +354,7 @@ impl IteratorPrototype {
         if arguments.len() < 2 {
             match iterator_step_value(cx, &mut iterated)? {
                 None => {
-                    return type_error(cx, "Iterator.prototype.reduce called on empty iterator")
+                    return type_error(cx, "Iterator.prototype.reduce called on empty iterator");
                 }
                 Some(value) => {
                     accumulator = value;
@@ -422,7 +422,7 @@ impl IteratorPrototype {
             match result {
                 Err(_) => return iterator_close(cx, iterated.iterator, result),
                 Ok(result) if to_boolean(*result) => {
-                    return iterator_close(cx, iterated.iterator, Ok(cx.bool(true)))
+                    return iterator_close(cx, iterated.iterator, Ok(cx.bool(true)));
                 }
                 Ok(_) => counter += 1,
             }

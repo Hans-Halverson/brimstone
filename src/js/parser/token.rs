@@ -149,12 +149,12 @@ impl Token<'_> {
     pub fn as_cow(&self) -> Cow<'static, str> {
         let str = match self {
             Token::Identifier(name) | Token::PrivateIdentifier(name) => {
-                return Cow::Owned(name.to_string())
+                return Cow::Owned(name.to_string());
             }
             Token::NumberLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::StringLiteral(lit) => return Cow::Owned(lit.to_string()),
             Token::BigIntLiteral { digits_slice, .. } => {
-                return Cow::Owned(format!("{digits_slice}n"))
+                return Cow::Owned(format!("{digits_slice}n"));
             }
             Token::RegExpLiteral(RegExpToken { raw, .. }) => return Cow::Owned(raw.to_string()),
             Token::TemplatePart(TemplatePartToken {

@@ -1,13 +1,13 @@
 use crate::{
     handle_scope,
     runtime::{
+        Context, EvalResult, Handle,
         boxed_value::BoxedValue,
         error::syntax_error,
         module::{
             module::{DynModule, Module, ModuleEnum, ResolveExportName, ResolveExportResult},
             source_text_module::{ImportEntry, ModuleEntry, ModuleState, SourceTextModule},
         },
-        Context, EvalResult, Handle,
     },
 };
 

@@ -5,6 +5,7 @@ use brimstone_macros::wrap_ordinary_object;
 use crate::{
     extend_object,
     runtime::{
+        Context, PropertyKey,
         alloc_error::AllocResult,
         eval_result::EvalResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
@@ -23,7 +24,6 @@ use crate::{
         string_value::{FlatString, StringValue},
         type_utilities::canonical_numeric_string_index_string,
         value::Value,
-        Context, PropertyKey,
     },
     set_uninit,
 };

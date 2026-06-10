@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
@@ -11,7 +12,6 @@ use crate::runtime::{
     object_value::ObjectValue,
     realm::Realm,
     type_utilities::is_callable,
-    Context, Handle, Value,
 };
 
 pub struct FinalizationRegistryConstructor;

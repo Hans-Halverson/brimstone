@@ -3,7 +3,8 @@ use std::{collections::HashMap, path::Path};
 use crate::{
     completion_value, eval_err, if_abrupt_reject_promise, must, must_a,
     runtime::{
-        abstract_operations::{call_object, enumerable_own_property_names, KeyOrValue},
+        Context, EvalResult, Handle, PropertyKey, Value,
+        abstract_operations::{KeyOrValue, call_object, enumerable_own_property_names},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         context::ModuleCacheKey,
@@ -26,7 +27,7 @@ use crate::{
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject},
         string_value::FlatString,
-        to_string, Context, EvalResult, Handle, PropertyKey, Value,
+        to_string,
     },
 };
 

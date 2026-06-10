@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     rc::Rc,
 };
 
@@ -11,17 +11,17 @@ use crate::{
         wtf_8::{Wtf8Cow, Wtf8Str},
     },
     parser::{
+        LocalizedParseError, LocalizedParseErrors, ParseContext, ParseError,
         ast::*,
         ast_visitor::*,
         loc::Loc,
         parse_error::InvalidDuplicateParametersReason,
         parser::{ParseFunctionResult, ParseProgramResult},
         scope_tree::{
-            AstScopeNode, ScopeNodeId, ScopeTree, VMLocation, ARGUMENTS_NAME,
-            DERIVED_CONSTRUCTOR_BINDING_NAME, NEW_TARGET_BINDING_NAME, THIS_NAME,
+            ARGUMENTS_NAME, AstScopeNode, DERIVED_CONSTRUCTOR_BINDING_NAME,
+            NEW_TARGET_BINDING_NAME, ScopeNodeId, ScopeTree, THIS_NAME, VMLocation,
         },
         source::Source,
-        LocalizedParseError, LocalizedParseErrors, ParseContext, ParseError,
     },
     visit_opt, visit_vec,
 };

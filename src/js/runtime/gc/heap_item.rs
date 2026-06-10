@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Realm,
     accessor::Accessor,
     arguments_object::{MappedArgumentsObject, UnmappedArgumentsObject},
     array_object::ArrayObject,
@@ -13,12 +14,12 @@ use crate::runtime::{
     },
     class_names::ClassNames,
     collections::{
+        BsWeakVec,
         array::{
             byte_array_byte_size, byte_array_visit_pointers, u32_array_byte_size,
             u32_array_visit_pointers, value_array_byte_size, value_array_visit_pointers,
         },
         vec::{value_vec_byte_size, value_vec_visit_pointers},
-        BsWeakVec,
     },
     context::{GlobalSymbolRegistryField, ModuleCacheField},
     for_in_iterator::ForInIterator,
@@ -51,8 +52,8 @@ use crate::runtime::{
         string_iterator::StringIterator,
         symbol_constructor::SymbolObject,
         typed_array::{
-            BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int16Array,
-            Int32Array, Int8Array, UInt16Array, UInt32Array, UInt8Array, UInt8ClampedArray,
+            BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
+            Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
         },
         weak_map_object::{WeakMapObject, WeakMapObjectMapField},
         weak_ref_constructor::WeakRefObject,
@@ -62,9 +63,9 @@ use crate::runtime::{
         import_attributes::ImportAttributes,
         module_namespace_object::ModuleNamespaceObject,
         source_text_module::{
-            module_option_array_byte_size, module_option_array_visit_pointers,
-            module_request_array_byte_size, module_request_array_visit_pointers, ExportMapField,
-            SourceTextModule,
+            ExportMapField, SourceTextModule, module_option_array_byte_size,
+            module_option_array_visit_pointers, module_request_array_byte_size,
+            module_request_array_visit_pointers,
         },
         synthetic_module::SyntheticModule,
     },
@@ -80,7 +81,6 @@ use crate::runtime::{
     string_object::StringObject,
     string_value::StringValue,
     value::{BigIntValue, SymbolValue},
-    Realm,
 };
 
 /// Trait implemented by all items stored on the heap. This includes both JS objects and non-object

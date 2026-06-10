@@ -8,6 +8,7 @@ use bitflags::bitflags;
 use crate::{
     count, replace_expr,
     runtime::{
+        HeapPtr,
         bytecode::{
             function::BytecodeFunction,
             operand::{ConstantIndex, Operand, OperandType, Register, SInt, UInt},
@@ -17,7 +18,6 @@ use crate::{
             writer::BytecodeWriter,
         },
         debug_print::DebugPrinter,
-        HeapPtr,
     },
 };
 

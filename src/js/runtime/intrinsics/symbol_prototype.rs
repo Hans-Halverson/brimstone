@@ -1,4 +1,5 @@
 use crate::runtime::{
+    Context, Handle, Value,
     alloc_error::AllocResult,
     builtin_function::BuiltinFunction,
     error::type_error,
@@ -9,7 +10,6 @@ use crate::runtime::{
     realm::Realm,
     string_value::StringValue,
     value::SymbolValue,
-    Context, Handle, Value,
 };
 
 pub struct SymbolPrototype;

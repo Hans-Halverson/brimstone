@@ -2,6 +2,7 @@ use crate::{
     handle_scope_guard, must_a,
     parser::loc::find_line_col_for_pos,
     runtime::{
+        Context, Handle, HeapPtr,
         alloc_error::AllocResult,
         bytecode::{function::BytecodeFunction, source_map::BytecodeSourceMap},
         collections::BsArray,
@@ -9,7 +10,6 @@ use crate::{
         heap_item_descriptor::HeapItemKind,
         intrinsics::{error_constructor::CachedStackTraceInfo, rust_runtime::RuntimeFunction},
         source_file::SourceFile,
-        Context, Handle, HeapPtr,
     },
 };
 

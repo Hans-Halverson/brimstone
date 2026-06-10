@@ -4,12 +4,12 @@ use bitflags::bitflags;
 
 use crate::{
     runtime::{
+        Context, Value,
         alloc_error::AllocResult,
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
         object_value::{VirtualObject, VirtualObjectVtable},
         ordinary_object::OrdinaryObject,
         rust_vtables::extract_virtual_object_vtable,
-        Context, Value,
     },
     set_uninit,
 };

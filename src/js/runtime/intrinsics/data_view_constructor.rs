@@ -3,6 +3,7 @@ use std::mem::size_of;
 use crate::{
     extend_object,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         error::{range_error, type_error},
@@ -11,7 +12,7 @@ use crate::{
         gc::{HeapItem, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
-            array_buffer_constructor::{throw_if_detached, ArrayBufferObject},
+            array_buffer_constructor::{ArrayBufferObject, throw_if_detached},
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
         },
@@ -19,7 +20,6 @@ use crate::{
         ordinary_object::object_create_from_constructor,
         realm::Realm,
         type_utilities::to_index,
-        Context, Handle, HeapPtr, Value,
     },
 };
 

@@ -1,6 +1,7 @@
 use crate::{
     eval_err, must, must_a,
     runtime::{
+        Context, Handle, PropertyKey, Realm,
         abstract_operations::{call_object, get_method, length_of_array_like, set},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -29,7 +30,6 @@ use crate::{
             is_callable, is_constructor_value, is_integral_number, to_number, to_object,
         },
         value::Value,
-        Context, Handle, PropertyKey, Realm,
     },
 };
 

@@ -1,11 +1,12 @@
 use crate::{
     eval_err, extend_object, field_offset,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         alloc_error::AllocResult,
         bytecode::{
+            ExtraWide, Register,
             function::Closure,
             stack_frame::{StackFrame, StackSlotValue},
-            ExtraWide, Register,
         },
         collections::InlineArray,
         error::type_error,
@@ -16,7 +17,6 @@ use crate::{
         iterator::create_iter_result_object,
         object_value::ObjectValue,
         ordinary_object::{get_prototype_from_constructor, object_ordinary_init},
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

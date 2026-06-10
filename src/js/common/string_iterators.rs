@@ -1,8 +1,8 @@
 use crate::common::{
     string::StringWidth,
     unicode::{
-        code_point_from_surrogate_pair, is_high_surrogate_code_unit, is_low_surrogate_code_unit,
-        CodePoint, CodeUnit,
+        CodePoint, CodeUnit, code_point_from_surrogate_pair, is_high_surrogate_code_unit,
+        is_low_surrogate_code_unit,
     },
 };
 

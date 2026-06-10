@@ -1,6 +1,7 @@
 use crate::{
     eval_err, extend_object, if_abrupt_reject_promise, must,
     runtime::{
+        Context, Handle, HeapPtr, Value,
         abstract_operations::{call_object, get_method},
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
@@ -14,14 +15,13 @@ use crate::{
             rust_runtime::RuntimeFunction,
         },
         iterator::{
-            create_iter_result_object, iterator_close, iterator_complete, iterator_next,
-            iterator_value, Iterator,
+            Iterator, create_iter_result_object, iterator_close, iterator_complete, iterator_next,
+            iterator_value,
         },
         object_value::ObjectValue,
         ordinary_object::object_create,
-        promise_object::{coerce_to_ordinary_promise, PromiseCapability},
+        promise_object::{PromiseCapability, coerce_to_ordinary_promise},
         realm::Realm,
-        Context, Handle, HeapPtr, Value,
     },
     set_uninit,
 };

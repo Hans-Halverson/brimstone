@@ -3,8 +3,9 @@ use std::collections::VecDeque;
 use crate::{
     completion_value, eval_err, handle_scope,
     runtime::{
+        Context, EvalResult, HeapPtr, Realm, Value,
         abstract_operations::{call, call_object},
-        async_generator_object::{async_generator_resume, AsyncGeneratorObject},
+        async_generator_object::{AsyncGeneratorObject, async_generator_resume},
         builtin_generator::BuiltinGenerator,
         gc::{AnyHeapItem, HeapVisitor},
         generator_object::{GeneratorCompletionType, GeneratorObject},
@@ -12,7 +13,6 @@ use crate::{
         intrinsics::promise_constructor::execute_then,
         object_value::ObjectValue,
         promise_object::{PromiseCapability, PromiseObject, PromiseReactionKind},
-        Context, EvalResult, HeapPtr, Realm, Value,
     },
 };
 

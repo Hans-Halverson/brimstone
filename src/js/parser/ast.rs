@@ -20,7 +20,7 @@ use crate::{
         wtf_8::{Wtf8Str, Wtf8String},
     },
     parser::{
-        loc::{Loc, Pos, EMPTY_LOC},
+        loc::{EMPTY_LOC, Loc, Pos},
         regexp::RegExp,
         scope_tree::{
             AstScopeNode, Binding, HOME_OBJECT_BINDING_NAME, STATIC_HOME_OBJECT_BINDING_NAME,

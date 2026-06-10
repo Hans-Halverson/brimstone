@@ -40,8 +40,8 @@ use crate::{
                 ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction, Instruction,
                 InstructionIterator, InstructionIteratorMut, JumpInstruction, LiteralInstruction,
                 LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
-                ProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-                WordBoundaryMoveToPreviousInstruction,
+                ProgressInstruction, SetProgressInstruction, WildcardInstruction,
+                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
             },
         },
         string_value::StringValue,
@@ -187,6 +187,10 @@ impl CompiledRegExpBuilder {
 
     fn emit_progress_instruction(&mut self, progress_index: u32) {
         ProgressInstruction::write(self.current_block_buf(), progress_index);
+    }
+
+    fn emit_set_progress_instruction(&mut self, progress_index: u32) {
+        SetProgressInstruction::write(self.current_block_buf(), progress_index);
     }
 
     fn emit_clear_capture_if_no_progress_instruction(
@@ -676,7 +680,8 @@ impl CompiledRegExpBuilder {
 
             // Can inline a small number of optional repetitions otherwise use a loop
             if num_remaining_repetitions <= MAX_INLINED_REPETITIONS {
-                let mut progress_index = None;
+                // Initialize progress for the first repetition, if necessary
+                let progress_index = self.emit_quantifier_progress_init(quantifier);
 
                 // Emit term blocks max - min times, each is optional and is preceded by a branch to
                 // the join block.
@@ -704,15 +709,9 @@ impl CompiledRegExpBuilder {
                         self.emit_quantified_term_with_cleared_captures(quantifier)
                     };
 
-                    // Each optional iteration of quantifier must consume at least one character.
-                    // We can ensure this by emitting a progress instruction which checks that
-                    // progress has been made since the last execution of the progress instruction.
-                    if !quantifier.always_consumes {
-                        // Lazily create the shared progress point, shared between the inlined
-                        // term blocks.
-                        let progress_index =
-                            progress_index.get_or_insert_with(|| self.new_progress_point());
-                        self.emit_progress_instruction(*progress_index);
+                    // Ensure that each repetition makes progress, if necessary
+                    if let Some(progress_index) = progress_index {
+                        self.emit_progress_instruction(progress_index);
                     }
                 }
 
@@ -725,6 +724,9 @@ impl CompiledRegExpBuilder {
                 self.emit_fail_instruction();
             } else {
                 let loop_block_id = self.new_block();
+
+                // Initialize progress for the first repetition, if necessary
+                let progress_index = self.emit_quantifier_progress_init(quantifier);
 
                 // If we are in a repetition but never enter a term block with captures even once,
                 // we must clear those captures in case they were previously matched.
@@ -749,11 +751,8 @@ impl CompiledRegExpBuilder {
 
                 self.emit_quantified_term_with_cleared_captures(quantifier);
 
-                // Each optional iteration of quantifier must consume at least one character.
-                // We can ensure this by emitting a progress instruction which checks that
-                // progress has been made since the last execution of the progress instruction.
-                if !quantifier.always_consumes {
-                    let progress_index = self.new_progress_point();
+                // Ensure that each repetition makes progress, if necessary
+                if let Some(progress_index) = progress_index {
                     self.emit_progress_instruction(progress_index);
                 }
 
@@ -766,6 +765,9 @@ impl CompiledRegExpBuilder {
             // Any number of future repetitions
             let term_block_id = self.new_block();
             let join_block_id = self.new_block();
+
+            // Initialize progress for the first repetition, if necessary
+            let progress_index = self.emit_quantifier_progress_init(quantifier);
 
             // If we are in a repetition but never enter a term block with captures, we must clear
             // those captures in case they were previously matched.
@@ -783,11 +785,8 @@ impl CompiledRegExpBuilder {
             self.set_current_block(term_block_id);
             self.emit_quantified_term_with_cleared_captures(quantifier);
 
-            // Each optional iteration of quantifier must consume at least one character. We can
-            // ensure this by emitting a progress instruction which checks that progress has been
-            // made since the last execution of the progress instruction.
-            if !quantifier.always_consumes {
-                let progress_index = self.new_progress_point();
+            // Ensure that each repetition makes progress, if necessary
+            if let Some(progress_index) = progress_index {
                 self.emit_progress_instruction(progress_index);
             }
 
@@ -807,6 +806,19 @@ impl CompiledRegExpBuilder {
             for capture_index in quantifier.captures.into_iter().flatten() {
                 self.emit_clear_capture_if_no_progress_instruction(capture_index, progress_index);
             }
+        }
+    }
+
+    /// An optional repetition may not match the empty string. This is guaranteed with a progress
+    /// instruction after each repetition. We must initialize the progress point before the first
+    /// repetition to verify the first repetition makes progress.
+    fn emit_quantifier_progress_init(&mut self, quantifier: &Quantifier) -> Option<u32> {
+        if !quantifier.always_consumes {
+            let progress_index = self.new_progress_point();
+            self.emit_set_progress_instruction(progress_index);
+            Some(progress_index)
+        } else {
+            None
         }
     }
 

@@ -68,6 +68,12 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24] [progress_index: u32]]
     Progress,
 
+    /// Set the current lcoation in the string in the progress array at the given progress index.
+    /// Do not check if progress has been made.
+    ///
+    /// Layout: [[opcode: u8] [padding: u24] [progress_index: u32]]
+    SetProgress,
+
     /// A conditional ClearCapture which only clears the capture if there has been no progress at
     /// the given progress index.
     ///
@@ -180,6 +186,7 @@ impl OpCode {
             OpCode::MarkCapturePoint => MarkCapturePointInstruction::SIZE,
             OpCode::ClearCapture => ClearCaptureInstruction::SIZE,
             OpCode::Progress => ProgressInstruction::SIZE,
+            OpCode::SetProgress => SetProgressInstruction::SIZE,
             OpCode::ClearCaptureIfNoProgress => ClearCaptureIfNoProgressInstruction::SIZE,
             OpCode::Loop => LoopInstruction::SIZE,
             OpCode::AssertStart => AssertStartInstruction::SIZE,
@@ -237,6 +244,7 @@ impl Instruction {
             OpCode::MarkCapturePoint => self.cast::<MarkCapturePointInstruction>().debug_print(),
             OpCode::ClearCapture => self.cast::<ClearCaptureInstruction>().debug_print(),
             OpCode::Progress => self.cast::<ProgressInstruction>().debug_print(),
+            OpCode::SetProgress => self.cast::<SetProgressInstruction>().debug_print(),
             OpCode::ClearCaptureIfNoProgress => self
                 .cast::<ClearCaptureIfNoProgressInstruction>()
                 .debug_print(),
@@ -503,6 +511,29 @@ regexp_bytecode_instruction!(
 );
 
 impl ProgressInstruction {
+    #[inline]
+    pub fn progress_index(&self) -> u32 {
+        self.0[1]
+    }
+
+    pub fn write(buf: &mut Vec<u32>, progress_index: u32) {
+        write_u32!(buf, Self::OPCODE);
+        write_u32!(buf, progress_index);
+    }
+}
+
+regexp_bytecode_instruction!(
+    SetProgressInstruction,
+    OpCode::SetProgress,
+    2,
+    impl TInstruction {
+        fn debug_print(&self) -> String {
+            format!("{:?}({})", Self::OPCODE, self.progress_index())
+        }
+    }
+);
+
+impl SetProgressInstruction {
     #[inline]
     pub fn progress_index(&self) -> u32 {
         self.0[1]

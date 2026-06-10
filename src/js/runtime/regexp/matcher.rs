@@ -21,8 +21,8 @@ use crate::{
                 ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
                 ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction, JumpInstruction,
                 LiteralInstruction, LookaroundInstruction, LoopInstruction,
-                MarkCapturePointInstruction, OpCode, ProgressInstruction, TInstruction,
-                WildcardInstruction, WildcardNoNewlineInstruction,
+                MarkCapturePointInstruction, OpCode, ProgressInstruction, SetProgressInstruction,
+                TInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
                 WordBoundaryMoveToPreviousInstruction,
             },
         },
@@ -313,6 +313,13 @@ impl<T: LexerStream> MatchEngine<T> {
                     } else {
                         self.backtrack()?;
                     }
+                }
+                OpCode::SetProgress => {
+                    let instr = instr.cast::<SetProgressInstruction>();
+                    let progress_index = instr.progress_index();
+
+                    self.mark_progress_point(progress_index);
+                    self.advance_instruction::<SetProgressInstruction>();
                 }
                 OpCode::ClearCaptureIfNoProgress => {
                     let instr = instr.cast::<ClearCaptureIfNoProgressInstruction>();

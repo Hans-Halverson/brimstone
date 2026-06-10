@@ -594,15 +594,6 @@ impl CompiledRegExpBuilder {
         self.emit_set_comparisons(word_set);
     }
 
-    fn in_block<R>(&mut self, block_id: BlockId, f: impl FnOnce(&mut Self) -> R) -> R {
-        let current_block_id = self.current_block_id;
-        self.set_current_block(block_id);
-        let result = f(self);
-        self.set_current_block(current_block_id);
-
-        result
-    }
-
     fn emit_quantifier(&mut self, quantifier: &Quantifier) {
         let is_inside_repetition = self.is_in_repetition();
 
@@ -616,12 +607,18 @@ impl CompiledRegExpBuilder {
             self.enter_repetition_context();
         }
 
-        // Start a new block, saving a reference to the block before the quantifier so we can
-        // potentially patch in instructions later.
-        let quantifier_patch_block = self.new_block();
-        let quantifier_start_block = self.new_block();
-        self.emit_jump_instruction(quantifier_patch_block);
-        self.set_current_block(quantifier_start_block);
+        // If we are in a quantifier with a minimum of 0 repetitions, then 0-length matches of that
+        // quantifier should not set captures. This is implemented with an instruction that clears
+        // each capture if no progress is detected.
+        let needs_capture_if_no_progress_index = if quantifier.min == 0 && quantifier.has_captures()
+        {
+            // Emit a progress instruction before the quantifier starts
+            let progress_index = self.new_progress_point();
+            self.emit_progress_instruction(progress_index);
+            Some(progress_index)
+        } else {
+            None
+        };
 
         // Can inline a small number of repetitions otherwise use a loop
         if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
@@ -645,20 +642,18 @@ impl CompiledRegExpBuilder {
             let loop_end_block_id = self.new_block();
 
             self.emit_jump_instruction(loop_block_id);
+            self.set_current_block(loop_block_id);
 
             // Loop block consists of loop instruction, term, then loops back to start of block
-            self.in_block(loop_block_id, |this| {
-                let loop_register_index = this.next_loop_register();
-                this.emit_loop_instruction(
-                    loop_register_index,
-                    quantifier.min as u32,
-                    loop_end_block_id as u32,
-                );
+            let loop_register_index = self.next_loop_register();
+            self.emit_loop_instruction(
+                loop_register_index,
+                quantifier.min as u32,
+                loop_end_block_id as u32,
+            );
 
-                this.emit_quantified_term_with_cleared_captures(quantifier);
-
-                this.emit_jump_instruction(loop_block_id);
-            });
+            self.emit_quantified_term_with_cleared_captures(quantifier);
+            self.emit_jump_instruction(loop_block_id);
 
             // Start emitting in the loop end block after loop finishes
             self.set_current_block(loop_end_block_id);
@@ -686,10 +681,21 @@ impl CompiledRegExpBuilder {
                 // Emit term blocks max - min times, each is optional and is preceded by a branch to
                 // the join block.
                 for i in quantifier.min..max {
-                    let pred_block_id = self.current_block_id;
+                    let term_block_id = self.new_block();
+
+                    // If we are in a repetition but never enter a term block with captures even
+                    // once, we must clear those captures in case they were previously matched.
+                    if i == 0 && is_inside_repetition && quantifier.has_captures() {
+                        self.emit_quantifier_clear_captures_branch(
+                            quantifier,
+                            term_block_id,
+                            join_block_id,
+                        )
+                    } else {
+                        self.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
+                    }
 
                     // Emit term block clearing captures from the previous iteration (if any)
-                    let term_block_id = self.new_block();
                     self.set_current_block(term_block_id);
 
                     if i == 0 {
@@ -708,21 +714,6 @@ impl CompiledRegExpBuilder {
                             progress_index.get_or_insert_with(|| self.new_progress_point());
                         self.emit_progress_instruction(*progress_index);
                     }
-
-                    // Emit branch between term block and join block in predecessor
-                    self.in_block(pred_block_id, |this| {
-                        // If we are in a repetition but never enter a term block with captures even
-                        // once, we must clear those captures in case they were previously matched.
-                        if i == 0 && is_inside_repetition && quantifier.has_captures() {
-                            this.emit_quantifier_clear_captures_branch(
-                                quantifier,
-                                term_block_id,
-                                join_block_id,
-                            )
-                        } else {
-                            this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
-                        }
-                    });
                 }
 
                 // Last term block always proceeds to the join block
@@ -733,35 +724,7 @@ impl CompiledRegExpBuilder {
                 // will fail to match.
                 self.emit_fail_instruction();
             } else {
-                let predecessor_block_id = self.current_block_id;
                 let loop_block_id = self.new_block();
-
-                // Will emit the branch to the loop block later
-
-                // Loop block consists of loop instruction, term, then branches back to start of block
-                self.in_block(loop_block_id, |this| {
-                    let loop_register_index = this.next_loop_register();
-                    this.emit_loop_instruction(
-                        loop_register_index,
-                        num_remaining_repetitions as u32,
-                        join_block_id as u32,
-                    );
-
-                    this.emit_quantified_term_with_cleared_captures(quantifier);
-
-                    // Each optional iteration of quantifier must consume at least one character.
-                    // We can ensure this by emitting a progress instruction which checks that
-                    // progress has been made since the last execution of the progress instruction.
-                    if !quantifier.always_consumes {
-                        let progress_index = this.new_progress_point();
-                        this.emit_progress_instruction(progress_index);
-                    }
-
-                    this.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
-                });
-
-                // Emit the branch to the loop block from predecessor
-                self.set_current_block(predecessor_block_id);
 
                 // If we are in a repetition but never enter a term block with captures even once,
                 // we must clear those captures in case they were previously matched.
@@ -774,6 +737,27 @@ impl CompiledRegExpBuilder {
                 } else {
                     self.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
                 }
+
+                // Loop block consists of loop instruction, term, then branches back to start of block
+                self.set_current_block(loop_block_id);
+                let loop_register_index = self.next_loop_register();
+                self.emit_loop_instruction(
+                    loop_register_index,
+                    num_remaining_repetitions as u32,
+                    join_block_id as u32,
+                );
+
+                self.emit_quantified_term_with_cleared_captures(quantifier);
+
+                // Each optional iteration of quantifier must consume at least one character.
+                // We can ensure this by emitting a progress instruction which checks that
+                // progress has been made since the last execution of the progress instruction.
+                if !quantifier.always_consumes {
+                    let progress_index = self.new_progress_point();
+                    self.emit_progress_instruction(progress_index);
+                }
+
+                self.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
             }
 
             // Quantifier ends at start of join block
@@ -783,26 +767,21 @@ impl CompiledRegExpBuilder {
             let term_block_id = self.new_block();
             let join_block_id = self.new_block();
 
-            let pred_block_id = self.current_block_id;
+            // If we are in a repetition but never enter a term block with captures, we must clear
+            // those captures in case they were previously matched.
+            if is_inside_repetition && quantifier.has_captures() {
+                self.emit_quantifier_clear_captures_branch(
+                    quantifier,
+                    term_block_id,
+                    join_block_id,
+                );
+            } else {
+                self.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
+            }
 
             // Emit term block
             self.set_current_block(term_block_id);
             self.emit_quantified_term_with_cleared_captures(quantifier);
-
-            // Optionally enter term block from predecessor block
-            self.in_block(pred_block_id, |this| {
-                // If we are in a repetition but never enter a term block with captures, we must
-                // clear those captures in case they were previously matched.
-                if is_inside_repetition && quantifier.has_captures() {
-                    this.emit_quantifier_clear_captures_branch(
-                        quantifier,
-                        term_block_id,
-                        join_block_id,
-                    );
-                } else {
-                    this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
-                }
-            });
 
             // Each optional iteration of quantifier must consume at least one character. We can
             // ensure this by emitting a progress instruction which checks that progress has been
@@ -823,18 +802,8 @@ impl CompiledRegExpBuilder {
             self.exit_repetition_context();
         }
 
-        // If we are in a quantifier with a minimum of 0 repetitions, then 0-length matches of that
-        // quantifier should not set captures. This is implemented with an instruction that clears
-        // each capture if no progress is detected.
-        //
-        // Note that the progress instruction must be patched before the start of the quantifier.
-        if quantifier.min == 0 && quantifier.has_captures() {
-            // Emit a progress instruction before the quantifier starts
-            let progress_index = self.new_progress_point();
-            self.in_block(quantifier_patch_block, |this| {
-                this.emit_progress_instruction(progress_index);
-            });
-
+        // Clear all captures if there has been no progress since the start of the repetition
+        if let Some(progress_index) = needs_capture_if_no_progress_index {
             for capture_index in quantifier.captures.into_iter().flatten() {
                 self.emit_clear_capture_if_no_progress_instruction(capture_index, progress_index);
             }
@@ -880,18 +849,11 @@ impl CompiledRegExpBuilder {
     /// Used for terms in quantifiers, since all captures are cleared at the start of each
     /// repetition.
     fn emit_quantified_term_with_cleared_captures(&mut self, quantifier: &Quantifier) {
-        let clear_captures_block = self.new_block();
-        let term_block = self.new_block();
-        self.emit_jump_instruction(clear_captures_block);
-        self.set_current_block(term_block);
+        for capture_index in quantifier.captures.into_iter().flatten() {
+            self.emit_clear_capture_instruction(capture_index);
+        }
 
         self.emit_term(&quantifier.term);
-
-        self.in_block(clear_captures_block, |this| {
-            for capture_index in quantifier.captures.into_iter().flatten() {
-                this.emit_clear_capture_instruction(capture_index);
-            }
-        });
     }
 
     fn emit_capture_group(&mut self, group: &CaptureGroup) {

@@ -105,19 +105,19 @@ impl TestRunner {
             }
 
             // If a filter was provided then skip all tests that do not match the filter
-            if let Some(filter) = &self.filter {
-                if !test.path.contains(filter) {
-                    *num_skipped.entry(test.suite).or_default() += 1;
-                    continue;
-                }
+            if let Some(filter) = &self.filter
+                && !test.path.contains(filter)
+            {
+                *num_skipped.entry(test.suite).or_default() += 1;
+                continue;
             }
 
             // If a feature was specified then skip all tests that do not have that feature
-            if let Some(feature) = &self.feature {
-                if !test.features.contains(feature) {
-                    *num_skipped.entry(test.suite).or_default() += 1;
-                    continue;
-                }
+            if let Some(feature) = &self.feature
+                && !test.features.contains(feature)
+            {
+                *num_skipped.entry(test.suite).or_default() += 1;
+                continue;
             }
 
             if self.ignored[&test.suite].should_fail(test) {
@@ -595,12 +595,12 @@ fn is_error_in_expected_phase(cx: Context, test: &Test, expected_phase: TestPhas
 
 fn to_console_string_test262(cx: Context, value: Handle<Value>) -> String {
     // Extract message for Test262Error, otherwise print to console normally
-    if value.is_object() {
-        if let Ok(message_value) = to_string(cx, value) {
-            let message = message_value.format().unwrap();
-            if message.starts_with("Test262Error") {
-                return message;
-            }
+    if value.is_object()
+        && let Ok(message_value) = to_string(cx, value)
+    {
+        let message = message_value.format().unwrap();
+        if message.starts_with("Test262Error") {
+            return message;
         }
     }
 

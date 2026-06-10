@@ -21,7 +21,7 @@ use brimstone_core::{
 };
 
 #[link(name = "coverage", kind = "dylib")]
-extern "C" {
+unsafe extern "C" {
     fn __sanitizer_cov_reset_edgeguards();
 }
 

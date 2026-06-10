@@ -549,7 +549,7 @@ impl MathObject {
         _: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let n = cx.rand.gen::<f64>();
+        let n = cx.rand.r#gen::<f64>();
         Ok(cx.number(n))
     }
 

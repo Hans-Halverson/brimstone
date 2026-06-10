@@ -147,10 +147,10 @@ fn gen_all_case_folded_characters<'a>() -> CodePointInversionList<'a> {
     let mut builder = CodePointInversionListBuilder::new();
 
     for i in 0..0x110000u32 {
-        if let Some(c) = char::from_u32(i) {
-            if c == case_mapper.simple_fold(c) {
-                builder.add_char(c);
-            }
+        if let Some(c) = char::from_u32(i)
+            && c == case_mapper.simple_fold(c)
+        {
+            builder.add_char(c);
         }
     }
 

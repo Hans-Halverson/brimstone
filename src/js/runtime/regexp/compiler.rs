@@ -19,7 +19,7 @@ use crate::{
     parser::{
         ast::AstStr,
         regexp::{
-            Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupIndex,
+            Alternative, AnonymousGroup, Assertion, CaptureGroup, CaptureGroupRange,
             CharacterClass, ClassExpressionType, ClassRange, Disjunction, Lookaround, Quantifier,
             RegExp, RegExpFlags, Term,
         },
@@ -72,22 +72,6 @@ struct CompiledRegExpBuilder {
 enum Direction {
     Forward,
     Backward,
-}
-
-/// Information gathered about a compiled subexpression that is needed in compilation of the parent.
-struct SubExpressionInfo {
-    /// All capture groups in the subexpression
-    captures: Vec<CaptureGroupIndex>,
-}
-
-impl SubExpressionInfo {
-    fn no_captures() -> Self {
-        Self { captures: vec![] }
-    }
-
-    fn with_captures(captures: Vec<CaptureGroupIndex>) -> Self {
-        Self { captures }
-    }
 }
 
 /// Maximum number of repititons within a quantifier that will have their terms inlined, vs using
@@ -347,7 +331,7 @@ impl CompiledRegExpBuilder {
         self.set_current_block(join_block);
     }
 
-    fn emit_disjunction(&mut self, disjunction: &Disjunction) -> SubExpressionInfo {
+    fn emit_disjunction(&mut self, disjunction: &Disjunction) {
         if disjunction.alternatives.len() == 1 {
             self.emit_alternative(&disjunction.alternatives[0])
         } else {
@@ -361,14 +345,11 @@ impl CompiledRegExpBuilder {
             // Block that all alternatives join to at the end
             let join_block_id = self.new_block();
 
-            // Combine captures from all alternatives
-            let mut captures = vec![];
-
             // Emit all alternative blocks
             struct AlternativeBlock {
                 entry_block: usize,
                 exit_block: usize,
-                captures: Vec<CaptureGroupIndex>,
+                captures: Option<CaptureGroupRange>,
             }
             let mut alternative_blocks: Vec<AlternativeBlock> = vec![];
 
@@ -376,15 +357,13 @@ impl CompiledRegExpBuilder {
                 let alternative_block_id = self.new_block();
                 self.set_current_block(alternative_block_id);
 
-                let info = self.emit_alternative(alternative);
+                self.emit_alternative(alternative);
 
                 alternative_blocks.push(AlternativeBlock {
                     entry_block: alternative_block_id,
                     exit_block: self.current_block_id,
-                    captures: info.captures.clone(),
+                    captures: alternative.captures,
                 });
-
-                captures.extend(info.captures);
             }
 
             // If this disjunction is in a repetition we must clear the captures for all
@@ -394,11 +373,11 @@ impl CompiledRegExpBuilder {
                 // next branch block, since all successful paths that don't match the previous
                 // alternative will necessarily pass through the next branch block.
                 for i in 1..alternative_blocks.len() - 1 {
-                    if !alternative_blocks[i - 1].captures.is_empty() {
+                    if !alternative_blocks[i - 1].captures.is_none() {
                         let prev_alternative_captures = &alternative_blocks[i - 1].captures;
                         self.set_current_block(branch_block_ids[i]);
-                        for capture_index in prev_alternative_captures {
-                            self.emit_clear_capture_instruction(*capture_index);
+                        for capture_index in (*prev_alternative_captures).into_iter().flatten() {
+                            self.emit_clear_capture_instruction(capture_index);
                         }
                     }
                 }
@@ -408,11 +387,11 @@ impl CompiledRegExpBuilder {
                 // to match,
                 let penultimate_alternative_captures =
                     &alternative_blocks[alternative_blocks.len() - 2].captures;
-                for capture_index in penultimate_alternative_captures {
+                for capture_index in (*penultimate_alternative_captures).into_iter().flatten() {
                     self.set_current_block(
                         alternative_blocks[alternative_blocks.len() - 1].exit_block,
                     );
-                    self.emit_clear_capture_instruction(*capture_index);
+                    self.emit_clear_capture_instruction(capture_index);
                 }
 
                 // Note that the last alternative does not need its captures cleared when entering
@@ -429,13 +408,13 @@ impl CompiledRegExpBuilder {
             // clear block that clears the captures for all later alternatives.
             for i in (1..alternative_blocks.len()).rev() {
                 let alternative_captures = &alternative_blocks[i].captures;
-                if self.is_in_repetition() && !alternative_captures.is_empty() {
+                if self.is_in_repetition() && alternative_captures.is_some() {
                     let clear_capture_block_id = self.new_block();
 
                     // Emit this clear block and set it as the current one
                     self.set_current_block(clear_capture_block_id);
-                    for capture_index in alternative_captures {
-                        self.emit_clear_capture_instruction(*capture_index);
+                    for capture_index in (*alternative_captures).into_iter().flatten() {
+                        self.emit_clear_capture_instruction(capture_index);
                     }
 
                     // Link to the next clear (or join) block in the chain
@@ -476,63 +455,38 @@ impl CompiledRegExpBuilder {
 
             // Disjunction ends at start of join block
             self.set_current_block(join_block_id);
-
-            SubExpressionInfo::with_captures(captures)
         }
     }
 
-    fn emit_alternative(&mut self, alternative: &Alternative) -> SubExpressionInfo {
+    fn emit_alternative(&mut self, alternative: &Alternative) {
         if self.is_forwards() {
-            self.emit_alternative_terms(alternative.terms.iter())
+            for term in alternative.terms.iter() {
+                self.emit_term(term);
+            }
         } else {
             // When emitting backwards, emit concatenation of terms in reverse order
-            self.emit_alternative_terms(alternative.terms.iter().rev())
+            for term in alternative.terms.iter().rev() {
+                self.emit_term(term);
+            }
         }
     }
 
-    fn emit_alternative_terms<'a, 'b: 'a>(
-        &mut self,
-        iter: impl Iterator<Item = &'a Term<'b>>,
-    ) -> SubExpressionInfo {
-        // Accumulate all captures from terms
-        let mut captures = vec![];
-
-        for term in iter {
-            let info = self.emit_term(term);
-            captures.extend(info.captures);
-        }
-
-        SubExpressionInfo::with_captures(captures)
-    }
-
-    fn emit_term(&mut self, term: &Term) -> SubExpressionInfo {
+    fn emit_term(&mut self, term: &Term) {
         match term {
             Term::Literal(string) => {
                 self.emit_literal(string);
-
-                // Literals are non-empty so they always consume a character
-                SubExpressionInfo::no_captures()
             }
             Term::Wildcard => {
                 self.emit_wildcard();
-
-                // The wildcard always consumes a character
-                SubExpressionInfo::no_captures()
             }
             Term::Quantifier(quantifier) => self.emit_quantifier(quantifier),
             Term::Assertion(assertion) => {
                 self.emit_assertion(assertion);
-
-                // Assertions never consume a character
-                SubExpressionInfo::no_captures()
             }
             Term::CaptureGroup(group) => self.emit_capture_group(group),
             Term::AnonymousGroup(group) => self.emit_anonymous_group(group),
             Term::CharacterClass(character_class) => {
                 self.emit_character_class(character_class);
-
-                // Character classes always consume a character
-                SubExpressionInfo::no_captures()
             }
             Term::Lookaround(lookaround) => self.emit_lookaround(lookaround),
             Term::Backreference(backreference) => {
@@ -540,9 +494,6 @@ impl CompiledRegExpBuilder {
                     self.current_flags().is_case_insensitive(),
                     backreference.index,
                 );
-
-                // Backreferences may be empty depending on what was captured
-                SubExpressionInfo::no_captures()
             }
         }
     }
@@ -652,7 +603,7 @@ impl CompiledRegExpBuilder {
         result
     }
 
-    fn emit_quantifier(&mut self, quantifier: &Quantifier) -> SubExpressionInfo {
+    fn emit_quantifier(&mut self, quantifier: &Quantifier) {
         let is_inside_repetition = self.is_in_repetition();
 
         // A repetition is any quantifier that can be run at least twice
@@ -672,19 +623,16 @@ impl CompiledRegExpBuilder {
         self.emit_jump_instruction(quantifier_patch_block);
         self.set_current_block(quantifier_start_block);
 
-        // Quantifier always has the same captures as its wrapped term.
-        let mut quantifier_info = SubExpressionInfo::no_captures();
-
         // Can inline a small number of repetitions otherwise use a loop
         if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
             // Emit term min times for repetitions that must be present. Clear captures from the
             // previous iteration (if any).
             for i in 0..quantifier.min {
-                quantifier_info = if i == 0 {
+                if i == 0 {
                     self.emit_term(&quantifier.term)
                 } else {
-                    self.emit_term_with_cleared_captures(&quantifier.term)
-                };
+                    self.emit_quantified_term_with_cleared_captures(quantifier)
+                }
             }
         } else if quantifier.min > u32::MAX as u64 {
             // The minimum number of repetitions is greater than the max possible string length.
@@ -707,7 +655,7 @@ impl CompiledRegExpBuilder {
                     loop_end_block_id as u32,
                 );
 
-                quantifier_info = this.emit_term_with_cleared_captures(&quantifier.term);
+                this.emit_quantified_term_with_cleared_captures(quantifier);
 
                 this.emit_jump_instruction(loop_block_id);
             });
@@ -726,7 +674,7 @@ impl CompiledRegExpBuilder {
                     self.exit_repetition_context();
                 }
 
-                return quantifier_info;
+                return;
             }
 
             let join_block_id = self.new_block();
@@ -744,10 +692,10 @@ impl CompiledRegExpBuilder {
                     let term_block_id = self.new_block();
                     self.set_current_block(term_block_id);
 
-                    let info = if i == 0 {
+                    if i == 0 {
                         self.emit_term(&quantifier.term)
                     } else {
-                        self.emit_term_with_cleared_captures(&quantifier.term)
+                        self.emit_quantified_term_with_cleared_captures(quantifier)
                     };
 
                     // Each optional iteration of quantifier must consume at least one character.
@@ -768,7 +716,6 @@ impl CompiledRegExpBuilder {
                         if i == 0 && is_inside_repetition && quantifier.has_captures() {
                             this.emit_quantifier_clear_captures_branch(
                                 quantifier,
-                                &info,
                                 term_block_id,
                                 join_block_id,
                             )
@@ -776,8 +723,6 @@ impl CompiledRegExpBuilder {
                             this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
                         }
                     });
-
-                    quantifier_info.captures = info.captures;
                 }
 
                 // Last term block always proceeds to the join block
@@ -794,7 +739,7 @@ impl CompiledRegExpBuilder {
                 // Will emit the branch to the loop block later
 
                 // Loop block consists of loop instruction, term, then branches back to start of block
-                let info = self.in_block(loop_block_id, |this| {
+                self.in_block(loop_block_id, |this| {
                     let loop_register_index = this.next_loop_register();
                     this.emit_loop_instruction(
                         loop_register_index,
@@ -802,7 +747,7 @@ impl CompiledRegExpBuilder {
                         join_block_id as u32,
                     );
 
-                    let info = this.emit_term_with_cleared_captures(&quantifier.term);
+                    this.emit_quantified_term_with_cleared_captures(quantifier);
 
                     // Each optional iteration of quantifier must consume at least one character.
                     // We can ensure this by emitting a progress instruction which checks that
@@ -813,8 +758,6 @@ impl CompiledRegExpBuilder {
                     }
 
                     this.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
-
-                    info
                 });
 
                 // Emit the branch to the loop block from predecessor
@@ -825,15 +768,12 @@ impl CompiledRegExpBuilder {
                 if quantifier.min == 0 && is_inside_repetition && quantifier.has_captures() {
                     self.emit_quantifier_clear_captures_branch(
                         quantifier,
-                        &info,
                         loop_block_id,
                         join_block_id,
                     )
                 } else {
                     self.emit_quantifier_branch(quantifier, loop_block_id, join_block_id);
                 }
-
-                quantifier_info.captures = info.captures;
             }
 
             // Quantifier ends at start of join block
@@ -847,7 +787,7 @@ impl CompiledRegExpBuilder {
 
             // Emit term block
             self.set_current_block(term_block_id);
-            let info = self.emit_term_with_cleared_captures(&quantifier.term);
+            self.emit_quantified_term_with_cleared_captures(quantifier);
 
             // Optionally enter term block from predecessor block
             self.in_block(pred_block_id, |this| {
@@ -856,7 +796,6 @@ impl CompiledRegExpBuilder {
                 if is_inside_repetition && quantifier.has_captures() {
                     this.emit_quantifier_clear_captures_branch(
                         quantifier,
-                        &info,
                         term_block_id,
                         join_block_id,
                     );
@@ -864,8 +803,6 @@ impl CompiledRegExpBuilder {
                     this.emit_quantifier_branch(quantifier, term_block_id, join_block_id);
                 }
             });
-
-            quantifier_info.captures = info.captures;
 
             // Each optional iteration of quantifier must consume at least one character. We can
             // ensure this by emitting a progress instruction which checks that progress has been
@@ -898,12 +835,10 @@ impl CompiledRegExpBuilder {
                 this.emit_progress_instruction(progress_index);
             });
 
-            for capture_index in &quantifier_info.captures {
-                self.emit_clear_capture_if_no_progress_instruction(*capture_index, progress_index);
+            for capture_index in quantifier.captures.into_iter().flatten() {
+                self.emit_clear_capture_if_no_progress_instruction(capture_index, progress_index);
             }
         }
-
-        quantifier_info
     }
 
     fn emit_quantifier_branch(
@@ -920,11 +855,10 @@ impl CompiledRegExpBuilder {
     }
 
     /// Emit a quantifier branch that clears all the provided captures along the edge to the
-    /// provided join block.
+    /// provided join block
     fn emit_quantifier_clear_captures_branch(
         &mut self,
         quantifier: &Quantifier,
-        info: &SubExpressionInfo,
         term_block_id: BlockId,
         join_block_id: BlockId,
     ) {
@@ -934,8 +868,8 @@ impl CompiledRegExpBuilder {
         self.emit_quantifier_branch(quantifier, term_block_id, clear_block_id);
 
         self.set_current_block(clear_block_id);
-        for capture_index in &info.captures {
-            self.emit_clear_capture_instruction(*capture_index);
+        for capture_index in quantifier.captures.into_iter().flatten() {
+            self.emit_clear_capture_instruction(capture_index);
         }
 
         self.emit_jump_instruction(join_block_id);
@@ -945,24 +879,22 @@ impl CompiledRegExpBuilder {
     ///
     /// Used for terms in quantifiers, since all captures are cleared at the start of each
     /// repetition.
-    fn emit_term_with_cleared_captures(&mut self, term: &Term) -> SubExpressionInfo {
+    fn emit_quantified_term_with_cleared_captures(&mut self, quantifier: &Quantifier) {
         let clear_captures_block = self.new_block();
         let term_block = self.new_block();
         self.emit_jump_instruction(clear_captures_block);
         self.set_current_block(term_block);
 
-        let info = self.emit_term(term);
+        self.emit_term(&quantifier.term);
 
         self.in_block(clear_captures_block, |this| {
-            for capture_index in &info.captures {
-                this.emit_clear_capture_instruction(*capture_index);
+            for capture_index in quantifier.captures.into_iter().flatten() {
+                this.emit_clear_capture_instruction(capture_index);
             }
         });
-
-        info
     }
 
-    fn emit_capture_group(&mut self, group: &CaptureGroup) -> SubExpressionInfo {
+    fn emit_capture_group(&mut self, group: &CaptureGroup) {
         // Calculate capture point indices from capture group
         let mut capture_start_index = group.index * 2;
         let mut capture_end_index = capture_start_index + 1;
@@ -973,16 +905,11 @@ impl CompiledRegExpBuilder {
         }
 
         self.emit_mark_capture_point_instruction(capture_start_index);
-        let mut info = self.emit_disjunction(&group.disjunction);
+        self.emit_disjunction(&group.disjunction);
         self.emit_mark_capture_point_instruction(capture_end_index);
-
-        // Add this capture group to the set of captures
-        info.captures.push(group.index);
-
-        info
     }
 
-    fn emit_anonymous_group(&mut self, group: &AnonymousGroup) -> SubExpressionInfo {
+    fn emit_anonymous_group(&mut self, group: &AnonymousGroup) {
         // Update the set of current flags if any modifiers are present in this group
         let has_modifiers =
             !group.positive_modifiers.is_empty() || !group.negative_modifiers.is_empty();
@@ -992,13 +919,11 @@ impl CompiledRegExpBuilder {
             self.flags.push(new_flags);
         }
 
-        let info = self.emit_disjunction(&group.disjunction);
+        self.emit_disjunction(&group.disjunction);
 
         if has_modifiers {
             self.flags.pop();
         }
-
-        info
     }
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
@@ -1394,7 +1319,7 @@ impl CompiledRegExpBuilder {
         self.set_current_block(join_block_id);
     }
 
-    fn emit_lookaround(&mut self, lookaround: &Lookaround) -> SubExpressionInfo {
+    fn emit_lookaround(&mut self, lookaround: &Lookaround) {
         let body_block_id = self.new_block();
         self.emit_lookaround_instruction(
             lookaround.is_ahead,
@@ -1416,14 +1341,12 @@ impl CompiledRegExpBuilder {
         self.set_current_block(body_block_id);
 
         // Emit the body of the lookaround, keeping track of captures
-        let info = self.emit_disjunction(&lookaround.disjunction);
+        self.emit_disjunction(&lookaround.disjunction);
         self.emit_accept_instruction();
 
         self.exit_direction_context();
 
         self.set_current_block(current_block_id);
-
-        info
     }
 
     /// Convert the list of blocks to a flat list of instructions. Branch and jump instructions

@@ -78,9 +78,14 @@ pub trait LexerStream {
     /// may not be a buffer of bytes but the return type is always a byte slice.
     fn slice(&self, start: Pos, end: Pos) -> &[u8];
 
-    /// Return whether the slice of the underlying buffer starting at the provided index is equal to
-    /// a byte slice returned from `slice`. Note that the underlying buffer may not be a buffer of
-    /// bytes but we always take in a byte slice.
+    /// Return whether the slice of code points in the underlying buffer starting at the provided
+    /// index is equal to a slice of code points represented as a byte slice returned from `slice`.
+    ///
+    /// Only matches if the slice in the underlying buffer contains full code points (i.e. no match
+    /// if the slice would split surrogate pairs).
+    ///
+    /// Note that the underlying buffer may not be a buffer of bytes but we always take in a byte
+    /// slice.
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool;
 
     /// Return an error with location between start_pos and the current position
@@ -396,6 +401,7 @@ impl LexerStream for HeapOneByteLexerStream<'_> {
     }
 
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+        // All indices are valid code point boundaries since surrogate code units cannot appear
         let end = start + slice.len();
         if end > self.buf.len() {
             return false;
@@ -557,6 +563,7 @@ impl LexerStream for HeapTwoByteCodeUnitLexerStream<'_> {
     }
 
     fn slice_equals(&self, start: Pos, slice: &[u8]) -> bool {
+        // All indices are valid code point boundaries since code units are never paired
         let slice =
             unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
 
@@ -768,7 +775,10 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
             unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u16, slice.len() / 2) };
 
         let end = start + slice.len();
-        if end > self.buf.len() {
+        if end > self.buf.len()
+            || !self.is_valid_code_point_boundary(start)
+            || !self.is_valid_code_point_boundary(end)
+        {
             return false;
         }
 
@@ -786,5 +796,30 @@ impl LexerStream for HeapTwoByteCodePointLexerStream<'_> {
     fn restore(&mut self, save_state: &SavedLexerStreamState) {
         self.current = save_state.current;
         self.pos = save_state.pos;
+    }
+}
+
+impl HeapTwoByteCodePointLexerStream<'_> {
+    /// Whether the index points to a valid code point boundary. The only invalid boundaries are
+    /// between paired surrogate code units.
+    fn is_valid_code_point_boundary(&self, pos: Pos) -> bool {
+        if pos > self.buf.len() {
+            return false;
+        } else if pos == 0 || pos == self.buf.len() {
+            return true;
+        }
+
+        let code_unit = self.buf[pos];
+        if !is_low_surrogate_code_unit(code_unit) {
+            return true;
+        }
+
+        let prev_code_unit = self.buf[pos - 1];
+        if !is_high_surrogate_code_unit(prev_code_unit) {
+            return true;
+        }
+
+        // Index is between a surrogate pair, so not a valid boundary
+        false
     }
 }

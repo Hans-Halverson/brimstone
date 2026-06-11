@@ -1906,17 +1906,16 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // Unicode escape sequences always start with `\u`
         self.advance();
-
-        let after_slash_state = self.save();
-
         self.expect('u')?;
+
+        let after_u_state = self.save();
 
         // In unicode aware mode the escape sequence \u{digits} is allowed
         if self.eat('{') {
             // If not in unicode aware mode this was an escaped 'u' and following characters should
             // be parsed separately.
             if !is_unicode_aware {
-                self.restore(&after_slash_state);
+                self.restore(&after_u_state);
                 return Ok('u' as u32);
             }
 

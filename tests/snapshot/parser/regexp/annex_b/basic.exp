@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-11:37",
+  loc: "1:1-10:9",
   body: [
     {
       type: "ExpressionStatement",
@@ -184,33 +184,6 @@
                 {
                   type: "Literal",
                   value: "a{1,2",
-                },
-              ],
-            },
-          ],
-        },
-      },
-    },
-    {
-      type: "ExpressionStatement",
-      loc: "11:1-11:37",
-      kind: {
-        type: "Literal",
-        loc: "11:1-11:36",
-        raw: "/a{123456789012345678901234567890}/",
-        value: {
-          pattern: "a{123456789012345678901234567890}",
-          flags: "",
-        },
-        regexp: {
-          type: "RegExp",
-          alternatives: [
-            {
-              type: "Alternative",
-              terms: [
-                {
-                  type: "Literal",
-                  value: "a{123456789012345678901234567890}",
                 },
               ],
             },

@@ -1963,9 +1963,10 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Speculatively parse the next code unit, checking if it forms a surrogate pair. If not
             // then restore to before the next code unit.
             self.advance2();
-            let next_code_unit = self.parse_hex4_digits(start_pos)?;
-            if is_low_surrogate_code_unit(next_code_unit) {
-                return Ok(code_point_from_surrogate_pair(code_unit, next_code_unit));
+            if let Ok(next_code_unit) = self.parse_hex4_digits(start_pos) {
+                if is_low_surrogate_code_unit(next_code_unit) {
+                    return Ok(code_point_from_surrogate_pair(code_unit, next_code_unit));
+                }
             }
 
             self.restore(&save_state);

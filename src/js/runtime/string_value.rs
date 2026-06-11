@@ -530,8 +530,10 @@ impl Handle<StringValue> {
                         // ASCII lowercase
                         *latin1_byte >= b'A' && *latin1_byte <= b'Z'
                     } else {
-                        // Latin1 lowercase
-                        *latin1_byte >= b'\xC0' && *latin1_byte <= b'\xDE'
+                        // Latin1 lowercase. Note the exclusion of the multiplication sign 0xD7.
+                        *latin1_byte >= b'\xC0'
+                            && *latin1_byte <= b'\xDE'
+                            && *latin1_byte != b'\xD7'
                     };
 
                     if set_lowercase {

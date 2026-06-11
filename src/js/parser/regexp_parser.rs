@@ -1385,21 +1385,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         let mut operands = self.alloc_vec_with_element(first_operand);
 
         let expression_type;
-        let mut may_contain_strings;
+        let mut may_contain_strings = first_operand_may_contain_strings;
 
         if self.is_at_class_intersection_operator() {
             // Intersection character class
             expression_type = ClassExpressionType::Intersection;
-
-            // All operands must contain strings for the entire intersection to contain strings
-            may_contain_strings = true;
 
             while self.is_at_class_intersection_operator() {
                 self.advance2();
 
                 let (operand, operand_may_contain_strings) = self.parse_class_set_operand()?;
 
-                // If any operand does not contain strings, the entire intersection also cannot
+                // The entire intersection may contain strings iff all operands may contain strings
                 if !operand_may_contain_strings {
                     may_contain_strings = false;
                 }
@@ -1410,9 +1407,6 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Difference character class
             expression_type = ClassExpressionType::Difference;
 
-            // The entire difference may contains strings if the first operand does
-            may_contain_strings = first_operand_may_contain_strings;
-
             while self.is_at_class_difference_operator() {
                 self.advance2();
 
@@ -1422,13 +1416,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         } else if self.current() == ']' as u32 {
             // Single operand union
             expression_type = ClassExpressionType::Union;
-            may_contain_strings = first_operand_may_contain_strings;
         } else {
             // Non-empty union character class
             expression_type = ClassExpressionType::Union;
-
-            // The entire union may contain strings if any operand does
-            may_contain_strings = false;
 
             // Check if the first operand is actually the left side of a range
             if self.current() == '-' as u32 {
@@ -1443,6 +1433,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 let operand_start_pos = self.pos();
                 let (operand, operand_has_strings) = self.parse_class_set_operand()?;
 
+                // The entire union may contain strings if any operand does
                 if operand_has_strings {
                     may_contain_strings = true;
                 }

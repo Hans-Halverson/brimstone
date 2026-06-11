@@ -1,3 +1,5 @@
+use brimstone_icu_collections::has_simple_uppercase_override;
+
 use crate::{
     common::{
         constants::MEGABYTE_BYTES,
@@ -831,7 +833,7 @@ pub fn run_matcher(
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)
 #[inline]
-pub fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint {
+fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint {
     if is_unicode_aware {
         // Use simple case folding for Unicode-aware case-insensitive matching
         match char::from_u32(code_point) {
@@ -842,6 +844,12 @@ pub fn canonicalize(code_point: CodePoint, is_unicode_aware: bool) -> CodePoint 
         match char::from_u32(code_point) {
             None => code_point,
             Some(c) => {
+                // Overrides for cases where `simple_uppercase` should not be used since code point
+                // actually maps to a sequence of multiple code points.
+                if has_simple_uppercase_override(c) {
+                    return code_point;
+                }
+
                 // Use simple uppercase for non-Unicode-aware case-insensitive matching
                 let uppercase_code_point = ICU.case_mapper.simple_uppercase(c) as CodePoint;
 

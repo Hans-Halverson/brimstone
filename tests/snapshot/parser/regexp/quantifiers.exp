@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-14:11",
+  loc: "1:1-17:11",
   body: [
     {
       type: "ExpressionStatement",
@@ -391,6 +391,47 @@
                   min: 1,
                   max: 2,
                   is_greedy: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "17:1-17:11",
+      kind: {
+        type: "Literal",
+        loc: "17:1-17:10",
+        raw: "/a\u{2}b/",
+        value: {
+          pattern: "a\u{2}b",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Literal",
+                  value: "a",
+                },
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "u",
+                  },
+                  min: 2,
+                  max: 2,
+                  is_greedy: true,
+                },
+                {
+                  type: "Literal",
+                  value: "b",
                 },
               ],
             },

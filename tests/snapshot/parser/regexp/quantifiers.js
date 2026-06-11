@@ -12,3 +12,6 @@
 /a{1}?/;
 /a{1,}?/;
 /a{1,2}?/;
+
+// Quantifier, not a unicode escape in Annex B
+/a\u{2}b/;

@@ -846,15 +846,27 @@ impl CompiledRegExpBuilder {
 
     fn emit_character_class(&mut self, character_class: &CharacterClass) {
         let flags = self.current_flags();
-        let (set, strings) = self.character_class_to_set(character_class);
+        let (set, mut strings) = self.character_class_to_set(character_class);
 
-        // First check strings if there are any
-        let mut join_block = None;
-        if !strings.is_empty() {
-            let join_block_id = self.new_block();
-            self.emit_class_string_disjunction(&strings, join_block_id);
-            join_block = Some(join_block_id);
+        struct StringDisjunctionInfo {
+            join_block_id: BlockId,
+            has_empty_string: bool,
         }
+
+        // First check non-empty strings if there are any. The empty string is handled separately
+        // from other strings since it must be checked after individual code points.
+        let string_disjunction_info = if !strings.is_empty() {
+            let join_block_id = self.new_block();
+            let has_empty_string = strings.remove(&AnyStr::Str(""));
+
+            if !strings.is_empty() {
+                self.emit_class_string_disjunction(&strings, join_block_id);
+            }
+
+            Some(StringDisjunctionInfo { join_block_id, has_empty_string })
+        } else {
+            None
+        };
 
         // If comparison is case insensitive then expand the set of code points to include the
         // case insensitive closure of all code points in the set.
@@ -867,12 +879,23 @@ impl CompiledRegExpBuilder {
         // In unicode sets mode the set was eagerly inverted instead of inverting at the end
         let is_check_inverted = character_class.is_inverted && !flags.has_unicode_sets_flag();
 
+        // If a string disjunction had the empty string then we will always match the empty string
+        // iff no individual code points match. Note the order since we match longer strings first.
+        if let Some(StringDisjunctionInfo { has_empty_string: true, join_block_id }) =
+            string_disjunction_info
+        {
+            let code_point_check_block = self.new_block();
+            self.emit_branch_instruction(code_point_check_block, join_block_id);
+            self.set_current_block(code_point_check_block);
+        }
+
+        // Check individual code points
         self.emit_code_point_set(&set, is_check_inverted);
 
-        // If there is a join block (needed from string disjunction) then proceed to it
-        if let Some(join_block) = join_block {
-            self.emit_jump_instruction(join_block);
-            self.set_current_block(join_block);
+        // If there is a string disjunction then proceed to the final join block
+        if let Some(StringDisjunctionInfo { join_block_id, .. }) = string_disjunction_info {
+            self.emit_jump_instruction(join_block_id);
+            self.set_current_block(join_block_id);
         }
     }
 

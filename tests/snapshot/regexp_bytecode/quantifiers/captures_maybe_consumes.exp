@@ -306,3 +306,45 @@
     30: Jump(25)
     32: Jump(25)
 }
+
+[CompiledRegExpObject: /a([\q{c|}])*b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Progress(0)
+    12: SetProgress(1)
+    14: Branch(17, 24)
+    17: ClearCapture(1)
+    19: MarkCapturePoint(2)
+    21: Branch(38, 31)
+    24: ClearCaptureIfNoProgress(1, 0)
+    27: Literal(b)
+    28: MarkCapturePoint(1)
+    30: Accept
+    31: MarkCapturePoint(3)
+    33: Progress(1)
+    35: Branch(17, 24)
+    38: Literal(c)
+    39: Jump(31)
+}
+
+[CompiledRegExpObject: /a([\q{c}])*b/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(a)
+    10: Progress(0)
+    12: Branch(15, 25)
+    15: ClearCapture(1)
+    17: MarkCapturePoint(2)
+    19: Literal(c)
+    20: MarkCapturePoint(3)
+    22: Branch(15, 25)
+    25: ClearCaptureIfNoProgress(1, 0)
+    28: Literal(b)
+    29: MarkCapturePoint(1)
+    31: Accept
+}

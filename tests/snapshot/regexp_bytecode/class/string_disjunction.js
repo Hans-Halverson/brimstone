@@ -1,5 +1,4 @@
 /[\q{ab}c]/v;
-/[\q{}]/v;
 
 // Multiple alternatives
 /[\q{ab|abcde|abc}]/v;
@@ -15,3 +14,18 @@
 
 // Subtraction
 /[\q{aa|bb}--\q{aa}]/v;
+
+// Empty strings
+/[\q{}]/v;
+/x[\q{|}]y/v;
+
+// Empty string with other strings
+/x[\q{abc|}]y/v;
+/x[\q{|abc}]y/v;
+
+// Empty string with code points
+/x[\q{a|}]y/v;
+/x[\q{|a}]y/v;
+
+// Empty string, code points, and strings
+/x[\q{|a|abc}]y/v;

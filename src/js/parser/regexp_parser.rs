@@ -818,7 +818,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 _ => {}
             }
 
-            // We now know this is actaully an asertion. Validate its lower and upper bounds and
+            // We now know this is actually a quantifier. Validate its lower and upper bounds and
             // make sure they are compatible.
             let ParsedQuantifierBound::Valid(lower_bound) = lower_bound else {
                 return self.error(quantifier_pos, ParseError::QuantifierBoundTooLarge);
@@ -833,7 +833,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     Some(upper_bound)
                 }
                 Some(ParsedQuantifierBound::OutOfRange) => {
-                    return self.error(quantifier_pos, ParseError::InvalidQuantifierBounds);
+                    return self.error(quantifier_pos, ParseError::QuantifierBoundTooLarge);
                 }
                 None => None,
             };

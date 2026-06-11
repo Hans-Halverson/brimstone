@@ -471,10 +471,22 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 '*' | '+' | '?' => {
                     return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
                 }
-                // ']', '{', and '}' are only valid pattern characters in Annex B non-unicode mode
-                '{' if !self.in_annex_b_mode || self.is_unicode_aware() => {
-                    return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
+                '{' => {
+                    // '{' may only be a valid pattern character in Annex B non-unicode mode
+                    if !self.in_annex_b_mode || self.is_unicode_aware() {
+                        return self.error(self.pos(), ParseError::UnexpectedRegExpQuantifier);
+                    }
+
+                    // But only if '{' is not the start of a quantifier
+                    let start_pos = self.pos();
+                    let save_state = self.save();
+                    if self.parse_braced_quantifier().is_ok() {
+                        return self.error(start_pos, ParseError::UnexpectedRegExpQuantifier);
+                    }
+
+                    self.restore(&save_state);
                 }
+                // ']' and '}' are only valid pattern characters in Annex B non-unicode mode
                 '}' | ']' if !self.in_annex_b_mode || self.is_unicode_aware() =>
                     return self.error_unexpected_token(self.pos()),
                 // Valid ends to an alternative

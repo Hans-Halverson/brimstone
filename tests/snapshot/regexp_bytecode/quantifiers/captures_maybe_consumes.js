@@ -22,3 +22,9 @@
 
 // Loop exact repetitions
 /a(x|){100}b/;
+
+// Empty string does not consume
+/a([\q{c|}])*b/v;
+
+// Any string disjunction conservatively may not consume
+/a([\q{c}])*b/v;

@@ -19,6 +19,7 @@ use crate::{
             BinaryUnicodeProperty, BinaryUnicodePropertyOfStrings, GeneralCategoryProperty,
             ScriptProperty, UnicodeProperty,
         },
+        wtf_8::Wtf8Str,
     },
     p,
     parser::{
@@ -541,6 +542,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     }
 
     fn parse_term(&mut self) -> ParseResult<ParsedTerm<'a>> {
+        // Character classes are assumed to always consume by default
+        let mut class_always_consumes = true;
+
         // Parse a single atomic term
         let term = match_u32!(match self.current() {
             '.' => {
@@ -557,7 +561,13 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             }
             '[' => {
                 if self.flags.has_unicode_sets_flag() {
-                    let (character_class, _) = self.parse_unicode_sets_character_class()?;
+                    let (character_class, may_contain_strings) =
+                        self.parse_unicode_sets_character_class()?;
+
+                    // We don't know what strings were included yet but since it's possible for the
+                    // empty string to match we cannot assume this class always consumes input.
+                    class_always_consumes = !may_contain_strings;
+
                     Term::CharacterClass(character_class)
                 } else {
                     self.parse_standard_character_class()?
@@ -728,8 +738,11 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         });
 
         let info = match &term {
-            Term::Literal(_) | Term::Wildcard | Term::CharacterClass(_) => {
+            Term::Literal(_) | Term::Wildcard => {
                 ExpressionInfo { always_consumes: true, captures: None }
+            }
+            Term::CharacterClass(_) => {
+                ExpressionInfo { always_consumes: class_always_consumes, captures: None }
             }
             Term::Assertion(_) | Term::Backreference(_) => {
                 ExpressionInfo { always_consumes: false, captures: None }
@@ -1775,21 +1788,16 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         self.advance2();
         self.expect('{')?;
 
-        let mut alternatives = self.alloc_vec();
-
         // Keep track of whether this disjunction contains strings, as opposed to contains only
         // single code points.
         //
-        // Note that this means the empty string is considered a string. So initially check for an
-        // entirely empty disjunction.
-        let mut may_contain_strings = self.current() == '}' as u32;
+        // Note that this means the empty string is considered a string.
+        let mut may_contain_strings = false;
+        let mut alternatives = self.alloc_vec();
 
         while self.current() != '}' as u32 {
             let (alternative, len) = self.parse_string_disjunction_alternative()?;
-
-            if !alternative.is_empty() {
-                alternatives.push(alternative);
-            }
+            alternatives.push(alternative);
 
             if len != 1 {
                 may_contain_strings = true;
@@ -1802,11 +1810,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Check for a trailing `|` which means there is a final empty alternative
             if self.current() == '}' as u32 {
                 may_contain_strings = true;
+                alternatives.push(Wtf8Str::from_str(""));
                 break;
             }
         }
 
         self.expect('}')?;
+
+        // An `\q{}` is treated as a single alternative of the empty string
+        if alternatives.is_empty() {
+            may_contain_strings = true;
+            alternatives.push(Wtf8Str::from_str(""));
+        }
 
         Ok((StringDisjunction { alternatives: alternatives.build() }, may_contain_strings))
     }

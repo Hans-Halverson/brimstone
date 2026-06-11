@@ -25,7 +25,9 @@
                   ranges: [
                     {
                       type: "StringDisjunction",
-                      alternatives: [],
+                      alternatives: [
+                        "",
+                      ],
                     },
                   ],
                 },
@@ -202,6 +204,7 @@
                     {
                       type: "StringDisjunction",
                       alternatives: [
+                        "",
                         "a",
                       ],
                     },
@@ -237,6 +240,9 @@
                     {
                       type: "StringDisjunction",
                       alternatives: [
+                        "",
+                        "",
+                        "",
                         "a",
                       ],
                     },
@@ -273,6 +279,7 @@
                       type: "StringDisjunction",
                       alternatives: [
                         "a",
+                        "",
                       ],
                     },
                   ],
@@ -308,6 +315,9 @@
                       type: "StringDisjunction",
                       alternatives: [
                         "a",
+                        "",
+                        "",
+                        "",
                       ],
                     },
                   ],
@@ -341,7 +351,12 @@
                   ranges: [
                     {
                       type: "StringDisjunction",
-                      alternatives: [],
+                      alternatives: [
+                        "",
+                        "",
+                        "",
+                        "",
+                      ],
                     },
                   ],
                 },

@@ -13,16 +13,6 @@
     20: Jump(12)
 }
 
-[CompiledRegExpObject: /[\q{}]/] {
-     0: Branch(7, 3)
-     3: Wildcard
-     4: Branch(7, 3)
-     7: MarkCapturePoint(0)
-     9: ConsumeIfTrue
-    10: MarkCapturePoint(1)
-    12: Accept
-}
-
 [CompiledRegExpObject: /[\q{ab|abcde|abc}]/] {
      0: Branch(7, 3)
      3: Wildcard
@@ -121,4 +111,115 @@
     17: Jump(12)
     19: ConsumeIfTrue
     20: Jump(12)
+}
+
+[CompiledRegExpObject: /[\q{}]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Branch(15, 12)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: ConsumeIfTrue
+    16: Jump(12)
+}
+
+[CompiledRegExpObject: /x[\q{|}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 13)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: ConsumeIfTrue
+    18: Jump(13)
+}
+
+[CompiledRegExpObject: /x[\q{abc|}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 22)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Literal(a)
+    18: Literal(b)
+    19: Literal(c)
+    20: Jump(13)
+    22: Branch(25, 13)
+    25: ConsumeIfTrue
+    26: Jump(13)
+}
+
+[CompiledRegExpObject: /x[\q{|abc}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 22)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Literal(a)
+    18: Literal(b)
+    19: Literal(c)
+    20: Jump(13)
+    22: Branch(25, 13)
+    25: ConsumeIfTrue
+    26: Jump(13)
+}
+
+[CompiledRegExpObject: /x[\q{a|}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 13)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Literal(a)
+    18: Jump(13)
+}
+
+[CompiledRegExpObject: /x[\q{|a}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 13)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Literal(a)
+    18: Jump(13)
+}
+
+[CompiledRegExpObject: /x[\q{|a|abc}]y/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Literal(x)
+    10: Branch(17, 22)
+    13: Literal(y)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: Literal(a)
+    18: Literal(b)
+    19: Literal(c)
+    20: Jump(13)
+    22: Branch(25, 13)
+    25: Literal(a)
+    26: Jump(13)
 }

@@ -1010,8 +1010,13 @@ impl CompiledRegExpBuilder {
 
         let mut case_folded_set = CodePointInversionListBuilder::new();
 
-        for code_point in set.iter_chars() {
-            case_folded_set.add_char(ICU.case_mapper.simple_fold(code_point))
+        for code_point in iter_code_point_inversion_list(&set) {
+            if let Some(char) = char::from_u32(code_point) {
+                case_folded_set.add_char(ICU.case_mapper.simple_fold(char));
+            } else {
+                // Keep unpaired surrogates in the set
+                case_folded_set.add32(code_point);
+            }
         }
 
         case_folded_set.build()
@@ -1138,8 +1143,13 @@ impl CompiledRegExpBuilder {
     /// character in the given set.
     fn case_close_over(&self, set: &CodePointInversionList) -> CodePointInversionList<'static> {
         let mut set_builder = CodePointInversionListBuilder::new();
-        for code_point in set.iter_chars() {
-            self.add_case_closure(&mut set_builder, code_point);
+        for code_point in iter_code_point_inversion_list(set) {
+            if let Some(char) = char::from_u32(code_point) {
+                self.add_case_closure(&mut set_builder, char);
+            } else {
+                // Keep unpaired surrogates in the set
+                set_builder.add32(code_point);
+            }
         }
 
         set_builder.build()
@@ -1172,7 +1182,7 @@ impl CompiledRegExpBuilder {
     fn emit_code_point_set(&mut self, set: &CodePointInversionList, is_inverted: bool) {
         // Can emit a literal instruction if we are matching a single code point
         if set.size() == 1 && !is_inverted {
-            let single_code_point = set.iter_chars().next().unwrap() as CodePoint;
+            let single_code_point = iter_code_point_inversion_list(set).next().unwrap();
             self.emit_literal_instruction(single_code_point);
             return;
         }
@@ -1428,6 +1438,13 @@ fn create_whitespace_set_builder() -> CodePointInversionListBuilder {
     set_builder.add_char('\u{FEFF}');
 
     set_builder
+}
+
+/// Iterate over the code points in a `CodePointInversionList`
+///
+/// We cannot use `CodePointInversionList::iter_chars` as this filters out unpaired surrogates.
+fn iter_code_point_inversion_list(set: &CodePointInversionList) -> impl Iterator<Item = u32> {
+    set.iter_ranges().flatten()
 }
 
 pub fn compile_regexp(

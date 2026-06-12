@@ -7,8 +7,8 @@ use crate::{
     common::{
         string::StringWidth,
         unicode::{
-            is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline, is_surrogate_code_point,
-            is_whitespace,
+            CodePoint, is_ascii_alphabetic, is_decimal_digit, is_latin1, is_newline,
+            is_surrogate_code_point, is_whitespace,
         },
         wtf_8::Wtf8String,
     },
@@ -437,6 +437,13 @@ fn parse_pattern(
     }
 }
 
+/// EscapeRegExpPattern (https://tc39.es/ecma262/#sec-escaperegexppattern)
+///
+/// Escape a RegExp pattern so that it will be parsed back into the exact same pattern.
+/// - Escapes all unescaped forward slashes outside of character classes
+/// - All escaped and unescaped newlines are emitted as an escape sequence
+/// - Returns "(?:)" for an empty pattern
+/// - Everything else is preserved unchanged
 fn escape_pattern_string(
     mut cx: Context,
     pattern_string: Handle<StringValue>,
@@ -454,22 +461,64 @@ fn escape_pattern_string(
         return Ok(pattern_string);
     }
 
+    let mut iter = pattern_string.iter_code_units()?.peekable();
     let mut escaped_string = Wtf8String::new();
+    let mut in_class = false;
 
-    for code_unit in pattern_string.iter_code_units()? {
-        if code_unit == '/' as u16 {
+    while let Some(code_unit) = iter.next() {
+        // Unescaped brackets are passed through unchanged. In all modes the class ends at the first
+        // unescaped bracket.
+        if code_unit == '[' as u16 && !in_class {
+            in_class = true;
+            escaped_string.push_char('[');
+            continue;
+        } else if code_unit == ']' as u16 && in_class {
+            in_class = false;
+            escaped_string.push_char(']');
+            continue;
+        } else if code_unit == '/' as u16 && !in_class {
+            // Unescaped `/` must be emitted as an escape sequence
             escaped_string.push_str("\\/");
-        } else if code_unit == '\n' as u16 {
-            escaped_string.push_str("\\n");
-        } else if code_unit == '\r' as u16 {
-            escaped_string.push_str("\\r");
-        } else if code_unit == '\u{2028}' as u16 {
-            escaped_string.push_str("\\u2028");
-        } else if code_unit == '\u{2029}' as u16 {
-            escaped_string.push_str("\\u2029");
-        } else {
-            escaped_string.push(code_unit as u32);
+            continue;
         }
+
+        // Newlines are treated the same whether literal or escaped
+        let mut newline_code_unit = if is_newline(code_unit as CodePoint) {
+            Some(code_unit)
+        } else {
+            None
+        };
+
+        if code_unit == '\\' as u16 {
+            if let Some(&next) = iter.peek() {
+                if is_newline(next as CodePoint) {
+                    // Directly escaped newlines will be converted to an escape sequence
+                    newline_code_unit = Some(next);
+                    iter.next();
+                } else {
+                    // Escape sequences will be passed through unchanged
+                    iter.next();
+                    escaped_string.push_char('\\');
+                    escaped_string.push(next as CodePoint);
+                    continue;
+                }
+            }
+        }
+
+        // Newlines of any form are always emitted as escape sequences
+        if let Some(newline_code_unit) = newline_code_unit {
+            match newline_code_unit {
+                0x0A => escaped_string.push_str("\\n"),
+                0x0D => escaped_string.push_str("\\r"),
+                0x2028 => escaped_string.push_str("\\u2028"),
+                0x2029 => escaped_string.push_str("\\u2029"),
+                _ => unreachable!("not a line terminator"),
+            }
+            continue;
+        }
+
+        // Otherwise pass through unchanged
+        escaped_string.push(code_unit as u32);
     }
 
     Ok(cx.alloc_wtf8_string(&escaped_string)?.as_string())

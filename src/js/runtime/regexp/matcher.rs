@@ -62,6 +62,8 @@ enum BacktrackEntry {
     RestoreState(BacktrackRestoreState),
     /// Restore a capture point
     CapturePoint(CapturePoint),
+    /// Restore a capture point that was cleared
+    ClearedCaptureGroup(ClearedCaptureGroup),
     /// Restore a progress point (progress point index, string index to restore)
     ProgressPoint(u32, u32),
     /// Restore a loop register to a given value (loop register index, value)
@@ -72,9 +74,9 @@ enum BacktrackEntry {
 }
 
 struct BacktrackRestoreState {
-    // Index of the next instruction to execute when this restore point was created
+    /// Index of the next instruction to execute when this restore point was created
     instruction_index: usize,
-    // Current target string state when this restore point was created
+    /// Current target string state when this restore point was created
     saved_string_state: SavedLexerStreamState,
 }
 
@@ -85,10 +87,19 @@ const MAX_BACKTRACK_ENTRIES: usize = MAX_BACKTRACK_STACK_SIZE / size_of::<Backtr
 const EMPTY_STRING_INDEX: u32 = u32::MAX;
 
 struct CapturePoint {
-    // Capture point index marking the beginning or end of a capture group
+    /// Capture point index marking the beginning or end of a capture group
     capture_point_index: u32,
-    // Target string index that was marked
+    /// Target string index that was marked
     string_index: u32,
+}
+
+struct ClearedCaptureGroup {
+    /// Index of the capture group that was cleared
+    capture_group_index: u32,
+    /// Saved string index of the start of the capture group before being cleared
+    start_string_index: u32,
+    /// Saved string index of the end of the capture group before being cleared
+    end_string_index: u32,
 }
 
 #[derive(Debug)]
@@ -168,6 +179,11 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     // Continue backtracking
                 }
+                BacktrackEntry::ClearedCaptureGroup(entry) => {
+                    self.restore_cleared_capture_group(entry);
+
+                    // Continue backtracking
+                }
                 BacktrackEntry::ProgressPoint(progress_point_index, string_index) => {
                     self.set_progress_point(progress_point_index, string_index);
 
@@ -201,6 +217,9 @@ impl<T: LexerStream> MatchEngine<T> {
                         capture_point.string_index,
                     );
                 }
+                BacktrackEntry::ClearedCaptureGroup(entry) => {
+                    self.restore_cleared_capture_group(entry);
+                }
                 BacktrackEntry::ProgressPoint(progress_point_index, string_index) => {
                     self.set_progress_point(progress_point_index, string_index);
                 }
@@ -210,6 +229,12 @@ impl<T: LexerStream> MatchEngine<T> {
                 BacktrackEntry::RestoreState(_) | BacktrackEntry::RestoreBacktrackStack(_) => {}
             }
         }
+    }
+
+    fn restore_cleared_capture_group(&mut self, entry: ClearedCaptureGroup) {
+        let (start_point_index, end_point_index) = capture_point_indices(entry.capture_group_index);
+        self.set_capture_point(start_point_index, entry.start_string_index);
+        self.set_capture_point(end_point_index, entry.end_string_index);
     }
 
     #[inline]
@@ -645,11 +670,23 @@ impl<T: LexerStream> MatchEngine<T> {
     }
 
     /// Clear the capture group with the given index.
-    ///
-    /// Clearing just the ending capture point for the group is enough.
     fn clear_capture_at_index(&mut self, capture_group_index: u32) -> MatchResult {
-        let capture_point_index = capture_group_index * 2 + 1;
-        self.push_capture_point(capture_point_index, EMPTY_STRING_INDEX)
+        let (start_point_index, end_point_index) = capture_point_indices(capture_group_index);
+
+        // Save both old capture points in a single backtrack entry so they can be restored together
+        let start_string_index = self.get_capture_point(start_point_index);
+        let end_string_index = self.get_capture_point(end_point_index);
+
+        self.push_backtrack_entry(BacktrackEntry::ClearedCaptureGroup(ClearedCaptureGroup {
+            capture_group_index,
+            start_string_index,
+            end_string_index,
+        }))?;
+
+        self.set_capture_point(start_point_index, EMPTY_STRING_INDEX);
+        self.set_capture_point(end_point_index, EMPTY_STRING_INDEX);
+
+        Ok(())
     }
 
     fn execute_backreference<const DIRECTION: bool>(
@@ -764,8 +801,9 @@ impl<T: LexerStream> MatchEngine<T> {
     ///
     /// If either bound is empty then the capture group did not match and return None.
     fn get_valid_capture_bounds(&self, capture_group_index: u32) -> Option<(u32, u32)> {
-        let start_string_index = self.get_capture_point(capture_group_index * 2);
-        let end_string_index = self.get_capture_point(capture_group_index * 2 + 1);
+        let (start_point_index, end_point_index) = capture_point_indices(capture_group_index);
+        let start_string_index = self.get_capture_point(start_point_index);
+        let end_string_index = self.get_capture_point(end_point_index);
 
         if start_string_index == EMPTY_STRING_INDEX || end_string_index == EMPTY_STRING_INDEX {
             return None;
@@ -833,6 +871,13 @@ pub fn run_matcher(
         Err(MatchError::NoMatch) => Ok(None),
         Err(MatchError::StackOverflow) => range_error(cx, "Stack overflow while matching RegExp"),
     }
+}
+
+/// Map a capture group index to its (start, end) capture point indices.
+#[inline]
+fn capture_point_indices(capture_group_index: u32) -> (u32, u32) {
+    let start_index = capture_group_index * 2;
+    (start_index, start_index + 1)
 }
 
 /// Canonicalize (https://tc39.es/ecma262/#sec-runtime-semantics-canonicalize-ch)

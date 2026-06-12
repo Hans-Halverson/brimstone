@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-17:11",
+  loc: "1:1-23:48",
   body: [
     {
       type: "ExpressionStatement",
@@ -432,6 +432,138 @@
                 {
                   type: "Literal",
                   value: "b",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "20:1-20:27",
+      kind: {
+        type: "Literal",
+        loc: "20:1-20:26",
+        raw: "/a{99999999999999999999}/",
+        value: {
+          pattern: "a{99999999999999999999}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 18446744073709551615,
+                  max: 18446744073709551615,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "21:1-21:28",
+      kind: {
+        type: "Literal",
+        loc: "21:1-21:27",
+        raw: "/a{99999999999999999999,}/",
+        value: {
+          pattern: "a{99999999999999999999,}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 18446744073709551615,
+                  max: null,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "22:1-22:29",
+      kind: {
+        type: "Literal",
+        loc: "22:1-22:28",
+        raw: "/a{1,99999999999999999999}/",
+        value: {
+          pattern: "a{1,99999999999999999999}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 1,
+                  max: 18446744073709551615,
+                  is_greedy: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "23:1-23:48",
+      kind: {
+        type: "Literal",
+        loc: "23:1-23:47",
+        raw: "/a{99999999999999999999,99999999999999999999}/",
+        value: {
+          pattern: "a{99999999999999999999,99999999999999999999}",
+          flags: "",
+        },
+        regexp: {
+          type: "RegExp",
+          alternatives: [
+            {
+              type: "Alternative",
+              terms: [
+                {
+                  type: "Quantifier",
+                  term: {
+                    type: "Literal",
+                    value: "a",
+                  },
+                  min: 18446744073709551615,
+                  max: 18446744073709551615,
+                  is_greedy: true,
                 },
               ],
             },

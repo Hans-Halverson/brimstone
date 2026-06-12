@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
-    sync::LazyLock,
-};
+use std::{collections::HashSet, sync::LazyLock};
 
 use brimstone_icu_collections::{
     all_case_folded_set, get_case_closure_override, has_case_closure_override,
@@ -15,7 +11,7 @@ use crate::{
         icu::ICU,
         unicode::{CodePoint, MAX_CODE_POINT, is_surrogate_code_point},
         unicode_property::UnicodeProperty,
-        wtf_8::Wtf8Str,
+        wtf_8::{Wtf8Cow, Wtf8Str, Wtf8String},
     },
     parser::{
         ast::AstStr,
@@ -532,19 +528,6 @@ impl CompiledRegExpBuilder {
         }
     }
 
-    fn emit_str_literal(&mut self, str: &str) {
-        if self.is_forwards() {
-            for char in str.chars() {
-                self.emit_code_point_literal(char as CodePoint)
-            }
-        } else {
-            // When emitting backwards, emit concatenation of literals in reverse order
-            for char in str.chars().rev() {
-                self.emit_code_point_literal(char as CodePoint)
-            }
-        }
-    }
-
     fn emit_wildcard(&mut self) {
         if self.current_flags().is_dot_all() {
             self.emit_wildcard_instruction()
@@ -857,7 +840,8 @@ impl CompiledRegExpBuilder {
         // from other strings since it must be checked after individual code points.
         let string_disjunction_info = if !strings.is_empty() {
             let join_block_id = self.new_block();
-            let has_empty_string = strings.remove(&AnyStr::Str(""));
+            let empty_string = Wtf8Cow::Borrowed(Wtf8Str::from_str(""));
+            let has_empty_string = strings.remove(&empty_string);
 
             if !strings.is_empty() {
                 self.emit_class_string_disjunction(&strings, join_block_id);
@@ -902,7 +886,7 @@ impl CompiledRegExpBuilder {
     fn character_class_to_set<'a, 'b>(
         &self,
         character_class: &'b CharacterClass,
-    ) -> (CodePointInversionList<'a>, HashSet<AnyStr<'b>>) {
+    ) -> (CodePointInversionList<'a>, HashSet<Wtf8Cow<'b>>) {
         let mut set_builder = CodePointInversionListBuilder::new();
         let mut strings = HashSet::new();
 
@@ -989,7 +973,7 @@ impl CompiledRegExpBuilder {
     fn character_class_range_to_set<'a>(
         &self,
         class_range: &'a ClassRange,
-    ) -> (CodePointInversionList<'static>, HashSet<AnyStr<'a>>) {
+    ) -> (CodePointInversionList<'static>, HashSet<Wtf8Cow<'a>>) {
         let mut set_builder = CodePointInversionListBuilder::new();
         let mut strings = HashSet::new();
 
@@ -1011,12 +995,7 @@ impl CompiledRegExpBuilder {
         let mut case_folded_set = CodePointInversionListBuilder::new();
 
         for code_point in iter_code_point_inversion_list(&set) {
-            if let Some(char) = char::from_u32(code_point) {
-                case_folded_set.add_char(ICU.case_mapper.simple_fold(char));
-            } else {
-                // Keep unpaired surrogates in the set
-                case_folded_set.add32(code_point);
-            }
+            case_folded_set.add32(simple_case_fold_code_point(code_point));
         }
 
         case_folded_set.build()
@@ -1026,7 +1005,7 @@ impl CompiledRegExpBuilder {
         &self,
         class_range: &'a ClassRange,
         set_builder: &mut CodePointInversionListBuilder,
-        strings_set_builder: &mut HashSet<AnyStr<'a>>,
+        strings_set_builder: &mut HashSet<Wtf8Cow<'a>>,
     ) {
         match class_range {
             // Accumulate single and range char ranges
@@ -1090,7 +1069,7 @@ impl CompiledRegExpBuilder {
                 // Add strings to set if this is a property of strings
                 if let UnicodeProperty::BinaryPropertyOfStrings(property) = property {
                     for string in property.iter_strings() {
-                        strings_set_builder.insert(AnyStr::Str(string));
+                        self.add_string_to_set(strings_set_builder, Wtf8Str::from_str(string));
                     }
                 }
             }
@@ -1121,7 +1100,7 @@ impl CompiledRegExpBuilder {
                 strings_set_builder.extend(string_set);
             }
             ClassRange::StringDisjunction(disjunction) => {
-                for string in disjunction.alternatives.iter() {
+                for &string in disjunction.alternatives.iter() {
                     // Check if the string has exactly one code point (only need to check at most
                     // the first two code points to be sure).
                     if string.iter_code_points().take(2).count() == 1 {
@@ -1129,11 +1108,27 @@ impl CompiledRegExpBuilder {
                         set_builder.add32(string.iter_code_points().next().unwrap());
                     } else {
                         // Treat as a string
-                        strings_set_builder.insert(AnyStr::Wtf8Str(string));
+                        self.add_string_to_set(strings_set_builder, string);
                     }
                 }
             }
         }
+    }
+
+    fn add_string_to_set<'a>(&self, set: &mut HashSet<Wtf8Cow<'a>>, str: &'a Wtf8Str) {
+        let string = if self.current_flags().is_case_insensitive() {
+            // Immediately case fold strings when encountered, allowing set operations to treat
+            // case equivalent strings as the same string.
+            //
+            // The case closure eventually emitted is the same for the code point and its simple
+            // case folded form.
+            let folded_string = simple_case_fold_string(str);
+            Wtf8Cow::Owned(folded_string)
+        } else {
+            Wtf8Cow::Borrowed(str)
+        };
+
+        set.insert(string);
     }
 
     /// Create the case insensitive closure for the given set of code points, following the
@@ -1214,7 +1209,7 @@ impl CompiledRegExpBuilder {
 
     fn emit_class_string_disjunction(
         &mut self,
-        strings: &HashSet<AnyStr<'_>>,
+        strings: &HashSet<Wtf8Cow>,
         success_block: BlockId,
     ) {
         let mut strings = strings.iter().collect::<Vec<_>>();
@@ -1222,6 +1217,8 @@ impl CompiledRegExpBuilder {
         // Order strings by length, checking the longest first. Break ties consistently by comparing
         // the strings as bytes.
         strings.sort_by(|a, b| {
+            let a = a.as_str();
+            let b = b.as_str();
             let len_cmp = b.len().cmp(&a.len());
             len_cmp.then_with(|| a.as_bytes().cmp(b.as_bytes()))
         });
@@ -1257,12 +1254,7 @@ impl CompiledRegExpBuilder {
         // block if successful.
         for (i, string) in strings.iter().enumerate() {
             self.set_current_block(alternative_block_ids[i]);
-
-            match string {
-                AnyStr::Wtf8Str(str) => self.emit_literal(str),
-                AnyStr::Str(str) => self.emit_str_literal(str),
-            }
-
+            self.emit_literal(string.as_str());
             self.emit_jump_instruction(success_block);
         }
 
@@ -1447,6 +1439,24 @@ fn iter_code_point_inversion_list(set: &CodePointInversionList) -> impl Iterator
     set.iter_ranges().flatten()
 }
 
+fn simple_case_fold_code_point(code_point: CodePoint) -> CodePoint {
+    if let Some(char) = char::from_u32(code_point) {
+        ICU.case_mapper.simple_fold(char) as CodePoint
+    } else {
+        // Keep unpaired surrogates in the set
+        code_point
+    }
+}
+
+fn simple_case_fold_string(str: &Wtf8Str) -> Wtf8String {
+    let mut case_folded_string = Wtf8String::new();
+    for code_point in str.iter_code_points() {
+        case_folded_string.push(simple_case_fold_code_point(code_point));
+    }
+
+    case_folded_string
+}
+
 pub fn compile_regexp(
     cx: Context,
     regexp: &RegExp,
@@ -1463,39 +1473,4 @@ pub fn compile_regexp(
     save_regexp_dotfile_if_needed(cx, *compiled_regexp);
 
     Ok(compiled_regexp)
-}
-
-enum AnyStr<'a> {
-    Str(&'a str),
-    Wtf8Str(&'a Wtf8Str),
-}
-
-impl AnyStr<'_> {
-    fn as_bytes(&self) -> &[u8] {
-        match self {
-            AnyStr::Str(s) => s.as_bytes(),
-            AnyStr::Wtf8Str(s) => s.as_bytes(),
-        }
-    }
-
-    fn len(&self) -> usize {
-        match self {
-            AnyStr::Str(s) => s.len(),
-            AnyStr::Wtf8Str(s) => s.len(),
-        }
-    }
-}
-
-impl PartialEq for AnyStr<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_bytes() == other.as_bytes()
-    }
-}
-
-impl Eq for AnyStr<'_> {}
-
-impl Hash for AnyStr<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_bytes().hash(state);
-    }
 }

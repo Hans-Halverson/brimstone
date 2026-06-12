@@ -400,35 +400,34 @@ impl<T: LexerStream> MatchEngine<T> {
                 }
                 OpCode::WordBoundaryMoveToPrevious => {
                     // Save the word boundary comparison on the first side of the boundary
-                    self.word_boundary_register = self.compare_register;
+                    self.word_boundary_register = self.consume_compare_register();
 
                     // Update lexer stream state to be pointing at the previous code point
                     self.no_advance_read_code_point_in_direction(!DIRECTION);
 
                     self.advance_instruction::<WordBoundaryMoveToPreviousInstruction>();
-                    self.reset_compare_register();
                 }
                 OpCode::AssertWordBoundary => {
-                    if self.is_at_word_boundary() {
+                    let is_at_word_boundary = self.consume_is_at_word_boundary();
+
+                    if is_at_word_boundary {
                         // Restore lexer stream to the original direction
                         self.no_advance_read_code_point_in_direction(DIRECTION);
                         self.advance_instruction::<AssertWordBoundaryInstruction>()
                     } else {
                         self.backtrack()?;
                     }
-
-                    self.reset_compare_register();
                 }
                 OpCode::AssertNotWordBoundary => {
-                    if self.is_at_word_boundary() {
+                    let is_at_word_boundary = self.consume_is_at_word_boundary();
+
+                    if is_at_word_boundary {
                         self.backtrack()?;
                     } else {
                         // Restore lexer stream to the original direction
                         self.no_advance_read_code_point_in_direction(DIRECTION);
                         self.advance_instruction::<AssertNotWordBoundaryInstruction>()
                     }
-
-                    self.reset_compare_register();
                 }
                 OpCode::Backreference => {
                     let instr = instr.cast::<BackreferenceInstruction>();
@@ -438,24 +437,24 @@ impl<T: LexerStream> MatchEngine<T> {
                     )?;
                 }
                 OpCode::ConsumeIfTrue => {
-                    if !self.compare_register || !self.string_lexer.has_current() {
+                    let compare_register = self.consume_compare_register();
+
+                    if !compare_register || !self.string_lexer.has_current() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
                         self.advance_instruction::<ConsumeIfTrueInstruction>();
                     }
-
-                    self.reset_compare_register();
                 }
                 OpCode::ConsumeIfFalse => {
-                    if self.compare_register || !self.string_lexer.has_current() {
+                    let compare_register = self.consume_compare_register();
+
+                    if compare_register || !self.string_lexer.has_current() {
                         self.backtrack()?;
                     } else {
                         self.advance_code_point_in_direction::<DIRECTION>();
                         self.advance_instruction::<ConsumeIfFalseInstruction>();
                     }
-
-                    self.reset_compare_register();
                 }
                 OpCode::CompareEquals => {
                     let instr = instr.cast::<CompareEqualsInstruction>();
@@ -586,13 +585,18 @@ impl<T: LexerStream> MatchEngine<T> {
 
     /// At a word boundary iff the word comparison on one side of the boundary does not match the
     /// word comparison on the other side.
-    fn is_at_word_boundary(&self) -> bool {
-        self.compare_register != self.word_boundary_register
+    ///
+    /// Consumes the comparison register and resets it for future use.
+    fn consume_is_at_word_boundary(&mut self) -> bool {
+        self.consume_compare_register() != self.word_boundary_register
     }
 
+    /// Return the comparison register and reset it for future use
     #[inline]
-    fn reset_compare_register(&mut self) {
+    fn consume_compare_register(&mut self) -> bool {
+        let current_value = self.compare_register;
         self.compare_register = false;
+        current_value
     }
 
     fn push_capture_point(&mut self, capture_point_index: u32, string_index: u32) -> MatchResult {

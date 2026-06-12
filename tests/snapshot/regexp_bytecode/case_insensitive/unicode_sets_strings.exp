@@ -1,0 +1,47 @@
+[CompiledRegExpObject: /[\q{AB|Ab|aB|ab}]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Branch(15, 23)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: CompareEquals(A)
+    16: CompareEquals(a)
+    17: ConsumeIfTrue
+    18: CompareEquals(B)
+    19: CompareEquals(b)
+    20: ConsumeIfTrue
+    21: Jump(12)
+    23: ConsumeIfTrue
+    24: Jump(12)
+}
+
+[CompiledRegExpObject: /[\q{AB}&&\q{ab}]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: Branch(15, 23)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: CompareEquals(A)
+    16: CompareEquals(a)
+    17: ConsumeIfTrue
+    18: CompareEquals(B)
+    19: CompareEquals(b)
+    20: ConsumeIfTrue
+    21: Jump(12)
+    23: ConsumeIfTrue
+    24: Jump(12)
+}
+
+[CompiledRegExpObject: /[\q{AB}--\q{ab}]/] {
+     0: Branch(7, 3)
+     3: Wildcard
+     4: Branch(7, 3)
+     7: MarkCapturePoint(0)
+     9: ConsumeIfTrue
+    10: MarkCapturePoint(1)
+    12: Accept
+}

@@ -105,13 +105,6 @@ struct ParsedTerm<'a> {
     info: ExpressionInfo,
 }
 
-/// Bound of a braced quantifier (e.g. {3}, {3,}, {3,4})
-#[derive(Clone, Copy)]
-enum ParsedQuantifierBound {
-    Valid(u64),
-    OutOfRange,
-}
-
 impl<'a, T: LexerStream> RegExpParser<'a, T> {
     fn new(
         lexer_stream: T,
@@ -635,7 +628,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                         let index = self.parse_decimal_digits()?;
 
                         // Ensure that index is in range
-                        if let Some(index) = index.and_then(|index| u32::try_from(index).ok()) {
+                        if let Ok(index) = u32::try_from(index) {
                             // Save indexed backreference to be analyzed after parsing
                             self.indexed_backreferences.push((index, start_pos));
 
@@ -788,15 +781,15 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         let bounds_opt = match_u32!(match self.current() {
             '*' => {
                 self.advance();
-                Some((ParsedQuantifierBound::Valid(0), None))
+                Some((0, None))
             }
             '+' => {
                 self.advance();
-                Some((ParsedQuantifierBound::Valid(1), None))
+                Some((1, None))
             }
             '?' => {
                 self.advance();
-                Some((ParsedQuantifierBound::Valid(0), Some(ParsedQuantifierBound::Valid(1))))
+                Some((0, Some(1)))
             }
             '{' => {
                 // In Annex B mode if we fail to parse a '{...' quantifier then we should recover
@@ -831,30 +824,18 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                 _ => {}
             }
 
-            // We now know this is actually a quantifier. Validate its lower and upper bounds and
-            // make sure they are compatible.
-            let ParsedQuantifierBound::Valid(lower_bound) = lower_bound else {
-                return self.error(quantifier_pos, ParseError::QuantifierBoundTooLarge);
-            };
-
-            let upper_bound = match upper_bound_opt {
-                Some(ParsedQuantifierBound::Valid(upper_bound)) => {
-                    if lower_bound > upper_bound {
-                        return self.error(quantifier_pos, ParseError::InvalidQuantifierBounds);
-                    }
-
-                    Some(upper_bound)
+            // We now know this is actually a quantifier. Validate that its lower and upper bounds
+            // are compatible.
+            if let Some(upper_bound) = upper_bound_opt {
+                if lower_bound > upper_bound {
+                    return self.error(quantifier_pos, ParseError::InvalidQuantifierBounds);
                 }
-                Some(ParsedQuantifierBound::OutOfRange) => {
-                    return self.error(quantifier_pos, ParseError::QuantifierBoundTooLarge);
-                }
-                None => None,
-            };
+            }
 
             let quantifier = Term::Quantifier(Quantifier {
                 term: p!(self, term.node),
                 min: lower_bound,
-                max: upper_bound,
+                max: upper_bound_opt,
                 is_greedy,
                 always_consumes: term.info.always_consumes,
                 captures: term.info.captures,
@@ -874,21 +855,19 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
     }
 
     /// Try to parse a braced quantifier (e.g. `{3}``, or `{1, 3}`) returning the lower and upper
-    /// bound. Return None for a bound if it is out of range.
-    fn parse_braced_quantifier(
-        &mut self,
-    ) -> ParseResult<(ParsedQuantifierBound, Option<ParsedQuantifierBound>)> {
+    /// bound. Bounds that are too large to represent are saturated to `u64::MAX`.
+    fn parse_braced_quantifier(&mut self) -> ParseResult<(u64, Option<u64>)> {
         self.advance();
 
         // Parse quantifier's lower bound
-        let lower_bound = self.parse_braced_quantifier_number()?;
+        let lower_bound = self.parse_decimal_digits()?;
 
         let upper_bound = if self.eat(',') {
             if self.current() == '}' as u32 {
                 None
             } else {
                 // Parse the quantifier's upper bound
-                Some(self.parse_braced_quantifier_number()?)
+                Some(self.parse_decimal_digits()?)
             }
         } else {
             Some(lower_bound)
@@ -899,16 +878,9 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         Ok((lower_bound, upper_bound))
     }
 
-    fn parse_braced_quantifier_number(&mut self) -> ParseResult<ParsedQuantifierBound> {
-        match self.parse_decimal_digits()? {
-            None => Ok(ParsedQuantifierBound::OutOfRange),
-            Some(number) => Ok(ParsedQuantifierBound::Valid(number)),
-        }
-    }
-
-    /// Parse a sequence of decimal digits into a number. Error if there is no sequence of decimal
-    /// digits. Returns `None` if the number is too large to be represented as a `u64`.
-    fn parse_decimal_digits(&mut self) -> ParseResult<Option<u64>> {
+    /// Parse a sequence of decimal digits into a number. Saturates to u64::MAX if the number is too
+    /// large to be represented as a u64.
+    fn parse_decimal_digits(&mut self) -> ParseResult<u64> {
         // Sequence of decimal digits must be nonempty
         if !is_decimal_digit(self.current()) {
             return self.error_unexpected_token(self.pos());
@@ -936,11 +908,12 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             self.advance();
         }
 
+        // Saturate to u64::MAX if the number is too large to represent
         if has_overflowed {
-            return Ok(None);
+            return Ok(u64::MAX);
         }
 
-        Ok(Some(value))
+        Ok(value)
     }
 
     fn parse_group(&mut self) -> ParseResult<ParsedTerm<'a>> {

@@ -27,6 +27,13 @@ const LOW_SURROGATE_START: CodeUnit = 0xDC00;
 /// End of low surrogate range, inclusive
 const LOW_SURROGATE_END: CodeUnit = 0xDFFF;
 
+/// The smallest code point encoded as two bytes in UTF-8.
+pub const MIN_TWO_BYTE_CODE_POINT: CodePoint = 0x80;
+/// The smallest code point encoded as three bytes in UTF-8.
+pub const MIN_THREE_BYTE_CODE_POINT: CodePoint = 0x800;
+/// The smallest code point encoded as four bytes in UTF-8.
+pub const MIN_FOUR_BYTE_CODE_POINT: CodePoint = 0x10000;
+
 #[inline]
 pub fn is_in_unicode_range(code_point: CodePoint) -> bool {
     code_point <= MAX_CODE_POINT

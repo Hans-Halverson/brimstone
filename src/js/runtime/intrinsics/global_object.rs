@@ -2,7 +2,10 @@ use brimstone_macros::match_u32;
 
 use crate::{
     common::{
-        unicode::{encode_utf8_codepoint, get_hex_value, is_continuation_byte},
+        unicode::{
+            MIN_FOUR_BYTE_CODE_POINT, MIN_THREE_BYTE_CODE_POINT, MIN_TWO_BYTE_CODE_POINT,
+            encode_utf8_codepoint, get_hex_value, is_continuation_byte,
+        },
         wtf_8::Wtf8String,
     },
     handle_scope, handle_scope_guard,
@@ -454,25 +457,25 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
                 // Two byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x1F) << 6;
 
+                code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
                 // Check for overlong encoding
-                if code_point == 0 {
+                if code_point < MIN_TWO_BYTE_CODE_POINT {
                     return uri_error(cx, "invalid URI escape sequence");
                 }
-
-                code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
 
                 decoded_string.push(code_point);
             } else if (first_byte & 0xF0) == 0xE0 {
                 // Three byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x0F) << 12;
 
-                // Check for overlong encoding
-                if code_point == 0 {
-                    return uri_error(cx, "invalid URI escape sequence");
-                }
-
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
+
+                // Check for overlong encoding
+                if code_point < MIN_THREE_BYTE_CODE_POINT {
+                    return uri_error(cx, "invalid URI escape sequence");
+                }
 
                 // Check for surrogate code points
                 if char::from_u32(code_point).is_none() {
@@ -484,17 +487,17 @@ fn decode<const INCLUDE_URI_UNESCAPED: bool>(
                 // Four byte UTF-8 sequence
                 let mut code_point = (first_byte as u32 & 0x07) << 18;
 
-                // Check for overlong encoding
-                if code_point == 0 {
-                    return uri_error(cx, "invalid URI escape sequence");
-                }
-
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 12;
                 code_point |= (parse_hex_continuation_byte!() as u32 & 0x3F) << 6;
                 code_point |= parse_hex_continuation_byte!() as u32 & 0x3F;
 
                 // Verify code point is in range
                 if char::from_u32(code_point).is_none() {
+                    return uri_error(cx, "invalid URI escape sequence");
+                }
+
+                // Check for overlong encoding
+                if code_point < MIN_FOUR_BYTE_CODE_POINT {
                     return uri_error(cx, "invalid URI escape sequence");
                 }
 

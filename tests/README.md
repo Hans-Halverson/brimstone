@@ -84,3 +84,7 @@ The fuzzer can be built and run with:
 ```
 ./tests/fuzz/run.sh
 ```
+
+# Other Rust Tests
+
+Other unit, integration, etc tests written in rust are in the `rust` directory. These are run by `cargo test`.

@@ -4,11 +4,14 @@ version.workspace = true
 edition.workspace = true
 publish = false
 
+# Disable automatic test discovery
+autotests = false
+
 [dev-dependencies]
 brimstone_core.workspace = true
 brimstone_serialized_heap.workspace = true
 clap = { workspace = true, features = ["derive"] }
 
 [[test]]
-name = "snapshot_tests"
-path = "snapshot/snapshot_tests.rs"
+name = "tests"
+path = "lib.rs"

@@ -407,6 +407,11 @@ pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
         let mut codepoint = (b1 as u32 & 0x1F) << 6;
         codepoint |= b2 as u32 & 0x3F;
 
+        // Reject overlong encodings
+        if codepoint < MIN_TWO_BYTE_CODE_POINT {
+            return Err(2);
+        }
+
         Ok((codepoint, 2))
     } else if (b1 & 0xF0) == 0xE0 && buf.len() >= 3 {
         // Three byte sequence
@@ -420,6 +425,11 @@ pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
         let mut codepoint = (b1 as u32 & 0x0F) << 12;
         codepoint |= (b2 as u32 & 0x3F) << 6;
         codepoint |= b3 as u32 & 0x3F;
+
+        // Reject overlong encodings
+        if codepoint < MIN_THREE_BYTE_CODE_POINT {
+            return Err(3);
+        }
 
         Ok((codepoint, 3))
     } else if (b1 & 0xF8) == 0xF0 && buf.len() >= 4 {
@@ -436,6 +446,11 @@ pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
         codepoint |= (b2 as u32 & 0x3F) << 12;
         codepoint |= (b3 as u32 & 0x3F) << 6;
         codepoint |= b4 as u32 & 0x3F;
+
+        // Reject overlong encodings
+        if codepoint < MIN_FOUR_BYTE_CODE_POINT {
+            return Err(4);
+        }
 
         Ok((codepoint, 4))
     } else {

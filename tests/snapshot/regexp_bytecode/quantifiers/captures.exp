@@ -4,16 +4,14 @@
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
      9: Literal(a)
-    10: Progress(0)
-    12: Branch(22, 15)
-    15: ClearCaptureIfNoProgress(1, 0)
-    18: Literal(b)
-    19: MarkCapturePoint(1)
-    21: Accept
-    22: MarkCapturePoint(2)
-    24: Literal(x)
-    25: MarkCapturePoint(3)
-    27: Jump(15)
+    10: Branch(17, 13)
+    13: Literal(b)
+    14: MarkCapturePoint(1)
+    16: Accept
+    17: MarkCapturePoint(2)
+    19: Literal(x)
+    20: MarkCapturePoint(3)
+    22: Jump(13)
 }
 
 [CompiledRegExpObject: /a(x)+b/] {
@@ -42,17 +40,15 @@
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
      9: Literal(a)
-    10: Progress(0)
-    12: Branch(15, 25)
-    15: ClearCapture(1)
-    17: MarkCapturePoint(2)
-    19: Literal(x)
-    20: MarkCapturePoint(3)
-    22: Branch(15, 25)
-    25: ClearCaptureIfNoProgress(1, 0)
-    28: Literal(b)
-    29: MarkCapturePoint(1)
-    31: Accept
+    10: Branch(13, 23)
+    13: ClearCapture(1)
+    15: MarkCapturePoint(2)
+    17: Literal(x)
+    18: MarkCapturePoint(3)
+    20: Branch(13, 23)
+    23: Literal(b)
+    24: MarkCapturePoint(1)
+    26: Accept
 }
 
 [CompiledRegExpObject: /a(x){3,4}b/] {

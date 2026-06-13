@@ -20,13 +20,12 @@ use crate::{
                 AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-                BackreferenceInstruction, BranchInstruction, ClearCaptureIfNoProgressInstruction,
-                ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, Instruction, JumpInstruction,
-                LiteralInstruction, LookaroundInstruction, LoopInstruction,
-                MarkCapturePointInstruction, OpCode, ProgressInstruction, SetProgressInstruction,
-                TInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
-                WordBoundaryMoveToPreviousInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
+                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
+                ConsumeIfTrueInstruction, Instruction, JumpInstruction, LiteralInstruction,
+                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
+                ProgressInstruction, SetProgressInstruction, TInstruction, WildcardInstruction,
+                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
             },
         },
         string_value::StringValue,
@@ -367,15 +366,6 @@ impl<T: LexerStream> MatchEngine<T> {
 
                     self.mark_progress_point(progress_index)?;
                     self.advance_instruction::<SetProgressInstruction>();
-                }
-                OpCode::ClearCaptureIfNoProgress => {
-                    let instr = instr.cast::<ClearCaptureIfNoProgressInstruction>();
-
-                    if !self.has_made_progress(instr.progress_index()) {
-                        self.clear_capture_at_index(instr.capture_group_index())?;
-                    }
-
-                    self.advance_instruction::<ClearCaptureIfNoProgressInstruction>();
                 }
                 OpCode::Loop => {
                     let instr = instr.cast::<LoopInstruction>();

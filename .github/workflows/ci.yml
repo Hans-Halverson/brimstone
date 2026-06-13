@@ -27,7 +27,7 @@ jobs:
       - name: Run clippy
         run: cargo clippy -- -D warnings
 
-  snapshot-tests:
+  cargo-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

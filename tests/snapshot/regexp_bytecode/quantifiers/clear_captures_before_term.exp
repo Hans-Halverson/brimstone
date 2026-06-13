@@ -155,22 +155,18 @@
      3: Wildcard
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
-     9: Progress(0)
-    11: Branch(26, 14)
-    14: ClearCaptureIfNoProgress(1, 0)
-    17: ClearCaptureIfNoProgress(2, 0)
-    20: ClearCaptureIfNoProgress(3, 0)
-    23: MarkCapturePoint(1)
-    25: Accept
-    26: MarkCapturePoint(2)
-    28: MarkCapturePoint(4)
-    30: Literal(a)
-    31: MarkCapturePoint(5)
-    33: MarkCapturePoint(6)
-    35: Literal(b)
-    36: MarkCapturePoint(7)
-    38: MarkCapturePoint(3)
-    40: Jump(14)
+     9: Branch(15, 12)
+    12: MarkCapturePoint(1)
+    14: Accept
+    15: MarkCapturePoint(2)
+    17: MarkCapturePoint(4)
+    19: Literal(a)
+    20: MarkCapturePoint(5)
+    22: MarkCapturePoint(6)
+    24: Literal(b)
+    25: MarkCapturePoint(7)
+    27: MarkCapturePoint(3)
+    29: Jump(12)
 }
 
 [CompiledRegExpObject: /((a)(b)){1,1}/] {
@@ -195,7 +191,6 @@
      3: Wildcard
      4: Branch(7, 3)
      7: MarkCapturePoint(0)
-     9: Progress(0)
-    11: MarkCapturePoint(1)
-    13: Accept
+     9: MarkCapturePoint(1)
+    11: Accept
 }

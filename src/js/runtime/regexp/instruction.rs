@@ -74,12 +74,6 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24] [progress_index: u32]]
     SetProgress,
 
-    /// A conditional ClearCapture which only clears the capture if there has been no progress at
-    /// the given progress index.
-    ///
-    /// Layout: [[opcode: u8] [padding: u24] [capture_group_index: u32] [progress_index: u32]]
-    ClearCaptureIfNoProgress,
-
     /// Check if the loop register is less than the provided max value. Proceed if so, otherwise
     /// jump to the end branch instruction. Always increment the loop register by 1.
     ///
@@ -187,7 +181,6 @@ impl OpCode {
             OpCode::ClearCapture => ClearCaptureInstruction::SIZE,
             OpCode::Progress => ProgressInstruction::SIZE,
             OpCode::SetProgress => SetProgressInstruction::SIZE,
-            OpCode::ClearCaptureIfNoProgress => ClearCaptureIfNoProgressInstruction::SIZE,
             OpCode::Loop => LoopInstruction::SIZE,
             OpCode::AssertStart => AssertStartInstruction::SIZE,
             OpCode::AssertEnd => AssertEndInstruction::SIZE,
@@ -245,9 +238,6 @@ impl Instruction {
             OpCode::ClearCapture => self.cast::<ClearCaptureInstruction>().debug_print(),
             OpCode::Progress => self.cast::<ProgressInstruction>().debug_print(),
             OpCode::SetProgress => self.cast::<SetProgressInstruction>().debug_print(),
-            OpCode::ClearCaptureIfNoProgress => self
-                .cast::<ClearCaptureIfNoProgressInstruction>()
-                .debug_print(),
             OpCode::Loop => self.cast::<LoopInstruction>().debug_print(),
             OpCode::AssertStart => self.cast::<AssertStartInstruction>().debug_print(),
             OpCode::AssertEnd => self.cast::<AssertEndInstruction>().debug_print(),
@@ -541,35 +531,6 @@ impl SetProgressInstruction {
 
     pub fn write(buf: &mut Vec<u32>, progress_index: u32) {
         write_u32!(buf, Self::OPCODE);
-        write_u32!(buf, progress_index);
-    }
-}
-
-regexp_bytecode_instruction!(
-    ClearCaptureIfNoProgressInstruction,
-    OpCode::ClearCaptureIfNoProgress,
-    3,
-    impl TInstruction {
-        fn debug_print(&self) -> String {
-            format!("{:?}({}, {})", Self::OPCODE, self.capture_group_index(), self.progress_index())
-        }
-    }
-);
-
-impl ClearCaptureIfNoProgressInstruction {
-    #[inline]
-    pub fn capture_group_index(&self) -> u32 {
-        self.0[1]
-    }
-
-    #[inline]
-    pub fn progress_index(&self) -> u32 {
-        self.0[2]
-    }
-
-    pub fn write(buf: &mut Vec<u32>, capture_group_index: u32, progress_index: u32) {
-        write_u32!(buf, Self::OPCODE);
-        write_u32!(buf, capture_group_index);
         write_u32!(buf, progress_index);
     }
 }

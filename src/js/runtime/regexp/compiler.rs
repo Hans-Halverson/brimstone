@@ -32,13 +32,13 @@ use crate::{
                 AcceptInstruction, AssertEndInstruction, AssertEndOrNewlineInstruction,
                 AssertNotWordBoundaryInstruction, AssertStartInstruction,
                 AssertStartOrNewlineInstruction, AssertWordBoundaryInstruction,
-                BackreferenceInstruction, BranchInstruction, ClearCaptureIfNoProgressInstruction,
-                ClearCaptureInstruction, CompareBetweenInstruction, CompareEqualsInstruction,
-                ConsumeIfFalseInstruction, ConsumeIfTrueInstruction, FailInstruction, Instruction,
-                InstructionIterator, InstructionIteratorMut, JumpInstruction, LiteralInstruction,
-                LookaroundInstruction, LoopInstruction, MarkCapturePointInstruction, OpCode,
-                ProgressInstruction, SetProgressInstruction, WildcardInstruction,
-                WildcardNoNewlineInstruction, WordBoundaryMoveToPreviousInstruction,
+                BackreferenceInstruction, BranchInstruction, ClearCaptureInstruction,
+                CompareBetweenInstruction, CompareEqualsInstruction, ConsumeIfFalseInstruction,
+                ConsumeIfTrueInstruction, FailInstruction, Instruction, InstructionIterator,
+                InstructionIteratorMut, JumpInstruction, LiteralInstruction, LookaroundInstruction,
+                LoopInstruction, MarkCapturePointInstruction, OpCode, ProgressInstruction,
+                SetProgressInstruction, WildcardInstruction, WildcardNoNewlineInstruction,
+                WordBoundaryMoveToPreviousInstruction,
             },
         },
         string_value::StringValue,
@@ -188,18 +188,6 @@ impl CompiledRegExpBuilder {
 
     fn emit_set_progress_instruction(&mut self, progress_index: u32) {
         SetProgressInstruction::write(self.current_block_buf(), progress_index);
-    }
-
-    fn emit_clear_capture_if_no_progress_instruction(
-        &mut self,
-        capture_group_index: u32,
-        progress_index: u32,
-    ) {
-        ClearCaptureIfNoProgressInstruction::write(
-            self.current_block_buf(),
-            capture_group_index,
-            progress_index,
-        )
     }
 
     fn emit_loop_instruction(
@@ -593,19 +581,6 @@ impl CompiledRegExpBuilder {
             self.enter_repetition_context();
         }
 
-        // If we are in a quantifier with a minimum of 0 repetitions, then 0-length matches of that
-        // quantifier should not set captures. This is implemented with an instruction that clears
-        // each capture if no progress is detected.
-        let needs_capture_if_no_progress_index = if quantifier.min == 0 && quantifier.has_captures()
-        {
-            // Emit a progress instruction before the quantifier starts
-            let progress_index = self.new_progress_point();
-            self.emit_progress_instruction(progress_index);
-            Some(progress_index)
-        } else {
-            None
-        };
-
         // Can inline a small number of repetitions otherwise use a loop
         if quantifier.min != 0 && quantifier.min <= MAX_INLINED_REPETITIONS {
             // Emit term min times for repetitions that must be present. Clear captures from the
@@ -644,26 +619,34 @@ impl CompiledRegExpBuilder {
             self.set_current_block(loop_end_block_id);
         }
 
-        if let Some(max) = quantifier.max {
-            let num_remaining_repetitions = max - quantifier.min;
-
-            // Exact number of repetitions
-            if num_remaining_repetitions == 0 {
-                // Clean up any necessary contexts
-                if is_repetition {
-                    self.exit_repetition_context();
-                }
-
-                return;
+        // Exact number of repetitions have been matched, we are done
+        if let Some(max) = quantifier.max
+            && max == quantifier.min
+        {
+            if is_repetition {
+                self.exit_repetition_context();
             }
+
+            return;
+        }
+
+        // Optional repetitions cannot match the empty string. Implemented as a progress instruction
+        // after each optional repetition. Initialize the progress point before first repetition.
+        let progress_index = if !quantifier.always_consumes {
+            let progress_index = self.new_progress_point();
+            self.emit_set_progress_instruction(progress_index);
+            Some(progress_index)
+        } else {
+            None
+        };
+
+        if let Some(max) = quantifier.max {
+            let num_optional_repetitions = max - quantifier.min;
 
             let join_block_id = self.new_block();
 
             // Can inline a small number of optional repetitions otherwise use a loop
-            if num_remaining_repetitions <= MAX_INLINED_REPETITIONS {
-                // Initialize progress for the first repetition, if necessary
-                let progress_index = self.emit_quantifier_progress_init(quantifier);
-
+            if num_optional_repetitions <= MAX_INLINED_REPETITIONS {
                 // Emit term blocks max - min times, each is optional and is preceded by a branch to
                 // the join block.
                 for i in quantifier.min..max {
@@ -690,13 +673,10 @@ impl CompiledRegExpBuilder {
             } else {
                 let loop_block_id = self.new_block();
 
-                // Initialize progress for the first repetition, if necessary
-                let progress_index = self.emit_quantifier_progress_init(quantifier);
-
                 self.emit_quantifier_optional_branch(quantifier, loop_block_id, join_block_id);
 
                 // If min is out of range clamp to the largest allowed number of repetitions
-                let clamped_repetitions = num_remaining_repetitions.to_u32().unwrap_or(u32::MAX);
+                let clamped_repetitions = num_optional_repetitions.to_u32().unwrap_or(u32::MAX);
 
                 // Loop block consists of loop instruction, term, then branches back to start of block
                 self.set_current_block(loop_block_id);
@@ -724,9 +704,6 @@ impl CompiledRegExpBuilder {
             let term_block_id = self.new_block();
             let join_block_id = self.new_block();
 
-            // Initialize progress for the first repetition, if necessary
-            let progress_index = self.emit_quantifier_progress_init(quantifier);
-
             self.emit_quantifier_optional_branch(quantifier, term_block_id, join_block_id);
 
             // Emit term block
@@ -747,26 +724,6 @@ impl CompiledRegExpBuilder {
 
         if is_repetition {
             self.exit_repetition_context();
-        }
-
-        // Clear all captures if there has been no progress since the start of the repetition
-        if let Some(progress_index) = needs_capture_if_no_progress_index {
-            for capture_index in quantifier.captures.into_iter().flatten() {
-                self.emit_clear_capture_if_no_progress_instruction(capture_index, progress_index);
-            }
-        }
-    }
-
-    /// An optional repetition may not match the empty string. This is guaranteed with a progress
-    /// instruction after each repetition. We must initialize the progress point before the first
-    /// repetition to verify the first repetition makes progress.
-    fn emit_quantifier_progress_init(&mut self, quantifier: &Quantifier) -> Option<u32> {
-        if !quantifier.always_consumes {
-            let progress_index = self.new_progress_point();
-            self.emit_set_progress_instruction(progress_index);
-            Some(progress_index)
-        } else {
-            None
         }
     }
 

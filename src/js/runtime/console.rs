@@ -21,6 +21,14 @@ use crate::{
     },
 };
 
+enum ConsoleLogLevel {
+    Debug,
+    Error,
+    Info,
+    Log,
+    Warn,
+}
+
 pub struct ConsoleObject;
 
 impl ConsoleObject {
@@ -28,9 +36,61 @@ impl ConsoleObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
+        object.intrinsic_func(
+            cx,
+            cx.names.debug(),
+            RuntimeFunction::ConsoleObject_debug,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.error_(),
+            RuntimeFunction::ConsoleObject_error,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.info(),
+            RuntimeFunction::ConsoleObject_info,
+            0,
+            realm,
+        )?;
         object.intrinsic_func(cx, cx.names.log(), RuntimeFunction::ConsoleObject_log, 0, realm)?;
+        object.intrinsic_func(
+            cx,
+            cx.names.warn(),
+            RuntimeFunction::ConsoleObject_warn,
+            0,
+            realm,
+        )?;
 
         Ok(object.to_handle())
+    }
+
+    pub fn debug(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        console_method_impl(cx, ConsoleLogLevel::Debug, arguments)
+    }
+
+    pub fn error(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        console_method_impl(cx, ConsoleLogLevel::Error, arguments)
+    }
+
+    pub fn info(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        console_method_impl(cx, ConsoleLogLevel::Info, arguments)
     }
 
     pub fn log(
@@ -38,18 +98,34 @@ impl ConsoleObject {
         _: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let use_colors = stdout_should_use_colors(&cx.options);
-        let opts = FormatOptions::new(use_colors);
-
-        let mut formatted = vec![];
-        for argument in arguments.iter() {
-            formatted.push(to_console_string(cx, *argument, &opts)?);
-        }
-
-        println!("{}", formatted.join(" "));
-
-        Ok(cx.undefined())
+        console_method_impl(cx, ConsoleLogLevel::Log, arguments)
     }
+
+    pub fn warn(
+        cx: Context,
+        _: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        console_method_impl(cx, ConsoleLogLevel::Warn, arguments)
+    }
+}
+
+fn console_method_impl(
+    cx: Context,
+    _: ConsoleLogLevel,
+    arguments: &[Handle<Value>],
+) -> EvalResult<Handle<Value>> {
+    let use_colors = stdout_should_use_colors(&cx.options);
+    let opts = FormatOptions::new(use_colors);
+
+    let mut formatted = vec![];
+    for argument in arguments.iter() {
+        formatted.push(to_console_string(cx, *argument, &opts)?);
+    }
+
+    println!("{}", formatted.join(" "));
+
+    Ok(cx.undefined())
 }
 
 /// Format for printing value to console

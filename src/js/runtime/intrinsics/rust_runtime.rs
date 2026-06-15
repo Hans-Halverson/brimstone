@@ -765,7 +765,11 @@ rust_runtime_functions!(
     (WrapForValidIteratorPrototype_next, WrapForValidIteratorPrototype::next),
     (WrapForValidIteratorPrototype_return_, WrapForValidIteratorPrototype::return_),
     // Non-standard functions
+    (ConsoleObject_debug, ConsoleObject::debug),
+    (ConsoleObject_error, ConsoleObject::error),
+    (ConsoleObject_info, ConsoleObject::info),
     (ConsoleObject_log, ConsoleObject::log),
+    (ConsoleObject_warn, ConsoleObject::warn),
     (GcObject_run, GcObject::run),
     (Test262Object_create_realm, Test262Object::create_realm),
     (Test262Object_detach_array_buffer, Test262Object::detach_array_buffer),

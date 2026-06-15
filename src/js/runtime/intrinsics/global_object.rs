@@ -19,10 +19,12 @@ use crate::{
         error::uri_error,
         eval::eval::perform_eval,
         function::get_argument,
+        gc_object::GcObject,
         intrinsics::{intrinsics::Intrinsic, rust_runtime::RuntimeFunction},
         property_descriptor::PropertyDescriptor,
         string_parsing::{StringLexer, parse_signed_decimal_literal, skip_string_whitespace},
         string_value::{FlatString, StringValue},
+        test_262_object::Test262Object,
         to_string,
         type_utilities::{to_int32, to_number},
     },
@@ -153,6 +155,15 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         // Non-standard, environment specific properties of global object
         let console_object = ConsoleObject::new(cx, realm)?.into();
         value_prop!(cx.names.console(), console_object, true, false, true);
+
+        // Optional, non-standard properties of global object
+        if cx.options.expose_gc {
+            GcObject::install(cx, realm)?;
+        }
+
+        if cx.options.expose_test_262 {
+            Test262Object::install(cx, realm)?;
+        }
 
         Ok(())
     })

@@ -4,14 +4,14 @@ use crate::{
     common::wtf_8::{Wtf8Cow, Wtf8String},
     parser::{
         ParseContext,
-        analyze::{PrivateNameUsage, analyze_for_eval},
+        analyze::{PrivateNameUsage, analyze, analyze_for_eval},
         ast::{self},
-        parse_script_for_eval,
+        parse_script, parse_script_for_eval,
         scope_tree::BindingKind,
         source::Source,
     },
     runtime::{
-        Context, EvalResult, Handle, HeapPtr, Value,
+        Context, EvalResult, Handle, HeapPtr, Realm, Value,
         abstract_operations::call_object,
         bytecode::{
             function::Closure, generator::BytecodeProgramGenerator, instruction::EvalFlags,
@@ -286,4 +286,34 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
 
 fn error_name_already_declared(cx: Context, name: Handle<FlatString>) -> EvalResult<()> {
     syntax_error(cx, &format!("identifier `{name}` has already been declared"))
+}
+
+/// Evaluate a script in the given realm.
+pub fn evaluate_script(
+    mut cx: Context,
+    realm: Handle<Realm>,
+    source: Rc<Source>,
+) -> EvalResult<Handle<Value>> {
+    let pcx = ParseContext::new(source);
+    let parse_result = match parse_script(&pcx, cx.options.clone()) {
+        Ok(parse_result) => parse_result,
+        Err(error) => return syntax_parse_error(cx, &error),
+    };
+
+    let analyzed_result = match analyze(parse_result) {
+        Ok(analyzed_result) => analyzed_result,
+        // Return the first analysis error
+        Err(errors) => return syntax_parse_error(cx, &errors.errors[0]),
+    };
+
+    let bytecode_script = match BytecodeProgramGenerator::generate_from_parse_script_result(
+        cx,
+        &analyzed_result,
+        realm,
+    ) {
+        Ok(bytecode_script) => bytecode_script,
+        Err(error) => return syntax_error(cx, &error.to_string()),
+    };
+
+    cx.vm().execute_script(bytecode_script)
 }

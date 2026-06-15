@@ -2,13 +2,13 @@ use std::rc::Rc;
 
 use crate::{
     handle_scope, must_a,
-    parser::{ParseContext, analyze::analyze, parse_script, source::Source},
+    parser::source::Source,
     runtime::{
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
         abstract_operations::set,
         alloc_error::AllocResult,
-        bytecode::generator::BytecodeProgramGenerator,
-        error::{syntax_error, syntax_parse_error, type_error},
+        error::{syntax_parse_error, type_error},
+        eval::eval::evaluate_script,
         function::get_argument,
         get,
         intrinsics::{
@@ -153,8 +153,8 @@ impl Test262Object {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         // Create a new realm that also has the test262 object installed
-        let realm = Realm::new(cx)?;
-        Test262Object::install(cx, realm)?;
+        let mut realm = Realm::new(cx)?;
+        realm.install_optional_globals(cx)?;
 
         get(cx, realm.global_object(), test_262_key(cx)?)
     }
@@ -181,34 +181,7 @@ impl Test262Object {
                 Err(error) => return syntax_parse_error(cx, &error),
             };
 
-        let pcx = ParseContext::new(source);
-        let parse_result = parse_script(&pcx, cx.options.clone());
-        let parse_result = match parse_result {
-            Ok(parse_result) => parse_result,
-            Err(error) => return syntax_parse_error(cx, &error),
-        };
-
-        let analyzed_result = match analyze(parse_result) {
-            Ok(analyzed_result) => analyzed_result,
-            Err(errors) => {
-                // Choose an arbitrary syntax error to return
-                let error = &errors.errors[0];
-                return syntax_parse_error(cx, error);
-            }
-        };
-
-        let realm = cx.current_realm();
-        let gen_result = BytecodeProgramGenerator::generate_from_parse_script_result(
-            cx,
-            &analyzed_result,
-            realm,
-        );
-        let bytecode_script = match gen_result {
-            Ok(bytecode_script) => bytecode_script,
-            Err(error) => return syntax_error(cx, &error.to_string()),
-        };
-
-        cx.vm().execute_script(bytecode_script)
+        evaluate_script(cx, cx.current_realm(), source)
     }
 
     pub fn detach_array_buffer(

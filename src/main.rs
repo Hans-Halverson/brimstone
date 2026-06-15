@@ -7,10 +7,7 @@ use brimstone_core::{
         terminal::stderr_should_use_colors,
     },
     parser::source::Source,
-    runtime::{
-        BsResult, Context, ContextBuilder, alloc_error::AllocResult, gc_object::GcObject,
-        test_262_object::Test262Object,
-    },
+    runtime::{BsResult, Context, ContextBuilder, alloc_error::AllocResult},
 };
 use clap::Parser;
 
@@ -25,13 +22,7 @@ fn create_context(args: &Args) -> AllocResult<Context> {
     let options = parse_options(args);
     let cx = ContextBuilder::new().set_options(options).build()?;
 
-    if args.expose_gc {
-        GcObject::install(cx, cx.initial_realm())?;
-    }
-
-    if args.expose_test_262 {
-        Test262Object::install(cx, cx.initial_realm())?;
-    }
+    cx.initial_realm().install_optional_globals(cx)?;
 
     #[cfg(feature = "gc_stress_test")]
     {

@@ -34,6 +34,10 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub expose_test_262: bool,
 
+    /// Expose the test shell methods for compatibility with the test shell of other engines
+    #[arg(long, default_value_t = false)]
+    pub expose_test_shell_compat: bool,
+
     /// The minimum heap size. Must be between 4MB and 4GB, specified in the form "XMB" or "XGB"
     /// where X is a power of 2.
     #[arg(long, value_parser = parse_min_heap_size_arg)]
@@ -76,6 +80,10 @@ pub struct Args {
 
     #[arg(required = true)]
     pub files: Vec<String>,
+
+    /// Args after an optional `--`
+    #[arg(last = true, hide = true)]
+    pub script_args: Vec<String>,
 }
 
 /// Options passed throughout the program.
@@ -112,6 +120,18 @@ pub struct Options {
 
     /// Print statistics about the parse phase
     pub parse_stats: bool,
+
+    /// Expose the global `gc` object
+    pub expose_gc: bool,
+
+    /// Expose the global `$262` object for test262 tests
+    pub expose_test_262: bool,
+
+    /// Expose global methods for test shell compatibility
+    pub expose_test_shell_compat: bool,
+
+    /// Args passed to the program after `--`
+    pub script_args: Vec<String>,
 
     /// Create the heap from this SerializedHeap if set, otherwise create heap from scratch.
     pub serialized_heap: Option<&'static SerializedHeap<'static>>,
@@ -154,6 +174,10 @@ impl OptionsBuilder {
             max_heap_size: DEFAULT_MAX_HEAP_SIZE,
             no_color: false,
             parse_stats: false,
+            expose_gc: false,
+            expose_test_262: false,
+            expose_test_shell_compat: false,
+            script_args: vec![],
             serialized_heap: get_default_serialized_heap(),
         })
     }
@@ -177,6 +201,10 @@ impl OptionsBuilder {
             .max_heap_size(args.max_heap_size.unwrap_or(DEFAULT_MAX_HEAP_SIZE))
             .no_color(args.no_color)
             .parse_stats(args.parse_stats)
+            .expose_gc(args.expose_gc)
+            .expose_test_262(args.expose_test_262)
+            .expose_test_shell_compat(args.expose_test_shell_compat)
+            .script_args(args.script_args.clone())
     }
 
     /// Return the options that have been built, consuming the builder.
@@ -253,6 +281,26 @@ impl OptionsBuilder {
 
     pub fn parse_stats(mut self, parse_stats: bool) -> Self {
         self.0.parse_stats = parse_stats;
+        self
+    }
+
+    pub fn expose_gc(mut self, expose_gc: bool) -> Self {
+        self.0.expose_gc = expose_gc;
+        self
+    }
+
+    pub fn expose_test_262(mut self, expose_test_262: bool) -> Self {
+        self.0.expose_test_262 = expose_test_262;
+        self
+    }
+
+    pub fn expose_test_shell_compat(mut self, expose_test_shell_compat: bool) -> Self {
+        self.0.expose_test_shell_compat = expose_test_shell_compat;
+        self
+    }
+
+    pub fn script_args(mut self, script_args: Vec<String>) -> Self {
+        self.0.script_args = script_args;
         self
     }
 

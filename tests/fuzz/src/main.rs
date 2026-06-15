@@ -9,14 +9,13 @@ use std::{
 };
 
 use brimstone_core::{
-    common::wtf_8::Wtf8String,
+    common::{options::OptionsBuilder, wtf_8::Wtf8String},
     handle_scope, must_a,
     parser::source::Source,
     runtime::{
         Context, ContextBuilder, EvalResult, Handle, PropertyDescriptor, PropertyKey, Value,
         abstract_operations::define_property_or_throw, alloc_error::AllocResult,
         builtin_function::BuiltinFunction, error::type_error, function::get_argument,
-        gc_object::GcObject,
     },
 };
 
@@ -65,9 +64,11 @@ fn main() {
 
             // Set up context for test
             let completion_or_panic = panic::catch_unwind(|| {
-                let cx = ContextBuilder::new().build()?;
+                let options = Rc::new(OptionsBuilder::new().expose_gc(true).build().unwrap());
+                let cx = ContextBuilder::new().set_options(options).build()?;
+
+                cx.initial_realm().install_optional_globals(cx);
                 install_fuzzilli_function(cx)?;
-                GcObject::install(cx, cx.initial_realm())?;
 
                 // Execute test case
                 let source = Rc::new(Source::new_for_string("", test_wtf8_string).unwrap());

@@ -231,6 +231,7 @@ fn run_single_test(
     // Set up options for test
     let options = OptionsBuilder::new()
         .annex_b(test.is_annex_b)
+        .expose_test_262(true)
         .min_heap_size(HEAP_SIZE)
         .build()
         .unwrap();
@@ -242,8 +243,7 @@ fn run_single_test(
         .unwrap();
     let options = cx.options.clone();
 
-    // Each realm has access to the test262 object
-    Test262Object::install(cx, cx.initial_realm()).unwrap();
+    cx.initial_realm().install_optional_globals(cx).unwrap();
 
     // Wrap in catch_unwind so that we can clean up the context in the event of a panic
     let panic_result = panic::catch_unwind(AssertUnwindSafe(|| {

@@ -8,6 +8,7 @@ members = [
   "tests",
   "tests/fuzz",
   "tests/harness",
+  "tests/perf",
 ]
 resolver = "2"
 

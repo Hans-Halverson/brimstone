@@ -118,7 +118,7 @@ jobs:
       - name: Run integration tests on nightly without alloc_error feature enabled
         run: cargo brimstone-test --release --no-default-features --features nightly -- --reindex --ignore-unimplemented
     
-  build-benchmarks:
+  build-perf:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -126,7 +126,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab # v2.7.5
 
-      - name: Build benchmarks
+      - name: Build performance test suite
+        run: cargo build -p brimstone_perf
+
+      - name: Build benchmarks tests
         run: cargo bench --no-run
 
   build-fuzzer:

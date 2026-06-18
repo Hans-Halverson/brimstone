@@ -133,6 +133,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "brimstone_perf"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "brimstone_serialized_heap"
 version = "0.1.0"
 dependencies = [

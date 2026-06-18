@@ -1,6 +1,6 @@
 # Benchmarks
 
-Brimstone's performance testing is found in this directory.
+Brimstone's first party performance microbenchmark testing is found in this directory.
 
 ## Installation
 

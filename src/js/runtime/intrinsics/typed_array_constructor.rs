@@ -700,7 +700,7 @@ macro_rules! create_typed_array_constructor {
                 // May allocate, so call before accessing array buffer
                 let element_value = $to_element(cx, value)?;
 
-                // Call to `$to_element` may invoke user cade. Check if array has become detached
+                // Call to `$to_element` may invoke user code. Check if array has become detached
                 // or out of bounds.
                 let typed_array_record =
                     make_typed_array_with_buffer_witness_record(self.as_typed_array());

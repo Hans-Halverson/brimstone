@@ -68,7 +68,7 @@ pub enum OpCode {
     /// Layout: [[opcode: u8] [padding: u24] [progress_index: u32]]
     Progress,
 
-    /// Set the current lcoation in the string in the progress array at the given progress index.
+    /// Set the current location in the string in the progress array at the given progress index.
     /// Do not check if progress has been made.
     ///
     /// Layout: [[opcode: u8] [padding: u24] [progress_index: u32]]
@@ -134,13 +134,13 @@ pub enum OpCode {
     /// At the end of a sequence of comparisons, use ConsumeIfTrue or ConsumeIfFalse to
     /// conditionally perform an action, resetting the accumulator register.
     ///
-    /// Consume a single point if the compare accumulater is true, fail otherwise. Resets the compare
+    /// Consume a single point if the compare accumulator is true, fail otherwise. Resets the compare
     /// register to false.
     ///
     /// Layout: [[opcode: u8] [padding: u24]]
     ConsumeIfTrue,
 
-    /// Consume a single point if the compare accumulater is false, fail otherwise. Resets the compare
+    /// Consume a single point if the compare accumulator is false, fail otherwise. Resets the compare
     /// register to false,
     ///
     /// Layout: [[opcode: u8] [padding: u24]]

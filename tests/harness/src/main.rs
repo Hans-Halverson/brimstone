@@ -158,7 +158,7 @@ fn main() {
     }
 }
 
-/// The the default path to the root directory for the test suite if none was provided. Attempts to
+/// The default path to the root directory for the test suite if none was provided. Attempts to
 /// return the `tests/test_manifest.jsonc` file in the root of the `brimstone` repository.
 ///
 /// Will only succeed when the program is run from within the `brimstone` repository.

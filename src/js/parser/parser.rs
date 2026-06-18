@@ -682,7 +682,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Called when the current token is "let", return true if this is the start of a let
+    /// Called when the current token is "let", returns true if this is the start of a let
     /// declaration. Otherwise this is the start of an expression or expression statement.
     fn is_let_declaration_start(&mut self) -> ParseResult<bool> {
         if self.in_strict_mode {
@@ -2950,7 +2950,7 @@ impl<'a> Parser<'a> {
                 self.advance()?;
                 Ok(Some(Identifier::new(loc, name)))
             }
-            // All keywords can be uses as an identifier name
+            // All keywords can be used as an identifier name
             Token::Var
             | Token::Let
             | Token::Const
@@ -3775,7 +3775,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        // Body (including extends clause) of the class in in its own scope
+        // Body (including extends clause) of the class in its own scope
         let scope = self.scope_builder.enter_scope(ScopeNodeKind::Class);
 
         let super_class = if self.token == Token::Extends {

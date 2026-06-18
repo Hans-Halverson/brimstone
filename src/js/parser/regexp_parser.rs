@@ -813,7 +813,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
             // Every quantifier can be postfixed with a `?` to make it lazy
             let is_greedy = !self.eat('?');
 
-            // Check if term is a a non-quantifiable assertion. Lookaheads are allowed as
+            // Check if term is a non-quantifiable assertion. Lookaheads are allowed as
             // quantifiable assertions in Annex B.
             match term.node {
                 Term::Lookaround(Lookaround { is_ahead: true, .. }) if !self.is_unicode_aware() => {
@@ -1426,7 +1426,8 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
 
         // Inverted character classes cannot contain strings
         if may_contain_strings && is_inverted {
-            return self.error(first_operand_pos, ParseError::InvertedCharacterClassContainStrings);
+            return self
+                .error(first_operand_pos, ParseError::InvertedCharacterClassCannotContainStrings);
         }
 
         Ok((
@@ -1812,7 +1813,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
         let code_point = if self.current() == '\\' as u32 {
             self.parse_regex_unicode_escape_sequence(true)?
         } else {
-            // Otherwise must be a unicode codepoint
+            // Otherwise must be a unicode code point
             let code_point = self.parse_unicode_codepoint()?;
 
             // If in non-unicode mode then parse as surrogate pair
@@ -1846,7 +1847,7 @@ impl<'a, T: LexerStream> RegExpParser<'a, T> {
                     return self.error_unexpected_token(self.pos());
                 }
             } else {
-                // Otherwise must be a unicode codepoint
+                // Otherwise must be a unicode code point
                 let save_state = self.save();
                 let mut code_point = self.parse_unicode_codepoint()?;
 

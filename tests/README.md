@@ -15,7 +15,7 @@ All snapshot tests are run with `cargo test`.
 
 # Integration Tests
 
-Brimstone has a generic integration test runner which can be used to run multiple suites of tests. This includes both first and third party tests suites, such as the official test262 test suite.
+Brimstone has a generic integration test runner which can be used to run multiple suites of tests. This includes both first and third party test suites, such as the official test262 test suite.
 
 The integration test runner is located in the `harness` directory.
 
@@ -38,7 +38,7 @@ Install the test262 repo at the pinned commit by running the following script:
 
 The test runner is run with `cargo brimstone-test` anywhere in the `brimstone` workspace. Run `cargo brimstone-test -- --help` to see the full set of options for the test runner.
 
-Before running any tests, the test runner must first create an index of the all test suites for fast consumption later on. This only needs to be run when the set of tests has changed, e.g. after you add new tests or pull in a new version of the test262 repo. Pass the `--reindex` option to reindex and then immediately run the specified tests.
+Before running any tests, the test runner must first create an index of all test suites for fast consumption later on. This only needs to be run when the set of tests has changed, e.g. after you add new tests or pull in a new version of the test262 repo. Pass the `--reindex` option to reindex and then immediately run the specified tests.
 
 The integration test suites can be run with:
 
@@ -73,7 +73,7 @@ The file `ignored_tests.jsonc` for each test suite contains sets of tests which 
 
 ## Manifest
 
-Integration test suites are defined in the root `test_manifest.jsonc` file. This allows configuring the name, paths, and other options for each test suite. The test runner will automatically discover the `brimestone` repo's test manifest if run within the `brimstone` workspace. The path to the test manifest can be specified with the `--test-manifest-path` option.
+Integration test suites are defined in the root `test_manifest.jsonc` file. This allows configuring the name, paths, and other options for each test suite. The test runner will automatically discover the `brimstone` repo's test manifest if run within the `brimstone` workspace. The path to the test manifest can be specified with the `--test-manifest-path` option.
 
 # Fuzz Tests
 

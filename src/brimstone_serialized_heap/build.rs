@@ -51,7 +51,7 @@ fn gen_serialized_heap_file(out_path: &Path) -> String {
         r#"
 use brimstone_core::common::serialized_heap::{{SerializedHeap, SerializedSemispace}};
 
-/// Align a sequence of bytes to a the alignment of the given type.
+/// Align a sequence of bytes to the alignment of the given type.
 /// 
 /// Needs #[repr(C)] to guarantee that bytes comes after `_align`.
 #[repr(C)]

@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-/// Top level error type for the JS engine. Encapsulates all possible errors types that can occur
+/// Top level error type for the JS engine. Encapsulates all possible error types that can occur
 /// during parsing, analysis, or evaluation.
 pub enum BsError {
     /// A single parse error can be returned from parsing.

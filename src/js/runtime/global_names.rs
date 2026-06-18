@@ -97,7 +97,7 @@ pub fn create_global_declaration_instantiation_intrinsic(
     .as_value())
 }
 
-/// GlobalDeclarationInstantiation in the rust runtime, called from the script init function.
+/// GlobalDeclarationInstantiation in the Rust runtime, called from the script init function.
 pub fn global_declaration_instantiation_runtime(
     cx: Context,
     _: Handle<Value>,

@@ -579,7 +579,7 @@ pub fn private_set(
     } else if property.is_private_method() {
         type_error(cx, "cannot assign to private method")
     } else {
-        // Property is an private accessor
+        // Property is a private accessor
         let accessor = Accessor::from_value(property.value());
         match accessor.set {
             None => type_error(cx, "cannot set getter-only private property"),

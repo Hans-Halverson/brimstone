@@ -109,7 +109,7 @@ pub trait LexerStream {
         self.pos() == self.len()
     }
 
-    /// Whether the stream has a current code point. A stream does not have an current code point if
+    /// Whether the stream has a current code point. A stream does not have a current code point if
     /// it is at the end of a forward stream, or the start of a backwards stream.
     #[inline]
     fn has_current(&self) -> bool {

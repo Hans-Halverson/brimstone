@@ -1152,7 +1152,7 @@ impl<'a> Lexer<'a> {
                     break;
                 }
             } else {
-                // Otherwise must be a utf-8 encoded codepoint
+                // Otherwise must be a UTF-8 encoded code point
                 let save_state = self.save();
                 let code_point = self.lex_utf8_codepoint()?;
                 if is_id_part_unicode(code_point) {
@@ -1495,7 +1495,7 @@ impl<'a> Lexer<'a> {
         self.emit(Token::TemplatePart(template_part_token), start_pos)
     }
 
-    /// Lex any valid codepoint whether it is ASCII or unicode
+    /// Lex any valid code point whether it is ASCII or Unicode
     #[inline]
     fn lex_ascii_or_unicode_code_point(&mut self) -> ParseResult<CodePoint> {
         if is_ascii(self.current) {
@@ -1665,7 +1665,7 @@ impl<'a> Lexer<'a> {
             } else if self.current == EOF_CODE_POINT {
                 break;
             } else {
-                // Otherwise must be a utf-8 encoded codepoint
+                // Otherwise must be a UTF-8 encoded code point
                 let save_state = self.save();
                 let code_point = self.lex_utf8_codepoint()?;
 

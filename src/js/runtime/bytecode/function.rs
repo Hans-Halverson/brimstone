@@ -105,7 +105,7 @@ impl Closure {
         set_uninit!(object.function, *function);
         set_uninit!(object.scope, *scope);
 
-        // Does not need to the `name` and `length` properties as these will be set by caller
+        // Does not need the `name` and `length` properties as these will be set by caller
         Ok(object.to_handle())
     }
 
@@ -143,7 +143,7 @@ impl Closure {
         self.function_ptr().realm()
     }
 
-    /// Iniialize the common properties of all functions - `name`, `length`, and `prototype` if
+    /// Initialize the common properties of all functions - `name`, `length`, and `prototype` if
     /// this is a constructor.
     fn init_common_properties(
         cx: Context,

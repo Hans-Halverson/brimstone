@@ -87,7 +87,7 @@ pub fn try_encode_surrogate_pair(code_point: CodePoint) -> Option<(CodeUnit, Cod
 }
 
 pub fn code_point_from_surrogate_pair(high: CodeUnit, low: CodeUnit) -> CodePoint {
-    // High 10 bits are encoded in the the high surrogate
+    // High 10 bits are encoded in the high surrogate
     let high_bits = (high - HIGH_SURROGATE_START) as u32;
 
     // Low 10 bits are encoded in the low surrogate
@@ -388,10 +388,10 @@ pub fn utf8_byte_count(code_point: CodePoint) -> usize {
     }
 }
 
-/// Lex a non-ascii unicode codepoint encoded as UTF-8. Must only be called when we know the
+/// Lex a non-ASCII unicode code point encoded as UTF-8. Must only be called when we know the
 /// current byte is in-bounds and is not ASCII meaning it is the start of a UTF-8 byte sequence.
 ///
-/// Returns the codepoint as well as its length in bytes. If no valid codepoint could be parsed,
+/// Returns the code point as well as its length in bytes. If no valid code point could be parsed,
 /// return an error with the length of the invalid bytes.
 pub fn decode_wtf8_codepoint(buf: &[u8]) -> Result<(CodePoint, usize), usize> {
     let b1 = buf[0];

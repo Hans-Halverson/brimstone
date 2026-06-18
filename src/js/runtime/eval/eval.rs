@@ -262,7 +262,7 @@ fn eval_declaration_instantiation(mut cx: Context, program: &ast::Program) -> Ev
                 /* can_delete */ true,
             )?;
         } else {
-            // All functions initialized to undefined, overwriting existing if already declared
+            // All functions are initialized to undefined, overwriting existing declarations
             let desc = Property::data(cx.undefined(), true, true, true);
             scope_object.set_property(cx, name.cast(), desc)?;
         }

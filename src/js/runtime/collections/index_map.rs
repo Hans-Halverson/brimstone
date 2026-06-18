@@ -163,14 +163,14 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         self.num_deleted = 0;
     }
 
-    /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
+    /// Return an iterator over the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn iter_gc_unsafe(&self) -> GcUnsafeEntriesIter<'_, K, V> {
         // Only iterate through a slice of the entries that have been used
         GcUnsafeEntriesIter(self.entries_as_slice()[..self.num_entries_used()].iter())
     }
 
-    /// Return iterator through the entries of the map. Iterator is not GC-safe, so make sure there
+    /// Return an iterator over the entries of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeEntriesIterMut<'_, K, V> {
         // Only iterate through a slice of the entries that have been used
@@ -178,13 +178,13 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
         GcUnsafeEntriesIterMut(self.entries_as_slice_mut()[..num_entries_used].iter_mut())
     }
 
-    /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
+    /// Return an iterator over the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn keys_gc_unsafe(&self) -> GcUnsafeKeysIter<'_, K, V> {
         GcUnsafeKeysIter(self.entries_as_slice()[..self.num_entries_used()].iter())
     }
 
-    /// Return iterator through the keys of the map. Iterator is not GC-safe, so make sure there
+    /// Return an iterator over the keys of the map. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn keys_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, K, V> {
         let num_entries_used = self.num_entries_used();
@@ -414,7 +414,7 @@ impl<K: Eq + Hash + Clone, V: Clone> BsIndexMap<K, V> {
 }
 
 impl<K: Eq + Hash + Clone, V: Clone> Handle<BsIndexMap<K, V>> {
-    /// Return iterator through the entries of the map. Iterator is GC-safe so it is safe to live
+    /// Return an iterator over the entries of the map. Iterator is GC-safe so it is safe to live
     /// across allocations.
     pub fn iter_gc_safe(&self) -> GcSafeEntriesIter<K, V> {
         GcSafeEntriesIter::new(*self)

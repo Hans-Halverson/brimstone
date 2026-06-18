@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! heap_trait_object {
     ($trait:ident, $stack_object:ident, $heap_object:ident, $into_dyn:ident, $extract_vtable:ident) => {
-        /// A custom trait object to the heap, containing both a pointer to an object on the heap along with
+        /// A custom trait object for the heap, containing both a pointer to an object on the heap along with
         /// the object's vtable for the trait.
         ///
         /// Differs from a true rust trait object in that the data pointer contains the receiver value

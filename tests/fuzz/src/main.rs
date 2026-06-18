@@ -103,7 +103,7 @@ fn install_fuzzilli_function(mut cx: Context) -> AllocResult<()> {
     handle_scope!(cx, {
         let realm = cx.initial_realm();
 
-        // Register the rust runtime function
+        // Register the Rust runtime function
         let fuzzili_id = cx.rust_runtime_functions.register(fuzzilli).unwrap();
 
         let fuzzilli_string = cx.alloc_static_string("fuzzilli")?;

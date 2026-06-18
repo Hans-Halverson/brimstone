@@ -53,6 +53,7 @@ mod string_parsing;
 pub mod string_value;
 mod tasks;
 pub mod test_262_object;
+mod test_shell;
 mod type_utilities;
 mod value;
 

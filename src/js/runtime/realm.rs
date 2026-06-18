@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     field_offset, handle_scope, must_a,
     parser::scope_tree::REALM_SCOPE_SLOT_NAME,
@@ -9,6 +11,7 @@ use crate::{
         collections::{BsHashMap, BsHashMapField, InlineArray},
         error::{err_assign_constant, syntax_error},
         gc::{Handle, HeapItem, HeapPtr, HeapVisitor},
+        gc_object::GcObject,
         global_names::has_restricted_global_property,
         heap_item_descriptor::{HeapItemDescriptor, HeapItemKind},
         interned_strings::InternedStrings,
@@ -21,6 +24,8 @@ use crate::{
         scope::Scope,
         scope_names::{ScopeFlags, ScopeNameFlags, ScopeNames},
         string_value::FlatString,
+        test_262_object::Test262Object,
+        test_shell::TestShell,
     },
     set_uninit,
 };
@@ -39,6 +44,9 @@ pub struct Realm {
     /// An empty function in this realm. Used to form a dummy stack frame to set the current realm
     /// when the stack would otherwise be empty.
     empty_function: HeapPtr<Closure>,
+    /// Timestamp when this realm was created. Times returned from `performance.now` are relative
+    /// to this timestamp.
+    time_origin: Instant,
     pub intrinsics: Intrinsics,
 }
 
@@ -68,6 +76,7 @@ impl Realm {
             set_uninit!(realm.global_scopes, HeapPtr::uninit());
             set_uninit!(realm.lexical_names, HeapPtr::uninit());
             set_uninit!(realm.empty_function, HeapPtr::uninit());
+            set_uninit!(realm.time_origin, Instant::now());
 
             let realm = realm.to_handle();
 
@@ -106,6 +115,10 @@ impl Realm {
     #[inline]
     pub fn empty_function_ptr(&self) -> HeapPtr<Closure> {
         self.empty_function
+    }
+
+    pub fn time_origin(&self) -> Instant {
+        self.time_origin
     }
 
     pub fn get_intrinsic_ptr(&self, intrinsic: Intrinsic) -> HeapPtr<ObjectValue> {
@@ -288,6 +301,26 @@ impl Handle<Realm> {
         self.empty_function = *empty_function;
 
         Ok(())
+    }
+
+    /// Install optional, non-standard properties of the global object based on the configuration
+    /// included in the Context's options.
+    pub fn install_optional_globals(&mut self, cx: Context) -> AllocResult<()> {
+        handle_scope!(cx, {
+            if cx.options.expose_gc {
+                GcObject::install(cx, *self)?;
+            }
+
+            if cx.options.expose_test_262 {
+                Test262Object::install(cx, *self)?;
+            }
+
+            if cx.options.expose_test_shell_compat {
+                TestShell::install(cx, *self)?;
+            }
+
+            Ok(())
+        })
     }
 }
 

@@ -91,6 +91,19 @@ impl ErrorObject {
         Ok(error)
     }
 
+    /// Return a generic error object with the given message.
+    pub fn new_with_message(mut cx: Context, message: String) -> EvalResult<Handle<ErrorObject>> {
+        let message_value = cx.alloc_string(&message)?.as_value();
+        let error_object =
+            Self::new(cx, Intrinsic::ErrorPrototype, /* skip_current_frame */ false)?;
+
+        error_object
+            .as_object()
+            .intrinsic_data_prop(cx, cx.names.message(), message_value)?;
+
+        Ok(error_object)
+    }
+
     fn initialize_stack_trace(
         cx: Context,
         mut error: Handle<ErrorObject>,

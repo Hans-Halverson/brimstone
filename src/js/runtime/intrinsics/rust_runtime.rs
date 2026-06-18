@@ -100,7 +100,7 @@ pub type RuntimeFunctionId = u16;
 // Check that the number of runtime functions fits in the RustRuntimeFunctionId type.
 static_assert!(NUM_BUILTIN_RUST_RUNTIME_FUNCTIONS <= (1 << (RuntimeFunctionId::BITS as usize)));
 
-type RuntimeFunctionPtr = fn(
+pub type RuntimeFunctionPtr = fn(
     cx: Context,
     this_value: Handle<Value>,
     arguments: &[Handle<Value>],

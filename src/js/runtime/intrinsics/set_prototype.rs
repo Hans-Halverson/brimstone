@@ -6,7 +6,7 @@ use crate::{
         alloc_error::AllocResult,
         builtin_function::BuiltinFunction,
         collections::BsIndexSetField,
-        error::type_error,
+        error::{range_error, type_error},
         eval_result::EvalResult,
         function::get_argument,
         get,
@@ -677,7 +677,7 @@ fn get_set_record(cx: Context, value: Handle<Value>, method_name: &str) -> EvalR
 
     let int_size = must!(to_integer_or_infinity(cx, num_size));
     if int_size < 0.0 {
-        return type_error(
+        return range_error(
             cx,
             &format!("Set.prototype.{method_name} `size` property must not be negative"),
         );

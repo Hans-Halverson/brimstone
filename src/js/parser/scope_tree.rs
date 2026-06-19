@@ -1007,7 +1007,7 @@ pub enum BindingKind<'a> {
     },
     Function {
         /// Whether this is a LexicallyScopedDeclaration or a VarScopedDeclaration from the spec.
-        /// Only is a VarScopedDeclaration if this is a toplevel function declaration within a
+        /// Only a VarScopedDeclaration if this is a toplevel function declaration within a
         /// script, function, or class static block.
         is_lexical: bool,
         /// Whether this is the name of a function expression.
@@ -1146,7 +1146,7 @@ impl<'a> BindingKind<'a> {
         )
     }
 
-    /// An binding with the name `arguments` requires that an arguments object be created if:
+    /// A binding with the name `arguments` requires that an arguments object be created if:
     /// - It is an implicit `arguments` binding (i.e. a use of `arguments` which reaches a function
     ///   when resolved to a binding).
     /// - It is an explicit `arguments` binding (i.e. a var or var function declaration with the

@@ -191,7 +191,7 @@ impl GarbageCollector {
     fn move_all_live_items(&mut self) {
         loop {
             // Then start fixing all pointers in each new heap item until fix pointer catches up
-            // with alloc pointer, meaning all live obwitemsjects have been copied and pointers have
+            // with alloc pointer, meaning all live objects have been copied and pointers have
             // been fixed.
             while self.fix_ptr < self.alloc_ptr {
                 let mut new_heap_item =
@@ -477,7 +477,7 @@ impl GarbageCollector {
     }
 
     // Visit live weak maps and check if their keys are still live. Visit the values associated with
-    // all lives keys. Return whether any new live keys were found.
+    // all live keys. Return whether any new live keys were found.
     fn visit_live_weak_map_entries(&mut self) -> bool {
         // Walk all live weak maps in the list
         let mut next_weak_map = self.weak_map_list;
@@ -496,7 +496,7 @@ impl GarbageCollector {
 
                     // Key is known to be live if it has already moved and left a forwarding
                     // pointer. Visit the value associated with the key since we now know it is
-                    // live. Also update key to point to to-space so we can tell it is visited.
+                    // live. Also update key to point into to-space so we can tell it is visited.
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(weak_key_descriptor) {
                         *weak_key_value = Value::heap_item(forwarding_ptr);
                         found_new_live_value = true;
@@ -549,7 +549,7 @@ impl GarbageCollector {
 
                     // Target is known to be live if it has already moved and left a forwarding
                     // pointer. Visit the unregister key associated with the target since we now
-                    // know it is live. Also update target to point to to-space so we can tell it
+                    // know it is live. Also update target to point into to-space so we can tell it
                     // is visited.
                     if let Some(forwarding_ptr) = decode_forwarding_pointer(target_descriptor) {
                         cell.target = Value::heap_item(forwarding_ptr);

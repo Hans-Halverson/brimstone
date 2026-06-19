@@ -903,7 +903,7 @@ fn parse_string_to_utc_or_default_date(mut lexer: StringLexer) -> Option<f64> {
 
     lexer.expect(' ')?;
 
-    // Both formats have optionally negative year
+    // Both formats have an optional negative year
     let year_sign = if lexer.eat('-') { -1 } else { 1 };
     let year = year_sign * parse_decimal_digits(&mut lexer, 4)?;
 

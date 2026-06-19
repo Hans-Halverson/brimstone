@@ -23,7 +23,7 @@ impl GeneratorPrototype {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::IteratorPrototype)), true)?;
 
-        // Constructor property is added once GeneratorFunctionPrototype is created
+        // Constructor property is added once GeneratorFunctionPrototype has been created
 
         object.intrinsic_func(
             cx,

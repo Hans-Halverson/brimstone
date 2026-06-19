@@ -178,7 +178,7 @@ fn initialize_environment(cx: Context, module: Handle<SourceTextModule>) -> Eval
 
                         // The BoxedValue for namespace re-exports has not yet been created (unlike
                         // all other exports, which are actual bindings whose BoxedValue is created
-                        // when creating the the module scope).
+                        // when creating the module scope).
                         let boxed_value = BoxedValue::new(cx, namespace_object.into())?;
                         module
                             .module_scope_ptr()

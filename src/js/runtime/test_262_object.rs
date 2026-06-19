@@ -73,7 +73,7 @@ impl Test262Object {
             // Create the test262 object
             let test_262_object = Test262Object::new(cx, realm)?;
 
-            // Install the the "$262" property on the global object
+            // Install the "$262" property on the global object
             realm.global_object().intrinsic_data_prop(
                 cx,
                 test_262_key(cx)?,

@@ -35,7 +35,7 @@ impl AsyncGeneratorPrototype {
             true,
         )?;
 
-        // Constructor property is added once AsyncGeneratorFunctionPrototype is created
+        // Constructor property is added once AsyncGeneratorFunctionPrototype has been created
 
         object.intrinsic_func(
             cx,

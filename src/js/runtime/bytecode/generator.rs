@@ -978,7 +978,7 @@ impl<'a> BytecodeProgramGenerator<'a> {
 
     /// Escape an emit result to the parent handle scope, modifying it in place.
     ///
-    /// Must be called immediately after the a child handle scope has been destroyed, before any
+    /// Must be called immediately after a child handle scope has been destroyed, before any
     /// allocations occur.
     fn escape_emit_function_result(&mut self, emit_result: &mut EmitFunctionResult) {
         // BytecodeFunction must always be escaped into parent handle scope
@@ -1901,7 +1901,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         // Create closures for all functions in the function body scope. This must occur after
-        // creating arguments object, so that the a function named "arguments" will overwrite the
+        // creating arguments object, so that a function named "arguments" will overwrite the
         // arguments object.
         self.gen_scope_functions(func_scope)?;
 
@@ -2036,7 +2036,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             self.writer.default_super_call_instruction(class_pos);
         }
 
-        // Initialize fields if any exist, defined onto the `this` value
+        // Initialize fields on the `this` value if any exist
         self.gen_initialize_class_fields(Register::this(), class_pos)?;
 
         // Return undefined for a base constructor and `this` for a derived constructor. No default
@@ -2046,7 +2046,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(self.finish()?)
     }
 
-    /// Generate the bytecode for a function that initializes the instances fields of a class.
+    /// Generate the bytecode for a function that initializes the instance fields of a class.
     fn generate_class_fields_initializer(
         mut self,
         class_fields: Vec<ClassField<'a>>,
@@ -2652,7 +2652,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         }
 
         match binding.vm_location().unwrap() {
-            // Variables in arguments and registers are be encoded directly as register operands,
+            // Variables in arguments and registers are encoded directly as register operands,
             // so simply move to the correct register.
             VMLocation::Argument(index) => {
                 let arg_reg = Register::argument(index);
@@ -3707,7 +3707,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         callee: &'a ast::Expression<'a>,
         optional_nullish_block: Option<BlockId>,
     ) -> EmitResult<(GenRegister, Option<GenRegister>)> {
-        // Calls on a property accesses must pass the object's value as the this value
+        // Calls on a property access must pass the object's value as the this value
         match callee {
             // If the callee is a member expression, generate the object expression first and use
             // as the receiver.
@@ -4194,7 +4194,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     continue;
                 } else {
                     // Regular key-value properties. Value is statically evaluated as named if the
-                    // keyis statically known, otherwise the DefinePropertyInstruction will handle
+                    // key is statically known, otherwise the DefinePropertyInstruction will handle
                     // setting the name of the value at runtime if necessary.
                     match &key {
                         Property::Named { name, .. } => {
@@ -5848,16 +5848,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         Ok(call_result)
     }
 
-    /// Initialize class fields in a constructor, defined onto the `this` value.
+    /// Initialize class fields in a constructor, defining them on the `this` value.
     fn gen_initialize_class_fields(&mut self, this_reg: GenRegister, pos: Pos) -> EmitResult<()> {
         let initializer = std::mem::replace(&mut self.class_fields, ClassFieldsInitializer::none());
 
-        // Check if a class fields initializer is needed
+        // Check if a class field initializer is needed
         if initializer.scope.is_none() {
             return Ok(());
         }
 
-        // Fields initializer function is added to the pending functions queue
+        // Field initializer function is added to the pending functions queue
         let pending_node = PendingFunctionNode::ClassFieldsInitializer {
             scope: initializer.scope.unwrap(),
             fields: initializer.fields,
@@ -6453,7 +6453,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             let argc =
                 GenUInt::try_from_unsigned(saved_keys.len()).ok_or(EmitError::TooManyRegisters)?;
 
-            // Perform a ToObject so that we error on nullish values beforce calling
+            // Perform a ToObject so that we error on nullish values before calling
             // CopyDataProperties, which silently ignores nullish values.
             let scratch = self.register_allocator.allocate()?;
             self.writer
@@ -8662,7 +8662,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
     /// Generate the provided exception handlers, completing them with the required missing fields.
     ///
-    /// All exception handlers continues to the current finally block, marking the incoming branch
+    /// All exception handlers continue to the current finally block, marking the incoming branch
     /// as a throw branch;
     fn gen_exception_handlers_continue_to_finally(
         &mut self,
@@ -8827,7 +8827,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         let test_value = self.register_allocator.allocate()?;
 
-        // All branches blocks but the first will be jumped to (control falls through to the first
+        // All branch blocks but the first will be jumped to (control falls through to the first
         // block after the finally body).
         let mut finally_branch_blocks = vec![0];
         for _ in 0..finally_scope.num_branches - 1 {
@@ -9742,7 +9742,7 @@ struct FinallyScope<'a> {
     /// The scope of the derived constructor that this finally scope is within, if any. Only set if
     /// there is a return branch within a derived constructor.
     derived_constructor_scope: Option<AstPtr<AstScopeNode<'a>>>,
-    /// All break and continue statements in the target block, which muts first continue to the
+    /// All break and continue statements in the target block, which must first continue to the
     /// finally block before performing the break or continue.
     jump_target_branches: Vec<JumpTargetBranch>,
     /// Total number of branches that must be threaded through the finally block.

@@ -877,7 +877,7 @@ pub struct HeapNamedReExportEntry {
     /// Name of the re-exported binding within its module. If None this is a named re-export of
     /// a namespace object.
     import_name: Option<HeapPtr<FlatString>>,
-    /// Module that is having a bindings re-exported.
+    /// Module whose binding is re-exported.
     module_request: HeapModuleRequest,
 }
 
@@ -900,7 +900,7 @@ impl NamedReExportEntry {
 /// Subset of ExportEntry (https://tc39.es/ecma262/#table-exportentry-records) corresponding to
 /// the field SourceTextModule.[[StarExportEntries]].
 ///
-/// Coressponds to the direct re-export of all bindings from another module,
+/// Corresponds to the direct re-export of all bindings from another module,
 /// i.e. `export * from "mod"`.
 pub struct HeapDirectReExportEntry {
     /// Module that is having its bindings re-exported.

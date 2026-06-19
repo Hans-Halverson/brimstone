@@ -31,7 +31,7 @@ impl FunctionPrototype {
     /// Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectValue>> {
         // Initialized with correct values in initialize method, but set to default value
-        // at first to be GC safe until initialize method is called.
+        // at first to be GC-safe until initialize method is called.
         let mut object =
             object_create_with_optional_proto::<Closure>(cx, HeapItemKind::Closure, None)?;
         object.init_extra_fields(HeapPtr::uninit(), HeapPtr::uninit());

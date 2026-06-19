@@ -30,7 +30,7 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
         self.0.capacity()
     }
 
-    /// Returns whether this map contains the given element.
+    /// Returns whether this set contains the given element.
     pub fn contains(&self, element: &T) -> bool {
         self.0.contains_key(element)
     }
@@ -40,20 +40,19 @@ impl<T: Eq + Hash + Clone> BsHashSet<T> {
         self.0.get_entry(key).map(|(key, _)| key)
     }
 
-    /// Remove an element from this map if the element is present. Return whether an element was removed.
+    /// Remove an element from this set if the element is present. Return whether an element was removed.
     pub fn remove(&mut self, element: &T) -> bool {
         self.0.remove(element)
     }
 
     /// Insert an element into this set. Return whether the element was already present in the set.
-    /// then overwrite the value. Return whether the key was already present in the map.
     ///
     /// Assumes there is room to insert the element, silently fails to insert if set is full.
     pub fn insert_without_growing(&mut self, element: T) -> bool {
         self.0.insert_without_growing(element, ())
     }
 
-    /// Return iterator through the elements of the set. Iterator is not GC-safe, so make sure there
+    /// Return an iterator over the elements of the set. Iterator is not GC-safe, so make sure there
     /// are no allocations between construction and use.
     pub fn iter_mut_gc_unsafe(&mut self) -> GcUnsafeKeysIterMut<'_, T, ()> {
         self.0.keys_mut_gc_unsafe()

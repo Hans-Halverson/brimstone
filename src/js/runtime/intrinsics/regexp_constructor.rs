@@ -388,7 +388,7 @@ fn parse_flags(cx: Context, flags_string: Handle<StringValue>) -> EvalResult<Reg
             let lexer_stream = HeapOneByteLexerStream::new(flat_string.as_one_byte_slice());
             parse_lexer_stream(cx, lexer_stream)
         }
-        // Non-ASCII code points are not allowed in flags, so always safe to use unicode-unware
+        // Non-ASCII code points are not allowed in flags, so always safe to use unicode-unaware
         // code unit lexer.
         StringWidth::TwoByte => {
             let lexer_stream =

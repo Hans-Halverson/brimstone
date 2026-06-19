@@ -151,7 +151,7 @@ pub struct VM {
     /// The frame pointer
     fp: *mut StackSlotValue,
 
-    /// The stack frame directly above the last stack frame that should breported in a stack trace,
+    /// The stack frame directly above the last stack frame that should be reported in a stack trace,
     /// if there is one.
     stack_trace_top: Option<StackFrame>,
 
@@ -271,7 +271,7 @@ impl VM {
         let mut realm = bytecode_script.script_function.realm();
         let global_names = bytecode_script.global_names;
 
-        // Call the GlobalDeclarationInstantiation function in the rust runtime
+        // Call the GlobalDeclarationInstantiation function in the Rust runtime
         let init_closure = realm
             .get_intrinsic_ptr(Intrinsic::GlobalDeclarationInstantiation)
             .cast::<Closure>();
@@ -1579,7 +1579,7 @@ impl VM {
 
         // Check if this is a call to a function in the Rust runtime
         if let Some(function_id) = closure_ptr.function_ptr().runtime_function_id() {
-            // Call rust runtime function directly in its own handle scope
+            // Call Rust runtime function directly in its own handle scope
             let cx = self.cx();
             handle_scope!(cx, {
                 let receiver = receiver.to_handle(cx);
@@ -1627,7 +1627,7 @@ impl VM {
             // Check whether the value is a constructor, potentially deferring to proxy.
             let closure_handle = match self.check_value_is_constructor(*function)? {
                 CallableObject::Closure(closure) => closure.to_handle(),
-                // Proxy constructors call directly into the rust runtime
+                // Proxy constructors call directly into the Rust runtime
                 CallableObject::Proxy(proxy) => {
                     return proxy
                         .to_handle()
@@ -1645,7 +1645,7 @@ impl VM {
                 // uninitialized value.
                 let receiver = self.cx().empty();
 
-                // Call rust runtime function directly in its own handle scope
+                // Call Rust runtime function directly in its own handle scope
                 let return_value = handle_scope!(self.cx(), {
                     self.call_rust_runtime(
                         closure_ptr,
@@ -1721,7 +1721,7 @@ impl VM {
         // Check whether the value is callable, potentially deferring to proxy.
         let closure_ptr = match self.check_value_is_callable(function_value)? {
             CallableObject::Closure(closure) => closure,
-            // Proxy constructors call into the rust runtime
+            // Proxy constructors call into the Rust runtime
             CallableObject::Proxy(proxy) => {
                 return handle_scope!(self.cx(), {
                     // Can default to undefined receiver, which will be eventually coerced by callee
@@ -1816,7 +1816,7 @@ impl VM {
         // Check whether the value is a constructor, potentially deferring to proxy.
         let closure_ptr = match self.check_value_is_constructor(function_value)? {
             CallableObject::Closure(closure) => closure,
-            // Proxy constructors call into the rust runtime
+            // Proxy constructors call into the Rust runtime
             CallableObject::Proxy(proxy) => {
                 return handle_scope!(self.cx(), {
                     let proxy = proxy.to_handle();
@@ -2168,7 +2168,7 @@ impl VM {
         }
     }
 
-    /// Convert arguments to the form expected by the rust runtime - a vector of the arguments
+    /// Convert arguments to the form expected by the Rust runtime - a vector of the arguments
     /// behind handles in order.
     fn prepare_rust_runtime_args<W: Width>(
         &mut self,

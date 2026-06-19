@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-/// If the option is set, generate a Graphviz DOT file for the a compiled RegExp and write to disk.
+/// If the option is set, generate a Graphviz DOT file for a compiled RegExp and write to disk.
 pub fn save_regexp_dotfile_if_needed(
     context: Context,
     compiled_regexp: HeapPtr<CompiledRegExpObject>,

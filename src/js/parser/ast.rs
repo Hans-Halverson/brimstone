@@ -463,8 +463,8 @@ bitflags! {
         const HAS_SIMPLE_PARAMETER_LIST = 1 << 3;
         const HAS_PARAMETER_EXPRESSIONS = 1 << 4;
         const HAS_DUPLICATE_PARAMETERS = 1 << 5;
-        /// False only if we can statically prove that the arguments object is not needed. If true
-        /// true the arguments object may be needed.
+        /// False only if we can statically prove that the arguments object is not needed. If true,
+        /// the arguments object may be needed.
         const IS_ARGUMENTS_OBJECT_NEEDED = 1 << 6;
         /// False only if we can statically prove that new.target is not needed. If true new.target
         /// must be created as it may be needed.
@@ -713,7 +713,7 @@ pub struct ClassMethod<'a> {
     pub is_static: bool,
     pub is_private: bool,
     /// Whether this is the first part of a private accessor pair, where the second part appears
-    /// laster in the class. Set during analysis.
+    /// later in the class. Set during analysis.
     pub is_private_pair_start: bool,
 }
 
@@ -1561,7 +1561,7 @@ pub enum Pattern<'a> {
     /// In sloppy Annex B mode call expressions are allowed as assignment target patterns and
     /// instead error at runtime after evaluating the call.
     ///
-    /// This variant is only preset in sloppy Annex B mode in valid assignment targets.
+    /// This variant is only present in sloppy Annex B mode in valid assignment targets.
     InvalidCall(P<'a, CallExpression<'a>>),
 }
 

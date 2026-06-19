@@ -456,7 +456,7 @@ impl IteratorPrototype {
         let mut iterated = get_iterator_direct(cx, this_object)?;
         let mut items = vec![];
 
-        // Collect all all items from the iterator until the iterator is done
+        // Collect all items from the iterator until the iterator is done
         loop {
             match iterator_step_value(cx, &mut iterated)? {
                 None => return Ok(create_array_from_list(cx, &items)?.as_value()),

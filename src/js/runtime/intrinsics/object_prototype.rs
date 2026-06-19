@@ -32,7 +32,7 @@ impl ObjectPrototype {
     // Start out uninitialized and then initialize later to break dependency cycles.
     pub fn new_uninit(cx: Context) -> AllocResult<Handle<ObjectPrototype>> {
         // Initialized with correct values in initialize method, but set to default value
-        // at first to be GC safe until initialize method is called.
+        // at first to be GC-safe until initialize method is called.
         Ok(ObjectValue::new(cx, None, false)?.cast())
     }
 

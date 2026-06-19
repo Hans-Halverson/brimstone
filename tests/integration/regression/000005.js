@@ -1,5 +1,5 @@
 /*---
-description: Bug where breaking out of a switch with a materialiezed VM scope would try to pop too many scopes and crash
+description: Bug where breaking out of a switch with a materialized VM scope would try to pop too many scopes and crash
 ---*/
 
 switch (1) {

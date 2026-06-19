@@ -68,7 +68,7 @@
       "language/expressions/prefix-increment/S11.4.4_A6_T1.js",
       "language/expressions/prefix-increment/S11.4.4_A6_T2.js",
 
-      // Calls to properties of the target object of a `with` statements must use the target object
+      // Calls to properties of the target object of a `with` statement must use the target object
       // as the receiver.
       "language/expressions/call/with-base-obj.js",
 

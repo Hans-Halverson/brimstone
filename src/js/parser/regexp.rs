@@ -288,7 +288,7 @@ pub struct CharacterClass<'a> {
     pub expression_type: ClassExpressionType,
     /// Whether to only match characters not listed in this class
     pub is_inverted: bool,
-    /// Collection of operands to this classes expression
+    /// Collection of operands to this class expression
     pub operands: AstSlice<'a, ClassRange<'a>>,
 }
 

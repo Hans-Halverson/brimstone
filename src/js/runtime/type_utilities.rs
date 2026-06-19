@@ -818,8 +818,8 @@ pub fn same_value(v1_handle: Handle<Value>, v2_handle: Handle<Value>) -> AllocRe
     let v1 = v1_handle;
     let v2 = v2_handle;
 
-    // Same as is_strictly_equal, but treats NaN as equal to itself, and does not treat differently
-    // signed zeros as equal.
+    // Same as is_strictly_equal, but treats NaN as equal to itself and treats signed zeros
+    // differently.
     if v1.is_number() {
         if v2.is_number() {
             if v1.is_nan() && v2.is_nan() {

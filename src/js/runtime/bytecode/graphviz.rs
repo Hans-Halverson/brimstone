@@ -261,7 +261,7 @@ fn add_node_edges(
             .attribute("label", "F");
     } else {
         // No control flow instruction means the block was split at a jump target, so fall through
-        // to the next block (unless this is the lsat block in the bytecode).
+        // to the next block (unless this is the last block in the bytecode).
 
         if let Some(fallthrough_node_id) = fallthrough_node_id {
             graph.add_edge(node_id, &fallthrough_node_id);

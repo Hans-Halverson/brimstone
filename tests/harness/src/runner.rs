@@ -90,7 +90,7 @@ impl TestRunner {
             suite_roots.insert(suite.suite, suite_root.to_str().unwrap().to_owned());
         }
 
-        // Precomute the root for the test262 repo as a string
+        // Precompute the root for the test262 repo as a string
         let test262_root = self
             .manifest
             .test262_repo_path()
@@ -493,7 +493,7 @@ fn check_expected_completion(
                         );
                     }
 
-                    // Only succeed if the print log containst he success sequence
+                    // Only succeed if the print log contains the success sequence
                     if !print_log.contains("Test262:AsyncTestComplete") {
                         return TestResult::failure(
                             test,
@@ -519,8 +519,8 @@ fn check_expected_completion(
             format!("Test failed due to allocation error: {alloc_error}"),
             duration,
         ),
-        // Throw completions are a success if the expected result is negative, expected during
-        // during runtime, and with the same expected error.
+        // Throw completions succeed if the expected result is negative, expected during runtime,
+        // and has the same expected error.
         Err(EvalError::Value(thrown_value)) => match &test.expected_result {
             ExpectedResult::Negative {
                 phase: phase @ (TestPhase::Resolution | TestPhase::Runtime),
@@ -539,7 +539,7 @@ fn check_expected_completion(
                         }
                     } else if type_ == "Test262Error" {
                         // The Test262Error does not extend the Error type or have a name property,
-                        // so check the if the message starts with "Test262Error".
+                        // so check if the message starts with "Test262Error".
                         match to_string(cx, thrown_value) {
                             Ok(message_value) => {
                                 message_value.format().unwrap().starts_with("Test262Error")

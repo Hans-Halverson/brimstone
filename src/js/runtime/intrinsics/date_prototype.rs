@@ -384,7 +384,7 @@ impl DatePrototype {
             realm,
         )?;
 
-        // Date.prototype.toGMTString is a direct aliases for Date.prototype.toUTCString
+        // Date.prototype.toGMTString is a direct alias for Date.prototype.toUTCString
         let to_gmt_string_name = cx.alloc_static_string("toGMTString")?;
         let to_gmt_string_key = PropertyKey::string_not_array_index_handle(cx, to_gmt_string_name)?;
         let to_gmt_string_method = must_a!(get(cx, date_prototype, cx.names.to_utc_string()));

@@ -302,7 +302,7 @@ impl CompiledRegExpBuilder {
         )
     }
 
-    /// Emit the preable for the regexp, which allows starting the match at any point in the string.
+    /// Emit the preamble for the regexp, which allows starting the match at any point in the string.
     /// Equivalent to prefixing the regexp with `.*?`. Note the laziness as we want the leftmost
     /// match.
     fn emit_preamble(&mut self) {
@@ -1117,7 +1117,7 @@ impl CompiledRegExpBuilder {
         // Unicode aware RegExp canonicalization uses standard Unicode simple case mapping, so
         // `add_case_closure_to` is sufficient.
         //
-        // However unicode unware RegExp canonicalization uses a slightly different procedure,
+        // However unicode unaware RegExp canonicalization uses a slightly different procedure,
         // mapping code points using simple uppercase mapping, but not mapping code points outside
         // the Latin1 range to within the Latin1 range. This has almost the same behavior as
         // `add_case_closure_to`, so we have precomputed the code points for which the behavior

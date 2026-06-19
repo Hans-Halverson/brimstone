@@ -29,7 +29,7 @@ use crate::{
     set_uninit,
 };
 
-// An unmapped arguments that is identical to an ordinary object, but has an arguments object
+// An unmapped arguments object that is identical to an ordinary object, but has an arguments object
 // descriptor. This emulates an ordinary object with a [[ParameterMap]] slot described in spec.
 extend_object! {
     pub struct UnmappedArgumentsObject {}
@@ -84,7 +84,7 @@ impl MappedArgumentsObject {
 
         set_uninit!(object.scope, *scope);
 
-        // An parameter is mapped if it has not been shadowed, which we know due to the special
+        // A parameter is mapped if it has not been shadowed, which we know due to the special
         // shadowed scope slot name.
         let scope_names = scope.scope_names_ptr();
 

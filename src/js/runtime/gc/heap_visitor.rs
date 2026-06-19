@@ -19,7 +19,7 @@ pub trait HeapVisitor {
     /// Visit any pointer (which may be either strong or weak).
     fn visit_common(&mut self, _ptr: &mut HeapPtr<AnyHeapItem>) {}
 
-    /// Visit a pointer a Rust vtable.
+    /// Visit a pointer to a Rust vtable.
     fn visit_rust_vtable_pointer(&mut self, _ptr: &mut *const ()) {}
 
     /// Visit a strongly held pointer of any type.

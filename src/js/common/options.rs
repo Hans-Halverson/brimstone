@@ -56,7 +56,7 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub parse_stats: bool,
 
-    /// Print the AST the console
+    /// Print the AST to the console
     #[arg(long, default_value_t = false)]
     pub print_ast: bool,
 

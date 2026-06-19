@@ -13,6 +13,7 @@ use crate::{
         filesystem::FileNameReserver,
         options::Options,
         serialized_heap::SerializedHeap,
+        time::get_current_unix_time,
         wtf_8::{Wtf8Str, Wtf8String},
     },
     eval_err, handle_scope, must_a,
@@ -123,6 +124,9 @@ pub struct ContextCell {
 
     /// Random number generator used within this context.
     pub rand: StdRng,
+
+    /// If set, this is returned instead of the current unix time.
+    pub mocked_unix_time: Option<f64>,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -159,6 +163,7 @@ impl Context {
             // We want the initial heap generation to be deterministic so use seeded PRNG. After
             // initial heap has been set up switch to a PRNG seeded from a random source.
             rand: StdRng::from_seed([0; 32]),
+            mocked_unix_time: None,
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
@@ -442,6 +447,11 @@ impl Context {
         GlobalSymbolRegistryField
     }
 
+    /// Returns the current unix time, which may be mocked.
+    pub fn current_unix_time(self) -> f64 {
+        self.mocked_unix_time.unwrap_or_else(get_current_unix_time)
+    }
+
     pub fn print_or_add_to_dump_buffer(&self, str: &str) {
         if let Some(mut buffer) = self.options.dump_buffer() {
             if !buffer.is_empty() {
@@ -639,11 +649,12 @@ impl DerefMut for Context {
 
 pub struct ContextBuilder {
     options: Option<Rc<Options>>,
+    mocked_unix_time: Option<f64>,
 }
 
 impl ContextBuilder {
     pub fn new() -> Self {
-        Self { options: None }
+        Self { options: None, mocked_unix_time: None }
     }
 
     pub fn build(self) -> AllocResult<Context> {
@@ -651,11 +662,20 @@ impl ContextBuilder {
         let options = self.options.unwrap_or_else(|| Rc::new(Options::default()));
 
         // Create default realm if one was not provided
-        Context::new(options)
+        let mut cx = Context::new(options)?;
+
+        cx.mocked_unix_time = self.mocked_unix_time;
+
+        Ok(cx)
     }
 
     pub fn set_options(mut self, options: Rc<Options>) -> Self {
         self.options = Some(options);
+        self
+    }
+
+    pub fn mock_unix_time(mut self, time: f64) -> Self {
+        self.mocked_unix_time = Some(time);
         self
     }
 }

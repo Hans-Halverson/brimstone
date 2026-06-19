@@ -1,26 +1,21 @@
-use crate::{
-    common::time::get_current_unix_time,
-    runtime::{
-        Context, Value,
-        alloc_error::AllocResult,
-        builtin_function::BuiltinFunction,
-        eval_result::EvalResult,
-        function::get_argument,
-        gc::Handle,
-        intrinsics::{
-            date_object::{
-                DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc,
-            },
-            date_prototype::{to_date_string, validate_date_value},
-            intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
-        },
-        object_value::ObjectValue,
-        realm::Realm,
-        string_parsing::parse_string_to_date,
-        to_string,
-        type_utilities::{ToPrimitivePreferredType, to_number, to_primitive},
+use crate::runtime::{
+    Context, Value,
+    alloc_error::AllocResult,
+    builtin_function::BuiltinFunction,
+    eval_result::EvalResult,
+    function::get_argument,
+    gc::Handle,
+    intrinsics::{
+        date_object::{DateObject, make_date, make_day, make_full_year, make_time, time_clip, utc},
+        date_prototype::{to_date_string, validate_date_value},
+        intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
     },
+    object_value::ObjectValue,
+    realm::Realm,
+    string_parsing::parse_string_to_date,
+    to_string,
+    type_utilities::{ToPrimitivePreferredType, to_number, to_primitive},
 };
 
 pub struct DateConstructor;
@@ -65,13 +60,13 @@ impl DateConstructor {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
-            return Ok(to_date_string(cx, get_current_unix_time())?.as_value());
+            return Ok(to_date_string(cx, cx.current_unix_time())?.as_value());
         };
 
         let number_of_args = arguments.len();
 
         let date_value = if number_of_args == 0 {
-            get_current_unix_time()
+            cx.current_unix_time()
         } else if number_of_args == 1 {
             let date_value =
                 if let Some(date_value_arg) = validate_date_value(get_argument(cx, arguments, 0)) {
@@ -147,7 +142,7 @@ impl DateConstructor {
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
     pub fn now(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
-        Ok(Value::from(get_current_unix_time()).to_handle(cx))
+        Ok(Value::from(cx.current_unix_time()).to_handle(cx))
     }
 
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)

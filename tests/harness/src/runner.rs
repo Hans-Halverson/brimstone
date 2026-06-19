@@ -50,6 +50,9 @@ const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
 /// Size of the heap for each test. Use a small value since most tests do not require a large heap.
 const HEAP_SIZE: usize = MEGABYTE_BYTES;
 
+/// Fixed unix time to use during tests
+const MOCKED_UNIX_TIME: f64 = 1_000_000_000_000.0;
+
 impl TestRunner {
     pub fn new(
         manifest: TestManifest,
@@ -239,6 +242,7 @@ fn run_single_test(
     // Each test is executed in its own realm
     let cx = ContextBuilder::new()
         .set_options(Rc::new(options))
+        .mock_unix_time(MOCKED_UNIX_TIME)
         .build()
         .unwrap();
     let options = cx.options.clone();

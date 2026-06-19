@@ -18,7 +18,11 @@ use crate::{
             bigint_constructor::BigIntObject, boolean_constructor::BooleanObject,
             number_constructor::NumberObject, symbol_constructor::SymbolObject,
         },
-        numeric_constants::{MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64},
+        numeric_constants::{
+            MAX_I8_AS_F64, MAX_I16_AS_F64, MAX_I32_AS_F64, MAX_SAFE_INTEGER_F64, MAX_U8_AS_F64,
+            MAX_U8_PLUS_ONE_AS_F64, MAX_U16_AS_F64, MAX_U16_PLUS_ONE_AS_F64, MAX_U32_AS_F64,
+            MAX_U32_PLUS_ONE_AS_F64, MIN_I8_AS_F64, MIN_I16_AS_F64, MIN_I32_AS_F64,
+        },
         object_value::ObjectValue,
         property_key::PropertyKey,
         proxy_object::ProxyObject,
@@ -243,68 +247,56 @@ pub fn resolve_relative_index_argument(
 
 /// ToInt32 (https://tc39.es/ecma262/#sec-toint32)
 pub fn to_int32(cx: Context, value_handle: Handle<Value>) -> EvalResult<i32> {
-    // Fast pass if the value is a smi
+    // Fast path if the value is a smi
     let value = *value_handle;
     if value.is_smi() {
         return Ok(value.as_smi());
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (MIN_I32_AS_F64..=MAX_I32_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as i32);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut i32_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        i32_number = -i32_number;
-    }
-
-    // Compute modulus according to spec
-    let u32_max = u32::MAX as i64 + 1;
-    i32_number = modulo(i32_number, u32_max);
-
-    // Then center in i32 range around 0
-    if i32_number >= (u32_max >> 1) {
-        i32_number -= u32_max;
-    }
-
-    Ok(i32_number as i32)
+    // Modulo into u32 range then reinterpret as i32
+    Ok(modulo(f64_int, MAX_U32_PLUS_ONE_AS_F64) as u32 as i32)
 }
 
 /// ToUint32 (https://tc39.es/ecma262/#sec-touint32)
 pub fn to_uint32(cx: Context, value_handle: Handle<Value>) -> EvalResult<u32> {
-    // Fast pass if the value is a non-negative smi
+    // Fast path if the value is a smi
     let value = *value_handle;
     if value.is_smi() {
-        let i32_value = value.as_smi();
-        if i32_value >= 0 {
-            return Ok(i32_value as u32);
-        }
+        return Ok(value.as_smi() as u32);
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (0.0..=MAX_U32_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as u32);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut u32_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        u32_number = -u32_number;
-    }
-
-    // Compute modulus according to spec
-    let u32_max = u32::MAX as i64 + 1;
-    u32_number = modulo(u32_number, u32_max);
-
-    Ok(u32_number as u32)
+    // Modulo into range
+    Ok(modulo(f64_int, MAX_U32_PLUS_ONE_AS_F64) as u32)
 }
 
 /// ToInt16 (https://tc39.es/ecma262/#sec-toint16)
@@ -316,61 +308,49 @@ pub fn to_int16(cx: Context, value_handle: Handle<Value>) -> EvalResult<i16> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (MIN_I16_AS_F64..=MAX_I16_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as i16);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut i16_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        i16_number = -i16_number;
-    }
-
-    // Compute modulus according to spec
-    let u16_max = u16::MAX as i64 + 1;
-    i16_number = modulo(i16_number, u16_max);
-
-    // Then center in i16 range around 0
-    if i16_number > (i16::MAX as i64) {
-        i16_number -= u16_max;
-    }
-
-    Ok(i16_number as i16)
+    // Modulo into u16 range then reinterpret as i16
+    Ok(modulo(f64_int, MAX_U16_PLUS_ONE_AS_F64) as u16 as i16)
 }
 
 /// ToUint16 (https://tc39.es/ecma262/#sec-touint16)
 pub fn to_uint16(cx: Context, value_handle: Handle<Value>) -> EvalResult<u16> {
-    // Fast path if the value is a non-negative smi
+    // Fast path if the value is a smi
     let value = *value_handle;
     if value.is_smi() {
-        let i32_value = value.as_smi();
-        if i32_value >= 0 {
-            return Ok(i32_value as u16);
-        }
+        return Ok(value.as_smi() as u16);
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (0.0..=MAX_U16_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as u16);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut u16_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        u16_number = -u16_number;
-    }
-
-    // Compute modulus according to spec
-    let u16_max = u16::MAX as i64 + 1;
-    u16_number = modulo(u16_number, u16_max);
-
-    Ok(u16_number as u16)
+    // Modulo into range
+    Ok(modulo(f64_int, MAX_U16_PLUS_ONE_AS_F64) as u16)
 }
 
 /// ToInt8 (https://tc39.es/ecma262/#sec-toint8)
@@ -382,61 +362,49 @@ pub fn to_int8(cx: Context, value_handle: Handle<Value>) -> EvalResult<i8> {
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (MIN_I8_AS_F64..=MAX_I8_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as i8);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut i8_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        i8_number = -i8_number;
-    }
-
-    // Compute modulus according to spec
-    let u8_max = u8::MAX as i64 + 1;
-    i8_number = modulo(i8_number, u8_max);
-
-    // Then center in i8 range around 0
-    if i8_number > (i8::MAX as i64) {
-        i8_number -= u8_max;
-    }
-
-    Ok(i8_number as i8)
+    // Modulo into u8 range then reinterpret as i8
+    Ok(modulo(f64_int, MAX_U8_PLUS_ONE_AS_F64) as u8 as i8)
 }
 
 /// ToUint8 (https://tc39.es/ecma262/#sec-touint8)
 pub fn to_uint8(cx: Context, value_handle: Handle<Value>) -> EvalResult<u8> {
-    // Fast path if the value is a non-negative smi
+    // Fast path if the value is a smi
     let value = *value_handle;
     if value.is_smi() {
-        let i32_value = value.as_smi();
-        if i32_value >= 0 {
-            return Ok(i32_value as u8);
-        }
+        return Ok(value.as_smi() as u8);
     }
 
     let number_value = to_number(cx, value_handle)?;
-    let f64_number = number_value.as_number();
 
-    // All zeros, infinities, and NaNs map to 0
-    if f64_number == 0.0 || !f64_number.is_finite() {
+    // Number is truncated towards zero
+    let f64_int = number_value.as_number().trunc();
+
+    // Integer f64 is in range and can be directly converted
+    if (0.0..=MAX_U8_AS_F64).contains(&f64_int) {
+        return Ok(f64_int as u8);
+    }
+
+    // All infinities and NaNs map to zero
+    if !f64_int.is_finite() {
         return Ok(0);
     }
 
-    // Round float to an integer
-    let mut u8_number = f64_number.abs().floor() as i64;
-    if f64_number < 0.0 {
-        u8_number = -u8_number;
-    }
-
-    // Compute modulus according to spec
-    let u8_max = u8::MAX as i64 + 1;
-    u8_number = ((u8_number % u8_max) + u8_max) % u8_max;
-
-    Ok(u8_number as u8)
+    // Modulo into range
+    Ok(modulo(f64_int, MAX_U8_PLUS_ONE_AS_F64) as u8)
 }
 
 /// ToUint8Clamp (https://tc39.es/ecma262/#sec-touint8clamp)

@@ -1,6 +1,6 @@
 {
   type: "Program",
-  loc: "1:1-21:22",
+  loc: "1:1-21:13",
   body: [
     {
       type: "ExpressionStatement",
@@ -394,10 +394,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "20:1-20:21",
+      loc: "20:1-20:12",
       kind: {
         type: "Literal",
-        loc: "20:1-20:20",
+        loc: "20:1-20:11",
         raw: "/(?<𝑓𝑜𝑥>)/",
         value: {
           pattern: "(?<𝑓𝑜𝑥>)",
@@ -428,10 +428,10 @@
     },
     {
       type: "ExpressionStatement",
-      loc: "21:1-21:22",
+      loc: "21:1-21:13",
       kind: {
         type: "Literal",
-        loc: "21:1-21:21",
+        loc: "21:1-21:12",
         raw: "/(?<𝑓𝑜𝑥>)/u",
         value: {
           pattern: "(?<𝑓𝑜𝑥>)",

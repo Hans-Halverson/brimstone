@@ -507,7 +507,8 @@ impl LocalizedParseError {
             None => self.error.to_string(),
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
-                let (line, col) = find_line_col_for_pos(loc.start, offsets);
+                let (line, col) =
+                    find_line_col_for_pos(source.contents.as_bytes(), loc.start, offsets);
                 format!("{}:{}:{} {}", source.display_name(), line, col, self.error)
             }
         }
@@ -589,7 +590,8 @@ fn format_localized_parse_errors(errors: &[LocalizedParseError], opts: &FormatOp
             }
             Some((loc, source)) => {
                 let offsets = source.line_offsets();
-                let (line, col) = find_line_col_for_pos(loc.start, offsets);
+                let (line, col) =
+                    find_line_col_for_pos(source.contents.as_bytes(), loc.start, offsets);
                 errors_with_loc.push((error, source, line, col))
             }
         }

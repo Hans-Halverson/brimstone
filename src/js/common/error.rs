@@ -50,7 +50,7 @@ impl SourceInfo {
 
         // Find line and column number for the start of the source location
         let offsets = source.line_offsets();
-        let (line, col) = find_line_col_for_pos(pos, offsets);
+        let (line, col) = find_line_col_for_pos(source.contents.as_bytes(), pos, offsets);
 
         // Extract the full line as a snippet
         let snippet = source.get_line((line - 1) as u32);

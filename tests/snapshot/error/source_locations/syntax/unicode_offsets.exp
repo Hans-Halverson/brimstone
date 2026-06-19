@@ -1,0 +1,7 @@
+TypeError: expected a function
+  ┌ source_locations/syntax/unicode_offsets.js:1:16
+  |
+1 | var foo = "☺"; null();
+  |                ^
+Stack trace:
+  at <global> (source_locations/syntax/unicode_offsets.js:1:16)

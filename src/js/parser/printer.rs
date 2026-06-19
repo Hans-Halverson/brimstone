@@ -83,9 +83,10 @@ impl<'a> Printer<'a> {
         self.property("type", name, Printer::print_str);
 
         // Calculate line/column offsets for loc
+        let contents = self.source.contents.as_bytes();
         let line_offsets = self.source.line_offsets();
-        let (start_line, start_col) = find_line_col_for_pos(loc.start, line_offsets);
-        let (end_line, end_col) = find_line_col_for_pos(loc.end, line_offsets);
+        let (start_line, start_col) = find_line_col_for_pos(contents, loc.start, line_offsets);
+        let (end_line, end_col) = find_line_col_for_pos(contents, loc.end, line_offsets);
 
         // Write loc as string in concise format
         self.indent();

@@ -155,8 +155,11 @@ pub fn create_stack_trace(
                 // line offsets were already generated in `prepare_for_stack_trace`.
                 let source_file = func.source_file_ptr().unwrap();
                 let line_offsets = source_file.line_offsets_ptr_raw().unwrap();
-                let (line, column) =
-                    find_line_col_for_pos(source_position, line_offsets.as_slice());
+                let (line, column) = find_line_col_for_pos(
+                    source_file.contents_as_slice(),
+                    source_position,
+                    line_offsets.as_slice(),
+                );
 
                 // Append the line and column to the function name
                 stack_trace.push_str(&format!(":{line}:{column}"));

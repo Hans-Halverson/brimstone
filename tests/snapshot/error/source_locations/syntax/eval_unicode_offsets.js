@@ -1,0 +1,1 @@
+eval("var foo = '☺'; null();");

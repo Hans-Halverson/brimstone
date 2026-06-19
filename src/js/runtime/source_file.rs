@@ -21,7 +21,7 @@ pub struct SourceFile {
     display_name: Option<HeapPtr<FlatString>>,
     /// Lazily generated array of line offsets for the source file
     line_offsets: Option<HeapPtr<LineOffsetArray>>,
-    /// Inlined source file contents as a WTF8 string
+    /// Inlined source file contents as a WTF-8 string
     contents: InlineArray<u8>,
 }
 

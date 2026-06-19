@@ -1,0 +1,8 @@
+TypeError: expected a function
+  ┌ <eval>:1:16
+  |
+1 | var foo = '☺'; null();
+  |                ^
+Stack trace:
+  at <eval> (<eval>:1:16)
+  at <global> (source_locations/syntax/eval_unicode_offsets.js:1:1)

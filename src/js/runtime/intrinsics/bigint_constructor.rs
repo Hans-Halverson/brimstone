@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use num_bigint::{BigInt, Sign};
+use num_bigint::BigInt;
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -135,26 +135,19 @@ impl BigIntConstructor {
         let bigint_arg = get_argument(cx, arguments, 1);
         let bigint = to_bigint(cx, bigint_arg)?;
 
-        // Convert BigInt to its representation as bits
-        let mut bytes = bigint.bigint().to_signed_bytes_le();
+        // Applying 2^n modulus is equivalent to masking by 2^n - 1
+        let modulus = BigInt::from(1) << bits;
+        let mask = &modulus - BigInt::from(1);
+        let unsigned_bigint = bigint.bigint() & &mask;
 
-        // Keep all the bytes that have some bits in the range to keep
-        let num_full_bytes = bits / 8;
-        bytes.truncate(num_full_bytes + 1);
+        // Unsigned values >= 2^(n - 1) should be negative signed values
+        let signed_bigint = if bits > 0 && unsigned_bigint.bit(bits as u64 - 1) {
+            unsigned_bigint - &modulus
+        } else {
+            unsigned_bigint
+        };
 
-        // Clear the unused bits in the last byte that was kept
-        let num_bits_to_remove = 8 - bits % 8;
-        if num_bits_to_remove == 8 {
-            bytes.pop();
-        } else if !bytes.is_empty() {
-            // Be sure to sign extend from the new highest bit
-            let last_byte = bytes.last_mut().unwrap();
-            *last_byte <<= num_bits_to_remove;
-            *last_byte = ((*last_byte as i8) >> num_bits_to_remove) as u8;
-        }
-
-        let new_bigint = BigInt::from_signed_bytes_le(&bytes);
-        Ok(BigIntValue::new(cx, new_bigint)?.into())
+        Ok(BigIntValue::new(cx, signed_bigint)?.into())
     }
 
     /// BigInt.asUintN (https://tc39.es/ecma262/#sec-bigint.asuintn)
@@ -169,24 +162,10 @@ impl BigIntConstructor {
         let bigint_arg = get_argument(cx, arguments, 1);
         let bigint = to_bigint(cx, bigint_arg)?;
 
-        // Convert BigInt to its representation as bits
-        let mut bytes = bigint.bigint().to_signed_bytes_le();
+        // Applying 2^n modulus is equivalent to masking by 2^n - 1
+        let mask = (BigInt::from(1) << bits) - BigInt::from(1);
+        let new_bigint = bigint.bigint() & &mask;
 
-        // Keep all the bytes that have some bits in the range to keep
-        let num_full_bytes = bits / 8;
-        bytes.truncate(num_full_bytes + 1);
-
-        // Clear the unused bits in the last byte that was kept
-        let num_bits_to_remove = 8 - bits % 8;
-        if num_bits_to_remove == 8 {
-            bytes.pop();
-        } else if !bytes.is_empty() {
-            let last_byte = bytes.last_mut().unwrap();
-            *last_byte <<= num_bits_to_remove;
-            *last_byte >>= num_bits_to_remove;
-        }
-
-        let new_bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
         Ok(BigIntValue::new(cx, new_bigint)?.into())
     }
 }

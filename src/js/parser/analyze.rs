@@ -381,23 +381,23 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
     }
 
     fn visit_outer_expression(&mut self, expr: &mut OuterExpression<'a>) {
-        // Outer expressions are in their own "has assignment expression" context
         self.enter_has_assign_expr_context();
-        self.visit_expression(&mut expr.expr);
-        expr.has_assign_expr = self.exit_has_assign_expr_context();
-    }
 
-    fn visit_expression_statement(&mut self, stmt: &mut ExpressionStatement<'a>) {
-        if let Expression::Assign(assign) = &mut stmt.expr.expr {
-            // Top level assignment expression "has assignment expression" context refers to whether
-            // the left or right side of the assignment expression has an assignment expression, and
-            // is not trivially true.
-            self.enter_has_assign_expr_context();
-            default_visit_assignment_expression(self, assign);
-            stmt.expr.has_assign_expr = self.exit_has_assign_expr_context();
-        } else {
-            default_visit_expression_statement(self, stmt);
+        match &mut expr.expr {
+            // Avoid trivially flagging a top-level assignment or update expression as
+            // "has assignment expression". Still flag if a nested assignment expression appears.
+            Expression::Assign(assign) => {
+                default_visit_assignment_expression(self, assign);
+            }
+            Expression::Update(update) => {
+                default_visit_update_expression(self, update);
+            }
+            _ => {
+                self.visit_expression(&mut expr.expr);
+            }
         }
+
+        expr.has_assign_expr = self.exit_has_assign_expr_context();
     }
 
     fn visit_switch_statement(&mut self, stmt: &mut SwitchStatement<'a>) {
@@ -627,6 +627,13 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
         self.has_assign_expr = true;
 
         default_visit_assignment_expression(self, expr);
+    }
+
+    fn visit_update_expression(&mut self, expr: &mut UpdateExpression<'a>) {
+        // Update expressions assign so mark the current context as having an assignment expression
+        self.has_assign_expr = true;
+
+        default_visit_update_expression(self, expr);
     }
 
     fn visit_object_expression(&mut self, expr: &mut ObjectExpression<'a>) {

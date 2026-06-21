@@ -37,8 +37,6 @@ function toplevelAssignExpressions(p1, p2) {
 
   // Is a direct assignment, no hazard
   p2 = (p1 = 3);
-
-
 }
 
 function nestedFunctionOrClass(p1, p2) {
@@ -46,4 +44,28 @@ function nestedFunctionOrClass(p1, p2) {
   p1 = p2 + ((x) => { x = 1 });
   p1 = p2 + function (x) { x = 2 };
   p1 = p2 + { f(x) { x = 3} };
+}
+
+function prefixIncHazard(param) {
+  return param + (++param);
+}
+
+function prefixDecHazard(param) {
+  return param + (--param);
+}
+
+function postfixIncHazard(param) {
+  return param + (param++);
+}
+
+function postfixDecHazard(param) {
+  return param + (param--);
+}
+
+function toplevelUpdateExpressions(p1, p2) {
+  // Not an assignment hazard at top level
+  p1++;
+
+  // Treated as assignment hazard
+  (p2[p2++])++;
 }

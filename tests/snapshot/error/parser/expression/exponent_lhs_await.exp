@@ -1,0 +1,5 @@
+SyntaxError: Unparenthesized unary expression cannot appear on the left hand side of `**`
+  ┌ parser/expression/exponent_lhs_await.js:1:22
+  |
+1 | async function f() { await 1 ** 2; }
+  |                      ^

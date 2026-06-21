@@ -2309,6 +2309,11 @@ impl<'a> Parser<'a> {
         let argument = self.parse_expression_with_precedence(Precedence::Unary)?;
         let loc = self.mark_loc(start_pos);
 
+        // Unary expressions cannot be followed directly by an exponentiation expression
+        if self.token == Token::Exponent {
+            return self.error(loc, ParseError::ExponentLHSUnary);
+        }
+
         Ok(Expression::Await(p!(self, AwaitExpression { loc, argument })))
     }
 

@@ -59,7 +59,7 @@
      96: LoadImmediate r3, 0
      99: Mov <scope>, r5
     102: IteratorClose r1
-    104: Throw r4
+    104: Rethrow r4
   .L3:
     106: PopScope 
     107: Jump -92 (.L0)
@@ -132,7 +132,7 @@
     79: LoadImmediate r3, 0
     82: Mov <scope>, r5
     85: IteratorClose r1
-    87: Throw r4
+    87: Rethrow r4
   .L3:
     89: Jump -81 (.L0)
   .L4:

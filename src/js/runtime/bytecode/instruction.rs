@@ -1612,10 +1612,21 @@ define_instructions!(
         }
     }
 
-    /// Throw an error.
+    /// Throw an error. Treated as a base throw from a specific source location - stack trace info
+    /// is captured from this location if necessary.
     Throw {
         camel_case: ThrowInstruction,
         snake_case: throw_instruction,
+        can_throw: true,
+        operands: {
+            [0] error: Register,
+        }
+    }
+
+    /// Rethrow an existing error. Does not capture any new stack trace info.
+    Rethrow {
+        camel_case: RethrowInstruction,
+        snake_case: rethrow_instruction,
         operands: {
             [0] error: Register,
         }

@@ -110,7 +110,7 @@
     28: LoadImmediate r3, 0
     31: StrictEqual r3, r1, r3
     35: JumpFalse r3, 5 (.L1)
-    38: Throw r2
+    38: Rethrow r2
   .L1:
     40: ResolvePromise r0, r2
     43: Ret r0

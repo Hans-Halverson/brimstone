@@ -99,7 +99,7 @@
     30: LoadImmediate r2, 0
     33: Mov <scope>, r4
     36: IteratorClose r0
-    38: Throw r3
+    38: Rethrow r3
   .L1:
     40: Jump -34 (.L0)
   .L2:

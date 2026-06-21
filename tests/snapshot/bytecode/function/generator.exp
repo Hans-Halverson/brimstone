@@ -246,7 +246,7 @@
     57: LoadImmediate r3, 0
     60: StrictEqual r3, r1, r3
     64: JumpFalse r3, 5 (.L3)
-    67: Throw r2
+    67: Rethrow r2
   .L3:
     69: LoadImmediate r3, 2
     72: StrictEqual r3, r1, r3

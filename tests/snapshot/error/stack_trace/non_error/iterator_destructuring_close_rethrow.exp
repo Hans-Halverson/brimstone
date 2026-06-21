@@ -1,0 +1,8 @@
+Thrown: 42
+  ┌ stack_trace/non_error/iterator_destructuring_close_rethrow.js:6:17
+  |
+6 |                 throw 42;
+  |                 ^
+Stack trace:
+  at return (stack_trace/non_error/iterator_destructuring_close_rethrow.js:6:17)
+  at <global> (stack_trace/non_error/iterator_destructuring_close_rethrow.js:12:7)

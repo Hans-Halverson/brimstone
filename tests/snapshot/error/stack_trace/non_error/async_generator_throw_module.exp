@@ -1,0 +1,7 @@
+Thrown: 42
+  ┌ stack_trace/non_error/async_generator_throw_module.js:6:1
+  |
+6 | await g.throw(42);
+  | ^
+Stack trace:
+  at <module> (stack_trace/non_error/async_generator_throw_module.js:6:1)

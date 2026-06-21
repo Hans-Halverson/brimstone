@@ -5244,8 +5244,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.write_jump_true_instruction(completion_type, normal_block)?;
         self.register_allocator.release(completion_type);
 
-        // Otherwise completion type must have been a throw so rethrow the error
-        self.writer.throw_instruction(completion_value);
+        // Otherwise completion type must have been a throw so throw the error. Error treated as if
+        // it were thrown from this location.
+        self.writer.throw_instruction(completion_value, pos);
 
         self.start_block(normal_block);
 
@@ -5272,11 +5273,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         } else if self.is_async() {
             self.gen_async_yield(yield_value, pos, dest)
         } else {
-            self.gen_yield(yield_value, dest)
+            self.gen_yield(yield_value, pos, dest)
         }
     }
 
-    fn gen_yield(&mut self, value: GenRegister, dest: ExprDest) -> EmitResult<GenRegister> {
+    fn gen_yield(
+        &mut self,
+        value: GenRegister,
+        pos: Pos,
+        dest: ExprDest,
+    ) -> EmitResult<GenRegister> {
         self.register_allocator.release(value);
 
         let completion_value = self.allocate_destination(dest)?;
@@ -5335,9 +5341,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         // Must be a return completion if execution falls through.
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
 
-        // Otherwise is a throw completion
+        // Otherwise is a throw completion. Error treated as if it were thrown from this location.
         self.start_block(throw_block);
-        self.writer.throw_instruction(completion_value);
+        self.writer.throw_instruction(completion_value, pos);
 
         self.start_block(normal_block);
 
@@ -5379,9 +5385,9 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         self.gen_await(completion_value, pos, ExprDest::Fixed(completion_value))?;
         self.gen_return(Some(completion_value), /* derived_constructor_scope */ None)?;
 
-        // Otherwise is a throw completion
+        // Otherwise is a throw completion. Error treated as if it were thrown from this location.
         self.start_block(throw_block);
-        self.writer.throw_instruction(completion_value);
+        self.writer.throw_instruction(completion_value, pos);
 
         self.start_block(normal_block);
 
@@ -6725,7 +6731,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
             // Then throw either the original close error or the error from iterating
             self.start_block(close_handler_rethrow_block);
-            self.writer.throw_instruction(close_error);
+            self.writer.rethrow_instruction(close_error);
             self.register_allocator.release(close_error);
 
             // Emit the finally footer, checking discriminant to see if we came from a normal
@@ -8192,7 +8198,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
 
         // Throw the exception, which may be the original body's or the catch handler's
         self.start_block(throw_block);
-        self.writer.throw_instruction(close_exception);
+        self.writer.rethrow_instruction(close_exception);
         self.register_allocator.release(close_exception);
 
         Ok(())
@@ -8844,7 +8850,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             discriminant,
             test_value,
         )?;
-        self.writer.throw_instruction(result);
+        self.writer.rethrow_instruction(result);
         i += 1;
 
         // Add normal branch if present, continues to normal join block.
@@ -8955,7 +8961,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
         stmt: &'a ast::ThrowStatement<'a>,
     ) -> EmitResult<StmtCompletion> {
         let error = self.gen_outer_expression(&stmt.argument)?;
-        self.writer.throw_instruction(error);
+        self.writer.throw_instruction(error, stmt.loc.start);
         self.register_allocator.release(error);
 
         Ok(StmtCompletion::Abrupt)

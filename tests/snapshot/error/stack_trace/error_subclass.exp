@@ -1,0 +1,8 @@
+MyError: foo
+  ┌ stack_trace/error_subclass.js:3:5
+  |
+3 |     super(message);
+  |     ^
+Stack trace:
+  at MyError (stack_trace/error_subclass.js:3:5)
+  at <global> (stack_trace/error_subclass.js:9:7)

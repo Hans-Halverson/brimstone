@@ -1,0 +1,7 @@
+MyCustomError: [Object]
+  ┌ stack_trace/non_error/error_like_name_only.js:8:1
+  |
+8 | throw new MyError();
+  | ^
+Stack trace:
+  at <global> (stack_trace/non_error/error_like_name_only.js:8:1)

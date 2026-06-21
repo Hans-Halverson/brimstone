@@ -1,0 +1,7 @@
+Thrown: 2
+  ┌ stack_trace/non_error/not_error_like.js:2:1
+  |
+2 | throw 2;
+  | ^
+Stack trace:
+  at <global> (stack_trace/non_error/not_error_like.js:2:1)

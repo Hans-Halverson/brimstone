@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use crate::{
+    common::error::SourceInfo,
     extend_object,
     runtime::{
         Context, Handle, HeapPtr, Value,
@@ -249,6 +250,23 @@ pub fn install_error_cause(
     }
 
     Ok(())
+}
+
+pub fn new_heap_source_info(
+    cx: Context,
+    stack_trace_info: &CachedStackTraceInfo,
+) -> AllocResult<Option<SourceInfo>> {
+    let (mut source_file, line, col) =
+        if let Some((source_file, line, col)) = &stack_trace_info.source_file_line_col {
+            (source_file.to_handle(), *line, *col)
+        } else {
+            return Ok(None);
+        };
+
+    let name = source_file.display_name().to_string();
+    let snippet = source_file.get_line(cx, line - 1)?;
+
+    Ok(Some(SourceInfo::new(name, line, col, snippet)))
 }
 
 impl HeapItem for HeapPtr<ErrorObject> {

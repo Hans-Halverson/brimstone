@@ -65,15 +65,15 @@ use crate::{
                 OpCode, PopScopeInstruction, PushFunctionScopeInstruction,
                 PushLexicalScopeInstruction, PushWithScopeInstruction, RejectPromiseInstruction,
                 RemInstruction, ResolvePromiseInstruction, RestParameterInstruction,
-                RetInstruction, SetArrayPropertyInstruction, SetNamedPropertyInstruction,
-                SetPrivatePropertyInstruction, SetPropertyInstruction, SetPrototypeOfInstruction,
-                SetSuperPropertyInstruction, ShiftLeftInstruction, ShiftRightArithmeticInstruction,
-                ShiftRightLogicalInstruction, StoreDynamicInstruction, StoreGlobalInstruction,
-                StoreToModuleInstruction, StoreToScopeInstruction, StrictEqualInstruction,
-                StrictNotEqualInstruction, SubInstruction, ThrowInstruction,
-                ThrowNewErrorInstruction, ThrowNewErrorKind, ToNumberInstruction,
-                ToNumericInstruction, ToObjectInstruction, ToPropertyKeyInstruction,
-                ToStringInstruction, TypeOfInstruction, YieldInstruction,
+                RetInstruction, RethrowInstruction, SetArrayPropertyInstruction,
+                SetNamedPropertyInstruction, SetPrivatePropertyInstruction, SetPropertyInstruction,
+                SetPrototypeOfInstruction, SetSuperPropertyInstruction, ShiftLeftInstruction,
+                ShiftRightArithmeticInstruction, ShiftRightLogicalInstruction,
+                StoreDynamicInstruction, StoreGlobalInstruction, StoreToModuleInstruction,
+                StoreToScopeInstruction, StrictEqualInstruction, StrictNotEqualInstruction,
+                SubInstruction, ThrowInstruction, ThrowNewErrorInstruction, ThrowNewErrorKind,
+                ToNumberInstruction, ToNumericInstruction, ToObjectInstruction,
+                ToPropertyKeyInstruction, ToStringInstruction, TypeOfInstruction, YieldInstruction,
                 extra_wide_prefix_index_to_opcode_index, wide_prefix_index_to_opcode_index,
             },
             instruction_traits::{
@@ -129,6 +129,7 @@ use crate::{
         scope::Scope,
         scope_names::ScopeNames,
         source_file::SourceFile,
+        stack_trace::{StackFrameInfoArray, create_current_stack_frame_info},
         to_string,
         type_utilities::{
             is_callable, is_callable_object, is_loosely_equal, is_strictly_equal,
@@ -154,6 +155,10 @@ pub struct VM {
     /// The stack frame directly above the last stack frame that should be reported in a stack trace,
     /// if there is one.
     stack_trace_top: Option<StackFrame>,
+
+    /// If the most recent executed Throw instruction was for a value that is not a native error,
+    /// this contains the stack trace info for this throw.
+    thrown_non_error_info: Option<HeapPtr<StackFrameInfoArray>>,
 
     stack: Vec<StackSlotValue>,
 
@@ -235,6 +240,10 @@ impl VM {
         };
     }
 
+    pub fn thrown_non_error_info(&self) -> Option<HeapPtr<StackFrameInfoArray>> {
+        self.thrown_non_error_info
+    }
+
     pub fn debug_assert_stack_empty(&self) {
         debug_assert!(self.fp().is_null());
         debug_assert!(self.num_stack_frames == 0);
@@ -256,6 +265,7 @@ impl VM {
             sp: std::ptr::null_mut(),
             fp: std::ptr::null_mut(),
             stack_trace_top: None,
+            thrown_non_error_info: None,
             num_stack_frames: 0,
 
             stack,
@@ -747,6 +757,29 @@ impl VM {
                 ($get_instr:ident) => {{
                     let instr = $get_instr!(ThrowInstruction);
                     self.set_pc_after(instr);
+
+                    let error_value = self.read_register(instr.error()).to_handle(self.cx());
+
+                    // Native errors will already contain a stack trace, but any other thrown values
+                    // should save the current stack trace info so a trace can be displayed later if
+                    // desired.
+                    if error_value.is_object() && error_value.as_object().is_error() {
+                        self.thrown_non_error_info = None;
+                    } else {
+                        self.thrown_non_error_info = Some(create_current_stack_frame_info(
+                            self.cx(),
+                            /* skip current frame */ false,
+                        )?);
+                    }
+
+                    throw!(error_value);
+                }};
+            }
+
+            macro_rules! execute_rethrow {
+                ($get_instr:ident) => {{
+                    let instr = $get_instr!(RethrowInstruction);
+                    self.set_pc_after(instr);
                     let error_value = self.read_register(instr.error()).to_handle(self.cx());
                     throw!(error_value);
                 }};
@@ -1157,6 +1190,7 @@ impl VM {
                             dispatch!(StoreToModuleInstruction, execute_store_to_module)
                         }
                         OpCode::Throw => execute_throw!(get_instr),
+                        OpCode::Rethrow => execute_rethrow!(get_instr),
                         OpCode::RestParameter => {
                             dispatch_or_throw!(RestParameterInstruction, execute_rest_parameter)
                         }
@@ -4788,6 +4822,8 @@ impl VM {
     /// Visit all heap roots in the VM during GC root collection. Rewrites the stack in place,
     /// taking care to rewrite the current PC and return addresses.
     pub fn visit_roots(&mut self, visitor: &mut impl HeapVisitor) {
+        visitor.visit_pointer_opt(&mut self.thrown_non_error_info);
+
         if !self.is_executing() {
             return;
         }

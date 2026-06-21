@@ -1,0 +1,7 @@
+MyCustomError: foo
+  ┌ stack_trace/non_error/error_like.js:9:1
+  |
+9 | throw new MyError("foo");
+  | ^
+Stack trace:
+  at <global> (stack_trace/non_error/error_like.js:9:1)

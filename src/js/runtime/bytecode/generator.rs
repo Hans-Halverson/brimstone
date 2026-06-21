@@ -5068,12 +5068,7 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                     self.gen_mov_reg_to_dest(old_value, dest)
                 }
             } else {
-                // Postfix operations return the old value, so we must make sure it is saved and
-                // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
                 let dest = self.allocate_destination(dest)?;
-                let old_value = self.gen_load_identifier(id, old_value_dest)?;
-                self.writer
-                    .to_numeric_instruction(old_value, old_value, pos);
 
                 // If id is at a fixed register which matches the destination then writing the
                 // modified value to the id's location would clobber the old value. But in this case
@@ -5081,9 +5076,16 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 // need to perform the in-place numeric conversion.
                 if let ExprDest::Fixed(fixed_id_reg) = self.expr_dest_for_id(id, store_flags) {
                     if fixed_id_reg == dest {
+                        self.writer.to_numeric_instruction(dest, dest, pos);
                         return Ok(dest);
                     }
                 }
+
+                // Postfix operations return the old value, so we must make sure it is saved and
+                // not clobbered. It is safe to overwrite with ToNumeric since inc/dec cannot fail.
+                let old_value = self.gen_load_identifier(id, old_value_dest)?;
+                self.writer
+                    .to_numeric_instruction(old_value, old_value, pos);
 
                 // Save the old value to be returned later
                 self.write_mov_instruction(dest, old_value);

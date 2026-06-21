@@ -18,8 +18,18 @@
     45: StoreGlobal r0, c15
     48: NewClosure r0, c16
     51: StoreGlobal r0, c17
-    54: LoadUndefined r0
-    56: Ret r0
+    54: NewClosure r0, c18
+    57: StoreGlobal r0, c19
+    60: NewClosure r0, c20
+    63: StoreGlobal r0, c21
+    66: NewClosure r0, c22
+    69: StoreGlobal r0, c23
+    72: NewClosure r0, c24
+    75: StoreGlobal r0, c25
+    78: NewClosure r0, c26
+    81: StoreGlobal r0, c27
+    84: LoadUndefined r0
+    86: Ret r0
   Constant Table:
     0: [BytecodeFunction: simpleAssignHazard]
     1: [String: simpleAssignHazard]
@@ -39,6 +49,16 @@
     15: [String: toplevelAssignExpressions]
     16: [BytecodeFunction: nestedFunctionOrClass]
     17: [String: nestedFunctionOrClass]
+    18: [BytecodeFunction: prefixIncHazard]
+    19: [String: prefixIncHazard]
+    20: [BytecodeFunction: prefixDecHazard]
+    21: [String: prefixDecHazard]
+    22: [BytecodeFunction: postfixIncHazard]
+    23: [String: postfixIncHazard]
+    24: [BytecodeFunction: postfixDecHazard]
+    25: [String: postfixDecHazard]
+    26: [BytecodeFunction: toplevelUpdateExpressions]
+    27: [String: toplevelUpdateExpressions]
 }
 
 [BytecodeFunction: simpleAssignHazard] {
@@ -185,4 +205,70 @@
     0: LoadImmediate a0, 3
     3: LoadUndefined r0
     5: Ret r0
+}
+
+[BytecodeFunction: prefixIncHazard] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: Mov r1, a0
+     6: ToNumeric r1, r1
+     9: Inc r1
+    11: Mov a0, r1
+    14: Add r0, r0, r1
+    18: Ret r0
+}
+
+[BytecodeFunction: prefixDecHazard] {
+  Parameters: 1, Registers: 2
+     0: Mov r0, a0
+     3: Mov r1, a0
+     6: ToNumeric r1, r1
+     9: Dec r1
+    11: Mov a0, r1
+    14: Add r0, r0, r1
+    18: Ret r0
+}
+
+[BytecodeFunction: postfixIncHazard] {
+  Parameters: 1, Registers: 3
+     0: Mov r0, a0
+     3: Mov r2, a0
+     6: ToNumeric r2, r2
+     9: Mov r1, r2
+    12: Inc r2
+    14: Mov a0, r2
+    17: Add r0, r0, r1
+    21: Ret r0
+}
+
+[BytecodeFunction: postfixDecHazard] {
+  Parameters: 1, Registers: 3
+     0: Mov r0, a0
+     3: Mov r2, a0
+     6: ToNumeric r2, r2
+     9: Mov r1, r2
+    12: Dec r2
+    14: Mov a0, r2
+    17: Add r0, r0, r1
+    21: Ret r0
+}
+
+[BytecodeFunction: toplevelUpdateExpressions] {
+  Parameters: 2, Registers: 4
+     0: ToNumeric a0, a0
+     3: Mov r0, a0
+     6: Inc a0
+     8: Mov r1, a1
+    11: Mov r3, a1
+    14: ToNumeric r3, r3
+    17: Mov r2, r3
+    20: Inc r3
+    22: Mov a1, r3
+    25: GetProperty r0, r1, r2
+    29: ToNumeric r0, r0
+    32: Mov r3, r0
+    35: Inc r3
+    37: SetProperty r1, r2, r3
+    41: LoadUndefined r0
+    43: Ret r0
 }

@@ -1,6 +1,6 @@
 use crate::{
     common::{
-        error::{ErrorFormatter, FormatOptions, SourceInfo},
+        error::{ErrorFormatter, FormatOptions},
         terminal::stdout_should_use_colors,
     },
     runtime::{
@@ -9,7 +9,7 @@ use crate::{
         eval_result::EvalResult,
         heap_item_descriptor::HeapItemKind,
         intrinsics::{
-            error_constructor::{CachedStackTraceInfo, ErrorObject},
+            error_constructor::{ErrorObject, new_heap_source_info},
             error_prototype::{error_message, error_name},
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
@@ -194,21 +194,4 @@ fn error_to_console_string(
     }
 
     Ok(formatter.build())
-}
-
-fn new_heap_source_info(
-    cx: Context,
-    stack_trace_info: &CachedStackTraceInfo,
-) -> AllocResult<Option<SourceInfo>> {
-    let (mut source_file, line, col) =
-        if let Some((source_file, line, col)) = &stack_trace_info.source_file_line_col {
-            (source_file.to_handle(), *line, *col)
-        } else {
-            return Ok(None);
-        };
-
-    let name = source_file.display_name().to_string();
-    let snippet = source_file.get_line(cx, line - 1)?;
-
-    Ok(Some(SourceInfo::new(name, line, col, snippet)))
 }

@@ -52,7 +52,7 @@
     28: LoadImmediate r3, 0
     31: Mov <scope>, r5
     34: IteratorClose r1
-    36: Throw r4
+    36: Rethrow r4
   .L1:
     38: Jump -29 (.L0)
   .L2:
@@ -79,7 +79,7 @@
     28: LoadImmediate r4, 0
     31: Mov <scope>, r6
     34: IteratorClose r2
-    36: Throw r5
+    36: Rethrow r5
   .L1:
     38: Jump -29 (.L0)
   .L2:
@@ -96,7 +96,7 @@
     68: LoadImmediate r4, 0
     71: Mov <scope>, r6
     74: IteratorClose r2
-    76: Throw r5
+    76: Rethrow r5
   .L4:
     78: Jump -29 (.L3)
   .L5:
@@ -146,12 +146,12 @@
      75: JumpFalse r6, 6 (.L5)
      78: Mov r5, r4
   .L5:
-     81: Throw r5
+     81: Rethrow r5
   .L6:
      83: LoadImmediate r5, 0
      86: StrictEqual r5, r3, r5
      90: JumpFalse r5, 5 (.L7)
-     93: Throw r4
+     93: Rethrow r4
   .L7:
      95: LoadImmediate r5, 2
      98: StrictEqual r5, r3, r5
@@ -184,7 +184,7 @@
     25: LoadImmediate r2, 0
     28: Mov <scope>, r4
     31: IteratorClose r0
-    33: Throw r3
+    33: Rethrow r3
   .L1:
     35: Jump -26 (.L0)
   .L2:
@@ -211,7 +211,7 @@
     29: LoadImmediate r2, 0
     32: Mov <scope>, r4
     35: IteratorClose r0
-    37: Throw r3
+    37: Rethrow r3
   .L1:
     39: Jump -30 (.L0)
   .L2:
@@ -229,7 +229,7 @@
     73: LoadImmediate r2, 0
     76: Mov <scope>, r4
     79: IteratorClose r0
-    81: Throw r3
+    81: Rethrow r3
   .L4:
     83: Jump -33 (.L3)
   .L5:
@@ -266,7 +266,7 @@
      46: LoadImmediate r5, 0
      49: Mov <scope>, r7
      52: IteratorClose r3
-     54: Throw r6
+     54: Rethrow r6
   .L2:
      56: Jump -47 (.L0)
   .L3:
@@ -289,7 +289,7 @@
     104: LoadImmediate r5, 0
     107: Mov <scope>, r7
     110: IteratorClose r3
-    112: Throw r6
+    112: Rethrow r6
   .L6:
     114: Jump -47 (.L4)
   .L7:
@@ -331,7 +331,7 @@
      51: LoadImmediate r4, 0
      54: Mov <scope>, r6
      57: IteratorClose r2
-     59: Throw r5
+     59: Rethrow r5
   .L1:
      61: PopScope 
      62: Jump -39 (.L0)
@@ -353,7 +353,7 @@
     105: LoadImmediate r4, 0
     108: Mov <scope>, r6
     111: IteratorClose r2
-    113: Throw r5
+    113: Rethrow r5
   .L4:
     115: Jump -37 (.L3)
   .L5:
@@ -418,7 +418,7 @@
   .L2:
     68: AsyncIteratorCloseFinish r7
   .L3:
-    70: Throw r5
+    70: Rethrow r5
   .L4:
     72: Jump -61 (.L0)
   .L5:

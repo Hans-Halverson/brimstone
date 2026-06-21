@@ -1,13 +1,19 @@
 use crate::{
-    common::error::FormatOptions,
+    common::error::{ErrorFormatter, FormatOptions},
     eval_err,
     parser::{LocalizedParseError, LocalizedParseErrors},
     runtime::{
-        Context, Handle, HeapPtr, Value,
-        alloc_error::{AllocError, format_oom_error_message},
+        Context, Handle, HeapPtr, PropertyKey, Value,
+        alloc_error::{AllocError, AllocResult, format_oom_error_message},
         bytecode::generator::EmitError,
         eval_result::{EvalError, EvalResult},
-        intrinsics::native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
+        get,
+        intrinsics::{
+            error_constructor::new_heap_source_info,
+            native_error::{RangeError, ReferenceError, SyntaxError, TypeError, URIError},
+        },
+        object_value::ObjectValue,
+        stack_trace::create_stack_trace,
         string_value::{FlatString, StringValue},
         to_console_string,
     },
@@ -68,13 +74,88 @@ impl BsError {
             BsError::Parse(error) => error.format(opts),
             BsError::Analyze(errors) => errors.format(opts),
             BsError::Emit(error) => error.format(opts),
-            BsError::Eval(EvalError::Value(error)) => to_console_string(cx, *error, opts)
+            BsError::Eval(EvalError::Value(error)) => format_eval_error_value(cx, *error, opts)
                 .unwrap_or_else(|_| format_oom_error_message(opts)),
             BsError::Alloc(error) => error.format(opts),
             #[cfg(feature = "alloc_error")]
             BsError::Eval(EvalError::Alloc(error)) => error.format(opts),
         }
     }
+}
+
+fn format_eval_error_value(
+    cx: Context,
+    thrown_value: Handle<Value>,
+    opts: &FormatOptions,
+) -> AllocResult<String> {
+    let thrown_value_string = to_console_string(cx, thrown_value, opts)?;
+
+    if thrown_value.is_object() && thrown_value.as_object().is_error() {
+        Ok(thrown_value_string)
+    } else {
+        format_thrown_non_error_value(cx, thrown_value, thrown_value_string, opts)
+    }
+}
+
+/// Best effort attempt at formatting thrown non-error values.
+/// - Include a stack trace if one was preserved in the VM
+/// - Try to treat user-defined error types the same as native errors. Format them with their name
+///   and message property if the thrown value is an object.
+fn format_thrown_non_error_value(
+    mut cx: Context,
+    thrown_value: Handle<Value>,
+    formatted_value: String,
+    opts: &FormatOptions,
+) -> AllocResult<String> {
+    // Save preserved stack trace before potentially re-entering JS when fetching error properties
+    let stack_trace_info = cx.vm().thrown_non_error_info().map(|info| info.to_handle());
+
+    let mut error_name = "Thrown".to_string();
+    let mut error_message = None;
+
+    if thrown_value.is_object() {
+        let thrown_object = thrown_value.as_object();
+
+        if let Some(name) = safe_get_string_property(cx, thrown_object, cx.names.name()) {
+            error_name = name;
+        }
+
+        if let Some(message) = safe_get_string_property(cx, thrown_object, cx.names.message()) {
+            error_message = Some(message);
+        }
+    }
+
+    let mut formatter = ErrorFormatter::new(error_name, opts);
+    formatter.set_message(error_message.unwrap_or(formatted_value));
+
+    if let Some(info) = stack_trace_info {
+        let stack_trace = create_stack_trace(cx, info)?;
+
+        formatter.set_stack_trace(stack_trace.frames.to_string());
+
+        if let Some(source_info) = new_heap_source_info(cx, &stack_trace)? {
+            formatter.set_source_info(source_info);
+        }
+    }
+
+    Ok(formatter.build())
+}
+
+/// Get a string property of an object ignoring all types of failure.
+fn safe_get_string_property(
+    cx: Context,
+    object: Handle<ObjectValue>,
+    property_key: Handle<PropertyKey>,
+) -> Option<String> {
+    let Ok(value) = get(cx, object, property_key) else {
+        return None;
+    };
+
+    if !value.is_string() {
+        return None;
+    }
+
+    value.as_string().format().ok()
 }
 
 /// Generic result type from the JS engine.

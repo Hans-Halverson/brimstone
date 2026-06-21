@@ -1,0 +1,7 @@
+Thrown: 42
+  ┌ stack_trace/non_error/await_throw_module.js:4:1
+  |
+4 | await foo();
+  | ^
+Stack trace:
+  at <module> (stack_trace/non_error/await_throw_module.js:4:1)

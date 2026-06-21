@@ -51,7 +51,7 @@
     31: LoadImmediate r2, 0
     34: StrictEqual r2, r0, r2
     38: JumpFalse r2, 5 (.L2)
-    41: Throw r1
+    41: Rethrow r1
   .L2:
     43: LoadImmediate r2, 2
     46: StrictEqual r2, r0, r2
@@ -83,7 +83,7 @@
     27: LoadImmediate r2, 0
     30: StrictEqual r2, r0, r2
     34: JumpFalse r2, 5 (.L2)
-    37: Throw r1
+    37: Rethrow r1
   .L2:
     39: LoadImmediate r2, 2
     42: StrictEqual r2, r0, r2
@@ -120,7 +120,7 @@
     42: LoadImmediate r3, 0
     45: StrictEqual r3, r1, r3
     49: JumpFalse r3, 5 (.L2)
-    52: Throw r2
+    52: Rethrow r2
   .L2:
     54: LoadImmediate r3, 1
     57: StrictEqual r3, r1, r3
@@ -156,7 +156,7 @@
     36: LoadImmediate r2, 0
     39: StrictEqual r2, r0, r2
     43: JumpFalse r2, 5 (.L2)
-    46: Throw r1
+    46: Rethrow r1
   .L2:
     48: Jump 2 (.L3)
   .L3:
@@ -194,7 +194,7 @@
     53: LoadImmediate r2, 0
     56: StrictEqual r2, r0, r2
     60: JumpFalse r2, 5 (.L3)
-    63: Throw r1
+    63: Rethrow r1
   .L3:
     65: LoadImmediate r2, 2
     68: StrictEqual r2, r0, r2
@@ -243,7 +243,7 @@
     67: LoadImmediate r2, 0
     70: StrictEqual r2, r0, r2
     74: JumpFalse r2, 5 (.L4)
-    77: Throw r1
+    77: Rethrow r1
   .L4:
     79: LoadImmediate r2, 2
     82: StrictEqual r2, r0, r2
@@ -281,7 +281,7 @@
      43: LoadImmediate r8, 0
      46: StrictEqual r8, r6, r8
      50: JumpFalse r8, 5 (.L2)
-     53: Throw r7
+     53: Rethrow r7
   .L2:
      55: LoadImmediate r8, 2
      58: StrictEqual r8, r6, r8
@@ -301,7 +301,7 @@
      89: LoadImmediate r5, 0
      92: StrictEqual r5, r3, r5
      96: JumpFalse r5, 5 (.L6)
-     99: Throw r4
+     99: Rethrow r4
   .L6:
     101: LoadImmediate r5, 2
     104: StrictEqual r5, r3, r5
@@ -321,7 +321,7 @@
     135: LoadImmediate r2, 0
     138: StrictEqual r2, r0, r2
     142: JumpFalse r2, 5 (.L10)
-    145: Throw r1
+    145: Rethrow r1
   .L10:
     147: LoadImmediate r2, 2
     150: StrictEqual r2, r0, r2

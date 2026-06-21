@@ -1,0 +1,9 @@
+Thrown: 42
+  ┌ stack_trace/non_error/yield_throw.js:2:5
+  |
+2 |     yield 1;
+  |     ^
+Stack trace:
+  at gen (stack_trace/non_error/yield_throw.js:2:5)
+  at throw (<native>)
+  at <global> (stack_trace/non_error/yield_throw.js:6:1)

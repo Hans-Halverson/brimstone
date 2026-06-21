@@ -247,7 +247,7 @@
     41: LoadImmediate r4, 0
     44: StrictEqual r4, r2, r4
     48: JumpFalse r4, 5 (.L1)
-    51: Throw r3
+    51: Rethrow r3
   .L1:
     53: Mov r5, r3
     56: JumpNotUndefined r3, 8 (.L2)
@@ -285,7 +285,7 @@
     55: LoadImmediate r4, 0
     58: StrictEqual r4, r2, r4
     62: JumpFalse r4, 5 (.L1)
-    65: Throw r3
+    65: Rethrow r3
   .L1:
     67: Mov r5, r3
     70: JumpNotUndefined r3, 9 (.L2)

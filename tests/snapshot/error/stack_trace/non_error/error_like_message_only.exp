@@ -1,0 +1,7 @@
+Thrown: foo
+  ┌ stack_trace/non_error/error_like_message_only.js:8:1
+  |
+8 | throw new MyError("foo");
+  | ^
+Stack trace:
+  at <global> (stack_trace/non_error/error_like_message_only.js:8:1)

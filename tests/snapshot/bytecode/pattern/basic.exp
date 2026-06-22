@@ -13,7 +13,7 @@
     32: StoreGlobal r4, c6
     35: LoadImmediate r5, 2
     38: ToPropertyKey r3, r5
-    41: GetProperty r4, r0, r5
+    41: GetProperty r4, r0, r3
     45: StoreGlobal r4, c7
     48: ToObject r5, r0
     51: NewObject r4
@@ -51,7 +51,7 @@
     13: GetNamedProperty r1, r4, c1
     17: LoadImmediate r8, 2
     20: ToPropertyKey r7, r8
-    23: GetProperty r2, r4, r8
+    23: GetProperty r2, r4, r7
     27: ToObject r8, r4
     30: NewObject r3
     32: CopyDataProperties r3, r4, r5, 3

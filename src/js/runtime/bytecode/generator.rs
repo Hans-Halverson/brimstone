@@ -6413,16 +6413,20 @@ impl<'a> BytecodeFunctionGenerator<'a> {
                 Property::Computed(key, key_pos) => {
                     // If there is a rest element then we must ensure key is a property key and save
                     // it in the reserved registers.
-                    if has_rest_element {
+                    let property_key = if has_rest_element {
+                        let property_key = saved_keys[i];
                         self.writer
-                            .to_property_key_instruction(saved_keys[i], *key, *key_pos);
-                    }
+                            .to_property_key_instruction(property_key, *key, *key_pos);
+                        property_key
+                    } else {
+                        *key
+                    };
 
                     // Read computed property from object
                     self.writer.get_property_instruction(
                         property_value,
                         object_value,
-                        *key,
+                        property_key,
                         property_start_pos,
                     );
                 }

@@ -216,10 +216,10 @@
     37: GetNamedProperty r0, a0, c0
     41: LoadImmediate r8, 1
     44: ToPropertyKey r6, r8
-    47: GetProperty r1, a0, r8
+    47: GetProperty r1, a0, r6
     51: LoadImmediate r8, 2
     54: ToPropertyKey r7, r8
-    57: GetProperty r3, a0, r8
+    57: GetProperty r3, a0, r7
     61: ToObject r8, a0
     64: NewObject r4
     66: CopyDataProperties r4, a0, r5, 3

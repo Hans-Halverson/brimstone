@@ -13,6 +13,6 @@ a.push("one");
 a.unshift("two");
 a.unshift("three", "four");
 
-console.log(a[0], "three");
-console.log(a[1], "four");
-console.log(a[2], "two");
+assert.sameValue(a[0], "three");
+assert.sameValue(a[1], "four");
+assert.sameValue(a[2], "two");

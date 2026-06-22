@@ -230,16 +230,27 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
         let hash_code = Self::key_hash_code(&key);
         let mut probe_index = self.initial_probe_index(hash_code);
 
+        let mut first_deleted_index = None;
+
         // Quadratic probing - probe stride increases by 1 each iteration
         for probe_stride in 1..=self.capacity() {
             match self.entries.get_unchecked_mut(probe_index) {
-                // First empty or deleted entry encountered is filled with the new kv pair
-                Entry::Empty | Entry::Deleted => {
+                // First empty entry encountered means we have not found an occupied entry with this
+                // key. Must insert, preferring the first deleted entry if any were encountered.
+                Entry::Empty => {
+                    let insertion_index = first_deleted_index.unwrap_or(probe_index);
                     self.entries
-                        .set_unchecked(probe_index, Entry::Occupied(KVPair { key, value }));
+                        .set_unchecked(insertion_index, Entry::Occupied(KVPair { key, value }));
                     self.len += 1;
 
                     return false;
+                }
+                // Mark the first deleted entry but keep going in case there is an occupied entry
+                // with this key later on.
+                Entry::Deleted => {
+                    if first_deleted_index.is_none() {
+                        first_deleted_index = Some(probe_index);
+                    }
                 }
                 Entry::Occupied(kv_pair) => {
                     // Overwrite previous value if key is already present
@@ -253,6 +264,13 @@ impl<K: Eq + Hash + Clone, V: Clone> BsHashMap<K, V> {
             };
 
             probe_index = self.next_probe_index(probe_index, probe_stride);
+        }
+
+        // Only deleted entries left, insert into the first one
+        if let Some(insertion_index) = first_deleted_index {
+            self.entries
+                .set_unchecked(insertion_index, Entry::Occupied(KVPair { key, value }));
+            self.len += 1;
         }
 
         false

@@ -21,3 +21,31 @@ class C2 extends String {
     super.x;
   }
 }
+
+class C3 extends Object {
+  method() {
+    // Super references parent class
+    class Inner extends (super.foo) {}
+  }
+}
+
+class C4 extends Object {
+  method() {
+    // Super references parent class
+    class Inner extends (() => super.foo)() {}
+  }
+}
+
+class C5 extends Object {
+  static method() {
+    // Super references parent class
+    class Inner extends (super.foo) {}
+  }
+}
+
+const obj = {
+  method() {
+    // Super references parent object
+    class Inner extends (super.foo) {}
+  }
+};

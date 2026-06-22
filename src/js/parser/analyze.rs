@@ -97,6 +97,8 @@ enum AllowSuperStackEntry {
     Allow {
         /// Whether the super member expression references the static home object.
         is_static: bool,
+        /// The scope node containing the home object binding, if one is known.
+        home_object_scope: Option<ScopeNodeId>,
     },
     Disallow,
 }
@@ -743,12 +745,18 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
 
     fn visit_super_member_expression(&mut self, expr: &mut SuperMemberExpression<'a>) {
         match self.allow_super_member_stack.last() {
-            Some(AllowSuperStackEntry::Allow { is_static }) => {
+            Some(AllowSuperStackEntry::Allow { is_static, home_object_scope }) => {
                 expr.is_static = *is_static;
 
-                // Resolve home object
                 let home_object_name = expr.home_object_name();
-                self.resolve_use(&mut expr.home_object_scope, home_object_name, expr.super_);
+
+                // Home object is resolved in the attached scope if present
+                let home_object_scope = home_object_scope
+                    .unwrap_or_else(|| self.scope_stack.last().unwrap().as_ref().id());
+                let (def_scope, _) =
+                    self.scope_tree
+                        .resolve_use(home_object_scope, home_object_name, expr.super_);
+                expr.home_object_scope = def_scope;
 
                 // Also resolve `this` which may be used by the super member expression
                 self.resolve_this_use(expr.loc, |scope| expr.this_scope = Some(scope));
@@ -1071,7 +1079,9 @@ impl<'a> Analyzer<'a> {
         if !is_arrow_function {
             let entry = if is_method {
                 let is_static = is_static_method || is_static_initializer;
-                AllowSuperStackEntry::Allow { is_static }
+                let home_object_scope = self.scope_stack.last().map(|s| s.as_ref().id());
+
+                AllowSuperStackEntry::Allow { is_static, home_object_scope }
             } else {
                 AllowSuperStackEntry::Disallow
             };
@@ -1438,12 +1448,13 @@ impl<'a> Analyzer<'a> {
 
         // Class field initializers are in their own function scope. Class field initializer bodies
         // are treated as (potentially static) methods.
+        let home_object_scope = self.scope_stack.last().map(|s| s.as_ref().id());
         if let Some(init_scope) = init_scope {
             self.enter_scope(init_scope);
         }
 
         self.allow_super_member_stack
-            .push(AllowSuperStackEntry::Allow { is_static: prop.is_static });
+            .push(AllowSuperStackEntry::Allow { is_static: prop.is_static, home_object_scope });
         self.function_stack.push(FunctionStackEntry {
             is_arrow_function: false,
             is_method: true,
@@ -1759,7 +1770,10 @@ pub fn analyze_for_eval<'a>(
         if in_method || in_class_field_initializer {
             analyzer
                 .allow_super_member_stack
-                .push(AllowSuperStackEntry::Allow { is_static: in_static });
+                .push(AllowSuperStackEntry::Allow {
+                    is_static: in_static,
+                    home_object_scope: None,
+                });
         }
     }
 

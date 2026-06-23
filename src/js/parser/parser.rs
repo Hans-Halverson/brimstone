@@ -201,8 +201,11 @@ impl<'a> Parser<'a> {
         self.lexer.in_strict_mode = in_strict_mode;
     }
 
-    fn prevent_hashbang_comment(&mut self) {
+    /// Initialize the parser for parsing the function parameters or body in a dynamically created
+    /// function.
+    fn init_for_dynamic_function_part(&mut self) {
         self.lexer.allow_hashbang_comment = false;
+        self.lexer.allow_html_close_comment_at_start = false;
     }
 
     /// Try parsing, restoring to state before this function was called if an error occurs.
@@ -472,6 +475,7 @@ impl<'a> Parser<'a> {
 
     fn parse_module(mut self) -> ParseResult<ParseProgramResult<'a>> {
         self.program_kind = ProgramKind::Module;
+        self.lexer.is_module = true;
 
         // Modules are always in strict mode
         self.set_in_strict_mode(true);
@@ -5042,7 +5046,7 @@ pub fn parse_script(
 ) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
-    let lexer = Lexer::new(pcx.source(), alloc);
+    let lexer = Lexer::new(pcx.source(), &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
@@ -5058,7 +5062,7 @@ pub fn parse_module(
 ) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
-    let lexer = Lexer::new(pcx.source(), alloc);
+    let lexer = Lexer::new(pcx.source(), &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_module(options.clone(), alloc), options, alloc);
     parser.advance()?;
@@ -5074,7 +5078,7 @@ pub fn parse_script_for_eval(
 ) -> ParseResult<ParseProgramResult<'_>> {
     // Create and prime parser
     let alloc = pcx.alloc();
-    let lexer = Lexer::new(pcx.source(), alloc);
+    let lexer = Lexer::new(pcx.source(), &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_eval(options.clone(), is_direct, alloc), options, alloc);
 
@@ -5095,13 +5099,13 @@ pub fn parse_function_params_for_function_constructor(
 ) -> ParseResult<()> {
     // Create and prime parser
     let alloc = pcx.alloc();
-    let lexer = Lexer::new(pcx.source(), alloc);
+    let lexer = Lexer::new(pcx.source(), &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
-    parser.prevent_hashbang_comment();
+    parser.init_for_dynamic_function_part();
 
     parser.advance()?;
 
@@ -5118,13 +5122,13 @@ pub fn parse_function_body_for_function_constructor(
 ) -> ParseResult<()> {
     // Create and prime parser
     let alloc = pcx.alloc();
-    let lexer = Lexer::new(pcx.source(), alloc);
+    let lexer = Lexer::new(pcx.source(), &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options, alloc);
 
     parser.allow_await = is_async;
     parser.allow_yield = is_generator;
-    parser.prevent_hashbang_comment();
+    parser.init_for_dynamic_function_part();
 
     let initial_state = parser.save();
     parser.advance()?;
@@ -5142,7 +5146,7 @@ pub fn parse_function_for_function_constructor(
     let alloc = pcx.alloc();
     let source = pcx.source();
 
-    let lexer = Lexer::new(source, alloc);
+    let lexer = Lexer::new(source, &options, alloc);
     let mut parser =
         Parser::new(lexer, ScopeTree::new_global(options.clone(), alloc), options.clone(), alloc);
     parser.advance()?;

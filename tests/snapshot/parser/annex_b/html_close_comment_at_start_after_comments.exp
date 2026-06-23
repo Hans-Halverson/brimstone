@@ -1,0 +1,17 @@
+{
+  type: "Program",
+  loc: "1:1-2:3",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:3",
+      kind: {
+        type: "Identifier",
+        loc: "2:1-2:2",
+        name: "a",
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

@@ -1995,6 +1995,8 @@ bitflags! {
         const IN_STATIC_INITIALIZER = 1 << 4;
         /// Whether eval is in a class field initializer meaning `arguments` is not allowed.
         const IN_CLASS_FIELD_INITIALIZER = 1 << 5;
+        /// Whether eval is directly inside an arrow function.
+        const IN_ARROW_FUNCTION = 1 << 6;
     }
 }
 

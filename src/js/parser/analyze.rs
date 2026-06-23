@@ -820,6 +820,15 @@ impl<'a> AstVisitor<'a> for Analyzer<'a> {
                     expr.maybe_eval_in_class_field_initializer =
                         current_func.is_class_field_initializer;
                 }
+
+                // Mark if immediately enclosing function is an arrow function and add a use of
+                // `this` so that it can be dynamically looked up at runtime.
+                if let Some(f) = self.function_stack.last()
+                    && f.is_arrow_function
+                {
+                    expr.maybe_eval_in_arrow_function = true;
+                    self.resolve_this_use(expr.loc, |_| {});
+                }
             }
             _ => {}
         }

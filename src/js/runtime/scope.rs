@@ -141,6 +141,22 @@ impl Scope {
         self.slots.as_slice()[index]
     }
 
+    /// Dynamically look up the `this` binding in this scope, walking the scope chain until found.
+    pub fn lookup_this_for_eval(cx: Context, mut scope: HeapPtr<Self>) -> Value {
+        loop {
+            for (i, name_ptr) in scope.scope_names_ptr().name_ptrs().iter().enumerate() {
+                if name_ptr.eq_str("this") {
+                    return scope.get_slot(i);
+                }
+            }
+
+            match scope.parent {
+                Some(parent) => scope = parent,
+                None => return cx.current_realm_ptr().global_object_ptr().as_value(),
+            }
+        }
+    }
+
     #[inline]
     pub fn set_slot(&mut self, index: usize, value: Value) {
         self.slots.as_mut_slice()[index] = value;

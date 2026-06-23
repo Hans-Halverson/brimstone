@@ -1,0 +1,97 @@
+[BytecodeFunction: <global>] {
+  Parameters: 0, Registers: 1
+     0: NewClosure r0, c0
+     3: Call r0, r0, r0, 0
+     8: NewClosure r0, c1
+    11: Call r0, r0, r0, 0
+    16: NewClosure r0, c2
+    19: Call r0, r0, r0, 0
+    24: LoadUndefined r0
+    26: Ret r0
+  Constant Table:
+    0: [BytecodeFunction: <anonymous>]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadDynamic r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1, 64
+    14: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: this]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadDynamic r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1, 64
+    14: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: () => this]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadDynamic r0, c1
+     5: LoadConstant r1, c2
+     8: CallMaybeEval r0, r0, r1, 1, 64
+    14: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: eval("this")]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: Mov r0, <this>
+    3: Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: PushLexicalScope c0
+    2: StoreToScope <this>, 0, 0
+    6: NewClosure r0, c1
+    9: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 3
+     0: PushLexicalScope c0
+     2: StoreToScope <this>, 0, 0
+     6: LoadDynamic r1, c1
+     9: LoadConstant r2, c2
+    12: CallMaybeEval r0, r1, r2, 1, 0
+    18: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [String: eval]
+    2: [String: this]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: Mov r0, <this>
+    3: Ret r0
+}

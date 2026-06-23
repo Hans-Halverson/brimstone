@@ -796,16 +796,24 @@ impl StringPrototype {
         let int_max_length = to_length(cx, max_length_arg)?;
         let string_length = string.len();
 
+        // No need to pad as string already has max length
+        if int_max_length <= string_length as u64 {
+            return Ok(string.as_value());
+        }
+
         let fill_string = if fill_string_arg.is_undefined() {
             cx.names.space().as_string()
         } else {
             to_string(cx, fill_string_arg)?
         };
 
-        // No need to pad as string already has max length
-        if int_max_length <= string_length as u64 {
+        // Check for an empty padding string which would have no effect
+        let fill_string_length = fill_string.len();
+        if fill_string_length == 0 {
             return Ok(string.as_value());
-        } else if int_max_length > u32::MAX as u64 {
+        }
+
+        if int_max_length > u32::MAX as u64 {
             return range_error(
                 cx,
                 &format!(
@@ -816,14 +824,7 @@ impl StringPrototype {
         }
 
         let int_max_length = int_max_length as u32;
-
         let fill_length = int_max_length - string_length;
-        let fill_string_length = fill_string.len();
-
-        // Check for an empty padding string which would have no effect
-        if fill_string_length == 0 {
-            return Ok(string.as_value());
-        }
 
         // Find the number of whole pad strings we can fit into the padding length
         let num_whole_repetitions = fill_length / fill_string_length;

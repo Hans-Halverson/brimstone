@@ -906,6 +906,16 @@ impl<'a> Parser<'a> {
             flags |= FunctionFlags::IS_GENERATOR;
         }
 
+        // Some identifiers are only disallowed in strict mode. We must re-check the function name
+        // after parsing the body, which determines strict mode.
+        if strict_flags.contains(FunctionFlags::HAS_USE_STRICT_DIRECTIVE) {
+            if let Some(id) = &id {
+                if Self::is_strict_reserved_word(id.as_ref().name.as_bytes()) {
+                    return self.error(id.as_ref().loc, ParseError::IdentifierIsReservedWord);
+                }
+            }
+        }
+
         func.init(loc, id, params, body, flags, scope);
 
         self.allow_await = did_allow_await;
@@ -3022,6 +3032,22 @@ impl<'a> Parser<'a> {
         )
     }
 
+    // Names that are only reserved in strict mode
+    fn is_strict_reserved_word(str: &[u8]) -> bool {
+        matches!(
+            str,
+            b"implements"
+                | b"interface"
+                | b"let"
+                | b"package"
+                | b"private"
+                | b"protected"
+                | b"public"
+                | b"static"
+                | b"yield"
+        )
+    }
+
     fn is_reserved_word(
         str: &[u8],
         in_strict_mode: bool,
@@ -3037,15 +3063,9 @@ impl<'a> Parser<'a> {
             | b"throw" | b"true" | b"try" | b"typeof" | b"var" | b"void" | b"while" | b"with" => {
                 true
             }
-            // Names that are only reserved in strict mode
-            b"let" | b"static" | b"implements" | b"interface" | b"package" | b"private"
-            | b"protected" | b"public"
-                if in_strict_mode =>
-            {
-                true
-            }
+            _ if in_strict_mode && Self::is_strict_reserved_word(str) => true,
             b"await" => allow_await,
-            b"yield" => in_strict_mode || allow_yield,
+            b"yield" => allow_yield,
             _ => false,
         }
     }

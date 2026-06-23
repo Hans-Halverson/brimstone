@@ -67,3 +67,26 @@ function outer8() {
 };
 
 assert.sameValue(outer8.call(sentinel), sentinel);
+
+// Eval inside arrow inside derived constructor before super() throws ReferenceError
+class Base {}
+
+class Derived1 extends Base {
+  constructor() {
+    (() => eval('this')).call(sentinel);
+    super();
+  }
+}
+
+assert.throws(ReferenceError, () => new Derived1());
+
+// Eval inside arrow inside derived constructor after super() initializes `this`
+class Derived2 extends Base {
+  constructor() {
+    super();
+    this.saved = (() => eval('this')).call(sentinel);
+  }
+}
+
+const derived2 = new Derived2();
+assert.sameValue(derived2.saved, derived2);

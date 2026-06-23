@@ -1,17 +1,39 @@
 [BytecodeFunction: <global>] {
-  Parameters: 0, Registers: 1
+  Parameters: 0, Registers: 2
      0: NewClosure r0, c0
      3: Call r0, r0, r0, 0
      8: NewClosure r0, c1
     11: Call r0, r0, r0, 0
     16: NewClosure r0, c2
     19: Call r0, r0, r0, 0
-    24: LoadUndefined r0
-    26: Ret r0
+    24: LoadEmpty r1
+    26: NewClass r0, c4, c3, r1, r0
+    32: StoreToScope r0, 2, 0
+    36: PushLexicalScope c5
+    38: LoadEmpty r1
+    40: StoreToScope r1, 0, 0
+    44: LoadFromScope r1, 2, 1
+    48: CheckTdz r1, c6
+    51: NewClass r0, c8, c7, r1, r0
+    57: StoreToScope r0, 0, 0
+    61: PopScope 
+    62: StoreToScope r0, 3, 0
+    66: LoadFromScope r0, 3, 0
+    70: CheckTdz r0, c9
+    73: Construct r0, r0, r0, r0, 0
+    79: LoadUndefined r0
+    81: Ret r0
   Constant Table:
     0: [BytecodeFunction: <anonymous>]
     1: [BytecodeFunction: <anonymous>]
     2: [BytecodeFunction: <anonymous>]
+    3: [BytecodeFunction: Base]
+    4: [ClassNames]
+    5: [ScopeNames]
+    6: [String: Base]
+    7: [BytecodeFunction: Derived]
+    8: [ClassNames]
+    9: [String: Derived]
 }
 
 [BytecodeFunction: <anonymous>] {
@@ -51,6 +73,63 @@
     0: [ScopeNames]
     1: [String: eval]
     2: [String: eval("this")]
+}
+
+[BytecodeFunction: Base] {
+  Parameters: 0, Registers: 1
+    0: LoadUndefined r0
+    2: Ret r0
+}
+
+[BytecodeFunction: Derived] {
+  Parameters: 0, Registers: 2
+     0: PushFunctionScope c0
+     2: LoadEmpty <this>
+     4: StoreToScope <this>, 0, 0
+     8: StoreToScope r0, 2, 0
+    12: StoreToScope <closure>, 1, 0
+    16: NewUnmappedArguments r0
+    18: StoreToScope r0, 3, 0
+    22: LoadFromScope r0, 1, 0
+    26: GetSuperConstructor r0, r0
+    29: LoadFromScope r1, 2, 0
+    33: Construct r0, r0, r1, r1, 0
+    39: LoadFromScope r1, 0, 0
+    43: CheckSuperAlreadyCalled r1
+    45: StoreToScope r0, 0, 0
+    49: NewClosure r0, c1
+    52: Call r0, r0, r0, 0
+    57: NewClosure r0, c2
+    60: Call r0, r0, r0, 0
+    65: LoadFromScope r0, 0, 0
+    69: CheckThisInitialized r0
+    71: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+    2: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r0, c0
+     3: LoadConstant r1, c1
+     6: CallMaybeEval r0, r0, r1, 1, 75
+    12: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: this]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 2
+     0: LoadGlobal r0, c0
+     3: LoadConstant r1, c1
+     6: CallMaybeEval r0, r0, r1, 1, 75
+    12: Ret r0
+  Constant Table:
+    0: [String: eval]
+    1: [String: () => this]
 }
 
 [BytecodeFunction: <eval>] {
@@ -94,4 +173,31 @@
   Parameters: 0, Registers: 1
     0: Mov r0, <this>
     3: Ret r0
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: LoadDynamic r0, c0
+    3: CheckThisInitialized r0
+    5: Ret r0
+  Constant Table:
+    0: [String: this]
+}
+
+[BytecodeFunction: <eval>] {
+  Parameters: 0, Registers: 1
+    0: PushLexicalScope c0
+    2: StoreToScope <this>, 0, 0
+    6: NewClosure r0, c1
+    9: Ret r0
+  Constant Table:
+    0: [ScopeNames]
+    1: [BytecodeFunction: <anonymous>]
+}
+
+[BytecodeFunction: <anonymous>] {
+  Parameters: 0, Registers: 1
+    0: LoadFromScope r0, 0, 0
+    4: CheckThisInitialized r0
+    6: Ret r0
 }

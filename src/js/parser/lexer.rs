@@ -7,6 +7,7 @@ use num_traits::ToPrimitive;
 
 use crate::{
     common::{
+        options::Options,
         unicode::{
             CodePoint, as_id_part, as_id_part_ascii, as_id_part_unicode, as_id_start,
             as_id_start_unicode, decode_wtf8_codepoint, get_binary_value, get_hex_value,
@@ -32,7 +33,11 @@ pub struct Lexer<'a> {
     pos: Pos,
     is_new_line_before_current: bool,
     pub in_strict_mode: bool,
+    pub is_module: bool,
+    in_annex_b_mode: bool,
     pub allow_hashbang_comment: bool,
+    // Whether to allow an HTML close comment `-->` at the start of the source
+    pub allow_html_close_comment_at_start: bool,
     alloc: AstAlloc<'a>,
 }
 
@@ -48,7 +53,7 @@ type LexResult<'a> = ParseResult<(Token<'a>, Loc)>;
 const EOF_CODE_POINT: u32 = 0x110000;
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: &'a Rc<Source>, alloc: AstAlloc<'a>) -> Lexer<'a> {
+    pub fn new(source: &'a Rc<Source>, options: &Options, alloc: AstAlloc<'a>) -> Lexer<'a> {
         let buf = source.contents.as_bytes();
         let current = if buf.is_empty() {
             EOF_CODE_POINT
@@ -63,7 +68,10 @@ impl<'a> Lexer<'a> {
             pos: 0,
             is_new_line_before_current: false,
             in_strict_mode: false,
+            is_module: false,
+            in_annex_b_mode: options.annex_b,
             allow_hashbang_comment: true,
+            allow_html_close_comment_at_start: true,
             alloc,
         }
     }
@@ -175,9 +183,11 @@ impl<'a> Lexer<'a> {
     ];
 
     pub fn next(&mut self) -> LexResult<'a> {
+        let is_source_start = self.pos == 0;
         self.is_new_line_before_current = false;
+
         loop {
-            // Fast pass for skipping ASCII whitespace and newlines
+            // Fast path for skipping ASCII whitespace and newlines
             while let Some(sigil) = Self::ASCII_WHITESPACE_AND_NEWLINES.get(self.current as usize) {
                 if *sigil == 0 {
                     break;
@@ -207,8 +217,21 @@ impl<'a> Lexer<'a> {
                 }),
                 '-' => match_u32!(match self.peek() {
                     '-' => {
-                        self.advance2();
-                        self.emit(Token::Decrement, start_pos)
+                        // Annex B HTML close comments treated as line comments and only allowed in
+                        // scripts. Only allowed before the first token of the line.
+                        if self.in_annex_b_mode
+                            && !self.is_module
+                            && self.peek2() == '>' as u32
+                            && (self.is_new_line_before_current
+                                || (is_source_start && self.allow_html_close_comment_at_start))
+                        {
+                            self.advance3();
+                            self.skip_line_comment()?;
+                            continue;
+                        } else {
+                            self.advance2();
+                            self.emit(Token::Decrement, start_pos)
+                        }
                     }
                     '=' => {
                         self.advance2();
@@ -371,6 +394,22 @@ impl<'a> Lexer<'a> {
                     }
                 }),
                 '<' => match_u32!(match self.peek() {
+                    '!' => {
+                        // Annex B HTML open comments treated as line comments and only allowed in
+                        // scripts.
+                        if self.in_annex_b_mode
+                            && !self.is_module
+                            && self.peek2() == '-' as u32
+                            && self.peek3() == '-' as u32
+                        {
+                            self.advance4();
+                            self.skip_line_comment()?;
+                            continue;
+                        } else {
+                            self.advance();
+                            self.emit(Token::LessThan, start_pos)
+                        }
+                    }
                     '<' => match_u32!(match self.peek2() {
                         '=' => {
                             self.advance3();

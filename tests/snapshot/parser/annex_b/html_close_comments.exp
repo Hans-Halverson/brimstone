@@ -1,0 +1,44 @@
+{
+  type: "Program",
+  loc: "1:1-8:3",
+  body: [
+    {
+      type: "ExpressionStatement",
+      loc: "2:1-2:3",
+      kind: {
+        type: "Identifier",
+        loc: "2:1-2:2",
+        name: "a",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "4:1-4:3",
+      kind: {
+        type: "Identifier",
+        loc: "4:1-4:2",
+        name: "b",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "6:1-6:3",
+      kind: {
+        type: "Identifier",
+        loc: "6:1-6:2",
+        name: "c",
+      },
+    },
+    {
+      type: "ExpressionStatement",
+      loc: "8:1-8:3",
+      kind: {
+        type: "Identifier",
+        loc: "8:1-8:2",
+        name: "d",
+      },
+    },
+  ],
+  sourceType: "script",
+  has_use_strict_directive: false,
+}

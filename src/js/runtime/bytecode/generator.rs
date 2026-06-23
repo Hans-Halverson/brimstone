@@ -3631,6 +3631,10 @@ impl<'a> BytecodeFunctionGenerator<'a> {
             flags |= EvalFlags::IN_CLASS_FIELD_INITIALIZER;
         }
 
+        if expr.maybe_eval_in_arrow_function {
+            flags |= EvalFlags::IN_ARROW_FUNCTION;
+        }
+
         flags
     }
 

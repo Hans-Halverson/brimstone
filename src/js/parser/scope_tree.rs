@@ -425,7 +425,10 @@ impl<'a> ScopeTree<'a> {
 
                 // Var bindings in sloppy direct evals are added to the parent var scope, which
                 // requires a dynamic lookup at runtime.
-                if is_sloppy_eval_scope && !binding.kind().is_lexically_scoped() {
+                if is_sloppy_eval_scope
+                    && !binding.kind().is_lexically_scoped()
+                    && !binding.kind().is_implicit_this()
+                {
                     return (TaggedResolvedScope::unresolved_dynamic(), false);
                 }
 
@@ -1283,7 +1286,7 @@ impl<'a> Binding<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum VMLocation {
     /// Var binding in the global scope.
     Global,

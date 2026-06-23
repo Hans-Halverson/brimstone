@@ -1308,6 +1308,8 @@ pub struct CallExpression<'a> {
     /// Whether the function is potentially a direct eval and inside a class field initializer,
     /// meaning accessing the arguments binding is not allowed.
     pub maybe_eval_in_class_field_initializer: bool,
+    /// Whether the function is potentially a direct eval and directly inside an arrow function.
+    pub maybe_eval_in_arrow_function: bool,
 }
 
 impl<'a> CallExpression<'a> {
@@ -1328,6 +1330,7 @@ impl<'a> CallExpression<'a> {
             maybe_eval_in_derived_constructor: false,
             maybe_eval_in_static_initializer: false,
             maybe_eval_in_class_field_initializer: false,
+            maybe_eval_in_arrow_function: false,
         }
     }
 }

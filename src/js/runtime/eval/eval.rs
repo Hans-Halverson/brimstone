@@ -104,8 +104,14 @@ pub fn perform_eval(
 
     // Determine the receiver for the eval function call
     let receiver: Handle<Value> = if is_direct {
-        // Direct evals inherit their receiver from the caller
-        cx.vm().receiver().to_handle(cx)
+        if flags.contains(EvalFlags::IN_ARROW_FUNCTION) {
+            // Eval is directly inside an arrow function. Arrow functions do not have the current
+            // receiver register set so we must look up captured `this` from scope chain.
+            Scope::lookup_this_for_eval(cx, *direct_scope.unwrap()).to_handle(cx)
+        } else {
+            // Direct evals inherit their receiver from the caller
+            cx.vm().receiver().to_handle(cx)
+        }
     } else {
         // For indirect evals receiver is the global object
         closure.global_object().into()

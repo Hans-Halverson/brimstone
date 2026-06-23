@@ -796,6 +796,12 @@ impl StringPrototype {
         let int_max_length = to_length(cx, max_length_arg)?;
         let string_length = string.len();
 
+        let fill_string = if fill_string_arg.is_undefined() {
+            cx.names.space().as_string()
+        } else {
+            to_string(cx, fill_string_arg)?
+        };
+
         // No need to pad as string already has max length
         if int_max_length <= string_length as u64 {
             return Ok(string.as_value());
@@ -810,12 +816,6 @@ impl StringPrototype {
         }
 
         let int_max_length = int_max_length as u32;
-
-        let fill_string = if fill_string_arg.is_undefined() {
-            cx.names.space().as_string()
-        } else {
-            to_string(cx, fill_string_arg)?
-        };
 
         let fill_length = int_max_length - string_length;
         let fill_string_length = fill_string.len();

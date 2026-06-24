@@ -1,4 +1,3 @@
-use num_traits::{AsPrimitive, PrimInt};
 use temporal_rs::{PlainTime, partial::PartialTime};
 
 use crate::runtime::{
@@ -16,7 +15,7 @@ use crate::runtime::{
             plain_time_object::PlainTimeObject,
             utils::{
                 get_overflow_option, map_temporal_result, to_integer_with_truncation,
-                validate_options_object,
+                to_integer_with_truncation_or_zero, validate_options_object,
             },
         },
     },
@@ -69,41 +68,27 @@ impl PlainTimeConstructor {
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.PlainTime constructor";
 
-        fn to_integer_with_truncation_or_zero<T: PrimInt + AsPrimitive<f64>>(
-            cx: Context,
-            value: Handle<Value>,
-        ) -> EvalResult<T>
-        where
-            f64: AsPrimitive<T>,
-        {
-            if value.is_undefined() {
-                Ok(T::zero())
-            } else {
-                to_integer_with_truncation(cx, value, NAME)
-            }
-        }
-
         let Some(new_target) = cx.current_new_target() else {
             return type_error(cx, "Temporal.PlainTime constructor must be called with new");
         };
 
         let hour_arg = get_argument(cx, arguments, 0);
-        let hour = to_integer_with_truncation_or_zero(cx, hour_arg)?;
+        let hour = to_integer_with_truncation_or_zero(cx, hour_arg, NAME)?;
 
         let minute_arg = get_argument(cx, arguments, 1);
-        let minute = to_integer_with_truncation_or_zero(cx, minute_arg)?;
+        let minute = to_integer_with_truncation_or_zero(cx, minute_arg, NAME)?;
 
         let second_arg = get_argument(cx, arguments, 2);
-        let second = to_integer_with_truncation_or_zero(cx, second_arg)?;
+        let second = to_integer_with_truncation_or_zero(cx, second_arg, NAME)?;
 
         let millis_arg = get_argument(cx, arguments, 3);
-        let millis = to_integer_with_truncation_or_zero(cx, millis_arg)?;
+        let millis = to_integer_with_truncation_or_zero(cx, millis_arg, NAME)?;
 
         let micros_arg = get_argument(cx, arguments, 4);
-        let micros = to_integer_with_truncation_or_zero(cx, micros_arg)?;
+        let micros = to_integer_with_truncation_or_zero(cx, micros_arg, NAME)?;
 
         let nanos_arg = get_argument(cx, arguments, 5);
-        let nanos = to_integer_with_truncation_or_zero(cx, nanos_arg)?;
+        let nanos = to_integer_with_truncation_or_zero(cx, nanos_arg, NAME)?;
 
         let plain_time_result = PlainTime::new(hour, minute, second, millis, micros, nanos);
         let plain_time = map_temporal_result(cx, plain_time_result, NAME)?;

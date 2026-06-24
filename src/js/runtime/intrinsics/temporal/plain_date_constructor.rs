@@ -1,4 +1,4 @@
-use temporal_rs::{Calendar, PlainDate};
+use temporal_rs::PlainDate;
 
 use crate::runtime::{
     Context, Handle, Realm, Value,
@@ -13,8 +13,8 @@ use crate::runtime::{
         temporal::{
             plain_date_object::PlainDateObject,
             utils::{
-                get_overflow_option, map_temporal_result, to_integer_with_truncation,
-                validate_options_object,
+                get_overflow_option, map_temporal_result, parse_calendar_argument,
+                to_integer_with_truncation, validate_options_object,
             },
         },
     },
@@ -65,7 +65,7 @@ impl PlainDateConstructor {
         _: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        const NAME: &str = "Temporal.PlainDate";
+        const NAME: &str = "Temporal.PlainDate constructor";
 
         let Some(new_target) = cx.current_new_target() else {
             return type_error(cx, "Temporal.PlainDate constructor must be called with new");
@@ -76,21 +76,13 @@ impl PlainDateConstructor {
         let day_arg = get_argument(cx, arguments, 2);
 
         // Convert year, month, and day arguments into truncated integers
-        let year = to_integer_with_truncation(cx, year_arg, "Temporal.PlainDate year argument")?;
-        let month = to_integer_with_truncation(cx, month_arg, "Temporal.PlainDate month argument")?;
-        let day = to_integer_with_truncation(cx, day_arg, "Temporal.PlainDate day argument")?;
+        let year = to_integer_with_truncation(cx, year_arg, NAME)?;
+        let month = to_integer_with_truncation(cx, month_arg, NAME)?;
+        let day = to_integer_with_truncation(cx, day_arg, NAME)?;
 
         // Validate calendar argument
         let calendar_arg = get_argument(cx, arguments, 3);
-        let calendar = if calendar_arg.is_undefined() {
-            Calendar::ISO
-        } else if !calendar_arg.is_string() {
-            return type_error(cx, "Temporal.PlainDate calendar argument must be a string");
-        } else {
-            let wtf8_string = calendar_arg.as_string().to_wtf8_string()?;
-            let calendar_result = Calendar::try_from_utf8(wtf8_string.as_bytes());
-            map_temporal_result(cx, calendar_result, NAME)?
-        };
+        let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
 
         // Clamp year, month, and day into range for `temporal_rs`
         let plain_date_result = PlainDate::try_new(year, month, day, calendar);

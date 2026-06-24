@@ -77,6 +77,7 @@ pub enum HeapItemKind {
     DurationObject,
     InstantObject,
     PlainDateObject,
+    PlainDateTimeObject,
     PlainTimeObject,
 
     ArrayIterator,

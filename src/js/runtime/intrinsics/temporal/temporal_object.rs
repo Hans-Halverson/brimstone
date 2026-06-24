@@ -20,6 +20,13 @@ impl TemporalObject {
         let plain_date_constructor = realm.get_intrinsic(Intrinsic::PlainDateConstructor);
         object.intrinsic_data_prop(cx, cx.names.plain_date(), plain_date_constructor.as_value())?;
 
+        let plain_date_time_constructor = realm.get_intrinsic(Intrinsic::PlainDateTimeConstructor);
+        object.intrinsic_data_prop(
+            cx,
+            cx.names.plain_date_time(),
+            plain_date_time_constructor.as_value(),
+        )?;
+
         let plain_time_constructor = realm.get_intrinsic(Intrinsic::PlainTimeConstructor);
         object.intrinsic_data_prop(cx, cx.names.plain_time(), plain_time_constructor.as_value())?;
 

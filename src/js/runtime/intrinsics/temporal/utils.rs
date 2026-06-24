@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use num_traits::{AsPrimitive, PrimInt};
 use temporal_rs::{
-    TemporalResult, TimeZone,
+    Calendar, TemporalResult, TimeZone,
     error::ErrorKind,
     options::{DisplayCalendar, Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit},
     parsers::Precision,
@@ -289,6 +289,22 @@ pub fn get_timezone_option(
     }
 }
 
+pub fn parse_calendar_argument(
+    cx: Context,
+    calendar_arg: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Calendar> {
+    if calendar_arg.is_undefined() {
+        return Ok(Calendar::ISO);
+    } else if !calendar_arg.is_string() {
+        return type_error(cx, &format!("{method_name} calendar argument must be a string"));
+    }
+
+    let wtf8_string = calendar_arg.as_string().to_wtf8_string()?;
+    let parsed_calendar_result = Calendar::try_from_utf8(wtf8_string.as_bytes());
+    map_temporal_result(cx, parsed_calendar_result, method_name)
+}
+
 /// ToIntegerIfIntegral (https://tc39.es/proposal-temporal/#sec-tointegerifintegral)
 pub fn to_integer_if_integral<T: PrimInt + AsPrimitive<f64>>(
     cx: Context,
@@ -324,6 +340,21 @@ where
     let finite_value = map_temporal_result(cx, finite_value_result, err_prefix)?;
 
     Ok(finite_value.as_integer_with_truncation())
+}
+
+pub fn to_integer_with_truncation_or_zero<T: PrimInt + AsPrimitive<f64>>(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<T>
+where
+    f64: AsPrimitive<T>,
+{
+    if value.is_undefined() {
+        Ok(T::zero())
+    } else {
+        to_integer_with_truncation(cx, value, method_name)
+    }
 }
 
 /// ToTemporalTimeZoneIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimezoneidentifier)

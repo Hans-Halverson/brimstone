@@ -79,6 +79,8 @@ use crate::{
                 instant_constructor::InstantConstructor, instant_prototype::InstantPrototype,
                 plain_date_constructor::PlainDateConstructor,
                 plain_date_prototype::PlainDatePrototype,
+                plain_date_time_constructor::PlainDateTimeConstructor,
+                plain_date_time_prototype::PlainDateTimePrototype,
                 plain_time_constructor::PlainTimeConstructor,
                 plain_time_prototype::PlainTimePrototype, temporal_object::TemporalObject,
             },
@@ -185,6 +187,8 @@ pub enum Intrinsic {
     ParseInt,
     PlainDateConstructor,
     PlainDatePrototype,
+    PlainDateTimeConstructor,
+    PlainDateTimePrototype,
     PlainTimeConstructor,
     PlainTimePrototype,
     PromiseConstructor,
@@ -478,6 +482,7 @@ impl Intrinsics {
         register_intrinsic_pair!(DurationPrototype, DurationConstructor);
         register_intrinsic_pair!(InstantPrototype, InstantConstructor);
         register_intrinsic_pair!(PlainDatePrototype, PlainDateConstructor);
+        register_intrinsic_pair!(PlainDateTimePrototype, PlainDateTimeConstructor);
         register_intrinsic_pair!(PlainTimePrototype, PlainTimeConstructor);
         register_intrinsic!(Temporal, TemporalObject);
 

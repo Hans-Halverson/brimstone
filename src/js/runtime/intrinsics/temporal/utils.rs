@@ -1,10 +1,12 @@
 use std::str::FromStr;
 
+use num_traits::{AsPrimitive, PrimInt};
 use temporal_rs::{
     TemporalResult, TimeZone,
     error::ErrorKind,
-    options::{DisplayCalendar, Overflow, RoundingIncrement, RoundingMode, Unit},
+    options::{DisplayCalendar, Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit},
     parsers::Precision,
+    primitive::FiniteF64,
 };
 
 use crate::runtime::{
@@ -14,7 +16,7 @@ use crate::runtime::{
     numeric_constants::{MAX_I32_AS_F64, MAX_U8_AS_F64, MAX_U32_AS_F64, MIN_I32_AS_F64},
     object_value::ObjectValue,
     to_string,
-    type_utilities::to_integer_with_truncation,
+    type_utilities::{to_integer_with_truncation, to_number},
 };
 
 /// Map a temporal result to an equivalent EvalResult.
@@ -65,7 +67,7 @@ pub fn get_temporal_option<T: Default + FromStr>(
         return Ok(T::default());
     };
 
-    match parse_option_fom_string(cx, option_value)? {
+    match parse_option_from_string(cx, option_value)? {
         Some(parsed_value) => Ok(parsed_value),
         None => range_error(cx, &create_error()),
     }
@@ -89,7 +91,7 @@ fn get_temporal_option_property(
     Ok(Some(option_value))
 }
 
-fn parse_option_fom_string<T: FromStr>(
+fn parse_option_from_string<T: FromStr>(
     cx: Context,
     option_value: Handle<Value>,
 ) -> EvalResult<Option<T>> {
@@ -111,7 +113,7 @@ pub fn get_overflow_option(
     method_name: &str,
 ) -> EvalResult<Overflow> {
     get_temporal_option(cx, options, cx.names.overflow(), || {
-        format!("{method_name} overflow option must be 'overflow' or 'reject'")
+        format!("{method_name} overflow option must be 'constrain' or 'reject'")
     })
 }
 
@@ -183,7 +185,7 @@ pub fn get_rounding_mode_option(
         return Ok(default);
     };
 
-    match parse_option_fom_string(cx, option_value)? {
+    match parse_option_from_string(cx, option_value)? {
         Some(parsed_value) => Ok(parsed_value),
         None => range_error(
             cx,
@@ -198,18 +200,19 @@ pub fn get_rounding_mode_option(
 pub fn get_unit_valued_option(
     cx: Context,
     options: Option<Handle<ObjectValue>>,
+    option_name: Handle<PropertyKey>,
     method_name: &str,
 ) -> EvalResult<Option<Unit>> {
-    let Some(option_value) = get_temporal_option_property(cx, options, cx.names.smallest_unit())?
-    else {
+    let Some(option_value) = get_temporal_option_property(cx, options, option_name)? else {
         return Ok(None);
     };
 
-    match parse_option_fom_string(cx, option_value)? {
+    match parse_option_from_string(cx, option_value)? {
         Some(parsed_value) => Ok(Some(parsed_value)),
-        None => {
-            range_error(cx, &format!("{method_name} smallest unit option must be a valid unit"))
-        }
+        None => range_error(
+            cx,
+            &format!("{method_name} `{}` option must be a valid unit", option_name.format()?),
+        ),
     }
 }
 
@@ -242,6 +245,45 @@ pub fn get_rounding_increment_option(
     )
 }
 
+/// GetTemporalRelativeToOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalrelativetooption)
+pub fn get_relative_to_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<Option<RelativeTo>> {
+    let Some(option_value) = get_temporal_option_property(cx, options, cx.names.relative_to())?
+    else {
+        return Ok(None);
+    };
+
+    if option_value.is_object() {
+        let option_object = option_value.as_object();
+        if let Some(plain_date_object) = option_object.as_plain_date_object() {
+            return Ok(Some(RelativeTo::PlainDate(plain_date_object.date().clone())));
+        }
+
+        // TODO: Check for PlainDateTime and ZonedDateTime
+
+        unimplemented!("GetTemporalRelativeToOption for date-like object")
+    } else if !option_value.is_string() {
+        return type_error(
+            cx,
+            &format!("{method_name} relative to option must be a string or object"),
+        );
+    }
+
+    let wtf8_string = option_value.as_string().to_wtf8_string()?;
+
+    if let Ok(option_str) = str::from_utf8(wtf8_string.as_bytes()) {
+        let parsed_option_result = RelativeTo::try_from_str(option_str);
+        let parsed_option = map_temporal_result(cx, parsed_option_result, method_name)?;
+
+        return Ok(Some(parsed_option));
+    }
+
+    range_error(cx, &format!("{method_name} relative to option must be valid"))
+}
+
 pub fn get_timezone_option(
     cx: Context,
     options: Option<Handle<ObjectValue>>,
@@ -253,13 +295,34 @@ pub fn get_timezone_option(
     }
 }
 
+/// ToIntegerIfIntegral (https://tc39.es/proposal-temporal/#sec-tointegerifintegral)
+pub fn to_integer_if_integral<T: PrimInt + AsPrimitive<f64>>(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<T>
+where
+    f64: AsPrimitive<T>,
+{
+    if value.is_undefined() {
+        return Ok(T::zero());
+    }
+
+    let number_value = to_number(cx, value)?.as_number();
+
+    let integral_result =
+        FiniteF64::try_from(number_value).and_then(|n| n.as_integer_if_integral());
+
+    map_temporal_result(cx, integral_result, method_name)
+}
+
 pub fn clamp_year_arg_for_temporal_rs(
     cx: Context,
     year_arg: f64,
     method_name: &str,
 ) -> EvalResult<i32> {
     if !(MIN_I32_AS_F64..=MAX_I32_AS_F64).contains(&year_arg) {
-        return range_error(cx, &format!("{method_name} year is invalid"));
+        return range_error(cx, &format!("{method_name} year argument is invalid"));
     }
 
     Ok(year_arg as i32)
@@ -271,7 +334,7 @@ pub fn clamp_month_arg_for_temporal_rs(
     method_name: &str,
 ) -> EvalResult<u8> {
     if !(0.0..=MAX_U8_AS_F64).contains(&month_arg) {
-        return range_error(cx, &format!("{method_name} month is invalid"));
+        return range_error(cx, &format!("{method_name} month argument is invalid"));
     }
 
     Ok(month_arg as u8)
@@ -282,7 +345,7 @@ pub fn clamp_day_arg_for_temporal_rs(
     method_name: &str,
 ) -> EvalResult<u8> {
     if !(0.0..=MAX_U8_AS_F64).contains(&day_arg) {
-        return range_error(cx, &format!("{method_name} day is invalid"));
+        return range_error(cx, &format!("{method_name} day argument is invalid"));
     }
 
     Ok(day_arg as u8)

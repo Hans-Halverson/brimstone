@@ -109,6 +109,7 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::ArrayBufferObject);
         ordinary_object_descriptor!(HeapItemKind::DataViewObject);
 
+        ordinary_object_descriptor!(HeapItemKind::DurationObject);
         ordinary_object_descriptor!(HeapItemKind::InstantObject);
         ordinary_object_descriptor!(HeapItemKind::PlainDateObject);
 

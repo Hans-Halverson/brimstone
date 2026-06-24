@@ -69,9 +69,7 @@ impl PlainDateConstructor {
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Temporal.PlainDate";
 
-        let new_target = if let Some(new_target) = cx.current_new_target() {
-            new_target
-        } else {
+        let Some(new_target) = cx.current_new_target() else {
             return type_error(cx, "Temporal.PlainDate constructor must be called with new");
         };
 
@@ -115,11 +113,13 @@ impl PlainDateConstructor {
         _: Handle<Value>,
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
+        const NAME: &str = "PlainDate.compare";
+
         let arg_1 = get_argument(cx, arguments, 0);
         let arg_2 = get_argument(cx, arguments, 1);
 
-        let date_1 = to_temporal_date(cx, arg_1, None, "PlainDate.compare")?;
-        let date_2 = to_temporal_date(cx, arg_2, None, "PlainDate.compare")?;
+        let date_1 = to_temporal_date(cx, arg_1, None, NAME)?;
+        let date_2 = to_temporal_date(cx, arg_2, None, NAME)?;
 
         Ok(cx.smi(date_1.compare_iso(&date_2) as i32))
     }
@@ -160,7 +160,7 @@ pub fn to_temporal_date(
     let options = options.unwrap_or(cx.undefined());
 
     if item.is_object() {
-        // Check if item is a Temporal object of some type
+        // Check if item is a Temporal object of some kind
         let item_object = item.as_object();
         if let Some(plain_date) = item_object.as_plain_date_object() {
             validate_overflow_option(cx, options, method_name)?;

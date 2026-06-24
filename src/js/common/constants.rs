@@ -23,3 +23,6 @@ pub const MAX_HEAP_SIZE: usize = 4 * GIGABYTE_BYTES;
 /// - Every string from the source is within the runtime string length limit.
 ///
 pub const MAX_STRING_LENGTH: u32 = u32::MAX - 2;
+
+/// Total number of nanoseconds in a millisecond.
+pub const NANOSECONDS_IN_ONE_MILLISECOND: u32 = 1_000_000;

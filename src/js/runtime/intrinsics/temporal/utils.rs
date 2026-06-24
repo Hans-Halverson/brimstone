@@ -1,7 +1,13 @@
-use temporal_rs::{TemporalResult, error::ErrorKind, options::Overflow};
+use std::str::FromStr;
+
+use temporal_rs::{
+    TemporalResult,
+    error::ErrorKind,
+    options::{DisplayCalendar, Overflow},
+};
 
 use crate::runtime::{
-    Context, EvalResult, Handle, Value,
+    Context, EvalResult, Handle, PropertyKey, Value,
     error::{range_error, syntax_error, type_error},
     get,
     numeric_constants::{MAX_I32_AS_F64, MAX_U8_AS_F64, MIN_I32_AS_F64},
@@ -35,34 +41,67 @@ pub fn validate_options_object(
     cx: Context,
     options: Handle<Value>,
     method_name: &str,
-) -> EvalResult<Handle<ObjectValue>> {
-    if !options.is_object() {
+) -> EvalResult<Option<Handle<ObjectValue>>> {
+    if options.is_undefined() {
+        return Ok(None);
+    } else if !options.is_object() {
         return type_error(cx, &format!("{method_name} options argument must be an object"));
     }
 
-    Ok(options.as_object())
+    Ok(Some(options.as_object()))
+}
+
+/// Parse a temporal option from an optional options object. Parameterized by an option in the
+/// `temporal_rs` crate.
+pub fn get_temporal_option<T: Default + FromStr>(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    option_name: Handle<PropertyKey>,
+    create_error: impl FnOnce() -> String,
+) -> EvalResult<T> {
+    let Some(options) = options else {
+        return Ok(T::default());
+    };
+
+    let option_value = get(cx, options, option_name)?;
+
+    if option_value.is_undefined() {
+        return Ok(T::default());
+    }
+
+    let option_string = to_string(cx, option_value)?.to_wtf8_string()?;
+
+    if let Ok(option_str) = str::from_utf8(option_string.as_bytes()) {
+        if let Ok(parsed_value) = T::from_str(option_str) {
+            return Ok(parsed_value);
+        }
+    }
+
+    range_error(cx, &create_error())
 }
 
 /// GetTemporalOverflowOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporaloverflowoption)
 pub fn get_overflow_option(
     cx: Context,
-    options: Handle<ObjectValue>,
+    options: Option<Handle<ObjectValue>>,
     method_name: &str,
 ) -> EvalResult<Overflow> {
-    let overflow_value = get(cx, options, cx.names.overflow())?;
+    get_temporal_option(cx, options, cx.names.overflow(), || {
+        format!("{method_name} overflow option must be 'overflow' or 'reject'")
+    })
+}
 
-    if overflow_value.is_undefined() {
-        return Ok(Overflow::default());
-    }
-
-    let overflow_string = to_string(cx, overflow_value)?.flatten()?;
-    if overflow_string.eq_str("constrain") {
-        Ok(Overflow::Constrain)
-    } else if overflow_string.eq_str("reject") {
-        Ok(Overflow::Reject)
-    } else {
-        range_error(cx, &format!("{method_name} overflow option must be 'overflow' or 'reject'"))
-    }
+/// GetTemporalShowCalendarNameOptions (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalshowcalendarnameoption)
+pub fn get_show_calendar_name_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<DisplayCalendar> {
+    get_temporal_option(cx, options, cx.names.calendar_name(), || {
+        format!(
+            "{method_name} calendar name option must be 'auto', 'always', 'never', or 'critical'"
+        )
+    })
 }
 
 pub fn clamp_year_arg_for_temporal_rs(

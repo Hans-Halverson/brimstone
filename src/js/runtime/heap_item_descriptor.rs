@@ -74,6 +74,8 @@ pub enum HeapItemKind {
     ArrayBufferObject,
     DataViewObject,
 
+    PlainDateObject,
+
     ArrayIterator,
     StringIterator,
     SetIterator,

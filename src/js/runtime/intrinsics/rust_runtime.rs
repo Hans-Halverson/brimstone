@@ -64,6 +64,7 @@ use crate::{
             string_prototype::StringPrototype,
             symbol_constructor::SymbolConstructor,
             symbol_prototype::SymbolPrototype,
+            temporal::plain_date_constructor::PlainDateConstructor,
             typed_array::{
                 BigInt64ArrayConstructor, BigUInt64ArrayConstructor, Float16ArrayConstructor,
                 Float32ArrayConstructor, Float64ArrayConstructor, Int8ArrayConstructor,
@@ -529,6 +530,9 @@ rust_runtime_functions!(
     (ObjectPrototype_define_setter, ObjectPrototype::define_setter),
     (ObjectPrototype_lookup_getter, ObjectPrototype::lookup_getter),
     (ObjectPrototype_lookup_setter, ObjectPrototype::lookup_setter),
+    (PlainDateConstructor_compare, PlainDateConstructor::compare),
+    (PlainDateConstructor_construct, PlainDateConstructor::construct),
+    (PlainDateConstructor_from, PlainDateConstructor::from),
     (PromiseCapability_executor, PromiseCapability::executor),
     (PromiseConstructor_all, PromiseConstructor::all),
     (PromiseConstructor_all_settled, PromiseConstructor::all_settled),

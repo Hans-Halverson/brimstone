@@ -107,17 +107,7 @@ impl BigIntConstructor {
         let primitive = to_primitive(cx, value, ToPrimitivePreferredType::Number)?;
 
         if primitive.is_number() {
-            if !is_integral_number(*primitive) {
-                return range_error(cx, "BigInt constructor argument is not an integer");
-            }
-
-            if primitive.is_smi() {
-                Ok(BigIntValue::new(cx, primitive.as_smi().into())?.into())
-            } else {
-                // Safe to unwrap since we know the primitive is finite
-                let bigint = BigInt::from_f64(primitive.as_double()).unwrap();
-                Ok(BigIntValue::new(cx, bigint)?.into())
-            }
+            Ok(number_to_bigint(cx, *primitive, "BigInt constructor")?.into())
         } else {
             Ok(to_bigint(cx, primitive)?.into())
         }
@@ -167,6 +157,27 @@ impl BigIntConstructor {
         let new_bigint = bigint.bigint() & &mask;
 
         Ok(BigIntValue::new(cx, new_bigint)?.into())
+    }
+}
+
+/// NumberToBigInt (https://tc39.es/ecma262/#sec-numbertobigint)
+pub fn number_to_bigint(
+    cx: Context,
+    number: Value,
+    method_name: &str,
+) -> EvalResult<Handle<BigIntValue>> {
+    debug_assert!(number.is_number());
+
+    if !is_integral_number(number) {
+        return range_error(cx, &format!("{method_name} argument is not an integer"));
+    }
+
+    if number.is_smi() {
+        Ok(BigIntValue::new(cx, number.as_smi().into())?)
+    } else {
+        // Safe to unwrap since we know the number is finite
+        let bigint = BigInt::from_f64(number.as_double()).unwrap();
+        Ok(BigIntValue::new(cx, bigint)?)
     }
 }
 

@@ -65,6 +65,7 @@ use crate::{
             symbol_constructor::SymbolConstructor,
             symbol_prototype::SymbolPrototype,
             temporal::{
+                instant_constructor::InstantConstructor, instant_prototype::InstantPrototype,
                 plain_date_constructor::PlainDateConstructor,
                 plain_date_prototype::PlainDatePrototype,
             },
@@ -533,6 +534,30 @@ rust_runtime_functions!(
     (ObjectPrototype_define_setter, ObjectPrototype::define_setter),
     (ObjectPrototype_lookup_getter, ObjectPrototype::lookup_getter),
     (ObjectPrototype_lookup_setter, ObjectPrototype::lookup_setter),
+    (InstantConstructor_compare, InstantConstructor::compare),
+    (InstantConstructor_construct, InstantConstructor::construct),
+    (InstantConstructor_from, InstantConstructor::from),
+    (
+        InstantConstructor_fromEpochMilliseconds,
+        InstantConstructor::from_epoch_milliseconds
+    ),
+    (
+        InstantConstructor_fromEpochNanoseconds,
+        InstantConstructor::from_epoch_nanoseconds
+    ),
+    (InstantPrototype_add, InstantPrototype::add),
+    (InstantPrototype_epochMilliseconds, InstantPrototype::epoch_milliseconds),
+    (InstantPrototype_epochNanoseconds, InstantPrototype::epoch_nanoseconds),
+    (InstantPrototype_equals, InstantPrototype::equals),
+    (InstantPrototype_round, InstantPrototype::round),
+    (InstantPrototype_since, InstantPrototype::since),
+    (InstantPrototype_subtract, InstantPrototype::subtract),
+    (InstantPrototype_toJSON, InstantPrototype::to_json),
+    (InstantPrototype_toLocaleString, InstantPrototype::to_locale_string),
+    (InstantPrototype_toString, InstantPrototype::to_string),
+    (InstantPrototype_toZonedDateTimeISO, InstantPrototype::to_zoned_date_time_iso),
+    (InstantPrototype_until, InstantPrototype::until),
+    (InstantPrototype_valueOf, InstantPrototype::value_of),
     (PlainDateConstructor_compare, PlainDateConstructor::compare),
     (PlainDateConstructor_construct, PlainDateConstructor::construct),
     (PlainDateConstructor_from, PlainDateConstructor::from),

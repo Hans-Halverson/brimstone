@@ -1,3 +1,6 @@
+pub mod instant_constructor;
+pub mod instant_object;
+pub mod instant_prototype;
 pub mod plain_date_constructor;
 pub mod plain_date_object;
 pub mod plain_date_prototype;

@@ -140,7 +140,7 @@ impl PlainDateConstructor {
 }
 
 /// ToTemporalDate (https://tc39.es/proposal-temporal/#sec-temporal-totemporaldate)
-fn to_temporal_date(
+pub fn to_temporal_date(
     cx: Context,
     item: Handle<Value>,
     options: Option<Handle<Value>>,
@@ -148,18 +148,16 @@ fn to_temporal_date(
 ) -> EvalResult<PlainDate> {
     fn validate_overflow_option(
         cx: Context,
-        options: Option<Handle<Value>>,
+        options: Handle<Value>,
         method_name: &str,
     ) -> EvalResult<()> {
-        if let Some(options) = options
-            && !options.is_undefined()
-        {
-            let options = validate_options_object(cx, options, method_name)?;
-            get_overflow_option(cx, options, method_name)?;
-        }
+        let options = validate_options_object(cx, options, method_name)?;
+        get_overflow_option(cx, options, method_name)?;
 
         Ok(())
     }
+
+    let options = options.unwrap_or(cx.undefined());
 
     if item.is_object() {
         // Check if item is a Temporal object of some type

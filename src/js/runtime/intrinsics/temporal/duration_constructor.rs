@@ -240,7 +240,7 @@ pub fn to_temporal_partial_duration_record(
     }
 
     if partial_duration.is_empty() {
-        return type_error(cx, &format!("{method_name} duration object has no properties"));
+        return type_error(cx, &format!("{method_name} duration object is empty"));
     }
 
     Ok(partial_duration)

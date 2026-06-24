@@ -33,7 +33,8 @@ use crate::{
             raw_json_object::RawJSONObject, regexp_constructor::RegExpObject,
             rust_runtime::RuntimeFunction, set_object::SetObject, symbol_constructor::SymbolObject,
             temporal::duration_object::DurationObject, temporal::instant_object::InstantObject,
-            temporal::plain_date_object::PlainDateObject, typed_array::DynTypedArray,
+            temporal::plain_date_object::PlainDateObject,
+            temporal::plain_time_object::PlainTimeObject, typed_array::DynTypedArray,
             weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
             weak_set_object::WeakSetObject,
         },
@@ -897,6 +898,12 @@ impl_subtype_casts!(
     HeapItemKind::PlainDateObject,
     is_plain_date_object,
     as_plain_date_object
+);
+impl_subtype_casts!(
+    PlainTimeObject,
+    HeapItemKind::PlainTimeObject,
+    is_plain_time_object,
+    as_plain_time_object
 );
 impl_subtype_casts!(
     RawJSONObject,

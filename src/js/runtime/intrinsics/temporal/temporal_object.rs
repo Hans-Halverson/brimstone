@@ -20,6 +20,9 @@ impl TemporalObject {
         let plain_date_constructor = realm.get_intrinsic(Intrinsic::PlainDateConstructor);
         object.intrinsic_data_prop(cx, cx.names.plain_date(), plain_date_constructor.as_value())?;
 
+        let plain_time_constructor = realm.get_intrinsic(Intrinsic::PlainTimeConstructor);
+        object.intrinsic_data_prop(cx, cx.names.plain_time(), plain_time_constructor.as_value())?;
+
         // Temporal [ %Symbol.toStringTag% ] (https://tc39.es/proposal-temporal/#sec-temporal-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(

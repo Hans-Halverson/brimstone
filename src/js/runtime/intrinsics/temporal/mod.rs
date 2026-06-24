@@ -7,5 +7,8 @@ pub mod instant_prototype;
 pub mod plain_date_constructor;
 pub mod plain_date_object;
 pub mod plain_date_prototype;
+pub mod plain_time_constructor;
+pub mod plain_time_object;
+pub mod plain_time_prototype;
 pub mod temporal_object;
 mod utils;

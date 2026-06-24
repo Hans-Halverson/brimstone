@@ -9,9 +9,13 @@ use crate::runtime::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
         temporal::{
+            duration_constructor::to_temporal_duration,
             plain_date_constructor::to_temporal_date,
             plain_date_object::PlainDateObject,
-            utils::{get_show_calendar_name_option, validate_options_object},
+            utils::{
+                get_overflow_option, get_show_calendar_name_option, map_temporal_result,
+                validate_options_object,
+            },
         },
     },
     object_value::ObjectValue,
@@ -447,20 +451,46 @@ impl PlainDatePrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.add")?;
-        unimplemented!("PlainDate.prototype.add")
+        const NAME: &str = "PlainDate.prototype.add";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let duration_arg = get_argument(cx, arguments, 0);
+        let duration = to_temporal_duration(cx, duration_arg, NAME)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_date_result = this_date.date().add(&duration, Some(overflow));
+        let new_date = map_temporal_result(cx, new_date_result, NAME)?;
+
+        Ok(PlainDateObject::new(cx, new_date)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.subtract (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.subtract)
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.subtract")?;
-        unimplemented!("PlainDate.prototype.subtract")
+        const NAME: &str = "PlainDate.prototype.subtract";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let duration_arg = get_argument(cx, arguments, 0);
+        let duration = to_temporal_duration(cx, duration_arg, NAME)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_date_result = this_date.date().subtract(&duration, Some(overflow));
+        let new_date = map_temporal_result(cx, new_date_result, NAME)?;
+
+        Ok(PlainDateObject::new(cx, new_date)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.until (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.until)
@@ -494,7 +524,7 @@ impl PlainDatePrototype {
         let this_date = this_plain_date(cx, this_value, NAME)?;
 
         let other_arg = get_argument(cx, arguments, 0);
-        let other_date = to_temporal_date(cx, other_arg, None, NAME)?;
+        let other_date = to_temporal_date(cx, other_arg, NAME)?;
 
         Ok(cx.bool(this_date.date() == &other_date))
     }

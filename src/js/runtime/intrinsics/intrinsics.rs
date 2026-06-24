@@ -78,7 +78,9 @@ use crate::{
                 duration_constructor::DurationConstructor, duration_prototype::DurationPrototype,
                 instant_constructor::InstantConstructor, instant_prototype::InstantPrototype,
                 plain_date_constructor::PlainDateConstructor,
-                plain_date_prototype::PlainDatePrototype, temporal_object::TemporalObject,
+                plain_date_prototype::PlainDatePrototype,
+                plain_time_constructor::PlainTimeConstructor,
+                plain_time_prototype::PlainTimePrototype, temporal_object::TemporalObject,
             },
             typed_array::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
@@ -183,6 +185,8 @@ pub enum Intrinsic {
     ParseInt,
     PlainDateConstructor,
     PlainDatePrototype,
+    PlainTimeConstructor,
+    PlainTimePrototype,
     PromiseConstructor,
     PromisePrototype,
     ProxyConstructor,
@@ -474,6 +478,7 @@ impl Intrinsics {
         register_intrinsic_pair!(DurationPrototype, DurationConstructor);
         register_intrinsic_pair!(InstantPrototype, InstantConstructor);
         register_intrinsic_pair!(PlainDatePrototype, PlainDateConstructor);
+        register_intrinsic_pair!(PlainTimePrototype, PlainTimeConstructor);
         register_intrinsic!(Temporal, TemporalObject);
 
         // Builtin functions

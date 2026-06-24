@@ -13,14 +13,12 @@ use crate::runtime::{
         temporal::{
             plain_date_object::PlainDateObject,
             utils::{
-                clamp_day_arg_for_temporal_rs, clamp_month_arg_for_temporal_rs,
-                clamp_year_arg_for_temporal_rs, get_overflow_option, map_temporal_result,
+                get_overflow_option, map_temporal_result, to_integer_with_truncation,
                 validate_options_object,
             },
         },
     },
     object_value::ObjectValue,
-    type_utilities::to_integer_with_truncation,
 };
 
 pub struct PlainDateConstructor;
@@ -78,11 +76,9 @@ impl PlainDateConstructor {
         let day_arg = get_argument(cx, arguments, 2);
 
         // Convert year, month, and day arguments into truncated integers
-        let year_trunc =
-            to_integer_with_truncation(cx, year_arg, "Temporal.PlainDate year argument")?;
-        let month_trunc =
-            to_integer_with_truncation(cx, month_arg, "Temporal.PlainDate month argument")?;
-        let day_trunc = to_integer_with_truncation(cx, day_arg, "Temporal.PlainDate day argument")?;
+        let year = to_integer_with_truncation(cx, year_arg, "Temporal.PlainDate year argument")?;
+        let month = to_integer_with_truncation(cx, month_arg, "Temporal.PlainDate month argument")?;
+        let day = to_integer_with_truncation(cx, day_arg, "Temporal.PlainDate day argument")?;
 
         // Validate calendar argument
         let calendar_arg = get_argument(cx, arguments, 3);
@@ -97,10 +93,6 @@ impl PlainDateConstructor {
         };
 
         // Clamp year, month, and day into range for `temporal_rs`
-        let year = clamp_year_arg_for_temporal_rs(cx, year_trunc, NAME)?;
-        let month = clamp_month_arg_for_temporal_rs(cx, month_trunc, NAME)?;
-        let day = clamp_day_arg_for_temporal_rs(cx, day_trunc, NAME)?;
-
         let plain_date_result = PlainDate::try_new(year, month, day, calendar);
         let plain_date = map_temporal_result(cx, plain_date_result, NAME)?;
 
@@ -118,8 +110,8 @@ impl PlainDateConstructor {
         let arg_1 = get_argument(cx, arguments, 0);
         let arg_2 = get_argument(cx, arguments, 1);
 
-        let date_1 = to_temporal_date(cx, arg_1, None, NAME)?;
-        let date_2 = to_temporal_date(cx, arg_2, None, NAME)?;
+        let date_1 = to_temporal_date(cx, arg_1, NAME)?;
+        let date_2 = to_temporal_date(cx, arg_2, NAME)?;
 
         Ok(cx.smi(date_1.compare_iso(&date_2) as i32))
     }
@@ -133,7 +125,8 @@ impl PlainDateConstructor {
         let item_arg = get_argument(cx, arguments, 0);
         let options_arg = get_argument(cx, arguments, 1);
 
-        let plain_date = to_temporal_date(cx, item_arg, Some(options_arg), "PlainDate.from")?;
+        let plain_date =
+            to_temporal_date_with_options(cx, item_arg, options_arg, "PlainDate.from")?;
 
         Ok(PlainDateObject::new(cx, plain_date)?.as_value())
     }
@@ -143,7 +136,15 @@ impl PlainDateConstructor {
 pub fn to_temporal_date(
     cx: Context,
     item: Handle<Value>,
-    options: Option<Handle<Value>>,
+    method_name: &str,
+) -> EvalResult<PlainDate> {
+    to_temporal_date_with_options(cx, item, cx.undefined(), method_name)
+}
+
+pub fn to_temporal_date_with_options(
+    cx: Context,
+    item: Handle<Value>,
+    options: Handle<Value>,
     method_name: &str,
 ) -> EvalResult<PlainDate> {
     fn validate_overflow_option(
@@ -156,8 +157,6 @@ pub fn to_temporal_date(
 
         Ok(())
     }
-
-    let options = options.unwrap_or(cx.undefined());
 
     if item.is_object() {
         // Check if item is a Temporal object of some kind
@@ -177,7 +176,7 @@ pub fn to_temporal_date(
 
     // Otherwise parse PlainDate from string
     if !item.is_string() {
-        return type_error(cx, &format!("{method_name} date must be a string"));
+        return type_error(cx, &format!("{method_name} date must be a string or object"));
     }
 
     let item_string = item.as_string().to_wtf8_string()?;

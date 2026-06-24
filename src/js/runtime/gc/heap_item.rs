@@ -54,6 +54,7 @@ use crate::runtime::{
         temporal::duration_object::DurationObject,
         temporal::instant_object::InstantObject,
         temporal::plain_date_object::PlainDateObject,
+        temporal::plain_time_object::PlainTimeObject,
         typed_array::{
             BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
             Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
@@ -159,6 +160,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::DurationObject => self.cast::<DurationObject>().byte_size(),
             HeapItemKind::InstantObject => self.cast::<InstantObject>().byte_size(),
             HeapItemKind::PlainDateObject => self.cast::<PlainDateObject>().byte_size(),
+            HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().byte_size(),
             HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().byte_size(),
             HeapItemKind::StringIterator => self.cast::<StringIterator>().byte_size(),
             HeapItemKind::SetIterator => self.cast::<SetIterator>().byte_size(),
@@ -282,6 +284,7 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::DurationObject => self.cast::<DurationObject>().visit_pointers(visitor),
             HeapItemKind::InstantObject => self.cast::<InstantObject>().visit_pointers(visitor),
             HeapItemKind::PlainDateObject => self.cast::<PlainDateObject>().visit_pointers(visitor),
+            HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().visit_pointers(visitor),
             HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().visit_pointers(visitor),
             HeapItemKind::StringIterator => self.cast::<StringIterator>().visit_pointers(visitor),
             HeapItemKind::SetIterator => self.cast::<SetIterator>().visit_pointers(visitor),

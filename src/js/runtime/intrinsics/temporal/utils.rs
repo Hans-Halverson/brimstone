@@ -13,10 +13,9 @@ use crate::runtime::{
     Context, EvalResult, Handle, PropertyKey, Value,
     error::{range_error, syntax_error, type_error},
     get,
-    numeric_constants::{MAX_I32_AS_F64, MAX_U8_AS_F64, MAX_U32_AS_F64, MIN_I32_AS_F64},
     object_value::ObjectValue,
     to_string,
-    type_utilities::{to_integer_with_truncation, to_number},
+    type_utilities::to_number,
 };
 
 /// Map a temporal result to an equivalent EvalResult.
@@ -113,7 +112,7 @@ pub fn get_overflow_option(
     method_name: &str,
 ) -> EvalResult<Overflow> {
     get_temporal_option(cx, options, cx.names.overflow(), || {
-        format!("{method_name} overflow option must be 'constrain' or 'reject'")
+        format!("{method_name} `overflow` option must be 'constrain' or 'reject'")
     })
 }
 
@@ -125,7 +124,7 @@ pub fn get_show_calendar_name_option(
 ) -> EvalResult<DisplayCalendar> {
     get_temporal_option(cx, options, cx.names.calendar_name(), || {
         format!(
-            "{method_name} calendar name option must be 'auto', 'always', 'never', or 'critical'"
+            "{method_name} `calendarName` option must be 'auto', 'always', 'never', or 'critical'"
         )
     })
 }
@@ -147,7 +146,9 @@ pub fn get_fractional_second_digits_option(
         if !option_string.eq_str("auto") {
             return range_error(
                 cx,
-                &format!("{method_name} fractionalSecondDigits option must be a number or 'auto'"),
+                &format!(
+                    "{method_name} `fractionalSecondDigits` option must be a number or 'auto'"
+                ),
             );
         }
 
@@ -158,7 +159,7 @@ pub fn get_fractional_second_digits_option(
     if !option_number.is_finite() {
         return range_error(
             cx,
-            &format!("{method_name} fractionalSecondDigits option must be a number from 0 to 9"),
+            &format!("{method_name} `fractionalSecondDigits` option must be a number from 0 to 9"),
         );
     }
 
@@ -166,7 +167,7 @@ pub fn get_fractional_second_digits_option(
     if !(0.0..=9.0).contains(&option_count) {
         return range_error(
             cx,
-            &format!("{method_name} fractionalSecondDigits option must be a number from 0 to 9"),
+            &format!("{method_name} `fractionalSecondDigits` option must be a number from 0 to 9"),
         );
     }
 
@@ -190,7 +191,7 @@ pub fn get_rounding_mode_option(
         None => range_error(
             cx,
             &format!(
-                "{method_name} rounding mode option must be 'ceil', 'floor', 'expand', 'trunc', 'halfCeil', 'halfFloor', 'halfExpand', 'halfTrunc', or 'halfEven'"
+                "{method_name} `roundingMode` option must be 'ceil', 'floor', 'expand', 'trunc', 'halfCeil', 'halfFloor', 'halfExpand', 'halfTrunc', or 'halfEven'"
             ),
         ),
     }
@@ -228,21 +229,14 @@ pub fn get_rounding_increment_option(
         return Ok(RoundingIncrement::ONE);
     };
 
-    let option_f64 = to_integer_with_truncation(
+    let option_number = to_integer_with_truncation(
         cx,
         option_value,
-        &format!("{method_name} rounding increment option"),
+        &format!("{method_name} `roundingIncrement` option"),
     )?;
 
-    if (0.0..=MAX_U32_AS_F64).contains(&option_f64) {
-        let parsed_increment_result = RoundingIncrement::try_new(option_f64 as u32);
-        return map_temporal_result(cx, parsed_increment_result, method_name);
-    }
-
-    range_error(
-        cx,
-        &format!("{method_name} rounding increment option must be a number from 1 to 10^9"),
-    )
+    let parsed_increment_result = RoundingIncrement::try_new(option_number);
+    map_temporal_result(cx, parsed_increment_result, method_name)
 }
 
 /// GetTemporalRelativeToOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalrelativetooption)
@@ -268,7 +262,7 @@ pub fn get_relative_to_option(
     } else if !option_value.is_string() {
         return type_error(
             cx,
-            &format!("{method_name} relative to option must be a string or object"),
+            &format!("{method_name} `relativeTo` option must be a string or object"),
         );
     }
 
@@ -281,7 +275,7 @@ pub fn get_relative_to_option(
         return Ok(Some(parsed_option));
     }
 
-    range_error(cx, &format!("{method_name} relative to option must be valid"))
+    range_error(cx, &format!("{method_name} `relativeTo` option must be valid"))
 }
 
 pub fn get_timezone_option(
@@ -316,39 +310,20 @@ where
     map_temporal_result(cx, integral_result, method_name)
 }
 
-pub fn clamp_year_arg_for_temporal_rs(
+/// ToIntegerWithTruncation (https://tc39.es/proposal-temporal/#sec-tointegerwithtruncation)
+pub fn to_integer_with_truncation<T: PrimInt + AsPrimitive<f64>>(
     cx: Context,
-    year_arg: f64,
-    method_name: &str,
-) -> EvalResult<i32> {
-    if !(MIN_I32_AS_F64..=MAX_I32_AS_F64).contains(&year_arg) {
-        return range_error(cx, &format!("{method_name} year argument is invalid"));
-    }
+    value: Handle<Value>,
+    err_prefix: &str,
+) -> EvalResult<T>
+where
+    f64: AsPrimitive<T>,
+{
+    let number_value = to_number(cx, value)?;
+    let finite_value_result = FiniteF64::try_from(number_value.as_number());
+    let finite_value = map_temporal_result(cx, finite_value_result, err_prefix)?;
 
-    Ok(year_arg as i32)
-}
-
-pub fn clamp_month_arg_for_temporal_rs(
-    cx: Context,
-    month_arg: f64,
-    method_name: &str,
-) -> EvalResult<u8> {
-    if !(0.0..=MAX_U8_AS_F64).contains(&month_arg) {
-        return range_error(cx, &format!("{method_name} month argument is invalid"));
-    }
-
-    Ok(month_arg as u8)
-}
-pub fn clamp_day_arg_for_temporal_rs(
-    cx: Context,
-    day_arg: f64,
-    method_name: &str,
-) -> EvalResult<u8> {
-    if !(0.0..=MAX_U8_AS_F64).contains(&day_arg) {
-        return range_error(cx, &format!("{method_name} day argument is invalid"));
-    }
-
-    Ok(day_arg as u8)
+    Ok(finite_value.as_integer_with_truncation())
 }
 
 /// ToTemporalTimeZoneIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimezoneidentifier)
@@ -360,7 +335,7 @@ pub fn to_timezone_identifier(
     // TODO: Check if ZonedDateTime object
 
     if !value.is_string() {
-        return type_error(cx, &format!("{method_name} time zone option must be a string"));
+        return type_error(cx, &format!("{method_name} `timeZone` option must be a string"));
     }
 
     let wtf8_string = value.as_string().to_wtf8_string()?;
@@ -370,5 +345,32 @@ pub fn to_timezone_identifier(
         return map_temporal_result(cx, parsed_timezone_result, method_name);
     }
 
-    range_error(cx, &format!("{method_name} time zone option must be a valid time zone"))
+    range_error(cx, &format!("{method_name} `timeZone` option must be a valid time zone"))
+}
+
+/// IsPartialTemporalObject (https://tc39.es/proposal-temporal/#sec-temporal-ispartialtemporalobject)
+pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResult<bool> {
+    if !value.is_object() {
+        return Ok(false);
+    }
+
+    let object = value.as_object();
+
+    // TODO: Add all other Temporal objects
+
+    if object.is_plain_date_object() || object.is_plain_time_object() {
+        return Ok(false);
+    }
+
+    let calendar_value = get(cx, object, cx.names.calendar())?;
+    if !calendar_value.is_undefined() {
+        return Ok(false);
+    }
+
+    let time_zone_value = get(cx, object, cx.names.timezone())?;
+    if !time_zone_value.is_undefined() {
+        return Ok(false);
+    }
+
+    Ok(true)
 }

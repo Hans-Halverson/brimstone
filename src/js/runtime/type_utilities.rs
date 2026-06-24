@@ -675,20 +675,6 @@ pub fn to_index(cx: Context, value_handle: Handle<Value>) -> EvalResult<usize> {
     }
 }
 
-/// ToIntegerWithTruncation (https://tc39.es/proposal-temporal/#sec-tointegerwithtruncation)
-pub fn to_integer_with_truncation(
-    cx: Context,
-    value: Handle<Value>,
-    err_prefix: &str,
-) -> EvalResult<f64> {
-    let number_value = to_number(cx, value)?.as_number();
-    if !number_value.is_finite() {
-        return range_error(cx, &format!("{err_prefix} must be an integer"));
-    }
-
-    Ok(number_value.trunc())
-}
-
 /// RequireObjectCoercible (https://tc39.es/ecma262/#sec-requireobjectcoercible)
 pub fn require_object_coercible(cx: Context, value: Handle<Value>) -> EvalResult<Handle<Value>> {
     if value.is_nullish() {

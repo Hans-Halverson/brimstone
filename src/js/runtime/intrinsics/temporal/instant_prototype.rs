@@ -13,6 +13,7 @@ use crate::{
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
             temporal::{
+                duration_constructor::to_temporal_duration,
                 instant_constructor::to_temporal_instant,
                 instant_object::InstantObject,
                 utils::{
@@ -170,20 +171,38 @@ impl InstantPrototype {
     pub fn add(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_instant(cx, this_value, "Instant.prototype.add")?;
-        unimplemented!("Instant.prototype.add")
+        const NAME: &str = "Instant.prototype.add";
+
+        let instant = this_instant(cx, this_value, NAME)?;
+
+        let duration_arg = get_argument(cx, arguments, 0);
+        let duration = to_temporal_duration(cx, duration_arg, NAME)?;
+
+        let new_instant_result = instant.instant().add(&duration);
+        let new_instant = map_temporal_result(cx, new_instant_result, NAME)?;
+
+        Ok(InstantObject::new(cx, new_instant)?.as_value())
     }
 
     /// Temporal.Instant.prototype.subtract (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.subtract)
     pub fn subtract(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_instant(cx, this_value, "Instant.prototype.subtract")?;
-        unimplemented!("Instant.prototype.subtract")
+        const NAME: &str = "Instant.prototype.subtract";
+
+        let instant = this_instant(cx, this_value, NAME)?;
+
+        let duration_arg = get_argument(cx, arguments, 0);
+        let duration = to_temporal_duration(cx, duration_arg, NAME)?;
+
+        let new_instant_result = instant.instant().subtract(&duration);
+        let new_instant = map_temporal_result(cx, new_instant_result, NAME)?;
+
+        Ok(InstantObject::new(cx, new_instant)?.as_value())
     }
 
     /// Temporal.Instant.prototype.until (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.until)

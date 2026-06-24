@@ -112,6 +112,7 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::DurationObject);
         ordinary_object_descriptor!(HeapItemKind::InstantObject);
         ordinary_object_descriptor!(HeapItemKind::PlainDateObject);
+        ordinary_object_descriptor!(HeapItemKind::PlainTimeObject);
 
         ordinary_object_descriptor!(HeapItemKind::ArrayIterator);
         ordinary_object_descriptor!(HeapItemKind::StringIterator);

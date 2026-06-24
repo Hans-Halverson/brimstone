@@ -74,6 +74,7 @@ pub enum HeapItemKind {
     ArrayBufferObject,
     DataViewObject,
 
+    DurationObject,
     InstantObject,
     PlainDateObject,
 

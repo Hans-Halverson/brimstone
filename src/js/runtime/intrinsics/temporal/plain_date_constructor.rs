@@ -96,7 +96,7 @@ impl PlainDateConstructor {
             map_temporal_result(cx, calendar_result, NAME)?
         };
 
-        // Clamp year, month, and day into range for `brimstone_rs`
+        // Clamp year, month, and day into range for `temporal_rs`
         let year = clamp_year_arg_for_temporal_rs(cx, year_trunc, NAME)?;
         let month = clamp_month_arg_for_temporal_rs(cx, month_trunc, NAME)?;
         let day = clamp_day_arg_for_temporal_rs(cx, day_trunc, NAME)?;

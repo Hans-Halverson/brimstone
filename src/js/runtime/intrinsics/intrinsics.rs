@@ -75,6 +75,7 @@ use crate::{
             symbol_constructor::SymbolConstructor,
             symbol_prototype::SymbolPrototype,
             temporal::{
+                duration_constructor::DurationConstructor, duration_prototype::DurationPrototype,
                 instant_constructor::InstantConstructor, instant_prototype::InstantPrototype,
                 plain_date_constructor::PlainDateConstructor,
                 plain_date_prototype::PlainDatePrototype, temporal_object::TemporalObject,
@@ -135,6 +136,8 @@ pub enum Intrinsic {
     DatePrototype,
     DataViewConstructor,
     DataViewPrototype,
+    DurationConstructor,
+    DurationPrototype,
     ErrorConstructor,
     ErrorPrototype,
     Eval,
@@ -468,6 +471,7 @@ impl Intrinsics {
         register_intrinsic!(Reflect, ReflectObject);
 
         // Temporal objects
+        register_intrinsic_pair!(DurationPrototype, DurationConstructor);
         register_intrinsic_pair!(InstantPrototype, InstantConstructor);
         register_intrinsic_pair!(PlainDatePrototype, PlainDateConstructor);
         register_intrinsic!(Temporal, TemporalObject);

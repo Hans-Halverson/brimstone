@@ -13,7 +13,7 @@ use crate::{
     set_uninit,
 };
 
-// DataView Objects (https://tc39.es/ecma262/#sec-dataview-objects)
+// PlainDate Objects (https://tc39.es/proposal-temporal/#sec-temporal-plaindate-objects)
 extend_object! {
     pub struct PlainDateObject {
         date: PlainDate,

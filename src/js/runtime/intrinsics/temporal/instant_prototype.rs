@@ -242,7 +242,8 @@ impl InstantPrototype {
         rounding_options.increment = Some(get_rounding_increment_option(cx, options, NAME)?);
         rounding_options.rounding_mode =
             Some(get_rounding_mode_option(cx, options, RoundingMode::HalfExpand, NAME)?);
-        rounding_options.smallest_unit = get_unit_valued_option(cx, options, NAME)?;
+        rounding_options.smallest_unit =
+            get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
 
         let rounded_result = instant.instant().round(rounding_options);
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
@@ -282,7 +283,7 @@ impl InstantPrototype {
         // Parse rounding options from options object
         let precision = get_fractional_second_digits_option(cx, options, NAME)?;
         let rounding_mode = get_rounding_mode_option(cx, options, RoundingMode::Trunc, NAME)?;
-        let smallest_unit = get_unit_valued_option(cx, options, NAME)?;
+        let smallest_unit = get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
         let timezone = get_timezone_option(cx, options, NAME)?;
 
         let to_string_options = ToStringRoundingOptions {

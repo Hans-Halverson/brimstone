@@ -32,9 +32,10 @@ use crate::{
             number_constructor::NumberObject, object_prototype::ObjectPrototype,
             raw_json_object::RawJSONObject, regexp_constructor::RegExpObject,
             rust_runtime::RuntimeFunction, set_object::SetObject, symbol_constructor::SymbolObject,
-            temporal::instant_object::InstantObject, temporal::plain_date_object::PlainDateObject,
-            typed_array::DynTypedArray, weak_map_object::WeakMapObject,
-            weak_ref_constructor::WeakRefObject, weak_set_object::WeakSetObject,
+            temporal::duration_object::DurationObject, temporal::instant_object::InstantObject,
+            temporal::plain_date_object::PlainDateObject, typed_array::DynTypedArray,
+            weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
+            weak_set_object::WeakSetObject,
         },
         promise_object::PromiseObject,
         property::{HeapProperty, Property},
@@ -878,6 +879,12 @@ impl_subtype_casts!(
     HeapItemKind::FinalizationRegistryObject,
     is_finalization_registry_object,
     as_finalization_registry_object
+);
+impl_subtype_casts!(
+    DurationObject,
+    HeapItemKind::DurationObject,
+    is_duration_object,
+    as_duration_object
 );
 impl_subtype_casts!(
     InstantObject,

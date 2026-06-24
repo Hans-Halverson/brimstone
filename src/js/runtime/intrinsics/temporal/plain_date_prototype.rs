@@ -547,7 +547,7 @@ impl PlainDatePrototype {
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "PlainDate.prototype.toString";
 
-        let this_date = this_plain_date(cx, this_value, "PlainDate.prototype.toString")?;
+        let this_date = this_plain_date(cx, this_value, NAME)?;
 
         // Parse calendar format from options
         let options_arg = get_argument(cx, arguments, 0);

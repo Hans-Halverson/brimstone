@@ -1,3 +1,6 @@
+pub mod duration_constructor;
+pub mod duration_object;
+pub mod duration_prototype;
 pub mod instant_constructor;
 pub mod instant_object;
 pub mod instant_prototype;

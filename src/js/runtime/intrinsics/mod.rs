@@ -71,6 +71,7 @@ pub mod string_iterator;
 pub mod string_prototype;
 pub mod symbol_constructor;
 mod symbol_prototype;
+pub mod temporal;
 pub mod typed_array;
 mod typed_array_constructor;
 mod typed_array_prototype;

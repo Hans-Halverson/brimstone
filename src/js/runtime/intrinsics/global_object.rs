@@ -151,6 +151,7 @@ pub fn set_default_global_bindings(cx: Context, realm: Handle<Realm>) -> EvalRes
         intrinsic_prop!(cx.names.json(), JSON);
         intrinsic_prop!(cx.names.math(), Math);
         intrinsic_prop!(cx.names.reflect(), Reflect);
+        intrinsic_prop!(cx.names.temporal(), Temporal);
 
         // Non-standard, environment specific properties of global object
         let console_object = ConsoleObject::new(cx, realm)?.into();

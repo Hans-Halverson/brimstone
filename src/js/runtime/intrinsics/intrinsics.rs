@@ -74,6 +74,10 @@ use crate::{
             string_prototype::StringPrototype,
             symbol_constructor::SymbolConstructor,
             symbol_prototype::SymbolPrototype,
+            temporal::{
+                plain_date_constructor::PlainDateConstructor,
+                plain_date_prototype::PlainDatePrototype, temporal_object::TemporalObject,
+            },
             typed_array::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
                 BigUInt64ArrayPrototype, Float16ArrayConstructor, Float16ArrayPrototype,
@@ -171,6 +175,8 @@ pub enum Intrinsic {
     ObjectPrototypeToString,
     ParseFloat,
     ParseInt,
+    PlainDateConstructor,
+    PlainDatePrototype,
     PromiseConstructor,
     PromisePrototype,
     ProxyConstructor,
@@ -193,6 +199,7 @@ pub enum Intrinsic {
     SymbolPrototype,
     SyntaxErrorConstructor,
     SyntaxErrorPrototype,
+    Temporal,
     ThrowTypeError,
     TypedArrayConstructor,
     TypedArrayPrototype,
@@ -456,6 +463,10 @@ impl Intrinsics {
         register_intrinsic!(Math, MathObject);
         register_intrinsic!(ProxyConstructor, ProxyConstructor);
         register_intrinsic!(Reflect, ReflectObject);
+
+        // Temporal objects
+        register_intrinsic_pair!(PlainDatePrototype, PlainDateConstructor);
+        register_intrinsic!(Temporal, TemporalObject);
 
         // Builtin functions
         handle_scope!(cx, {

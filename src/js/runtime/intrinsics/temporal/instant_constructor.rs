@@ -191,6 +191,8 @@ pub fn to_temporal_instant(
         let item_object = item.as_object();
         if let Some(instant) = item_object.as_instant_object() {
             return Ok(instant.instant());
+        } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+            return Ok(zoned_date_time.zoned_date_time().to_instant());
         }
 
         // Otherwise will treat as a string

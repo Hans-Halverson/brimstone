@@ -11,6 +11,7 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             plain_date_constructor::to_temporal_date,
             plain_date_object::PlainDateObject,
             plain_date_time_object::PlainDateTimeObject,
@@ -18,8 +19,9 @@ use crate::runtime::{
             plain_time_constructor::to_temporal_time,
             plain_year_month_object::PlainYearMonthObject,
             utils::{
-                get_overflow_option, get_show_calendar_name_option, map_temporal_result,
-                to_time_zone_identifier, validate_options_object,
+                DiffOperation, get_difference_settings, get_overflow_option,
+                get_show_calendar_name_option, map_temporal_result, to_time_zone_identifier,
+                validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -503,20 +505,44 @@ impl PlainDatePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.until")?;
-        unimplemented!("PlainDate.prototype.until")
+        Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainDate.prototype.until")
     }
 
     /// Temporal.PlainDate.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.since")?;
-        unimplemented!("PlainDate.prototype.since")
+        Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainDate.prototype.since")
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let this_date = this_plain_date(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_date(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => this_date.date().until(&other, difference_settings),
+            DiffOperation::Since => this_date.date().since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.equals)

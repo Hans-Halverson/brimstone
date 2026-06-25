@@ -6,8 +6,8 @@ use temporal_rs::{
     Calendar, TemporalResult, TimeZone,
     error::ErrorKind,
     options::{
-        Disambiguation, DisplayCalendar, DisplayOffset, DisplayTimeZone, OffsetDisambiguation,
-        Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit,
+        DifferenceSettings, Disambiguation, DisplayCalendar, DisplayOffset, DisplayTimeZone,
+        OffsetDisambiguation, Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit,
     },
     parsers::Precision,
     primitive::FiniteF64,
@@ -26,6 +26,12 @@ use crate::{
         type_utilities::to_number,
     },
 };
+
+/// The diff operations `until` and `since`.
+pub enum DiffOperation {
+    Until,
+    Since,
+}
 
 /// Map a temporal result to an equivalent EvalResult.
 pub fn map_temporal_result<T>(
@@ -360,6 +366,26 @@ pub fn get_time_zone_option(
     }
 }
 
+/// GetDifferenceSettings (https://tc39.es/proposal-temporal/#sec-temporal-getdifferencesettings)
+pub fn get_difference_settings(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<DifferenceSettings> {
+    let largest_unit = get_unit_valued_option(cx, options, cx.names.largest_unit(), method_name)?;
+    let increment = get_rounding_increment_option(cx, options, method_name)?;
+    let rounding_mode = get_rounding_mode_option(cx, options, RoundingMode::Trunc, method_name)?;
+    let smallest_unit = get_unit_valued_option(cx, options, cx.names.smallest_unit(), method_name)?;
+
+    let mut settings = DifferenceSettings::default();
+    settings.largest_unit = largest_unit;
+    settings.smallest_unit = smallest_unit;
+    settings.increment = Some(increment);
+    settings.rounding_mode = Some(rounding_mode);
+
+    Ok(settings)
+}
+
 /// Parse the options argument for a `round` method. May be a string which is shorthand for the
 /// `smallestUnit` option.
 pub fn parse_round_options_argument(
@@ -457,7 +483,7 @@ pub fn clamp_epoch_nanos_to_i128(epoch_nanos: &BigInt) -> i128 {
 }
 
 /// ToTemporalTimeZoneIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimezoneidentifier)
-fn to_time_zone_identifier(
+pub fn to_time_zone_identifier(
     cx: Context,
     value: Handle<Value>,
     method_name: &str,

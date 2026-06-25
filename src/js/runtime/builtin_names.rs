@@ -411,6 +411,7 @@ builtin_names!(
     (parse, "parse"),
     (parse_float, "parseFloat"),
     (parse_int, "parseInt"),
+    (plain_time_, "plainTime"),
     (pop, "pop"),
     (pow, "pow"),
     (prevent_extensions, "preventExtensions"),

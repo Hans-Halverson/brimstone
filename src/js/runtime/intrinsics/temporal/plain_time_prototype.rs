@@ -10,13 +10,14 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             plain_time_constructor::{to_partial_time_record, to_temporal_time},
             plain_time_object::PlainTimeObject,
             utils::{
-                get_fractional_second_digits_option, get_overflow_option,
-                get_rounding_increment_option, get_rounding_mode_option, get_unit_valued_option,
-                is_partial_temporal_object, map_temporal_result, parse_round_options_argument,
-                validate_options_object,
+                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
+                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
+                get_unit_valued_option, is_partial_temporal_object, map_temporal_result,
+                parse_round_options_argument, validate_options_object,
             },
         },
     },
@@ -155,20 +156,6 @@ impl PlainTimePrototype {
             cx.names.value_of(),
             RuntimeFunction::PlainTimePrototype_valueOf,
             0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date_time(),
-            RuntimeFunction::PlainTimePrototype_toPlainDateTime,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_zoned_date_time(),
-            RuntimeFunction::PlainTimePrototype_toZonedDateTime,
-            1,
             realm,
         )?;
 
@@ -319,20 +306,44 @@ impl PlainTimePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.until")?;
-        unimplemented!("PlainTime.prototype.until")
+        Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainTime.prototype.until")
     }
 
     /// Temporal.PlainTime.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.since")?;
-        unimplemented!("PlainTime.prototype.since")
+        Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainTime.prototype.since")
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let plain_time = this_plain_time(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_time(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => plain_time.time().until(&other, difference_settings),
+            DiffOperation::Since => plain_time.time().since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.PlainTime.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.round)
@@ -451,26 +462,6 @@ impl PlainTimePrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         type_error(cx, "PlainTime.prototype.valueOf must not be called")
-    }
-
-    /// Temporal.PlainTime.prototype.toPlainDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.toplaindatetime)
-    pub fn to_plain_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.toPlainDateTime")?;
-        unimplemented!("PlainTime.prototype.toPlainDateTime")
-    }
-
-    /// Temporal.PlainTime.prototype.toZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.tozoneddatetime)
-    pub fn to_zoned_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.toZonedDateTime")?;
-        unimplemented!("PlainTime.prototype.toZonedDateTime")
     }
 }
 

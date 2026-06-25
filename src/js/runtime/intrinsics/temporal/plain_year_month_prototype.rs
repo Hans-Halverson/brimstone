@@ -10,11 +10,12 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             plain_year_month_constructor::to_temporal_year_month,
             plain_year_month_object::PlainYearMonthObject,
             utils::{
-                get_overflow_option, get_show_calendar_name_option, map_temporal_result,
-                validate_options_object,
+                DiffOperation, get_difference_settings, get_overflow_option,
+                get_show_calendar_name_option, map_temporal_result, validate_options_object,
             },
         },
     },
@@ -372,20 +373,60 @@ impl PlainYearMonthPrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.until")?;
-        unimplemented!("PlainYearMonth.prototype.until")
+        Self::diff(
+            cx,
+            this_value,
+            arguments,
+            DiffOperation::Until,
+            "PlainYearMonth.prototype.until",
+        )
     }
 
     /// Temporal.PlainYearMonth.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.since")?;
-        unimplemented!("PlainYearMonth.prototype.since")
+        Self::diff(
+            cx,
+            this_value,
+            arguments,
+            DiffOperation::Since,
+            "PlainYearMonth.prototype.since",
+        )
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let this_year_month = this_plain_year_month(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_year_month(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => this_year_month
+                .year_month()
+                .until(&other, difference_settings),
+            DiffOperation::Since => this_year_month
+                .year_month()
+                .since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.PlainYearMonth.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.equals)

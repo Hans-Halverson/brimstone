@@ -5,17 +5,25 @@ use crate::runtime::{
     alloc_error::AllocResult,
     error::type_error,
     function::get_argument,
+    get,
     intrinsics::{
         intrinsics::Intrinsic,
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             plain_date_constructor::to_temporal_date,
             plain_date_object::PlainDateObject,
+            plain_date_time_object::PlainDateTimeObject,
+            plain_month_day_object::PlainMonthDayObject,
+            plain_time_constructor::to_temporal_time,
+            plain_year_month_object::PlainYearMonthObject,
             utils::{
-                get_overflow_option, get_show_calendar_name_option, map_temporal_result,
+                DiffOperation, get_difference_settings, get_overflow_option,
+                get_show_calendar_name_option, map_temporal_result, to_time_zone_identifier,
                 validate_options_object,
             },
+            zoned_date_time_object::ZonedDateTimeObject,
         },
     },
     object_value::ObjectValue,
@@ -497,20 +505,44 @@ impl PlainDatePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.until")?;
-        unimplemented!("PlainDate.prototype.until")
+        Self::diff(cx, this_value, arguments, DiffOperation::Until, "PlainDate.prototype.until")
     }
 
     /// Temporal.PlainDate.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.since")?;
-        unimplemented!("PlainDate.prototype.since")
+        Self::diff(cx, this_value, arguments, DiffOperation::Since, "PlainDate.prototype.since")
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let this_date = this_plain_date(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_date(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => this_date.date().until(&other, difference_settings),
+            DiffOperation::Since => this_date.date().since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.equals (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.equals)
@@ -533,10 +565,23 @@ impl PlainDatePrototype {
     pub fn to_plain_date_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.toPlainDateTime")?;
-        unimplemented!("PlainDate.prototype.toPlainDateTime")
+        const NAME: &str = "PlainDate.prototype.toPlainDateTime";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let time_arg = get_argument(cx, arguments, 0);
+        let time = if time_arg.is_undefined() {
+            None
+        } else {
+            Some(to_temporal_time(cx, time_arg, NAME)?)
+        };
+
+        let plain_date_time_result = this_date.date().to_plain_date_time(time);
+        let plain_date_time = map_temporal_result(cx, plain_date_time_result, NAME)?;
+
+        Ok(PlainDateTimeObject::new(cx, plain_date_time)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.toPlainMonthDay (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.toplainmonthday)
@@ -545,8 +590,14 @@ impl PlainDatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.toPlainMonthDay")?;
-        unimplemented!("PlainDate.prototype.toPlainMonthDay")
+        const NAME: &str = "PlainDate.prototype.toPlainMonthDay";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let plain_month_day_result = this_date.date().to_plain_month_day();
+        let plain_month_day = map_temporal_result(cx, plain_month_day_result, NAME)?;
+
+        Ok(PlainMonthDayObject::new(cx, plain_month_day)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.toPlainYearMonth (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.toplainyearmonth)
@@ -555,18 +606,60 @@ impl PlainDatePrototype {
         this_value: Handle<Value>,
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.toPlainYearMonth")?;
-        unimplemented!("PlainDate.prototype.toPlainYearMonth")
+        const NAME: &str = "PlainDate.prototype.toPlainYearMonth";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let plain_year_month_result = this_date.date().to_plain_year_month();
+        let plain_year_month = map_temporal_result(cx, plain_year_month_result, NAME)?;
+
+        Ok(PlainYearMonthObject::new(cx, plain_year_month)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.toZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.tozoneddatetime)
     pub fn to_zoned_date_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.toZonedDateTime")?;
-        unimplemented!("PlainDate.prototype.toZonedDateTime")
+        const NAME: &str = "PlainDate.prototype.toZonedDateTime";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let item_arg = get_argument(cx, arguments, 0);
+
+        let plain_time_opt;
+        let time_zone;
+
+        // Argument may be a time zone directly or an object that contains a time zone and
+        // optionally a plain time.
+        if item_arg.is_object() {
+            let item_object = item_arg.as_object();
+            let time_zone_like = get(cx, item_object, cx.names.time_zone())?;
+            if time_zone_like.is_undefined() {
+                time_zone = to_time_zone_identifier(cx, item_arg, NAME)?;
+                plain_time_opt = None;
+            } else {
+                time_zone = to_time_zone_identifier(cx, time_zone_like, NAME)?;
+
+                let plain_time_value = get(cx, item_object, cx.names.plain_time_())?;
+                if plain_time_value.is_undefined() {
+                    plain_time_opt = None;
+                } else {
+                    plain_time_opt = Some(to_temporal_time(cx, plain_time_value, NAME)?);
+                }
+            }
+        } else {
+            time_zone = to_time_zone_identifier(cx, item_arg, NAME)?;
+            plain_time_opt = None;
+        };
+
+        let zoned_date_time_result = this_date
+            .date()
+            .to_zoned_date_time(time_zone, plain_time_opt);
+        let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.tostring)

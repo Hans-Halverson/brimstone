@@ -11,13 +11,16 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             instant_constructor::to_temporal_instant,
             instant_object::InstantObject,
             utils::{
-                get_fractional_second_digits_option, get_rounding_increment_option,
-                get_rounding_mode_option, get_time_zone_option, get_unit_valued_option,
-                map_temporal_result, parse_round_options_argument, validate_options_object,
+                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
+                get_rounding_increment_option, get_rounding_mode_option, get_time_zone_option,
+                get_unit_valued_option, map_temporal_result, parse_round_options_argument,
+                to_time_zone_identifier, validate_options_object,
             },
+            zoned_date_time_object::ZonedDateTimeObject,
         },
     },
     object_value::ObjectValue,
@@ -204,20 +207,44 @@ impl InstantPrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_instant(cx, this_value, "Instant.prototype.until")?;
-        unimplemented!("Instant.prototype.until")
+        Self::diff(cx, this_value, arguments, DiffOperation::Until, "Instant.prototype.until")
     }
 
     /// Temporal.Instant.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_instant(cx, this_value, "Instant.prototype.since")?;
-        unimplemented!("Instant.prototype.since")
+        Self::diff(cx, this_value, arguments, DiffOperation::Since, "Instant.prototype.since")
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let instant = this_instant(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_instant(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => instant.instant().until(&other, difference_settings),
+            DiffOperation::Since => instant.instant().since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.Instant.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.instant.prototype.round)
@@ -347,10 +374,19 @@ impl InstantPrototype {
     pub fn to_zoned_date_time_iso(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        argument: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_instant(cx, this_value, "Instant.prototype.toZonedDateTimeISO")?;
-        unimplemented!("Instant.prototype.toZonedDateTimeISO")
+        const NAME: &str = "Instant.prototype.toZonedDateTimeISO";
+
+        let instant = this_instant(cx, this_value, NAME)?;
+
+        let time_zone_arg = get_argument(cx, argument, 0);
+        let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
+
+        let zoned_date_time_result = instant.instant().to_zoned_date_time_iso(time_zone);
+        let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
     }
 }
 

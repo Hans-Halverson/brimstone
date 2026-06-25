@@ -14,13 +14,14 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             duration_constructor::to_temporal_duration,
+            duration_object::DurationObject,
             instant_object::InstantObject,
             plain_date_object::PlainDateObject,
             plain_date_time_object::PlainDateTimeObject,
             plain_time_object::PlainTimeObject,
             utils::{
-                get_fractional_second_digits_option, get_overflow_option,
-                get_rounding_increment_option, get_rounding_mode_option,
+                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
+                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
                 get_show_calendar_name_option, get_show_offset_option,
                 get_show_time_zone_name_option, get_unit_valued_option, map_temporal_result,
                 parse_round_options_argument, validate_options_object,
@@ -784,20 +785,48 @@ impl ZonedDateTimePrototype {
     pub fn until(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.until")?;
-        unimplemented!("ZonedDateTime.prototype.until")
+        Self::diff(cx, this_value, arguments, DiffOperation::Until, "ZonedDateTime.prototype.until")
     }
 
     /// Temporal.ZonedDateTime.prototype.since (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.since)
     pub fn since(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.since")?;
-        unimplemented!("ZonedDateTime.prototype.since")
+        Self::diff(cx, this_value, arguments, DiffOperation::Since, "ZonedDateTime.prototype.since")
+    }
+
+    fn diff(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+        operation: DiffOperation,
+        method_name: &str,
+    ) -> EvalResult<Handle<Value>> {
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, method_name)?;
+
+        let other_arg = get_argument(cx, arguments, 0);
+        let other = to_temporal_zoned_date_time(cx, other_arg, method_name)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let difference_settings = get_difference_settings(cx, options, method_name)?;
+
+        let duration_result = match operation {
+            DiffOperation::Until => this_zoned_date_time
+                .zoned_date_time()
+                .until(&other, difference_settings),
+            DiffOperation::Since => this_zoned_date_time
+                .zoned_date_time()
+                .since(&other, difference_settings),
+        };
+
+        let duration = map_temporal_result(cx, duration_result, method_name)?;
+
+        Ok(DurationObject::new(cx, duration)?.as_value())
     }
 
     /// Temporal.ZonedDateTime.prototype.round (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.round)

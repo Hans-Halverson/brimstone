@@ -19,9 +19,10 @@ use crate::runtime::{
             plain_time_constructor::to_temporal_time,
             plain_year_month_object::PlainYearMonthObject,
             utils::{
-                DiffOperation, get_difference_settings, get_overflow_option,
-                get_show_calendar_name_option, map_temporal_result,
-                to_temporal_calendar_identifier, to_time_zone_identifier, validate_options_object,
+                DateField, DiffOperation, RequiredFieldNames, get_difference_settings,
+                get_overflow_option, get_show_calendar_name_option, is_partial_temporal_object,
+                map_temporal_result, prepare_calendar_fields, to_temporal_calendar_identifier,
+                to_time_zone_identifier, validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -719,10 +720,43 @@ impl PlainDatePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.with")?;
-        unimplemented!("PlainDate.prototype.with")
+        const NAME: &str = "PlainDate.prototype.with";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let date_like_arg = get_argument(cx, arguments, 0);
+        if !is_partial_temporal_object(cx, date_like_arg)? {
+            return type_error(cx, "PlainDate.prototype.with argument must be a date-like object");
+        }
+
+        let date_like_object = date_like_arg.as_object();
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            date_like_object,
+            &[
+                DateField::Year,
+                DateField::Month,
+                DateField::MonthCode,
+                DateField::Day,
+            ],
+            &[],
+            RequiredFieldNames::Partial,
+            NAME,
+        )?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_date_result = this_date
+            .date()
+            .with(prepared_fields.into_partial_date(), Some(overflow));
+        let new_date = map_temporal_result(cx, new_date_result, NAME)?;
+
+        Ok(PlainDateObject::new(cx, new_date)?.as_value())
     }
 
     /// Temporal.PlainDate.prototype.withCalendar (https://tc39.es/proposal-temporal/#sec-temporal.plaindate.prototype.withcalendar)

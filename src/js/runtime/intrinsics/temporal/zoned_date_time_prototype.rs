@@ -1,40 +1,49 @@
 use num_bigint::BigInt;
 use temporal_rs::options::{
-    DisplayCalendar, DisplayOffset, DisplayTimeZone, RoundingMode, RoundingOptions,
-    ToStringRoundingOptions,
+    DisplayCalendar, DisplayOffset, DisplayTimeZone, OffsetDisambiguation, RoundingMode,
+    RoundingOptions, ToStringRoundingOptions,
 };
 
-use crate::runtime::{
-    Context, EvalResult, Handle, Realm, Value,
-    alloc_error::AllocResult,
-    error::type_error,
-    function::get_argument,
-    intrinsics::{
-        intrinsics::Intrinsic,
-        rust_runtime::RuntimeFunction,
-        temporal::{
-            duration_constructor::to_temporal_duration,
-            duration_object::DurationObject,
-            instant_object::InstantObject,
-            plain_date_object::PlainDateObject,
-            plain_date_time_object::PlainDateTimeObject,
-            plain_time_constructor::to_temporal_time,
-            plain_time_object::PlainTimeObject,
-            utils::{
-                DiffOperation, get_difference_settings, get_fractional_second_digits_option,
-                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
-                get_show_calendar_name_option, get_show_offset_option,
-                get_show_time_zone_name_option, get_unit_valued_option, map_temporal_result,
-                parse_round_options_argument, to_temporal_calendar_identifier,
-                to_time_zone_identifier, validate_options_object,
+use crate::{
+    must,
+    runtime::{
+        Context, EvalResult, Handle, Realm, Value,
+        abstract_operations::create_data_property_or_throw,
+        alloc_error::AllocResult,
+        error::type_error,
+        function::get_argument,
+        intrinsics::{
+            intrinsics::Intrinsic,
+            rust_runtime::RuntimeFunction,
+            temporal::{
+                duration_constructor::to_temporal_duration,
+                duration_object::DurationObject,
+                instant_object::InstantObject,
+                plain_date_object::PlainDateObject,
+                plain_date_time_object::PlainDateTimeObject,
+                plain_time_constructor::to_temporal_time,
+                plain_time_object::PlainTimeObject,
+                utils::{
+                    DateField, DiffOperation, RequiredFieldNames, TimeField,
+                    get_difference_settings, get_disambiguation_option,
+                    get_fractional_second_digits_option, get_offset_option, get_overflow_option,
+                    get_rounding_increment_option, get_rounding_mode_option,
+                    get_show_calendar_name_option, get_show_offset_option,
+                    get_show_time_zone_name_option, get_transition_direction_option,
+                    get_unit_valued_option, is_partial_temporal_object, map_temporal_result,
+                    parse_round_options_argument, prepare_calendar_fields,
+                    to_temporal_calendar_identifier, to_time_zone_identifier,
+                    validate_options_object,
+                },
+                zoned_date_time_constructor::to_temporal_zoned_date_time,
+                zoned_date_time_object::ZonedDateTimeObject,
             },
-            zoned_date_time_constructor::to_temporal_zoned_date_time,
-            zoned_date_time_object::ZonedDateTimeObject,
         },
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create_without_proto,
+        property::Property,
+        value::BigIntValue,
     },
-    object_value::ObjectValue,
-    property::Property,
-    value::BigIntValue,
 };
 
 pub struct ZonedDateTimePrototype;
@@ -70,6 +79,12 @@ impl ZonedDateTimePrototype {
             cx,
             cx.names.time_zone_id(),
             RuntimeFunction::ZonedDateTimePrototype_timeZoneId,
+            realm,
+        )?;
+        object.intrinsic_getter(
+            cx,
+            cx.names.epoch_milliseconds(),
+            RuntimeFunction::ZonedDateTimePrototype_epochMilliseconds,
             realm,
         )?;
         object.intrinsic_getter(
@@ -357,6 +372,13 @@ impl ZonedDateTimePrototype {
             0,
             realm,
         )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.get_time_zone_transition(),
+            RuntimeFunction::ZonedDateTimePrototype_getTimeZoneTransition,
+            1,
+            realm,
+        )?;
 
         Ok(object)
     }
@@ -392,6 +414,19 @@ impl ZonedDateTimePrototype {
         let time_zone_id = map_temporal_result(cx, time_zone_id_result, NAME)?;
 
         Ok(cx.alloc_string(&time_zone_id)?.as_value())
+    }
+
+    /// get Temporal.ZonedDateTime.prototype.epochMilliseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.epochmilliseconds)
+    pub fn epoch_milliseconds(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        let this_zoned_date_time =
+            this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.epochMilliseconds")?;
+        let epoch_millis = this_zoned_date_time.zoned_date_time().epoch_milliseconds();
+
+        Ok(Value::from(epoch_millis).to_handle(cx))
     }
 
     /// get Temporal.ZonedDateTime.prototype.epochNanoseconds (https://tc39.es/proposal-temporal/#sec-get-temporal.zoneddatetime.prototype.epochnanoseconds)
@@ -1028,10 +1063,59 @@ impl ZonedDateTimePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.with")?;
-        unimplemented!("ZonedDateTime.prototype.with")
+        const NAME: &str = "ZonedDateTime.prototype.with";
+
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
+
+        let date_like_arg = get_argument(cx, arguments, 0);
+        if !is_partial_temporal_object(cx, date_like_arg)? {
+            return type_error(
+                cx,
+                "ZonedDateTime.prototype.with argument must be a date-like object",
+            );
+        }
+
+        let date_like_object = date_like_arg.as_object();
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            date_like_object,
+            &[
+                DateField::Year,
+                DateField::Month,
+                DateField::MonthCode,
+                DateField::Day,
+            ],
+            &[
+                TimeField::Hour,
+                TimeField::Minute,
+                TimeField::Second,
+                TimeField::Millisecond,
+                TimeField::Microsecond,
+                TimeField::Nanosecond,
+                TimeField::Offset,
+            ],
+            RequiredFieldNames::Partial,
+            NAME,
+        )?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let disambiguation = get_disambiguation_option(cx, options, NAME)?;
+        let offset = get_offset_option(cx, options, OffsetDisambiguation::Prefer, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_zoned_date_time_result = this_zoned_date_time.zoned_date_time().with(
+            prepared_fields.into_partial_zoned_date_time(),
+            Some(disambiguation),
+            Some(offset),
+            Some(overflow),
+        );
+        let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
     }
 
     /// Temporal.ZonedDateTime.prototype.withPlainTime (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withplaintime)
@@ -1113,6 +1197,46 @@ impl ZonedDateTimePrototype {
         let start_of_day = map_temporal_result(cx, start_of_day_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, start_of_day)?.as_value())
+    }
+
+    /// Temporal.ZonedDateTime.prototype.getTimeZoneTransition (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.gettimezonetransition)
+    pub fn get_time_zone_transition(
+        cx: Context,
+        this_value: Handle<Value>,
+        arguments: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        const NAME: &str = "ZonedDateTime.prototype.getTimeZoneTransition";
+
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
+
+        let direction_arg = get_argument(cx, arguments, 0);
+        if direction_arg.is_undefined() {
+            return type_error(
+                cx,
+                "ZonedDateTime.prototype.getTimeZoneTransition requires a direction argument",
+            );
+        }
+
+        let options = if direction_arg.is_string() {
+            let options = ordinary_object_create_without_proto(cx)?;
+            must!(create_data_property_or_throw(cx, options, cx.names.direction(), direction_arg));
+            Some(options)
+        } else {
+            validate_options_object(cx, direction_arg, NAME)?
+        };
+
+        let direction = get_transition_direction_option(cx, options, NAME)?;
+
+        let new_zoned_date_time_result = this_zoned_date_time
+            .zoned_date_time()
+            .get_time_zone_transition(direction);
+
+        match map_temporal_result(cx, new_zoned_date_time_result, NAME)? {
+            Some(new_zoned_date_time) => {
+                Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
+            }
+            None => Ok(cx.null()),
+        }
     }
 }
 

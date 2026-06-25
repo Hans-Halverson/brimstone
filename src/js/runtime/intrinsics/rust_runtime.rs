@@ -744,12 +744,20 @@ rust_runtime_functions!(
     (ZonedDateTimePrototype_daysInWeek, ZonedDateTimePrototype::days_in_week),
     (ZonedDateTimePrototype_daysInYear, ZonedDateTimePrototype::days_in_year),
     (
+        ZonedDateTimePrototype_epochMilliseconds,
+        ZonedDateTimePrototype::epoch_milliseconds
+    ),
+    (
         ZonedDateTimePrototype_epochNanoseconds,
         ZonedDateTimePrototype::epoch_nanoseconds
     ),
     (ZonedDateTimePrototype_equals, ZonedDateTimePrototype::equals),
     (ZonedDateTimePrototype_era, ZonedDateTimePrototype::era),
     (ZonedDateTimePrototype_eraYear, ZonedDateTimePrototype::era_year),
+    (
+        ZonedDateTimePrototype_getTimeZoneTransition,
+        ZonedDateTimePrototype::get_time_zone_transition
+    ),
     (ZonedDateTimePrototype_hour, ZonedDateTimePrototype::hour),
     (ZonedDateTimePrototype_hoursInDay, ZonedDateTimePrototype::hours_in_day),
     (ZonedDateTimePrototype_inLeapYear, ZonedDateTimePrototype::in_leap_year),

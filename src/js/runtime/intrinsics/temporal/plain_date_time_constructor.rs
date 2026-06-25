@@ -1,4 +1,4 @@
-use temporal_rs::PlainDateTime;
+use temporal_rs::{PlainDateTime, parsed_intermediates::ParsedDateTime, partial::PartialDateTime};
 
 use crate::runtime::{
     Context, Handle, Realm, Value,
@@ -13,8 +13,9 @@ use crate::runtime::{
         temporal::{
             plain_date_time_object::PlainDateTimeObject,
             utils::{
-                get_calendar_identifier_with_iso_default, get_overflow_option, map_temporal_result,
-                parse_calendar_argument, to_integer_with_truncation,
+                DateField, RequiredFieldNames, TimeField, get_calendar_identifier_with_iso_default,
+                get_overflow_option, map_temporal_result, parse_calendar_argument,
+                prepare_calendar_fields, to_integer_with_truncation,
                 to_integer_with_truncation_or_zero, validate_options_object,
             },
         },
@@ -182,10 +183,39 @@ fn to_temporal_date_time_with_options(
             return map_temporal_result(cx, plain_date_time_result, method_name);
         }
 
-        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
+        // Otherwise treat as a date-like object
+        let calendar = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
 
-        // Otherwise treat as a date-time-like object
-        unimplemented!("ToTemporalDateTime for date-like object")
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            item_object,
+            &[
+                DateField::Year,
+                DateField::Month,
+                DateField::MonthCode,
+                DateField::Day,
+            ],
+            &[
+                TimeField::Hour,
+                TimeField::Minute,
+                TimeField::Second,
+                TimeField::Millisecond,
+                TimeField::Microsecond,
+                TimeField::Nanosecond,
+            ],
+            RequiredFieldNames::Defaults,
+            method_name,
+        )?;
+
+        let options = validate_options_object(cx, options, method_name)?;
+        let overflow = get_overflow_option(cx, options, method_name)?;
+
+        let partial_date_time =
+            PartialDateTime { calendar, fields: prepared_fields.into_partial_date_time() };
+
+        let date_time_result = PlainDateTime::from_partial(partial_date_time, Some(overflow));
+
+        return map_temporal_result(cx, date_time_result, method_name);
     }
 
     // Otherwise parse PlainDateTime from string
@@ -194,12 +224,14 @@ fn to_temporal_date_time_with_options(
     }
 
     let item_string = item.as_string().to_wtf8_string()?;
-
-    let parsed_result = PlainDateTime::from_utf8(item_string.as_bytes());
+    let parsed_result = ParsedDateTime::from_utf8(item_string.as_bytes());
     let parsed = map_temporal_result(cx, parsed_result, method_name)?;
 
     let options = validate_options_object(cx, options, method_name)?;
     get_overflow_option(cx, options, method_name)?;
 
-    Ok(parsed)
+    let date_time_result = PlainDateTime::from_parsed(parsed);
+    let date_time = map_temporal_result(cx, date_time_result, method_name)?;
+
+    Ok(date_time)
 }

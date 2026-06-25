@@ -3,14 +3,17 @@ use std::str::FromStr;
 use num_bigint::BigInt;
 use num_traits::{AsPrimitive, PrimInt, ToPrimitive};
 use temporal_rs::{
-    Calendar, TemporalResult, TimeZone,
+    Calendar, MonthCode, PlainDate, TemporalResult, TimeZone, UtcOffset, ZonedDateTime,
     error::ErrorKind,
+    fields::{CalendarFields, DateTimeFields, ZonedDateTimeFields},
     options::{
         DifferenceSettings, Disambiguation, DisplayCalendar, DisplayOffset, DisplayTimeZone,
         OffsetDisambiguation, Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit,
     },
     parsers::Precision,
+    partial::{PartialDate, PartialTime, PartialZonedDateTime},
     primitive::FiniteF64,
+    provider::TransitionDirection,
 };
 
 use crate::{
@@ -23,7 +26,7 @@ use crate::{
         object_value::ObjectValue,
         ordinary_object::ordinary_object_create_without_proto,
         to_string,
-        type_utilities::to_number,
+        type_utilities::{ToPrimitivePreferredType, to_number, to_primitive},
     },
 };
 
@@ -288,10 +291,55 @@ pub fn get_relative_to_option(
             return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time().clone())));
         }
 
-        let _ = get_calendar_identifier_with_iso_default(cx, option_object, method_name)?;
+        // Otherwise treat as a date-like object
+        let calendar = get_calendar_identifier_with_iso_default(cx, option_object, method_name)?;
 
-        // Otherwise treat as a "date-like" object
-        unimplemented!("GetTemporalRelativeToOption for date-like object")
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            option_object,
+            &[
+                DateField::Year,
+                DateField::Month,
+                DateField::MonthCode,
+                DateField::Day,
+            ],
+            &[
+                TimeField::Hour,
+                TimeField::Minute,
+                TimeField::Second,
+                TimeField::Millisecond,
+                TimeField::Microsecond,
+                TimeField::Nanosecond,
+                TimeField::Offset,
+                TimeField::TimeZone,
+            ],
+            RequiredFieldNames::Defaults,
+            method_name,
+        )?;
+
+        // If no time zone is present interpret as a PlainDate
+        let Some(time_zone) = prepared_fields.time_zone else {
+            let partial_date = PartialDate {
+                calendar,
+                calendar_fields: prepared_fields.into_partial_date(),
+            };
+            let date_result = PlainDate::from_partial(partial_date, None);
+            let date = map_temporal_result(cx, date_result, method_name)?;
+
+            return Ok(Some(RelativeTo::PlainDate(date)));
+        };
+
+        let partial_zoned_date_time = PartialZonedDateTime {
+            calendar,
+            timezone: Some(time_zone),
+            fields: prepared_fields.into_partial_zoned_date_time(),
+        };
+
+        let zoned_date_time_result =
+            ZonedDateTime::from_partial(partial_zoned_date_time, None, None, None);
+        let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, method_name)?;
+
+        return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time)));
     } else if !option_value.is_string() {
         return type_error(
             cx,
@@ -355,6 +403,21 @@ pub fn get_show_offset_option(
     get_temporal_option(cx, options, cx.names.offset(), || {
         format!("{method_name} `offset` option must be 'auto', 'never', or 'always'")
     })
+}
+
+/// GetDirectionOption (https://tc39.es/proposal-temporal/#sec-temporal-getdirectionoption)
+pub fn get_transition_direction_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<TransitionDirection> {
+    if let Some(option_value) = get_temporal_option_property(cx, options, cx.names.direction())? {
+        if let Some(parsed_value) = parse_option_from_string(cx, option_value)? {
+            return Ok(parsed_value);
+        }
+    }
+
+    range_error(cx, &format!("{method_name} `direction` option must be 'next' or 'previous'"))
 }
 
 pub fn get_time_zone_option(
@@ -507,6 +570,24 @@ where
     }
 }
 
+/// ToPositiveIntegerWithTruncation (https://tc39.es/proposal-temporal/#sec-topositiveintegerwithtruncation)
+pub fn to_positive_integer_with_truncation<T: PrimInt + AsPrimitive<f64>>(
+    cx: Context,
+    value: Handle<Value>,
+    err_prefix: &str,
+) -> EvalResult<T>
+where
+    f64: AsPrimitive<T>,
+    i8: AsPrimitive<T>,
+{
+    let number_value = to_number(cx, value)?;
+    let finite_value_result = FiniteF64::try_from(number_value.as_number());
+    let finite_value = map_temporal_result(cx, finite_value_result, err_prefix)?;
+
+    let positive_integer_result = finite_value.as_positive_integer_with_truncation();
+    map_temporal_result(cx, positive_integer_result, err_prefix)
+}
+
 /// If BigInt is out of i128 range then use `i128::MAX` which will trigger a RangeError.
 pub fn clamp_epoch_nanos_to_i128(epoch_nanos: &BigInt) -> i128 {
     epoch_nanos.to_i128().unwrap_or(i128::MAX)
@@ -618,4 +699,267 @@ pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResu
     }
 
     Ok(true)
+}
+
+/// ParseMonthCode (https://tc39.es/proposal-temporal/#sec-temporal-parsemonthcode)
+fn parse_month_code(cx: Context, value: Handle<Value>, method_name: &str) -> EvalResult<MonthCode> {
+    let primitive_value = to_primitive(cx, value, ToPrimitivePreferredType::String)?;
+    if !primitive_value.is_string() {
+        return type_error(cx, &format!("{method_name} `monthCode` must be a string"));
+    }
+
+    let wtf8_string = primitive_value.as_string().to_wtf8_string()?;
+    let parsed_month_code_result = MonthCode::try_from_utf8(wtf8_string.as_bytes());
+
+    map_temporal_result(cx, parsed_month_code_result, method_name)
+}
+
+/// ToOffsetString (https://tc39.es/proposal-temporal/#sec-temporal-tooffsetstring)
+fn parse_offset_string(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<UtcOffset> {
+    let primitive_value = to_primitive(cx, value, ToPrimitivePreferredType::String)?;
+    if !primitive_value.is_string() {
+        return type_error(cx, &format!("{method_name} `offset` must be a string"));
+    }
+
+    let wtf8_string = primitive_value.as_string().to_wtf8_string()?;
+    let parsed_offset_result = UtcOffset::from_utf8(wtf8_string.as_bytes());
+
+    map_temporal_result(cx, parsed_offset_result, method_name)
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum DateField {
+    Year,
+    Month,
+    MonthCode,
+    Day,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum TimeField {
+    Hour,
+    Minute,
+    Second,
+    Millisecond,
+    Microsecond,
+    Nanosecond,
+    Offset,
+    TimeZone,
+}
+
+pub enum RequiredFieldNames {
+    /// Do not require or provide a default value for fields.
+    Partial,
+    /// Provide a default value for missing fields.
+    Defaults,
+    /// Require the time zone field but otherwise provide default values for missing fields.
+    TimeZoneWithDefaults,
+}
+
+impl RequiredFieldNames {
+    pub fn provides_defaults(&self) -> bool {
+        matches!(self, RequiredFieldNames::Defaults | RequiredFieldNames::TimeZoneWithDefaults)
+    }
+
+    pub fn requires_time_zone(&self) -> bool {
+        matches!(self, RequiredFieldNames::TimeZoneWithDefaults)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum CalendarField {
+    Date(DateField),
+    Time(TimeField),
+}
+
+/// Fields are iterated in lexicographic order.
+const FIELD_ITERATION_ORDER: &[CalendarField] = &[
+    CalendarField::Date(DateField::Day),
+    CalendarField::Time(TimeField::Hour),
+    CalendarField::Time(TimeField::Microsecond),
+    CalendarField::Time(TimeField::Millisecond),
+    CalendarField::Time(TimeField::Minute),
+    CalendarField::Date(DateField::Month),
+    CalendarField::Date(DateField::MonthCode),
+    CalendarField::Time(TimeField::Nanosecond),
+    CalendarField::Time(TimeField::Offset),
+    CalendarField::Time(TimeField::Second),
+    CalendarField::Time(TimeField::TimeZone),
+    CalendarField::Date(DateField::Year),
+];
+
+pub struct PrepareCalendarFieldsResult {
+    pub partial_date: CalendarFields,
+    pub partial_time: PartialTime,
+    pub offset: Option<UtcOffset>,
+    pub time_zone: Option<TimeZone>,
+}
+
+impl PrepareCalendarFieldsResult {
+    pub fn into_partial_date(self) -> CalendarFields {
+        self.partial_date
+    }
+
+    pub fn into_partial_date_time(self) -> DateTimeFields {
+        DateTimeFields::new()
+            .with_partial_date(self.partial_date)
+            .with_partial_time(self.partial_time)
+    }
+
+    pub fn into_partial_zoned_date_time(self) -> ZonedDateTimeFields {
+        ZonedDateTimeFields {
+            calendar_fields: self.partial_date,
+            time: self.partial_time,
+            offset: self.offset,
+        }
+    }
+}
+
+/// PrepareCalendarFields (https://tc39.es/proposal-temporal/#sec-temporal-preparecalendarfields)
+pub fn prepare_calendar_fields(
+    cx: Context,
+    object: Handle<ObjectValue>,
+    date_fields: &[DateField],
+    time_fields: &[TimeField],
+    required: RequiredFieldNames,
+    method_name: &str,
+) -> EvalResult<PrepareCalendarFieldsResult> {
+    let mut partial_date = CalendarFields::new();
+    let mut partial_time = PartialTime::new();
+    let mut offset = None;
+    let mut time_zone = None;
+
+    for field in FIELD_ITERATION_ORDER {
+        match field {
+            CalendarField::Date(DateField::Year) if date_fields.contains(&DateField::Year) => {
+                let value = get(cx, object, cx.names.year())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_date.year = Some(converted_value);
+                }
+            }
+            CalendarField::Date(DateField::Month) if date_fields.contains(&DateField::Month) => {
+                let value = get(cx, object, cx.names.month())?;
+                if !value.is_undefined() {
+                    let converted_value =
+                        to_positive_integer_with_truncation(cx, value, method_name)?;
+                    partial_date.month = Some(converted_value);
+                }
+            }
+            CalendarField::Date(DateField::MonthCode)
+                if date_fields.contains(&DateField::MonthCode) =>
+            {
+                let value = get(cx, object, cx.names.month_code())?;
+                if !value.is_undefined() {
+                    let converted_value = parse_month_code(cx, value, method_name)?;
+                    partial_date.month_code = Some(converted_value);
+                }
+            }
+            CalendarField::Date(DateField::Day) if date_fields.contains(&DateField::Day) => {
+                let value = get(cx, object, cx.names.day())?;
+                if !value.is_undefined() {
+                    let converted_value =
+                        to_positive_integer_with_truncation(cx, value, method_name)?;
+                    partial_date.day = Some(converted_value);
+                }
+            }
+            CalendarField::Time(TimeField::Hour) if time_fields.contains(&TimeField::Hour) => {
+                let value = get(cx, object, cx.names.hour())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.hour = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.hour = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Minute) if time_fields.contains(&TimeField::Minute) => {
+                let value = get(cx, object, cx.names.minute())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.minute = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.minute = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Second) if time_fields.contains(&TimeField::Second) => {
+                let value = get(cx, object, cx.names.second())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.second = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.second = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Millisecond)
+                if time_fields.contains(&TimeField::Millisecond) =>
+            {
+                let value = get(cx, object, cx.names.millisecond())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.millisecond = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.millisecond = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Microsecond)
+                if time_fields.contains(&TimeField::Microsecond) =>
+            {
+                let value = get(cx, object, cx.names.microsecond())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.microsecond = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.microsecond = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Nanosecond)
+                if time_fields.contains(&TimeField::Nanosecond) =>
+            {
+                let value = get(cx, object, cx.names.nanosecond())?;
+                if !value.is_undefined() {
+                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
+                    partial_time.nanosecond = Some(converted_value);
+                } else if required.provides_defaults() {
+                    partial_time.nanosecond = Some(0);
+                }
+            }
+            CalendarField::Time(TimeField::Offset) if time_fields.contains(&TimeField::Offset) => {
+                let value = get(cx, object, cx.names.offset())?;
+                if !value.is_undefined() {
+                    let parsed_offset = parse_offset_string(cx, value, method_name)?;
+                    offset = Some(parsed_offset);
+                }
+            }
+            CalendarField::Time(TimeField::TimeZone)
+                if time_fields.contains(&TimeField::TimeZone) =>
+            {
+                let value = get(cx, object, cx.names.time_zone())?;
+                if !value.is_undefined() {
+                    let parsed_time_zone = to_time_zone_identifier(cx, value, method_name)?;
+                    time_zone = Some(parsed_time_zone);
+                } else if required.requires_time_zone() {
+                    return type_error(
+                        cx,
+                        &format!("{method_name} date-like object must have a `timeZone` property"),
+                    );
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    if !required.provides_defaults()
+        && partial_date.is_empty()
+        && partial_time.is_empty()
+        && offset.is_none()
+        && time_zone.is_none()
+    {
+        return type_error(cx, &format!("{method_name} date-like object is empty"));
+    }
+
+    Ok(PrepareCalendarFieldsResult { partial_date, partial_time, offset, time_zone })
 }

@@ -35,7 +35,9 @@ use crate::{
             temporal::duration_object::DurationObject, temporal::instant_object::InstantObject,
             temporal::plain_date_object::PlainDateObject,
             temporal::plain_date_time_object::PlainDateTimeObject,
-            temporal::plain_time_object::PlainTimeObject, typed_array::DynTypedArray,
+            temporal::plain_month_day_object::PlainMonthDayObject,
+            temporal::plain_time_object::PlainTimeObject,
+            temporal::plain_year_month_object::PlainYearMonthObject, typed_array::DynTypedArray,
             weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
             weak_set_object::WeakSetObject,
         },
@@ -907,10 +909,22 @@ impl_subtype_casts!(
     as_plain_date_time_object
 );
 impl_subtype_casts!(
+    PlainMonthDayObject,
+    HeapItemKind::PlainMonthDayObject,
+    is_plain_month_day_object,
+    as_plain_month_day_object
+);
+impl_subtype_casts!(
     PlainTimeObject,
     HeapItemKind::PlainTimeObject,
     is_plain_time_object,
     as_plain_time_object
+);
+impl_subtype_casts!(
+    PlainYearMonthObject,
+    HeapItemKind::PlainYearMonthObject,
+    is_plain_year_month_object,
+    as_plain_year_month_object
 );
 impl_subtype_casts!(
     RawJSONObject,

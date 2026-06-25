@@ -81,8 +81,13 @@ use crate::{
                 plain_date_prototype::PlainDatePrototype,
                 plain_date_time_constructor::PlainDateTimeConstructor,
                 plain_date_time_prototype::PlainDateTimePrototype,
+                plain_month_day_constructor::PlainMonthDayConstructor,
+                plain_month_day_prototype::PlainMonthDayPrototype,
                 plain_time_constructor::PlainTimeConstructor,
-                plain_time_prototype::PlainTimePrototype, temporal_object::TemporalObject,
+                plain_time_prototype::PlainTimePrototype,
+                plain_year_month_constructor::PlainYearMonthConstructor,
+                plain_year_month_prototype::PlainYearMonthPrototype,
+                temporal_object::TemporalObject,
             },
             typed_array::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
@@ -189,8 +194,12 @@ pub enum Intrinsic {
     PlainDatePrototype,
     PlainDateTimeConstructor,
     PlainDateTimePrototype,
+    PlainMonthDayConstructor,
+    PlainMonthDayPrototype,
     PlainTimeConstructor,
     PlainTimePrototype,
+    PlainYearMonthConstructor,
+    PlainYearMonthPrototype,
     PromiseConstructor,
     PromisePrototype,
     ProxyConstructor,
@@ -483,7 +492,9 @@ impl Intrinsics {
         register_intrinsic_pair!(InstantPrototype, InstantConstructor);
         register_intrinsic_pair!(PlainDatePrototype, PlainDateConstructor);
         register_intrinsic_pair!(PlainDateTimePrototype, PlainDateTimeConstructor);
+        register_intrinsic_pair!(PlainMonthDayPrototype, PlainMonthDayConstructor);
         register_intrinsic_pair!(PlainTimePrototype, PlainTimeConstructor);
+        register_intrinsic_pair!(PlainYearMonthPrototype, PlainYearMonthConstructor);
         register_intrinsic!(Temporal, TemporalObject);
 
         // Builtin functions

@@ -55,7 +55,9 @@ use crate::runtime::{
         temporal::instant_object::InstantObject,
         temporal::plain_date_object::PlainDateObject,
         temporal::plain_date_time_object::PlainDateTimeObject,
+        temporal::plain_month_day_object::PlainMonthDayObject,
         temporal::plain_time_object::PlainTimeObject,
+        temporal::plain_year_month_object::PlainYearMonthObject,
         typed_array::{
             BigInt64Array, BigUInt64Array, Float16Array, Float32Array, Float64Array, Int8Array,
             Int16Array, Int32Array, UInt8Array, UInt8ClampedArray, UInt16Array, UInt32Array,
@@ -162,7 +164,9 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::InstantObject => self.cast::<InstantObject>().byte_size(),
             HeapItemKind::PlainDateObject => self.cast::<PlainDateObject>().byte_size(),
             HeapItemKind::PlainDateTimeObject => self.cast::<PlainDateTimeObject>().byte_size(),
+            HeapItemKind::PlainMonthDayObject => self.cast::<PlainMonthDayObject>().byte_size(),
             HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().byte_size(),
+            HeapItemKind::PlainYearMonthObject => self.cast::<PlainYearMonthObject>().byte_size(),
             HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().byte_size(),
             HeapItemKind::StringIterator => self.cast::<StringIterator>().byte_size(),
             HeapItemKind::SetIterator => self.cast::<SetIterator>().byte_size(),
@@ -289,7 +293,13 @@ impl HeapPtr<AnyHeapItem> {
             HeapItemKind::PlainDateTimeObject => {
                 self.cast::<PlainDateTimeObject>().visit_pointers(visitor)
             }
+            HeapItemKind::PlainMonthDayObject => {
+                self.cast::<PlainMonthDayObject>().visit_pointers(visitor)
+            }
             HeapItemKind::PlainTimeObject => self.cast::<PlainTimeObject>().visit_pointers(visitor),
+            HeapItemKind::PlainYearMonthObject => {
+                self.cast::<PlainYearMonthObject>().visit_pointers(visitor)
+            }
             HeapItemKind::ArrayIterator => self.cast::<ArrayIterator>().visit_pointers(visitor),
             HeapItemKind::StringIterator => self.cast::<StringIterator>().visit_pointers(visitor),
             HeapItemKind::SetIterator => self.cast::<SetIterator>().visit_pointers(visitor),

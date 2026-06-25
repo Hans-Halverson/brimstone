@@ -16,13 +16,15 @@ use crate::runtime::{
             plain_date_object::PlainDateObject,
             plain_date_time_constructor::to_temporal_date_time,
             plain_date_time_object::PlainDateTimeObject,
+            plain_time_constructor::to_temporal_time,
             plain_time_object::PlainTimeObject,
             utils::{
                 DiffOperation, get_difference_settings, get_disambiguation_option,
                 get_fractional_second_digits_option, get_overflow_option,
                 get_rounding_increment_option, get_rounding_mode_option,
                 get_show_calendar_name_option, get_unit_valued_option, map_temporal_result,
-                parse_round_options_argument, to_time_zone_identifier, validate_options_object,
+                parse_round_options_argument, to_temporal_calendar_identifier,
+                to_time_zone_identifier, validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -877,20 +879,41 @@ impl PlainDateTimePrototype {
     pub fn with_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.withPlainTime")?;
-        unimplemented!("PlainDateTime.prototype.withPlainTime")
+        const NAME: &str = "PlainDateTime.prototype.withPlainTime";
+
+        let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
+
+        let time_arg = get_argument(cx, arguments, 0);
+        let time = if time_arg.is_undefined() {
+            None
+        } else {
+            Some(to_temporal_time(cx, time_arg, NAME)?)
+        };
+
+        let new_date_time_result = this_date_time.date_time().with_time(time);
+        let new_date_time = map_temporal_result(cx, new_date_time_result, NAME)?;
+
+        Ok(PlainDateTimeObject::new(cx, new_date_time)?.as_value())
     }
 
     /// Temporal.PlainDateTime.prototype.withCalendar (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.withcalendar)
     pub fn with_calendar(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.withCalendar")?;
-        unimplemented!("PlainDateTime.prototype.withCalendar")
+        const NAME: &str = "PlainDateTime.prototype.withCalendar";
+
+        let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
+
+        let calendar_arg = get_argument(cx, arguments, 0);
+        let calendar = to_temporal_calendar_identifier(cx, calendar_arg, NAME)?;
+
+        let new_date_time = this_date_time.date_time().with_calendar(calendar);
+
+        Ok(PlainDateTimeObject::new(cx, new_date_time)?.as_value())
     }
 }
 

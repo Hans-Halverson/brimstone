@@ -13,8 +13,8 @@ use crate::runtime::{
         temporal::{
             plain_date_object::PlainDateObject,
             utils::{
-                get_overflow_option, map_temporal_result, parse_calendar_argument,
-                to_integer_with_truncation, validate_options_object,
+                get_calendar_identifier_with_iso_default, get_overflow_option, map_temporal_result,
+                parse_calendar_argument, to_integer_with_truncation, validate_options_object,
             },
         },
     },
@@ -163,6 +163,8 @@ pub fn to_temporal_date_with_options(
             validate_overflow_option(cx, options, method_name)?;
             return Ok(plain_date_time.date_time().to_plain_date());
         }
+
+        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
 
         // Otherwise treat as a "date-like" object
         validate_overflow_option(cx, options, method_name)?;

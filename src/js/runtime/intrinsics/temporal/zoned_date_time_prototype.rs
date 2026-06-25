@@ -18,13 +18,15 @@ use crate::runtime::{
             instant_object::InstantObject,
             plain_date_object::PlainDateObject,
             plain_date_time_object::PlainDateTimeObject,
+            plain_time_constructor::to_temporal_time,
             plain_time_object::PlainTimeObject,
             utils::{
                 DiffOperation, get_difference_settings, get_fractional_second_digits_option,
                 get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
                 get_show_calendar_name_option, get_show_offset_option,
                 get_show_time_zone_name_option, get_unit_valued_option, map_temporal_result,
-                parse_round_options_argument, validate_options_object,
+                parse_round_options_argument, to_temporal_calendar_identifier,
+                to_time_zone_identifier, validate_options_object,
             },
             zoned_date_time_constructor::to_temporal_zoned_date_time,
             zoned_date_time_object::ZonedDateTimeObject,
@@ -1036,30 +1038,65 @@ impl ZonedDateTimePrototype {
     pub fn with_plain_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.withPlainTime")?;
-        unimplemented!("ZonedDateTime.prototype.withPlainTime")
+        const NAME: &str = "ZonedDateTime.prototype.withPlainTime";
+
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
+
+        let time_arg = get_argument(cx, arguments, 0);
+        let time = if time_arg.is_undefined() {
+            None
+        } else {
+            Some(to_temporal_time(cx, time_arg, NAME)?)
+        };
+
+        let new_zoned_date_time_result =
+            this_zoned_date_time.zoned_date_time().with_plain_time(time);
+        let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
     }
 
     /// Temporal.ZonedDateTime.prototype.withTimeZone (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withtimezone)
     pub fn with_time_zone(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.withTimeZone")?;
-        unimplemented!("ZonedDateTime.prototype.withTimeZone")
+        const NAME: &str = "ZonedDateTime.prototype.withTimeZone";
+
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
+
+        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
+
+        let new_zoned_date_time_result = this_zoned_date_time
+            .zoned_date_time()
+            .with_timezone(time_zone);
+        let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
     }
 
     /// Temporal.ZonedDateTime.prototype.withCalendar (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.withcalendar)
     pub fn with_calendar(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_zoned_date_time(cx, this_value, "ZonedDateTime.prototype.withCalendar")?;
-        unimplemented!("ZonedDateTime.prototype.withCalendar")
+        const NAME: &str = "ZonedDateTime.prototype.withCalendar";
+
+        let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
+
+        let calendar_arg = get_argument(cx, arguments, 0);
+        let calendar = to_temporal_calendar_identifier(cx, calendar_arg, NAME)?;
+
+        let new_zoned_date_time = this_zoned_date_time
+            .zoned_date_time()
+            .with_calendar(calendar);
+
+        Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
     }
 
     /// Temporal.ZonedDateTime.prototype.startOfDay (https://tc39.es/proposal-temporal/#sec-temporal.zoneddatetime.prototype.startofday)

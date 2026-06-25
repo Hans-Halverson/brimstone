@@ -13,9 +13,9 @@ use crate::runtime::{
         temporal::{
             plain_date_time_object::PlainDateTimeObject,
             utils::{
-                get_overflow_option, map_temporal_result, parse_calendar_argument,
-                to_integer_with_truncation, to_integer_with_truncation_or_zero,
-                validate_options_object,
+                get_calendar_identifier_with_iso_default, get_overflow_option, map_temporal_result,
+                parse_calendar_argument, to_integer_with_truncation,
+                to_integer_with_truncation_or_zero, validate_options_object,
             },
         },
     },
@@ -181,6 +181,8 @@ fn to_temporal_date_time_with_options(
 
             return map_temporal_result(cx, plain_date_time_result, method_name);
         }
+
+        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
 
         // Otherwise treat as a date-time-like object
         unimplemented!("ToTemporalDateTime for date-like object")

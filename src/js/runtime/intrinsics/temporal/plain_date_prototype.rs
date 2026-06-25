@@ -20,8 +20,8 @@ use crate::runtime::{
             plain_year_month_object::PlainYearMonthObject,
             utils::{
                 DiffOperation, get_difference_settings, get_overflow_option,
-                get_show_calendar_name_option, map_temporal_result, to_time_zone_identifier,
-                validate_options_object,
+                get_show_calendar_name_option, map_temporal_result,
+                to_temporal_calendar_identifier, to_time_zone_identifier, validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -729,10 +729,18 @@ impl PlainDatePrototype {
     pub fn with_calendar(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date(cx, this_value, "PlainDate.prototype.withCalendar")?;
-        unimplemented!("PlainDate.prototype.withCalendar")
+        const NAME: &str = "PlainDate.prototype.withCalendar";
+
+        let this_date = this_plain_date(cx, this_value, NAME)?;
+
+        let calendar_arg = get_argument(cx, arguments, 0);
+        let calendar = to_temporal_calendar_identifier(cx, calendar_arg, NAME)?;
+
+        let new_date = this_date.date().with_calendar(calendar);
+
+        Ok(PlainDateObject::new(cx, new_date)?.as_value())
     }
 }
 

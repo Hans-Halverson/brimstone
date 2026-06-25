@@ -16,9 +16,10 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             utils::{
-                clamp_epoch_nanos_to_i128, get_disambiguation_option, get_offset_option,
-                get_overflow_option, map_temporal_result, parse_calendar_argument,
-                parse_time_zone_identifier_argument, validate_options_object,
+                clamp_epoch_nanos_to_i128, get_calendar_identifier_with_iso_default,
+                get_disambiguation_option, get_offset_option, get_overflow_option,
+                map_temporal_result, parse_calendar_argument, parse_time_zone_identifier_argument,
+                validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -168,6 +169,8 @@ pub fn to_temporal_zoned_date_time_with_options(
             validate_options(cx, options, method_name)?;
             return Ok(zdt.zoned_date_time().clone());
         }
+
+        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
 
         // Otherwise treat like a date-like object
         unimplemented!("ToTemporalZonedDateTime for date-like object")

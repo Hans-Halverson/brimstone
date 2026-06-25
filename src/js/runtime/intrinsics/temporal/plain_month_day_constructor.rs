@@ -12,7 +12,10 @@ use crate::runtime::{
         rust_runtime::RuntimeFunction,
         temporal::{
             plain_month_day_object::PlainMonthDayObject,
-            utils::{map_temporal_result, parse_calendar_argument, to_integer_with_truncation},
+            utils::{
+                get_calendar_identifier_with_iso_default, map_temporal_result,
+                parse_calendar_argument, to_integer_with_truncation,
+            },
         },
     },
     object_value::ObjectValue,
@@ -116,6 +119,8 @@ pub fn to_temporal_month_day(
         if let Some(plain_month_day) = item_object.as_plain_month_day_object() {
             return Ok(plain_month_day.month_day().clone());
         }
+
+        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
 
         // Otherwise treat like a date-like object
         unimplemented!("ToTemporalMonthDay for date-like object")

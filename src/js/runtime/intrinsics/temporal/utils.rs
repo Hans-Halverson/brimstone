@@ -288,6 +288,8 @@ pub fn get_relative_to_option(
             return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time().clone())));
         }
 
+        let _ = get_calendar_identifier_with_iso_default(cx, option_object, method_name)?;
+
         // Otherwise treat as a "date-like" object
         unimplemented!("GetTemporalRelativeToOption for date-like object")
     } else if !option_value.is_string() {
@@ -384,6 +386,34 @@ pub fn get_difference_settings(
     settings.rounding_mode = Some(rounding_mode);
 
     Ok(settings)
+}
+
+/// GetTemporalCalendarIdentifierWithISODefault (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalcalendarslotvaluewithisodefault)
+pub fn get_calendar_identifier_with_iso_default(
+    cx: Context,
+    item_object: Handle<ObjectValue>,
+    method_name: &str,
+) -> EvalResult<Calendar> {
+    // Use the calendar of a Temporal object
+    if let Some(date) = item_object.as_plain_date_object() {
+        return Ok(date.date().calendar().clone());
+    } else if let Some(date_time) = item_object.as_plain_date_time_object() {
+        return Ok(date_time.date_time().calendar().clone());
+    } else if let Some(month_day) = item_object.as_plain_month_day_object() {
+        return Ok(month_day.month_day().calendar().clone());
+    } else if let Some(year_month) = item_object.as_plain_year_month_object() {
+        return Ok(year_month.year_month().calendar().clone());
+    } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+        return Ok(zoned_date_time.zoned_date_time().calendar().clone());
+    }
+
+    let calendar_like = get(cx, item_object, cx.names.calendar())?;
+
+    if calendar_like.is_undefined() {
+        Ok(Calendar::ISO)
+    } else {
+        to_temporal_calendar_identifier(cx, calendar_like, method_name)
+    }
 }
 
 /// Parse the options argument for a `round` method. May be a string which is shorthand for the
@@ -525,6 +555,38 @@ pub fn parse_time_zone_identifier_argument(
     }
 
     range_error(cx, &format!("{method_name} `timeZone` argument must be a valid time zone"))
+}
+
+/// ToTemporalCalendarIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporalcalendaridentifier)
+pub fn to_temporal_calendar_identifier(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Calendar> {
+    // Use the calendar of a Temporal object
+    if value.is_object() {
+        if let Some(plain_date) = value.as_object().as_plain_date_object() {
+            return Ok(plain_date.date().calendar().clone());
+        } else if let Some(plain_date_time) = value.as_object().as_plain_date_time_object() {
+            return Ok(plain_date_time.date_time().calendar().clone());
+        } else if let Some(plain_year_month) = value.as_object().as_plain_year_month_object() {
+            return Ok(plain_year_month.year_month().calendar().clone());
+        } else if let Some(plain_month_day) = value.as_object().as_plain_month_day_object() {
+            return Ok(plain_month_day.month_day().calendar().clone());
+        } else if let Some(zoned_date_time) = value.as_object().as_zoned_date_time_object() {
+            return Ok(zoned_date_time.zoned_date_time().calendar().clone());
+        }
+    }
+
+    // Otherwise parse calendar from string
+    if !value.is_string() {
+        return type_error(cx, &format!("{method_name} `calendar` argument must be a string"));
+    }
+
+    let wtf8_string = value.as_string().to_wtf8_string()?;
+    let parsed_calendar_result = Calendar::try_from_utf8(wtf8_string.as_bytes());
+
+    map_temporal_result(cx, parsed_calendar_result, method_name)
 }
 
 /// IsPartialTemporalObject (https://tc39.es/proposal-temporal/#sec-temporal-ispartialtemporalobject)

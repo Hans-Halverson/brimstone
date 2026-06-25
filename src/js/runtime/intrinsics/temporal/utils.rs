@@ -457,7 +457,7 @@ pub fn clamp_epoch_nanos_to_i128(epoch_nanos: &BigInt) -> i128 {
 }
 
 /// ToTemporalTimeZoneIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimezoneidentifier)
-fn to_time_zone_identifier(
+pub fn to_time_zone_identifier(
     cx: Context,
     value: Handle<Value>,
     method_name: &str,

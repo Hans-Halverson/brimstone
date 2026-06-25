@@ -157,20 +157,6 @@ impl PlainTimePrototype {
             0,
             realm,
         )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date_time(),
-            RuntimeFunction::PlainTimePrototype_toPlainDateTime,
-            1,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_zoned_date_time(),
-            RuntimeFunction::PlainTimePrototype_toZonedDateTime,
-            1,
-            realm,
-        )?;
 
         Ok(object)
     }
@@ -451,26 +437,6 @@ impl PlainTimePrototype {
         _: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         type_error(cx, "PlainTime.prototype.valueOf must not be called")
-    }
-
-    /// Temporal.PlainTime.prototype.toPlainDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.toplaindatetime)
-    pub fn to_plain_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.toPlainDateTime")?;
-        unimplemented!("PlainTime.prototype.toPlainDateTime")
-    }
-
-    /// Temporal.PlainTime.prototype.toZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaintime.prototype.tozoneddatetime)
-    pub fn to_zoned_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_time(cx, this_value, "PlainTime.prototype.toZonedDateTime")?;
-        unimplemented!("PlainTime.prototype.toZonedDateTime")
     }
 }
 

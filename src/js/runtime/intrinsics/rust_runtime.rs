@@ -659,10 +659,6 @@ rust_runtime_functions!(
     (PlainDateTimePrototype_toJSON, PlainDateTimePrototype::to_json),
     (PlainDateTimePrototype_toLocaleString, PlainDateTimePrototype::to_locale_string),
     (PlainDateTimePrototype_toPlainDate, PlainDateTimePrototype::to_plain_date),
-    (
-        PlainDateTimePrototype_toPlainDateTime,
-        PlainDateTimePrototype::to_plain_date_time
-    ),
     (PlainDateTimePrototype_toPlainTime, PlainDateTimePrototype::to_plain_time),
     (PlainDateTimePrototype_toString, PlainDateTimePrototype::to_string),
     (
@@ -705,9 +701,7 @@ rust_runtime_functions!(
     (PlainTimePrototype_subtract, PlainTimePrototype::subtract),
     (PlainTimePrototype_toJSON, PlainTimePrototype::to_json),
     (PlainTimePrototype_toLocaleString, PlainTimePrototype::to_locale_string),
-    (PlainTimePrototype_toPlainDateTime, PlainTimePrototype::to_plain_date_time),
     (PlainTimePrototype_toString, PlainTimePrototype::to_string),
-    (PlainTimePrototype_toZonedDateTime, PlainTimePrototype::to_zoned_date_time),
     (PlainTimePrototype_until, PlainTimePrototype::until),
     (PlainTimePrototype_valueOf, PlainTimePrototype::value_of),
     (PlainTimePrototype_with, PlainTimePrototype::with),

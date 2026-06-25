@@ -17,11 +17,12 @@ use crate::runtime::{
             plain_date_time_object::PlainDateTimeObject,
             plain_time_object::PlainTimeObject,
             utils::{
-                get_fractional_second_digits_option, get_overflow_option,
-                get_rounding_increment_option, get_rounding_mode_option,
+                get_disambiguation_option, get_fractional_second_digits_option,
+                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
                 get_show_calendar_name_option, get_unit_valued_option, map_temporal_result,
-                parse_round_options_argument, validate_options_object,
+                parse_round_options_argument, to_time_zone_identifier, validate_options_object,
             },
+            zoned_date_time_object::ZonedDateTimeObject,
         },
     },
     object_value::ObjectValue,
@@ -240,13 +241,6 @@ impl PlainDateTimePrototype {
             cx,
             cx.names.to_plain_time(),
             RuntimeFunction::PlainDateTimePrototype_toPlainTime,
-            0,
-            realm,
-        )?;
-        object.intrinsic_func(
-            cx,
-            cx.names.to_plain_date_time(),
-            RuntimeFunction::PlainDateTimePrototype_toPlainDateTime,
             0,
             realm,
         )?;
@@ -738,26 +732,29 @@ impl PlainDateTimePrototype {
         Ok(PlainTimeObject::new(cx, plain_time)?.as_value())
     }
 
-    /// Temporal.PlainDateTime.prototype.toPlainDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.toplaindatetime)
-    pub fn to_plain_date_time(
-        cx: Context,
-        this_value: Handle<Value>,
-        _: &[Handle<Value>],
-    ) -> EvalResult<Handle<Value>> {
-        let this_date_time =
-            this_plain_date_time(cx, this_value, "PlainDateTime.prototype.toPlainDateTime")?;
-
-        Ok(PlainDateTimeObject::new(cx, this_date_time.date_time().clone())?.as_value())
-    }
-
     /// Temporal.PlainDateTime.prototype.toZonedDateTime (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.tozoneddatetime)
     pub fn to_zoned_date_time(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.toZonedDateTime")?;
-        unimplemented!("PlainDateTime.prototype.toZonedDateTime")
+        const NAME: &str = "PlainDateTime.prototype.toZonedDateTime";
+
+        let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
+
+        let time_zone_arg = get_argument(cx, arguments, 0);
+        let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let disambiguation = get_disambiguation_option(cx, options, NAME)?;
+
+        let zoned_date_time_result = this_date_time
+            .date_time()
+            .to_zoned_date_time(time_zone, disambiguation);
+        let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
+
+        Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
     }
 
     /// Temporal.PlainDateTime.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.tostring)

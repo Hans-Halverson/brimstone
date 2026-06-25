@@ -148,10 +148,21 @@ pub fn to_temporal_time_with_options(
         // Check if item is a Temporal object of some kind
         let object = item.as_object();
         if let Some(plain_time) = object.as_plain_time_object() {
-            return Ok(plain_time.time());
-        }
+            let options = validate_options_object(cx, options_arg, method_name)?;
+            get_overflow_option(cx, options, method_name)?;
 
-        // TODO: Check for DateTime and ZonedDateTime objects
+            return Ok(plain_time.time());
+        } else if let Some(plain_date_time) = object.as_plain_date_time_object() {
+            let options = validate_options_object(cx, options_arg, method_name)?;
+            get_overflow_option(cx, options, method_name)?;
+
+            return Ok(plain_date_time.date_time().to_plain_time());
+        } else if let Some(zoned_date_time) = object.as_zoned_date_time_object() {
+            let options = validate_options_object(cx, options_arg, method_name)?;
+            get_overflow_option(cx, options, method_name)?;
+
+            return Ok(zoned_date_time.zoned_date_time().to_plain_time());
+        }
 
         // Otherwise treat item as a partial time object
         let partial_time = to_partial_time_record(cx, item, method_name)?;

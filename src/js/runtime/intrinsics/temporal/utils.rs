@@ -1,21 +1,30 @@
 use std::str::FromStr;
 
-use num_traits::{AsPrimitive, PrimInt};
+use num_bigint::BigInt;
+use num_traits::{AsPrimitive, PrimInt, ToPrimitive};
 use temporal_rs::{
     Calendar, TemporalResult, TimeZone,
     error::ErrorKind,
-    options::{DisplayCalendar, Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit},
+    options::{
+        Disambiguation, DisplayCalendar, DisplayOffset, DisplayTimeZone, OffsetDisambiguation,
+        Overflow, RelativeTo, RoundingIncrement, RoundingMode, Unit,
+    },
     parsers::Precision,
     primitive::FiniteF64,
 };
 
-use crate::runtime::{
-    Context, EvalResult, Handle, PropertyKey, Value,
-    error::{range_error, syntax_error, type_error},
-    get,
-    object_value::ObjectValue,
-    to_string,
-    type_utilities::to_number,
+use crate::{
+    must,
+    runtime::{
+        Context, EvalResult, Handle, PropertyKey, Value,
+        abstract_operations::create_data_property_or_throw,
+        error::{range_error, syntax_error, type_error},
+        get,
+        object_value::ObjectValue,
+        ordinary_object::ordinary_object_create_without_proto,
+        to_string,
+        type_utilities::to_number,
+    },
 };
 
 /// Map a temporal result to an equivalent EvalResult.
@@ -125,6 +134,19 @@ pub fn get_show_calendar_name_option(
     get_temporal_option(cx, options, cx.names.calendar_name(), || {
         format!(
             "{method_name} `calendarName` option must be 'auto', 'always', 'never', or 'critical'"
+        )
+    })
+}
+
+/// GetTemporalShowTimeZoneNameOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalshowtimezoneoption)
+pub fn get_show_time_zone_name_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<DisplayTimeZone> {
+    get_temporal_option(cx, options, cx.names.time_zone_name(), || {
+        format!(
+            "{method_name} `timeZoneName` option must be 'auto', 'never', 'critical', or 'always'"
         )
     })
 }
@@ -252,12 +274,15 @@ pub fn get_relative_to_option(
 
     if option_value.is_object() {
         let option_object = option_value.as_object();
-        if let Some(plain_date_object) = option_object.as_plain_date_object() {
-            return Ok(Some(RelativeTo::PlainDate(plain_date_object.date().clone())));
+        if let Some(plain_date) = option_object.as_plain_date_object() {
+            return Ok(Some(RelativeTo::PlainDate(plain_date.date().clone())));
+        } else if let Some(plain_date_time) = option_object.as_plain_date_time_object() {
+            return Ok(Some(RelativeTo::PlainDate(plain_date_time.date_time().to_plain_date())));
+        } else if let Some(zoned_date_time) = option_object.as_zoned_date_time_object() {
+            return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time.zoned_date_time().clone())));
         }
 
-        // TODO: Check for PlainDateTime and ZonedDateTime
-
+        // Otherwise treat as a "date-like" object
         unimplemented!("GetTemporalRelativeToOption for date-like object")
     } else if !option_value.is_string() {
         return type_error(
@@ -278,14 +303,83 @@ pub fn get_relative_to_option(
     range_error(cx, &format!("{method_name} `relativeTo` option must be valid"))
 }
 
-pub fn get_timezone_option(
+/// GetTemporalDisambiguationOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporaldisambiguationoption)
+pub fn get_disambiguation_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<Disambiguation> {
+    get_temporal_option(cx, options, cx.names.disambiguation(), || {
+        format!(
+            "{method_name} `disambiguation` option must be 'compatible', 'earlier', 'later', or 'reject'"
+        )
+    })
+}
+
+/// GetTemporalOffsetOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporaloffsetoption)
+pub fn get_offset_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    default: OffsetDisambiguation,
+    method_name: &str,
+) -> EvalResult<OffsetDisambiguation> {
+    let Some(option_value) = get_temporal_option_property(cx, options, cx.names.offset())? else {
+        return Ok(default);
+    };
+
+    match parse_option_from_string(cx, option_value)? {
+        Some(parsed_value) => Ok(parsed_value),
+        None => range_error(
+            cx,
+            &format!(
+                "{method_name} `offset` option must be 'prefer', 'use', 'ignore', or 'reject'"
+            ),
+        ),
+    }
+}
+
+/// GetTemporalShowOffsetOption (https://tc39.es/proposal-temporal/#sec-temporal-gettemporalshowoffsetoption)
+pub fn get_show_offset_option(
+    cx: Context,
+    options: Option<Handle<ObjectValue>>,
+    method_name: &str,
+) -> EvalResult<DisplayOffset> {
+    get_temporal_option(cx, options, cx.names.offset(), || {
+        format!("{method_name} `offset` option must be 'auto', 'never', or 'always'")
+    })
+}
+
+pub fn get_time_zone_option(
     cx: Context,
     options: Option<Handle<ObjectValue>>,
     method_name: &str,
 ) -> EvalResult<Option<TimeZone>> {
-    match get_temporal_option_property(cx, options, cx.names.timezone())? {
-        Some(option_value) => Ok(Some(to_timezone_identifier(cx, option_value, method_name)?)),
+    match get_temporal_option_property(cx, options, cx.names.time_zone())? {
+        Some(option_value) => Ok(Some(to_time_zone_identifier(cx, option_value, method_name)?)),
         None => Ok(None),
+    }
+}
+
+/// Parse the options argument for a `round` method. May be a string which is shorthand for the
+/// `smallestUnit` option.
+pub fn parse_round_options_argument(
+    cx: Context,
+    options_arg: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<Option<Handle<ObjectValue>>> {
+    if options_arg.is_undefined() {
+        type_error(cx, &format!("{method_name} argument must be a string or options object"))
+    } else if options_arg.is_string() {
+        let options = ordinary_object_create_without_proto(cx)?;
+        must!(create_data_property_or_throw(
+            cx,
+            options,
+            cx.names.smallest_unit(),
+            options_arg
+        ));
+        Ok(Some(options))
+    } else {
+        validate_options_object(cx, options_arg, method_name)
     }
 }
 
@@ -357,13 +451,22 @@ where
     }
 }
 
+/// If BigInt is out of i128 range then use `i128::MAX` which will trigger a RangeError.
+pub fn clamp_epoch_nanos_to_i128(epoch_nanos: &BigInt) -> i128 {
+    epoch_nanos.to_i128().unwrap_or(i128::MAX)
+}
+
 /// ToTemporalTimeZoneIdentifier (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimezoneidentifier)
-pub fn to_timezone_identifier(
+fn to_time_zone_identifier(
     cx: Context,
     value: Handle<Value>,
     method_name: &str,
 ) -> EvalResult<TimeZone> {
-    // TODO: Check if ZonedDateTime object
+    if value.is_object()
+        && let Some(zoned_date_time) = value.as_object().as_zoned_date_time_object()
+    {
+        return Ok(*zoned_date_time.zoned_date_time().time_zone());
+    }
 
     if !value.is_string() {
         return type_error(cx, &format!("{method_name} `timeZone` option must be a string"));
@@ -372,11 +475,30 @@ pub fn to_timezone_identifier(
     let wtf8_string = value.as_string().to_wtf8_string()?;
 
     if let Ok(option_str) = str::from_utf8(wtf8_string.as_bytes()) {
-        let parsed_timezone_result = TimeZone::try_from_str(option_str);
-        return map_temporal_result(cx, parsed_timezone_result, method_name);
+        let parsed_time_zone_result = TimeZone::try_from_str(option_str);
+        return map_temporal_result(cx, parsed_time_zone_result, method_name);
     }
 
     range_error(cx, &format!("{method_name} `timeZone` option must be a valid time zone"))
+}
+
+pub fn parse_time_zone_identifier_argument(
+    cx: Context,
+    value: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<TimeZone> {
+    if !value.is_string() {
+        return type_error(cx, &format!("{method_name} `timeZone` argument must be a string"));
+    }
+
+    let wtf8_string = value.as_string().to_wtf8_string()?;
+
+    if let Ok(str) = str::from_utf8(wtf8_string.as_bytes()) {
+        let parsed_time_zone_result = TimeZone::try_from_identifier_str(str);
+        return map_temporal_result(cx, parsed_time_zone_result, method_name);
+    }
+
+    range_error(cx, &format!("{method_name} `timeZone` argument must be a valid time zone"))
 }
 
 /// IsPartialTemporalObject (https://tc39.es/proposal-temporal/#sec-temporal-ispartialtemporalobject)
@@ -387,9 +509,13 @@ pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResu
 
     let object = value.as_object();
 
-    // TODO: Add all other Temporal objects
-
-    if object.is_plain_date_object() || object.is_plain_time_object() {
+    if object.is_plain_date_object()
+        || object.is_plain_time_object()
+        || object.is_plain_date_time_object()
+        || object.is_zoned_date_time_object()
+        || object.is_plain_year_month_object()
+        || object.is_plain_month_day_object()
+    {
         return Ok(false);
     }
 
@@ -398,7 +524,7 @@ pub fn is_partial_temporal_object(cx: Context, value: Handle<Value>) -> EvalResu
         return Ok(false);
     }
 
-    let time_zone_value = get(cx, object, cx.names.timezone())?;
+    let time_zone_value = get(cx, object, cx.names.time_zone())?;
     if !time_zone_value.is_undefined() {
         return Ok(false);
     }

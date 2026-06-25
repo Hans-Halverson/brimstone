@@ -37,7 +37,8 @@ use crate::{
             temporal::plain_date_time_object::PlainDateTimeObject,
             temporal::plain_month_day_object::PlainMonthDayObject,
             temporal::plain_time_object::PlainTimeObject,
-            temporal::plain_year_month_object::PlainYearMonthObject, typed_array::DynTypedArray,
+            temporal::plain_year_month_object::PlainYearMonthObject,
+            temporal::zoned_date_time_object::ZonedDateTimeObject, typed_array::DynTypedArray,
             weak_map_object::WeakMapObject, weak_ref_constructor::WeakRefObject,
             weak_set_object::WeakSetObject,
         },
@@ -925,6 +926,12 @@ impl_subtype_casts!(
     HeapItemKind::PlainYearMonthObject,
     is_plain_year_month_object,
     as_plain_year_month_object
+);
+impl_subtype_casts!(
+    ZonedDateTimeObject,
+    HeapItemKind::ZonedDateTimeObject,
+    is_zoned_date_time_object,
+    as_zoned_date_time_object
 );
 impl_subtype_casts!(
     RawJSONObject,

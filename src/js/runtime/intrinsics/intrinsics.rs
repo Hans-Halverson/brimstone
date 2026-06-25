@@ -88,6 +88,8 @@ use crate::{
                 plain_year_month_constructor::PlainYearMonthConstructor,
                 plain_year_month_prototype::PlainYearMonthPrototype,
                 temporal_object::TemporalObject,
+                zoned_date_time_constructor::ZonedDateTimeConstructor,
+                zoned_date_time_prototype::ZonedDateTimePrototype,
             },
             typed_array::{
                 BigInt64ArrayConstructor, BigInt64ArrayPrototype, BigUInt64ArrayConstructor,
@@ -244,6 +246,8 @@ pub enum Intrinsic {
     WeakRefPrototype,
     WeakSetConstructor,
     WeakSetPrototype,
+    ZonedDateTimeConstructor,
+    ZonedDateTimePrototype,
     Last,
 }
 
@@ -495,6 +499,7 @@ impl Intrinsics {
         register_intrinsic_pair!(PlainMonthDayPrototype, PlainMonthDayConstructor);
         register_intrinsic_pair!(PlainTimePrototype, PlainTimeConstructor);
         register_intrinsic_pair!(PlainYearMonthPrototype, PlainYearMonthConstructor);
+        register_intrinsic_pair!(ZonedDateTimePrototype, ZonedDateTimeConstructor);
         register_intrinsic!(Temporal, TemporalObject);
 
         // Builtin functions

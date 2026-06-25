@@ -156,9 +156,13 @@ pub fn to_temporal_date_with_options(
         if let Some(plain_date) = item_object.as_plain_date_object() {
             validate_overflow_option(cx, options, method_name)?;
             return Ok(plain_date.date().clone());
+        } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+            validate_overflow_option(cx, options, method_name)?;
+            return Ok(zoned_date_time.zoned_date_time().to_plain_date());
+        } else if let Some(plain_date_time) = item_object.as_plain_date_time_object() {
+            validate_overflow_option(cx, options, method_name)?;
+            return Ok(plain_date_time.date_time().to_plain_date());
         }
-
-        // TODO: Check for DateTime and ZonedDateTime objects
 
         // Otherwise treat as a "date-like" object
         validate_overflow_option(cx, options, method_name)?;

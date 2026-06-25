@@ -19,12 +19,12 @@ use crate::runtime::{
             plain_time_constructor::to_temporal_time,
             plain_time_object::PlainTimeObject,
             utils::{
-                DiffOperation, get_difference_settings, get_disambiguation_option,
-                get_fractional_second_digits_option, get_overflow_option,
-                get_rounding_increment_option, get_rounding_mode_option,
-                get_show_calendar_name_option, get_unit_valued_option, map_temporal_result,
-                parse_round_options_argument, to_temporal_calendar_identifier,
-                to_time_zone_identifier, validate_options_object,
+                DateField, DiffOperation, RequiredFieldNames, TimeField, get_difference_settings,
+                get_disambiguation_option, get_fractional_second_digits_option,
+                get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
+                get_show_calendar_name_option, get_unit_valued_option, is_partial_temporal_object,
+                map_temporal_result, parse_round_options_argument, prepare_calendar_fields,
+                to_temporal_calendar_identifier, to_time_zone_identifier, validate_options_object,
             },
             zoned_date_time_object::ZonedDateTimeObject,
         },
@@ -869,10 +869,53 @@ impl PlainDateTimePrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_date_time(cx, this_value, "PlainDateTime.prototype.with")?;
-        unimplemented!("PlainDateTime.prototype.with")
+        const NAME: &str = "PlainDateTime.prototype.with";
+
+        let this_date_time = this_plain_date_time(cx, this_value, NAME)?;
+
+        let date_like_arg = get_argument(cx, arguments, 0);
+        if !is_partial_temporal_object(cx, date_like_arg)? {
+            return type_error(
+                cx,
+                "PlainDateTime.prototype.with argument must be a date-like object",
+            );
+        }
+
+        let date_like_object = date_like_arg.as_object();
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            date_like_object,
+            &[
+                DateField::Year,
+                DateField::Month,
+                DateField::MonthCode,
+                DateField::Day,
+            ],
+            &[
+                TimeField::Hour,
+                TimeField::Minute,
+                TimeField::Second,
+                TimeField::Millisecond,
+                TimeField::Microsecond,
+                TimeField::Nanosecond,
+            ],
+            RequiredFieldNames::Partial,
+            NAME,
+        )?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_date_time_result = this_date_time
+            .date_time()
+            .with(prepared_fields.into_partial_date_time(), Some(overflow));
+        let new_date_time = map_temporal_result(cx, new_date_time_result, NAME)?;
+
+        Ok(PlainDateTimeObject::new(cx, new_date_time)?.as_value())
     }
 
     /// Temporal.PlainDateTime.prototype.withPlainTime (https://tc39.es/proposal-temporal/#sec-temporal.plaindatetime.prototype.withplaintime)

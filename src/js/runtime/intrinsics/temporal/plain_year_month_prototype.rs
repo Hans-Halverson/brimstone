@@ -11,11 +11,13 @@ use crate::runtime::{
         temporal::{
             duration_constructor::to_temporal_duration,
             duration_object::DurationObject,
+            plain_date_object::PlainDateObject,
             plain_year_month_constructor::to_temporal_year_month,
             plain_year_month_object::PlainYearMonthObject,
             utils::{
-                DiffOperation, get_difference_settings, get_overflow_option,
-                get_show_calendar_name_option, map_temporal_result, validate_options_object,
+                DateField, DiffOperation, RequiredFieldNames, get_difference_settings,
+                get_overflow_option, get_show_calendar_name_option, is_partial_temporal_object,
+                map_temporal_result, prepare_calendar_fields, validate_options_object,
             },
         },
     },
@@ -409,7 +411,7 @@ impl PlainYearMonthPrototype {
         let this_year_month = this_plain_year_month(cx, this_value, method_name)?;
 
         let other_arg = get_argument(cx, arguments, 0);
-        let other = to_temporal_year_month(cx, other_arg, method_name)?;
+        let other = to_temporal_year_month(cx, other_arg, None, method_name)?;
 
         let options_arg = get_argument(cx, arguments, 1);
         let options = validate_options_object(cx, options_arg, method_name)?;
@@ -440,7 +442,7 @@ impl PlainYearMonthPrototype {
         let this_year_month = this_plain_year_month(cx, this_value, NAME)?;
 
         let other_arg = get_argument(cx, arguments, 0);
-        let other_year_month = to_temporal_year_month(cx, other_arg, NAME)?;
+        let other_year_month = to_temporal_year_month(cx, other_arg, None, NAME)?;
 
         Ok(cx.bool(this_year_month.year_month() == &other_year_month))
     }
@@ -449,10 +451,35 @@ impl PlainYearMonthPrototype {
     pub fn to_plain_date(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.toPlainDate")?;
-        unimplemented!("PlainYearMonth.prototype.toPlainDate")
+        const NAME: &str = "PlainYearMonth.prototype.toPlainDate";
+
+        let this_year_month = this_plain_year_month(cx, this_value, NAME)?;
+
+        let item_arg = get_argument(cx, arguments, 0);
+        if !item_arg.is_object() {
+            return type_error(
+                cx,
+                "PlainYearMonth.prototype.toPlainDate argument must be a date-like object",
+            );
+        }
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            item_arg.as_object(),
+            &[DateField::Day],
+            &[],
+            RequiredFieldNames::Partial,
+            NAME,
+        )?;
+
+        let plain_date_result = this_year_month
+            .year_month()
+            .to_plain_date(Some(prepared_fields.into_partial_date()));
+        let plain_date = map_temporal_result(cx, plain_date_result, NAME)?;
+
+        Ok(PlainDateObject::new(cx, plain_date)?.as_value())
     }
 
     /// Temporal.PlainYearMonth.prototype.toString (https://tc39.es/proposal-temporal/#sec-temporal.plainyearmonth.prototype.tostring)
@@ -519,10 +546,41 @@ impl PlainYearMonthPrototype {
     pub fn with(
         cx: Context,
         this_value: Handle<Value>,
-        _: &[Handle<Value>],
+        arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
-        let _ = this_plain_year_month(cx, this_value, "PlainYearMonth.prototype.with")?;
-        unimplemented!("PlainYearMonth.prototype.with")
+        const NAME: &str = "PlainYearMonth.prototype.with";
+
+        let this_year_month = this_plain_year_month(cx, this_value, NAME)?;
+
+        let date_like_arg = get_argument(cx, arguments, 0);
+        if !is_partial_temporal_object(cx, date_like_arg)? {
+            return type_error(
+                cx,
+                "PlainYearMonth.prototype.with argument must be a date-like object",
+            );
+        }
+
+        let date_like_object = date_like_arg.as_object();
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            date_like_object,
+            &[DateField::Year, DateField::Month, DateField::MonthCode],
+            &[],
+            RequiredFieldNames::Partial,
+            NAME,
+        )?;
+
+        let options_arg = get_argument(cx, arguments, 1);
+        let options = validate_options_object(cx, options_arg, NAME)?;
+        let overflow = get_overflow_option(cx, options, NAME)?;
+
+        let new_year_month_result = this_year_month
+            .year_month()
+            .with(prepared_fields.into_partial_date().into(), Some(overflow));
+        let new_year_month = map_temporal_result(cx, new_year_month_result, NAME)?;
+
+        Ok(PlainYearMonthObject::new(cx, new_year_month)?.as_value())
     }
 }
 

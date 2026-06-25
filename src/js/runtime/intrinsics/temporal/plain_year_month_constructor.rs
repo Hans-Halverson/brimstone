@@ -1,4 +1,4 @@
-use temporal_rs::PlainYearMonth;
+use temporal_rs::{PlainYearMonth, parsed_intermediates::ParsedDate, partial::PartialYearMonth};
 
 use crate::runtime::{
     Context, Handle, Realm, Value,
@@ -13,8 +13,9 @@ use crate::runtime::{
         temporal::{
             plain_year_month_object::PlainYearMonthObject,
             utils::{
-                get_calendar_identifier_with_iso_default, map_temporal_result,
-                parse_calendar_argument, to_integer_with_truncation,
+                DateField, RequiredFieldNames, get_calendar_identifier_with_iso_default,
+                get_overflow_option, map_temporal_result, parse_calendar_argument,
+                prepare_calendar_fields, to_integer_with_truncation, validate_options_object,
             },
         },
     },
@@ -106,7 +107,10 @@ impl PlainYearMonthConstructor {
         arguments: &[Handle<Value>],
     ) -> EvalResult<Handle<Value>> {
         let item_arg = get_argument(cx, arguments, 0);
-        let plain_year_month = to_temporal_year_month(cx, item_arg, "PlainYearMonth.from")?;
+        let options_arg = get_argument(cx, arguments, 1);
+
+        let plain_year_month =
+            to_temporal_year_month(cx, item_arg, Some(options_arg), "PlainYearMonth.from")?;
 
         Ok(PlainYearMonthObject::new(cx, plain_year_month)?.as_value())
     }
@@ -122,8 +126,8 @@ impl PlainYearMonthConstructor {
         let arg_1 = get_argument(cx, arguments, 0);
         let arg_2 = get_argument(cx, arguments, 1);
 
-        let year_month_1 = to_temporal_year_month(cx, arg_1, NAME)?;
-        let year_month_2 = to_temporal_year_month(cx, arg_2, NAME)?;
+        let year_month_1 = to_temporal_year_month(cx, arg_1, None, NAME)?;
+        let year_month_2 = to_temporal_year_month(cx, arg_2, None, NAME)?;
 
         Ok(cx.smi(year_month_1.compare_iso(&year_month_2) as i32))
     }
@@ -133,19 +137,44 @@ impl PlainYearMonthConstructor {
 pub fn to_temporal_year_month(
     cx: Context,
     item: Handle<Value>,
+    options_arg: Option<Handle<Value>>,
     method_name: &str,
 ) -> EvalResult<PlainYearMonth> {
+    let options_arg = options_arg.unwrap_or_else(|| cx.undefined());
+
     if item.is_object() {
         // Check if item is a Temporal object of some kind
         let item_object = item.as_object();
         if let Some(plain_year_month) = item_object.as_plain_year_month_object() {
+            let options = validate_options_object(cx, options_arg, method_name)?;
+            get_overflow_option(cx, options, method_name)?;
+
             return Ok(plain_year_month.year_month().clone());
         }
 
-        let _ = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
-
         // Otherwise treat like a date-like object
-        unimplemented!("ToTemporalYearMonth for date-like object")
+        let calendar = get_calendar_identifier_with_iso_default(cx, item_object, method_name)?;
+
+        let prepared_fields = prepare_calendar_fields(
+            cx,
+            item_object,
+            &[DateField::Year, DateField::Month, DateField::MonthCode],
+            &[],
+            RequiredFieldNames::Defaults,
+            method_name,
+        )?;
+
+        let options = validate_options_object(cx, options_arg, method_name)?;
+        let overflow = get_overflow_option(cx, options, method_name)?;
+
+        let partial_date = PartialYearMonth {
+            calendar,
+            calendar_fields: prepared_fields.into_partial_date().into(),
+        };
+
+        let year_month_result = PlainYearMonth::from_partial(partial_date, Some(overflow));
+
+        return map_temporal_result(cx, year_month_result, method_name);
     }
 
     // Otherwise parse PlainYearMonth from string
@@ -154,9 +183,14 @@ pub fn to_temporal_year_month(
     }
 
     let item_string = item.as_string().to_wtf8_string()?;
-
-    let parsed_result = PlainYearMonth::from_utf8(item_string.as_bytes());
+    let parsed_result = ParsedDate::year_month_from_utf8(item_string.as_bytes());
     let parsed = map_temporal_result(cx, parsed_result, method_name)?;
 
-    Ok(parsed)
+    let options = validate_options_object(cx, options_arg, method_name)?;
+    get_overflow_option(cx, options, method_name)?;
+
+    let year_month_result = PlainYearMonth::from_parsed(parsed);
+    let year_month = map_temporal_result(cx, year_month_result, method_name)?;
+
+    Ok(year_month)
 }

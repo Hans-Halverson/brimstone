@@ -45,6 +45,13 @@ impl TemporalObject {
             plain_year_month_constructor.as_value(),
         )?;
 
+        let zoned_date_time_constructor = realm.get_intrinsic(Intrinsic::ZonedDateTimeConstructor);
+        object.intrinsic_data_prop(
+            cx,
+            cx.names.zoned_date_time(),
+            zoned_date_time_constructor.as_value(),
+        )?;
+
         // Temporal [ %Symbol.toStringTag% ] (https://tc39.es/proposal-temporal/#sec-temporal-%symbol.tostringtag%)
         let to_string_tag_key = cx.well_known_symbols.to_string_tag();
         object.set_property(

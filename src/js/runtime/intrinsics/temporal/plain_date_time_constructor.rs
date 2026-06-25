@@ -168,6 +168,11 @@ fn to_temporal_date_time_with_options(
             get_overflow_option(cx, options, method_name)?;
 
             return Ok(plain_date_time.date_time().clone());
+        } else if let Some(zoned_date_time) = item_object.as_zoned_date_time_object() {
+            let options = validate_options_object(cx, options, method_name)?;
+            get_overflow_option(cx, options, method_name)?;
+
+            return Ok(zoned_date_time.zoned_date_time().to_plain_date_time());
         } else if let Some(plain_date) = item_object.as_plain_date_object() {
             let options = validate_options_object(cx, options, method_name)?;
             get_overflow_option(cx, options, method_name)?;
@@ -176,8 +181,6 @@ fn to_temporal_date_time_with_options(
 
             return map_temporal_result(cx, plain_date_time_result, method_name);
         }
-
-        // TODO: Check for ZonedDateTime objects
 
         // Otherwise treat as a date-time-like object
         unimplemented!("ToTemporalDateTime for date-like object")

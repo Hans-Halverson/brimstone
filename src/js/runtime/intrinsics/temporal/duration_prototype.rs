@@ -20,7 +20,8 @@ use crate::{
                 utils::{
                     get_fractional_second_digits_option, get_relative_to_option,
                     get_rounding_increment_option, get_rounding_mode_option,
-                    get_unit_valued_option, map_temporal_result, validate_options_object,
+                    get_unit_valued_option, map_temporal_result, parse_round_options_argument,
+                    validate_options_object,
                 },
             },
         },
@@ -453,26 +454,9 @@ impl DurationPrototype {
         const NAME: &str = "Duration.prototype.round";
 
         let duration = this_duration(cx, this_value, NAME)?;
-        let round_to_arg = get_argument(cx, arguments, 0);
 
-        // A string is shorthand for the `smallestUnit` option.
-        let options = if round_to_arg.is_undefined() {
-            return type_error(
-                cx,
-                "Duration.prototype.round argument must be a string or options object",
-            );
-        } else if round_to_arg.is_string() {
-            let options = ordinary_object_create_without_proto(cx)?;
-            must!(create_data_property_or_throw(
-                cx,
-                options,
-                cx.names.smallest_unit(),
-                round_to_arg
-            ));
-            Some(options)
-        } else {
-            validate_options_object(cx, round_to_arg, NAME)?
-        };
+        let options_arg = get_argument(cx, arguments, 0);
+        let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding options from options object
         let largest_unit = get_unit_valued_option(cx, options, cx.names.largest_unit(), NAME)?;
@@ -504,13 +488,13 @@ impl DurationPrototype {
         let duration = this_duration(cx, this_value, NAME)?;
         let total_of_arg = get_argument(cx, arguments, 0);
 
+        // Options object. A string is shorthand for the `unit` option.
         let options = if total_of_arg.is_undefined() {
             return type_error(
                 cx,
                 "Duration.prototype.total argument must be a string or options object",
             );
         } else if total_of_arg.is_string() {
-            // Options object. A string is shorthand for the `unit` option.
             let options = ordinary_object_create_without_proto(cx)?;
             must!(create_data_property_or_throw(cx, options, cx.names.unit(), total_of_arg));
             Some(options)

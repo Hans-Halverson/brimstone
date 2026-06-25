@@ -1,0 +1,62 @@
+use temporal_rs::ZonedDateTime;
+
+use crate::{
+    extend_object,
+    runtime::{
+        Context, EvalResult, Handle, HeapPtr,
+        gc::{HeapItem, HeapVisitor},
+        heap_item_descriptor::HeapItemKind,
+        intrinsics::intrinsics::Intrinsic,
+        object_value::ObjectValue,
+        ordinary_object::object_create_from_constructor,
+    },
+    set_uninit,
+};
+
+// ZonedDateTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-objects)
+extend_object! {
+    pub struct ZonedDateTimeObject {
+        zoned_date_time: ZonedDateTime,
+    }
+}
+
+impl ZonedDateTimeObject {
+    pub fn new(
+        cx: Context,
+        zoned_date_time: ZonedDateTime,
+    ) -> EvalResult<Handle<ZonedDateTimeObject>> {
+        let constructor = cx.get_intrinsic(Intrinsic::ZonedDateTimeConstructor);
+        Self::new_from_constructor(cx, constructor, zoned_date_time)
+    }
+
+    pub fn new_from_constructor(
+        cx: Context,
+        constructor: Handle<ObjectValue>,
+        zoned_date_time: ZonedDateTime,
+    ) -> EvalResult<Handle<ZonedDateTimeObject>> {
+        let mut object = object_create_from_constructor::<ZonedDateTimeObject>(
+            cx,
+            constructor,
+            HeapItemKind::ZonedDateTimeObject,
+            Intrinsic::ZonedDateTimePrototype,
+        )?;
+
+        set_uninit!(object.zoned_date_time, zoned_date_time);
+
+        Ok(object.to_handle())
+    }
+
+    pub fn zoned_date_time(&self) -> &ZonedDateTime {
+        &self.zoned_date_time
+    }
+}
+
+impl HeapItem for HeapPtr<ZonedDateTimeObject> {
+    fn byte_size(&self) -> usize {
+        size_of::<ZonedDateTimeObject>()
+    }
+
+    fn visit_pointers(&mut self, visitor: &mut impl HeapVisitor) {
+        self.visit_object_pointers(visitor);
+    }
+}

@@ -116,6 +116,7 @@ impl DescriptorRegistry {
         ordinary_object_descriptor!(HeapItemKind::PlainMonthDayObject);
         ordinary_object_descriptor!(HeapItemKind::PlainTimeObject);
         ordinary_object_descriptor!(HeapItemKind::PlainYearMonthObject);
+        ordinary_object_descriptor!(HeapItemKind::ZonedDateTimeObject);
 
         ordinary_object_descriptor!(HeapItemKind::ArrayIterator);
         ordinary_object_descriptor!(HeapItemKind::StringIterator);

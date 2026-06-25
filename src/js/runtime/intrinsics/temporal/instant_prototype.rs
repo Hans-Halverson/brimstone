@@ -1,33 +1,28 @@
 use num_bigint::BigInt;
 use temporal_rs::options::{RoundingMode, RoundingOptions, ToStringRoundingOptions};
 
-use crate::{
-    must,
-    runtime::{
-        Context, EvalResult, Handle, Realm, Value,
-        abstract_operations::create_data_property_or_throw,
-        alloc_error::AllocResult,
-        error::type_error,
-        function::get_argument,
-        intrinsics::{
-            intrinsics::Intrinsic,
-            rust_runtime::RuntimeFunction,
-            temporal::{
-                duration_constructor::to_temporal_duration,
-                instant_constructor::to_temporal_instant,
-                instant_object::InstantObject,
-                utils::{
-                    get_fractional_second_digits_option, get_rounding_increment_option,
-                    get_rounding_mode_option, get_timezone_option, get_unit_valued_option,
-                    map_temporal_result, validate_options_object,
-                },
+use crate::runtime::{
+    Context, EvalResult, Handle, Realm, Value,
+    alloc_error::AllocResult,
+    error::type_error,
+    function::get_argument,
+    intrinsics::{
+        intrinsics::Intrinsic,
+        rust_runtime::RuntimeFunction,
+        temporal::{
+            duration_constructor::to_temporal_duration,
+            instant_constructor::to_temporal_instant,
+            instant_object::InstantObject,
+            utils::{
+                get_fractional_second_digits_option, get_rounding_increment_option,
+                get_rounding_mode_option, get_time_zone_option, get_unit_valued_option,
+                map_temporal_result, parse_round_options_argument, validate_options_object,
             },
         },
-        object_value::ObjectValue,
-        ordinary_object::ordinary_object_create_without_proto,
-        property::Property,
-        value::BigIntValue,
     },
+    object_value::ObjectValue,
+    property::Property,
+    value::BigIntValue,
 };
 
 pub struct InstantPrototype;
@@ -234,35 +229,19 @@ impl InstantPrototype {
         const NAME: &str = "Instant.prototype.round";
 
         let instant = this_instant(cx, this_value, NAME)?;
-        let round_to_arg = get_argument(cx, arguments, 0);
 
-        // Options object. A string is shorthand for the `smallestUnit` option.
-        let options = if round_to_arg.is_undefined() {
-            return type_error(
-                cx,
-                "Instant.prototype.round argument must be a string or options object",
-            );
-        } else if round_to_arg.is_string() {
-            let options = ordinary_object_create_without_proto(cx)?;
-            must!(create_data_property_or_throw(
-                cx,
-                options,
-                cx.names.smallest_unit(),
-                round_to_arg
-            ));
-            Some(options)
-        } else {
-            validate_options_object(cx, round_to_arg, NAME)?
-        };
+        let options_arg = get_argument(cx, arguments, 0);
+        let options = parse_round_options_argument(cx, options_arg, NAME)?;
 
         // Parse rounding from options object
-        let mut rounding_options = RoundingOptions::default();
+        let increment = get_rounding_increment_option(cx, options, NAME)?;
+        let rounding_mode = get_rounding_mode_option(cx, options, RoundingMode::HalfExpand, NAME)?;
+        let smallest_unit = get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
 
-        rounding_options.increment = Some(get_rounding_increment_option(cx, options, NAME)?);
-        rounding_options.rounding_mode =
-            Some(get_rounding_mode_option(cx, options, RoundingMode::HalfExpand, NAME)?);
-        rounding_options.smallest_unit =
-            get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
+        let mut rounding_options = RoundingOptions::default();
+        rounding_options.increment = Some(increment);
+        rounding_options.rounding_mode = Some(rounding_mode);
+        rounding_options.smallest_unit = smallest_unit;
 
         let rounded_result = instant.instant().round(rounding_options);
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
@@ -303,7 +282,7 @@ impl InstantPrototype {
         let precision = get_fractional_second_digits_option(cx, options, NAME)?;
         let rounding_mode = get_rounding_mode_option(cx, options, RoundingMode::Trunc, NAME)?;
         let smallest_unit = get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
-        let timezone = get_timezone_option(cx, options, NAME)?;
+        let timezone = get_time_zone_option(cx, options, NAME)?;
 
         let to_string_options = ToStringRoundingOptions {
             precision,

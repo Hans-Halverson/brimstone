@@ -1,5 +1,4 @@
 use num_bigint::BigInt;
-use num_traits::ToPrimitive;
 use temporal_rs::Instant;
 
 use crate::{
@@ -15,7 +14,10 @@ use crate::{
             bigint_constructor::number_to_bigint,
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
-            temporal::{instant_object::InstantObject, utils::map_temporal_result},
+            temporal::{
+                instant_object::InstantObject,
+                utils::{clamp_epoch_nanos_to_i128, map_temporal_result},
+            },
         },
         object_value::ObjectValue,
         type_utilities::{ToPrimitivePreferredType, to_bigint, to_number, to_primitive},
@@ -169,10 +171,7 @@ pub fn create_temporal_instant(
     new_target: Option<Handle<ObjectValue>>,
     method_name: &str,
 ) -> EvalResult<Handle<InstantObject>> {
-    // If BigInt is out of i128 range then use `i128::MAX` which will trigger a RangeError
-    let epoch_nanos_i128 = epoch_nanos.to_i128().unwrap_or(i128::MAX);
-
-    let instant_result = Instant::try_new(epoch_nanos_i128);
+    let instant_result = Instant::try_new(clamp_epoch_nanos_to_i128(epoch_nanos));
     let instant = map_temporal_result(cx, instant_result, method_name)?;
 
     match new_target {

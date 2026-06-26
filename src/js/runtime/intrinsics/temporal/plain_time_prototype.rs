@@ -290,13 +290,15 @@ impl PlainTimePrototype {
             );
         }
 
-        let partial = to_partial_time_record(cx, time_like_arg, NAME)?;
+        let partial_record = to_partial_time_record(cx, time_like_arg, NAME)?;
 
         let options_arg = get_argument(cx, arguments, 1);
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_time_result = plain_time.time().with(partial, Some(overflow));
+        let partial_time = partial_record.clamp_and_validate(cx, overflow, NAME)?;
+
+        let new_time_result = plain_time.time().with(partial_time, Some(overflow));
         let new_time = map_temporal_result(cx, new_time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, new_time)?.as_value())

@@ -1,4 +1,4 @@
-use temporal_rs::{PlainTime, partial::PartialTime};
+use temporal_rs::{PlainTime, options::Overflow, partial::PartialTime};
 
 use crate::runtime::{
     Context, Handle, Realm, Value,
@@ -15,7 +15,10 @@ use crate::runtime::{
             plain_time_object::PlainTimeObject,
             utils::{
                 get_overflow_option, map_temporal_result, to_integer_with_truncation,
-                to_integer_with_truncation_or_zero, validate_options_object,
+                to_integer_with_truncation_or_zero, validate_hour_argument,
+                validate_micro_argument, validate_milli_argument, validate_minute_argument,
+                validate_nano_argument, validate_options_object, validate_second_argument,
+                validate_time_arguments,
             },
         },
     },
@@ -72,25 +75,31 @@ impl PlainTimeConstructor {
             return type_error(cx, "Temporal.PlainTime constructor must be called with new");
         };
 
+        // Truncate time arguments to signed ints. This effectively clamps the value on the upper
+        // bound (since an error will be triggered later). But the lower bound must be checked
+        // manually later. Signed width is enough to hold the maximum value of each time field.
         let hour_arg = get_argument(cx, arguments, 0);
-        let hour = to_integer_with_truncation_or_zero(cx, hour_arg, NAME)?;
+        let hour = to_integer_with_truncation_or_zero::<i8>(cx, hour_arg, NAME)?;
 
         let minute_arg = get_argument(cx, arguments, 1);
-        let minute = to_integer_with_truncation_or_zero(cx, minute_arg, NAME)?;
+        let minute = to_integer_with_truncation_or_zero::<i8>(cx, minute_arg, NAME)?;
 
         let second_arg = get_argument(cx, arguments, 2);
-        let second = to_integer_with_truncation_or_zero(cx, second_arg, NAME)?;
+        let second = to_integer_with_truncation_or_zero::<i8>(cx, second_arg, NAME)?;
 
         let millis_arg = get_argument(cx, arguments, 3);
-        let millis = to_integer_with_truncation_or_zero(cx, millis_arg, NAME)?;
+        let millis = to_integer_with_truncation_or_zero::<i16>(cx, millis_arg, NAME)?;
 
         let micros_arg = get_argument(cx, arguments, 4);
-        let micros = to_integer_with_truncation_or_zero(cx, micros_arg, NAME)?;
+        let micros = to_integer_with_truncation_or_zero::<i16>(cx, micros_arg, NAME)?;
 
         let nanos_arg = get_argument(cx, arguments, 5);
-        let nanos = to_integer_with_truncation_or_zero(cx, nanos_arg, NAME)?;
+        let nanos = to_integer_with_truncation_or_zero::<i16>(cx, nanos_arg, NAME)?;
 
-        let plain_time_result = PlainTime::new(hour, minute, second, millis, micros, nanos);
+        let (hour, minute, second, millis, micros, nanos) =
+            validate_time_arguments(cx, hour, minute, second, millis, micros, nanos, NAME)?;
+
+        let plain_time_result = PlainTime::try_new(hour, minute, second, millis, micros, nanos);
         let plain_time = map_temporal_result(cx, plain_time_result, NAME)?;
 
         Ok(PlainTimeObject::new_from_constructor(cx, new_target, plain_time)?.as_value())
@@ -165,11 +174,13 @@ pub fn to_temporal_time_with_options(
         }
 
         // Otherwise treat item as a partial time object
-        let partial_time = to_partial_time_record(cx, item, method_name)?;
+        let partial_record = to_partial_time_record(cx, item, method_name)?;
 
         // Parse overflow option from options argument
         let options = validate_options_object(cx, options_arg, method_name)?;
         let overflow = get_overflow_option(cx, options, method_name)?;
+
+        let partial_time = partial_record.clamp_and_validate(cx, overflow, method_name)?;
 
         let plain_time_result = PlainTime::from_partial(partial_time, Some(overflow));
 
@@ -190,59 +201,147 @@ pub fn to_temporal_time_with_options(
     Ok(parsed_time)
 }
 
+/// A partial time record with unvalidated fields (clamped to their signed bounds).
+#[derive(Default, PartialEq)]
+pub struct PartialTimeRecord {
+    hour: Option<i8>,
+    minute: Option<i8>,
+    second: Option<i8>,
+    milli: Option<i16>,
+    micro: Option<i16>,
+    nano: Option<i16>,
+}
+
+impl PartialTimeRecord {
+    fn is_empty(&self) -> bool {
+        self == &PartialTimeRecord::default()
+    }
+
+    /// Clamp and validate the partial time record fields, depending on the overflow option.
+    pub fn clamp_and_validate(
+        &self,
+        cx: Context,
+        overflow: Overflow,
+        method_name: &str,
+    ) -> EvalResult<PartialTime> {
+        let hour = if let Some(hour) = self.hour {
+            if overflow == Overflow::Reject {
+                Some(validate_hour_argument(cx, hour, method_name)?)
+            } else {
+                Some(hour.max(0) as u8)
+            }
+        } else {
+            None
+        };
+
+        let minute = if let Some(minute) = self.minute {
+            if overflow == Overflow::Reject {
+                Some(validate_minute_argument(cx, minute, method_name)?)
+            } else {
+                Some(minute.max(0) as u8)
+            }
+        } else {
+            None
+        };
+
+        let second = if let Some(second) = self.second {
+            if overflow == Overflow::Reject {
+                Some(validate_second_argument(cx, second, method_name)?)
+            } else {
+                Some(second.max(0) as u8)
+            }
+        } else {
+            None
+        };
+
+        let milli = if let Some(milli) = self.milli {
+            if overflow == Overflow::Reject {
+                Some(validate_milli_argument(cx, milli, method_name)?)
+            } else {
+                Some(milli.max(0) as u16)
+            }
+        } else {
+            None
+        };
+
+        let micro = if let Some(micro) = self.micro {
+            if overflow == Overflow::Reject {
+                Some(validate_micro_argument(cx, micro, method_name)?)
+            } else {
+                Some(micro.max(0) as u16)
+            }
+        } else {
+            None
+        };
+
+        let nano = if let Some(nano) = self.nano {
+            if overflow == Overflow::Reject {
+                Some(validate_nano_argument(cx, nano, method_name)?)
+            } else {
+                Some(nano.max(0) as u16)
+            }
+        } else {
+            None
+        };
+
+        Ok(PartialTime {
+            hour,
+            minute,
+            second,
+            millisecond: milli,
+            microsecond: micro,
+            nanosecond: nano,
+        })
+    }
+}
+
 /// ToTemporalTimeRecord (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimerecord)
 pub fn to_partial_time_record(
     cx: Context,
     time_like_object: Handle<Value>,
     method_name: &str,
-) -> EvalResult<PartialTime> {
+) -> EvalResult<PartialTimeRecord> {
     if !time_like_object.is_object() {
         return type_error(cx, &format!("{method_name} time must be an object"));
     }
 
     let object = time_like_object.as_object();
 
-    let mut partial_time = PartialTime::default();
+    let mut record = PartialTimeRecord::default();
 
     let hour_value = get(cx, object, cx.names.hour())?;
     if !hour_value.is_undefined() {
-        let hour = to_integer_with_truncation(cx, hour_value, method_name)?;
-        partial_time = partial_time.with_hour(Some(hour));
+        record.hour = Some(to_integer_with_truncation(cx, hour_value, method_name)?);
     }
 
     let micro_value = get(cx, object, cx.names.microsecond())?;
     if !micro_value.is_undefined() {
-        let micro = to_integer_with_truncation(cx, micro_value, method_name)?;
-        partial_time = partial_time.with_microsecond(Some(micro));
+        record.micro = Some(to_integer_with_truncation(cx, micro_value, method_name)?);
     }
 
     let milli_value = get(cx, object, cx.names.millisecond())?;
     if !milli_value.is_undefined() {
-        let milli = to_integer_with_truncation(cx, milli_value, method_name)?;
-        partial_time = partial_time.with_millisecond(Some(milli));
+        record.milli = Some(to_integer_with_truncation(cx, milli_value, method_name)?);
     }
 
     let minute_value = get(cx, object, cx.names.minute())?;
     if !minute_value.is_undefined() {
-        let minute = to_integer_with_truncation(cx, minute_value, method_name)?;
-        partial_time = partial_time.with_minute(Some(minute));
+        record.minute = Some(to_integer_with_truncation(cx, minute_value, method_name)?);
     }
 
     let nano_value = get(cx, object, cx.names.nanosecond())?;
     if !nano_value.is_undefined() {
-        let nano = to_integer_with_truncation(cx, nano_value, method_name)?;
-        partial_time = partial_time.with_nanosecond(Some(nano));
+        record.nano = Some(to_integer_with_truncation(cx, nano_value, method_name)?);
     }
 
     let second_value = get(cx, object, cx.names.second())?;
     if !second_value.is_undefined() {
-        let second = to_integer_with_truncation(cx, second_value, method_name)?;
-        partial_time = partial_time.with_second(Some(second));
+        record.second = Some(to_integer_with_truncation(cx, second_value, method_name)?);
     }
 
-    if partial_time.is_empty() {
+    if record.is_empty() {
         return type_error(cx, &format!("{method_name} time object is empty"));
     }
 
-    Ok(partial_time)
+    Ok(record)
 }

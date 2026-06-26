@@ -72,6 +72,7 @@ impl PlainMonthDayConstructor {
         let month_arg = get_argument(cx, arguments, 0);
         let day_arg = get_argument(cx, arguments, 1);
 
+        // Truncation for year, month, and day will trigger an error later in creation
         let month = to_integer_with_truncation(cx, month_arg, NAME)?;
         let day = to_integer_with_truncation(cx, day_arg, NAME)?;
 

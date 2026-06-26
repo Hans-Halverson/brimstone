@@ -168,11 +168,9 @@ pub fn to_temporal_year_month(
         let options = validate_options_object(cx, options_arg, method_name)?;
         let overflow = get_overflow_option(cx, options, method_name)?;
 
-        let partial_date = PartialYearMonth {
-            calendar,
-            calendar_fields: prepared_fields.into_partial_date().into(),
-        };
+        let calendar_fields = prepared_fields.into_validated_date_fields().into();
 
+        let partial_date = PartialYearMonth { calendar, calendar_fields };
         let year_month_result = PlainYearMonth::from_partial(partial_date, Some(overflow));
 
         return map_temporal_result(cx, year_month_result, method_name);

@@ -1124,8 +1124,10 @@ impl ZonedDateTimePrototype {
         let offset = get_offset_option(cx, options, OffsetDisambiguation::Prefer, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
+        let fields = prepared_fields.into_validated_zoned_date_time_fields(cx, overflow, NAME)?;
+
         let new_zoned_date_time_result = this_zoned_date_time.zoned_date_time().with_with_provider(
-            prepared_fields.into_partial_zoned_date_time(),
+            fields,
             Some(disambiguation),
             Some(offset),
             Some(overflow),

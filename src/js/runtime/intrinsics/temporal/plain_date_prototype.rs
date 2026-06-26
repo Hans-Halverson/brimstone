@@ -753,9 +753,9 @@ impl PlainDatePrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_date_result = this_date
-            .date()
-            .with(prepared_fields.into_partial_date(), Some(overflow));
+        let fields = prepared_fields.into_validated_date_fields();
+
+        let new_date_result = this_date.date().with(fields, Some(overflow));
         let new_date = map_temporal_result(cx, new_date_result, NAME)?;
 
         Ok(PlainDateObject::new(cx, new_date)?.as_value())

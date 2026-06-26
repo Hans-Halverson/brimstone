@@ -319,21 +319,21 @@ pub fn get_relative_to_option(
 
         // If no time zone is present interpret as a PlainDate
         let Some(time_zone) = prepared_fields.time_zone else {
-            let partial_date = PartialDate {
-                calendar,
-                calendar_fields: prepared_fields.into_partial_date(),
-            };
+            let calendar_fields = prepared_fields.into_validated_date_fields();
+            let partial_date = PartialDate { calendar, calendar_fields };
             let date_result = PlainDate::from_partial(partial_date, None);
             let date = map_temporal_result(cx, date_result, method_name)?;
 
             return Ok(Some(RelativeTo::PlainDate(date)));
         };
 
-        let partial_zoned_date_time = PartialZonedDateTime {
-            calendar,
-            timezone: Some(time_zone),
-            fields: prepared_fields.into_partial_zoned_date_time(),
-        };
+        // If time zone is present interpret as a ZonedDateTime
+        let overflow = Overflow::Constrain;
+        let fields =
+            prepared_fields.into_validated_zoned_date_time_fields(cx, overflow, method_name)?;
+
+        let partial_zoned_date_time =
+            PartialZonedDateTime { calendar, timezone: Some(time_zone), fields };
 
         let zoned_date_time_result = ZonedDateTime::from_partial_with_provider(
             partial_zoned_date_time,
@@ -808,30 +808,124 @@ const FIELD_ITERATION_ORDER: &[CalendarField] = &[
     CalendarField::Date(DateField::Year),
 ];
 
-pub struct PrepareCalendarFieldsResult {
+/// A partial time record with unvalidated fields (clamped to their signed bounds).
+#[derive(Default, PartialEq)]
+pub struct PartialTimeRecord {
+    hour: Option<i8>,
+    minute: Option<i8>,
+    second: Option<i8>,
+    milli: Option<i16>,
+    micro: Option<i16>,
+    nano: Option<i16>,
+}
+
+impl PartialTimeRecord {
+    pub fn is_empty(&self) -> bool {
+        self == &PartialTimeRecord::default()
+    }
+
+    /// Clamp and validate the partial time record fields, depending on the overflow option.
+    pub fn clamp_and_validate(
+        &self,
+        cx: Context,
+        overflow: Overflow,
+        method_name: &str,
+    ) -> EvalResult<PartialTime> {
+        let hour = if let Some(hour) = self.hour {
+            Some(validate_hour_argument(cx, hour, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        let minute = if let Some(minute) = self.minute {
+            Some(validate_minute_argument(cx, minute, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        let second = if let Some(second) = self.second {
+            Some(validate_second_argument(cx, second, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        let milli = if let Some(milli) = self.milli {
+            Some(validate_milli_argument(cx, milli, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        let micro = if let Some(micro) = self.micro {
+            Some(validate_micro_argument(cx, micro, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        let nano = if let Some(nano) = self.nano {
+            Some(validate_nano_argument(cx, nano, overflow, method_name)?)
+        } else {
+            None
+        };
+
+        Ok(PartialTime {
+            hour,
+            minute,
+            second,
+            millisecond: milli,
+            microsecond: micro,
+            nanosecond: nano,
+        })
+    }
+}
+
+pub struct PreparedCalendarFields {
+    /// Unvalidated date fields. Clamped to bounds, which triggers correct validation error later.
     pub partial_date: CalendarFields,
-    pub partial_time: PartialTime,
+    /// Unvalidated time fields. Clamped to signed bounds and requires manual validation.
+    pub partial_time_record: PartialTimeRecord,
     pub offset: Option<UtcOffset>,
     pub time_zone: Option<TimeZone>,
 }
 
-impl PrepareCalendarFieldsResult {
-    pub fn into_partial_date(self) -> CalendarFields {
+impl PreparedCalendarFields {
+    fn to_validated_partial_time(
+        &self,
+        cx: Context,
+        overflow: Overflow,
+        method_name: &str,
+    ) -> EvalResult<PartialTime> {
+        self.partial_time_record
+            .clamp_and_validate(cx, overflow, method_name)
+    }
+
+    pub fn into_validated_date_fields(self) -> CalendarFields {
         self.partial_date
     }
 
-    pub fn into_partial_date_time(self) -> DateTimeFields {
-        DateTimeFields::new()
+    pub fn into_validated_date_time_fields(
+        self,
+        cx: Context,
+        overflow: Overflow,
+        method_name: &str,
+    ) -> EvalResult<DateTimeFields> {
+        let partial_time = self.to_validated_partial_time(cx, overflow, method_name)?;
+        Ok(DateTimeFields::new()
             .with_partial_date(self.partial_date)
-            .with_partial_time(self.partial_time)
+            .with_partial_time(partial_time))
     }
 
-    pub fn into_partial_zoned_date_time(self) -> ZonedDateTimeFields {
-        ZonedDateTimeFields {
+    pub fn into_validated_zoned_date_time_fields(
+        self,
+        cx: Context,
+        overflow: Overflow,
+        method_name: &str,
+    ) -> EvalResult<ZonedDateTimeFields> {
+        let partial_time = self.to_validated_partial_time(cx, overflow, method_name)?;
+        Ok(ZonedDateTimeFields {
             calendar_fields: self.partial_date,
-            time: self.partial_time,
+            time: partial_time,
             offset: self.offset,
-        }
+        })
     }
 }
 
@@ -843,9 +937,9 @@ pub fn prepare_calendar_fields(
     time_fields: &[TimeField],
     required: RequiredFieldNames,
     method_name: &str,
-) -> EvalResult<PrepareCalendarFieldsResult> {
+) -> EvalResult<PreparedCalendarFields> {
     let mut partial_date = CalendarFields::new();
-    let mut partial_time = PartialTime::new();
+    let mut partial_time_record = PartialTimeRecord::default();
     let mut offset = None;
     let mut time_zone = None;
 
@@ -886,28 +980,28 @@ pub fn prepare_calendar_fields(
             CalendarField::Time(TimeField::Hour) if time_fields.contains(&TimeField::Hour) => {
                 let value = get(cx, object, cx.names.hour())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.hour = Some(converted_value);
+                    partial_time_record.hour =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.hour = Some(0);
+                    partial_time_record.hour = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Minute) if time_fields.contains(&TimeField::Minute) => {
                 let value = get(cx, object, cx.names.minute())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.minute = Some(converted_value);
+                    partial_time_record.minute =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.minute = Some(0);
+                    partial_time_record.minute = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Second) if time_fields.contains(&TimeField::Second) => {
                 let value = get(cx, object, cx.names.second())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.second = Some(converted_value);
+                    partial_time_record.second =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.second = Some(0);
+                    partial_time_record.second = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Millisecond)
@@ -915,10 +1009,10 @@ pub fn prepare_calendar_fields(
             {
                 let value = get(cx, object, cx.names.millisecond())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.millisecond = Some(converted_value);
+                    partial_time_record.milli =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.millisecond = Some(0);
+                    partial_time_record.milli = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Microsecond)
@@ -926,10 +1020,10 @@ pub fn prepare_calendar_fields(
             {
                 let value = get(cx, object, cx.names.microsecond())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.microsecond = Some(converted_value);
+                    partial_time_record.micro =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.microsecond = Some(0);
+                    partial_time_record.micro = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Nanosecond)
@@ -937,10 +1031,10 @@ pub fn prepare_calendar_fields(
             {
                 let value = get(cx, object, cx.names.nanosecond())?;
                 if !value.is_undefined() {
-                    let converted_value = to_integer_with_truncation(cx, value, method_name)?;
-                    partial_time.nanosecond = Some(converted_value);
+                    partial_time_record.nano =
+                        Some(to_integer_with_truncation(cx, value, method_name)?);
                 } else if required.provides_defaults() {
-                    partial_time.nanosecond = Some(0);
+                    partial_time_record.nano = Some(0);
                 }
             }
             CalendarField::Time(TimeField::Offset) if time_fields.contains(&TimeField::Offset) => {
@@ -970,14 +1064,65 @@ pub fn prepare_calendar_fields(
 
     if !required.provides_defaults()
         && partial_date.is_empty()
-        && partial_time.is_empty()
+        && partial_time_record.is_empty()
         && offset.is_none()
         && time_zone.is_none()
     {
         return type_error(cx, &format!("{method_name} date-like object is empty"));
     }
 
-    Ok(PrepareCalendarFieldsResult { partial_date, partial_time, offset, time_zone })
+    Ok(PreparedCalendarFields { partial_date, partial_time_record, offset, time_zone })
+}
+
+/// ToTemporalTimeRecord (https://tc39.es/proposal-temporal/#sec-temporal-totemporaltimerecord)
+pub fn to_partial_time_record(
+    cx: Context,
+    time_like_object: Handle<Value>,
+    method_name: &str,
+) -> EvalResult<PartialTimeRecord> {
+    if !time_like_object.is_object() {
+        return type_error(cx, &format!("{method_name} time must be an object"));
+    }
+
+    let object = time_like_object.as_object();
+
+    let mut record = PartialTimeRecord::default();
+
+    let hour_value = get(cx, object, cx.names.hour())?;
+    if !hour_value.is_undefined() {
+        record.hour = Some(to_integer_with_truncation(cx, hour_value, method_name)?);
+    }
+
+    let micro_value = get(cx, object, cx.names.microsecond())?;
+    if !micro_value.is_undefined() {
+        record.micro = Some(to_integer_with_truncation(cx, micro_value, method_name)?);
+    }
+
+    let milli_value = get(cx, object, cx.names.millisecond())?;
+    if !milli_value.is_undefined() {
+        record.milli = Some(to_integer_with_truncation(cx, milli_value, method_name)?);
+    }
+
+    let minute_value = get(cx, object, cx.names.minute())?;
+    if !minute_value.is_undefined() {
+        record.minute = Some(to_integer_with_truncation(cx, minute_value, method_name)?);
+    }
+
+    let nano_value = get(cx, object, cx.names.nanosecond())?;
+    if !nano_value.is_undefined() {
+        record.nano = Some(to_integer_with_truncation(cx, nano_value, method_name)?);
+    }
+
+    let second_value = get(cx, object, cx.names.second())?;
+    if !second_value.is_undefined() {
+        record.second = Some(to_integer_with_truncation(cx, second_value, method_name)?);
+    }
+
+    if record.is_empty() {
+        return type_error(cx, &format!("{method_name} time object is empty"));
+    }
+
+    Ok(record)
 }
 
 pub fn validate_time_arguments(
@@ -990,60 +1135,104 @@ pub fn validate_time_arguments(
     nanos: i16,
     method_name: &str,
 ) -> EvalResult<(u8, u8, u8, u16, u16, u16)> {
-    let hour = validate_hour_argument(cx, hour, method_name)?;
-    let minute = validate_minute_argument(cx, minute, method_name)?;
-    let second = validate_second_argument(cx, second, method_name)?;
-    let millis = validate_milli_argument(cx, millis, method_name)?;
-    let micros = validate_micro_argument(cx, micros, method_name)?;
-    let nanos = validate_nano_argument(cx, nanos, method_name)?;
+    let overflow = Overflow::Reject;
+
+    let hour = validate_hour_argument(cx, hour, overflow, method_name)?;
+    let minute = validate_minute_argument(cx, minute, overflow, method_name)?;
+    let second = validate_second_argument(cx, second, overflow, method_name)?;
+    let millis = validate_milli_argument(cx, millis, overflow, method_name)?;
+    let micros = validate_micro_argument(cx, micros, overflow, method_name)?;
+    let nanos = validate_nano_argument(cx, nanos, overflow, method_name)?;
 
     Ok((hour, minute, second, millis, micros, nanos))
 }
 
-pub fn validate_hour_argument(cx: Context, hour: i8, method_name: &str) -> EvalResult<u8> {
-    if !(0..=23).contains(&hour) {
-        return range_error(cx, &format!("{method_name} hour must be in range 0-23"));
+pub fn validate_hour_argument(
+    cx: Context,
+    hour: i8,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u8> {
+    match overflow {
+        Overflow::Reject if !(0..=23).contains(&hour) => {
+            range_error(cx, &format!("{method_name} hour must be in range 0-23"))
+        }
+        Overflow::Reject => Ok(hour as u8),
+        Overflow::Constrain => Ok(hour.max(0) as u8),
     }
-
-    Ok(hour as u8)
 }
 
-pub fn validate_minute_argument(cx: Context, minute: i8, method_name: &str) -> EvalResult<u8> {
-    if !(0..=59).contains(&minute) {
-        return range_error(cx, &format!("{method_name} minute must be in range 0-59"));
+pub fn validate_minute_argument(
+    cx: Context,
+    minute: i8,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u8> {
+    match overflow {
+        Overflow::Reject if !(0..=59).contains(&minute) => {
+            range_error(cx, &format!("{method_name} minute must be in range 0-59"))
+        }
+        Overflow::Reject => Ok(minute as u8),
+        Overflow::Constrain => Ok(minute.max(0) as u8),
     }
-
-    Ok(minute as u8)
 }
 
-pub fn validate_second_argument(cx: Context, second: i8, method_name: &str) -> EvalResult<u8> {
-    if !(0..=59).contains(&second) {
-        return range_error(cx, &format!("{method_name} second must be in range 0-59"));
+pub fn validate_second_argument(
+    cx: Context,
+    second: i8,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u8> {
+    match overflow {
+        Overflow::Reject if !(0..=59).contains(&second) => {
+            range_error(cx, &format!("{method_name} second must be in range 0-59"))
+        }
+        Overflow::Reject => Ok(second as u8),
+        Overflow::Constrain => Ok(second.max(0) as u8),
     }
-
-    Ok(second as u8)
 }
 
-pub fn validate_milli_argument(cx: Context, millis: i16, method_name: &str) -> EvalResult<u16> {
-    if !(0..=999).contains(&millis) {
-        return range_error(cx, &format!("{method_name} millisecond must be in range 0-999"));
+pub fn validate_milli_argument(
+    cx: Context,
+    millis: i16,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u16> {
+    match overflow {
+        Overflow::Reject if !(0..=999).contains(&millis) => {
+            range_error(cx, &format!("{method_name} millisecond must be in range 0-999"))
+        }
+        Overflow::Reject => Ok(millis as u16),
+        Overflow::Constrain => Ok(millis.max(0) as u16),
     }
-
-    Ok(millis as u16)
 }
 
-pub fn validate_micro_argument(cx: Context, micros: i16, method_name: &str) -> EvalResult<u16> {
-    if !(0..=999).contains(&micros) {
-        return range_error(cx, &format!("{method_name} microsecond must be in range 0-999"));
+pub fn validate_micro_argument(
+    cx: Context,
+    micros: i16,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u16> {
+    match overflow {
+        Overflow::Reject if !(0..=999).contains(&micros) => {
+            range_error(cx, &format!("{method_name} microsecond must be in range 0-999"))
+        }
+        Overflow::Reject => Ok(micros as u16),
+        Overflow::Constrain => Ok(micros.max(0) as u16),
     }
-
-    Ok(micros as u16)
 }
 
-pub fn validate_nano_argument(cx: Context, nanos: i16, method_name: &str) -> EvalResult<u16> {
-    if !(0..=999).contains(&nanos) {
-        return range_error(cx, &format!("{method_name} nanosecond must be in range 0-999"));
+pub fn validate_nano_argument(
+    cx: Context,
+    nanos: i16,
+    overflow: Overflow,
+    method_name: &str,
+) -> EvalResult<u16> {
+    match overflow {
+        Overflow::Reject if !(0..=999).contains(&nanos) => {
+            range_error(cx, &format!("{method_name} nanosecond must be in range 0-999"))
+        }
+        Overflow::Reject => Ok(nanos as u16),
+        Overflow::Constrain => Ok(nanos.max(0) as u16),
     }
-
-    Ok(nanos as u16)
 }

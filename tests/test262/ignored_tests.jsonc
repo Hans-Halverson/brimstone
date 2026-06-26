@@ -162,7 +162,6 @@
       // Stage 4 proposals which need to be implemented
       "explicit-resource-management",
       "joint-iteration",
-      "Temporal",
 
       // Other unimplemented features
       "SharedArrayBuffer",

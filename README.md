@@ -1,18 +1,19 @@
 # Brimstone
 
-Brimstone is a JavaScript engine written from scratch in Rust, aiming to have full support for the JavaScript language.
+Brimstone is a JavaScript engine written from scratch in Rust with full support for the JavaScript language.
 
 Brimstone is a work in progress but already supports almost all of the JavaScript language (>97% of the ECMAScript language in test262). Not ready for use in production.
 
-Implements the [ECMAScript specification](https://tc39.es/ecma262/). Heavy inspiration is taken from the design of [V8](https://v8.dev/) and SerenityOS's [LibJS](https://github.com/LadybirdBrowser/ladybird). Brimstone chooses to implement almost all components of the engine from scratch with minimal dependencies, with the notable exception of [ICU4X](https://github.com/unicode-org/icu4x).
+Implements the [ECMAScript specification](https://tc39.es/ecma262/). Heavy inspiration is taken from the design of [V8](https://v8.dev/) and SerenityOS's [LibJS](https://github.com/LadybirdBrowser/ladybird). Brimstone chooses to implement almost all components of the engine from scratch with minimal dependencies, with the notable exceptions of [ICU4X](https://github.com/unicode-org/icu4x) and [temporal_rs](https://github.com/boa-dev/temporal).
 
 Brimstone features:
 
+- Complete JavaScript language and standard library, other than SharedArrayBuffer and Atomics
+- Up to date with the latest features (ES2026) and includes Temporal
 - Bytecode VM, heavily inspired by the design of V8's Ignition
 - Compacting garbage collector, written in *very* unsafe Rust
 - Custom RegExp engine
 - Custom parser
-- Almost all builtin objects and functions implemented to spec
 
 ## Building and testing
 

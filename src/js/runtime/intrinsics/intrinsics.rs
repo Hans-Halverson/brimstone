@@ -87,7 +87,7 @@ use crate::{
                 plain_time_prototype::PlainTimePrototype,
                 plain_year_month_constructor::PlainYearMonthConstructor,
                 plain_year_month_prototype::PlainYearMonthPrototype,
-                temporal_object::TemporalObject,
+                temporal_now_object::TemporalNowObject, temporal_object::TemporalObject,
                 zoned_date_time_constructor::ZonedDateTimeConstructor,
                 zoned_date_time_prototype::ZonedDateTimePrototype,
             },
@@ -225,6 +225,7 @@ pub enum Intrinsic {
     SyntaxErrorConstructor,
     SyntaxErrorPrototype,
     Temporal,
+    TemporalNow,
     ThrowTypeError,
     TypedArrayConstructor,
     TypedArrayPrototype,
@@ -500,6 +501,7 @@ impl Intrinsics {
         register_intrinsic_pair!(PlainTimePrototype, PlainTimeConstructor);
         register_intrinsic_pair!(PlainYearMonthPrototype, PlainYearMonthConstructor);
         register_intrinsic_pair!(ZonedDateTimePrototype, ZonedDateTimeConstructor);
+        register_intrinsic!(TemporalNow, TemporalNowObject);
         register_intrinsic!(Temporal, TemporalObject);
 
         // Builtin functions

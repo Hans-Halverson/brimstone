@@ -11,6 +11,9 @@ impl TemporalObject {
         let mut object =
             ObjectValue::new(cx, Some(realm.get_intrinsic(Intrinsic::ObjectPrototype)), true)?;
 
+        let now_object = realm.get_intrinsic(Intrinsic::TemporalNow);
+        object.intrinsic_data_prop(cx, cx.names.now(), now_object.as_value())?;
+
         let duration_constructor = realm.get_intrinsic(Intrinsic::DurationConstructor);
         object.intrinsic_data_prop(cx, cx.names.duration(), duration_constructor.as_value())?;
 

@@ -38,7 +38,7 @@ impl DateConstructor {
             realm.get_intrinsic(Intrinsic::DatePrototype).into(),
         )?;
 
-        func.intrinsic_func(cx, cx.names.now(), RuntimeFunction::DateConstructor_now, 0, realm)?;
+        func.intrinsic_func(cx, cx.names.now_(), RuntimeFunction::DateConstructor_now, 0, realm)?;
         func.intrinsic_func(
             cx,
             cx.names.parse(),
@@ -60,13 +60,13 @@ impl DateConstructor {
         let new_target = if let Some(new_target) = cx.current_new_target() {
             new_target
         } else {
-            return Ok(to_date_string(cx, cx.current_unix_time())?.as_value());
+            return Ok(to_date_string(cx, cx.current_unix_time_millis() as f64)?.as_value());
         };
 
         let number_of_args = arguments.len();
 
         let date_value = if number_of_args == 0 {
-            cx.current_unix_time()
+            cx.current_unix_time_millis() as f64
         } else if number_of_args == 1 {
             let date_value =
                 if let Some(date_value_arg) = validate_date_value(get_argument(cx, arguments, 0)) {
@@ -142,7 +142,7 @@ impl DateConstructor {
 
     /// Date.now (https://tc39.es/ecma262/#sec-date.now)
     pub fn now(cx: Context, _: Handle<Value>, _: &[Handle<Value>]) -> EvalResult<Handle<Value>> {
-        Ok(Value::from(cx.current_unix_time()).to_handle(cx))
+        Ok(Value::from(cx.current_unix_time_millis() as f64).to_handle(cx))
     }
 
     /// Date.parse (https://tc39.es/ecma262/#sec-date.parse)

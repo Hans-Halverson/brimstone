@@ -51,7 +51,7 @@ const RUNNER_THREAD_STACK_SIZE: usize = 1 << 23;
 const HEAP_SIZE: usize = MEGABYTE_BYTES;
 
 /// Fixed unix time to use during tests
-const MOCKED_UNIX_TIME: f64 = 1_000_000_000_000.0;
+const MOCKED_UNIX_TIME_NANOS: u128 = 1_000_000_000_000_000_000;
 
 impl TestRunner {
     pub fn new(
@@ -242,7 +242,7 @@ fn run_single_test(
     // Each test is executed in its own realm
     let cx = ContextBuilder::new()
         .set_options(Rc::new(options))
-        .mock_unix_time(MOCKED_UNIX_TIME)
+        .mock_unix_time_nanos(MOCKED_UNIX_TIME_NANOS)
         .build()
         .unwrap();
     let options = cx.options.clone();

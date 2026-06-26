@@ -781,9 +781,11 @@ impl PlainDateTimePrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let disambiguation = get_disambiguation_option(cx, options, NAME)?;
 
-        let zoned_date_time_result = this_date_time
-            .date_time()
-            .to_zoned_date_time(time_zone, disambiguation);
+        let zoned_date_time_result = this_date_time.date_time().to_zoned_date_time_with_provider(
+            time_zone,
+            disambiguation,
+            cx.temporal_provider(),
+        );
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())

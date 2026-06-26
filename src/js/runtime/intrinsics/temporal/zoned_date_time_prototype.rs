@@ -410,7 +410,7 @@ impl ZonedDateTimePrototype {
         let time_zone_id_result = this_zoned_date_time
             .zoned_date_time()
             .time_zone()
-            .identifier();
+            .identifier_with_provider(cx.temporal_provider());
         let time_zone_id = map_temporal_result(cx, time_zone_id_result, NAME)?;
 
         Ok(cx.alloc_string(&time_zone_id)?.as_value())
@@ -762,7 +762,9 @@ impl ZonedDateTimePrototype {
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let hours_in_day_result = this_zoned_date_time.zoned_date_time().hours_in_day();
+        let hours_in_day_result = this_zoned_date_time
+            .zoned_date_time()
+            .hours_in_day_with_provider(cx.temporal_provider());
         let hours_in_day = map_temporal_result(cx, hours_in_day_result, NAME)?;
 
         Ok(cx.number(hours_in_day))
@@ -785,9 +787,11 @@ impl ZonedDateTimePrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_zoned_date_time_result = this_zoned_date_time
-            .zoned_date_time()
-            .add(&duration, Some(overflow));
+        let new_zoned_date_time_result = this_zoned_date_time.zoned_date_time().add_with_provider(
+            &duration,
+            Some(overflow),
+            cx.temporal_provider(),
+        );
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
@@ -812,7 +816,7 @@ impl ZonedDateTimePrototype {
 
         let new_zoned_date_time_result = this_zoned_date_time
             .zoned_date_time()
-            .subtract(&duration, Some(overflow));
+            .subtract_with_provider(&duration, Some(overflow), cx.temporal_provider());
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
@@ -853,12 +857,16 @@ impl ZonedDateTimePrototype {
         let difference_settings = get_difference_settings(cx, options, method_name)?;
 
         let duration_result = match operation {
-            DiffOperation::Until => this_zoned_date_time
-                .zoned_date_time()
-                .until(&other, difference_settings),
-            DiffOperation::Since => this_zoned_date_time
-                .zoned_date_time()
-                .since(&other, difference_settings),
+            DiffOperation::Until => this_zoned_date_time.zoned_date_time().until_with_provider(
+                &other,
+                difference_settings,
+                cx.temporal_provider(),
+            ),
+            DiffOperation::Since => this_zoned_date_time.zoned_date_time().since_with_provider(
+                &other,
+                difference_settings,
+                cx.temporal_provider(),
+            ),
         };
 
         let duration = map_temporal_result(cx, duration_result, method_name)?;
@@ -891,7 +899,7 @@ impl ZonedDateTimePrototype {
 
         let rounded_result = this_zoned_date_time
             .zoned_date_time()
-            .round(rounding_options);
+            .round_with_provider(rounding_options, cx.temporal_provider());
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, rounded)?.as_value())
@@ -912,7 +920,7 @@ impl ZonedDateTimePrototype {
 
         let is_equal_result = this_zoned_date_time
             .zoned_date_time()
-            .equals(&other_zoned_date_time);
+            .equals_with_provider(&other_zoned_date_time, cx.temporal_provider());
         let is_equal = map_temporal_result(cx, is_equal_result, NAME)?;
 
         Ok(cx.bool(is_equal))
@@ -997,12 +1005,15 @@ impl ZonedDateTimePrototype {
             rounding_mode: Some(rounding_mode),
         };
 
-        let zoned_date_time_string_result = this_zoned_date_time.zoned_date_time().to_ixdtf_string(
-            display_offset,
-            display_time_zone,
-            display_calendar,
-            to_string_options,
-        );
+        let zoned_date_time_string_result = this_zoned_date_time
+            .zoned_date_time()
+            .to_ixdtf_string_with_provider(
+                display_offset,
+                display_time_zone,
+                display_calendar,
+                to_string_options,
+                cx.temporal_provider(),
+            );
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
@@ -1018,12 +1029,15 @@ impl ZonedDateTimePrototype {
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let zoned_date_time_string_result = this_zoned_date_time.zoned_date_time().to_ixdtf_string(
-            DisplayOffset::default(),
-            DisplayTimeZone::default(),
-            DisplayCalendar::default(),
-            ToStringRoundingOptions::default(),
-        );
+        let zoned_date_time_string_result = this_zoned_date_time
+            .zoned_date_time()
+            .to_ixdtf_string_with_provider(
+                DisplayOffset::default(),
+                DisplayTimeZone::default(),
+                DisplayCalendar::default(),
+                ToStringRoundingOptions::default(),
+                cx.temporal_provider(),
+            );
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
@@ -1039,12 +1053,15 @@ impl ZonedDateTimePrototype {
 
         let this_zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let zoned_date_time_string_result = this_zoned_date_time.zoned_date_time().to_ixdtf_string(
-            DisplayOffset::default(),
-            DisplayTimeZone::default(),
-            DisplayCalendar::default(),
-            ToStringRoundingOptions::default(),
-        );
+        let zoned_date_time_string_result = this_zoned_date_time
+            .zoned_date_time()
+            .to_ixdtf_string_with_provider(
+                DisplayOffset::default(),
+                DisplayTimeZone::default(),
+                DisplayCalendar::default(),
+                ToStringRoundingOptions::default(),
+                cx.temporal_provider(),
+            );
         let zoned_date_time_string = map_temporal_result(cx, zoned_date_time_string_result, NAME)?;
 
         Ok(cx.alloc_string(&zoned_date_time_string)?.as_value())
@@ -1107,11 +1124,12 @@ impl ZonedDateTimePrototype {
         let offset = get_offset_option(cx, options, OffsetDisambiguation::Prefer, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_zoned_date_time_result = this_zoned_date_time.zoned_date_time().with(
+        let new_zoned_date_time_result = this_zoned_date_time.zoned_date_time().with_with_provider(
             prepared_fields.into_partial_zoned_date_time(),
             Some(disambiguation),
             Some(offset),
             Some(overflow),
+            cx.temporal_provider(),
         );
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
@@ -1135,8 +1153,9 @@ impl ZonedDateTimePrototype {
             Some(to_temporal_time(cx, time_arg, NAME)?)
         };
 
-        let new_zoned_date_time_result =
-            this_zoned_date_time.zoned_date_time().with_plain_time(time);
+        let new_zoned_date_time_result = this_zoned_date_time
+            .zoned_date_time()
+            .with_plain_time_and_provider(time, cx.temporal_provider());
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
@@ -1157,7 +1176,7 @@ impl ZonedDateTimePrototype {
 
         let new_zoned_date_time_result = this_zoned_date_time
             .zoned_date_time()
-            .with_timezone(time_zone);
+            .with_time_zone_with_provider(time_zone, cx.temporal_provider());
         let new_zoned_date_time = map_temporal_result(cx, new_zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, new_zoned_date_time)?.as_value())
@@ -1193,7 +1212,9 @@ impl ZonedDateTimePrototype {
 
         let zoned_date_time = this_zoned_date_time(cx, this_value, NAME)?;
 
-        let start_of_day_result = zoned_date_time.zoned_date_time().start_of_day();
+        let start_of_day_result = zoned_date_time
+            .zoned_date_time()
+            .start_of_day_with_provider(cx.temporal_provider());
         let start_of_day = map_temporal_result(cx, start_of_day_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, start_of_day)?.as_value())
@@ -1229,7 +1250,7 @@ impl ZonedDateTimePrototype {
 
         let new_zoned_date_time_result = this_zoned_date_time
             .zoned_date_time()
-            .get_time_zone_transition(direction);
+            .get_time_zone_transition_with_provider(direction, cx.temporal_provider());
 
         match map_temporal_result(cx, new_zoned_date_time_result, NAME)? {
             Some(new_zoned_date_time) => {

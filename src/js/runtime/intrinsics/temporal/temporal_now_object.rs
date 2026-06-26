@@ -101,10 +101,10 @@ impl TemporalNowObject {
     ) -> EvalResult<Handle<Value>> {
         const NAME: &str = "Now.timeZoneId";
 
-        let time_zone_result = Self::now(cx).time_zone();
+        let time_zone_result = Self::now(cx).time_zone_with_provider(cx.temporal_provider());
         let time_zone = map_temporal_result(cx, time_zone_result, NAME)?;
 
-        let time_zone_str_result = time_zone.identifier();
+        let time_zone_str_result = time_zone.identifier_with_provider(cx.temporal_provider());
         let time_zone_str = map_temporal_result(cx, time_zone_str_result, NAME)?;
 
         Ok(cx.alloc_string(&time_zone_str)?.as_value())
@@ -133,7 +133,8 @@ impl TemporalNowObject {
         let time_zone_arg = get_argument(cx, arguments, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
-        let date_time_result = Self::now(cx).plain_date_time_iso(time_zone);
+        let date_time_result =
+            Self::now(cx).plain_date_time_iso_with_provider(time_zone, cx.temporal_provider());
         let date_time = map_temporal_result(cx, date_time_result, NAME)?;
 
         Ok(PlainDateTimeObject::new(cx, date_time)?.as_value())
@@ -150,7 +151,8 @@ impl TemporalNowObject {
         let time_zone_arg = get_argument(cx, arguments, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
-        let zoned_date_time_result = Self::now(cx).zoned_date_time_iso(time_zone);
+        let zoned_date_time_result =
+            Self::now(cx).zoned_date_time_iso_with_provider(time_zone, cx.temporal_provider());
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())
@@ -167,7 +169,8 @@ impl TemporalNowObject {
         let time_zone_arg = get_argument(cx, arguments, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
-        let date_result = Self::now(cx).plain_date_iso(time_zone);
+        let date_result =
+            Self::now(cx).plain_date_iso_with_provider(time_zone, cx.temporal_provider());
         let date = map_temporal_result(cx, date_result, NAME)?;
 
         Ok(PlainDateObject::new(cx, date)?.as_value())
@@ -184,7 +187,8 @@ impl TemporalNowObject {
         let time_zone_arg = get_argument(cx, arguments, 0);
         let time_zone = Self::parse_time_zone_argument(cx, time_zone_arg, NAME)?;
 
-        let time_result = Self::now(cx).plain_time_iso(time_zone);
+        let time_result =
+            Self::now(cx).plain_time_iso_with_provider(time_zone, cx.temporal_provider());
         let time = map_temporal_result(cx, time_result, NAME)?;
 
         Ok(PlainTimeObject::new(cx, time)?.as_value())

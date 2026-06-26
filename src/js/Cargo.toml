@@ -21,7 +21,8 @@ num-traits.workspace = true
 rand.workspace = true
 ryu-js.workspace = true
 supports-color.workspace = true
-temporal_rs = { workspace = true, features = ["float64_representable_durations"] }
+temporal_rs = { workspace = true, features = ["float64_representable_durations", "std"] }
+timezone_provider = { workspace = true, features = ["tzif"] }
 xsum.workspace = true
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

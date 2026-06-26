@@ -655,9 +655,11 @@ impl PlainDatePrototype {
             plain_time_opt = None;
         };
 
-        let zoned_date_time_result = this_date
-            .date()
-            .to_zoned_date_time(time_zone, plain_time_opt);
+        let zoned_date_time_result = this_date.date().to_zoned_date_time_with_provider(
+            time_zone,
+            plain_time_opt,
+            cx.temporal_provider(),
+        );
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())

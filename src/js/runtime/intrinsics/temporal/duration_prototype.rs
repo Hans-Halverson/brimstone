@@ -471,7 +471,11 @@ impl DurationPrototype {
         rounding_options.rounding_mode = Some(rounding_mode);
         rounding_options.increment = Some(increment);
 
-        let rounded_result = duration.duration().round(rounding_options, relative_to);
+        let rounded_result = duration.duration().round_with_provider(
+            rounding_options,
+            relative_to,
+            cx.temporal_provider(),
+        );
         let rounded = map_temporal_result(cx, rounded_result, NAME)?;
 
         Ok(DurationObject::new(cx, rounded)?.as_value())
@@ -509,7 +513,10 @@ impl DurationPrototype {
             None => return range_error(cx, "Duration.prototype.total requires a unit option"),
         };
 
-        let total_result = duration.duration().total(unit, relative_to);
+        let total_result =
+            duration
+                .duration()
+                .total_with_provider(unit, relative_to, cx.temporal_provider());
         let total = map_temporal_result(cx, total_result, NAME)?;
 
         Ok(cx.number(total.as_inner()))

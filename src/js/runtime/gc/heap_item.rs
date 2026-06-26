@@ -451,3 +451,19 @@ where
         self.cast()
     }
 }
+
+/// Storage for a value whose natural alignment exceeds the 8-byte alignment of the managed heap.
+#[repr(C, packed(8))]
+pub struct HeapUnaligned<T>(T);
+
+impl<T> HeapUnaligned<T> {
+    #[inline]
+    pub fn new(value: T) -> Self {
+        HeapUnaligned(value)
+    }
+
+    #[inline]
+    pub fn get(&self) -> T {
+        unsafe { std::ptr::read_unaligned(&raw const self.0) }
+    }
+}

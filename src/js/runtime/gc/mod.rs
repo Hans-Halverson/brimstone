@@ -12,7 +12,7 @@ pub use handle::{
     Escapable, Handle, HandleContents, HandleScope, HandleScopeGuard, ToHandleContents,
 };
 pub use heap::{Heap, HeapInfo};
-pub use heap_item::{AnyHeapItem, HeapItem, IsHeapItem};
+pub use heap_item::{AnyHeapItem, HeapItem, HeapUnaligned, IsHeapItem};
 #[allow(unused)]
 pub use heap_serializer::{HeapRootsDeserializer, HeapSerializer};
 pub use heap_visitor::HeapVisitor;

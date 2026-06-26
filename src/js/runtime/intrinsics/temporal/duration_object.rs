@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapItem, HeapUnaligned, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
@@ -16,7 +16,9 @@ use crate::{
 // Temporal.Duration Objects (https://tc39.es/proposal-temporal/#sec-temporal-duration-objects)
 extend_object! {
     pub struct DurationObject {
-        duration: Duration,
+        // Contains an `u128` field and so is 16-byte aligned. Must only access through the
+        // alignment wrapper.
+        duration: HeapUnaligned<Duration>,
     }
 }
 
@@ -38,13 +40,13 @@ impl DurationObject {
             Intrinsic::DurationPrototype,
         )?;
 
-        set_uninit!(object.duration, duration);
+        set_uninit!(object.duration, HeapUnaligned::new(duration));
 
         Ok(object.to_handle())
     }
 
     pub fn duration(&self) -> Duration {
-        self.duration
+        self.duration.get()
     }
 }
 

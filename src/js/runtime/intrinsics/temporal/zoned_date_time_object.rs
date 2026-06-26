@@ -4,7 +4,7 @@ use crate::{
     extend_object,
     runtime::{
         Context, EvalResult, Handle, HeapPtr,
-        gc::{HeapItem, HeapVisitor},
+        gc::{HeapItem, HeapUnaligned, HeapVisitor},
         heap_item_descriptor::HeapItemKind,
         intrinsics::intrinsics::Intrinsic,
         object_value::ObjectValue,
@@ -16,7 +16,9 @@ use crate::{
 // ZonedDateTime Objects (https://tc39.es/proposal-temporal/#sec-temporal-zoneddatetime-objects)
 extend_object! {
     pub struct ZonedDateTimeObject {
-        zoned_date_time: ZonedDateTime,
+        // Contains an `i128` field and so is 16-byte aligned. Must only access through the
+        // alignment wrapper.
+        zoned_date_time: HeapUnaligned<ZonedDateTime>,
     }
 }
 
@@ -41,13 +43,13 @@ impl ZonedDateTimeObject {
             Intrinsic::ZonedDateTimePrototype,
         )?;
 
-        set_uninit!(object.zoned_date_time, zoned_date_time);
+        set_uninit!(object.zoned_date_time, HeapUnaligned::new(zoned_date_time));
 
         Ok(object.to_handle())
     }
 
-    pub fn zoned_date_time(&self) -> &ZonedDateTime {
-        &self.zoned_date_time
+    pub fn zoned_date_time(&self) -> ZonedDateTime {
+        self.zoned_date_time.get()
     }
 }
 

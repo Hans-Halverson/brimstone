@@ -232,6 +232,9 @@ impl Heap {
     /// Allocation will have at least the given size and is guaranteed to have 8-byte alignment.
     #[inline]
     pub fn alloc_uninit_with_size<T>(mut cx: Context, size: usize) -> AllocResult<HeapPtr<T>> {
+        // Statically ensure that type is compatible with the heap's alignment.
+        const { assert!(align_of::<T>() <= HEAP_ITEM_ALIGNMENT) };
+
         let alloc_size = Self::alloc_size_for_request_size(size);
 
         // Run a GC on every allocation in stress test mode

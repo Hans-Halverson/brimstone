@@ -92,7 +92,12 @@ impl ZonedDateTimeConstructor {
         let calendar_arg = get_argument(cx, arguments, 2);
         let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
 
-        let zoned_date_time_result = ZonedDateTime::try_new(epoch_nanos_i128, time_zone, calendar);
+        let zoned_date_time_result = ZonedDateTime::try_new_with_provider(
+            epoch_nanos_i128,
+            time_zone,
+            calendar,
+            cx.temporal_provider(),
+        );
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new_from_constructor(cx, new_target, zoned_date_time)?.as_value())
@@ -206,11 +211,12 @@ pub fn to_temporal_zoned_date_time_with_options(
             fields: prepared_fields.into_partial_zoned_date_time(),
         };
 
-        let zoned_date_time_result = ZonedDateTime::from_partial(
+        let zoned_date_time_result = ZonedDateTime::from_partial_with_provider(
             partial_zoned_date_time,
             Some(overflow),
             Some(disambiguation),
             Some(offset),
+            cx.temporal_provider(),
         );
 
         return map_temporal_result(cx, zoned_date_time_result, method_name);
@@ -225,12 +231,20 @@ pub fn to_temporal_zoned_date_time_with_options(
     }
 
     let wtf8_string = item.as_string().to_wtf8_string()?;
-    let parsed_result = ParsedZonedDateTime::from_utf8(wtf8_string.as_bytes());
+    let parsed_result = ParsedZonedDateTime::from_utf8_with_provider(
+        wtf8_string.as_bytes(),
+        cx.temporal_provider(),
+    );
     let parsed = map_temporal_result(cx, parsed_result, method_name)?;
 
     let (disambiguation, offset, _) = validate_options(cx, options, method_name)?;
 
-    let zoned_date_time_result = ZonedDateTime::from_parsed(parsed, disambiguation, offset);
+    let zoned_date_time_result = ZonedDateTime::from_parsed_with_provider(
+        parsed,
+        disambiguation,
+        offset,
+        cx.temporal_provider(),
+    );
     let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, method_name)?;
 
     Ok(zoned_date_time)

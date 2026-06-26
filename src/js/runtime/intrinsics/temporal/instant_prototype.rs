@@ -317,9 +317,11 @@ impl InstantPrototype {
             rounding_mode: Some(rounding_mode),
         };
 
-        let instant_string_result = instant
-            .instant()
-            .to_ixdtf_string(timezone, to_string_options);
+        let instant_string_result = instant.instant().to_ixdtf_string_with_provider(
+            timezone,
+            to_string_options,
+            cx.temporal_provider(),
+        );
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
@@ -335,9 +337,11 @@ impl InstantPrototype {
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let instant_string_result = instant
-            .instant()
-            .to_ixdtf_string(None, ToStringRoundingOptions::default());
+        let instant_string_result = instant.instant().to_ixdtf_string_with_provider(
+            None,
+            ToStringRoundingOptions::default(),
+            cx.temporal_provider(),
+        );
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
@@ -353,9 +357,11 @@ impl InstantPrototype {
 
         let instant = this_instant(cx, this_value, NAME)?;
 
-        let instant_string_result = instant
-            .instant()
-            .to_ixdtf_string(None, ToStringRoundingOptions::default());
+        let instant_string_result = instant.instant().to_ixdtf_string_with_provider(
+            None,
+            ToStringRoundingOptions::default(),
+            cx.temporal_provider(),
+        );
         let instant_string = map_temporal_result(cx, instant_string_result, NAME)?;
 
         Ok(cx.alloc_string(&instant_string)?.as_value())
@@ -383,7 +389,9 @@ impl InstantPrototype {
         let time_zone_arg = get_argument(cx, argument, 0);
         let time_zone = to_time_zone_identifier(cx, time_zone_arg, NAME)?;
 
-        let zoned_date_time_result = instant.instant().to_zoned_date_time_iso(time_zone);
+        let zoned_date_time_result = instant
+            .instant()
+            .to_zoned_date_time_iso_with_provider(time_zone, cx.temporal_provider());
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, NAME)?;
 
         Ok(ZonedDateTimeObject::new(cx, zoned_date_time)?.as_value())

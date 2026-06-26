@@ -335,8 +335,13 @@ pub fn get_relative_to_option(
             fields: prepared_fields.into_partial_zoned_date_time(),
         };
 
-        let zoned_date_time_result =
-            ZonedDateTime::from_partial(partial_zoned_date_time, None, None, None);
+        let zoned_date_time_result = ZonedDateTime::from_partial_with_provider(
+            partial_zoned_date_time,
+            None,
+            None,
+            None,
+            cx.temporal_provider(),
+        );
         let zoned_date_time = map_temporal_result(cx, zoned_date_time_result, method_name)?;
 
         return Ok(Some(RelativeTo::ZonedDateTime(zoned_date_time)));
@@ -350,7 +355,8 @@ pub fn get_relative_to_option(
     let wtf8_string = option_value.as_string().to_wtf8_string()?;
 
     if let Ok(option_str) = str::from_utf8(wtf8_string.as_bytes()) {
-        let parsed_option_result = RelativeTo::try_from_str(option_str);
+        let parsed_option_result =
+            RelativeTo::try_from_str_with_provider(option_str, cx.temporal_provider());
         let parsed_option = map_temporal_result(cx, parsed_option_result, method_name)?;
 
         return Ok(Some(parsed_option));
@@ -613,7 +619,8 @@ pub fn to_time_zone_identifier(
     let wtf8_string = value.as_string().to_wtf8_string()?;
 
     if let Ok(option_str) = str::from_utf8(wtf8_string.as_bytes()) {
-        let parsed_time_zone_result = TimeZone::try_from_str(option_str);
+        let parsed_time_zone_result =
+            TimeZone::try_from_str_with_provider(option_str, cx.temporal_provider());
         return map_temporal_result(cx, parsed_time_zone_result, method_name);
     }
 
@@ -632,7 +639,8 @@ pub fn parse_time_zone_identifier_argument(
     let wtf8_string = value.as_string().to_wtf8_string()?;
 
     if let Ok(str) = str::from_utf8(wtf8_string.as_bytes()) {
-        let parsed_time_zone_result = TimeZone::try_from_identifier_str(str);
+        let parsed_time_zone_result =
+            TimeZone::try_from_identifier_str_with_provider(str, cx.temporal_provider());
         return map_temporal_result(cx, parsed_time_zone_result, method_name);
     }
 

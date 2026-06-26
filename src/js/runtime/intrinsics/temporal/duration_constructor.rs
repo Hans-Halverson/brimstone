@@ -134,7 +134,8 @@ impl DurationConstructor {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let relative_to = get_relative_to_option(cx, options, NAME)?;
 
-        let ordering_result = duration_1.compare(&duration_2, relative_to);
+        let ordering_result =
+            duration_1.compare_with_provider(&duration_2, relative_to, cx.temporal_provider());
         let ordering = map_temporal_result(cx, ordering_result, NAME)?;
 
         Ok(cx.smi(ordering as i32))

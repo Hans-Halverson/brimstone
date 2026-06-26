@@ -7,6 +7,7 @@ use std::{
 };
 
 use rand::{SeedableRng, rngs::StdRng};
+use timezone_provider::tzif::CompiledTzdbProvider;
 
 use crate::{
     common::{
@@ -127,7 +128,10 @@ pub struct ContextCell {
     pub rand: StdRng,
 
     /// If set, this is the unix time in nanoseconds.
-    pub mocked_unix_time_nanos: Option<u128>,
+    mocked_unix_time_nanos: Option<u128>,
+
+    /// Time zone provider used for Temporal operations.
+    temporal_provider: CompiledTzdbProvider,
 }
 
 type GlobalSymbolRegistry = BsHashMap<HeapPtr<FlatString>, HeapPtr<SymbolValue>>;
@@ -165,6 +169,7 @@ impl Context {
             // initial heap has been set up switch to a PRNG seeded from a random source.
             rand: StdRng::from_seed([0; 32]),
             mocked_unix_time_nanos: None,
+            temporal_provider: CompiledTzdbProvider::default(),
         });
 
         let mut cx = unsafe { Context::from_ptr(NonNull::new_unchecked(Box::leak(cx_cell))) };
@@ -464,6 +469,10 @@ impl Context {
         } else {
             get_current_unix_time_nanos()
         }
+    }
+
+    pub fn temporal_provider(&self) -> &CompiledTzdbProvider {
+        &self.temporal_provider
     }
 
     pub fn print_or_add_to_dump_buffer(&self, str: &str) {

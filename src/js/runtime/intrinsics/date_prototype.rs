@@ -1,4 +1,5 @@
 use crate::{
+    common::constants::NANOSECONDS_IN_ONE_MILLISECOND,
     must_a,
     runtime::{
         Context, EvalResult, Handle, PropertyKey, Realm, Value,
@@ -9,6 +10,7 @@ use crate::{
         function::get_argument,
         get,
         intrinsics::{
+            bigint_constructor::number_to_bigint,
             date_object::{
                 DateObject, MS_PER_MINUTE, date_from_time, day, hour_from_time, local_time,
                 make_date, make_day, make_full_year, make_time, millisecond_from_time,
@@ -17,6 +19,7 @@ use crate::{
             },
             intrinsics::Intrinsic,
             rust_runtime::RuntimeFunction,
+            temporal::instant_constructor::create_temporal_instant,
         },
         object_value::ObjectValue,
         property::Property,
@@ -311,15 +314,22 @@ impl DatePrototype {
         )?;
         object.intrinsic_func(
             cx,
-            cx.names.to_time_string(),
-            RuntimeFunction::DatePrototype_to_time_string,
+            cx.names.to_string(),
+            RuntimeFunction::DatePrototype_to_string,
             0,
             realm,
         )?;
         object.intrinsic_func(
             cx,
-            cx.names.to_string(),
-            RuntimeFunction::DatePrototype_to_string,
+            cx.names.to_temporal_instant(),
+            RuntimeFunction::DatePrototype_to_temporal_instant,
+            0,
+            realm,
+        )?;
+        object.intrinsic_func(
+            cx,
+            cx.names.to_time_string(),
+            RuntimeFunction::DatePrototype_to_time_string,
             0,
             realm,
         )?;
@@ -1402,6 +1412,24 @@ impl DatePrototype {
         let date_value = this_date_value(cx, this_value, "toString")?;
 
         Ok(to_date_string(cx, date_value)?.as_value())
+    }
+
+    /// Date.prototype.toTemporalInstant (https://tc39.es/proposal-temporal/#sec-date.prototype.totemporalinstant)
+    pub fn to_temporal_instant(
+        cx: Context,
+        this_value: Handle<Value>,
+        _: &[Handle<Value>],
+    ) -> EvalResult<Handle<Value>> {
+        const NAME: &str = "Date.prototype.toTemporalInstant";
+
+        let date_value = this_date_value(cx, this_value, "toTemporalInstant")?;
+
+        let millis = number_to_bigint(cx, Value::number(date_value), NAME)?;
+        let nanos = millis.bigint() * NANOSECONDS_IN_ONE_MILLISECOND;
+
+        let instant_object = create_temporal_instant(cx, &nanos, None, NAME)?;
+
+        Ok(instant_object.as_value())
     }
 
     /// Date.prototype.toTimeString (https://tc39.es/ecma262/#sec-date.prototype.totimestring)

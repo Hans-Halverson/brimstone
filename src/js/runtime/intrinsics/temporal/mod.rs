@@ -19,6 +19,7 @@ pub mod plain_time_prototype;
 pub mod plain_year_month_constructor;
 pub mod plain_year_month_object;
 pub mod plain_year_month_prototype;
+pub mod temporal_now_object;
 pub mod temporal_object;
 mod utils;
 pub mod zoned_date_time_constructor;

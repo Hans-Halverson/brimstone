@@ -218,9 +218,9 @@ fn to_temporal_date_time_with_options(
         let options = validate_options_object(cx, options, method_name)?;
         let overflow = get_overflow_option(cx, options, method_name)?;
 
-        let partial_date_time =
-            PartialDateTime { calendar, fields: prepared_fields.into_partial_date_time() };
+        let fields = prepared_fields.into_validated_date_time_fields(cx, overflow, method_name)?;
 
+        let partial_date_time = PartialDateTime { calendar, fields };
         let date_time_result = PlainDateTime::from_partial(partial_date_time, Some(overflow));
 
         return map_temporal_result(cx, date_time_result, method_name);

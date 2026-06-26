@@ -912,9 +912,9 @@ impl PlainDateTimePrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_date_time_result = this_date_time
-            .date_time()
-            .with(prepared_fields.into_partial_date_time(), Some(overflow));
+        let fields = prepared_fields.into_validated_date_time_fields(cx, overflow, NAME)?;
+
+        let new_date_time_result = this_date_time.date_time().with(fields, Some(overflow));
         let new_date_time = map_temporal_result(cx, new_date_time_result, NAME)?;
 
         Ok(PlainDateTimeObject::new(cx, new_date_time)?.as_value())

@@ -474,9 +474,9 @@ impl PlainYearMonthPrototype {
             NAME,
         )?;
 
-        let plain_date_result = this_year_month
-            .year_month()
-            .to_plain_date(Some(prepared_fields.into_partial_date()));
+        let fields = prepared_fields.into_validated_date_fields();
+
+        let plain_date_result = this_year_month.year_month().to_plain_date(Some(fields));
         let plain_date = map_temporal_result(cx, plain_date_result, NAME)?;
 
         Ok(PlainDateObject::new(cx, plain_date)?.as_value())
@@ -575,9 +575,9 @@ impl PlainYearMonthPrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_year_month_result = this_year_month
-            .year_month()
-            .with(prepared_fields.into_partial_date().into(), Some(overflow));
+        let fields = prepared_fields.into_validated_date_fields().into();
+
+        let new_year_month_result = this_year_month.year_month().with(fields, Some(overflow));
         let new_year_month = map_temporal_result(cx, new_year_month_result, NAME)?;
 
         Ok(PlainYearMonthObject::new(cx, new_year_month)?.as_value())

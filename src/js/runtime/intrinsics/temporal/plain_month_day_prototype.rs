@@ -200,9 +200,9 @@ impl PlainMonthDayPrototype {
             NAME,
         )?;
 
-        let plain_date_result = this_month_day
-            .month_day()
-            .to_plain_date(Some(prepared_fields.into_partial_date()));
+        let fields = prepared_fields.into_validated_date_fields();
+
+        let plain_date_result = this_month_day.month_day().to_plain_date(Some(fields));
         let plain_date = map_temporal_result(cx, plain_date_result, NAME)?;
 
         Ok(PlainDateObject::new(cx, plain_date)?.as_value())
@@ -304,9 +304,9 @@ impl PlainMonthDayPrototype {
         let options = validate_options_object(cx, options_arg, NAME)?;
         let overflow = get_overflow_option(cx, options, NAME)?;
 
-        let new_month_day_result = this_month_day
-            .month_day()
-            .with(prepared_fields.into_partial_date(), Some(overflow));
+        let fields = prepared_fields.into_validated_date_fields();
+
+        let new_month_day_result = this_month_day.month_day().with(fields, Some(overflow));
         let new_month_day = map_temporal_result(cx, new_month_day_result, NAME)?;
 
         Ok(PlainMonthDayObject::new(cx, new_month_day)?.as_value())

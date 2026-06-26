@@ -153,11 +153,9 @@ pub fn to_temporal_month_day(
         let options = validate_options_object(cx, options_arg, method_name)?;
         let overflow = get_overflow_option(cx, options, method_name)?;
 
-        let partial_date = PartialDate {
-            calendar,
-            calendar_fields: prepared_fields.into_partial_date(),
-        };
+        let calendar_fields = prepared_fields.into_validated_date_fields();
 
+        let partial_date = PartialDate { calendar, calendar_fields };
         let month_day_result = PlainMonthDay::from_partial(partial_date, Some(overflow));
 
         return map_temporal_result(cx, month_day_result, method_name);

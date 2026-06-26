@@ -205,12 +205,12 @@ pub fn to_temporal_zoned_date_time_with_options(
 
         let (disambiguation, offset, overflow) = validate_options(cx, options, method_name)?;
 
-        let partial_zoned_date_time = PartialZonedDateTime {
-            calendar,
-            timezone: prepared_fields.time_zone,
-            fields: prepared_fields.into_partial_zoned_date_time(),
-        };
+        let time_zone = prepared_fields.time_zone;
+        let fields =
+            prepared_fields.into_validated_zoned_date_time_fields(cx, overflow, method_name)?;
 
+        let partial_zoned_date_time =
+            PartialZonedDateTime { calendar, timezone: time_zone, fields };
         let zoned_date_time_result = ZonedDateTime::from_partial_with_provider(
             partial_zoned_date_time,
             Some(overflow),

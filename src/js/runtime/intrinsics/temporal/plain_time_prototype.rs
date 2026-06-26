@@ -11,13 +11,13 @@ use crate::runtime::{
         temporal::{
             duration_constructor::to_temporal_duration,
             duration_object::DurationObject,
-            plain_time_constructor::{to_partial_time_record, to_temporal_time},
+            plain_time_constructor::to_temporal_time,
             plain_time_object::PlainTimeObject,
             utils::{
                 DiffOperation, get_difference_settings, get_fractional_second_digits_option,
                 get_overflow_option, get_rounding_increment_option, get_rounding_mode_option,
                 get_unit_valued_option, is_partial_temporal_object, map_temporal_result,
-                parse_round_options_argument, validate_options_object,
+                parse_round_options_argument, to_partial_time_record, validate_options_object,
             },
         },
     },

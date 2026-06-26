@@ -184,11 +184,9 @@ pub fn to_temporal_date_with_options(
 
         let overflow = validate_overflow_option(cx, options, method_name)?;
 
-        let partial_date = PartialDate {
-            calendar,
-            calendar_fields: prepared_fields.into_partial_date(),
-        };
+        let calendar_fields = prepared_fields.into_validated_date_fields();
 
+        let partial_date = PartialDate { calendar, calendar_fields };
         let new_date = PlainDate::from_partial(partial_date, Some(overflow));
 
         return map_temporal_result(cx, new_date, method_name);

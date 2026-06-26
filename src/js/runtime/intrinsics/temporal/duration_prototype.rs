@@ -9,7 +9,7 @@ use crate::{
         Context, EvalResult, Handle, Realm, Value,
         abstract_operations::create_data_property_or_throw,
         alloc_error::AllocResult,
-        error::type_error,
+        error::{range_error, type_error},
         function::get_argument,
         intrinsics::{
             intrinsics::Intrinsic,
@@ -506,7 +506,7 @@ impl DurationPrototype {
         let relative_to = get_relative_to_option(cx, options, NAME)?;
         let unit = match get_unit_valued_option(cx, options, cx.names.unit(), NAME)? {
             Some(unit) => unit,
-            None => return type_error(cx, "Duration.prototype.total requires a unit option"),
+            None => return range_error(cx, "Duration.prototype.total requires a unit option"),
         };
 
         let total_result = duration.duration().total(unit, relative_to);

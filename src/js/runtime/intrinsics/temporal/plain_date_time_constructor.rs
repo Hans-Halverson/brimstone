@@ -17,6 +17,7 @@ use crate::runtime::{
                 get_overflow_option, map_temporal_result, parse_calendar_argument,
                 prepare_calendar_fields, to_integer_with_truncation,
                 to_integer_with_truncation_or_zero, validate_options_object,
+                validate_time_arguments,
             },
         },
     },
@@ -75,6 +76,7 @@ impl PlainDateTimeConstructor {
             return type_error(cx, "Temporal.PlainDateTime constructor must be called with new");
         };
 
+        // Truncation for year, month, and day will trigger an error later in creation
         let year_arg = get_argument(cx, arguments, 0);
         let year = to_integer_with_truncation(cx, year_arg, NAME)?;
 
@@ -84,26 +86,32 @@ impl PlainDateTimeConstructor {
         let day_arg = get_argument(cx, arguments, 2);
         let day = to_integer_with_truncation(cx, day_arg, NAME)?;
 
+        // Truncate time arguments to signed ints. This effectively clamps the value on the upper
+        // bound (since an error will be triggered later). But the lower bound must be checked
+        // manually later. Signed width is enough to hold the maximum value of each time field.
         let hour_arg = get_argument(cx, arguments, 3);
-        let hour = to_integer_with_truncation_or_zero(cx, hour_arg, NAME)?;
+        let hour = to_integer_with_truncation_or_zero::<i8>(cx, hour_arg, NAME)?;
 
         let minute_arg = get_argument(cx, arguments, 4);
-        let minute = to_integer_with_truncation_or_zero(cx, minute_arg, NAME)?;
+        let minute = to_integer_with_truncation_or_zero::<i8>(cx, minute_arg, NAME)?;
 
         let second_arg = get_argument(cx, arguments, 5);
-        let second = to_integer_with_truncation_or_zero(cx, second_arg, NAME)?;
+        let second = to_integer_with_truncation_or_zero::<i8>(cx, second_arg, NAME)?;
 
         let millis_arg = get_argument(cx, arguments, 6);
-        let millis = to_integer_with_truncation_or_zero(cx, millis_arg, NAME)?;
+        let millis = to_integer_with_truncation_or_zero::<i16>(cx, millis_arg, NAME)?;
 
         let micros_arg = get_argument(cx, arguments, 7);
-        let micros = to_integer_with_truncation_or_zero(cx, micros_arg, NAME)?;
+        let micros = to_integer_with_truncation_or_zero::<i16>(cx, micros_arg, NAME)?;
 
         let nanos_arg = get_argument(cx, arguments, 8);
-        let nanos = to_integer_with_truncation_or_zero(cx, nanos_arg, NAME)?;
+        let nanos = to_integer_with_truncation_or_zero::<i16>(cx, nanos_arg, NAME)?;
 
         let calendar_arg = get_argument(cx, arguments, 9);
         let calendar = parse_calendar_argument(cx, calendar_arg, NAME)?;
+
+        let (hour, minute, second, millis, micros, nanos) =
+            validate_time_arguments(cx, hour, minute, second, millis, micros, nanos, NAME)?;
 
         let plain_date_time_result = PlainDateTime::try_new(
             year, month, day, hour, minute, second, millis, micros, nanos, calendar,

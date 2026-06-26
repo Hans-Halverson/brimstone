@@ -985,8 +985,8 @@ impl ZonedDateTimePrototype {
 
         // Parse display and rounding options from options object
         let display_calendar = get_show_calendar_name_option(cx, options, NAME)?;
-        let display_offset = get_show_offset_option(cx, options, NAME)?;
         let precision = get_fractional_second_digits_option(cx, options, NAME)?;
+        let display_offset = get_show_offset_option(cx, options, NAME)?;
         let rounding_mode = get_rounding_mode_option(cx, options, RoundingMode::Trunc, NAME)?;
         let smallest_unit = get_unit_valued_option(cx, options, cx.names.smallest_unit(), NAME)?;
         let display_time_zone = get_show_time_zone_name_option(cx, options, NAME)?;

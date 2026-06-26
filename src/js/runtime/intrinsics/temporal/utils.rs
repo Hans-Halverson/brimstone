@@ -515,6 +515,7 @@ pub fn parse_calendar_argument(
 
     let wtf8_string = calendar_arg.as_string().to_wtf8_string()?;
     let parsed_calendar_result = Calendar::try_from_utf8(wtf8_string.as_bytes());
+
     map_temporal_result(cx, parsed_calendar_result, method_name)
 }
 
@@ -665,9 +666,16 @@ pub fn to_temporal_calendar_identifier(
     }
 
     let wtf8_string = value.as_string().to_wtf8_string()?;
-    let parsed_calendar_result = Calendar::try_from_utf8(wtf8_string.as_bytes());
 
-    map_temporal_result(cx, parsed_calendar_result, method_name)
+    if let Ok(option_str) = str::from_utf8(wtf8_string.as_bytes()) {
+        let parsed_calendar_result = Calendar::from_str(option_str);
+        return map_temporal_result(cx, parsed_calendar_result, method_name);
+    }
+
+    range_error(
+        cx,
+        &format!("{method_name} `calendar` argument must be a valid calendar identifier"),
+    )
 }
 
 /// IsPartialTemporalObject (https://tc39.es/proposal-temporal/#sec-temporal-ispartialtemporalobject)
@@ -962,4 +970,72 @@ pub fn prepare_calendar_fields(
     }
 
     Ok(PrepareCalendarFieldsResult { partial_date, partial_time, offset, time_zone })
+}
+
+pub fn validate_time_arguments(
+    cx: Context,
+    hour: i8,
+    minute: i8,
+    second: i8,
+    millis: i16,
+    micros: i16,
+    nanos: i16,
+    method_name: &str,
+) -> EvalResult<(u8, u8, u8, u16, u16, u16)> {
+    let hour = validate_hour_argument(cx, hour, method_name)?;
+    let minute = validate_minute_argument(cx, minute, method_name)?;
+    let second = validate_second_argument(cx, second, method_name)?;
+    let millis = validate_milli_argument(cx, millis, method_name)?;
+    let micros = validate_micro_argument(cx, micros, method_name)?;
+    let nanos = validate_nano_argument(cx, nanos, method_name)?;
+
+    Ok((hour, minute, second, millis, micros, nanos))
+}
+
+pub fn validate_hour_argument(cx: Context, hour: i8, method_name: &str) -> EvalResult<u8> {
+    if !(0..=23).contains(&hour) {
+        return range_error(cx, &format!("{method_name} hour must be in range 0-23"));
+    }
+
+    Ok(hour as u8)
+}
+
+pub fn validate_minute_argument(cx: Context, minute: i8, method_name: &str) -> EvalResult<u8> {
+    if !(0..=59).contains(&minute) {
+        return range_error(cx, &format!("{method_name} minute must be in range 0-59"));
+    }
+
+    Ok(minute as u8)
+}
+
+pub fn validate_second_argument(cx: Context, second: i8, method_name: &str) -> EvalResult<u8> {
+    if !(0..=59).contains(&second) {
+        return range_error(cx, &format!("{method_name} second must be in range 0-59"));
+    }
+
+    Ok(second as u8)
+}
+
+pub fn validate_milli_argument(cx: Context, millis: i16, method_name: &str) -> EvalResult<u16> {
+    if !(0..=999).contains(&millis) {
+        return range_error(cx, &format!("{method_name} millisecond must be in range 0-999"));
+    }
+
+    Ok(millis as u16)
+}
+
+pub fn validate_micro_argument(cx: Context, micros: i16, method_name: &str) -> EvalResult<u16> {
+    if !(0..=999).contains(&micros) {
+        return range_error(cx, &format!("{method_name} microsecond must be in range 0-999"));
+    }
+
+    Ok(micros as u16)
+}
+
+pub fn validate_nano_argument(cx: Context, nanos: i16, method_name: &str) -> EvalResult<u16> {
+    if !(0..=999).contains(&nanos) {
+        return range_error(cx, &format!("{method_name} nanosecond must be in range 0-999"));
+    }
+
+    Ok(nanos as u16)
 }

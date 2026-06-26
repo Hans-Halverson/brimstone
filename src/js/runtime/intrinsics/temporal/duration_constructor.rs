@@ -179,24 +179,6 @@ pub fn to_temporal_partial_duration_record(
 
     let mut partial_duration = PartialDuration::default();
 
-    let years_value = get(cx, object, cx.names.years())?;
-    if !years_value.is_undefined() {
-        let years = to_integer_if_integral(cx, years_value, method_name)?;
-        partial_duration = partial_duration.with_years(years);
-    }
-
-    let months_value = get(cx, object, cx.names.months())?;
-    if !months_value.is_undefined() {
-        let months = to_integer_if_integral(cx, months_value, method_name)?;
-        partial_duration = partial_duration.with_months(months);
-    }
-
-    let weeks_value = get(cx, object, cx.names.weeks())?;
-    if !weeks_value.is_undefined() {
-        let weeks = to_integer_if_integral(cx, weeks_value, method_name)?;
-        partial_duration = partial_duration.with_weeks(weeks);
-    }
-
     let days_value = get(cx, object, cx.names.days())?;
     if !days_value.is_undefined() {
         let days = to_integer_if_integral(cx, days_value, method_name)?;
@@ -209,16 +191,10 @@ pub fn to_temporal_partial_duration_record(
         partial_duration = partial_duration.with_hours(hours);
     }
 
-    let minutes_value = get(cx, object, cx.names.minutes())?;
-    if !minutes_value.is_undefined() {
-        let minutes = to_integer_if_integral(cx, minutes_value, method_name)?;
-        partial_duration = partial_duration.with_minutes(minutes);
-    }
-
-    let seconds_value = get(cx, object, cx.names.seconds())?;
-    if !seconds_value.is_undefined() {
-        let seconds = to_integer_if_integral(cx, seconds_value, method_name)?;
-        partial_duration = partial_duration.with_seconds(seconds);
+    let micros_value = get(cx, object, cx.names.microseconds())?;
+    if !micros_value.is_undefined() {
+        let micros = to_integer_if_integral(cx, micros_value, method_name)?;
+        partial_duration = partial_duration.with_microseconds(micros);
     }
 
     let millis_value = get(cx, object, cx.names.milliseconds())?;
@@ -227,16 +203,40 @@ pub fn to_temporal_partial_duration_record(
         partial_duration = partial_duration.with_milliseconds(millis);
     }
 
-    let micros_value = get(cx, object, cx.names.microseconds())?;
-    if !micros_value.is_undefined() {
-        let micros = to_integer_if_integral(cx, micros_value, method_name)?;
-        partial_duration = partial_duration.with_microseconds(micros);
+    let minutes_value = get(cx, object, cx.names.minutes())?;
+    if !minutes_value.is_undefined() {
+        let minutes = to_integer_if_integral(cx, minutes_value, method_name)?;
+        partial_duration = partial_duration.with_minutes(minutes);
+    }
+
+    let months_value = get(cx, object, cx.names.months())?;
+    if !months_value.is_undefined() {
+        let months = to_integer_if_integral(cx, months_value, method_name)?;
+        partial_duration = partial_duration.with_months(months);
     }
 
     let nanos_value = get(cx, object, cx.names.nanoseconds())?;
     if !nanos_value.is_undefined() {
         let nanos = to_integer_if_integral(cx, nanos_value, method_name)?;
         partial_duration = partial_duration.with_nanoseconds(nanos);
+    }
+
+    let seconds_value = get(cx, object, cx.names.seconds())?;
+    if !seconds_value.is_undefined() {
+        let seconds = to_integer_if_integral(cx, seconds_value, method_name)?;
+        partial_duration = partial_duration.with_seconds(seconds);
+    }
+
+    let weeks_value = get(cx, object, cx.names.weeks())?;
+    if !weeks_value.is_undefined() {
+        let weeks = to_integer_if_integral(cx, weeks_value, method_name)?;
+        partial_duration = partial_duration.with_weeks(weeks);
+    }
+
+    let years_value = get(cx, object, cx.names.years())?;
+    if !years_value.is_undefined() {
+        let years = to_integer_if_integral(cx, years_value, method_name)?;
+        partial_duration = partial_duration.with_years(years);
     }
 
     if partial_duration.is_empty() {

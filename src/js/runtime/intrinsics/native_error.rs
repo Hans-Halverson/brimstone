@@ -41,9 +41,12 @@ macro_rules! create_native_error {
                     /* skip_current_frame */ false,
                 )?;
 
-                object
-                    .as_object()
-                    .intrinsic_data_prop(cx, cx.names.message(), message.into())?;
+                create_non_enumerable_data_property_or_throw(
+                    cx,
+                    object.as_object(),
+                    cx.names.message(),
+                    message.into(),
+                )?;
 
                 Ok(object)
             }
